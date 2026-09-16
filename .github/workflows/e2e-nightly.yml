@@ -103,6 +103,55 @@ jobs:
           AISEAT_REPLAY_DIR: ${{ github.workspace }}/bot-replays
         run: go test ./internal/aiseat/ -run TestFourRandomBotsPlayToAWinner -v -timeout 30m
 
+      # The catalog soak (#601) needs the Scryfall dump: a registered
+      # Spec carries an oracle ID and a name, not a type line or a
+      # mana cost, so without the dump there is no card to deal and
+      # the test skips. Same cache key as the playwright job below --
+      # both jobs run on the same day's dump, and whichever starts
+      # first populates it.
+      - name: Compute Scryfall cache key
+        id: scryfall-stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Scryfall bulk data
+        uses: actions/cache@v4
+        with:
+          path: data/scryfall
+          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          restore-keys: |
+            scryfall-default-cards-
+
+      - name: Refresh Scryfall bulk data
+        run: scripts/scryfall-refresh.sh
+
+      # Random decks dealt out of the catalog itself, played to a
+      # winner. Fails on any EventEffectError -- a card whose effect
+      # threw mid-resolution, which the engine logs and survives, so
+      # no other test in the tree goes red over it.
+      #
+      # No -race: this is about the cards the games REACH, and the
+      # runner-goroutine concurrency the detector would watch is the
+      # same code every whole-game test above already drives under it.
+      - name: Catalog soak (decks dealt from the catalog)
+        working-directory: server
+        env:
+          AISEAT_GAME_TESTS: "1"
+          AISEAT_CATALOG_GAMES: "2"
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+          AISEAT_CATALOG_REPORT: ${{ github.workspace }}/catalog-report/per-card.json
+        run: go test ./internal/aiseat/ -run TestCatalogSoak -v -timeout 30m
+
+      # Uploaded on success too: the useful half of this report is the
+      # cards nothing reached, which is a list you want on a green run.
+      - name: Upload catalog report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: catalog-report
+          path: catalog-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload bot replays
         if: failure()
         uses: actions/upload-artifact@v5

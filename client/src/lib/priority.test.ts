@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-import { hasAnyLegalResponse, owesBlockDecision, _resetCacheForTests } from "./priority";
+import {
+  hasAnyLegalResponse,
+  hasDeclaredAttackers,
+  owesBlockDecision,
+  _resetCacheForTests,
+} from "./priority";
 import type {
   CardView,
   GameView,
@@ -274,5 +279,73 @@ describe("hasAnyLegalResponse — #328 blocking window", () => {
       moves: [pass, play("block", "c-my-bear")],
     });
     expect(hasAnyLegalResponse(s, "p0", 503)).toBe(true);
+  });
+});
+
+// #599 — the attacking half of the #328 guard. A bulk declaration
+// taps every attacker it declares, so the enumerator has nothing left
+// to offer and smart auto-pass would close the window the undo lives
+// in.
+describe("hasAnyLegalResponse — #599 declare-attackers review window", () => {
+  beforeEach(() => _resetCacheForTests());
+
+  const attacker = (name: string, extras = {}) =>
+    card(name, "Creature — Bear", { controller: "p0", ...extras });
+
+  it("holds the window once the viewer has declared an attacker", () => {
+    const s = snap({
+      step: "declare_attackers",
+      activeSeat: 0,
+      priorityHolder: 0,
+      battlefield: [attacker("declared", { attacking_target: "p1", tapped: true })],
+      moves: [pass],
+    });
+    expect(hasAnyLegalResponse(s, "p0", 600)).toBe(true);
+  });
+
+  it("passes a declare-attackers window with nothing declared", () => {
+    // Nothing swung, nothing to review: the seat with no attack move
+    // left is a seat with nothing to do, which is what smart-skip is
+    // for.
+    const s = snap({
+      step: "declare_attackers",
+      activeSeat: 0,
+      priorityHolder: 0,
+      battlefield: [attacker("idle", { tapped: true })],
+      moves: [pass],
+    });
+    expect(hasAnyLegalResponse(s, "p0", 601)).toBe(false);
+  });
+
+  it("does not hold the window for a seat that is not attacking", () => {
+    // The defender sees the attack; the review window belongs to the
+    // player who declared it.
+    const s = snap({
+      step: "declare_attackers",
+      activeSeat: 1,
+      priorityHolder: 0,
+      battlefield: [
+        card("theirs", "Creature — Bear", { controller: "p1", attacking_target: "p0" }),
+      ],
+      moves: [pass],
+    });
+    expect(hasAnyLegalResponse(s, "p0", 602)).toBe(false);
+  });
+});
+
+describe("hasDeclaredAttackers", () => {
+  it("is false outside declare_attackers, even with attackers on the board", () => {
+    const s = snap({
+      step: "declare_blockers",
+      activeSeat: 0,
+      priorityHolder: 0,
+      battlefield: [card("mine", "Creature — Bear", { controller: "p0", attacking_target: "p1" })],
+    });
+    expect(hasDeclaredAttackers(s, "p0")).toBe(false);
+  });
+
+  it("is false for a null snapshot or viewer", () => {
+    expect(hasDeclaredAttackers(null, "p0")).toBe(false);
+    expect(hasDeclaredAttackers(snap({ step: "declare_attackers" }), null)).toBe(false);
   });
 });

@@ -47,7 +47,14 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 		t.Fatalf("runners: %d", len(runners))
 	}
 
-	deadline := time.Now().Add(60 * time.Second)
+	// #600: the budget comes from the same knob every other
+	// whole-game test reads, not from a literal. Four random bots
+	// finish this table in ~3s idle and 22-33s under -race on an idle
+	// machine; the nightly runs the whole package under -race on a
+	// self-hosted runner shared with CI, where 60s was routinely not
+	// enough and the table was reported as unfinished at turn 16.
+	// A loaded runner should make this test slow, not red.
+	deadline := time.Now().Add(envDuration("AISEAT_WALLCLOCK", 300*time.Second))
 	for time.Now().Before(deadline) {
 		snap := room.Game.Snapshot()
 		if snap.State != game.StateActive || snap.Turn.Number > 60 {
@@ -74,7 +81,7 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 	for _, r := range runners {
 		select {
 		case <-r.Done():
-		case <-time.After(5 * time.Second):
+		case <-time.After(envDuration("AISEAT_STALL", 15*time.Second)):
 			t.Fatal("runner still alive after game end")
 		}
 	}

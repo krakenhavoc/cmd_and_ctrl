@@ -64,6 +64,44 @@ export function owesBlockDecision(
   return seats.includes(idx);
 }
 
+// hasDeclaredAttackers reports whether the viewer is the active
+// player, standing in their own declare-attackers step, with at least
+// one attack already declared.
+//
+// #599. It is the attacking half of owesBlockDecision above, and it
+// exists for the same reason: an auto-pass that closes a window the
+// player cannot get back. The enumerator offers one attack move per
+// ELIGIBLE creature (legal/combat.go, game.AttackerEligible), and
+// declaring an attacker taps it, so a wide declaration removes every
+// non-pass move the seat had. Smart auto-pass then reads "nothing to
+// do", yields, and the cursor leaves the step — taking the #318
+// cluster, and the Undo button inside it, with it.
+//
+// That undo is not a nicety. attackAll.ts sends ONE bulk
+// declare_attackers precisely so a single undo restores declarations
+// and tap state together; nothing else in the client can put a
+// declared attacker back. Auto-passing out of the step the instant
+// the declaration lands makes the feature's own escape hatch
+// unreachable, which is how it shipped and why the e2e guard for it
+// has failed every nightly since 2026-09-12.
+//
+// Deliberately NOT gated on the seat's undo budget. The budget is a
+// server number the viewer may not be able to read on the frame that
+// matters, an admin bypasses it entirely, and "let me look at the
+// attack I just declared" is worth the window on its own.
+export function hasDeclaredAttackers(
+  snap: GameView | null | undefined,
+  viewerID: string | null,
+): boolean {
+  if (!snap || !viewerID) return false;
+  if (snap.turn?.step !== "declare_attackers") return false;
+  const active = snap.turn?.active_seat ?? -1;
+  if (active < 0 || snap.seats?.[active]?.id !== viewerID) return false;
+  return (snap.battlefield?.cards ?? []).some(
+    (c) => c.controller === viewerID && !!c.attacking_target,
+  );
+}
+
 // hasAnyLegalResponse reports whether the viewer could fire *any*
 // action against the current snapshot. Used by the smart-skip
 // auto-pass to decide whether to pass through a step the viewer has
@@ -90,6 +128,10 @@ export function hasAnyLegalResponse(
   if (owesBlockDecision(snap, viewerID)) return true;
 
   if (!hasPriority(snap, viewerID)) return false;
+
+  // #599: a declaration the viewer just made is something to look at,
+  // even though the engine has no further move to offer them.
+  if (hasDeclaredAttackers(snap, viewerID)) return true;
 
   // No move list on a frame where the viewer holds priority means a
   // server older than S31, or a field we dropped; err toward
