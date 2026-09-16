@@ -765,6 +765,57 @@ needs its own ADR before any code.
 premise and the wrong 510.2 / 510.3 citation, was updated to point here
 in the commit that accepted this ADR.
 
+## Addendum (sub-PR 2): client implementation notes
+
+Sub-PR 2 follows the plan above. `client/src/lib/combatBeats.ts` holds
+every rule (`track`, `splitBeats`, `arrowIDsFor`, `arrowRender`,
+`beatMode`, `schedule`, plus `planFrame`, which composes them, and a
+small `BeatSequencer` timer class), and `CombatArrows.svelte` is the
+shell. Choices the ADR left open, and the places the code goes past it:
+
+- **The shell is `CombatArrows.svelte` alone.** It also renders the
+  text cue, as HTML outside its `aria-hidden` SVG, in a
+  `role="status" aria-live="polite"` region that is always mounted.
+  There is one cue per `combat_damage` step, placed at the curve
+  midpoint of the arrows its first beat drew (or the board centre when
+  none could be drawn), and "Regular damage" joins "First strike" in
+  the same cue. Every layer is `pointer-events: none`. `Board.svelte`
+  only forwards a prop.
+- **Seen `seq`s are a watermark, not a set.** The log is appended in
+  `seq` order, so "every `seq` at or below the highest handled" is the
+  same set. A rewind lowers the watermark, and it also forgets a cued
+  beat whose first entry is above the new watermark, so an undo inside
+  the step cues the replay with its label.
+- **Re-priming, not just first-frame priming.** An automatic reconnect
+  does not unmount the board (`ws.ts` keeps the stale snapshot
+  rendered), and neither does the dev replay scrubber. Game.svelte
+  passes a `beatsPrimeKey` (connection status and replay toggle) down
+  through `Board`, and a change primes the next frame. Without it, the
+  combat damage missed during a disconnect, or everything between a
+  replay frame and the live game, would be cued as live.
+- **Two beats that are both new in one frame, with regular first**
+  (#702's order today, when both land in one frame) are both cued at
+  once. Nothing is reordered, and no pause is added because beat 1 did
+  not come first.
+- **Durations.** A pulse or ghost is `BEAT_EFFECT_MS = 360` ×
+  `animations.speed`, fading in and out, which is shorter than the
+  pause, so it is over before the next beat. The text cue stays up
+  `BEAT_CUE_HOLD_MS = 1800` after a frame's last beat for that step.
+  That hold is **not** speed-scaled: it is text to read, not motion,
+  and speed 0.5 must not make it unreadable.
+- **Motion is checked twice.** Once when the frame is planned, and
+  again when each cue plays (from the settings store), so turning
+  reduce motion on mid-sequence starts no further tween.
+- **Ghost endpoints.** "Still on the board" means the card is in
+  `view.battlefield.cards`. A dead creature's instance can still be
+  drawn in a graveyard pile, and a ghost must not point there. "The
+  board's size changed" allows 1 px of tolerance. The ghost style is a
+  thin dashed stroke with no glow and no arrowhead. A pulse is a wide,
+  soft stroke over the live arrow.
+- **Cache lifetime.** Kept while the step is `declare_attackers`,
+  `declare_blockers` or `combat_damage`, or while any cue is pending
+  (`keepArrowCache`). Cleared otherwise, and on every prime.
+
 ## Dependencies
 
 - **[#709](https://github.com/krakenhavoc/cmd_and_ctrl/pull/709)** (open,
