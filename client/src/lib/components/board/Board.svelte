@@ -113,6 +113,10 @@
     // under the stack card so every "look here" surface shares one
     // anchor over the table.
     attention?: Snippet;
+    // #187 / ADR 0053: changes whenever the combat damage beats should
+    // prime again instead of cueing what they missed (reconnect, replay
+    // toggle). Passed straight to CombatArrows.
+    beatsPrimeKey?: string;
   }
 
   const {
@@ -129,6 +133,7 @@
     onPassPriority,
     onToggleAutopass,
     attention,
+    beatsPrimeKey,
   }: Props = $props();
 
   // Spectators have no perspective — there's no "self" seat to anchor
@@ -970,7 +975,7 @@
     {/each}
   {/if}
 
-  <CombatArrows {view} {boardEl} />
+  <CombatArrows {view} {boardEl} {beatsPrimeKey} />
   <HoverZoomOverlay {view} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's

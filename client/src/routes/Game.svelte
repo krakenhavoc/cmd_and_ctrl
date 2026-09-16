@@ -426,6 +426,12 @@
   // ---- Turn / priority / quick actions ----
 
   const view = $derived(replayFrame?.game ?? $snapshot);
+  // #187 / ADR 0053: the combat damage beats prime (mark the log seen
+  // without cueing it) on their first frame. The board stays mounted
+  // across an automatic reconnect and a replay toggle, so this key
+  // changes there too: the frames missed or scrubbed past were never
+  // watched live and must not replay as live beats.
+  const beatsPrimeKey = $derived(`${$status === "connected" ? "live" : "offline"}:${replaying}`);
   const seats = $derived<PlayerView[]>(view?.seats ?? []);
   const turn = $derived(view?.turn);
   const activeSeat = $derived(turn?.active_seat ?? 0);
@@ -1115,6 +1121,7 @@
         {autopassEnabled}
         onPassPriority={passPriority}
         onToggleAutopass={toggleAutopass}
+        {beatsPrimeKey}
       >
         <!-- Everything that asks for the viewer's attention shares the
              board's strip (under the stack card): targeting prompt,

@@ -765,6 +765,103 @@ needs its own ADR before any code.
 premise and the wrong 510.2 / 510.3 citation, was updated to point here
 in the commit that accepted this ADR.
 
+## Addendum (sub-PR 2): client implementation notes
+
+Sub-PR 2 follows the plan above. `client/src/lib/combatBeats.ts` holds
+every rule (`track`, `splitBeats`, `arrowRefsFor` / `arrowIDsFor`,
+`arrowRender` and `resolveArrow`, `beatMode`, `schedule`, plus
+`planFrame`, which composes them, a `BeatSequencer` timer class and
+the `BeatDirector` that owns both), and `CombatArrows.svelte` is the
+shell. Choices the ADR left open, and the places the code goes past it:
+
+- **The shell is `CombatArrows.svelte` alone.** It also renders the
+  text cue, as HTML outside its `aria-hidden` SVG, in a
+  `role="status" aria-live="polite"` region that is always mounted.
+  There is one cue per `combat_damage` step, placed at the curve
+  midpoint of the arrows its first beat drew (or the board centre when
+  none could be drawn), and "Regular damage" joins "First strike" in
+  the same cue. Every layer is `pointer-events: none`. `Board.svelte`
+  only forwards a prop.
+- **The announcement is terse.** The live region announces the label
+  and a count ("First strike, 2 hits"), not the beat's log lines. It
+  speaks on every beat of every combat, and the log panel already has
+  the sentences.
+- **Seen `seq`s are a watermark, not a set.** The log is appended in
+  `seq` order, so "every `seq` at or below the highest handled" is the
+  same set. A rewind lowers the watermark, and it also forgets a cued
+  beat whose first entry is above the new watermark, so an undo inside
+  the step cues the replay with its label.
+- **Re-priming, not just first-frame priming.** An automatic reconnect
+  does not unmount the board (`ws.ts` keeps the stale snapshot
+  rendered), and neither does the dev replay scrubber. Game.svelte
+  passes a `beatsPrimeKey` (connection status and replay toggle) down
+  through `Board`, and a change primes the next frame. Without it, the
+  combat damage missed during a disconnect, or everything between a
+  replay frame and the live game, would be cued as live.
+- **A priming frame cancels pending cues.** This is the one exception to
+  "a later frame never cancels a cue". A frame that primes (the first,
+  or a re-prime) makes `BeatDirector` dispose the sequencer, start a
+  new one, and clear the on-screen cues, effects and caches. Those
+  cues belong to frames the client is no longer showing. On a replay
+  scrubber jump mid-sequence they would otherwise fire against the new
+  frame and flash a stale label.
+- **Two beats that are both new in one frame, with regular first**
+  (#702's order today, when both land in one frame) are both cued at
+  once. Nothing is reordered, and no pause is added because beat 1 did
+  not come first.
+- **Durations.** A pulse or ghost is `BEAT_EFFECT_MS = 360` ×
+  `animations.speed`, fading in and out. It is clamped below
+  `BEAT_PAUSE_MS`, and a unit test pins that margin, so the effect is
+  over before the next beat. The text cue stays up
+  `BEAT_CUE_HOLD_MS = 1800` after a frame's last beat for that step.
+  That hold is **not** speed-scaled: it is text to read, not motion,
+  and speed 0.5 must not make it unreadable.
+- **Motion is checked twice.** Once when the frame is planned, and
+  again when each cue plays (from the settings store), so turning
+  reduce motion on mid-sequence starts no further tween.
+- **Ghost endpoints.** "Still on the board" means the card is in
+  `view.battlefield.cards`. A dead creature's instance can still be
+  drawn in a graveyard pile, and a ghost must not point there. "The
+  board's size changed" allows 1 px of tolerance. The ghost style is a
+  thin dashed stroke with no glow and no arrowhead. A pulse is a wide,
+  soft stroke over the live arrow.
+- **Card-tile fallback for arrows that were never drawn.** Arrows are
+  measured in a `requestAnimationFrame`. A browser check on a local
+  stack found the declare-blockers frame and the combat damage frame
+  reaching the defender 4–5 ms apart (3 of 3 runs, and the attacker
+  in one run). Both landed inside one animation frame, so the block
+  arrow was never measured, the arrow cache had nothing for it, and
+  only the text cue played. That is blocked first strike, the main
+  case.
+  - **The fix.** `CombatArrows` also caches every battlefield tile's
+    board-relative centre, by instance ID, on every measurement. A tile
+    is measured on every frame it is on the board, long before combat.
+    When no arrow geometry is usable, `resolveArrow` builds the ghost
+    from the two endpoints. Each endpoint is freshly measured if it is
+    still on the battlefield, and otherwise taken from its cached tile
+    (a seat header is always mounted).
+  - **Reflow rule.** A cached tile measured on a board of another size
+    is never used, so the ghost is dropped and the text cue carries the
+    beat.
+  - **Why not only `$effect.pre`.** Measuring the outgoing DOM
+    synchronously before each update was rejected as the sole fix: two
+    frames can still be batched before any render, and the cache covers
+    that case too.
+- **Cache lifetime.** Kept while the step is `declare_attackers`,
+  `declare_blockers` or `combat_damage`, or while any cue is pending
+  (`keepArrowCache`). Cleared otherwise, and on every prime. For tiles,
+  "cleared" means the tiles of cards no longer on the battlefield; tiles
+  still there are re-measured on every frame (`pruneCardCache`).
+  - **What "pending" means.** A cue counts as pending while it is
+    **playing**, not only while it is waiting. The sequencer releases
+    its timer after `onCue` returns, and the shell prunes the caches
+    in a microtask after the cue. A browser re-check found the
+    ordering bug this avoids. In the auto-pass flow, the last cue plays
+    after the step has reached `postcombat_main`. Measuring at cue
+    time pruned the dead creatures' tiles in the same millisecond,
+    before the ghost was resolved, so beat 2 drew nothing (7 of 8
+    runs).
+
 ## Dependencies
 
 - **[#709](https://github.com/krakenhavoc/cmd_and_ctrl/pull/709)** (open,
