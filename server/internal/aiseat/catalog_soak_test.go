@@ -293,25 +293,6 @@ func tally(g *game.Game, stats map[string]*cardStat) []effectError {
 	return errs
 }
 
-// enumeratorGapKinds are the four PendingChoice kinds internal/legal
-// has no case for (#499). A seat owed one of them is enumerated an
-// EMPTY move list — not the choice's answers, not even pass_priority
-// — and since the engine refuses pass_priority while a choice is
-// open, every other seat is stuck behind it too. The table wedges
-// with four live players and no way forward.
-//
-// This soak reproduces that on ordinary catalog cards (Door of
-// Destinies raises choose_creature_type), so it has to be able to
-// tell the known gap apart from a new one. A stall on one of these is
-// reported and attributed to #499; a stall on anything else fails.
-// When #499 lands, these stop happening and this map can go.
-var enumeratorGapKinds = map[game.PendingChoiceKind]bool{
-	game.PendingChoiceMayCast:         true,
-	game.PendingChoiceLegendRule:      true,
-	game.PendingChoiceCreatureType:    true,
-	game.PendingChoiceChooseProtector: true,
-}
-
 // catalogRun is what one game produced.
 type catalogRun struct {
 	state       game.State
@@ -467,18 +448,14 @@ func TestCatalogSoak(t *testing.T) {
 			// nightly on it would mean a card PR turning the build
 			// red for an engine bug filed weeks earlier. Both stalls
 			// the first runs produced were exactly that: #499's
-			// unenumerated choice kinds, and a wedge on stale
-			// commander-zone prompts.
+			// unenumerated choice kinds (fixed since), and #605's
+			// wedge on stale commander-zone prompts.
 			//
 			// The hard assertion is the one below: a card whose
 			// effect threw.
 			if res.stalled {
-				known := ""
-				if enumeratorGapKinds[res.stallKind] {
-					known = " (the known enumerator gap #499)"
-				}
-				t.Logf("seed %d: table stalled%s — kinds=[%s] first=%q reason=%q\n%s\nreproduce: AISEAT_CATALOG_SEED=%d AISEAT_CATALOG_GAMES=1",
-					seed, known, res.stallKinds, res.stallKind, res.stallReason, res.dump, seed)
+				t.Logf("seed %d: table stalled — kinds=[%s] first=%q reason=%q\n%s\nreproduce: AISEAT_CATALOG_SEED=%d AISEAT_CATALOG_GAMES=1",
+					seed, res.stallKinds, res.stallKind, res.stallReason, res.dump, seed)
 			}
 
 			// The assertion this file exists for. An effect error is a
