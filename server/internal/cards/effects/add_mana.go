@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // add_mana.go — the AddMana primitive: mana produced by a SPELL or a
 // non-mana ability rather than by a CR 605 mana ability. Its own
@@ -17,7 +21,8 @@ import "github.com/google/uuid"
 // Produced uses the brace grammar ManaAbility.Produced does, pipe
 // syntax included — a "{W|U|B|R|G}" slot queues the same colour
 // pick a Birds of Paradise activation would, narrowed to the
-// controller's commander identity like Treasure is.
+// controller's commander identity like Treasure is unless
+// IgnoreCommanderIdentity is set.
 //
 // The mana is attributed to the resolving item's source card, and it
 // empties with the pool at the end of the step (CR 106.4): mana from
@@ -27,6 +32,12 @@ import "github.com/google/uuid"
 type AddMana struct {
 	Player   uuid.UUID
 	Produced string
+
+	// IgnoreCommanderIdentity keeps a pipe pick at its printed width,
+	// exactly as ManaAbility.IgnoreCommanderIdentity does for a mana
+	// ability. Set it whenever the printed text says "any color" with
+	// no commander-identity clause (Lotus Cobra, Deathrite Shaman).
+	IgnoreCommanderIdentity bool
 }
 
 func (a AddMana) Apply(ctx *Context) error {
@@ -37,5 +48,6 @@ func (a AddMana) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	return ctx.Game.AddManaForEffect(player, ctx.Source(), a.Produced)
+	return ctx.Game.AddManaWithOptionsForEffect(player, ctx.Source(), a.Produced,
+		game.AddManaOptions{IgnoreCommanderIdentity: a.IgnoreCommanderIdentity})
 }

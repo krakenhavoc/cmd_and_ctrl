@@ -146,19 +146,37 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 
 // ChangePlayerLifeForEffect adjusts a player's life by delta and
 // emits EventChangeLife. Lock-free.
+//
+// #482: routed through the CR 614 replacement window, the way
+// DealDamageToPlayerForEffect has been since S22. Before this, every
+// catalog GainLife, every drain and every "pay N life" cost wrote the
+// total directly, so a life-change replacement — Rhox Faithmender's
+// "you gain twice that much life instead" — only ever saw a life total
+// typed in by hand through the public sandbox verb, which is the one
+// path a game never takes. See life_tail.go.
+//
+// A CR 616 ordering prompt (two life replacements on one event)
+// returns nil with the change not yet applied; it lands from the
+// resume when the affected player answers. A caller that re-reads the
+// player's life afterwards to find out how much actually moved
+// (Exsanguinate's "life lost this way") therefore sees zero for that
+// one event — weaker than printed, never stronger, and it takes two
+// life replacements on one table to reach.
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
+	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	p.ChangeLife(delta)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Source: source,
-		Target: playerID,
-		Amount: delta,
+	// The event is built before the pipeline runs and carries
+	// everything the tail needs, because a CR 616 ordering prompt
+	// returns below without changing anything and the resume has
+	// nothing else to go on.
+	_, err := g.changeLifeThroughReplacementsLocked(&ReplacementEvent{
+		Kind:       RepEventLife,
+		Source:     source,
+		LifePlayer: playerID,
+		LifeDelta:  delta,
 	})
-	return nil
+	return err
 }
 
 // DealDamageToPlayerForEffect writes amount damage to a player's
@@ -2029,6 +2047,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.EnteredBattlefieldAt = 0
 	card.SummonedThisTurn = false
 	card.NamedTribe = ""
+	card.ChosenColor = ""
 	card.effective = nil
 	g.Battlefield.PushTop(card)
 	g.markCardKnownInZoneLocked(g.Battlefield, newID)
@@ -2223,6 +2242,16 @@ func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEn
 	return moved.InstanceID, nil
 }
 
+// addManaReason is the prompt header for an effect's mana pick: the
+// ordinary "one mana of any color", or the "N mana of any one color"
+// form (#742) when the slot adds more than one.
+func addManaReason(slot ProducedManaEntry) string {
+	if slot.OneColorAmounts() {
+		return "Add mana of any one color"
+	}
+	return "Add one mana of any color"
+}
+
 // AddManaForEffect adds the mana a SPELL or a non-mana ability
 // produces to playerID's pool — Dark Ritual's "Add {B}{B}{B}", Mana
 // Drain's delayed "add an amount of {C}", Jeska's Will. Every other
@@ -2249,6 +2278,27 @@ func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEn
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) error {
+	return g.AddManaWithOptionsForEffect(playerID, source, produced, AddManaOptions{})
+}
+
+// AddManaOptions tunes AddManaWithOptionsForEffect.
+type AddManaOptions struct {
+	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
+	// width instead of intersecting it with the controller's commander
+	// colour identity: the effect-side twin of the mana ability's
+	// IgnoreCommanderIdentity. Set it whenever the printed text says
+	// "any color" or "any one color" with no commander-identity clause
+	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
+	// Added for #742.
+	IgnoreCommanderIdentity bool
+}
+
+// AddManaWithOptionsForEffect is AddManaForEffect with options.
+// AddManaForEffect is this with the zero options, so the existing
+// callers keep the commander-identity narrowing they declared.
+//
+// Caller must hold g.mu.
+func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return nil
@@ -2267,14 +2317,19 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
+		colorOptions := options
+		if !opts.IgnoreCommanderIdentity {
+			colorOptions = filterPipeByCommanderIdentity(options, p)
+		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,
 			FromPlayer:   playerID,
 			Count:        1,
 			Source:       source,
-			Reason:       "Add one mana of any color",
-			ColorOptions: filterPipeByCommanderIdentity(options, p),
+			Reason:       addManaReason(slot),
+			ColorOptions: colorOptions,
+			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})
 	}
 	return nil

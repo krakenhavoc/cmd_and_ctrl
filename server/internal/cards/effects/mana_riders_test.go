@@ -50,6 +50,29 @@ func riderLatestManaPick(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
 	return out
 }
 
+// riderAnswerManaPicks answers every colour pick owed by chooser with
+// `color` and returns how many it answered. #730 made an unanswered
+// mana_pick gate the table, so a test that taps an any-colour source
+// and then passes priority or walks the cursor on has to drain them
+// first — which is what a player does anyway, since until the pick is
+// answered the mana is not in the pool.
+func riderAnswerManaPicks(t *testing.T, g *game.Game, chooser uuid.UUID, color string) int {
+	t.Helper()
+	n := 0
+	for i := 0; i < 16; i++ {
+		pick := riderLatestManaPick(g, chooser)
+		if pick == nil {
+			return n
+		}
+		if err := g.ResolveManaChoice(pick.ID, chooser, color); err != nil {
+			t.Fatalf("ResolveManaChoice: %v", err)
+		}
+		n++
+	}
+	t.Fatal("colour picks did not drain")
+	return n
+}
+
 // riderGiveCommander drops a commander with the supplied mana cost into a
 // seat's command zone, which is what game.commanderIdentityFor reads
 // to narrow a pipe ability. Used to prove the painland duals do NOT
@@ -352,6 +375,7 @@ func TestCityOfBrassTriggersOnTappingForMana(t *testing.T) {
 	if len(g.PendingTriggers) == 0 && triggerOnStack(g, land) == nil {
 		t.Fatal("tapping City of Brass queued no trigger")
 	}
+	riderAnswerManaPicks(t, g, me.ID, "W")
 	passPriorityAroundTable(t, g)
 	if me.Life != before-1 {
 		t.Errorf("life %d → %d after the trigger resolved, want %d", before, me.Life, before-1)

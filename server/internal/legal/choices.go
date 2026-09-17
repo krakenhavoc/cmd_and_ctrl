@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -100,7 +101,35 @@ func (e *enumerator) choiceMoves() bool {
 			for _, color := range c.ColorOptions {
 				p := base()
 				p.Color = color
-				e.addChoice(c, reason+": add {"+color+"}", p)
+				// #742: a one-pick-N-mana choice names every token it
+				// adds, so "add {G}{G}{G}" and "add {G}" are told apart.
+				n := 1
+				if v, ok := c.ManaAmounts[color]; ok {
+					n = v
+				}
+				e.addChoice(c, reason+": add "+strings.Repeat("{"+color+"}", n), p)
+			}
+
+		case game.PendingChoiceColor:
+			// #742. "Choose a color" (CR 105.4), stored ("as this
+			// enters") or at resolution. ResolveColorChoice accepts
+			// every colour on the choice's own option list and treats
+			// a departed source as "nowhere to land", so every answer
+			// is always legal and the seat is never handed an empty
+			// list — at least one colour is always on offer, since the
+			// narrowest printed list ("other than blue") has four.
+			//
+			// Ordered by how much of each colour this seat already has
+			// on the battlefield, most first, then WUBRG — what a
+			// player choosing for Coldsteel Heart or Heraldic Banner
+			// does. Battlefield only, so the ranking reads nothing
+			// hidden. A policy that wants a different colour (Wash
+			// Out wants the opponents' colour, not yours) still sees
+			// every option.
+			for _, color := range e.colorAnswers(c.ColorOptions) {
+				p := base()
+				p.Color = color
+				e.addAlwaysLegalChoice(c, reason+": "+game.ColorName(color), p)
 			}
 
 		case game.PendingChoiceReplacementOrder:
@@ -766,6 +795,25 @@ func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.Target
 		}
 		rec(0, nil)
 	}
+	return out
+}
+
+// colorAnswers orders a colour prompt's options by the number of
+// permanents this seat controls that are that colour, most first;
+// ties keep the option list's own (WUBRG) order.
+func (e *enumerator) colorAnswers(options []string) []string {
+	counts := map[string]int{}
+	for i := range e.g.Battlefield.Cards {
+		c := &e.g.Battlefield.Cards[i]
+		if c.Controller != e.seat {
+			continue
+		}
+		for _, col := range c.EffectiveColors() {
+			counts[col]++
+		}
+	}
+	out := append([]string(nil), options...)
+	sort.SliceStable(out, func(i, j int) bool { return counts[out[i]] > counts[out[j]] })
 	return out
 }
 

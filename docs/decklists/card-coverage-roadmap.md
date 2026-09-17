@@ -63,10 +63,10 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1612** |
-| — whole cards (bare `oracle_id`) | **1549** |
+| Registry keys (`len(effects.All())`) | **1638** |
+| — whole cards (bare `oracle_id`) | **1575** |
 | — back faces (`<oracle_id>#1`) | 63 |
-| Declared `full` | 1140 |
+| Declared `full` | 1166 |
 | Declared `caveats` | 398 |
 | Declared `unreviewed` | 74 |
 
@@ -639,13 +639,17 @@ skipping the entry pipeline, and `EventBlock` firing per blocker.
 
 ### What batches 06 and 07 found in the engine
 
-- **OPEN — the effect-side life change skips replacement effects.**
-  `ChangePlayerLifeForEffect`, which every catalog drain and lifegain
-  goes through, does not run the `RepEventLife` pipeline that the
-  public `ChangePlayerLife` does, and `DealDamageToPlayerForEffect`
-  emits no life-loss event. No card on `main` is wrong today, but no
-  life-loss replacement (Bloodletter of Aclazotz) can be written until
-  the effect path is routed like the damage path.
+- **FIXED (#482) — the effect-side life change skipped replacement
+  effects.** `ChangePlayerLifeForEffect`, which every catalog drain and
+  lifegain goes through, did not run the `RepEventLife` pipeline that
+  the public `ChangePlayerLife` does, and neither did the lifelink
+  credit — so Rhox Faithmender doubled a hand-typed life total and
+  nothing else. Every writer now runs the CR 614 window and lands in
+  one tail (`game/life_tail.go`), the CR 616 pause included.
+  Bloodletter of Aclazotz, Alhammarret's Archive and Angel of Vitality
+  can be written. `DealDamageToPlayerForEffect` still emits no
+  life-loss `EventChangeLife` of its own: damage reduces life directly
+  (CR 120.3) and the aristocrats cards read `EventDealDamage` for it.
 - **OPEN — a bounce skips the leaves-the-battlefield replacements.**
   `BounceToHandForEffect` bypasses the CR 614 pipeline that destroy,
   sacrifice and the SBA exits go through, so a "if it would leave the

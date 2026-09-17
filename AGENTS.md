@@ -583,6 +583,9 @@ PendingChoice for the controller to resolve:
 - `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
   the engine narrows the pipe set against the controller's commander
   identity at activation time.
+- `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
+  tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
+  choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -1750,6 +1753,60 @@ at all. `OfCreatureType("Goblin")` is the targeting predicate.
 a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
+
+### Adding a choose-a-color card (#742)
+
+"Choose a color" (CR 105.4) is one prompt kind, `choose_color`, in two
+forms, and the builders live in
+[color_choice.go](server/internal/cards/effects/color_choice.go).
+
+**Stored** ("As this enters, choose a color") copies the creature-type
+pattern above: the prompt goes on `AsEnters`, the answer lands on
+`Card.ChosenColor`, and the card's other abilities read it back.
+
+```go
+AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
+ManaAbilities: []ManaAbility{{
+    Cost:                    ManaAbilityCost{Tap: true},
+    ProducedFunc:            ProducedColorOrChosen("U"), // or ProducedChosenColor()
+    Label:                   "Add {U} or one mana of the chosen color",
+    IgnoreCommanderIdentity: true,
+}},
+Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
+```
+
+Until the controller answers, the colour is empty, and every reader
+must treat that as the weaker outcome: no mana, no anthem. Never read
+an empty colour as "any colour". "A color other than blue" is just a
+shorter option list, and colorless is never a colour.
+
+**At resolution** ("Choose a color. …" inside a spell or ability) stores
+nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the
+answer to a continuation that runs the rest of the effect (Wash Out,
+Oona). The continuation receives the live `*Game`; rebuild the context
+with `NewContext(g, item)` inside it. "Each player chooses a color" is a
+chain: each answer's continuation asks the next player in APNAP order
+(Selective Obliteration). Thread the answers through the chain as values
+rather than mutating one shared map, so an undo cannot leak an answer
+from an undone branch.
+
+**"N mana of any one color"** is ONE pick minting N tokens, never N
+pipe slots, which would let the player take N different colours. Write
+it with the produced-mana grammar's per-colour count:
+`OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
+`ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
+a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
+a spell or trigger too, through `AddManaForEffect`. That path narrows a
+pick to the commander's colour identity by default, so an effect whose
+printed text says "any color" or "any one color" passes
+`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+the effect-side twin of the mana ability's flag. The auto-tapper
+plans around such a source, so the player taps it by hand
+([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
+
+**Tests**: `pushChosenColorPermanent` and `answerColor` in
+[color_choice_cards_test.go](server/internal/cards/effects/color_choice_cards_test.go).
 
 ### Shared vocabulary, and the clone gate
 
