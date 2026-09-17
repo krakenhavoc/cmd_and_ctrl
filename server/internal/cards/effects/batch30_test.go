@@ -993,6 +993,8 @@ func TestB30SavvyHunterMakesFoodOnAttackAndOnBlock(t *testing.T) {
 	if err := g.DeclareBlocker(hunter, raider); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
+	// #830: the block declaration announces at its lock-in.
+	lockInBlocks(t, g)
 	passPriorityAroundTable(t, g)
 	if got := b30TokensNamed(g, me.ID, "Food"); got != 2 {
 		t.Errorf("blocking makes another: %d", got)

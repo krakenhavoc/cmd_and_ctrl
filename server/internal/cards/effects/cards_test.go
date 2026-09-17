@@ -122,6 +122,33 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 	t.Fatalf("stack did not empty after 32 priority passes")
 }
 
+// lockInBlocks completes the block declaration the way play does:
+// priority passes around the table, and the wrap is the lock-in
+// (CR 509.1 / 509.2a, #830) — the point where the engine announces
+// the final assignment and harvests the "becomes blocked" / "blocks"
+// triggers off it. Nothing is announced by DeclareBlocker itself, so
+// a test that asserts on those triggers has to come through here.
+//
+// Stops as soon as the lock-in produced something (an item on the
+// stack or a trigger prompt) or the step advanced — a declaration
+// with no triggers wraps on through to combat damage, exactly as an
+// unblocked combat does.
+func lockInBlocks(t *testing.T, g *game.Game) {
+	t.Helper()
+	step := g.Turn.Step
+	for i := 0; i < len(g.Seats)+1; i++ {
+		if err := g.PassPriority(); err != nil {
+			if errors.Is(err, game.ErrChoicePending) {
+				return
+			}
+			t.Fatalf("PassPriority iter %d: %v", i, err)
+		}
+		if !stackFullyEmpty(g) || g.Turn.Step != step {
+			return
+		}
+	}
+}
+
 // stackFullyEmpty reports whether nothing is on or headed for the
 // stack: Game.Stack, StackMeta, and PendingTriggers are all empty.
 func stackFullyEmpty(g *game.Game) bool {

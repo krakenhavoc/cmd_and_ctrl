@@ -864,6 +864,9 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	if err := g.DeclareBlocker(brimaz, raider); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
+	// #830: the declaration announces at its lock-in, not at the
+	// click, so the block trigger needs the priority wrap first.
+	lockInBlocks(t, g)
 	passPriorityAroundTable(t, g)
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 2 {
 		t.Errorf("a second Cat Soldier for the block: %d", got)

@@ -188,6 +188,18 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
+	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
+	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// blocker has had its EventBlock announced against which
+	// attacker, and which attackers have had their one
+	// EventBecomesBlocked. Both are empty outside a combat with
+	// blockers declared, and a file written before them restores as
+	// empty — which reads as "nothing announced yet", so the next
+	// lock-in announces the declaration the battlefield already
+	// carries. No schema bump.
+	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -598,6 +610,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		EventBatch:        g.eventBatch,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -1076,6 +1090,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
+	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1499,6 +1515,20 @@ func copyUUIDListMap(in map[uuid.UUID][]uuid.UUID) map[uuid.UUID][]uuid.UUID {
 	out := make(map[uuid.UUID][]uuid.UUID, len(in))
 	for k, v := range in {
 		out[k] = append([]uuid.UUID(nil), v...)
+	}
+	return out
+}
+
+// copyUUIDPairMap is copyBoolMap for a card-to-card map —
+// Game.announcedBlocks, blocker to the attacker its EventBlock named
+// (#830).
+func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uuid.UUID, len(in))
+	for k, v := range in {
+		out[k] = v
 	}
 	return out
 }
