@@ -528,7 +528,7 @@ func TestEndTransitionsToEnded(t *testing.T) {
 }
 
 // TestTurnAdvanceClearsPerTurnCaches is the S25 (#77) regression for
-// a bypassed hook. `onTurnAdvanceLocked` clears the "once per turn"
+// a bypassed hook. `onTurnBeganLocked` clears the "once per turn"
 // bookkeeping — loyalty activations (CR 606.3), the spell tally, the
 // land-drop count — but it was only reached from AdvanceStep, which
 // compares the step BEFORE the advance to the step after. In normal
