@@ -2191,8 +2191,9 @@ func clearKnownInZoneLocked(zone *Zone) {
 }
 
 // stateBasedActionsLocked runs one pass of state-based actions per
-// CR 704.5. Returns true if any SBA fired so the caller can re-run
-// the loop (CR 704.3 — SBAs repeat until none fire).
+// CR 704.5. Reports whether any SBA fired and whether a player left.
+// The caller repeats the checks (CR 704.3) and settles departures only
+// after the repeated passes are quiet.
 //
 // Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
@@ -2224,9 +2225,9 @@ func clearKnownInZoneLocked(zone *Zone) {
 // running the counter cancel pass before destruction collection.
 //
 // Caller must hold g.mu.
-func (g *Game) stateBasedActionsLocked() bool {
+func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
-		return false
+		return false, false
 	}
 	// S16: refresh effective characteristics before any toughness /
 	// loyalty / battle-defense check. Counter mutations + zone moves
@@ -2236,7 +2237,6 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// (a 2/2 + Glorious Anthem under 3 marked damage would die
 	// because CurrentToughness reads Effective().Toughness == 3).
 	g.RecomputeLayersIfStaleLocked()
-	fired := false
 
 	// S24 / CR 704.5m + 704.5n: an Equipment attached to something
 	// that is no longer a creature becomes unattached; an Aura
@@ -2286,16 +2286,11 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// (#766): moving the turn on per player would begin the turn of a
 	// seat that is leaving in this same pass.
 	//
-	// "After the batch" means after the whole pass, not after this
-	// loop. Moving play on can end the turn, and ending the turn runs
-	// the cleanup sweep, which removes marked damage and deathtouch
-	// marks. The destruction SBAs below read exactly those, and they
-	// belong to the same event as the losses (CR 704.3): an active
-	// player whose own Earthquake kills them still kills every
-	// creature it dealt lethal damage to. So the game-over check runs
-	// here, as it always has, and the turn moves on as the pass's
-	// last act (see the end of this function).
-	left := false
+	// Ending the turn clears marked damage, so runStateChecksLocked
+	// waits until repeated SBA passes settle before rotating. One pass
+	// is not enough: a lord dying here can make another creature's
+	// marked damage lethal on the next pass. The game-over check still
+	// runs immediately after every loser in this pass has left.
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
@@ -2320,7 +2315,9 @@ func (g *Game) stateBasedActionsLocked() bool {
 			fired = true
 		}
 	}
-	moveOn := left && !g.endGameIfDecidedLocked()
+	if left {
+		g.endGameIfDecidedLocked()
+	}
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
@@ -2468,17 +2465,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 		fired = true
 	}
 
-	// The departures from the loss loop move play on last (#766), once
-	// every other state-based action of this pass has been performed
-	// on the board it applied to. That includes the legend rule: its
-	// prompt, if one was just queued, is part of this event and is
-	// queued before the turn ends, so it stays open into the next
-	// turn like any other prompt a departure leaves unanswered.
-	if moveOn {
-		g.advancePastEliminatedLocked()
-	}
-
-	return fired
+	return fired, left
 }
 
 // runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
@@ -2508,8 +2495,23 @@ func (g *Game) runStateChecksLocked() {
 	// every call outside the declare-blockers step.
 	g.commitBlockDeclarationLocked()
 	const maxIter = 32
+	departuresPending := false
 	for i := 0; i < maxIter; i++ {
-		fired := g.stateBasedActionsLocked()
+		fired, left := g.stateBasedActionsLocked()
+		departuresPending = departuresPending || left
+		if departuresPending && g.State == StateActive {
+			if fired {
+				// CR 704.3 repeats the checks before anything gets priority.
+				// Keep the old turn's damage until every destruction caused
+				// by these departures and the preceding deaths has settled.
+				continue
+			}
+			g.advancePastEliminatedLocked()
+			departuresPending = false
+			// Cleanup and the next turn's entry hooks can change the board.
+			// Check it before draining the waiting triggers into that turn.
+			continue
+		}
 		hasPending := len(g.PendingTriggers) > 0
 		if !fired && !hasPending {
 			return
@@ -2524,8 +2526,9 @@ func (g *Game) runStateChecksLocked() {
 
 // eliminatePlayerLocked is one player leaving the game on their own:
 // leaveGameLocked, then settleDeparturesLocked. Used by Concede. The
-// SBA loss pass calls the two halves itself so a batch of losers
-// moves play on once. Caller must hold g.mu.
+// SBA settling loop calls the two halves separately so a batch of
+// losers moves play on once, after repeated checks settle.
+// Caller must hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
 	if !g.leaveGameLocked(p) {
 		return
@@ -2559,9 +2562,8 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 // active player's turn ends through the rotation seam, #766).
 //
 // Used where the departures are the whole event (Concede). The SBA
-// loss pass calls the two halves itself, because the rest of that
-// pass must be performed before the turn ends — see
-// stateBasedActionsLocked.
+// settling loop calls the two halves separately, because the SBA
+// settling must finish before the turn ends — see runStateChecksLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) settleDeparturesLocked() {
