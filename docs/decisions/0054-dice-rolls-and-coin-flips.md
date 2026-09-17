@@ -1,6 +1,6 @@
 # ADR 0054 — Dice rolls and coin flips from effects
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 1) · tracked on [#744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/744)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 1) · tracked on [#744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/744)
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)) and is
 skipped here, as ADR 0053 also skips it. On 2026-09-17 every remote
@@ -31,8 +31,16 @@ redesign it ([Decision 8](#decision-8--the-random-order-bottom-is-745s-and-draws
    random. A flip nobody wins or loses gets no prompt
    ([Decision 6](#decision-6--a-wonlost-flip-prompts-for-a-call-owner)).
 
-The owner still has to answer the three questions in
-[Open questions for the owner](#open-questions-for-the-owner).
+3. **A roll or flip shows a log line and a reveal-strip cue**, with no
+   animation (sub-PR 4).
+4. **One heads/tails call covers every coin of one instruction** (Yusri);
+   each coin still draws its own won/lost result. "Flip until you lose"
+   still prompts once per flip.
+5. **The first card wave includes Fiery Gambit, Game of Chaos and Yusri**
+   alongside the cards the seam fully unblocks.
+
+Items 3–5 were answered on 2026-09-17; the options considered are kept in
+[Owner decisions, second round](#owner-decisions-second-round).
 
 Line references are to `origin/develop` at `bcac391`.
 
@@ -365,7 +373,7 @@ type CoinFlipSpec struct {
     Flipper   uuid.UUID
     Source    uuid.UUID
     Question  string // the card's sentence, for the prompt header
-    Coins     int    // coins flipped under this call; see open question 2
+    Coins     int    // coins flipped under this one call (owner decision 4)
     AllowStop bool   // Fiery Gambit's "or choose to stop flipping"
     MaxUsefulWins int // bot hint: wins after which stopping is right; 0 = none
     Then      func(g *Game, r CoinFlipResult) error
@@ -436,8 +444,8 @@ Crypt: tails, lost". Final wording is settled in sub-PR 2's review.
 Rolls and flips are public information, so the log needs no redaction
 beyond the source card's existing `known_by` treatment.
 `docs/protocol.md` gets both kinds, and `client/src/lib/protocol.ts`
-mirrors the types. How the board *shows* a roll beyond the log is
-open question 1.
+mirrors the types. The board also shows a reveal-strip cue for each roll or flip
+(owner decision 3, sub-PR 4).
 
 ## Decision 7 — Bots and the legal enumerator
 
@@ -531,7 +539,7 @@ knower clearing are all #745's, and none of them change here.
 - **Krark, the Thumbless prompts on every instant and sorcery its
   controller casts**, because each cast is a won/lost flip. That is the
   price of the owner's prompt decision on the one in-scope card that flips
-  often. Open question 2's answer doesn't change it (one coin per trigger).
+  often. The one-call-per-instruction decision doesn't change it (one coin per trigger).
 - **A coin call blocks the table** like any pending choice, and while it
   is open no restore point is written (the continuation is censused as
   `ChoiceResumeFrames`, `chained_choice.go` header). The time it holds
@@ -604,9 +612,9 @@ knower clearing are all #745's, and none of them change here.
 - `ChoicePromptModal.svelte`: a coin-call rendering with Heads, Tails
   and, when allowed, Stop.
 
-**Sub-PR 4 — client roll and flip cue**, only if open question 1 says so.
+**Sub-PR 4 — client roll and flip cue** on the reveal strip (`RevealBanner`, `reveals.ts` rules), built from `roll`/`flip` log entries with no new `GameView` field. No animation.
 
-**Card PRs** — the first wave is open question 3. Each card follows
+**Card PRs** — the first wave is owner decision 5: the fully unblocked cards, Urza's Bauble's caveat removal, and Fiery Gambit, Game of Chaos and Yusri. Each card follows
 AGENTS.md (`Spec` slots, completeness, caveats that are weaker than
 printed and never stronger).
 
@@ -672,11 +680,13 @@ Client:
     [#689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/689), with
     any pure helper unit-tested with vitest.
 
-## Open questions for the owner
+## Owner decisions, second round
+
+Answered 2026-09-17. The chosen option is marked **(chosen)**; the recommendation text is kept for the record.
 
 1. **How does the board show a roll or a flip?**
    - (a) Log line only.
-   - (b) Log line plus a short cue on the existing attention strip
+   - (b) **(chosen)** Log line plus a short cue on the existing attention strip
      (`RevealBanner`), for example "Alice rolled a d20 for Hoarding Ogre: 14".
      It would reuse `reveals.ts`'s rules (cue once per `seq`, time out,
      prime on reconnect) and be built from `log` entries, with no new
@@ -694,7 +704,7 @@ Client:
    Ral Zarek's −7 and other heads-only flips are not affected, because
    they are never called.
    - (a) One prompt per coin (five prompts for Yusri).
-   - (b) One call covers every coin of one instruction. Each coin still
+   - (b) **(chosen)** One call covers every coin of one instruction. Each coin still
      gets its own independent won/lost draw.
 
    **Recommendation: (b).** The call has no effect on the odds
@@ -709,7 +719,7 @@ Client:
      of Tzeentch, The Gold Saucer, Vexing Puzzlebox, Clown Car, Reckless
      Endeavor, Goblin Archaeologist, plus Urza's
      Bauble's caveat removal.
-   - (b) (a) plus the flip-until-lose cards (Fiery Gambit, Game of Chaos)
+   - (b) **(chosen)** (a) plus the flip-until-lose cards (Fiery Gambit, Game of Chaos)
      and Yusri, which exercise the chained prompt.
    - (c) Seam only, with cards left to the batch issues.
 
