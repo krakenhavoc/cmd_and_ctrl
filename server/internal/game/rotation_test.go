@@ -487,3 +487,65 @@ func TestSBALossQueuesTheLegendRuleBeforeTheTurnEnds(t *testing.T) {
 		t.Errorf("%d upkeeps began, want exactly one", got)
 	}
 }
+
+// A single SBA pass is insufficient when one death removes a toughness
+// bonus: cleanup must preserve the other creature's damage until the next
+// check destroys it too.
+func TestActiveSeatSBALossSettlesChainedLethalDamageBeforeCleanup(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	owner := g.Seats[2].ID
+	withStaticAbilities(t, func(id string) []StaticAbility {
+		if id != "rotation-lord" {
+			return nil
+		}
+		return []StaticAbility{{
+			Layer: Layer7PT, SubLayer: SubLayer7C_Modify,
+			AppliesTo: func(target *Card, _ *Game, source *Card) bool {
+				return target.IsCreature() && target.Controller == source.Controller && target.InstanceID != source.InstanceID
+			},
+			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
+				c.Power++
+				c.Toughness++
+			},
+		}}
+	})
+	lord := pushTypedTestCard(g, Card{Name: "Lord", OracleID: "rotation-lord", TypeLine: "Creature", Power: 2, Toughness: 2, Owner: owner, Controller: owner, DamageMarked: 2})
+	bear := pushTypedTestCard(g, Card{Name: "Bear", TypeLine: "Creature", Power: 2, Toughness: 2, Owner: owner, Controller: owner, DamageMarked: 2})
+	upkeepsBefore := countEvents(g, EventBeginUpkeep)
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		if got := findCard(g, bear).CurrentToughness(); got != 3 {
+			t.Fatalf("setup: bear toughness = %d, want 3", got)
+		}
+		g.Seats[0].Life = 0
+		g.runStateChecksLocked()
+	})
+	for _, id := range []uuid.UUID{lord, bear} {
+		if g.Battlefield.Contains(id) || !g.Seats[2].Graveyard.Contains(id) {
+			t.Errorf("lethally damaged creature %s did not reach its owner's graveyard", id)
+		}
+	}
+	if g.Turn.ActiveSeat != 1 || g.Turn.Step != StepUpkeep {
+		t.Errorf("cursor: seat %d step %s, want seat 1's upkeep", g.Turn.ActiveSeat, g.Turn.Step)
+	}
+	if got := countEvents(g, EventBeginUpkeep) - upkeepsBefore; got != 1 {
+		t.Errorf("%d upkeeps began, want exactly one", got)
+	}
+	lordDeath, bearDeath, upkeep := -1, -1, -1
+	for i, ev := range g.Events {
+		switch {
+		case ev.Kind == EventLTB && ev.NewZone == ZoneGraveyard && ev.CardID == lord:
+			lordDeath = i
+		case ev.Kind == EventLTB && ev.NewZone == ZoneGraveyard && ev.CardID == bear:
+			bearDeath = i
+		case ev.Kind == EventBeginUpkeep:
+			upkeep = i
+		}
+	}
+	if lordDeath < 0 || bearDeath <= lordDeath || upkeep <= bearDeath {
+		t.Errorf("events: lord death %d, bear death %d, upkeep %d; both SBA passes must finish before the new turn", lordDeath, bearDeath, upkeep)
+	}
+	if g.TurnTally.CreaturesDied != 0 {
+		t.Errorf("new turn inherited %d deaths from the ended turn", g.TurnTally.CreaturesDied)
+	}
+}
