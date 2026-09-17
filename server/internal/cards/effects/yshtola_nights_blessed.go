@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player, the controller's own losses included), checked as the
 // trigger would fire and again as it resolves (CR 603.4). The cast
 // trigger is Firebrand Archer's condition (b10NoncreatureSpellCastByYou)
-// with the mana value read off the stack (manaValueOnStack, so an X
+// with the mana value read off the stack (game.(*Game).ManaValueForEffect, so an X
 // spell counts what was paid); Y'shtola is the damage source, and
 // the gain is 2 once, not per opponent.
 //
@@ -44,7 +44,11 @@ func init() {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && manaValueOnStack(spell, g.StackItemForEffect(ev.CardID)) >= 3
+				if !ok {
+					return false
+				}
+				mv, ok := g.ManaValueForEffect(spell)
+				return ok && mv >= 3
 			}, "Y'shtola, Night's Blessed — 2 damage to each opponent, you gain 2 life", func(g *game.Game, item *game.StackItem) error {
 				if err := damageToEachOpponent(g, item, 2); err != nil {
 					return err

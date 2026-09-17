@@ -33,8 +33,9 @@ func Cascade() game.TriggeredAbility {
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			return cascadeItem(source.Name, ev.Actor, source.InstanceID, source.ManaValue())
+		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+			mv, _ := g.ManaValueForEffect(*source)
+			return cascadeItem(source.Name, ev.Actor, source.InstanceID, mv)
 		},
 	}
 }
@@ -70,7 +71,7 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			mv := 0
 			if spell, ok := g.LookupCardForEffect(ev.CardID); ok {
-				mv = spell.ManaValue()
+				mv, _ = g.ManaValueForEffect(spell)
 			}
 			return cascadeItem(label, ev.Actor, source.InstanceID, mv)
 		},
@@ -83,7 +84,9 @@ func GrantsCascade(label string, when func(spell game.Card, source *game.Card, g
 // trigger time because by resolution the spell may have left the
 // stack (countered, or resolved above the trigger — cascade goes on
 // the stack above its own spell, so it always resolves first, but a
-// Stifle-shaped answer is still a legal board state).
+// Stifle-shaped answer is still a legal board state). Both shapes read
+// it with game.(*Game).ManaValueForEffect, so an X spell's limit
+// counts the X chosen for it (CR 202.3e).
 //
 // The controller is ev.Actor, the player who cast the spell, not the
 // source card's Controller field. For a spell cast out of its owner's

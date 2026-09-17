@@ -150,12 +150,14 @@ func PowerGE(n int) CardPredicate {
 
 // ManaValueLE passes when the card's mana value is ≤ n (Swan Song
 // doesn't need it, but Counterspell variants and Abrupt Decay do).
-// The printed mana value, off the stack (CR 202.3e — X is zero), so
-// a {2/W}{2/W}{2/W} card is 6 (CR 202.3f). A card whose cost the
-// engine can't read never passes, rather than passing as zero.
+// Read through game.(*Game).ManaValueForEffect: a {2/W}{2/W}{2/W}
+// card is 6 (CR 202.3f), and {X} is zero everywhere except on the
+// stack, where it is the value chosen for the spell (CR 202.3e). A
+// card whose cost the engine can't read never passes, rather than
+// passing as zero.
 func ManaValueLE(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		mv, ok := c.ParsedManaValue()
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		mv, ok := g.ManaValueForEffect(c)
 		return ok && mv <= n
 	}
 }
