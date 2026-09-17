@@ -29,6 +29,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
+  import { noUntapAppliesToController } from "../../noUntap";
   import { openCardMenu } from "../../contextMenu";
   import CounterPips from "./CounterPips.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
@@ -157,6 +158,7 @@
   const isPlaneswalker = $derived(/\bPlaneswalker\b/.test(typeLine));
   const loyaltyValue = $derived(card.counters?.loyalty ?? 0);
   const showPT = $derived(!showBack && (isCreature || isPlaneswalker));
+  const showNoUntap = $derived(noUntapAppliesToController(card));
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
   // the hoveredCard store until the user has rested on the card for
@@ -403,6 +405,9 @@
       {/if}
     {/if}
   {/if}
+  {#if showNoUntap}
+    <span class="badge no-untap" title="won't untap" aria-label="won't untap">WON'T UNTAP</span>
+  {/if}
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
@@ -544,6 +549,21 @@
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.no-untap {
+    top: 24px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 35, 70, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
   }
   .badge.curse {
     /* A Curse is drawn in its controller's row with no host behind it,

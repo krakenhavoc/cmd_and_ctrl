@@ -1891,16 +1891,38 @@ goes here too — it is continuous, so it is read at the instant the
 step asks). `Untaps` picks the PERMANENTS, and is consulted only for
 ones that are actually tapped.
 
+The counterpart is `Spec.UntapStepRestrictions` (#751): self, attached
+and filtered predicates keep permanents tapped during their controller's
+own untap step. Read conditions after layers, especially power checks;
+do not model them as layer-6 restriction bits. They do not stop a spell
+from untapping a permanent or a Seedborn Muse permission on another
+player's step. The constructors live in
+[untap_restrictions.go](server/internal/cards/effects/untap_restrictions.go),
+beside the permission helpers.
+
+For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
+`Player == uuid.Nil` follows the permanent's controller; a player ID
+names that player's next untap step. Markers expire at that actual step,
+even on an untapped permanent, survive skipped steps, and disappear on
+zone changes. They are data on `Card`, not turn-scoped closures, so undo
+and persisted snapshots retain them. Exert's action/cost and choose-N
+untap effects such as Winter Orb remain separate work. See
+[ADR 0058](docs/decisions/0058-doesnt-untap.md).
+
 Two things to know when you touch the untap path at all:
 
 - **Every untap goes through one primitive**
   (`Game.untapPermanentLocked`, `server/internal/game/untap.go`) and
-  emits `EventUntapCard` — that is what makes Mesmeric Orb's
+  emits `EventUntapCard` when the permanent actually untaps — that is what
+  makes Mesmeric Orb's
   "whenever a permanent becomes untapped" writable, and it must stay
   the only way `Tapped` goes false for a permanent on the
   battlefield. `MoveCard`'s battlefield-exit cleanup is not an untap
   (the card is no longer a permanent) and deliberately keeps its own
-  write.
+  write. A stun counter replaces any attempted untap of a tapped
+  permanent with removal of one stun counter, including the sandbox
+  buttons. A restricted or marked permanent never attempts to untap
+  during the affected step, so it keeps its stun counters.
 - **Untapping and summoning sickness are different questions.** The
   untap step clears `SummonedThisTurn` for the ACTIVE seat's
   permanents (CR 302.6 is about whose turn it is); a Seedborn Muse

@@ -306,6 +306,9 @@ func permanentLabel(c *protocol.CardView) string {
 	if c.Tapped {
 		flags = append(flags, "tapped")
 	}
+	if heuristic.WontUntap(c) {
+		flags = append(flags, "won't untap")
+	}
 	if c.SummoningSick {
 		flags = append(flags, "sick")
 	}

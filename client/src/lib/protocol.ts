@@ -1064,6 +1064,11 @@ export interface CardFaceView {
   image?: string;
 }
 
+export interface NoUntapView {
+  static?: boolean;
+  next?: string[];
+}
+
 export interface CardView {
   instance_id: string;
   /**
@@ -1085,6 +1090,9 @@ export interface CardView {
   power?: number;
   toughness?: number;
   tapped?: boolean;
+  // Untap-step restriction / one-shot marker state. `static` is omitted
+  // for face-down cards; `next` contains player IDs and is public state.
+  no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,

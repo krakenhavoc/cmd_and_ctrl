@@ -2499,6 +2499,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.InstanceID = newID
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped
+	card.NextUntapSkips = nil
 	card.Counters = nil
 	card.LostLastCounter = false
 	card.KnownBy = nil

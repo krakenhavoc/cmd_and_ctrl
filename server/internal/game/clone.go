@@ -361,6 +361,11 @@ func cloneCard(c Card) Card {
 	} else {
 		out.Counters = nil
 	}
+	if len(c.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	} else {
+		out.NextUntapSkips = nil
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
