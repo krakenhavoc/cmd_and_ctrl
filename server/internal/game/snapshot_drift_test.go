@@ -189,6 +189,9 @@ var cardFields = plan(
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
+	// #742: the colour named as the permanent entered. A player's
+	// choice, so nothing can rebuild it.
+	"ChosenColor", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and
@@ -297,6 +300,9 @@ var pendingChoiceFields = plan(
 	// clone.go:135 — so the snapshot must carry it too, or a restored
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
+	// #742: how many tokens each colour of a one-pick-N-mana choice
+	// mints (Gilded Lotus). Without it a restored pick adds one.
+	"ManaAmounts", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"NoLegalTarget", carried, "",
@@ -338,6 +344,7 @@ var pendingChoiceFields = plan(
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 

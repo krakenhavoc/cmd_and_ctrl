@@ -145,6 +145,10 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #742: the per-colour amounts of a one-pick-N-mana
+			// choice. A map, so it needs its own copy for the same
+			// reason the slices do.
+			cloned.ManaAmounts = copyManaAmounts(c.ManaAmounts)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}

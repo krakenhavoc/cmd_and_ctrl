@@ -324,6 +324,16 @@ type PendingChoice struct {
 	// S32 mana-pipeline pass (#352).
 	ManaRestrictions []string
 
+	// ManaAmounts is how many mana a PendingChoiceMana adds for each
+	// colour in ColorOptions — "{T}: Add three mana of any one color"
+	// (Gilded Lotus) is ONE pick minting three tokens, and Nyx Lotus's
+	// amount differs per colour (its devotion to that colour). nil, or
+	// a colour missing from the map, means one: every ordinary pick.
+	// Parsed from the produced-mana grammar's "{W3|U3}" form (see
+	// ParseProducedMana). Deep-copied by clone.go and carried by the
+	// snapshot. Added for #742.
+	ManaAmounts map[string]int
+
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
 	// PendingChoiceReplacementOrder entry. The resolve_choice
@@ -525,6 +535,13 @@ type PendingChoice struct {
 	// they are re-checked against. Not serialised. See
 	// chained_choice.go.
 	chooseCardsResume *chooseCardsFrame
+
+	// chooseColorResume is the continuation for a resolution-time
+	// PendingChoiceColor (Wash Out's "return all permanents of the
+	// color of your choice"). nil for the stored form, whose answer is
+	// written onto the source permanent instead. Not serialised. See
+	// color_choice.go.
+	chooseColorResume *chooseColorFrame
 
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has
@@ -828,20 +845,28 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.ManaPool.AddMana(ManaToken{
-		Color:  color,
-		Source: choice.Source,
-		// The choice carried the ability's restrictions here so the
-		// minted token gets them (#352). copyRestrictions because
-		// the choice is about to be dequeued and the token outlives
-		// it.
-		Restrictions: copyRestrictions(choice.ManaRestrictions),
-	})
-	g.EmitEvent(Event{
-		Kind:   EventManaAdded,
-		Actor:  chooserID,
-		Source: choice.Source,
-	})
+	// #742: "N mana of any one color" mints the picked colour's
+	// amount; an ordinary pick has no entry and mints one.
+	n := 1
+	if v, ok := choice.ManaAmounts[color]; ok {
+		n = v
+	}
+	for k := 0; k < n; k++ {
+		p.ManaPool.AddMana(ManaToken{
+			Color:  color,
+			Source: choice.Source,
+			// The choice carried the ability's restrictions here so
+			// the minted token gets them (#352). copyRestrictions
+			// because the choice is about to be dequeued and the
+			// token outlives it.
+			Restrictions: copyRestrictions(choice.ManaRestrictions),
+		})
+		g.EmitEvent(Event{
+			Kind:   EventManaAdded,
+			Actor:  chooserID,
+			Source: choice.Source,
+		})
+	}
 	g.dequeueChoiceLocked(idx)
 	return nil
 }
