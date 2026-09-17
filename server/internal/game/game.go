@@ -685,73 +685,23 @@ func (g *Game) AdvanceStep() (Turn, error) {
 }
 
 // advanceCursorLocked moves the step cursor forward by one — the
-// single seam every step transition goes through. On a turn wrap it
-// skips seats that have left the game (CR 800.4a: an eliminated
-// player's turns are skipped) and fires onTurnAdvanceLocked so the
-// per-turn caches clear.
+// single seam every step transition goes through. Past cleanup it
+// hands over to beginNextTurnLocked (rotation.go), which skips seats
+// that have left the game (CR 800.4a / 800.4k) and runs the
+// turn-began hook so the per-turn caches clear.
 //
 // Both halves fix bugs the S31 bot fuzzer found on its first run:
 // Turn.advance rotated into eliminated seats, handing priority to a
 // player who could not act (humans had been escaping with
-// advance_step), and the cleanup hook's wrap never called
-// onTurnAdvanceLocked, so SpellsCastThisTurn / LoyaltyActivatedThisTurn
-// survived every ordinary turn change. Caller must hold g.mu.
+// advance_step), and the cleanup hook's wrap never reset the per-turn
+// caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
+// every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
-	prev := g.Turn
-	n := len(g.Seats)
-	g.Turn = g.Turn.advance(n)
-	if prev.IsNewTurn(g.Turn) {
-		for i := 0; i < n && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < n && g.Seats[g.Turn.ActiveSeat].Eliminated; i++ {
-			// Wrap again from this seat's (never-taken) cleanup.
-			skipped := g.Turn
-			skipped.Step = StepCleanup
-			g.Turn = skipped.advance(n)
-		}
-	}
-	g.onTurnAdvanceLocked(prev, g.Turn)
-}
-
-// onTurnAdvanceLocked clears any per-turn caches whenever the
-// active seat changes. Currently flushes
-// `LoyaltyActivatedThisTurn` (CR 606.3 — once per turn per
-// planeswalker), but the same hook is the natural home for any
-// other "reset on new turn" caches the engine grows. Caller must
-// hold g.mu.
-func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
-	if !prev.IsNewTurn(next) {
+	if g.Turn.Step == StepCleanup {
+		g.beginNextTurnLocked()
 		return
 	}
-	// S25 (#77): invalidate the layer cache. A continuous effect
-	// whose AppliesTo reads the TURN rather than the battlefield —
-	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
-	// the first in the catalog — changes its answer here and nowhere
-	// else, so nothing would otherwise mark the cached
-	// characteristics stale and the keyword would stick around on the
-	// wrong player's turn.
-	//
-	// This is the bump layer_listener.go's header predicted and
-	// deliberately deferred ("Step / phase advance … when they
-	// arrive in a later sprint, advance the version inside the
-	// step-advance helper directly — no event for it today"). It
-	// lands here rather than in the listener for the reason that note
-	// gives: there is no event for a turn change to listen to.
-	//
-	// Cost is one recompute per turn, against a cache that is already
-	// invalidated by every zone move and every counter placed.
-	g.layerVersion.Add(1)
-	if g.LoyaltyActivatedThisTurn != nil {
-		g.LoyaltyActivatedThisTurn = nil
-	}
-	if g.SpellsCastThisTurn != nil {
-		g.SpellsCastThisTurn = nil
-	}
-	if g.LandsPlayedThisTurn != nil {
-		g.LandsPlayedThisTurn = nil
-	}
-	if g.DrawnThisTurn != nil {
-		g.DrawnThisTurn = nil
-	}
-	g.resetTurnTallyLocked()
+	g.Turn = g.Turn.advance(len(g.Seats))
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
@@ -1047,39 +997,12 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// cleanup until every entry is drained via discard_selection
 		// (S13.4 — the interactive discard pathway).
 		g.populateDiscardPendingLocked()
-		// CR 514.2: damage marked on permanents is removed at the
-		// start of cleanup, regardless of whether the discard pause
-		// fires. The lethal-damage SBA from S13.1 reads DamageMarked,
-		// so clearing it here means the per-turn damage doesn't
-		// carry over into the next turn.
-		//
-		// S18 sub-PR 3: MarkedLethalByDeathtouch is the companion
-		// flag (CR 702.2c) set by combat damage from deathtouch
-		// sources. Same per-turn scope as DamageMarked, cleared at
-		// the same site.
-		for i := range g.Battlefield.Cards {
-			g.Battlefield.Cards[i].DamageMarked = 0
-			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = false
-		}
-		// S17 sub-PR 5: "until end of turn" replacement effects
-		// (Fog's prevent-all-combat-damage, future prevention
-		// shields with a per-turn duration) clear at cleanup so
-		// next turn starts with a clean slate.
-		g.ClearTurnScopedReplacementsLocked()
-		// S32: "until end of turn" CONTINUOUS effects (Giant
-		// Growth's +3/+3, Overrun's trample grant) expire here for
-		// the same reason and by the same rule — CR 514.2 ends them
-		// during the cleanup step, before the turn-based discard.
-		// This is also what makes a grant created during the END
-		// step end this turn rather than next: the sweep keys on the
-		// turn number stamped at registration, not on "the next
-		// cleanup after the one I saw".
-		g.ClearExpiredTurnScopedStaticsLocked()
-		// S21 sub-PR 6: impulse-exile permissions ("you may play it
-		// this turn") lapse here for the same reason — the turn they
-		// were granted for is over. The exiled card stays exiled; it
-		// just stops being playable.
-		g.clearExpiredExilePlayLocked()
+		// CR 514.2: marked damage is removed and "until end of turn"
+		// and "this turn" effects end. The sweep is its own function
+		// (rotation.go) because a turn that ends early — its active
+		// player left the game, or the sandbox pass_turn verb — ends
+		// through the same code (ADR 0059 Decision 6, #766).
+		g.sweepTurnEndLocked()
 		// Auto-advance only when no player owes discard. Otherwise
 		// the cursor sits at Cleanup with PriorityHolder=NoPriority
 		// until DiscardSelection drains the pending map and re-fires

@@ -2275,13 +2275,17 @@ func (g *Game) stateBasedActionsLocked() bool {
 		}
 	}
 
-	// Player-loss SBAs.
+	// Player-loss SBAs. CR 704.3 performs them all at once, so every
+	// loser leaves first and play moves on once, after the batch
+	// (#766): moving the turn on per player would begin the turn of a
+	// seat that is leaving in this same pass.
+	left := false
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
 		}
 		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
-			g.eliminatePlayerLocked(p)
+			left = g.leaveGameLocked(p) || left
 			fired = true
 			continue
 		}
@@ -2296,9 +2300,12 @@ func (g *Game) stateBasedActionsLocked() bool {
 			poison = p.Poison
 		}
 		if poison >= PoisonLethal {
-			g.eliminatePlayerLocked(p)
+			left = g.leaveGameLocked(p) || left
 			fired = true
 		}
+	}
+	if left {
+		g.settleDeparturesLocked()
 	}
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
@@ -2471,24 +2478,47 @@ func (g *Game) runStateChecksLocked() {
 	}
 }
 
-// eliminatePlayerLocked transitions a seated player to eliminated
-// state, cleans up their stack items + pending triggers, walks the
-// cursor past them if they were the active seat, and runs the
-// game-end check. Used by Concede AND by the SBA loop. Caller must
-// hold g.mu.
+// eliminatePlayerLocked is one player leaving the game on their own:
+// leaveGameLocked, then settleDeparturesLocked. Used by Concede. The
+// SBA loss pass calls the two halves itself so a batch of losers
+// moves play on once. Caller must hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
-	if p.Eliminated {
+	if !g.leaveGameLocked(p) {
 		return
+	}
+	g.settleDeparturesLocked()
+}
+
+// leaveGameLocked transitions a seated player to eliminated state,
+// cleans up their stack items, pending triggers and prompts, and
+// emits EventPlayerEliminated. It does not move the turn on or check
+// whether the game is over; settleDeparturesLocked does both, once
+// per batch. Reports whether the player left (false when they had
+// already). Caller must hold g.mu.
+func (g *Game) leaveGameLocked(p *Player) bool {
+	if p.Eliminated {
+		return false
 	}
 	p.Eliminated = true
 	p.LosesAtNextSBA = false
 	g.cleanupStackForEliminatedLocked(p.ID)
-	g.advancePastEliminatedLocked()
 	g.EmitEvent(Event{
 		Kind:  EventPlayerEliminated,
 		Actor: p.ID,
 	})
-	// Game-end check.
+	return true
+}
+
+// settleDeparturesLocked runs after one or more players have left:
+// the game ends when one player or none is left, and otherwise play
+// moves on (advancePastEliminatedLocked — the rest of a departed
+// active player's turn ends through the rotation seam, #766).
+//
+// A game that has ended keeps its cursor where it was. Ending the
+// last turn would sweep marked damage and pull attackers out of combat
+// on the board the game ended with, and begin a turn nobody takes.
+// Caller must hold g.mu.
+func (g *Game) settleDeparturesLocked() {
 	survivors := 0
 	for _, s := range g.Seats {
 		if !s.Eliminated {
@@ -2497,7 +2527,9 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 	}
 	if survivors <= 1 {
 		g.State = StateEnded
+		return
 	}
+	g.advancePastEliminatedLocked()
 }
 
 // cleanupStackForEliminatedLocked implements CR 800.4a — when a
@@ -4947,61 +4979,21 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	return nil
 }
 
-// advancePastEliminatedLocked moves the turn cursor forward to the
-// next non-eliminated seat if the current ActiveSeat is eliminated.
-// Called from Concede (and intended for future state-based action
-// elimination paths). Caller must hold g.mu.
-func (g *Game) advancePastEliminatedLocked() {
-	numSeats := len(g.Seats)
-	if numSeats == 0 {
-		return
-	}
-	if !g.Seats[g.Turn.ActiveSeat].Eliminated {
-		// Active seat still standing — nothing to advance.
-		// But priority might be on an eliminated seat; reset it to
-		// the active seat (priority always defaults to active at
-		// step boundaries). NoPriority means no one holds priority
-		// (Untap/Cleanup) — leave it alone.
-		ph := g.Turn.PriorityHolder
-		if ph >= 0 && ph < numSeats && g.Seats[ph].Eliminated {
-			g.Turn.PriorityHolder = g.Turn.ActiveSeat
-		}
-		return
-	}
-	// Active seat eliminated — find the next survivor in turn order.
-	// Bounded by numSeats to terminate even if every seat is
-	// eliminated (the surrounding Concede caller transitions to
-	// StateEnded in that case; the cursor doesn't matter post-end
-	// but should not infinite-loop here).
-	for i := 0; i < numSeats; i++ {
-		next := (g.Turn.ActiveSeat + 1) % numSeats
-		nextNumber := g.Turn.Number
-		if next == 0 {
-			nextNumber++
-		}
-		g.Turn = Turn{
-			Number:         nextNumber,
-			ActiveSeat:     next,
-			PriorityHolder: initialPriorityHolder(StepUntap, next),
-			Phase:          PhaseOf(StepUntap),
-			Step:           StepUntap,
-		}
-		if !g.Seats[next].Eliminated {
-			// New active seat starts on Untap; run the entry hook so
-			// the auto-untap fires and the cursor advances out of the
-			// no-priority step, matching the rest of the engine.
-			g.runStepEntryHooksLocked()
-			return
-		}
-	}
-}
-
 // PassTurn skips to the next player's untap step, regardless of
 // whatever step the current turn is in. Useful for forfeiting a turn
 // or when all steps are uneventful. Lands on Untap with NoPriority
 // (S13); the entry hook auto-untaps and walks the cursor on to
 // Upkeep, matching the normal-flow behaviour of priority wraps and
 // AdvanceStep so callers always end at a priority-granting step.
+//
+// The rest of the turn ends through the rotation seam (rotation.go,
+// #766): attackers and blockers leave combat, and the cleanup sweep
+// removes marked damage and ends "until end of turn" effects. The
+// steps in between do not happen — no end step, so no "at the
+// beginning of the end step" triggers — and the cleanup discard to
+// hand size is skipped. This is a sandbox verb, not a rules action;
+// a player who wants the discard and the end step passes priority
+// through them instead.
 func (g *Game) PassTurn() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -5015,10 +5007,11 @@ func (g *Game) PassTurn() error {
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
-	// Jump to this turn's cleanup and wrap through the shared seam so
-	// eliminated seats are skipped and per-turn caches clear.
-	g.Turn.Step = StepCleanup
-	g.advanceCursorLocked()
+	// End the turn through the shared seam so eliminated seats are
+	// skipped, the cleanup sweep runs and per-turn caches clear.
+	g.clearCombatLocked()
+	g.sweepTurnEndLocked()
+	g.beginNextTurnLocked()
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-
