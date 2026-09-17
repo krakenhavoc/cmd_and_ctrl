@@ -21,7 +21,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Mana value is read from the printed cost. A card whose cost the
 // engine cannot parse (a split or adventure card's joined cost) is
 // never offered, which can only leave a legal pick out, never let an
-// illegal one in.
+// illegal one in. A monocoloured hybrid {2/W} counts as 2 (CR 202.3f)
+// once ManaValueLE reads the engine's mana value (PR #774).
 //
 // "Any number" includes none, so declining is an answer; the revealed
 // cards then all go to the graveyard.

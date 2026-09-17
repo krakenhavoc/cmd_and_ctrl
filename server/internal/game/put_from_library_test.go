@@ -343,7 +343,7 @@ func TestPutOnBottomInRandomOrderFromExile(t *testing.T) {
 	}
 	before := len(g.Events)
 	g.WithWriteLock(func() {
-		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, pile); err != nil {
+		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ZoneExile, pile); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -400,7 +400,7 @@ func TestPutOnBottomInRandomOrderOpensTheReplacementWindow(t *testing.T) {
 			},
 			Label: "Test: it stays in exile instead",
 		})
-		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, []uuid.UUID{c.InstanceID}); err != nil {
+		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ZoneExile, []uuid.UUID{c.InstanceID}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -423,7 +423,7 @@ func TestPutOnBottomInRandomOrderReordersLibraryCards(t *testing.T) {
 	size := me.Library.Size()
 	before := len(g.Events)
 	g.WithWriteLock(func() {
-		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, []uuid.UUID{a, b}); err != nil {
+		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ZoneLibrary, []uuid.UUID{a, b}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -458,7 +458,7 @@ func TestPutOnBottomInRandomOrderIsReproducible(t *testing.T) {
 			ids = append(ids, topOfLibraryFor(me, n, "Instant"))
 		}
 		g.WithWriteLock(func() {
-			if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ids); err != nil {
+			if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ZoneLibrary, ids); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -528,5 +528,29 @@ func TestPutIntoGraveyardIsNotAMillAndRefusesPermanents(t *testing.T) {
 		if ev.Kind == EventMill {
 			t.Error("putting a revealed card into a graveyard is not a mill")
 		}
+	}
+}
+
+// `from` is where the effect left the cards. A saved ID whose card has
+// since moved on is skipped, not pulled back out of wherever it went.
+func TestPutOnBottomInRandomOrderSkipsCardsThatLeftTheZone(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	exiled := NewCard("Still Exiled", me.ID)
+	exiled.TypeLine = "Instant"
+	g.Exile.PushTop(exiled)
+	inHand := NewCard("Cast Meanwhile", me.ID)
+	inHand.TypeLine = "Instant"
+	me.Hand.PushTop(inHand)
+	g.WithWriteLock(func() {
+		if err := g.PutOnBottomInRandomOrderForEffect(me.ID, ZoneExile, []uuid.UUID{exiled.InstanceID, inHand.InstanceID}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !me.Library.Contains(exiled.InstanceID) {
+		t.Error("the card still in exile did not go to the bottom")
+	}
+	if !me.Hand.Contains(inHand.InstanceID) || me.Library.Contains(inHand.InstanceID) {
+		t.Error("a card no longer in exile was pulled out of its hand")
 	}
 }

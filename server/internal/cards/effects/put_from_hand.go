@@ -187,7 +187,8 @@ func MayPutALandFromHandTapped(cardName string) PutFromHandOntoBattlefield {
 
 // handCardsMatching returns the cards in a player's hand that pass
 // `pred`, in hand order, skipping anything that could not be a
-// permanent (CR 110.4).
+// permanent (CR 110.4) and any token (CR 108.2, CR 111.8) — the same
+// "permanent card" test libraryCardsMatching applies.
 //
 // A nil predicate means "every permanent card". Characteristics are
 // read off the card in hand, which is where they are printed — a
@@ -201,7 +202,7 @@ func handCardsMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []u
 	}
 	var out []uuid.UUID
 	for _, c := range p.Hand.Cards {
-		if !c.IsPermanent() {
+		if !isPermanentCard(c) {
 			continue
 		}
 		if pred != nil && !pred(g, playerID, c) {
