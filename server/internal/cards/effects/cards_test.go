@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"math/rand/v2"
 	"testing"
 
@@ -102,7 +103,9 @@ func castCatalogSpell(t *testing.T, g *game.Game, name, typeLine, oracleID strin
 //
 // Stops short of a pending trigger *prompt*: an optional trigger
 // waits for its yes/no before anything reaches the stack. Answer
-// it (answerLatestTriggerPrompt) then call this again.
+// it (answerLatestTriggerPrompt) then call this again. Since #730
+// the engine enforces that stop rather than trusting the helper to
+// observe it, so the refusal is the signal to return.
 func passPriorityAroundTable(t *testing.T, g *game.Game) {
 	t.Helper()
 	for i := 0; i < 32; i++ {
@@ -110,6 +113,9 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 			return
 		}
 		if err := g.PassPriority(); err != nil {
+			if errors.Is(err, game.ErrChoicePending) {
+				return
+			}
 			t.Fatalf("PassPriority iter %d: %v", i, err)
 		}
 	}

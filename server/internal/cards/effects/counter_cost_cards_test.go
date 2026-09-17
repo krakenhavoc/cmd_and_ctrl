@@ -37,6 +37,18 @@ func pushWalkerForCounterCost(g *game.Game, owner uuid.UUID, loyalty int) uuid.U
 	})
 }
 
+// renameBattlefieldForCounterCost gives a battlefield card a distinct
+// name, so two pushWalkerForCounterCost walkers under one controller
+// are two different legendary permanents rather than a legend-rule
+// prompt.
+func renameBattlefieldForCounterCost(g *game.Game, id uuid.UUID, name string) {
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == id {
+			g.Battlefield.Cards[i].Name = name
+		}
+	}
+}
+
 func setCounters(g *game.Game, id uuid.UUID, counters map[string]int) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == id {
@@ -131,6 +143,10 @@ func TestHeartOfKiranPicksTheWalkerAndCanKillIt(t *testing.T) {
 	heart := pushVehicleForTest(g, me.ID, "Heart of Kiran", heartOfKiranOracle, 4, 4)
 	big := pushWalkerForCounterCost(g, me.ID, 5)
 	small := pushWalkerForCounterCost(g, me.ID, 1)
+	// Two walkers of the same legendary name are a legend-rule prompt,
+	// and since #730 an unanswered prompt gates the table. Two real
+	// walkers have two names.
+	renameBattlefieldForCounterCost(g, big, "Other Test Walker")
 	advanceToMain(t, g)
 
 	if err := g.ActivateCatalogAbility(me.ID, heart, 1, game.ActivateAbilityParams{CounterSourceIDs: []uuid.UUID{small}}); err != nil {

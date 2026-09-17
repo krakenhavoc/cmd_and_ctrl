@@ -670,6 +670,13 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	// #730: an unanswered prompt gates the table. Checked before the
+	// cursor moves, so a choice queued by THIS advance's step-entry
+	// hooks (a CR 616 ordering pause, say) is not mistaken for one
+	// the table walked past. See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return g.Turn, choicePendingErrorLocked(c)
+	}
 	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get

@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 // step_transition_resume_test.go is the #710 regression suite.
 //
@@ -275,11 +278,13 @@ func TestPausedStepTransitionRunsTheStepWhenNothingCancelled(t *testing.T) {
 }
 
 // TestStaleStepTransitionResumeIsDropped — the prompt parks the
-// cursor, but nothing in the engine refuses an advance_step while it
-// is outstanding. If the table walks on and the prompt is answered
-// afterwards, finishing it would skip or run a step nobody is in.
-// The answer is dropped instead, leaving the cursor where the players
-// put it.
+// cursor. Since #730 the engine also REFUSES an advance_step while it
+// is outstanding, which is the first line of defence; this test keeps
+// the second. A prompt can still go stale without anyone advancing
+// the step (#701's zone-move case is the same shape), and if the
+// cursor has moved on by the time it is answered, finishing it would
+// skip or run a step nobody is in. The answer is dropped instead,
+// leaving the cursor where it is, and the action does not fail.
 func TestStaleStepTransitionResumeIsDropped(t *testing.T) {
 	g := newGameWithStepReplacements(t,
 		watchStepForSeat(StepDraw, 1, "watch draw"),
@@ -290,11 +295,22 @@ func TestStaleStepTransitionResumeIsDropped(t *testing.T) {
 		t.Fatalf("pending choices = %d, want 1", len(g.PendingChoices))
 	}
 	prompt := g.PendingChoices[0]
+	parked := stepPos{Seat: g.Turn.ActiveSeat, Step: g.Turn.Step}
 
-	// The table advances past the paused step without answering.
-	if _, err := g.AdvanceStep(); err != nil {
-		t.Fatalf("AdvanceStep: %v", err)
+	// #730: the table may not advance past the unanswered prompt.
+	if _, err := g.AdvanceStep(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("AdvanceStep with the prompt open = %v, want ErrChoicePending", err)
 	}
+	if got := (stepPos{Seat: g.Turn.ActiveSeat, Step: g.Turn.Step}); got != parked {
+		t.Fatalf("a refused advance moved the cursor to seat %d %q", got.Seat, got.Step)
+	}
+
+	// Move the cursor through the engine's own seam, behind the gate,
+	// to reproduce the stale frame the drop exists for.
+	g.mu.Lock()
+	g.advanceCursorLocked()
+	g.runStepEntryHooksLocked()
+	g.mu.Unlock()
 	moved := stepPos{Seat: g.Turn.ActiveSeat, Step: g.Turn.Step}
 	if moved.Step != StepPrecombatMain {
 		t.Fatalf("cursor at %q after advancing past the prompt, want %q", moved.Step, StepPrecombatMain)
