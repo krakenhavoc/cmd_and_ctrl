@@ -344,3 +344,105 @@ func TestUncrewedVehicleCannotAttack(t *testing.T) {
 		t.Fatalf("an uncrewed Vehicle attacked: err = %v, want ErrNotACreature", err)
 	}
 }
+
+// crewForTest pays "Crew 1" with one creature and settles the
+// ability, so a test that is about what the crewed Vehicle then does
+// starts from a Vehicle that is already a creature.
+func crewForTest(t *testing.T, g *game.Game, controller, vehicle, crewer uuid.UUID) {
+	t.Helper()
+	if err := g.ActivateCatalogAbility(controller, vehicle, 0, game.ActivateAbilityParams{
+		CrewIDs: []uuid.UUID{crewer},
+	}); err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	v, ok := battlefieldCardByID(g, vehicle)
+	if !ok || !v.IsCreature() {
+		t.Fatalf("the crewed Vehicle is not a creature")
+	}
+}
+
+// TestSmugglersCopterLootsWhenItAttacks — the first half of "whenever
+// this Vehicle attacks or blocks, you may draw a card. If you do,
+// discard a card." The trigger is announced at the attack lock-in
+// (#859, CR 508.1), the "may" is a yes/no before it reaches the stack
+// (CR 603.5), and the body draws first so the drawn card is a legal
+// discard.
+func TestSmugglersCopterLootsWhenItAttacks(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	owner := g.Seats[seat]
+	defender := g.Seats[(seat+1)%len(g.Seats)]
+	copter := pushVehicleForTest(g, owner.ID, "Smuggler's Copter", smugglersCopterOracle, 3, 3)
+	crewForTest(t, g, owner.ID, copter, pushCrewerForTest(g, owner.ID, "Crewer", 1))
+
+	handBefore := owner.Hand.Size()
+	declareAttack(t, g, defender.ID, copter)
+	answerLatestTriggerPrompt(t, g, owner.ID, true)
+	passPriorityAroundTable(t, g)
+
+	if got := owner.Hand.Size(); got != handBefore+1 {
+		t.Fatalf("the loot drew: hand %d -> %d, want +1", handBefore, got)
+	}
+	if got := discardOwed(g, owner.ID); got != 1 {
+		t.Fatalf("discard owed = %d, want 1", got)
+	}
+	discardFromHand(t, g, owner.ID)
+	if got := owner.Hand.Size(); got != handBefore {
+		t.Errorf("after the discard: hand %d, want %d", got, handBefore)
+	}
+}
+
+// TestSmugglersCopterLootsWhenItBlocks — the half that was missing
+// until #860. EventBlock is announced once per (blocker, attacker)
+// pair at the block lock-in (#830, CR 509.1), so the same one ability
+// fires for a block exactly as it does for an attack.
+func TestSmugglersCopterLootsWhenItBlocks(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	attacker := g.Seats[seat]
+	blocker := g.Seats[(seat+1)%len(g.Seats)]
+	raider := pushVanillaCreature(g, attacker.ID, "Raider", 2, 2)
+	copter := pushVehicleForTest(g, blocker.ID, "Smuggler's Copter", smugglersCopterOracle, 3, 3)
+	crewForTest(t, g, blocker.ID, copter, pushCrewerForTest(g, blocker.ID, "Crewer", 1))
+
+	handBefore := blocker.Hand.Size()
+	declareAttack(t, g, blocker.ID, raider)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.DeclareBlocker(copter, raider); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	lockInBlocks(t, g)
+	answerLatestTriggerPrompt(t, g, blocker.ID, true)
+	passPriorityAroundTable(t, g)
+
+	if got := blocker.Hand.Size(); got != handBefore+1 {
+		t.Fatalf("blocking loots: hand %d -> %d, want +1", handBefore, got)
+	}
+	if got := discardOwed(g, blocker.ID); got != 1 {
+		t.Errorf("discard owed = %d, want 1", got)
+	}
+}
+
+// TestSmugglersCopterLootDeclined — CR 603.5: "you may" is a real
+// prompt, and a no drops the ability without drawing.
+func TestSmugglersCopterLootDeclined(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	owner := g.Seats[seat]
+	defender := g.Seats[(seat+1)%len(g.Seats)]
+	copter := pushVehicleForTest(g, owner.ID, "Smuggler's Copter", smugglersCopterOracle, 3, 3)
+	crewForTest(t, g, owner.ID, copter, pushCrewerForTest(g, owner.ID, "Crewer", 1))
+
+	handBefore := owner.Hand.Size()
+	declareAttack(t, g, defender.ID, copter)
+	answerLatestTriggerPrompt(t, g, owner.ID, false)
+	passPriorityAroundTable(t, g)
+
+	if got := owner.Hand.Size(); got != handBefore {
+		t.Errorf("a declined loot drew: hand %d -> %d", handBefore, got)
+	}
+	if got := discardOwed(g, owner.ID); got != 0 {
+		t.Errorf("a declined loot asked for a discard: %d", got)
+	}
+}
