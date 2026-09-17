@@ -1165,7 +1165,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // g.mu and have validated the plan via autoTapLocked.
 func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCost) {
 	pending := append([]ColorRequirement(nil), cost.Required...)
-	identity := commanderIdentityFor(p)
+	identity := commanderIdentityFor(g, p)
 	for _, cardID := range plan {
 		var card *Card
 		for i := range g.Battlefield.Cards {
@@ -3596,7 +3596,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// or narrowed to the identity when the printed text says so
 		// (Command Tower, Arcane Signet: NarrowToCommanderIdentity).
 		// See manaPickOptionsFor.
-		filtered := manaPickOptionsFor(options, p, ab.NarrowToCommanderIdentity)
+		filtered := manaPickOptionsFor(g, options, p, ab.NarrowToCommanderIdentity)
 		// Queue the pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
@@ -3829,11 +3829,14 @@ func producibleColors(abilities []ManaAbilityShape) map[string]bool {
 // set when the intersection is empty so the player is never handed an
 // empty picker.
 //
-// No identity (no commander, or a placeholder with no colours) leaves
-// the list as printed either way. Always returns a fresh slice when it
+// The identity is the player's commander's wherever it is
+// (commanderIdentityFor, CR 903.4a). No identity (the player owns no
+// commander, or a placeholder with no colours) leaves the list as
+// printed either way; for `narrow` that is stronger than CR 903.4f,
+// tracked in #844. Always returns a fresh slice when it
 // changes anything, so a caller may keep it on a PendingChoice.
-func manaPickOptionsFor(options []string, p *Player, narrow bool) []string {
-	return manaPickOptions(options, commanderIdentityFor(p), narrow)
+func manaPickOptionsFor(g *Game, options []string, p *Player, narrow bool) []string {
+	return manaPickOptions(options, commanderIdentityFor(g, p), narrow)
 }
 
 // manaPickOptions is manaPickOptionsFor with the identity already in
@@ -3878,26 +3881,25 @@ func containsColor(set []string, c string) bool {
 	return false
 }
 
-// filterPipeByCommanderIdentity narrows `options` to just the colors
-// in the player's commander's color identity — the
-// NarrowToCommanderIdentity half of manaPickOptionsFor, kept as its
-// own name for the #276 regression tests. If the player has no
-// commander (or the commander has no color identity), or nothing
-// overlaps, returns the raw options unchanged.
+// commanderIdentityFor returns the colour identity of the player's
+// commander as uppercase single-character strings. Empty when the
+// player owns no commander.
 //
-// Since #276 the colour identity really is on game.Card directly,
-// copied at deck-import time from cards.Card.ColorIdentity; see
-// commanderIdentityFor for the fallbacks.
-func filterPipeByCommanderIdentity(options []string, p *Player) []string {
-	return manaPickOptionsFor(options, p, true)
-}
-
-// commanderIdentityFor returns the player's commander color identity
-// as uppercase single-character strings. Empty when no commander is
-// present. Sandbox: picks the first card in the command zone — the
-// partner-pair union is S20 polish territory.
+// The commander is found in EVERY zone, not just the command zone.
+// CR 903.4a fixes colour identity before the game begins, so it does
+// not change when the commander is cast, dies or is exiled, and a
+// commander on the battlefield is the ordinary mid-game state. The
+// search matches on IsCommander and Owner (the flag survives zone
+// changes, and commander damage already relies on that); ownership,
+// not control, because a stolen commander is still its owner's.
+// Zones are read in the order a commander usually sits: command zone,
+// stack, battlefield, graveyard, exile, hand, library.
 //
-// Three sources, in order:
+// Partners and backgrounds: every commander the player owns
+// contributes, and the result is their union in discovery order
+// (CR 903.4: the deck's identity is the combined identity).
+//
+// Three sources per commander, in order:
 //
 //  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
 //     copied at deck import. This is the only one of the three that
@@ -3905,40 +3907,59 @@ func filterPipeByCommanderIdentity(options []string, p *Player) []string {
 //     and BOTH faces of a double-faced card. Issue #276: a
 //     transform / modal-DFC commander has a null top-level
 //     mana_cost and colors (the real ones live on card_faces[0]),
-//     so sources 2 and 3 both returned empty and every "any colour
-//     in your commander's identity" pipe skipped narrowing —
-//     Command Tower offered all five colours to an Azorius deck.
+//     so sources 2 and 3 both returned empty and Command Tower
+//     offered all five colours to an Azorius deck.
 //  2. **Effective().Colors** (S16) — the commander's post-layer
 //     colours. Not identity, but a good proxy for any commander
-//     whose identity is fully captured by their mana cost, and it
-//     picks up Layer-5 colour-change effects (Painter's Servant on
-//     a commander) automatically.
+//     whose identity is fully captured by their mana cost.
 //  3. **distinctColorsInManaCost** — the original S15 proxy.
 //     Covers placeholder commanders with no stamped colours (the
 //     demo seed) and the lobby-time pre-effects-init path.
 //
-// Note the fallbacks can only ever be narrower than the truth, and
-// every call site uses the result to NARROW a mana pipe, so the
-// pre-#276 behaviour was permissive (offering colours that don't
-// exist) rather than restrictive.
-func commanderIdentityFor(p *Player) []string {
-	if p == nil || p.Command == nil {
+// The fallbacks can only be narrower than the truth. The result
+// feeds manaPickOptionsFor, which ORDERS an ordinary pipe by it (a
+// wrong identity only changes which colour is listed first) and
+// NARROWS only the four "in your commander's color identity" cards.
+func commanderIdentityFor(g *Game, p *Player) []string {
+	if p == nil {
 		return nil
 	}
-	for _, c := range p.Command.Cards {
-		if !c.IsCommander {
+	var out []string
+	add := func(c *Card) {
+		if !c.IsCommander || c.Owner != p.ID {
+			return
+		}
+		colors := c.ColorIdentity
+		if len(colors) == 0 {
+			colors = c.Effective().Colors
+		}
+		if len(colors) == 0 {
+			colors = distinctColorsInManaCost(c.ManaCost)
+		}
+		for _, col := range colors {
+			if !containsColor(out, col) {
+				out = append(out, col)
+			}
+		}
+	}
+	zones := []*Zone{p.Command}
+	if g != nil {
+		zones = append(zones, g.Stack, g.Battlefield)
+	}
+	zones = append(zones, p.Graveyard)
+	if g != nil {
+		zones = append(zones, g.Exile)
+	}
+	zones = append(zones, p.Hand, p.Library)
+	for _, z := range zones {
+		if z == nil {
 			continue
 		}
-		if len(c.ColorIdentity) > 0 {
-			return c.ColorIdentity
+		for i := range z.Cards {
+			add(&z.Cards[i])
 		}
-		eff := c.Effective()
-		if len(eff.Colors) > 0 {
-			return eff.Colors
-		}
-		return distinctColorsInManaCost(c.ManaCost)
 	}
-	return nil
+	return out
 }
 
 // distinctColorsInManaCost extracts the unique WUBRG letters that

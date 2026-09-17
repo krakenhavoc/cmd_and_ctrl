@@ -160,7 +160,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	}
 	var out []tapSource
 	p := g.playerByIDLocked(controller)
-	identity := commanderIdentityFor(p)
+	identity := commanderIdentityFor(g, p)
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller != controller || c.Tapped {
 			continue

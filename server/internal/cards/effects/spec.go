@@ -118,8 +118,9 @@ type Spec struct {
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
 	// Paradise's "{T}: Add one mana of any color", Arcane Signet's
-	// commander-identity-restricted variant (NarrowToCommanderIdentity). Mana abilities do NOT
-	// use the stack (CR 605.3); they resolve synchronously when the
+	// commander-identity-restricted variant
+	// (NarrowToCommanderIdentity). Mana abilities do NOT use the stack
+	// (CR 605.3); they resolve synchronously when the
 	// activate_mana_ability action fires. The Index a client sends in
 	// the action payload is the position in this slice.
 	//

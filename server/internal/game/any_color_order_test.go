@@ -27,7 +27,10 @@ func TestManaPickOptions(t *testing.T) {
 		{"no overlap keeps printed order", []string{"W", "U"}, []string{"G"}, false, []string{"W", "U"}},
 		{"dual, second colour in identity", []string{"W", "B"}, []string{"B"}, false, []string{"B", "W"}},
 		{"narrow: mono-green tower", five, []string{"G"}, true, []string{"G"}},
-		{"narrow: no identity keeps all", five, nil, true, five},
+		// Current behaviour, not the rule: CR 903.4f says a "commander's
+		// color identity" source with no identity (no commander, or a
+		// colourless one) adds nothing. Follow-up: #844.
+		{"narrow: no identity keeps all (CR 903.4f follow-up)", five, nil, true, five},
 		{"narrow: no overlap falls back", []string{"W", "U"}, []string{"G"}, true, []string{"W", "U"}},
 		{"single option untouched", []string{"C"}, []string{"G"}, true, []string{"C"}},
 	}

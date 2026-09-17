@@ -157,7 +157,7 @@ func TestCommanderIdentityRegressionBant(t *testing.T) {
 		Controller:  owner.ID,
 	})
 
-	identity := game.CommanderIdentityForTest(owner)
+	identity := game.CommanderIdentityForTest(g, owner)
 	want := map[string]bool{"W": true, "U": true, "G": true}
 	got := map[string]bool{}
 	for _, c := range identity {

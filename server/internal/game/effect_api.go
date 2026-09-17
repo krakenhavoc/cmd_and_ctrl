@@ -2646,7 +2646,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
-		colorOptions := manaPickOptionsFor(options, p, opts.NarrowToCommanderIdentity)
+		colorOptions := manaPickOptionsFor(g, options, p, opts.NarrowToCommanderIdentity)
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,

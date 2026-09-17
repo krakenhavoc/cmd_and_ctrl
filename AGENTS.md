@@ -583,7 +583,9 @@ PendingChoice for the controller to resolve:
   picker offers all five colours with the controller's commander
   identity listed first (owner decision, 2026-09-17). Every pipe gets
   that order; never narrow a card whose text just says "any color" or
-  names its colours.
+  names its colours. The identity is read from the player's
+  commander(s) in whatever zone they are in (CR 903.4a), not just the
+  command zone.
 - `"{W|U|B|R|G}"` + `NarrowToCommanderIdentity: true` — Arcane Signet,
   Command Tower, Commander's Sphere, Path of Ancestry: the engine
   intersects the pipe set with the controller's commander identity at
