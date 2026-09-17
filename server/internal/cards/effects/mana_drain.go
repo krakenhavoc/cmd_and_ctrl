@@ -47,9 +47,9 @@ func init() {
 			}
 			stackID := item.Targets[0].ID
 			mv := 0
-			if victim := ctx.Game.StackItemForEffect(stackID); victim != nil {
+			if ctx.Game.StackItemForEffect(stackID) != nil {
 				if card, ok := ctx.Game.LookupCardForEffect(stackID); ok {
-					mv = manaValueOnStack(card, victim)
+					mv, _ = ctx.Game.ManaValueForEffect(card)
 				}
 			}
 			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {

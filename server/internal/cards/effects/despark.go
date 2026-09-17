@@ -11,10 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // bombs are fair game. The mana-value floor is the cost: it cannot
 // answer a cheap threat or a land (mana value 0).
 //
-// ManaValueGE reads the printed cost, so {X} counts as 0 on the
-// battlefield (CR 202.3e) — a creature cast for X=8 is NOT a legal
-// Despark target unless its printed cost is otherwise 4+, exactly as
-// in paper.
+// ManaValueGE counts {X} as 0 on the battlefield (CR 202.3e) — a
+// creature cast for X=8 is NOT a legal Despark target unless its
+// printed cost is otherwise 4+, exactly as in paper.
 func init() {
 	Register(Spec{
 		OracleID:     "bd16434d-55ea-4c5a-a9ef-752971a4af16",
