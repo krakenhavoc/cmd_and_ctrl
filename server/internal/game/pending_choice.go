@@ -1404,7 +1404,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// move_card verb included. The two branches after it are the
 		// older, hand-rolled resumes for the battlefield entry and
 		// battlefield-leave paths.
-		if ev.zoneRoute != nil {
+		//
+		// The one route that is NOT finished here is the destroy /
+		// sacrifice / SBA exit, which keeps its own mover and carries
+		// a route only to hold a continuation (#815, ViaBattlefieldLeave).
+		// It falls through to the battlefield-leave branch below.
+		if ev.zoneRoute != nil && !ev.zoneRoute.ViaBattlefieldLeave {
 			return g.executeZoneRouteLocked(ev)
 		}
 		// S17 sub-PR 6: resume path for battlefield-leave moves
@@ -1436,7 +1441,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
 			owner = g.playerByIDLocked(card.Owner)
 		}
-		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+		// #815: through the shared finisher, so a destruction that
+		// paused on the CR 903.9 prompt runs its caller's continuation
+		// from exactly where an unpaused one runs it. A route reaches
+		// this branch only when it is flagged ViaBattlefieldLeave —
+		// every other exit went to executeZoneRouteLocked above.
+		return g.finishBattlefieldLeaveLocked(ev, owner)
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is

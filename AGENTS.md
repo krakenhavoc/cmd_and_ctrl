@@ -1416,6 +1416,29 @@ replacement that removes damage — regeneration is the one the rules
 name, CR 701.15a — it does that in its own `Replace`, not by leaning on
 the destroy path.
 
+**"For each X destroyed this way" comes from a continuation too
+(#815).** A destruction can pause — a commander caught in a wipe stops
+to answer CR 903.9 — so the number is not knowable on the line after
+the sweep. `DestroyAllMatching`'s `Then` already receives it; what
+changed is that the clause now runs from the sweep's continuation
+(`g.DestroyPermanentsThenForEffect`), so it may run an action later,
+and its two arguments finally describe the same set: `swept` is the
+pre-move copies of the permanents that were actually DESTROYED and
+`destroyed` is how many of them there were. Write the clause as
+something that acts on what it is handed, not as the next line of the
+card. The fire-and-forget `g.DestroyPermanentsForEffect(ids)` keeps
+its `int` for a sweep nothing is waiting on; it cannot include a leg
+that paused, so never read it as "destroyed this way".
+
+What counts as destroyed is CR 701.7a — "move it from the battlefield
+to its owner's graveyard". A permanent the CR 614 window saved is not
+destroyed (it never left), and neither is one a replacement sent to
+exile, a hand or a library instead (it left, but not to a graveyard).
+A commander that takes CR 903.9's offer IS counted, which is the
+engine's one declared exception and lives in
+`destroyedThisWayLocked`. See
+[ADR 0013 §5i](docs/decisions/0013-replacement-effects.md).
+
 **And EVERY battlefield exit clears it, not just a destruction
 (#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup
 (`clearBattlefieldDamage`, permanent_damage.go), so a creature that is
