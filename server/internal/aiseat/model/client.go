@@ -94,7 +94,15 @@ type Response struct {
 	Model string
 	// StopReason is the provider's stop reason, for the log.
 	StopReason string
-	Usage      Usage
+	// Reasoning is a thinking model's chain-of-thought, when the
+	// provider returns it separately from Text rather than inline —
+	// which is what a hybrid-thinking model that ignored the
+	// thinking-off switch does: Text comes back empty and the answer
+	// it never gave is sitting here instead. Nothing reads this yet;
+	// it exists so that failure mode is visible in logs. Empty when
+	// the provider does not report it separately.
+	Reasoning string
+	Usage     Usage
 }
 
 // Client is the model transport, and the whole of Layer C's contact
