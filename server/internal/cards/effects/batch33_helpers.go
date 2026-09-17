@@ -325,7 +325,11 @@ func b33DrawPerIslandThenDiscardTwo(item *game.StackItem, ctx *Context) error {
 			return err
 		}
 	}
-	ctx.Game.DiscardChoiceForEffect(item.Controller, 2)
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      2,
+	})
 	return nil
 }
 

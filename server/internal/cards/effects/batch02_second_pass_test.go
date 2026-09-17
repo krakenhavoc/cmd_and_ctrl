@@ -91,9 +91,11 @@ func TestDarksteelCitadelTapsForColorlessAndDeclaresIndestructible(t *testing.T)
 	if got := batch01PoolColors(me); len(got) != 1 || got[0] != "C" {
 		t.Errorf("pool %v, want [C]", got)
 	}
-	// The keyword is declared even though the engine does not yet
-	// enforce it (#176), so the day enforcement lands the card is
-	// already correct.
+	// The keyword was declared before the engine enforced it, so the
+	// card was already correct when enforcement landed (#380,
+	// game/indestructible.go). This test only checks the declaration
+	// reaches the effective abilities; indestructible's own tests
+	// cover what it stops.
 	if !eotHasAbility(effectiveAbilities(t, g, land), "indestructible") {
 		t.Error("printed indestructible did not reach the effective abilities")
 	}

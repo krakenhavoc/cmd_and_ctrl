@@ -244,6 +244,25 @@ export interface GameView {
   // outlives the moment, because the cards usually go straight back
   // into a hidden zone. Render from the printed identity.
   reveals?: RevealView[];
+  // #628 (CR 726): set when the engine has watched the same triggered
+  // ability resolve 25 times this turn with no player decision in
+  // between, absent otherwise. Its presence is an instruction to this
+  // client: STOP PASSING AUTOMATICALLY. Priority still rotates and
+  // every pass the server is handed still works — the point is that a
+  // person has to ask for the next iteration, with the loop's trigger
+  // still on the stack. Table-wide and identical for every seat.
+  loop_notice?: LoopNoticeView;
+}
+
+// LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
+// repeating ability's stack label, which by catalog convention reads
+// "<card> — <what happens>", so it is the whole banner line.
+// Mirrors `protocol.LoopNoticeView`.
+export interface LoopNoticeView {
+  source?: string;
+  label: string;
+  controller?: string;
+  count: number;
 }
 
 // RevealView is one reveal: the cards a player showed the whole table
@@ -405,6 +424,12 @@ export interface LogEvent {
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
   combat?: boolean;
+  // Which combat damage step dealt a combat `damage` entry (CR 510.4).
+  // Set only when that combat had a first-strike step; combat with no
+  // first strike or double strike anywhere is untagged, so its
+  // presence alone means there are two beats. Read it, don't derive it
+  // from keywords (#187, ADR 0053 Decision 1).
+  combat_step?: "first_strike" | "regular";
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
@@ -503,6 +528,13 @@ export interface PendingChoiceView {
     // ONLY — the candidates are usually cards in a hand, and their
     // number is as private as their faces.
     | "choose_cards"
+    // #742: "choose a color" (CR 105.4) — as a permanent enters
+    // (Coldsteel Heart, the Thriving lands; the answer is remembered on
+    // the permanent) or while a spell resolves (Wash Out). color_options
+    // carries the legal colours, a subset of W/U/B/R/G ("a color other
+    // than blue" is four). Answered with the same {choice_id, color}
+    // payload a mana_pick uses; the server routes the two by kind.
+    | "choose_color"
     | string;
   chooser: string;
   from_player: string;
@@ -516,6 +548,11 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // #742: on a "mana_pick" that adds more than one mana of the picked
+  // colour ("{T}: Add three mana of any one color") — colour letter to
+  // amount. A colour missing from the map adds one; absent on ordinary
+  // picks. Also, choose_color reuses color_options above.
+  color_amounts?: Record<string, number>;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
@@ -773,9 +810,11 @@ export interface AdditionalCostView {
   discard_cards?: number;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
-  // The picked ID rides cast_spell as `sacrifice_ids`.
+  // The picked IDs ride cast_spell as `sacrifice_ids`.
   // Present-and-empty means the cost is unpayable, so the spell is
-  // uncastable.
+  // uncastable. #747: min / max are the clause's count ("sacrifice
+  // two creatures" is 2 / 2) and the cards come in payment order —
+  // see sacrificeCost.ts.
   sacrifice_options?: LegalTargetsView;
   // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
   // open for this card even though its printed mana cost has no {X},
@@ -893,6 +932,13 @@ export interface ActivatedAbilityView {
   mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // #743: true while the ability's activation condition (CR 602.1b —
+  // "Activate only if an opponent controls four or more lands",
+  // "Activate only during your turn") is false. Absent when there is
+  // no condition or it holds. Evaluated server-side for the
+  // permanent's controller; the menu greys the row like
+  // sorcery_speed, and the server refuses the activation regardless.
+  condition_unmet?: boolean;
   // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
   // ability (CR 606.4). Its PRESENCE, not its value, is what marks
   // the ability as a loyalty ability — 0 is a real printed cost —
@@ -900,9 +946,12 @@ export interface ActivatedAbilityView {
   // #329 / #334.
   loyalty_cost?: number;
   // A "Sacrifice a creature"-style cost: the clause, and the
-  // permanents the controller can pay it with right now.
+  // permanents the controller can pay it with right now. #747: min /
+  // max are the clause's count ("Sacrifice two artifacts" is 2 / 2;
+  // always equal) and the cards come in payment order — tokens first,
+  // then lower mana value, then the source. See sacrificeCost.ts.
   sacrifice_label?: string;
-  sacrifice_options?: { players?: string[]; cards?: string[] };
+  sacrifice_options?: LegalTargetsView;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -1141,6 +1190,14 @@ export interface CardView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // #746 (ADR 0048 addendum): the printed clauses of this card's own
+  // cost modifiers whose price depends on its targets — Fireball's
+  // "This spell costs {1} more to cast for each target beyond the
+  // first", strive. The X picker opens before targeting and its
+  // affordability readout is priced at one target, so it shows these
+  // clauses under the readout. Absent for nearly every card and on
+  // opponents' cards the viewer cannot read.
+  target_cost_notes?: string[];
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its
@@ -1227,7 +1284,9 @@ export interface ManaAbilityView {
   // the identically-named fields on ActivatedAbilityView: the label
   // is the clause for the modal banner, and sacrifice_options lists
   // the legal choices already filtered to the controller
-  // (CR 701.21a). Absent means the cost needs no extra choice.
+  // (CR 701.21a). Absent means the cost needs no extra choice. #747:
+  // min / max are the count and the cards come in payment order, as
+  // on ActivatedAbilityView.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
   // S22: a "Pay N life" component of the activation cost — Mana
@@ -1241,6 +1300,10 @@ export interface ManaAbilityView {
   // life_cost. The server never auto-taps into a mana ability, so the
   // player has to float this mana before the entry will fire.
   mana_cost?: string;
+  // #743: true while the mana ability's activation condition is false
+  // — Temple of the False God with four lands, Mox Opal without
+  // metalcraft. Same flag and meaning as ActivatedAbilityView's.
+  condition_unmet?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

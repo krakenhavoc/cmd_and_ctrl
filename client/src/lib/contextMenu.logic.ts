@@ -25,6 +25,7 @@ import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { sacrificeShortfall } from "./sacrificeCost";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
@@ -360,7 +361,8 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 interface AbilityCost {
   tap_cost?: boolean;
   sacrifice_label?: string;
-  sacrifice_options?: { players?: string[]; cards?: string[] };
+  // #747: min / max are the sacrifice count (sacrificeCost.ts).
+  sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   legal_targets?: { players?: string[]; cards?: string[] };
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
@@ -369,6 +371,9 @@ interface AbilityCost {
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
   sorcery_speed?: boolean;
+  // #743: the ability's "Activate only if …" condition is false right
+  // now. Carried by both mana and activated abilities.
+  condition_unmet?: boolean;
   // S27: a Vehicle's crew number and the creatures that could pay
   // it. Mana abilities never carry either.
   crew_cost?: number;
@@ -383,6 +388,11 @@ interface AbilityCost {
   counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
 }
 
+// ACTIVATION_CONDITION_UNMET is the hint on a row whose
+// condition_unmet flag is set (#743). Exported so ManaAbilityMenu's
+// popover says the same thing as the context menu.
+export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
+
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
 // every cost; this just greys the row and explains why.
@@ -394,9 +404,10 @@ export function abilityBlocked(
 ): string {
   if (a.tap_cost && tapped) return "already tapped";
   if (a.tap_cost && sick) return "summoning sickness";
-  if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
-    return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
-  }
+  // #747: fewer options than the clause's count, not just none —
+  // "needs three Foods (you have 2)".
+  const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
+  if (sacrifice) return sacrifice;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic
@@ -428,6 +439,11 @@ export function abilityBlocked(
     const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
     if (!timing.legal) return timing.reason ?? "sorcery-speed only";
   }
+  // #743, CR 602.1b: an "Activate only if …" condition the server says
+  // is false. After the timing arms, which is the order the server
+  // checks in, so a sorcery-speed row keeps its more specific reason.
+  // The row's label already prints the clause, so the reason doesn't.
+  if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
     if (n === 0) return "no legal target";

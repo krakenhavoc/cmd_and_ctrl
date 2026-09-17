@@ -217,8 +217,8 @@ func TestB20DesolateLighthouseTapsForColorlessOrLoots(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("drew %d, want 1 before the discard", got-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 	if !b20Tapped(t, g, lighthouse) {
 		t.Error("the loot has a tap cost")
@@ -702,7 +702,7 @@ func TestB20GrappleWithThePastMillsThreeThenReturnsThePick(t *testing.T) {
 	}
 }
 
-func TestB20BrokenBondDestroysAnArtifactOrEnchantmentAndDeclaresTheLandGap(t *testing.T) {
+func TestB20BrokenBondDestroysAnArtifactOrEnchantment(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
 	rock := b12Permanent(g, opp.ID, "Rock", "Artifact")
@@ -715,8 +715,8 @@ func TestB20BrokenBondDestroysAnArtifactOrEnchantmentAndDeclaresTheLandGap(t *te
 	if err := b09TryCast(t, g, "Broken Bond", "Sorcery", b20BrokenBondOracle, b16TargetCard(bear)); err == nil {
 		t.Error("a creature is not an artifact or enchantment")
 	}
-	if spec, _ := Lookup(b20BrokenBondOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the put-a-land gap must be declared")
+	if spec, _ := Lookup(b20BrokenBondOracle); spec.Completeness != CompletenessFull {
+		t.Error("the put-a-land clause landed with #654; nothing is deferred any more")
 	}
 }
 

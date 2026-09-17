@@ -70,7 +70,7 @@ func b09IsEquipmentCard(c game.Card) bool { return c.HasSubtype("Equipment") }
 // sorcery card with mana value 2 or less". Off the stack, so X is
 // zero (CR 202.3e) and a Fireball is a legal find.
 func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
-	return (c.IsInstant() || c.IsSorcery()) && manaValueOf(c) <= 2
+	return (c.IsInstant() || c.IsSorcery()) && c.ManaValue() <= 2
 }
 
 // b09CounterThenUntapLands is the shared OnResolve of Rewind and
@@ -99,20 +99,6 @@ func b09CounterThenUntapLands(n int) func(item *game.StackItem, ctx *Context) er
 	}
 }
 
-// b09OpponentsHoldingCards counts the opponents of `controller` who
-// have at least one card in hand — Syphon Mind's draw count. Each of
-// them discards exactly one card, so the number of cards that will
-// be discarded is fixed the moment the spell resolves.
-func b09OpponentsHoldingCards(ctx *Context) int {
-	n := 0
-	for _, opp := range ctx.Opponents() {
-		if p := ctx.PlayerByID(opp); p != nil && p.Hand.Size() > 0 {
-			n++
-		}
-	}
-	return n
-}
-
 // b09ArchonOfCrueltyTrigger is the body of Archon of Cruelty's
 // enters-or-attacks trigger, read off the item's target slot:
 //
@@ -124,10 +110,10 @@ func b09OpponentsHoldingCards(ctx *Context) int {
 // queues them a prompt over their own creatures and planeswalkers,
 // which is what "of their choice" means and why it is not a target
 // (hexproof is irrelevant to it). The discard is their choice too,
-// through the same pending-discard modal Mind Rot uses. The life
-// loss, the draw and the life gain run at once; the two prompts
-// settle whenever the opponent answers. Package-level so the
-// triggered item captures nothing.
+// through the same discard prompt Mind Rot opens. The life loss, the
+// draw and the life gain run at once; the two prompts hold the table
+// until the opponent answers them. Package-level so the triggered
+// item captures nothing.
 func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
@@ -140,7 +126,11 @@ func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	g.PlayerSacrificesForEffect(item.SourceCardID, victim,
 		sacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
 		"Archon of Cruelty — sacrifice a creature or planeswalker")
-	g.DiscardChoiceForEffect(victim, 1)
+	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: victim,
+		Source: item.SourceCardID,
+		N:      1,
+	})
 	if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -3); err != nil {
 		return err
 	}

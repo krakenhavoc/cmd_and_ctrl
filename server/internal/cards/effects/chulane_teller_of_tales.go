@@ -18,23 +18,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // owner's hand on resolution — so a bounced Clone goes back to whom
 // it belongs.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the land drop is not
-// offered. "You may put a land card from your hand onto the
-// battlefield" is a pick-from-hand at resolution, and the engine
-// has no prompt for it (the Eureka Moment / Broken Bond posture —
-// see broken_bond.go). The draw, which is the engine, is whole; the
-// ramp is absent rather than automated wrongly.
+// The land drop is the shared MayPutALandFromHand clause (#654),
+// sequenced after the draw exactly as printed, so a land just drawn
+// is a legal pick. It is a PUT, not a play (CR 305.4): Chulane ramps
+// on top of the turn's land drop rather than eating it, which is the
+// whole reason the commander is built around cheap creatures.
+//
+// Until #654 the clause was omitted and declared: the pick-from-hand
+// prompt existed (#552) but the hand-to-battlefield move did not.
 func init() {
 	Register(Spec{
 		OracleID:        "ebf7ce9b-9e5e-4557-9e28-76556997f0ee",
 		Name:            "Chulane, Teller of Tales",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The cast trigger only draws the card — it doesn't offer to put a land from your hand onto the battlefield."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return creatureSpellCastByYou(ev, source, g)
-			}, "Chulane, Teller of Tales — draw a card", Do(DrawCards{N: 1})),
+			}, "Chulane, Teller of Tales — draw a card, then you may put a land from your hand onto the battlefield",
+				Do(DrawCards{N: 1}, MayPutALandFromHand("Chulane, Teller of Tales"))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Return target creature you control to its owner's hand.",

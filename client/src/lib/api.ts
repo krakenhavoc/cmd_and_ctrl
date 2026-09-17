@@ -6,7 +6,13 @@ import {
   type ApiViolation,
   type Session,
 } from "./session";
-import type { BugLogEntry, BugReportContext, BugReportKind } from "./bugReport";
+import {
+  redactBugContext,
+  type BugLogEntry,
+  type BugReportContext,
+  type BugReportKind,
+} from "./bugReport";
+import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 
 // Re-export the violation shape so consumers of api.ts don't also
@@ -597,13 +603,21 @@ export interface BugReportDraft {
 //
 // Throws LobbyApiError on 400 (validation), 413 (too large), 429 (rate
 // limit), 502 (GitHub upstream failure), 503 (feature disabled).
+//
+// Every text field is redacted before it leaves the browser (#721): a
+// reporter who pastes their invite link into the description, or a log
+// line that slipped past the buffers, must not publish a credential in
+// the issue. The server redacts again, for clients older than this.
 export async function submitBugReport(draft: BugReportDraft): Promise<BugReportResult> {
   const report = {
-    title: draft.title,
+    title: redactSecrets(draft.title),
     kind: draft.kind,
-    description: draft.description,
-    context: draft.context,
-    log: draft.log && draft.log.length > 0 ? draft.log : undefined,
+    description: redactSecrets(draft.description),
+    context: redactBugContext(draft.context),
+    log:
+      draft.log && draft.log.length > 0
+        ? draft.log.map((e) => ({ ...e, text: redactSecrets(e.text) }))
+        : undefined,
   };
   let body: BodyInit;
   if (draft.images && draft.images.length > 0) {

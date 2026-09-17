@@ -90,20 +90,35 @@ var gameFields = plan(
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
 	"TurnTally", carried, "",
+	// #628 CR 726 loop breaker. Carried for the same reason the
+	// per-turn tallies are: a restore mid-loop that forgot the notice
+	// would come back with automatic passing live again, and the
+	// threshold is configuration a restore must not silently
+	// re-default.
+	"LoopNotice", carried, "",
+	"LoopThreshold", carried, "",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",
 	"PendingChoices", carried, "",
-	"Events", carried, "",
+	// The persisted snapshot copies the log; the undo CLONE shares
+	// its backing array and records the length, and RestoreFrom
+	// truncates to it (#629). Both restore the same log, which is
+	// what "carried" means here.
+	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
-	"rngState", carried, "marshalled via rngSnapshot",
+	// ADR 0054: the key and the per-turn stream counters ARE the
+	// randomness. Clone copies them (undo rewinds) and rngSnapshot
+	// carries them (a restore continues every stream).
+	"rngKey", carried, "rngSnapshot.Key",
+	"rngCounters", carried, "rngSnapshot.Counters",
+	"rngTurn", carried, "rngSnapshot.Turn",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
-	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
@@ -185,6 +200,9 @@ var cardFields = plan(
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
+	// #742: the colour named as the permanent entered. A player's
+	// choice, so nothing can rebuild it.
+	"ChosenColor", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and
@@ -247,6 +265,12 @@ var stackItemFields = plan(
 	"SourceCardID", carried, "",
 	"Label", carried, "",
 	"Targets", carried, "",
+	// #636 reflexive triggers: a pending trigger's payload is what
+	// the resolution that created it told it (the cards revealed,
+	// the creature sacrificed). Carried, and it has to be — the
+	// Effect reads its whole input from here, so a restore that lost
+	// it would resolve the trigger against nothing.
+	"Payload", carried, "",
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",
@@ -293,6 +317,9 @@ var pendingChoiceFields = plan(
 	// clone.go:135 — so the snapshot must carry it too, or a restored
 	// game would let the player spend restricted mana on anything.
 	"ManaRestrictions", carried, "",
+	// #742: how many tokens each colour of a one-pick-N-mana choice
+	// mints (Gilded Lotus). Without it a restored pick adds one.
+	"ManaAmounts", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"NoLegalTarget", carried, "",
@@ -334,6 +361,7 @@ var pendingChoiceFields = plan(
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 
@@ -457,6 +485,10 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
+		// are carried through these two with no plan entry; their zero
+		// value "" is right for a file written before them, so no
+		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
 		// Card.ExilePlay is one of these: CardSnapshot holds an
 		// ExilePlayPermission by value, so the type's fields never

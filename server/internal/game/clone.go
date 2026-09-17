@@ -9,9 +9,12 @@ import "github.com/google/uuid"
 // mutation cannot affect the receiver.
 //
 // Cloned state intentionally drops the rwmutex (a fresh receiver
-// owns its own) but preserves the captured rng pointer — so
-// re-applying a chain of actions on the clone uses the same
-// random source the original did, which is what tests expect.
+// owns its own) and COPIES the randomness: the RNG key and the
+// per-stream draw counters (rng.go). Undo therefore REWINDS the
+// random stream — restoring a clone and re-applying the same action
+// draws exactly what the undone action drew, so undo cannot be used
+// to reshuffle, re-roll or re-pick (ADR 0054 Decision 4, which
+// reversed the old "undo does not rewind" contract).
 
 // Clone returns a deep copy of the game suitable for stashing on the
 // undo stack and later replacing the live receiver via *g = *clone.
@@ -39,15 +42,22 @@ func (g *Game) cloneLocked() *Game {
 		UndoLimit:         g.UndoLimit,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
-		// Both halves of the randomness are shared, not copied, on
-		// exactly the contract the file header describes: a clone
-		// re-applying actions must draw from the source the original
-		// would have. Undo therefore does NOT rewind the random
-		// stream, which is deliberate and long-standing. Snapshot
-		// restore is the opposite — it captures the stream position
-		// and resumes from it. See snapshot.go.
-		rng:      g.rng,
-		rngState: g.rngState,
+		// #628: both halves of the CR 726 breaker. The threshold is
+		// configuration and copies by value; the notice is a per-turn
+		// fact an undo must be able to rewind past, so it gets its own
+		// pointer rather than sharing the live one.
+		LoopThreshold: g.LoopThreshold,
+		LoopNotice:    cloneLoopNotice(g.LoopNotice),
+		// The randomness is copied, not shared: the key by value
+		// (an array) and the counters deeply, because randForLocked
+		// increments the live map in place. The clone therefore
+		// remembers how many draws each stream had taken, and
+		// RestoreFrom puts that back — undo rewinds randomness, the
+		// same way a snapshot restore resumes it (ADR 0054
+		// Decisions 3-4).
+		rngKey:      g.rngKey,
+		rngCounters: cloneRNGCounters(g.rngCounters),
+		rngTurn:     g.rngTurn,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -145,6 +155,10 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #742: the per-colour amounts of a one-pick-N-mana
+			// choice. A map, so it needs its own copy for the same
+			// reason the slices do.
+			cloned.ManaAmounts = copyManaAmounts(c.ManaAmounts)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -171,17 +185,56 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			// #793: the replacement resume frame holds the in-flight
+			// ReplacementEvent, and answering the prompt MUTATES it —
+			// Doubling Season doubles CounterDelta in place, Rhox
+			// Faithmender doubles LifeDelta, and a life change's
+			// continuation is consumed as it runs. Sharing that event
+			// with the undo snapshot makes an UNDONE answer
+			// unrepeatable: the replay doubles an already-doubled
+			// value and finds the continuation gone. Giving the
+			// snapshot its own copy is what makes "undo the answer,
+			// answer again" land where answering once would.
+			//
+			// The gathered `applicable` list stays shared, like every
+			// other server-only frame on a PendingChoice: a resume
+			// reads it and never writes it.
+			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
-	// Event log: deep-copy by value (Event is pure-data, no pointers).
+	// Event log: SHARED, not copied (#629).
+	//
+	// The log is append-only and 184 bytes an entry, so the deep copy
+	// this used to be made every undo snapshot — one per action —
+	// cost O(events) in time and memory. A few thousand events is
+	// invisible; a long game or a trigger loop makes each action copy
+	// megabytes, and the total is quadratic in the length of the
+	// game.
+	//
+	// Sharing is safe because of what a snapshot does with the log:
+	// it only ever reads entries that already existed when it was
+	// taken, and entries never change after they are appended. The
+	// recorded length is the slice header's own len, and RestoreFrom
+	// truncating to it is what makes an undo drop exactly the events
+	// the undone action emitted.
+	//
+	// The three-index slice is the safety belt. Capping cap to len
+	// means a write through the snapshot — an append by some future
+	// caller that decides to mutate a clone — reallocates instead of
+	// scribbling into the live game's backing array past its length,
+	// and equally that the live game's appends after a RestoreFrom
+	// cannot rewrite entries an older snapshot still points at. The
+	// cost is one reallocation on the first event emitted after an
+	// undo, which is a rounding error against a copy per action.
+	//
+	// The persisted snapshot in snapshot.go is a different animal and
+	// still copies: it serialises to JSON and outlives the process.
+	//
 	// Listeners are process-lifetime singletons — shallow-copy the
 	// slice so the clone dispatches to the same subscribers the
 	// original did.
-	if len(g.Events) > 0 {
-		out.Events = make([]Event, len(g.Events))
-		copy(out.Events, g.Events)
-	}
+	out.Events = g.Events[:len(g.Events):len(g.Events)]
 	out.eventSeq = g.eventSeq
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
@@ -402,6 +455,13 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// A reflexive trigger's payload (#636): its own backing array for
+	// the same reason Targets gets one — an undo that shared it would
+	// let the restored game mutate the live one.
+	if len(s.Payload) > 0 {
+		out.Payload = make([]TargetRef, len(s.Payload))
+		copy(out.Payload, s.Payload)
+	}
 	if len(s.Modes) > 0 {
 		out.Modes = make([]int, len(s.Modes))
 		copy(out.Modes, s.Modes)
@@ -413,6 +473,53 @@ func cloneStackItem(s *StackItem) *StackItem {
 		}
 	}
 	return out
+}
+
+// cloneReplacementResume gives an undo snapshot its own copy of the
+// in-flight ReplacementEvent a paused CR 614 pipeline is sitting on.
+//
+// Only the EVENT is copied. The gathered `applicable` list is shared:
+// a resume reads it to decide what to fire and never writes it, and its
+// entries point at battlefield cards that the snapshot has its own
+// copies of anyway — the same shallow sharing every other server-only
+// resume frame on a PendingChoice already has.
+//
+// The event's zoneRoute is shared: it is written once by the entry
+// point before the pipeline runs and only ever read afterwards. What
+// the resume DOES write is the event's scalar payload — the counter
+// delta, the life delta, Canceled — and the lifeTail POINTER, which a
+// continuation clears as it runs. Both live in the struct this copies,
+// so the snapshot keeps the values the prompt was queued with. #793.
+//
+// The damageTail is the exception, and it is why it gets a copy of its
+// own (#807). Its continuation is cleared THROUGH the pointer —
+// runDamageTailLocked nils `then` on the tail rather than the tail on
+// the event, because the rest of the tail (the CR 120.3 target kind,
+// the deathtouch / lifelink / commander snapshot) is what
+// applyResolvedDamageLocked is still reading when it runs. Sharing the
+// struct would let the live game's run consume the snapshot's
+// continuation, so undoing the answer to a CR 616 prompt and answering
+// it again would land the damage and skip the rest of the card.
+func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	if f.ev != nil {
+		ev := *f.ev
+		if len(f.ev.EntersWithCounters) > 0 {
+			ev.EntersWithCounters = make(map[string]int, len(f.ev.EntersWithCounters))
+			for k, v := range f.ev.EntersWithCounters {
+				ev.EntersWithCounters[k] = v
+			}
+		}
+		if f.ev.damageTail != nil {
+			t := *f.ev.damageTail
+			ev.damageTail = &t
+		}
+		out.ev = &ev
+	}
+	return &out
 }
 
 func cloneVote(v *Vote) *Vote {
@@ -473,6 +580,15 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
+	// The event log is TRUNCATED to the snapshot's length, not
+	// copied back into place: src.Events is the same backing array
+	// this game has been appending to, capped at the length it had
+	// when the snapshot was taken (#629, see cloneLocked). Assigning
+	// it drops exactly the events the undone action emitted, and
+	// eventSeq rewinds with it so the next event carries the Seq the
+	// undone one did. TurnTally.FirstEvent is an index into this log
+	// and comes from the same snapshot, so it cannot point past the
+	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
 	g.Listeners = src.Listeners
@@ -481,8 +597,12 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
-	g.rng = src.rng
-	g.rngState = src.rngState
+	// The randomness rewinds with everything else: the key, the
+	// per-stream draw counters and the turn they belong to (ADR 0054
+	// Decision 4). Adopted like the other fields — src is consumed.
+	g.rngKey = src.rngKey
+	g.rngCounters = src.rngCounters
+	g.rngTurn = src.rngTurn
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot

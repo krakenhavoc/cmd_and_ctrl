@@ -448,7 +448,7 @@ func TestB18SpectralSailorDrawsForFourMana(t *testing.T) {
 	}
 }
 
-func TestB18EurekaMomentDrawsTwoAndDeclaresTheLandGap(t *testing.T) {
+func TestB18EurekaMomentDrawsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	hand := me.Hand.Size()
@@ -457,8 +457,8 @@ func TestB18EurekaMomentDrawsTwoAndDeclaresTheLandGap(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+2 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew two (+2)", hand, got)
 	}
-	if spec, _ := Lookup(b18EurekaMomentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the put-a-land gap must be declared")
+	if spec, _ := Lookup(b18EurekaMomentOracle); spec.Completeness != CompletenessFull {
+		t.Error("the put-a-land clause landed with #654; nothing is deferred any more")
 	}
 }
 
@@ -471,8 +471,8 @@ func TestB18ThirstForKnowledgeDrawsThreeThenOwesTwo(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+3 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew three (+3)", hand, got)
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Errorf("discard owed = %d, want 2", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Errorf("discard owed = %d, want 2", discardOwed(g, me.ID))
 	}
 	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessCaveats {
 		t.Error("the artifact-discard gap must be declared")
@@ -489,25 +489,25 @@ func TestB18ChartACourseDiscardsUnlessYouAttacked(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+2 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew two (+2)", hand, got)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Fatalf("no attack yet: discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Fatalf("no attack yet: discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
-	delete(g.DiscardPending, me.ID)
+	discardFromHand(t, g, me.ID)
 
 	attackWith(t, g, opp.ID, bear)
 	advanceTo(t, g, game.StepPostcombatMain)
 	castCatalogSpell(t, g, "Chart a Course", "Sorcery", b18ChartACourseOracle, nil)
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[me.ID] != 0 {
-		t.Errorf("attacked this turn: discard owed = %d, want 0", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 0 {
+		t.Errorf("attacked this turn: discard owed = %d, want 0", discardOwed(g, me.ID))
 	}
 	// A new turn forgets the attack.
 	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)
 	castCatalogSpell(t, g, "Chart a Course", "Sorcery", b18ChartACourseOracle, nil)
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("next turn: discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("next turn: discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 }
 
@@ -1165,8 +1165,10 @@ func TestB18MagdaMakesATappedTreasureOncePerTurnPerCrime(t *testing.T) {
 	if b16CountNamed(g, "Treasure") != 2 {
 		t.Error("a new turn, a new Treasure")
 	}
-	if spec, _ := Lookup(b18MagdaTheHoardmasterOrcl); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 0 {
-		t.Error("the Scorpion Dragon gap must be declared, and no activated ability ships")
+	// #747: the Scorpion Dragon ability ships at its printed count;
+	// its engine test is in sacrifice_n_cards_test.go.
+	if spec, _ := Lookup(b18MagdaTheHoardmasterOrcl); spec.Completeness != CompletenessFull || len(spec.Activated) != 1 {
+		t.Error("the Scorpion Dragon ability ships whole")
 	}
 }
 

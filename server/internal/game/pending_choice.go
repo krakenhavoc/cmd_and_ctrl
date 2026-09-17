@@ -18,11 +18,15 @@ import (
 // discarder case: the caster is Chooser, the target is FromPlayer.
 //
 // The existing S13.4 DiscardPending map stays for cleanup-step
-// max-hand-size discards (those are simpler: chooser == owner,
-// and the cursor auto-resumes when the map drains). Effect-
-// driven choices that go through PendingChoices keep resolving
-// asynchronously — the spell routes to graveyard immediately,
-// the pick is made later by a resolve_choice action.
+// max-hand-size discards and NOTHING else (#651): that one is a
+// turn-based action (CR 514.1), chooser == owner, and the cursor
+// auto-resumes when the map drains. An EFFECT's discard is part of
+// the resolving effect (CR 608.2c) and goes through this queue like
+// every other deferred decision — QueueDiscardChoiceForEffect. Two
+// obligations, two mechanisms, no shared map. Effect-driven choices
+// keep resolving asynchronously — the spell routes to graveyard
+// immediately, the pick is made later by a resolve_choice action —
+// but the table does not move on while one is open (choice_gate.go).
 //
 // Introduced in S14 sub-PR 5 as infrastructure for Thoughtseize.
 
@@ -324,6 +328,16 @@ type PendingChoice struct {
 	// S32 mana-pipeline pass (#352).
 	ManaRestrictions []string
 
+	// ManaAmounts is how many mana a PendingChoiceMana adds for each
+	// colour in ColorOptions — "{T}: Add three mana of any one color"
+	// (Gilded Lotus) is ONE pick minting three tokens, and Nyx Lotus's
+	// amount differs per colour (its devotion to that colour). nil, or
+	// a colour missing from the map, means one: every ordinary pick.
+	// Parsed from the produced-mana grammar's "{W3|U3}" form (see
+	// ParseProducedMana). Deep-copied by clone.go and carried by the
+	// snapshot. Added for #742.
+	ManaAmounts map[string]int
+
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
 	// PendingChoiceReplacementOrder entry. The resolve_choice
@@ -526,6 +540,13 @@ type PendingChoice struct {
 	// chained_choice.go.
 	chooseCardsResume *chooseCardsFrame
 
+	// chooseColorResume is the continuation for a resolution-time
+	// PendingChoiceColor (Wash Out's "return all permanents of the
+	// color of your choice"). nil for the stored form, whose answer is
+	// written onto the source permanent instead. Not serialised. See
+	// color_choice.go.
+	chooseColorResume *chooseColorFrame
+
 	// scryResume is the continuation for a PendingChoiceScry: the
 	// rest of the effect, which must not run until the player has
 	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the
@@ -634,6 +655,21 @@ type DamageAssignmentFrame struct {
 	// to avoid re-routing damage through the regular substep
 	// hook.
 	FirstStrike bool
+
+	// CombatStep is the Event.CombatStep value the pass that queued
+	// this prompt stamps on its damage: CombatStepFirstStrike,
+	// CombatStepRegular, or "" when no first-strike pass ran (#187,
+	// ADR 0053 Decision 1). The resume paths tag the attacker's
+	// assigned damage from it, through damageTailFromFrame.
+	//
+	// Not derivable from FirstStrike: a regular-pass prompt has
+	// FirstStrike false in a combat that had a first-strike pass
+	// ("regular") and in one that did not (""). Zero value "" means
+	// untagged, which is also what a prompt restored from a snapshot
+	// written before this field existed resumes as, so no snapshot
+	// schema bump. Server-side only: not projected onto
+	// DamageAssignmentView.
+	CombatStep string `json:",omitempty"`
 
 	// SourceLifelink is the cached lifelink state of the attacker
 	// at prompt-queue time. Captured here because the attacker may
@@ -813,27 +849,56 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.ManaPool.AddMana(ManaToken{
-		Color:  color,
-		Source: choice.Source,
-		// The choice carried the ability's restrictions here so the
-		// minted token gets them (#352). copyRestrictions because
-		// the choice is about to be dequeued and the token outlives
-		// it.
-		Restrictions: copyRestrictions(choice.ManaRestrictions),
-	})
-	g.EmitEvent(Event{
-		Kind:   EventManaAdded,
-		Actor:  chooserID,
-		Source: choice.Source,
-	})
+	// #742: "N mana of any one color" mints the picked colour's
+	// amount; an ordinary pick has no entry and mints one.
+	n := 1
+	if v, ok := choice.ManaAmounts[color]; ok {
+		n = v
+	}
+	for k := 0; k < n; k++ {
+		p.ManaPool.AddMana(ManaToken{
+			Color:  color,
+			Source: choice.Source,
+			// The choice carried the ability's restrictions here so
+			// the minted token gets them (#352). copyRestrictions
+			// because the choice is about to be dequeued and the
+			// token outlives it.
+			Restrictions: copyRestrictions(choice.ManaRestrictions),
+		})
+		g.EmitEvent(Event{
+			Kind:   EventManaAdded,
+			Actor:  chooserID,
+			Source: choice.Source,
+		})
+	}
 	g.dequeueChoiceLocked(idx)
 	return nil
 }
 
-// dequeueChoiceLocked drops the choice at index idx, preserving
-// slice order for the rest. Caller must hold g.mu.
+// dequeueChoiceLocked drops the choice at index idx because its
+// chooser ANSWERED it, preserving slice order for the rest. Every
+// Resolve* path ends here.
+//
+// #628: answering a prompt is a player decision, so it restarts the
+// CR 726 loop run. The engine's own prune paths call
+// dropChoiceLocked instead — a choice the engine withdrew is not a
+// decision anybody made, and counting it as one would let a loop
+// that queues and prunes a prompt each iteration run forever.
+//
+// Caller must hold g.mu.
 func (g *Game) dequeueChoiceLocked(idx int) {
+	if idx < 0 || idx >= len(g.PendingChoices) {
+		return
+	}
+	g.notePlayerDecisionLocked()
+	g.dropChoiceLocked(idx)
+}
+
+// dropChoiceLocked removes the choice at index idx without recording
+// a player decision: the engine withdrawing a prompt nobody answered
+// (a sacrifice choice whose card has left, a stale zone-change
+// prompt). Caller must hold g.mu.
+func (g *Game) dropChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
@@ -953,10 +1018,7 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // queueReplacementOrderPromptLocked queues a CR 616 order-choose
@@ -1168,10 +1230,7 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 	// S17 sub-PR 3 so Doubling Season + Hardened Scales actually
 	// land counters after the CR 616 prompt resolves.
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // applyResolvedReplacementEventLocked runs the underlying
@@ -1191,12 +1250,38 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 	case RepEventDraw:
 		return g.actuallyDrawCardLocked(ev.DrawPlayer)
 	case RepEventLife:
-		p := g.playerByIDLocked(ev.LifePlayer)
-		if p == nil {
-			return ErrPlayerNotFound
+		// #482: a life change carries everything its resume needs on
+		// the event itself — the player, the settled delta and the
+		// source the log credits — so it is finished by exactly the
+		// code the unpaused path runs. This branch used to be its own
+		// copy of the tail, and it was already one field behind: it
+		// emitted EventChangeLife with no Source, so a life change
+		// that paused lost the card that caused it. See life_tail.go.
+		err := g.applyResolvedLifeChangeLocked(ev)
+		if errors.Is(err, ErrPlayerNotFound) {
+			// The player left between the prompt and the answer. The
+			// life change simply does not happen — but the choice is
+			// already dequeued, so returning the error here would
+			// fail the action AND take the prompt away with nothing
+			// to show for it. Log it and move on.
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "life change dropped: its player is no longer in the game",
+			})
+			// #793: the rest of the effect still runs, with zero. A
+			// drain whose second opponent conceded during the prompt
+			// gains what the first one lost, not nothing.
+			return g.runLifeTailLocked(ev, 0)
 		}
-		p.ChangeLife(ev.LifeDelta)
-		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the tail deliberately skips
+		// happens here — a life change that put somebody at 0 is a
+		// CR 704.5a loss, and the unpaused paths get their sweep from
+		// the resolution bookend they run inside.
+		g.runStateChecksLocked()
 		return nil
 	case RepEventDamage:
 		// #694: a damage event that came through any entry point
@@ -1215,6 +1300,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			// already dequeued, so returning the error here would
 			// fail the player's action AND take their prompt away
 			// with nothing to show for it. Log it and move on.
+			//
+			// #807: the caller's continuation has already been run
+			// with zero by applyResolvedDamageLocked, for the same
+			// reason the life side runs its tail here — a batch
+			// adding up "the damage dealt this way" must not stall on
+			// the opponent who conceded during the prompt.
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "damage dropped: its target is no longer in the game",
@@ -1264,11 +1355,85 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		}
 		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
 	case RepEventStepTransition:
-		// Step-transition resumes land with sub-PR 4+ (Stasis
-		// skip-step). Sub-PR 6 doesn't add new prompt paths here.
+		// #710: finish the step entry the prompt interrupted, with
+		// the same code the unpaused path runs. A cancelled event is
+		// a skipped step (CR 500.11) — advance the cursor past it;
+		// an uncancelled one runs the step's turn-based action.
+		//
+		// This branch used to return nil for both, while
+		// runStepEntryHooksLocked fell through and ran the step
+		// anyway, so two skip-step replacements under one controller
+		// queued a prompt and then drew (or untapped) regardless.
+		if !g.stepEntryStillPendingLocked(ev) {
+			return nil
+		}
+		g.finishStepEntryLocked(ev.Canceled)
 		return nil
 	}
 	return nil
+}
+
+// stepEntryStillPendingLocked reports whether the step entry ev
+// paused is still the one the turn cursor is sitting on — i.e.
+// whether finishing it now finishes the transition that queued the
+// prompt rather than stamping an old answer onto a newer step.
+//
+// Nothing in the engine advances the cursor while a step-transition
+// prompt is outstanding (the step never begins, so it grants no
+// priority and runs no turn-based action), so this guard should never
+// fire. It is here because the consequence of being wrong is the
+// cursor jumping a step the table never saw, and because a resume
+// whose prompt was answered out of a snapshot restore or a replay is
+// exactly the shape #701 found for zone moves. Dropping the resume
+// leaves the cursor where it is, which a player can always advance.
+//
+// Caller must hold g.mu.
+func (g *Game) stepEntryStillPendingLocked(ev *ReplacementEvent) bool {
+	return ev != nil &&
+		g.Turn.Step == ev.StepTransitionStep &&
+		g.Turn.ActiveSeat == ev.StepTransitionSeat
+}
+
+// finishSettledReplacementLocked is the single "the apply-loop has
+// settled — now finish the event" call the CR 616 / CR 614.10 resumes
+// make. `ev` is the event the resume has been holding; `out` is what
+// applyReplacementsLocked handed back (nil when cancelled).
+//
+// Cancelling means "the mutation simply does not happen" for every
+// event kind but one. A cancelled STEP TRANSITION is not nothing: by
+// CR 500.11 it is a SKIPPED step, and skipping is an action — the
+// turn cursor has to move past it, which only the step-entry resume
+// can do. Returning nil for every cancelled event is what left
+// two skip-step replacements queueing a prompt whose answer changed
+// nothing (#710).
+//
+// Caller must hold g.mu.
+func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
+	if out != nil && !out.Canceled {
+		return g.applyResolvedReplacementEventLocked(out)
+	}
+	if ev == nil {
+		return nil
+	}
+	// #793: a cancelled LIFE change is still an answer to whoever
+	// asked for it. "You gain life equal to the life lost this way"
+	// gains nothing when the loss was replaced away — but a drain
+	// adding up several players' losses has to be told so, or it waits
+	// on this one forever.
+	if ev.Kind == RepEventLife {
+		return g.runLifeTailLocked(ev, 0)
+	}
+	// #807: and the same for a cancelled DAMAGE event. "You gain life
+	// equal to the damage dealt this way" gains nothing when a Fog ate
+	// the damage, and the batch behind Creeping Bloodsucker has to be
+	// told so before it can move on to the next opponent.
+	if ev.Kind == RepEventDamage {
+		return g.runDamageTailLocked(ev, 0)
+	}
+	if ev.Kind != RepEventStepTransition {
+		return nil
+	}
+	return g.applyResolvedReplacementEventLocked(ev)
 }
 
 // QueueDiscardFromRevealedHand is the Thoughtseize entry point.
@@ -2247,7 +2412,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 			}
 		}
 		if len(live) == 0 {
-			g.dequeueChoiceLocked(i)
+			g.dropChoiceLocked(i)
 			continue
 		}
 		c.SacrificeOptions = live
@@ -2329,7 +2494,7 @@ func (g *Game) pruneStaleZoneChangeChoicesLocked() {
 			continue
 		}
 		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
-		g.dequeueChoiceLocked(i)
+		g.dropChoiceLocked(i)
 	}
 }
 

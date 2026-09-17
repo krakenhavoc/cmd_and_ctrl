@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Insidious Fungus — Creature — Fungus {G}, 1/2 (EDHREC rank 1900):
 //
 //	"{2}, Sacrifice this creature: Choose one —
@@ -17,19 +15,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // 700.2), and the client's ability menu is the mode picker. The two
 // removal modes are targeted; the third is not.
 //
-// Sandbox simplification, declared (the Stoneforge Mystic posture):
-// the third mode's "you may put a land card from your hand onto the
-// battlefield tapped" is not implemented — a pick-from-hand prompt
-// with a hand-to-battlefield move does not exist (the Growth Spiral
-// gap). That mode draws its card and stops. Weaker than printed,
-// never stronger.
+// The third mode's "then you may put a land card from your hand onto
+// the battlefield TAPPED" is the shared clause from #654, in its
+// tapped form: the land arrives tapped out of the CR 614 entry
+// pipeline rather than being tapped afterwards, so nothing that
+// watches for a tap sees one. It is a put, not a play (CR 305.4), so
+// the turn's land drop is untouched.
+//
+// Until #654 the clause was omitted and declared: the pick-from-hand
+// prompt existed (#552) but the hand-to-battlefield move did not.
 func init() {
 	fungusCost := Plus(ManaCost("{2}"), SacrificeThis())
 	Register(Spec{
 		OracleID:     "0a8d0217-ff24-4177-b6be-707eb2b6b9e9",
 		Name:         "Insidious Fungus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The third mode only draws the card — it doesn't offer to put a land from your hand onto the battlefield."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{2}, Sacrifice Insidious Fungus: Destroy target artifact",
@@ -44,11 +44,12 @@ func init() {
 				Effect:  destroyFirstLegalTarget,
 			},
 			{
-				Label: "{2}, Sacrifice Insidious Fungus: Draw a card",
+				Label: "{2}, Sacrifice Insidious Fungus: Draw a card, then you may put a land from your hand onto the battlefield tapped",
 				Cost:  fungusCost,
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				},
+				Effect: Do(
+					DrawCards{N: 1},
+					MayPutALandFromHandTapped("Insidious Fungus"),
+				),
 			},
 		},
 	})

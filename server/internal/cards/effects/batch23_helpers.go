@@ -75,13 +75,11 @@ func b23NoCreaturesOnBattlefield(g *game.Game) bool {
 }
 
 // b23IsYourTurn reports whether the source's controller is the
-// active player — "during your turn".
+// active player — "during your turn". The body moved to IsYourTurn
+// (activation_conditions.go, #743), which the activation conditions
+// share; this name stays for its existing callers.
 func b23IsYourTurn(g *game.Game, controller uuid.UUID) bool {
-	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
-		return false
-	}
-	active := g.Seats[g.Turn.ActiveSeat]
-	return active != nil && active.ID == controller
+	return IsYourTurn(g, controller)
 }
 
 // b23ElfYouControlBecameTappedFirstTimeThisTurn is the condition of

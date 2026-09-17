@@ -1218,18 +1218,26 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			if color == "" {
 				continue
 			}
-			// Restrictions ride here too. autoTapAbilityFor already
-			// refuses restricted abilities, so this is belt-and-
-			// braces — but "the auto-tapper is the one path that
-			// mints unrestricted copies of restricted mana" is
-			// precisely the bug #259 warns about, and one line is
-			// cheaper than trusting a filter two files away.
-			p.ManaPool.AddMana(ManaToken{
-				Color:        color,
-				Source:       cardID,
-				Restrictions: restrictionsFor(g, ab, p.ID, cardID),
-			})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+			// #742: a one-colour-N-mana slot adds all N of the picked
+			// colour. The planner never selects such a source
+			// (gatherTapSources skips it), so this is only reached if
+			// that changes — and then it must still mint the amount
+			// the printed card does, not one.
+			for k := 0; k < slot.AmountFor(color); k++ {
+				// Restrictions ride here too. autoTapAbilityFor
+				// already refuses restricted abilities, so this is
+				// belt-and-braces — but "the auto-tapper is the one
+				// path that mints unrestricted copies of restricted
+				// mana" is precisely the bug #259 warns about, and one
+				// line is cheaper than trusting a filter two files
+				// away.
+				p.ManaPool.AddMana(ManaToken{
+					Color:        color,
+					Source:       cardID,
+					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
+				})
+				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+			}
 		}
 	}
 }
@@ -1316,12 +1324,18 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if !ok {
 		return ParsedCost{}, ErrZoneNotFound
 	}
+	//
+	// The targets ride along because CR 601.2c announces them before
+	// 601.2f totals the cost, and CastSpell has validated them by now.
+	// Only a modifier that declares ReadsTargets ever sees them
+	// (ADR 0048 addendum §13).
 	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
 		FromZone:   fromZone,
 		XValue:     params.XValue,
+		Targets:    params.Targets,
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -2559,9 +2573,29 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
 // card to its owner's graveyard, clearing battlefield-only state
-// (combat declarations and damage marked are zeroed by MoveCard's
-// CR 400.7 cleanup; we additionally clear DamageMarked here since
-// MoveCard predates the field). Used by SBAs that destroy creatures.
+// (combat declarations and position are zeroed by MoveCard's CR 400.7
+// cleanup; DamageMarked is cleared by executeBattlefieldLeaveLocked,
+// since MoveCard predates the field). Used by SBAs that destroy
+// creatures, by every effect destroy, and — because sacrifice is also
+// a battlefield exit, though it is not destruction — by sacrifice.go.
+//
+// #708: THE DAMAGE IS NOT CLEARED HERE. It used to be, on the line
+// that found the owner, which is BEFORE the CR 614 window below has
+// had a chance to replace the exit. Two things were wrong with that.
+// A replacement that keeps the permanent on the battlefield left it
+// standing with its damage erased — and damage stays marked until the
+// cleanup step (CR 514.2), not until something tried to destroy it —
+// so the CR 704.5g lethal-damage check would not see it again. And a
+// replacement that wants to READ how much damage is on the permanent
+// ("if it would be destroyed, instead …") was handed a zero.
+//
+// So the clear moved to the LANDED outcome, executeBattlefieldLeaveLocked,
+// which is the same terminal-outcome shape damage_tail.go and
+// life_tail.go use: the mutation happens where the event actually
+// resolves, and the paused and unpaused paths reach it through one
+// function. Regeneration, when it ships, removes the damage in its own
+// replacement (CR 701.15a says the shield does it), not as a side
+// effect of the destroy path.
 //
 // If the owner is no longer seated, the card lands in exile so the
 // engine doesn't carry a stale reference. Caller must hold g.mu.
@@ -2570,10 +2604,6 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			owner = g.playerByIDLocked(g.Battlefield.Cards[i].Owner)
-			// Zero battlefield-only state in place before the move.
-			// MoveCard handles tapped + counters + position via
-			// existing CR 400.7 cleanup, but DamageMarked is new.
-			g.Battlefield.Cards[i].DamageMarked = 0
 			break
 		}
 	}
@@ -2621,6 +2651,12 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 // out of routeBattlefieldCardToOwnerGraveyardLocked so the resume
 // path (ResolveOptionalReplacement → applyResolvedReplacementEventLocked)
 // shares the same implementation.
+//
+// #708: this is also where DamageMarked is cleared, because this is
+// the one place the permanent actually LEAVES. A destruction that a
+// replacement turned into something else never gets here, and a
+// permanent that is still on the battlefield keeps its damage until
+// the cleanup step (CR 514.2) like every other damaged permanent.
 //
 // Caller must hold g.mu.
 func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
@@ -2687,6 +2723,18 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
+	// #708: the damage goes now, and only now. MoveCard's CR 400.7
+	// cleanup handles tapped, counters, position and the combat
+	// declarations; DamageMarked postdates it and is cleared here.
+	//
+	// Before the LKI snapshot, so the last-known information a
+	// dies-trigger reads is byte-for-byte what it was before this
+	// moved — the clear used to happen even earlier (at the top of
+	// routeBattlefieldCardToOwnerGraveyardLocked) and nothing has ever
+	// seen a dying permanent's damage. Moving WHERE it is cleared is
+	// this fix; changing what LKI shows is not, and would be its own
+	// decision.
+	g.clearBattlefieldDamageLocked(cardID)
 	g.snapshotLKILocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
@@ -2764,20 +2812,14 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 		// (undo a mark) is a legitimate use of it.
 		damageTail: &damageTail{kind: damageTailManualMark},
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
+	paused, err := g.damageThroughReplacementsLocked(ev)
+	if err != nil {
 		return err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
+	if paused {
+		// CR 616 ordering prompt queued; the mark lands from the
+		// resume, which runs its own sweep.
 		return nil
-	}
-	if err := g.applyResolvedDamageLocked(out); err != nil {
-		return err
 	}
 	// The sandbox verb is its own action boundary, so it owes the SBA
 	// sweep the tail deliberately does not run (see damage_tail.go).
@@ -3468,8 +3510,14 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
 	// every component was validated above.
+	//
+	// #793: the cost path. A mana ability resolves immediately and
+	// without the stack (CR 605.3b), so Mana Confluence's life cannot
+	// be left waiting on a CR 616 prompt with the mana already in the
+	// pool. The CR 614 window still runs — paying life is losing life
+	// (CR 119.4) — it just settles in one step.
 	if ab.LifeCost > 0 {
-		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.LifeCost); err != nil {
+		if err := g.PayLifeForEffect(cardID, playerID, ab.LifeCost); err != nil {
 			return err
 		}
 		needStateChecks = true
@@ -3481,10 +3529,10 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
 	if len(sacrifices) > 0 {
-		for _, id := range sacrifices {
-			if err := g.sacrificePermanentLocked(id); err != nil {
-				return err
-			}
+		// One payment, one simultaneous exit (#747): a Blood Artist
+		// paid in alongside another creature sees both deaths.
+		if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below
 		// touches it (the produced-mana path reads `ab`).
@@ -3578,6 +3626,8 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Reason:           ab.Label,
 			ColorOptions:     filtered,
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
+			// #742: "N mana of any one color" — one pick, N tokens.
+			ManaAmounts: copyManaAmounts(slot.Amounts),
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -3973,6 +4023,14 @@ func (g *Game) PassPriority() error {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
+	}
+	// #730: an unanswered prompt gates the table. Every pass is
+	// refused, not only the one that would wrap into a step advance —
+	// a pass that resolves the top of the stack moves the game on
+	// just as surely, and the enumerator has always modelled the rule
+	// this way. See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return choicePendingErrorLocked(c)
 	}
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
@@ -4394,11 +4452,20 @@ func (g *Game) ResolveCombatDamage() {
 }
 
 // resolveCombatDamageLocked runs combat damage as two substeps
-// (CR 510.2 + 510.3). First-strike and double-strike creatures assign
-// in the first substep; SBA fires between; regular + double-strike
-// creatures assign in the second. A creature that died in the first
-// substep does not participate in the second — collectCombatants
-// re-reads live battlefield state each call.
+// (CR 510.4: a combat with a first-strike or double-strike creature has
+// two combat damage steps). First-strike and double-strike creatures
+// assign in the first substep; SBA fires between; regular +
+// double-strike creatures assign in the second. A creature that died in
+// the first substep does not participate in the second —
+// collectCombatants re-reads live battlefield state each call.
+//
+// Combat step tag (#187, ADR 0053 Decision 1): when the first-strike
+// substep runs, every combat damage event of this step is stamped with
+// Event.CombatStep — CombatStepFirstStrike for the first pass,
+// CombatStepRegular for the second. When it does not run, the step is
+// "" and nothing is tagged, so the tag's presence alone says there
+// were two beats. The value is passed down as an argument, never kept
+// on Game.
 //
 // Each substep delegates to assignAndDealCombatDamageLocked which
 // handles unblocked straight-to-player damage, single-blocker damage
@@ -4414,10 +4481,13 @@ func (g *Game) resolveCombatDamageLocked() {
 	// no relevant event has fired since the last recompute.
 	g.RecomputeLayersIfStaleLocked()
 
-	// Substep 1 — first-strike damage (CR 510.2). Creatures with
+	// Untagged unless the first-strike substep runs.
+	regularStep := ""
+
+	// Substep 1 — first-strike damage (CR 510.4). Creatures with
 	// first strike or double strike participate.
 	if g.hasAnyFirstStrikeCombatants() {
-		g.assignAndDealCombatDamageLocked(true)
+		g.assignAndDealCombatDamageLocked(CombatStepFirstStrike)
 		// SBA + trigger drain between substeps so creatures that
 		// died to first-strike damage exit before the regular pass.
 		g.runStateChecksLocked()
@@ -4425,11 +4495,12 @@ func (g *Game) resolveCombatDamageLocked() {
 		// ability (anthem off the field, etc.) and its absence
 		// affects the regular-substep attackers/blockers.
 		g.RecomputeLayersIfStaleLocked()
+		regularStep = CombatStepRegular
 	}
 
-	// Substep 2 — regular damage (CR 510.3). Creatures with
+	// Substep 2 — regular damage (CR 510.4). Creatures with
 	// double strike (re-hit) OR without first strike.
-	g.assignAndDealCombatDamageLocked(false)
+	g.assignAndDealCombatDamageLocked(regularStep)
 	g.runStateChecksLocked()
 
 	// Combat state is intentionally left in place. AdvanceStep's
@@ -4470,9 +4541,12 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 }
 
 // assignAndDealCombatDamageLocked assigns and applies damage for one
-// substep. Builds per-attacker blocker lists (filtered to
-// substep-participating blockers), snapshots power, then iterates
-// attackers:
+// substep. step is the substep's Event.CombatStep value:
+// CombatStepFirstStrike selects the first-strike substep, and anything
+// else ("" or CombatStepRegular) is the regular substep, tagged only
+// when a first-strike substep ran before it. Builds per-attacker
+// blocker lists (filtered to substep-participating blockers),
+// snapshots power, then iterates attackers:
 //
 //   - Unblocked → straight to AttackingTarget via
 //     markCombatDamageToPlayerLocked.
@@ -4493,7 +4567,9 @@ func participatesInSubstep(c *Card, firstStrike bool) bool {
 // subsequent blocker list reflects the final legal state.
 //
 // Caller must hold g.mu.
-func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
+func (g *Game) assignAndDealCombatDamageLocked(step string) {
+	firstStrike := step == CombatStepFirstStrike
+
 	// Menace close-out: scan attackers, if any has menace and
 	// exactly one blocker assigned, revert that blocker.
 	menaceReversions := 0
@@ -4578,7 +4654,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 		if atkParticipates {
 			if len(liveBlockers) == 0 {
 				if atkPower > 0 {
-					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower)
+					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower, step)
 				}
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
@@ -4601,10 +4677,10 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 						toPlayer = atkPower - lethalThreshold
 					}
 					if toBlocker > 0 {
-						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID)
+						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID, step)
 					}
 					if toPlayer > 0 {
-						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer)
+						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
 					}
 				}
 			} else {
@@ -4614,7 +4690,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 				// applied. Blocker damage still flows (simultaneous)
 				// because blockers deal power back regardless of
 				// attacker's assignment (CR 510.1d).
-				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, firstStrike)
+				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, step)
 			}
 		}
 
@@ -4633,7 +4709,7 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 			if blkPower <= 0 {
 				continue
 			}
-			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID)
+			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
 		}
 	}
 }
@@ -4647,15 +4723,21 @@ func (g *Game) assignAndDealCombatDamageLocked(firstStrike bool) {
 // the same pipeline helpers so lifelink / deathtouch / Fog-style
 // replacement all fire uniformly.
 //
+// step is the queuing substep's Event.CombatStep value. It is stored on
+// the frame as-is ("" when no first-strike substep ran) so the resume
+// tags the assigned damage the way the same substep's direct paths are
+// tagged; FirstStrike is kept alongside it for #702.
+//
 // Caller must hold g.mu.
-func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, firstStrike bool) {
+func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) {
 	frame := &DamageAssignmentFrame{
 		AttackerID:        atk.InstanceID,
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
 		AttackerPower:     atkPower,
 		AllowTrample:      HasKeyword(atk, "trample"),
 		HasDeathtouch:     HasKeyword(atk, "deathtouch"),
-		FirstStrike:       firstStrike,
+		FirstStrike:       step == CombatStepFirstStrike,
+		CombatStep:        step,
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
@@ -4680,7 +4762,10 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 // S17 sub-PR 5: routes through the CR 614 replacement pipeline with
 // IsCombatDamage=true so Fog-class prevention effects intercept.
 // Damage can be modified (reduced) or canceled entirely.
-func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID) {
+//
+// step is the substep's Event.CombatStep value (#187). It rides the
+// damage tail, so a CR 616 pause keeps it.
+func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID, step string) {
 	if amount <= 0 {
 		return
 	}
@@ -4699,29 +4784,18 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 		// resumes — reading the keywords afterwards would silently
 		// lose both riders. Same reasoning the DamageAssignmentFrame
 		// paths have always used.
-		damageTail: g.combatDamageTailLocked(damageTailPermanent, source),
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// CR 616 ordering prompt queued. The damage lands when it is
-		// answered, through the same tail this function would have
-		// run (#694) — before that it was dropped on the floor.
-		return
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return
+		damageTail: g.combatDamageTailLocked(damageTailPermanent, source, step),
 	}
 	// S27 (#406): what the damage DOES depends on what the permanent
 	// is — marked on a creature, loyalty off a planeswalker, defense
 	// off a battle (CR 120.3). See permanent_damage.go. No SBA here:
 	// all combat damage is simultaneous (CR 510.2) and the resolver
 	// sweeps once after the whole step.
-	_ = g.applyResolvedDamageLocked(out)
+	//
+	// A CR 616 ordering prompt lands the damage from the resume,
+	// through the same tail this call would have run (#694) — before
+	// that it was dropped on the floor.
+	_, _ = g.damageThroughReplacementsLocked(ev)
 }
 
 // markCombatDamageFromFrameLocked is the damage-to-creature router
@@ -4748,22 +4822,10 @@ func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, fra
 		// it rather than from a battlefield lookup.
 		damageTail: damageTailFromFrame(damageTailPermanent, frame),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// CR 616 ordering prompt queued; the damage lands through the
-		// same tail when it is answered (#694).
-		return
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return
-	}
-	// S27 (#406): same CR 120.3 split the direct path uses.
-	_ = g.applyResolvedDamageLocked(out)
+	// S27 (#406): same CR 120.3 split the direct path uses. A CR 616
+	// ordering prompt lands the damage through the same tail when it
+	// is answered (#694).
+	_, _ = g.damageThroughReplacementsLocked(ev)
 }
 
 // markCombatDamageToPlayerFromFrameLocked is the damage-to-player
@@ -4791,28 +4853,19 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 		// resolved.
 		damageTail: damageTailFromFrame(damageTailPlayer, frame),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// CR 616 ordering prompt queued; the damage lands through the
-		// same tail when it is answered (#694).
-		return
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return
-	}
-	_ = g.applyResolvedDamageLocked(out)
+	// A CR 616 ordering prompt lands the damage through the same tail
+	// when it is answered (#694).
+	_, _ = g.damageThroughReplacementsLocked(ev)
 }
 
 // markCombatDamageToPlayerLocked applies combat damage to a player
 // via the replacement pipeline (Fog-class prevention + future
 // lifelink / redirect hooks). Zeroes out if canceled. Caller must
 // hold g.mu. Added in S17 sub-PR 5.
-func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int) {
+//
+// step is the substep's Event.CombatStep value (#187). It rides the
+// damage tail, so a CR 616 pause keeps it.
+func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int, step string) {
 	if amount <= 0 {
 		return
 	}
@@ -4828,24 +4881,12 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 		// instance ID since S25 / #77) and CR 702.15 lifelink both
 		// ride on it, and a CR 616 prompt is answered after the rest
 		// of the combat damage has landed.
-		damageTail: g.combatDamageTailLocked(damageTailPlayer, source),
+		damageTail: g.combatDamageTailLocked(damageTailPlayer, source, step),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// CR 616 ordering prompt queued; the damage lands through the
-		// same tail when it is answered (#694). Before that fix this
-		// return dropped the life loss entirely.
-		return
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return
-	}
-	_ = g.applyResolvedDamageLocked(out)
+	// A CR 616 ordering prompt lands the damage through the same tail
+	// when it is answered (#694). Before that fix the pause dropped the
+	// life loss entirely.
+	_, _ = g.damageThroughReplacementsLocked(ev)
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
@@ -4967,6 +5008,13 @@ func (g *Game) PassTurn() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #730: gated for the same reason advance_step is, and more so —
+	// this verb walks the cursor through every remaining step of the
+	// turn. A prompt left open behind it is unanswerable in practice.
+	// See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return choicePendingErrorLocked(c)
+	}
 	// Jump to this turn's cleanup and wrap through the shared seam so
 	// eliminated seats are skipped and per-turn caches clear.
 	g.Turn.Step = StepCleanup
@@ -5007,7 +5055,7 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		p.Library.PushTop(c)
 	}
 	p.Hand.Cards = nil
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	// S13.5: shuffle wipes per-card knowledge across hand + library
 	// (the hand cards are now indistinguishable from the rest of the
 	// shuffled pile from the opponent's perspective, and the owner
@@ -5082,8 +5130,8 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 }
 
 // ShuffleLibrary reshuffles the given player's library in place,
-// using the RNG captured by Start so deterministic test runs stay
-// deterministic. S13.5: clears KnownBy on every library card —
+// drawing from the player's shuffle stream (rng.go), so seeded test
+// runs stay deterministic and an undone shuffle redoes identically. S13.5: clears KnownBy on every library card —
 // any prior scry / top-of-library knowledge dissolves with the
 // shuffle (CR 701.24 + the per-instance KnownBy invariant).
 func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
@@ -5096,7 +5144,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
 	return nil
@@ -5104,49 +5152,41 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 
 // ChangePlayerLife adjusts a player's life total by delta (positive
 // for gain, negative for loss) and returns the new total.
+//
+// The sandbox verb: a player dragging their own life counter. It has
+// run the CR 614 window since S17 sub-PR 2, and since #482 so does
+// every other writer of a life total — all of them land in the one
+// tail in life_tail.go, so a hand-typed life change and a catalog
+// GainLife can no longer disagree about which replacements apply.
+//
+// A CR 616 ordering prompt returns (0, nil): the change lands from the
+// resume when the affected player answers, and there is no new total
+// to report yet.
 func (g *Game) ChangePlayerLife(playerID uuid.UUID, delta int) (int, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return 0, ErrGameNotActive
 	}
-	// S17 sub-PR 2: replacement pipeline — no catalog life-change
-	// replacements yet, so behavior is byte-for-byte identical to
-	// pre-S17. A CR 616 prompt path is a no-op for sub-PR 2 (the
-	// caller sees newLife=0 and no error; the pipeline resumes
-	// when the prompt resolves).
 	ev := &ReplacementEvent{
 		Kind:       RepEventLife,
 		LifePlayer: playerID,
 		LifeDelta:  delta,
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		return 0, nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
+	paused, err := g.changeLifeThroughReplacementsLocked(ev)
+	if err != nil {
 		return 0, err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		p := g.playerByIDLocked(playerID)
-		if p == nil {
-			return 0, ErrPlayerNotFound
-		}
-		return p.Life, nil
+	if paused {
+		return 0, nil
 	}
-	p := g.playerByIDLocked(out.LifePlayer)
+	// Read back off the event rather than the argument: a replacement
+	// is free to have redirected the change to someone else.
+	p := g.playerByIDLocked(ev.LifePlayer)
 	if p == nil {
 		return 0, ErrPlayerNotFound
 	}
-	newLife := p.ChangeLife(out.LifeDelta)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: out.LifePlayer,
-		Amount: out.LifeDelta,
-	})
-	return newLife, nil
+	return p.Life, nil
 }
 
 // AddCounter modifies a named counter on a card by delta. Creates the

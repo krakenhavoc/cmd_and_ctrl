@@ -131,10 +131,11 @@ type ManaAbilityShape struct {
 	// SacrificeCost sacrifices the SOURCE as part of the cost
 	// (Treasure, Lotus Petal, an Eldrazi Spawn).
 	SacrificeCost bool
-	// SacrificeOther sacrifices one OTHER permanent the activator
+	// SacrificeOther sacrifices OTHER permanents the activator
 	// controls, matched against this spec — Ashnod's Altar's
-	// "Sacrifice a creature". The activator names it in
-	// ManaAbilityParams.SacrificeIDs.
+	// "Sacrifice a creature". The activator names them in
+	// ManaAbilityParams.SacrificeIDs; the spec's Min == Max is how
+	// many (#747), 1 for every one-permanent constructor.
 	//
 	// Distinct from SacrificeCost because the two compose: a card
 	// could in principle eat itself and something else. The source

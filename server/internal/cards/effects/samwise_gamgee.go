@@ -16,22 +16,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // another creature the controller controls entered, tokens excluded
 // — and the shared Food template.
 //
-// Declared simplification (weaker than printed): the second ability
-// is not offered. "Sacrifice three Foods" is a cost that sacrifices
-// three permanents, and the engine's sacrifice-cost component pays
-// exactly one (validateSacrificeCostLocked); a cost with no shape is
-// left out rather than priced at one Food (#259). The seam is a
-// counted SacrificeOther.
+// "Sacrifice three Foods" is a sacrifice cost with a count of three
+// (#747, SacrificeN), paid at announce. The target is chosen with the
+// activation and checked again on resolution; "historic" is the
+// artifact / legendary / Saga predicate the Jhoira cards share.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "7ce37c26-91ea-493f-bfc3-a890d4538bc1",
 		Name:         "Samwise Gamgee",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The second ability isn't available — a cost can't sacrifice three Foods, so historic cards can't be returned from your graveyard."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherNontokenCreatureYouControlEntered(ev, source, g)
 			}, "Samwise Gamgee — create a Food token", Do(CreateToken{Template: FoodToken(), N: 1})),
 		},
+		Activated: []ActivatedAbility{{
+			Label:   "Sacrifice three Foods: Return target historic card from your graveyard to your hand.",
+			Cost:    SacrificeN(3, "three Foods", HasSubtype("Food")),
+			Targets: TargetCardInGraveyard("target historic card from your graveyard", YouOwn(), b14Historic()),
+			Effect:  returnFirstLegalGraveyardTargetToHand,
+		}},
 	})
 }

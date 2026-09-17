@@ -355,6 +355,11 @@ func TestB22AethericAmplifierTapsForAnyColourAndDoublesCounters(t *testing.T) {
 	if pick == nil || len(pick.ColorOptions) != 5 {
 		t.Fatalf("any colour, the printed width, got %+v", pick)
 	}
+	// #730: an unanswered colour pick gates the cursor, and this test
+	// walks the turn on below. The colour itself is beside the point.
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
 	b22Untap(g, amp)
 	theirs := pushCounterCreature(g, opp.ID, "Their Hydra", "+1/+1", 3)
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(theirs, "charge", 1) })
@@ -613,9 +618,11 @@ func TestB22SamwiseGamgeeMakesFoodForNontokenCreatures(t *testing.T) {
 	if countBattlefieldNamed(g, me.ID, "Food") != 1 {
 		t.Errorf("tokens, opponents' creatures and artifacts do not make Food, got %d", countBattlefieldNamed(g, me.ID, "Food"))
 	}
+	// #747: the three-Food ability ships at its printed count; its
+	// engine test is in sacrifice_n_cards_test.go.
 	spec, _ := Lookup(b22SamwiseGamgeeOracle)
-	if len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the three-Food ability is a declared gap, not a one-Food ability")
+	if len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the three-Food ability ships whole")
 	}
 }
 

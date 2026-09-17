@@ -70,6 +70,23 @@ type TurnTally struct {
 	// Triggered counts triggered abilities announced onto
 	// PendingTriggers this turn, keyed the same way.
 	Triggered map[string]int `json:"triggered,omitempty"`
+	// EnteredSubtypes counts the permanents that entered the
+	// battlefield this turn, per the player they entered under and per
+	// subtype they had as they entered, keyed by enteredSubtypeKey. A
+	// permanent with every creature type (changeling, CR 702.73a) is
+	// counted once under enteredAllCreatureTypes instead of once per
+	// creature type. Read through Game.EnteredWithSubtypeThisTurn.
+	// Recorded at the entry because the question is about the object
+	// as it entered: one that has since died, or since gained or lost
+	// a type, answers as it was then (#743, Lilypad Village).
+	EnteredSubtypes map[string]int `json:"enteredSubtypes,omitempty"`
+	// LoopRun is Resolved restarted at every player decision: the
+	// CR 726 loop breaker's count of how many times one ability has
+	// resolved with nobody casting, activating, answering a prompt
+	// or declaring a creature in between. Reset to nil by
+	// notePlayerDecisionLocked; read by loopSuspectedLocked and
+	// nothing else. See loop_breaker.go (#628).
+	LoopRun map[string]int `json:"loopRun,omitempty"`
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
@@ -115,6 +132,77 @@ func sumTally(m map[string]int, source uuid.UUID, label string) int {
 	return n
 }
 
+// enteredAllCreatureTypes is the EnteredSubtypes key suffix for a
+// permanent that entered with every creature type. Not a subtype
+// anyone can print, so it never collides with a real one.
+const enteredAllCreatureTypes = "*"
+
+// enteredSubtypeKey names one (player, subtype) cell of
+// TurnTally.EnteredSubtypes. Subtypes are compared case-insensitively,
+// as everywhere else in the engine.
+func enteredSubtypeKey(player uuid.UUID, subtype string) string {
+	return player.String() + "|" + strings.ToLower(subtype)
+}
+
+// EnteredWithSubtypeThisTurn reports how many permanents entered the
+// battlefield under playerID's control this turn having `subtype` as
+// they entered — "if a Bird, Frog, Otter, or Rat entered the
+// battlefield under your control this turn" (Lilypad Village), "for
+// each Goblin that entered under your control this turn". A permanent
+// that had every creature type counts for any creature type.
+//
+// "As they entered" is the characteristics the permanent carried at
+// its EventETB: its printed values, with a copy effect it entered
+// under (CR 707.2) and the face it entered on already applied. The
+// layer cache is rebuilt after an entry, not during it, so continuous
+// effects from static abilities are NOT part of that reading. That
+// makes a type GRANTED at the moment of entry invisible — a Soldier
+// that entered while its controller's Maskwood Nexus was on the
+// battlefield counts as a Soldier only, where the printed rules count
+// it as every type — which is weaker than the rules, and a card that
+// reads this declares it. The opposite case, a static that REMOVES a
+// subtype from a permanent as it enters, would read stronger; no
+// catalog card removes a creature type from anything but the
+// permanent an Aura is already attached to, or from itself only while
+// a condition holds (Arixmethes, The Warring Triad), and a reader for
+// those types has to account for it.
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredWithSubtypeThisTurn(playerID uuid.UUID, subtype string) int {
+	if playerID == uuid.Nil || subtype == "" {
+		return 0
+	}
+	n := g.TurnTally.EnteredSubtypes[enteredSubtypeKey(playerID, subtype)]
+	if IsCreatureType(subtype) {
+		n += g.TurnTally.EnteredSubtypes[enteredSubtypeKey(playerID, enteredAllCreatureTypes)]
+	}
+	return n
+}
+
+// recordEnteredSubtypesLocked adds one entering permanent to
+// TurnTally.EnteredSubtypes under `controller`.
+func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil {
+		return
+	}
+	all := HasAllCreatureTypes(c)
+	bump := func(subtype string) {
+		if g.TurnTally.EnteredSubtypes == nil {
+			g.TurnTally.EnteredSubtypes = map[string]int{}
+		}
+		g.TurnTally.EnteredSubtypes[enteredSubtypeKey(controller, subtype)]++
+	}
+	for _, s := range c.Effective().Subtypes {
+		if all && IsCreatureType(s) {
+			continue
+		}
+		bump(s)
+	}
+	if all {
+		bump(enteredAllCreatureTypes)
+	}
+}
+
 // EventsThisTurn returns the events emitted since the turn began, in
 // order. The slice aliases Game.Events: read it, do not keep it
 // across a mutation. Caller must hold g.mu.
@@ -133,6 +221,11 @@ func (g *Game) EventsThisTurn() []Event {
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
 	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
+	// #628: the loop notice is a claim about THIS turn's resolutions,
+	// so it dies with the counts it was derived from. A table that
+	// stepped its way past a loop by hand starts the next turn with
+	// automatic passing live again.
+	g.LoopNotice = nil
 }
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
@@ -145,7 +238,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
+	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.Triggered = copyStringIntMap(t.Triggered)
+	out.LoopRun = copyStringIntMap(t.LoopRun)
 	return out
 }
 
@@ -187,13 +282,37 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.PermanentsSacrificed++ })
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		g.notePlayerDecisionLocked()
+	case EventCast, EventBlock:
+		// #628: these two bump no counter — they are here only as
+		// decision events for the CR 726 loop breaker. Casting a
+		// spell and declaring a blocker are both "a player did
+		// something other than pass", which restarts the loop run.
+		// Activations and answered prompts have no event of their own
+		// and notch notePlayerDecisionLocked directly; see
+		// loop_breaker.go.
+		//
+		// An EventCast the ENGINE produced (a trigger that casts a
+		// card) restarts the run too, which is over-clearing. That is
+		// the safe direction: the cost is a loop that takes longer to
+		// notice, never a breaker that fires on a real turn.
+		g.notePlayerDecisionLocked()
 	case EventETB:
 		if ev.CardID == uuid.Nil {
 			return
 		}
-		if c := g.findCardByIDLocked(ev.CardID); c != nil && c.IsLand() {
+		c := g.findCardByIDLocked(ev.CardID)
+		if c == nil {
+			return
+		}
+		if c.IsLand() {
 			g.bumpPlayerTally(c.Controller, func(p *PlayerTurnTally) { p.LandsEntered++ })
 		}
+		controller := c.Controller
+		if controller == uuid.Nil {
+			controller = ev.Actor
+		}
+		g.recordEnteredSubtypesLocked(controller, c)
 	case EventLTB:
 		if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil {
 			return
@@ -219,10 +338,14 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Source == uuid.Nil {
 			return
 		}
+		key := TallyKey(ev.Source, ev.Label)
 		if g.TurnTally.Resolved == nil {
 			g.TurnTally.Resolved = map[string]int{}
 		}
-		g.TurnTally.Resolved[TallyKey(ev.Source, ev.Label)]++
+		g.TurnTally.Resolved[key]++
+		// #628: the same count, restarted at each player decision, is
+		// the CR 726 loop breaker's input. See loop_breaker.go.
+		g.noteResolutionForLoopLocked(ev, key)
 	case EventTrigger:
 		if ev.Source == uuid.Nil {
 			return

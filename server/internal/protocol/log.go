@@ -198,6 +198,13 @@ type LogEvent struct {
 	NewZone string `json:"new_zone,omitempty"`
 	// Combat marks a LogDamage entry as combat damage (CR 510).
 	Combat bool `json:"combat,omitempty"`
+	// CombatStep says which combat damage step dealt a combat LogDamage
+	// entry: "first_strike" or "regular" (CR 510.4). Copied from
+	// game.Event.CombatStep, and set only when that combat had a
+	// first-strike step — combat with no first strike or double strike
+	// anywhere is untagged, so the tag's presence alone says there are
+	// two beats to show. #187, ADR 0053 Decision 1.
+	CombatStep string `json:"combat_step,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -422,6 +429,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Amount = ev.Amount
 		base.Combat = ev.Combat
+		base.CombatStep = ev.CombatStep
 		// Damage lands on a player or a permanent; the seat lookup is
 		// what tells the two apart.
 		base.setTarget(ev.Target, seatOf)
@@ -714,7 +722,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		if e.Combat {
 			kind = "combat damage"
 		}
-		return fmt.Sprintf("%s dealt %d %s to %s", card, e.Amount, kind, target)
+		return fmt.Sprintf("%s dealt %d %s to %s%s", card, e.Amount, kind, target, combatStepSuffix(e.CombatStep))
 	case LogAttack:
 		return fmt.Sprintf("%s attacks %s", card, target)
 	case LogBlock:
@@ -731,6 +739,23 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	default:
 		return card
 	}
+}
+
+// combatStepSuffix is the tail a tagged combat LogDamage line gets, so
+// the log panel, bug reports and the model-backed bot tiers all see
+// which combat damage step dealt it without reading combat_step
+// themselves ("Fencing Ace dealt 1 combat damage to Grizzly Bears
+// (first strike)"). Untagged damage — every non-combat line, and
+// combat with no first-strike step — gets nothing. An unknown value
+// also gets nothing rather than being printed raw.
+func combatStepSuffix(step string) string {
+	switch step {
+	case game.CombatStepFirstStrike:
+		return " (first strike)"
+	case game.CombatStepRegular:
+		return " (regular damage)"
+	}
+	return ""
 }
 
 // renderZoneText words a zone change the way a player would say it.

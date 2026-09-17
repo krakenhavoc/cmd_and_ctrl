@@ -35,7 +35,9 @@ type AdditionalCost struct {
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
-	// names one in CastSpellParams.SacrificeIDs.
+	// names them in CastSpellParams.SacrificeIDs — exactly the
+	// clause's count, which is 1 unless the spec says otherwise
+	// ("sacrifice two creatures", effects.SacrificeNCost, #747).
 	//
 	// Same reasoning as DiscardCards, one zone over: the creature
 	// dies while the spell is on the stack, so a Blood Artist or
@@ -158,15 +160,23 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	// Life first: it is the component with no choice attached, and
 	// paying it before the sacrifices keeps the event order matching
 	// the way the clauses are read aloud.
+	//
+	// #793: through the COST path. Paying life is losing life
+	// (CR 119.4), so the CR 614 window still runs and a life-loss
+	// replacement still sees it — but it settles without a prompt,
+	// because CR 601.2h pays a spell's costs as one indivisible step
+	// and a paused ordering prompt here would leave the spell on the
+	// stack half paid for.
 	if payLife > 0 {
-		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -payLife); err != nil {
+		if err := g.PayLifeForEffect(uuid.Nil, playerID, payLife); err != nil {
 			return err
 		}
 	}
-	for _, id := range sacrificeIDs {
-		if err := g.sacrificePermanentLocked(id); err != nil {
-			return err
-		}
+	// The N permanents of a "sacrifice two creatures" clause leave as
+	// one simultaneous exit (#747, ADR 0021 addendum), so the order
+	// the IDs arrived in cannot change what the watchers see.
+	if err := g.payCostSacrificesLocked(sacrificeIDs); err != nil {
+		return err
 	}
 	if len(discardIDs) == 0 {
 		return nil

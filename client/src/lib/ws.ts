@@ -1,5 +1,6 @@
 import { writable, type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
+import { redactSecrets, redactURL } from "./redact";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -54,6 +55,16 @@ const CHAT_LOG_LIMIT = 200;
 // the report's own cap — a smaller window here would silently truncate
 // reports, and a larger one would be trimmed server-side anyway.
 export const WS_LOG_LIMIT = 200;
+
+// connectLogLine is the "connected" entry in the protocol log. The
+// socket URL carries the session token as ?token= (browsers can't set
+// headers on a WebSocket upgrade), and this log is inlined into
+// GitHub issues by the bug-report button — so the URL is redacted
+// here, at the source, rather than trusted to a later filter (#721).
+// Host, path, game and player survive: they are what triage needs.
+export function connectLogLine(url: string): string {
+  return `connected to ${redactURL(url)}`;
+}
 
 // FRAME_LOG_LIMIT caps the dev frame inspector's ring buffer. A busy
 // four-player turn is a few dozen frames, so 500 covers "what just
@@ -310,7 +321,7 @@ export class GameClient {
       // full states, so re-accepting one duplicate frame after a
       // same-incarnation reconnect is harmless — a frozen board is not.
       this.highestSeq = 0;
-      this.append("info", `connected to ${this.url}`);
+      this.append("info", connectLogLine(this.url));
     });
 
     socket.addEventListener("message", (ev: MessageEvent<unknown>) => {
@@ -593,12 +604,16 @@ export class GameClient {
     }
   }
 
+  // append records one protocol-log entry. Every entry is redacted on
+  // the way in (#721): this buffer is what a bug report attaches, and
+  // some of what lands here is not ours to vouch for — chat text other
+  // players typed, server error messages, a URL someone logs next year.
   private append(direction: LogEntry["direction"], text: string): void {
     const entry: LogEntry = {
       id: uuid(),
       at: new Date(),
       direction,
-      text,
+      text: redactSecrets(text),
     };
     this.log.update((entries) => [...entries.slice(-(WS_LOG_LIMIT - 1)), entry]);
   }

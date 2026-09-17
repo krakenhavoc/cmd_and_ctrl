@@ -36,7 +36,11 @@ func init() {
 			if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
 				return err
 			}
-			ctx.Game.DiscardChoiceForEffect(ctx.Controller(), 1)
+			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+				Player: ctx.Controller(),
+				Source: ctx.Source(),
+				N:      1,
+			})
 			return CreateTokenAdvanced{
 				Controller: ctx.Controller(),
 				Spec:       Token(PowerstoneToken()).EntersTapped(),

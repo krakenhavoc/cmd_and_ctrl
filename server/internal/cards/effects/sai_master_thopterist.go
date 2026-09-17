@@ -14,19 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // shape; the Thopter is itself an artifact, so it feeds the
 // artifact-ETB payoffs (Reckless Fireweaver) as printed.
 //
-// Sandbox simplification, declared: the draw ability is NOT
-// registered. "Sacrifice two artifacts" is a sacrifice cost with a
-// count of two, and validateSacrificeCostLocked accepts exactly one
-// permanent for a SacrificeOther clause — there is no two-card
-// sacrifice cost in the engine yet. Omitting the ability is the
-// weaker direction; inventing a one-artifact cost would be stronger
-// than printed. The Thopter engine, which is the card, is whole.
+// "{1}{U}, Sacrifice two artifacts: Draw a card." is a mana component
+// plus a sacrifice cost with a count of two (#747, SacrificeN). Sai is
+// not an artifact, so she is never one of the two.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "52241b9c-7a69-4176-9234-8bdab09d8e64",
 		Name:         "Sai, Master Thopterist",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The draw ability isn't implemented — only the Thopter-making trigger works."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
@@ -39,5 +36,10 @@ func init() {
 				N:        1,
 			})),
 		},
+		Activated: []ActivatedAbility{{
+			Label:  "{1}{U}, Sacrifice two artifacts: Draw a card.",
+			Cost:   Plus(ManaCost("{1}{U}"), SacrificeN(2, "two artifacts", Artifact())),
+			Effect: Do(DrawCards{N: 1}),
+		}},
 	})
 }

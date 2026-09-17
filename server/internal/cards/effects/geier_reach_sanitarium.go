@@ -13,11 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // then chooses their own discard through the same discard prompt
 // Faithless Looting uses, so nobody picks for anyone else.
 //
-// Sandbox simplification, cosmetic: in paper every player draws
-// simultaneously and then every player discards; here each player
-// draws-then-discards in seat order. No card in the catalog can
-// observe the difference (a draw payoff sees the same draws either
-// way), so it is recorded rather than modelled.
+// The loop draws and queues a prompt per seat, which lands on the
+// printed order by itself: a draw resolves where it is written and a
+// discard only QUEUES, so every seat has drawn before any seat's
+// prompt can be answered, and the table then waits on all of them
+// (#651).
 func init() {
 	Register(Spec{
 		OracleID:     "7b9fafe7-d26a-4ed5-b4c4-ce13763770b5",
@@ -37,7 +37,11 @@ func init() {
 					if err := (DrawCards{Player: p, N: 1}).Apply(ctx); err != nil {
 						return err
 					}
-					g.DiscardChoiceForEffect(p, 1)
+					g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+						Player: p,
+						Source: item.SourceCardID,
+						N:      1,
+					})
 				}
 				return nil
 			},

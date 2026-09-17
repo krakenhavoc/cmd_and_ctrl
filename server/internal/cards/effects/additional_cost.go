@@ -51,6 +51,20 @@ func SacrificeCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 	}
 }
 
+// SacrificeNCost is "As an additional cost to cast this spell,
+// sacrifice N <permanents>": SacrificeNCost(2, "two creatures",
+// Creature()). SacrificeCost is the n = 1 case and stays the way to
+// write it. The count rides on the clause exactly as SacrificeN's
+// does (#747, ADR 0021 addendum), so the caster names exactly n
+// permanents and they leave as one simultaneous exit while the spell
+// is on the stack.
+func SacrificeNCost(n int, label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		Label:     "Sacrifice " + label,
+	}
+}
+
 // PayXLifeCost is "As an additional cost to cast this spell, pay X
 // life" — Toxic Deluge, and the third shape the clause takes.
 //

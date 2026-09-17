@@ -1,6 +1,9 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // mana_cost.go parses Scryfall-style mana-cost strings into a ParsedCost
 // (moved from cards/effects/cost.go in S15 sub-PR 2 — `game` owns the
@@ -66,13 +69,26 @@ type ParsedCost struct {
 // colors that may satisfy it; a monocolored {R} has Options = {"R"},
 // a hybrid {W/U} has Options = {"W", "U"}. Phyrexian flags the
 // "or 2 life" alternative; NumericAlt flags the "{N/COLOR}" two-mana
-// hybrid alternative (Reaper King). Both are scaffolded for S17 and
-// unused by S15's validator / auto-tapper.
+// hybrid alternative (Reaper King). The validator and auto-tapper do
+// not read NumericAlt — they pay the coloured half — but the mana
+// value does (CR 202.3f, ColorRequirement.ManaValue).
 type ColorRequirement struct {
 	Options       []string
 	Phyrexian     bool
 	NumericAlt    int
 	HasNumericAlt bool
+}
+
+// ManaValue is what one coloured-mana slot contributes to a mana
+// value: the largest component of the symbol (CR 202.3f). That is 1
+// for {W}, {C}, snow, a two-colour or colourless hybrid ({W/U},
+// {C/W}) and a Phyrexian symbol (CR 202.3g), and N for a monocoloured
+// hybrid {N/W} — 2 for every printed one.
+func (r ColorRequirement) ManaValue() int {
+	if r.HasNumericAlt && r.NumericAlt > 1 {
+		return r.NumericAlt
+	}
+	return 1
 }
 
 // ParseCost walks s and produces a ParsedCost. Returns an error on
@@ -209,6 +225,32 @@ func isColor(b byte) bool {
 // activation time; a single-option slot drops straight into the pool.
 type ProducedManaEntry struct {
 	Options []string
+
+	// Amounts is how many mana the slot adds for each option, for
+	// "N mana of any one color" (#742): one pick, N tokens of the
+	// picked colour. nil means one of whichever colour is picked, which
+	// is every slot the grammar had before. Only a MULTI-option slot
+	// carries it — a single-option "{G3}" is expanded by the parser
+	// into three ordinary {G} slots, so nothing downstream of the
+	// parser has to learn about amounts for the common case.
+	Amounts map[string]int
+}
+
+// AmountFor is how many mana this slot adds when `color` is picked.
+func (e ProducedManaEntry) AmountFor(color string) int {
+	if n, ok := e.Amounts[color]; ok {
+		return n
+	}
+	return 1
+}
+
+// OneColorAmounts reports whether the slot is a "N mana of any one
+// color" pick — several options, at least one adding more than one
+// mana. The auto-tapper plans around such a slot (see
+// gatherTapSources) because its tokens must all be one colour, which
+// the planner's one-slot-one-mana model cannot promise.
+func (e ProducedManaEntry) OneColorAmounts() bool {
+	return len(e.Options) > 1 && len(e.Amounts) > 0
 }
 
 // ParseProducedMana walks a produced-mana declaration (the
@@ -220,6 +262,16 @@ type ProducedManaEntry struct {
 //	"{C}{C}"          → two colorless slots (Sol Ring)
 //	"{G}"             → one green slot (basic Forest synthetic)
 //	"{W|U|B|R|G}"     → one any-color slot (Birds of Paradise)
+//	"{W3|U3|B3|R3|G3}" → one pick adding three mana of the picked
+//	                     colour (Gilded Lotus, #742)
+//	"{G2|U5}"         → per-option amounts (Nyx Lotus's devotion)
+//	"{G3}"            → expanded to three {G} slots
+//	"{G0|U2}"         → a zero-amount option is dropped, so this is
+//	                     two {U} slots
+//
+// A count follows the colour letter inside the brace. It is a
+// produced-mana extension only — ParseCost has no such form, since a
+// cost's "{2}" already means something else.
 //
 // Generic / X / phyrexian / snow tokens aren't meaningful in produced
 // mana and return an error. Empty input parses to a nil slice — a
@@ -258,19 +310,61 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 		}
 		u := string(buf)
 		var options []string
+		amounts := map[string]int{}
+		counted := false
 		start := 0
 		for j := 0; j <= len(u); j++ {
 			if j == len(u) || u[j] == '|' {
 				seg := u[start:j]
-				if len(seg) != 1 || !isColor(seg[0]) {
+				start = j + 1
+				if len(seg) == 0 || !isColor(seg[0]) {
 					return nil, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
 				}
-				options = append(options, seg)
-				start = j + 1
+				n := 1
+				if len(seg) > 1 {
+					if !allDigits(seg[1:]) {
+						return nil, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
+					}
+					v, err := strconv.Atoi(seg[1:])
+					if err != nil {
+						return nil, fmt.Errorf("produced mana: bad amount in %q: %w", s, err)
+					}
+					n, counted = v, true
+				}
+				if n <= 0 {
+					continue
+				}
+				color := seg[:1]
+				if _, dup := amounts[color]; dup {
+					// A derived pipe that names a colour twice
+					// offers it once.
+					continue
+				}
+				options = append(options, color)
+				amounts[color] = n
 			}
 		}
-		out = append(out, ProducedManaEntry{Options: options})
 		i = end + 1
+		switch {
+		case len(options) == 0:
+			// Every option counted zero: the slot adds nothing.
+		case len(options) == 1:
+			// "{G3}" is three ordinary {G} slots.
+			for k := 0; k < amounts[options[0]]; k++ {
+				out = append(out, ProducedManaEntry{Options: []string{options[0]}})
+			}
+		default:
+			entry := ProducedManaEntry{Options: options}
+			if counted {
+				for _, c := range options {
+					if amounts[c] != 1 {
+						entry.Amounts = amounts
+						break
+					}
+				}
+			}
+			out = append(out, entry)
+		}
 	}
 	return out, nil
 }

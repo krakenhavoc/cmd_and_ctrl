@@ -85,6 +85,24 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	// ADR 0048 addendum §11: no printed card sets a floor on its own
+	// cost, and an untested kind should not be declarable. A mana Unit
+	// belongs on an increase only (open question 3), and carries only
+	// generic and single-colour symbols (§16); the engine would refuse
+	// every cast of a card that declared any other shape, so say so at
+	// boot instead.
+	for i, m := range spec.SelfCostModifiers {
+		if m.Kind == game.CostFloor {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
+		}
+	}
+	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
+		for i, m := range mods {
+			if why := m.UnitProblem(); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares %s (ADR 0048 addendum §16)", spec.Name, i, m.Label, why))
+			}
+		}
+	}
 	// The completeness declaration is published verbatim on the
 	// public catalog page, so the two ways of getting it wrong are
 	// both caught at boot rather than shipped to a reader.
@@ -132,13 +150,57 @@ func Register(spec Spec) {
 					spec.Name, i, rc.N))
 			}
 		}
+		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther)
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
 		}
 	}
+	for i, ma := range spec.ManaAbilities {
+		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
+	}
+	if spec.AdditionalCost != nil {
+		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
+	}
 	registry[spec.OracleID] = spec
 	defs[spec.OracleID] = buildDef(spec)
+}
+
+// checkSacrificeClause is #747's registration guard (ADR 0020
+// addendum §12). A sacrifice clause's Min == Max is the number of
+// permanents the cost sacrifices, so the only shape the engine pays
+// is a fixed count of at least one. Every form that would quietly
+// read as something else panics at boot instead:
+//
+//   - Min != Max, or Min < 1: a variable count ("one or more", "any
+//     number") has no announced count and no record of what was paid.
+//   - CountFromX: "Sacrifice X Treasures" needs the same.
+//   - AllowSame: one permanent cannot pay two sacrifices.
+//   - Players: a player is not a permanent.
+//
+// Nil (no sacrifice component) is fine.
+//
+// Register calls it on the three sites the ADR names: spec.Activated,
+// spec.ManaAbilities and spec.AdditionalCost. An ability granted at
+// runtime (a static grant, an Equipment's "equipped creature has …")
+// is built after registration and is not checked here. Every such
+// grant with a sacrifice clause today is a count of one, so nothing
+// escapes the guard yet; a grant with a variable count would.
+func checkSacrificeClause(card, where string, spec *game.TargetSpec) {
+	if spec == nil {
+		return
+	}
+	switch {
+	case spec.Min != spec.Max || spec.Min < 1:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost is a fixed count of at least one (SacrificeN); variable counts have no shape yet (#747)",
+			card, where, spec.Min, spec.Max))
+	case spec.CountFromX:
+		panic(fmt.Sprintf("effects.Register: %q %s sacrifices X permanents — a sacrifice count from X has no shape yet (#747)", card, where))
+	case spec.AllowSame:
+		panic(fmt.Sprintf("effects.Register: %q %s lets one permanent pay a sacrifice twice (AllowSame)", card, where))
+	case spec.Players:
+		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
+	}
 }
 
 // zoneDeclared reports whether `zone` appears in a Spec's

@@ -1,7 +1,8 @@
 # ADR 0033 — AI bot seat: legal-move enumeration, virtual seats, tiered policies
 
-**Status:** proposed
-**Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-heuristic-policy) (heuristic-only, gated behind S27–S30).
+**Status:** Accepted · 2026-09-16 (proposed 2026-09-11 in [#286](https://github.com/krakenhavoc/cmd_and_ctrl/pull/286)) · Sprint S31 · Issue [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)
+**Amended:** 2026-09-16 · S31 closeout: accepted as built. §1's threat ordering is not built (#687), §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end)
+**Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
 ## Context
@@ -102,6 +103,18 @@ composes, not as whole assignments. Cast moves cap target expansion at
 `MaxTargetExpansion` (default 12) per source, ordered by the existing
 threat heuristics, with the remainder reachable through an explicit
 "choose target" move.
+
+> **Update, 2026-09-16 (S31 closeout).** The cap shipped as
+> `legal.Options.MaxExpansionPerSource` (default 12, spent per source
+> across the whole crossed product), not `MaxTargetExpansion`. **The
+> ordering and the "choose target" move were not built.** Candidates
+> arrive in `LegalTargetsForEffect` order, and whatever falls past the
+> cap is dropped. Threat ranking lives one layer up, in
+> `aiseat/heuristic/rank.go`, so it can only rank the moves that
+> survived the cap. The owner decided to build the ordering, tracked in
+> [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687). Until
+> it lands, which targets a bot is offered past the cap depends on
+> enumeration order.
 
 A corollary learned the hard way in #544, and applied since to every
 new cost component: **a variable in a cost must not become an arity of
@@ -321,9 +334,28 @@ project will ever get, and it exists from the first PR.
 > Client keep their names and play on Layer A + B, because a VPS with
 > no API key has to be a working deployment rather than a broken one.
 
+> **Update, 2026-09-16 (S31 closeout).** The paragraph above is still
+> true of the *policy*, and it is what the model-outage drill relies on.
+> It is no longer true of the *picker*. Since
+> [#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514), a
+> server with no model endpoint reports `assisted` and `strong` as
+> `available:false`, with a reason, and a request to seat one is a
+> 422. A seat playing the heuristic under a model tier's name would
+> misstate the game the player is in. A seat that is already running
+> when its endpoint goes away keeps playing on Layer A + B. #514 also
+> added an OpenAI-compatible transport for a self-hosted model
+> (`CMDCTRL_OPENAI_ENDPOINT`) beside the Anthropic one. A deployment
+> may put one model in both funnel slots, since
+> `CMDCTRL_BOT_FRONTIER_MODEL` defaults to `CMDCTRL_BOT_MODEL`. On such
+> a deployment `strong` and `assisted` ask the same model. `strong`
+> differs only in sending every surviving window as an escalated
+> request, over a wider candidate list.
+
 ### 7. Bot decks are curated and catalog-only, enforced by a test
 
-`server/internal/aiseat/decks/`. Every card in every bot deck must
+`server/internal/decks/` (drafted as `server/internal/aiseat/decks/`;
+[#553](https://github.com/krakenhavoc/cmd_and_ctrl/pull/553) moved it
+when human seats began picking from the same decks). Every card in every bot deck must
 resolve to a registered `effects.Spec`. A test walks the bot decks
 against `effects.All()` and fails the build on any gap — without it,
 "curated" rots the first time a spec is refactored.
@@ -467,11 +499,21 @@ Two real constraints remain:
 
 ### 10. Pacing and hard timeouts
 
-`MinThinkMs` (default 700) holds a fast decision so the table does not
-feel precognitive. `MaxThinkMs` (2000 for `assisted`, 5000 for
-`strong`) is a hard context deadline; on expiry the runner takes Layer
-B's answer and logs the miss. A bot that cannot decide passes. The
-table never waits on a model.
+`MinThink` (default 700ms) holds a fast decision so the table does not
+feel precognitive. `MaxThink` (2s for `assisted`, 5s for `strong`) is a
+hard context deadline; on expiry the runner takes Layer B's answer and
+logs the miss. A bot that cannot decide passes. The table never waits
+on a model.
+
+> **Update, 2026-09-16 (S31 closeout).** The first draft of this
+> section named the fields `MinThinkMs` / `MaxThinkMs`, as millisecond
+> integers. They shipped as `MinThink` / `MaxThink`, `time.Duration`
+> fields on `aiseat.Config`, and the text above now uses those names.
+> A deployment can widen the model tiers' `MaxThink` with
+> `CMDCTRL_BOT_MAX_THINK`, but never shorten it. It defaults to 20s
+> when a self-hosted endpoint is configured, because a model that
+> overruns the deadline plays the heuristic's move under the tier's
+> name.
 
 ## Consequences
 
@@ -517,3 +559,36 @@ bill ever becomes a real number.
 **LLM on every window.** No rules layer, model decides everything.
 Simplest to reason about, and roughly an order of magnitude more
 expensive and slower for decisions that are not decisions.
+
+## Amendment (2026-09-16): S31 closeout
+
+S31 shipped every sub-PR this ADR describes, and the ADR is accepted
+as built, with the inline updates above. The owner's decisions are
+recorded on [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89).
+[docs/sprints.md § S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy)
+has the item-by-item reconciliation. Four points fall outside the
+sections above:
+
+- **The loop guard is descoped.** S31's original list asked for a
+  runner rule: the same non-pass move twice in one priority window
+  forces a pass. It was never built. The runner's only guard is keyed
+  on rejection (`MaxConsecutiveRejects`), not repetition. The literal
+  rule would block legal repeats, such as activating the same pump
+  ability twice in one window, and the random, heuristic
+  and catalog soaks show no livelock. Loop breaking is tracked in
+  [#628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/628).
+- **§8's improvisation path is live in the runner but unused in
+  play.** The bundle, the validated announcement, the replay tag and
+  the free undo all shipped and are tested. No shipped tier implements
+  `aiseat.Improviser`, though, so no bot improvises yet. The owner
+  decided to build one for the model tiers, tracked in
+  [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
+- **§5's per-game model spend is still unmeasured.** That update's
+  last paragraph still stands. Absorption is measured at ~90%, but
+  measuring spend needs a game against a hosted endpoint.
+- **Rejected alternative "Local model on the homelab".** #514 made a
+  self-hosted OpenAI-compatible endpoint an operator option beside the
+  hosted one. The transport is a deployment setting, and nothing in
+  the funnel depends on which one is used. The objection recorded
+  there still applies to any deployed server pointed at a model on a
+  home network.

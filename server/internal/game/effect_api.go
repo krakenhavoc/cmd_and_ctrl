@@ -78,47 +78,221 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 	}
 }
 
-// DiscardChoiceForEffect queues a "chooser-picked" discard into the
-// existing DiscardPending map. Unlike DiscardRandomForEffect (which
-// discards randomly at resolution time), this path waits for the
-// target to send a discard_selection action with their chosen IDs.
-// The card auto-resolves (goes to graveyard) while the choice is
-// pending — the pending entry outlives the spell.
+// DiscardPrompt is the queue-side description of an effect discard —
+// "target player discards two cards", "draw a card, then discard a
+// card", "each opponent discards a card." A struct rather than
+// positional arguments because everything except Player and N is
+// optional in different combinations.
+type DiscardPrompt struct {
+	// Player is the discarding player, who is also the CHOOSER: per
+	// CR 701.8a the player discarding picks the cards, unless the
+	// effect says "at random" (DiscardRandomForEffect) or names them.
+	// Thoughtseize, where a DIFFERENT player picks, is the other
+	// system — QueueDiscardFromRevealedHand, see ADR 0010 §10.
+	Player uuid.UUID
+	// Source is the card asking. Empty is legal (test harnesses); it
+	// is what names the prompt when Question is empty.
+	Source uuid.UUID
+	// N is the printed count.
+	N int
+	// UpTo makes N a ceiling rather than an exact count ("discard up
+	// to two cards"), which is the difference between a floor of N
+	// and a floor of zero on the underlying pick.
+	UpTo bool
+	// Question is the prompt's header. Empty composes one from the
+	// source card's name, so an ordinary "discard a card" caller
+	// stays a one-liner.
+	Question string
+	// Validate is the set-level legality hook, the same one
+	// ChooseCardsPrompt documents: "discard two cards unless you
+	// discard a creature card" is a rule about the SET that no count
+	// can express. It runs before the prompt is dequeued AND inside
+	// the bot enumerator, so an answer `legal` offers is an answer
+	// the resolver accepts (#544, #624).
+	Validate func(picked []Card) bool
+	// Then is everything the card prints after "then" — the rest of
+	// the effect, which must not run until the cards are actually in
+	// the graveyard. A rummage ("discard a card, then draw a card")
+	// is the case that forces it; a loot ("draw a card, then discard
+	// a card") draws before it asks and leaves this nil.
+	//
+	// It also runs, immediately and in the resolving effect's own
+	// frame, when the discard asks for nothing because the hand is
+	// empty: CR 701.8a discards as many as you can, and the
+	// instruction after "then" is not conditional on there having
+	// been cards to pitch. Same contract Scry's Then has for an
+	// empty library.
+	Then func(g *Game) error
+}
+
+// QueueDiscardChoiceForEffect queues a discard the discarding player
+// chooses, and returns the prompt's ID (uuid.Nil when it queued
+// nothing).
 //
-// Cap n to the player's current hand size per CR 609.3 (an effect
-// does as much as it can, so "discard N" discards the whole hand
-// when it holds fewer). No-op if the player isn't seated or is
-// eliminated.
+// #651: this used to bump Game.DiscardPending, the cleanup step's
+// hand-size map, and that was wrong twice over. Nothing waited for
+// the discard — DiscardPending is not a PendingChoice, so priority
+// and the step cursor walked straight past a Mind Rot that was still
+// owed — and entering cleanup calls populateDiscardPendingLocked,
+// which RESETS that map, so an owed effect discard was erased. An
+// effect's discard is part of the resolving effect (CR 608.2c), so it
+// is a real prompt now: #791's gate refuses advance_step /
+// pass_priority / pass_turn while it is open, for free, and
+// DiscardPending is back to being only what CR 514.1 uses it for.
 //
-// Known bug (#651): nothing waits for this discard. PassPriority
-// doesn't read DiscardPending, so play goes on while the discard is
-// owed, and entering cleanup resets the map to the active player's
-// hand-size count (populateDiscardPendingLocked), which drops an
-// effect discard still owed. The two do NOT merge into one modal.
-// The discard also bypasses the CR 614 window and records no cause
-// (#650).
+// The prompt is a PendingChoiceChooseCards over the player's own hand
+// with Zone: ZoneHand — the same pick Sylvan Library and
+// PutFromHandOntoBattlefield already use — rather than a third
+// discard system. The live-zone re-check, the set-level Validate
+// hook, the bot enumerator case and the client's ChoicePromptModal
+// all come with it; what makes it a DISCARD is the continuation,
+// which moves the picks to the graveyard and emits one
+// EventDiscardCard per card before running Then.
 //
-// Used by Mind Rot et al; the UI is S13.4's DiscardPromptModal
-// which already watches DiscardPending for the viewer. Added in
-// S14 sub-PR 5+.
-func (g *Game) DiscardChoiceForEffect(playerID uuid.UUID, n int) {
+// Two things it deliberately does not do. It does not prompt for a
+// random discard (CR 701.8b — DiscardRandomForEffect stays a
+// synchronous move) and it does not prompt for "discard your hand,"
+// where there is nothing to choose. And it queues NOTHING for an
+// empty hand: CR 701.8a discards as many as you can, and a prompt
+// with no candidates and a floor of one is a prompt nobody can
+// answer, holding the whole table (#544).
+//
+// Caller must hold g.mu.
+func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
+	// A prompt addressed to a seat that has left the game can never
+	// be answered. Unlike the empty-hand case, Then does NOT run:
+	// "each other player discards a card, then you draw a card for
+	// each card discarded this way" draws nothing for a player who is
+	// no longer there.
+	if p.Player == uuid.Nil || g.chooserGoneLocked(p.Player) {
+		return uuid.Nil
+	}
+	player := g.playerByIDLocked(p.Player)
+	n := p.N
+	if n > player.Hand.Size() {
+		// CR 701.8a — you discard as many as you can.
+		n = player.Hand.Size()
+	}
 	if n <= 0 {
-		return
+		// Nothing to pitch, but "then draw three" still happens.
+		if p.Then != nil {
+			if err := p.Then(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    p.Player,
+					Source:   p.Source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
+		return uuid.Nil
 	}
+	hand := make([]uuid.UUID, 0, player.Hand.Size())
+	for _, c := range player.Hand.Cards {
+		hand = append(hand, c.InstanceID)
+	}
+	lo := n
+	if p.UpTo {
+		lo = 0
+	}
+	question := p.Question
+	if question == "" {
+		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
+	}
+	discarder := p.Player
+	then := p.Then
+	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		Chooser:    p.Player,
+		FromPlayer: p.Player,
+		Source:     p.Source,
+		Question:   question,
+		Cards:      hand,
+		Min:        lo,
+		Max:        n,
+		Zone:       ZoneHand,
+		Validate:   p.Validate,
+		Then: func(g *Game, picked []uuid.UUID) error {
+			if err := g.discardPicksLocked(discarder, picked); err != nil {
+				return err
+			}
+			if then == nil {
+				return nil
+			}
+			return then(g)
+		},
+	})
+}
+
+// discardQuestionLocked composes a prompt header for a discard that
+// did not supply one: the source card's name plus the printed count,
+// so the client modal and the bot's move label both read the way the
+// card does. Caller must hold g.mu.
+func (g *Game) discardQuestionLocked(source uuid.UUID, n int, upTo bool) string {
+	var what string
+	switch {
+	case upTo && n == 1:
+		what = "up to one card"
+	case upTo:
+		what = "up to " + strconv.Itoa(n) + " cards"
+	case n == 1:
+		what = "a card"
+	default:
+		what = strconv.Itoa(n) + " cards"
+	}
+	if source != uuid.Nil {
+		if card, ok := g.LookupCardForEffect(source); ok && card.Name != "" {
+			return card.Name + " — discard " + what
+		}
+	}
+	return "Discard " + what
+}
+
+// discardPicksLocked moves the chosen cards from a player's hand to
+// their graveyard, emitting one EventDiscardCard per card — the event
+// every "whenever you discard a card" trigger and every madness /
+// graveyard payoff in the catalog watches.
+//
+// A pick that is no longer in the hand is skipped rather than
+// erroring: ResolveChooseCards re-checks the live zone before it
+// dequeues, so an answer that got here was legal when it arrived, and
+// a half-applied discard that abandoned its continuation would be the
+// worse failure.
+//
+// Caller must hold g.mu.
+func (g *Game) discardPicksLocked(playerID uuid.UUID, picks []uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Eliminated {
-		return
+	if p == nil {
+		return nil
 	}
-	if n > p.Hand.Size() {
-		n = p.Hand.Size()
+	for _, id := range picks {
+		if !p.Hand.Contains(id) {
+			continue
+		}
+		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(p.Graveyard, id)
+		g.EmitEvent(Event{
+			Kind:    EventDiscardCard,
+			Actor:   playerID,
+			CardID:  id,
+			OldZone: ZoneHand,
+			NewZone: ZoneGraveyard,
+		})
 	}
-	if n == 0 {
-		return
-	}
-	if g.DiscardPending == nil {
-		g.DiscardPending = make(map[uuid.UUID]int)
-	}
-	g.DiscardPending[playerID] += n
+	return nil
+}
+
+// DiscardChoiceForEffect is the plain "this player discards n cards"
+// form of QueueDiscardChoiceForEffect, kept because it is the call
+// every card in the catalog made before #651 and the one most of them
+// still want. A card that needs the source's name on the prompt, an
+// "up to", a set-level rule or an instruction after "then" uses the
+// struct form.
+//
+// Caller must hold g.mu.
+func (g *Game) DiscardChoiceForEffect(playerID uuid.UUID, n int) {
+	g.QueueDiscardChoiceForEffect(DiscardPrompt{Player: playerID, N: n})
 }
 
 // FindCardZoneForEffect returns the zone a card currently lives in,
@@ -146,19 +320,164 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 
 // ChangePlayerLifeForEffect adjusts a player's life by delta and
 // emits EventChangeLife. Lock-free.
+//
+// #482: routed through the CR 614 replacement window, the way
+// DealDamageToPlayerForEffect has been since S22. Before this, every
+// catalog GainLife, every drain and every "pay N life" cost wrote the
+// total directly, so a life-change replacement — Rhox Faithmender's
+// "you gain twice that much life instead" — only ever saw a life total
+// typed in by hand through the public sandbox verb, which is the one
+// path a game never takes. See life_tail.go.
+//
+// A CR 616 ordering prompt (two life replacements on one event)
+// returns nil with the change not yet applied; it lands from the
+// resume when the affected player answers. This entry point is the
+// FIRE-AND-FORGET form and that is fine for it: a caller that only
+// says "gain 3" has nothing left to do. A caller that needs to know how
+// much actually moved — "you gain life equal to the life lost this
+// way" — must use ChangePlayerLifeThenForEffect or
+// LoseLifeEachThenForEffect instead, because reading the life total
+// back on the next line reads it before the prompt is answered (#793).
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
+	return g.ChangePlayerLifeThenForEffect(source, playerID, delta, nil)
+}
+
+// ChangePlayerLifeThenForEffect is a life change with a CONTINUATION:
+// `then` runs with the amount that actually moved, once the CR 614
+// window has settled it. Lock-free.
+//
+// This is the life sibling of the search, scry and confirm prompts'
+// `Then`, and card authors should learn it as one idiom: the engine
+// never hands a catalog effect a half-finished answer, it hands the
+// rest of the effect back to the engine. The shape is
+//
+//	g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
+//	        return g.ChangePlayerLifeForEffect(src, me, -applied)
+//	})
+//
+// for "target opponent loses X life; you gain life equal to the life
+// lost this way", and LoseLifeEachThenForEffect for the several-players
+// version of the same sentence.
+//
+// WHAT `then` RECEIVES. The post-replacement delta, signed the way the
+// event is: -3 for three life lost, +6 for a gain of three under Rhox
+// Faithmender. Zero means nothing moved — the change was replaced away
+// (CR 614.10, "your life total can't change") or the player has left
+// the game. `then` is told either way, because a caller adding up what
+// several players lost would otherwise wait forever on the one that
+// lost nothing.
+//
+// WHEN IT RUNS. Immediately, on the ordinary path, before this function
+// returns. After the affected player answers the CR 616 ordering prompt
+// when two different life replacements apply to one event — the case
+// #793 exists for, and the reason `then` is a continuation rather than
+// a return value. Either way it runs with g.mu held and with the
+// change's own EventChangeLife already emitted, so it may start the
+// next life change or queue the next prompt itself.
+//
+// `then` takes the live *Game rather than capturing one, on the same
+// undo-safety contract every other continuation frame follows.
+func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
+	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	p.ChangeLife(delta)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Source: source,
-		Target: playerID,
-		Amount: delta,
-	})
-	return nil
+	// The event is built before the pipeline runs and carries
+	// everything the tail needs — the continuation included — because a
+	// CR 616 ordering prompt returns below without changing anything
+	// and the resume has nothing else to go on.
+	ev := &ReplacementEvent{
+		Kind:       RepEventLife,
+		Source:     source,
+		LifePlayer: playerID,
+		LifeDelta:  delta,
+	}
+	if then != nil {
+		ev.lifeTail = &lifeTail{then: then}
+	}
+	_, err := g.changeLifeThroughReplacementsLocked(ev)
+	return err
+}
+
+// LoseLifeEachThenForEffect is the batch form: each of `players` loses
+// `amount` life, and then `then` runs with the TOTAL actually lost —
+// "each opponent loses X life. You gain life equal to the life lost
+// this way" (Exsanguinate, Debt to the Deathless, Gray Merchant of
+// Asphodel, Kokusho). Lock-free.
+//
+// The total is the sum of what each player really lost after their own
+// replacements, not amount × len(players): a player under a life-loss
+// doubler loses more, a player whose life total can't change loses
+// nothing, and the gain follows. It is reported POSITIVE, so the
+// continuation reads the way the card does.
+//
+// Built on ChangePlayerLifeThenForEffect rather than beside it, so
+// there is one place that knows how to wait rather than one per card.
+// The players are drained IN SEQUENCE, each from the previous one's
+// continuation: that is what makes the running total a plain value
+// carried forward instead of a shared accumulator, which is what makes
+// an undo across the prompt land where a clean run would. A player who
+// has left the game is skipped, exactly as a fire-and-forget loop over
+// them would skip them.
+//
+// The sequencing is observable only when a loss pauses: with two
+// different life replacements on the first opponent, the second
+// opponent's loss happens when the CR 616 prompt is answered rather
+// than before it. The losses are simultaneous in the rules (CR 101.4)
+// and sequential in this engine either way; doing them all on the far
+// side of the prompt is the closer of the two, and it is the only one
+// that can report a true total.
+func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, amount int, then func(g *Game, totalLost int) error) error {
+	return g.loseLifeEachStepLocked(source, players, amount, 0, then)
+}
+
+// loseLifeEachStepLocked drains the head of `players` and continues
+// with the tail, carrying the running total forward by value. The empty
+// list is the base case: the batch is done and `then` gets the total.
+//
+// Caller must hold g.mu.
+func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
+	for len(players) > 0 {
+		next, rest := players[0], players[1:]
+		if g.playerByIDLocked(next) == nil {
+			players = rest
+			continue
+		}
+		return g.ChangePlayerLifeThenForEffect(source, next, -amount, func(g *Game, applied int) error {
+			lost := lostSoFar
+			if applied < 0 {
+				// Only a LOSS counts as life lost this way. A
+				// replacement that turned the loss into a gain lost
+				// nobody anything, and must not be subtracted from
+				// what the others lost either.
+				lost -= applied
+			}
+			return g.loseLifeEachStepLocked(source, rest, amount, lost, then)
+		})
+	}
+	if then == nil {
+		return nil
+	}
+	return then(g, lostSoFar)
+}
+
+// PayLifeForEffect pays `amount` life as a COST (CR 118.3) — a spell's
+// additional or alternative cost, an activated ability's {T}, Pay 2
+// life, a ward's "unless that player pays N life", a shockland's "as
+// this enters, you may pay 2 life". Lock-free.
+//
+// CR 119.4 makes paying life the same as losing that much life, so this
+// runs the same CR 614 window every other life change runs and a
+// life-loss replacement sees it. What it will not do is PAUSE: a cost
+// is paid as one indivisible step of casting or activating (CR 601.2h,
+// CR 602.2b), so the window settles without a prompt. The full argument
+// and what the affected player gives up for it are in
+// payLifeAsCostLocked (life_tail.go) and ADR 0013 §5b.
+//
+// Returns ErrInvalidParam when the payment cannot be made from the
+// payer's life total (CR 119.4). Callers validate before they start
+// paying; this is the backstop.
+func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
+	return g.payLifeAsCostLocked(source, playerID, amount)
 }
 
 // DealDamageToPlayerForEffect writes amount damage to a player's
@@ -167,8 +486,70 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // "damage dealt → life changed." SBA check fires via the caller
 // (effects run inside resolveTopOfStackLocked, which pairs with
 // runStateChecks on the surrounding priority boundary).
+//
+// #711: CR 702.15b lifelink applies here. "Damage dealt by a source
+// with lifelink also causes that source's controller to gain that much
+// life" says nothing about combat, so a lifelinker's ping or Chandra's
+// Ignition pays its controller exactly as a swing does. A source that
+// is not a battlefield permanent (a spell, an emblem, uuid.Nil) has no
+// lifelink to read, so Lightning Bolt still just deals 3.
+//
+// This is the FIRE-AND-FORGET form, and that is fine for it: a card
+// that only says "deal 3 damage to target player" has nothing left to
+// do. A caller that needs to know how much actually landed — "you gain
+// life equal to the damage dealt this way" — must use
+// DealDamageToPlayerThenForEffect or DealDamageEachThenForEffect
+// instead, because a damage event can pause on a CR 616 ordering prompt
+// and reading the life total back on the next line reads it before the
+// prompt is answered (#807).
 func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount int) error {
+	return g.DealDamageToPlayerThenForEffect(source, playerID, amount, nil)
+}
+
+// DealDamageToPlayerThenForEffect is damage to a player with a
+// CONTINUATION: `then` runs with the amount that actually landed, once
+// the CR 614 window has settled it. Lock-free.
+//
+// The damage sibling of ChangePlayerLifeThenForEffect, and deliberately
+// the same idiom — card authors learn `...ThenForEffect` once:
+//
+//	g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error {
+//	        return g.ChangePlayerLifeForEffect(src, me, dealt)
+//	})
+//
+// for "~ deals N damage to target opponent. You gain life equal to the
+// damage dealt this way", and DealDamageEachThenForEffect for the
+// each-opponent version of the same sentence.
+//
+// WHAT `then` RECEIVES. The post-replacement amount, non-negative: 6
+// for a Lightning Bolt under Angrath's Marauders, 2 for one under a
+// "prevent 1" shield. Zero means nothing landed — fully prevented,
+// replaced away (CR 614.10, a Fog), or the player has left the game.
+// `then` is told either way, because a caller adding up what several
+// opponents took would otherwise wait forever on the one that took
+// nothing.
+//
+// WHEN IT RUNS. Immediately, on the ordinary path, before this function
+// returns. After the affected player answers the CR 616 ordering prompt
+// when two DIFFERENT damage replacements apply to one event — the case
+// #807 exists for, and the reason `then` is a continuation rather than
+// a return value. Either way it runs with g.mu held and with the
+// event's own EventDealDamage already emitted, so it may start the next
+// damage event or queue the next prompt itself.
+//
+// Returns ErrPlayerNotFound without running `then` when the target is
+// not seated at all, exactly as ChangePlayerLifeThenForEffect does. The
+// batch form skips absent targets rather than failing on them.
+func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
+		// Not an event at all — "deals 0 damage" deals no damage
+		// (CR 120.8) and fires no window. The continuation is still an
+		// outcome, and it is zero. Checked before the seat, so a
+		// zero-damage deal at a player who has left stays the no-op it
+		// has always been rather than becoming an error.
+		if then != nil {
+			return then(g, 0)
+		}
 		return nil
 	}
 	if g.playerByIDLocked(playerID) == nil {
@@ -189,26 +570,20 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on. No actor,
-		// no lifelink, no commander tally — this path has never
-		// applied them, and the resume must not either.
-		damageTail: &damageTail{kind: damageTailPlayer},
+		// damage and the resume has nothing else to go on. #807: the
+		// caller's continuation rides the same tail for the same
+		// reason.
+		//
+		// #711: it carries the source's CR 702.15b lifelink, read
+		// here rather than when the damage lands, so a prompt
+		// answered after the source has left still credits the life
+		// it dealt. Still no actor and no CR 903.10a commander tally:
+		// those are combat-damage business.
+		damageTail: g.effectDamageTailLocked(damageTailPlayer, source),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A replacement queued a choice (CR 616 ordering); the
-		// pipeline resumes when it's answered.
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedDamageLocked(out)
+	ev.damageTail.then = then
+	_, err := g.damageThroughReplacementsLocked(ev)
+	return err
 }
 
 // DealDamageToCreatureForEffect marks amount damage on a
@@ -242,11 +617,35 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // Lightning Bolt aimed at a planeswalker incremented a number nothing
 // read — a two-mana no-op that looked like it had worked.
 //
-// Deathtouch is not applied here. This is the non-combat path, it has
-// never applied the CR 702.2c flag, and whether a deathtouch source's
-// direct damage should is a separate question from this one.
+// #711: deathtouch and lifelink ARE applied here. CR 702.2b and
+// CR 702.15b are about the source, not about combat — a fight between
+// a Wurmcoil Engine and anything is lethal and gains eight life, and a
+// Basilisk Collar makes a one-damage ping lethal. The keywords ride
+// the damageTail, so the paused CR 616 path applies them identically;
+// a source that is not a battlefield permanent (a spell, an emblem,
+// uuid.Nil) has neither.
+//
+// The FIRE-AND-FORGET form. Use DealDamageToCreatureThenForEffect when
+// the card goes on to say something about how much was dealt (#807).
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
+	return g.DealDamageToCreatureThenForEffect(source, cardID, amount, nil)
+}
+
+// DealDamageToCreatureThenForEffect is damage to a battlefield
+// permanent with a CONTINUATION — the permanent-target sibling of
+// DealDamageToPlayerThenForEffect, with the identical contract: `then`
+// runs once, with the post-replacement amount, and with 0 when the
+// damage was fully prevented, replaced away, or the permanent left
+// between a CR 616 prompt and its answer.
+//
+// "~ deals damage equal to its power to target creature. You gain that
+// much life" is the sentence this exists for; a card that only deals
+// the damage keeps using DealDamageToCreatureForEffect.
+func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
+		if then != nil {
+			return then(g, 0)
+		}
 		return nil
 	}
 	ev := &ReplacementEvent{
@@ -257,30 +656,86 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on. No
-		// deathtouch: see the note above.
-		damageTail: &damageTail{kind: damageTailPermanent},
+		// damage and the resume has nothing else to go on. #807: the
+		// caller's continuation rides the same tail for the same
+		// reason.
+		//
+		// #711: it carries the source's CR 702.2b deathtouch and
+		// CR 702.15b lifelink, snapshotted here so a prompt answered
+		// after the source has died still applies what it dealt with.
+		damageTail: g.effectDamageTailLocked(damageTailPermanent, source),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A replacement queued a CR 616 ordering choice; the
-		// pipeline resumes when it is answered.
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
+	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
 	// planeswalker loses loyalty (CR 120.3c, the #406 fix) and a
 	// battle loses defence. The old inline loop here only ever
 	// incremented DamageMarked, which is why damage could not kill a
 	// planeswalker.
-	return g.applyResolvedDamageLocked(out)
+	_, err := g.damageThroughReplacementsLocked(ev)
+	return err
+}
+
+// DealDamageEachThenForEffect is the batch form: `source` deals
+// `amount` damage to each of `targets`, and then `then` runs with the
+// TOTAL actually dealt — "this creature deals 1 damage to each
+// opponent. You gain life equal to the damage dealt this way" (Creeping
+// Bloodsucker). Lock-free.
+//
+// The total is the sum of what each target really took after its own
+// replacements, not amount × len(targets): a target under a damage
+// doubler takes more, one behind a prevention shield takes less or
+// nothing, and the gain follows.
+//
+// Each target is damaged as the kind of thing it is, the way the
+// DealDamage primitive already routes: a seated player takes life loss
+// through the CR 120.3 player path, a battlefield permanent takes the
+// CR 120.3 permanent split, and anything that is neither any more is
+// skipped exactly as a fire-and-forget loop would skip it.
+//
+// Built on the single forms rather than beside them, so there is one
+// place that knows how to wait rather than one per card. The targets
+// are damaged IN SEQUENCE, each from the previous one's continuation:
+// that is what makes the running total a plain value carried forward
+// instead of a shared accumulator, which is what makes an undo across
+// the prompt land where a clean run would.
+//
+// The sequencing is observable only when a leg pauses: with two
+// different damage replacements on the first opponent, the second
+// opponent's damage happens when the CR 616 prompt is answered rather
+// than before it. The damage is simultaneous in the rules (CR 101.4)
+// and sequential in this engine either way; doing the rest on the far
+// side of the prompt is the closer of the two, and it is the only one
+// that can report a true total. Same trade LoseLifeEachThenForEffect
+// makes, for the same reason.
+func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int, then func(g *Game, totalDealt int) error) error {
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, then)
+}
+
+// dealDamageEachStepLocked damages the head of `targets` and continues
+// with the tail, carrying the running total forward by value. The empty
+// list is the base case: the batch is done and `then` gets the total.
+//
+// Caller must hold g.mu.
+func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int, then func(g *Game, totalDealt int) error) error {
+	for len(targets) > 0 {
+		next, rest := targets[0], targets[1:]
+		step := func(g *Game, dealt int) error {
+			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
+		}
+		if g.playerByIDLocked(next) != nil {
+			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
+		}
+		if findBattlefieldCard(g, next) != nil {
+			return g.DealDamageToCreatureThenForEffect(source, next, amount, step)
+		}
+		// Neither a seated player nor a battlefield permanent: the
+		// target is gone. Skip it and keep the total.
+		targets = rest
+	}
+	if then == nil {
+		return nil
+	}
+	return then(g, dealtSoFar)
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one
@@ -302,28 +757,35 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	return nil
 }
 
-// DiscardRandomForEffect discards n cards from playerID's hand at
-// random order (top of the stack — hand isn't visibly ordered to
-// opponents, so the RNG choice isn't observable). Emits one
-// EventDiscardCard per card and no EventZoneMove. The move is a direct
-// MoveCard, so the discard bypasses the CR 614 window (#650). If the
-// hand has fewer than n cards, discards all of them.
+// DiscardRandomForEffect discards n cards from playerID's hand,
+// chosen at random. Emits one EventDiscardCard per card and no
+// EventZoneMove. The move is a direct MoveCard, so the discard
+// bypasses the CR 614 window (#650). If the hand has fewer than n
+// cards, discards all of them.
+//
+// The cards are one pick on the discarding player's "pick" stream
+// (ADR 0054 Decision 5), so an undone random discard redoes with the
+// same cards. There is no "first card when the game has no RNG"
+// branch any more: every game draws from a key (rng.go).
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	for i := 0; i < n; i++ {
-		if p.Hand.Size() == 0 {
-			return nil
+	if n <= 0 || p.Hand.Size() == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(p.Hand.Cards))
+	for i, c := range p.Hand.Cards {
+		ids[i] = c.InstanceID
+	}
+	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
+		if !p.Hand.Contains(cardID) {
+			// Nothing between two discards moves hand cards today;
+			// if something ever does, a card that already left is
+			// not discarded twice.
+			continue
 		}
-		// Pop a random index. The RNG is the captured per-game source
-		// so deterministic tests stay deterministic.
-		idx := 0
-		if p.Hand.Size() > 1 && g.rng != nil {
-			idx = g.rng.IntN(p.Hand.Size())
-		}
-		cardID := p.Hand.Cards[idx].InstanceID
 		if _, err := MoveCard(p.Hand, p.Graveyard, cardID); err != nil {
 			return err
 		}
@@ -1502,7 +1964,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		Amount: len(found),
 	})
 	if spec.Shuffle {
-		p.Library.Shuffle(g.rng)
+		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// The shuffle is what un-knows the library again: whatever
 		// the searcher saw while looking, they no longer know where
 		// any of it is.
@@ -1866,7 +2328,7 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	if p == nil || p.Library == nil {
 		return nil
 	}
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
 	return nil
@@ -2011,6 +2473,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.EnteredBattlefieldAt = 0
 	card.SummonedThisTurn = false
 	card.NamedTribe = ""
+	card.ChosenColor = ""
 	card.effective = nil
 	g.Battlefield.PushTop(card)
 	g.markCardKnownInZoneLocked(g.Battlefield, newID)
@@ -2027,6 +2490,94 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: newID})
 	g.fireETBHookLocked(newID, CatalogKey(card))
 	return newID, nil
+}
+
+// HandEntryOptions are the modifiers a "put a card from your hand
+// onto the battlefield" effect applies to the entry it causes. Since
+// #745 it is the shared ZoneEntryOptions (battlefield_put.go), because
+// the library move takes exactly the same two modifiers; the name is
+// kept so a hand caller reads as one.
+type HandEntryOptions = ZoneEntryOptions
+
+// PutFromHandOntoBattlefieldForEffect puts one card from its owner's
+// hand onto the battlefield without casting or playing it — "you may
+// put a land card from your hand onto the battlefield" (Growth
+// Spiral, Eureka Moment, Broken Bond, Chulane), "put an Equipment
+// card from your hand onto the battlefield" (Stoneforge Mystic).
+//
+// It is the MOVE half of the seam docs/engine-seams.md calls
+// "Put-from-hand onto the battlefield" (#654). The PICK half already
+// existed: ChooseCardsPrompt with Zone: ZoneHand and a Then
+// continuation (#552). The prompt, the "you may" and the per-card
+// filter stay in the catalog (effects.PutFromHandOntoBattlefield),
+// because those are card text; the move is engine.
+//
+// The shape is deliberately the one every other effect-side entry
+// uses — searchEnterBattlefieldLocked, the reanimation path in
+// ReturnFromGraveyardUnderControlForEffect, and
+// ReturnFromExileToBattlefieldForEffect:
+//
+//  1. Stamp the controller on the card WHILE IT IS STILL IN HAND.
+//     Authority of the Consuls asks whose permanent is entering and a
+//     self-replacement's condition counts that player's lands; both
+//     read Card.Controller, which in hand still names whoever it was
+//     stamped with last.
+//  2. Run the CR 614 pipeline BEFORE the card leaves the hand, so a
+//     CR 616 ordering prompt — which pauses — leaves the card where
+//     it is rather than stranding it between zones.
+//  3. Move, then apply the settled EntersTapped / EntersWithCounters.
+//  4. EventZoneMove, EventETB, then the catalog's AsEnters hook, so
+//     the permanent triggers everything an ordinary entry triggers.
+//
+// Three things it deliberately does NOT do:
+//
+//   - It does not count a land drop. A land an effect puts onto the
+//     battlefield was not PLAYED (CR 305.4), so LandsPlayedThisTurn
+//     is untouched and the enumerator still offers the turn's land
+//     play. That is also why this event is not flagged
+//     entryResumable: the generic resume in
+//     executeEntryToBattlefieldLocked bumps the tally for any land
+//     arriving with no stack item, which is right for the land-play
+//     branch it was written for and wrong here.
+//   - It does not run state checks. Like its neighbours it leaves
+//     them to the resolution boundary the caller is already inside,
+//     so a permanent that enters and dies does so once, together
+//     with everything else that effect did.
+//   - It does not offer the Clone choice. That prompt needs a
+//     resumable entry site (copy_choice.go), and this is not one for
+//     the reason above — the same declared simplification the search
+//     path carries, and weaker than printed rather than stronger.
+//
+// Returns the entering permanent's ID. It is the InstanceID the card
+// had in hand: every non-exile move keeps it, and only the exile
+// return mints a new one. uuid.Nil with a nil error means nothing
+// entered — a replacement canceled or redirected the move, or the
+// pipeline paused — which is a legal outcome, not a failure.
+//
+// Refuses, with ErrCardNotFound, a card that is not in a hand: this
+// is a hand move, and a caller holding a stale ID must not silently
+// rip a permanent off the battlefield or a card out of a graveyard.
+// A nonpermanent card is refused with ErrInvalidParam — CR 110.4
+// lists the permanent types and an instant is not among them, so the
+// card stays in hand.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEntryOptions) (uuid.UUID, error) {
+	entered, err := g.putOntoBattlefieldFromZoneLocked([]uuid.UUID{cardID}, ZoneHand, opts)
+	if err != nil || len(entered) == 0 {
+		return uuid.Nil, err
+	}
+	return entered[0], nil
+}
+
+// addManaReason is the prompt header for an effect's mana pick: the
+// ordinary "one mana of any color", or the "N mana of any one color"
+// form (#742) when the slot adds more than one.
+func addManaReason(slot ProducedManaEntry) string {
+	if slot.OneColorAmounts() {
+		return "Add mana of any one color"
+	}
+	return "Add one mana of any color"
 }
 
 // AddManaForEffect adds the mana a SPELL or a non-mana ability
@@ -2055,6 +2606,27 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) error {
+	return g.AddManaWithOptionsForEffect(playerID, source, produced, AddManaOptions{})
+}
+
+// AddManaOptions tunes AddManaWithOptionsForEffect.
+type AddManaOptions struct {
+	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
+	// width instead of intersecting it with the controller's commander
+	// colour identity: the effect-side twin of the mana ability's
+	// IgnoreCommanderIdentity. Set it whenever the printed text says
+	// "any color" or "any one color" with no commander-identity clause
+	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
+	// Added for #742.
+	IgnoreCommanderIdentity bool
+}
+
+// AddManaWithOptionsForEffect is AddManaForEffect with options.
+// AddManaForEffect is this with the zero options, so the existing
+// callers keep the commander-identity narrowing they declared.
+//
+// Caller must hold g.mu.
+func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return nil
@@ -2073,14 +2645,19 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
+		colorOptions := options
+		if !opts.IgnoreCommanderIdentity {
+			colorOptions = filterPipeByCommanderIdentity(options, p)
+		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,
 			FromPlayer:   playerID,
 			Count:        1,
 			Source:       source,
-			Reason:       "Add one mana of any color",
-			ColorOptions: filterPipeByCommanderIdentity(options, p),
+			Reason:       addManaReason(slot),
+			ColorOptions: colorOptions,
+			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})
 	}
 	return nil

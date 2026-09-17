@@ -23,7 +23,12 @@
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
-  import { hasAnyLegalResponse, owesBlockDecision } from "../lib/priority";
+  import {
+    autopassSuspended,
+    hasAnyLegalResponse,
+    loopNoticeText,
+    owesBlockDecision,
+  } from "../lib/priority";
   import {
     attackAllLabel,
     attackAllParams,
@@ -203,6 +208,15 @@
     // first declaration — otherwise auto-pass would slam the window
     // shut the moment you assigned one blocker of an intended two.
     if (owesBlockDecision(view, viewerID)) return;
+    // #628 (CR 726): the server has spotted a trigger loop and
+    // suspended AUTOMATIC passing for the whole table. Sits here,
+    // above the toggle, for the same reason the guards above it do:
+    // it is not a question about what this viewer can do, and the
+    // toggle must not be able to out-vote it — the toggle is exactly
+    // what was driving the loop. The "next" button still passes by
+    // hand, so a table that wants to watch the loop run can, one
+    // click at a time.
+    if (loopSuspended) return;
     const step = view?.turn?.step;
     if (!step) return;
 
@@ -426,6 +440,12 @@
   // ---- Turn / priority / quick actions ----
 
   const view = $derived(replayFrame?.game ?? $snapshot);
+  // #187 / ADR 0053: the combat damage beats prime (mark the log seen
+  // without cueing it) on their first frame. The board stays mounted
+  // across an automatic reconnect and a replay toggle, so this key
+  // changes there too: the frames missed or scrubbed past were never
+  // watched live and must not replay as live beats.
+  const beatsPrimeKey = $derived(`${$status === "connected" ? "live" : "offline"}:${replaying}`);
   const seats = $derived<PlayerView[]>(view?.seats ?? []);
   const turn = $derived(view?.turn);
   const activeSeat = $derived(turn?.active_seat ?? 0);
@@ -450,6 +470,12 @@
   // exactly one non-eliminated seat remains; the survivor is the
   // implicit winner.
   const gameEnded = $derived(view?.state === "ended");
+  // #628 (CR 726): the server's loop notice. While it stands, nothing
+  // on this table passes priority automatically — see the autopass
+  // effect above and the banner PhaseDisplay renders under the
+  // toggle.
+  const loopSuspended = $derived(autopassSuspended(view));
+  const loopNotice = $derived(loopNoticeText(view));
   const survivors = $derived(seats.filter((s) => !s.eliminated));
   const winner = $derived(gameEnded && survivors.length === 1 ? survivors[0] : null);
 
@@ -1113,8 +1139,10 @@
         onDeclareAttack={declareAttackTarget}
         onDeclareBlock={declareBlockTarget}
         {autopassEnabled}
+        {loopNotice}
         onPassPriority={passPriority}
         onToggleAutopass={toggleAutopass}
+        {beatsPrimeKey}
       >
         <!-- Everything that asks for the viewer's attention shares the
              board's strip (under the stack card): targeting prompt,

@@ -17,16 +17,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and the difference was invisible in a test with no indestructible
 // creature, which is exactly how this kind of bug survives.
 //
-// Sandbox simplification still standing: THE COST REDUCTION IS NOT
-// IMPLEMENTED — this casts at its printed {8}{R}. Cost modification
-// has no Spec hook (S28 territory), and lowering the printed cost
-// would be wrong in the other direction.
+// #746 closed the last caveat: the cost reduction is a self cost
+// modifier (Spec.SelfCostModifiers, ADR 0048 addendum), counting every
+// creature on the battlefield whoever controls it. It spends generic
+// mana only, so the card never costs less than {R}.
 func init() {
 	Register(Spec{
 		OracleID:     "7a2484a9-04fd-41a0-8224-610c1c07ed10",
 		Name:         "Blasphemous Act",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The cost reduction is missing — it always costs the full {8}{R} no matter how many creatures are on the battlefield."},
+		Completeness: CompletenessFull,
+		SelfCostModifiers: []game.CostModifier{
+			CostsLessEach(PermanentsOnBattlefield(Creature()),
+				"This spell costs {1} less to cast for each creature on the battlefield."),
+		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return damageEachMatching(ctx, Creature(), 13)
 		},

@@ -28,13 +28,10 @@ import (
 // *Game but on neither side of the snapshot. That blind spot is what
 // snapshot_drift_test.go closes.
 
-// newRestorableGame returns a started 2-player game whose random
-// source is both deterministic (fixed PCG seed) and persistable.
-//
-// The shared newActiveGame helper starts from a caller-built
-// *rand.Rand, which by construction cannot have its stream position
-// read back out, so every game it makes is flagged unpersistable.
-// StartWithSource is the shape that gets both.
+// newRestorableGame returns a started 2-player game whose RNG key is
+// deterministic (read from a fixed PCG seed). Since ADR 0054 every
+// game's randomness is persistable, including newActiveGame's, which
+// starts from a *rand.Rand; this helper keeps StartWithSource covered.
 func newRestorableGame(t *testing.T) *Game {
 	t.Helper()
 	g := NewGame()
@@ -190,6 +187,7 @@ func enrich(t *testing.T, g *Game) {
 				AttackerPower:    4,
 				AllowTrample:     true,
 				HasDeathtouch:    true,
+				CombatStep:       CombatStepRegular,
 				SourceController: p0.ID,
 			},
 		}}
@@ -252,6 +250,12 @@ func enrich(t *testing.T, g *Game) {
 		// --- event log -------------------------------------------
 		g.EmitEvent(Event{Kind: EventDrawCard, Actor: p0.ID, Amount: 1})
 		g.EmitEvent(Event{Kind: EventCast, Actor: p0.ID, Source: spellID, Label: "Test Instant"})
+		// #187: a tagged combat damage event, so the round trip proves
+		// Event.CombatStep is carried.
+		g.EmitEvent(Event{
+			Kind: EventDealDamage, Actor: p0.ID, Source: spellID, Target: p1.ID,
+			Amount: 2, Combat: true, CombatStep: CombatStepFirstStrike,
+		})
 	})
 }
 
@@ -341,39 +345,58 @@ func TestSnapshotRoundTripKeepsGameUsable(t *testing.T) {
 	}
 }
 
+// rngDraws takes one Uint64 from each of several streams, in order.
+// Two games at the same point in the same streams return the same
+// values; a restored game that lost its key or its counters does not.
+func rngDraws(g *Game) []uint64 {
+	var out []uint64
+	g.WithWriteLock(func() {
+		p0, p1 := g.Seats[0].ID, g.Seats[1].ID
+		src := uuid.MustParse("00000000-0000-4000-8000-00000000abcd")
+		for _, s := range []rngStream{
+			{kind: rngStreamShuffle, player: p0},
+			{kind: rngStreamShuffle, player: p0},
+			{kind: rngStreamShuffle, player: p1},
+			{kind: rngStreamPick, player: p1},
+			{kind: rngStreamRandomOrder, player: p0},
+			{kind: "roll", player: p0, source: src},
+		} {
+			out = append(out, g.randForLocked(s).Uint64())
+		}
+	})
+	return out
+}
+
 // TestSnapshotResumesTheRandomStream is the fairness assertion behind
-// Game.rngState. A restored game must continue the stream it was in,
-// not start a new one — otherwise a deploy silently re-deals every
-// library from a different sequence.
+// rngSnapshot. A restored game must continue every stream it was in,
+// not start new ones — otherwise a deploy silently re-deals a library
+// from a different sequence. The game has drawn before the capture
+// (the opening shuffle, and a mid-turn shuffle), so the counters are
+// non-trivial and must survive too.
 func TestSnapshotResumesTheRandomStream(t *testing.T) {
 	g := newRestorableGame(t)
-	_, restored := roundTrip(t, g)
-
-	// Draw the same number of values from each. Identical output
-	// means the restored game is at the same position in the same
-	// stream.
-	var live, back [8]uint64
-	g.WithWriteLock(func() {
-		for i := range live {
-			live[i] = g.rng.Uint64()
-		}
-	})
-	restored.WithWriteLock(func() {
-		for i := range back {
-			back[i] = restored.rng.Uint64()
-		}
-	})
-	if live != back {
-		t.Errorf("restored game draws a different random stream:\nlive:     %v\nrestored: %v", live, back)
+	if err := g.ShuffleLibrary(g.Seats[0].ID); err != nil {
+		t.Fatalf("ShuffleLibrary: %v", err)
+	}
+	snap, restored := roundTrip(t, g)
+	if snap.RNG.Kind != rngKindKeyed {
+		t.Fatalf("rng kind = %q, want %q", snap.RNG.Kind, rngKindKeyed)
+	}
+	if len(snap.RNG.Counters) == 0 {
+		t.Fatal("snapshot carries no stream counters after a shuffle")
+	}
+	live, back := rngDraws(g), rngDraws(restored)
+	if !reflect.DeepEqual(live, back) {
+		t.Errorf("restored game draws differently:\nlive:     %v\nrestored: %v", live, back)
 	}
 }
 
 // TestSnapshotRNGIsNotReproducibleAcrossGames guards the other half
 // of fairness: two games started the production way must not share a
-// stream. A constant or clock-derived seed would make library orders
+// key. A constant or clock-derived key would make library orders
 // predictable from the outside.
 func TestSnapshotRNGIsNotReproducibleAcrossGames(t *testing.T) {
-	mk := func() [4]uint64 {
+	mk := func() []uint64 {
 		g := NewGame()
 		for i := 0; i < 2; i++ {
 			if _, err := g.AddPlayer("P", buildTestDeck("C")); err != nil {
@@ -383,43 +406,96 @@ func TestSnapshotRNGIsNotReproducibleAcrossGames(t *testing.T) {
 		if err := g.Start(nil); err != nil {
 			t.Fatalf("Start: %v", err)
 		}
-		var out [4]uint64
-		g.WithWriteLock(func() {
-			for i := range out {
-				out[i] = g.rng.Uint64()
-			}
-		})
-		return out
+		return rngDraws(g)
 	}
-	if a, b := mk(), mk(); a == b {
+	if a, b := mk(), mk(); reflect.DeepEqual(a, b) {
 		t.Errorf("two production-started games share a random stream: %v", a)
 	}
 }
 
-// TestExternalRNGIsCensusedNotFaked covers the case the engine cannot
-// persist: a caller-supplied *rand.Rand whose Source math/rand/v2
-// keeps private. The snapshot must SAY it lost the stream rather than
-// quietly reseeding and claiming a faithful restore.
-func TestExternalRNGIsCensusedNotFaked(t *testing.T) {
-	g := newActiveGame(t) // starts from rand.New(...) — external
+// TestSeededRNGIsPersistable is the case that used to be censused as
+// lost: a game started from a caller-built *rand.Rand. With keyed
+// streams its key is read from that source, so the game is an
+// ordinary restore point and continues its streams exactly.
+func TestSeededRNGIsPersistable(t *testing.T) {
+	g := newActiveGame(t) // starts from rand.New(...)
 	snap := g.CaptureSnapshot()
 
-	if snap.RNG.Kind != rngKindExternal {
-		t.Errorf("rng kind = %q, want %q", snap.RNG.Kind, rngKindExternal)
+	if snap.RNG.Kind != rngKindKeyed {
+		t.Errorf("rng kind = %q, want %q", snap.RNG.Kind, rngKindKeyed)
 	}
-	if !snap.Continuations.UnpersistableRNG {
-		t.Error("census did not flag the unreadable random source")
+	if len(snap.RNG.Key) != 32 {
+		t.Errorf("rng key is %d bytes, want 32", len(snap.RNG.Key))
 	}
-	if snap.Restorable() {
-		t.Error("a game whose random stream was lost must not count as a restore point")
+	if snap.Continuations.UnpersistableRNG {
+		t.Error("census flagged a seeded game's RNG as unpersistable")
 	}
-	// It must still restore on the lenient path, with a real source.
-	restored, err := snap.Restore()
+	if !snap.Restorable() {
+		t.Errorf("a seeded game with no continuations must be a restore point; census: %+v", snap.Continuations)
+	}
+	restored, err := snap.RestoreStrict()
 	if err != nil {
-		t.Fatalf("lenient restore: %v", err)
+		t.Fatalf("strict restore: %v", err)
 	}
-	if restored.rng == nil || restored.rngState == nil {
-		t.Error("restored game must get a fresh persistable source, not a nil one")
+	if live, back := rngDraws(g), rngDraws(restored); !reflect.DeepEqual(live, back) {
+		t.Errorf("restored seeded game draws differently:\nlive:     %v\nrestored: %v", live, back)
+	}
+}
+
+// TestLegacyRNGSnapshotsRestoreKeyed covers files written before
+// ADR 0054: a "pcg" position and an "external" marker both restore
+// to a keyed game with a fresh key and empty counters, which then
+// draws and captures as "keyed". A damaged "keyed" record gets the
+// same treatment rather than a game that cannot shuffle.
+func TestLegacyRNGSnapshotsRestoreKeyed(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rng  rngSnapshot
+	}{
+		{"pcg", rngSnapshot{Kind: rngKindPCG, State: []byte("pcg:X\x0f\x8a}\xe5\xe9\x16\x16-I\x06U\xfe\xd0\xad\xf1")}},
+		{"external", rngSnapshot{Kind: rngKindExternal}},
+		{"keyed with a short key", rngSnapshot{Kind: rngKindKeyed, Key: []byte{1, 2, 3}}},
+		{"keyed with a zero key", rngSnapshot{Kind: rngKindKeyed, Key: make([]byte, 32)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			snap := newRestorableGame(t).CaptureSnapshot()
+			snap.RNG = tc.rng
+			if !snap.Restorable() {
+				t.Fatalf("an old RNG record must not make a clean game unrestorable; census: %+v", snap.Continuations)
+			}
+			restored, err := snap.RestoreStrict()
+			if err != nil {
+				t.Fatalf("strict restore: %v", err)
+			}
+			if restored.rngKey == ([32]byte{}) {
+				t.Fatal("restored game has no key")
+			}
+			if len(restored.rngCounters) != 0 {
+				t.Errorf("restored counters = %v, want empty", restored.rngCounters)
+			}
+			if err := restored.ShuffleLibrary(restored.Seats[0].ID); err != nil {
+				t.Fatalf("restored game cannot shuffle: %v", err)
+			}
+			if got := restored.CaptureSnapshot().RNG.Kind; got != rngKindKeyed {
+				t.Errorf("recaptured rng kind = %q, want %q", got, rngKindKeyed)
+			}
+		})
+	}
+}
+
+// TestRNGNoneRoundTrips: a lobby game that has drawn nothing records
+// "none", and restores without a key, so Start still mints one.
+func TestRNGNoneRoundTrips(t *testing.T) {
+	g := NewGame()
+	if _, err := g.AddPlayer("P1", buildTestDeck("C1")); err != nil {
+		t.Fatalf("AddPlayer: %v", err)
+	}
+	snap, restored := roundTrip(t, g)
+	if snap.RNG.Kind != rngKindNone {
+		t.Fatalf("lobby rng kind = %q, want %q", snap.RNG.Kind, rngKindNone)
+	}
+	if restored.rngKey != ([32]byte{}) {
+		t.Error("a \"none\" record restored with a key")
 	}
 }
 

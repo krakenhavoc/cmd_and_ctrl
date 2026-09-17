@@ -26,7 +26,10 @@ func newFourPlayerActiveGame(t *testing.T) *Game {
 	return newActiveGameWithSeats(t, 4)
 }
 
-func newActiveGameWithSeats(t *testing.T, seats int) *Game {
+// The parameter is testing.TB rather than *testing.T so a BENCHMARK
+// can build a game too (BenchmarkCloneWithEvents, #629). Every test
+// caller passes a *testing.T unchanged.
+func newActiveGameWithSeats(t testing.TB, seats int) *Game {
 	t.Helper()
 	g := newActiveGameMulligansOpen(t, seats)
 	// S13: every test that drives priority / steps assumes the
@@ -49,7 +52,7 @@ func newActiveGameWithSeats(t *testing.T, seats int) *Game {
 // state. After S13 the cursor sits on Untap with NoPriority until
 // KeepHand for the last seat closes the window and fires the first
 // auto-untap.
-func newActiveGameMulligansOpen(t *testing.T, seats int) *Game {
+func newActiveGameMulligansOpen(t testing.TB, seats int) *Game {
 	t.Helper()
 	g := NewGame()
 	for i := 0; i < seats; i++ {

@@ -324,6 +324,31 @@ type Spec struct {
 	// in cost_modifier.go. Nil for nearly every card.
 	CostModifiers []game.CostModifier
 
+	// SelfCostModifiers is "THIS spell costs {N} more / less to cast"
+	// (CR 601.2f, 113.6d): Blasphemous Act's "{1} less for each
+	// creature on the battlefield", affinity (CR 702.41a), Ghalta's
+	// "{X} less where X is the total power of creatures you control",
+	// Fireball's "{1} more for each target beyond the first".
+	// ADR 0048 addendum §11.
+	//
+	// The slot, not the constructor, is what makes a modifier apply
+	// to its own spell. Write the entries with the same CostsLess /
+	// CostsLessEach / CostsMore constructors CostModifiers uses, plus
+	// AffinityFor, CostsLessIfItTargets and
+	// CostsMorePerTargetBeyondFirst:
+	//
+	//	SelfCostModifiers: []game.CostModifier{
+	//	    AffinityFor("Affinity for artifacts", Artifact()),
+	//	},
+	//
+	// Read only while this card is being priced, from whatever zone it
+	// is cast from, for the face being cast; never read from the
+	// battlefield. A card can have both slots — Mycosynth Golem has
+	// affinity itself and grants it from the battlefield. A CostFloor
+	// here panics at Register: no printed card sets a floor on its own
+	// cost. Nil for nearly every card.
+	SelfCostModifiers []game.CostModifier
+
 	// CastableZones is the S29 "you may cast this card from
 	// somewhere other than your hand" declaration (CR 601.2, and
 	// every keyword in CR 702 that grants an alternative cast
@@ -469,7 +494,12 @@ type ActivatedAbility struct {
 	Cost         game.AbilityCost
 	Targets      *game.TargetSpec
 	SorcerySpeed bool
-	Effect       func(g *game.Game, item *game.StackItem) error
+	// Condition is the "Activate only if …" / "Activate only during
+	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
+	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition
+	// and activation_conditions.go. Nil means no condition.
+	Condition func(g *game.Game, controller, source uuid.UUID) bool
+	Effect    func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
@@ -596,12 +626,14 @@ type ManaAbilityCost struct {
 	Tap bool
 	// Sacrifice sacrifices the SOURCE (Treasure, Lotus Petal).
 	Sacrifice bool
-	// SacrificeOther sacrifices one OTHER permanent the activator
+	// SacrificeOther sacrifices OTHER permanents the activator
 	// controls, matched against this spec — Ashnod's Altar's
 	// "Sacrifice a creature: Add {C}{C}". Build it with the same
 	// constructors an activated ability's cost uses
-	// (SacrificeACreature().SacrificeOther), so the two ability
-	// kinds share one clause vocabulary and one client picker.
+	// (SacrificeACreature().SacrificeOther, or
+	// SacrificeN(n, …).SacrificeOther for "Sacrifice two …", #747),
+	// so the two ability kinds share one clause vocabulary and one
+	// client picker.
 	//
 	// Added in the S21 mana-cost pass, which is also what closed
 	// the S15 note that sacrifice costs were "reserved for future

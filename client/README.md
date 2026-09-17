@@ -105,6 +105,28 @@ wiring only.
   (`Card`'s `priority` prop, set by `Hand.svelte`) and the hover-zoom
   scan. Don't add it elsewhere: on every tile it means nothing.
 
+## Combat damage beats
+
+When a combat had a first-strike step, the log tags each combat damage
+entry with `combat_step`, and the board plays the two steps one after
+the other ([ADR 0053](../docs/decisions/0053-combat-damage-beats.md)).
+`lib/combatBeats.ts` holds every rule and is unit-tested there: which
+log entries are new (with priming and undo), beat membership, arrow
+IDs from the log, live vs ghost, the mode and the schedule.
+`components/board/CombatArrows.svelte` only measures, draws and
+renders.
+
+- Beats are overlays. Never hold the board or input for one: the frame
+  already shows its end state.
+- The motion gate is `beatMode`, fed `animations.enabled`,
+  `animations.damagePopups` and `accessibility.reduceMotion` from the
+  settings store. `animations.ts` never sees `reduceMotion`, so
+  `gatedDuration` is not enough for a timer or a GSAP tween. With
+  motion off, the text cue still plays on the same schedule.
+- Anything that should not replay old beats when it changes (today, a
+  reconnect and the replay toggle) belongs in `Game.svelte`'s
+  `beatsPrimeKey`.
+
 ## PWA
 
 The client installs as a progressive web app. See

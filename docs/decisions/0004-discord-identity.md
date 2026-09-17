@@ -1,6 +1,8 @@
 # ADR 0004 — Discord identity and slash-command bot (S12.5)
 
 **Status:** Accepted · 2026-04-22 · Sprint S12.5
+**Revised:** 2026-09-16 · Operator runbook, First deploy step 2: guilds authorize `bot applications.commands`, not `applications.commands` alone (owner decision, for #613's DM invites) · Branch `feat/bot-provisioning-cd`
+**Revised:** 2026-09-16 · §6 and the operator runbook: the server env file is `/etc/cmd_and_ctrl/env`, both env files' owners are corrected, and "Rotating tokens" follows the CD-owned `bot.env` and the HomeLab-owned admin token (#251) · Branch `docs/adr-0004-env-path-251`
 
 ## Context
 
@@ -119,10 +121,27 @@ The bot holds both its Discord bot token and the server's
 collapses two independent blast radii into one. The deployed
 shape is:
 
-- `/etc/cmd_and_ctrl/server.env` owned `krkn:krkn` mode `0640` —
+- `/etc/cmd_and_ctrl/env` owned `root:cmdctrl` mode `0640` —
   game-server secrets only.
-- `/etc/cmd_and_ctrl/bot.env` owned `cmdctrl-bot:cmdctrl-bot`
+- `/etc/cmd_and_ctrl/bot.env` owned `root:cmdctrl-bot`
   mode `0640` — bot token + the admin-token copy.
+
+*Revised 2026-09-16 (#251).* This list originally gave the server's
+file a name the host never used (ADR 0017 Consequences records the
+mismatch), owned `krkn:krkn`, and gave `bot.env` the owner
+`cmdctrl-bot:cmdctrl-bot`. None of that matched the deployed host.
+The HomeLab cloud-init template
+(`terraform/deployments/lab/templates/setup-cmd_and_ctrl.yaml.tftpl`
+in krakenhavoc/HomeLab) writes `/etc/cmd_and_ctrl/env` and then runs
+`chown root:cmdctrl /etc/cmd_and_ctrl/env` in `runcmd`. The
+`cmd-and-ctrl` and `cmd-and-ctrl-scryfall` units read it through
+`EnvironmentFile=/etc/cmd_and_ctrl/env`, and the CD job upserts keys
+into it with `scripts/set-server-env.sh` (see
+[ADR 0017](0017-bug-report-button.md) Consequences). `bot.env` is
+written by CD as `root:cmdctrl-bot` `0640` on every `main` deploy
+since #714 ([deploy/cmd-and-ctrl-bot.service](../../deploy/cmd-and-ctrl-bot.service)
+reads it as `User=cmdctrl-bot`). The split itself, and the reason for
+it, are unchanged.
 
 A `systemd-creds`-based upgrade is cleanly possible later and
 should be considered on the next incident rotation.
@@ -140,6 +159,17 @@ should be considered on the next incident rotation.
   safe, major-version bumps need a deliberate upgrade PR.
 
 ## Operator runbook
+
+> **Production provisioning has moved to CD.** "First deploy" below
+> describes the original hand-installed setup and is out of date,
+> except step 2's guild scope, which stands as revised on 2026-09-16.
+> CD now installs the unit and writes
+> `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot 0640`) from Actions
+> secrets and variables, so do not hand-edit it. The current host
+> steps are in
+> [deploy/README.md](../../deploy/README.md#discord-bot-production-only).
+> §6's file paths and owners and "Rotating tokens" were corrected on
+> 2026-09-16 (#251). The rest of ADR 0004's catch-up is tracked in #615.
 
 ### Env vars
 
@@ -163,16 +193,30 @@ stack that doesn't have a registered Discord app.
 
 1. Create the Discord application in the Developer Portal; enable
    the Bot user; copy the bot token.
-2. Invite the bot to each approved guild with the
-   `applications.commands` scope (and nothing else — the bot
-   does not need message-content, member-list, or voice
-   permissions).
+2. Authorize the app in each approved guild with the
+   `bot applications.commands` scopes and no permissions:
+   `https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot+applications.commands&permissions=0`.
+   The bot does not need message-content, member-list, voice or
+   any other permission.
+
+   *Revised 2026-09-16 (owner decision, #249).* This step
+   originally said `applications.commands` and nothing else. That
+   is enough for the slash commands, but it never makes the bot
+   user a guild member, and a bot can open a DM only with a user
+   who shares a guild with it. ADR 0051 Decision 5's DM invites
+   (#613) need that, so the `bot` scope is added. DMs still need no
+   guild permission bits, so `permissions=0` stays: the bot token,
+   the shared guild, and a recipient whose privacy settings allow
+   DMs from that server are enough. Every guild authorized under
+   the old scope must be re-authorized once with the URL above (an
+   owner action in Discord, not a host step). Details:
+   [deploy/README.md](../../deploy/README.md#discord-scopes).
 3. Place `/etc/cmd_and_ctrl/bot.env` on the VPS:
    ```
    CMDCTRL_DISCORD_BOT_TOKEN=...
    CMDCTRL_DISCORD_APP_ID=...
    CMDCTRL_DISCORD_GUILD_IDS=111222333,444555666
-   CMDCTRL_ADMIN_TOKEN=... # same value as /etc/cmd_and_ctrl/server.env
+   CMDCTRL_ADMIN_TOKEN=... # same value as /etc/cmd_and_ctrl/env
    ```
 4. Install the systemd unit at [deploy/cmd-and-ctrl-bot.service](../../deploy/cmd-and-ctrl-bot.service):
    ```
@@ -190,10 +234,36 @@ stack that doesn't have a registered Discord app.
 Both the bot token and the admin token are high-value. On
 suspected compromise:
 
-1. Reset both in the Discord Developer Portal / server env.
-2. Update `/etc/cmd_and_ctrl/bot.env` and
-   `/etc/cmd_and_ctrl/server.env`.
-3. `sudo systemctl restart cmd-and-ctrl cmd-and-ctrl-bot`.
+1. **Bot token.** Reset it in the Discord Developer Portal (Bot
+   tab), put the new value in the `CMDCTRL_DISCORD_BOT_TOKEN`
+   Actions secret, and start a new `main` deploy. `bot.env` is
+   CD-owned since #714: "Sync bot env" rewrites it and the deploy
+   restarts the bot (if its unit is enabled). Do not hand-edit the file. Start a new run
+   rather than re-running an old one (see
+   [deploy/README.md](../../deploy/README.md#discord-bot-production-only)).
+2. **Admin token.** Production's `CMDCTRL_ADMIN_TOKEN` comes from
+   the HomeLab secret `CMD_AND_CTRL_ADMIN_TOKEN`, which Terraform
+   writes into `/etc/cmd_and_ctrl/env` through cloud-init
+   ([docs/environments.md](../environments.md)). Change it at
+   that source. The VM carries `ignore_changes` on its cloud-init,
+   so an apply does not rewrite the file on a running host: the
+   new value arrives with the next rebuild, or by also updating
+   `/etc/cmd_and_ctrl/env` on the host. A host edit on its own is
+   lost on the next rebuild, which restores the old (leaked)
+   token. `cmd-and-ctrl` reads the file only when it starts, so
+   restart it once the file has changed.
+3. `bot.env` picks up a new admin token only on the next `main`
+   deploy, which copies it from `/etc/cmd_and_ctrl/env`.
+   Restarting `cmd-and-ctrl-bot` before that leaves the bot on
+   the old token, so its admin calls fail. Run a new `main`
+   deploy after any admin-token change.
 4. Invalidate any admin sessions minted before the rotation if
    the threat model requires it (currently no revocation UI —
    the in-memory authenticator's entries TTL out in 12 h).
+
+*Revised 2026-09-16 (#251).* These steps originally said to reset
+"both in the Discord Developer Portal / server env", hand-edit
+`bot.env` and the server's env file (under the wrong name, as in
+§6), and restart both units. Since #714
+CD owns `bot.env` and copies the admin token into it only during a
+`main` deploy.

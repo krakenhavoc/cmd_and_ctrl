@@ -445,6 +445,16 @@ const (
 	// what it was once a shuffle has taken the knowledge away again.
 	// Added in S22.
 	EventRevealCards EventKind = "reveal_cards"
+
+	// EventLoopSuspected — the CR 726 loop breaker fired: the
+	// ability named by Source + Label has resolved Amount times this
+	// turn with no player decision in between, and automatic passing
+	// is now suspended for every seat. Actor is the ability's
+	// controller — the player CR 726 would have name how many more
+	// iterations to run. Emitted once per run, when Game.LoopNotice
+	// is raised; the flag, not the event, is what the client reads.
+	// Added for #628 (ADR 0055).
+	EventLoopSuspected EventKind = "loop_suspected"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -544,7 +554,41 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+
+	// CombatStep names which combat damage step dealt a combat
+	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular
+	// (CR 510.4 — when a creature has first strike or double strike
+	// as combat damage begins, the phase has two combat damage steps).
+	//
+	// Set ONLY when the first-strike pass ran. A combat with no first
+	// strike or double strike anywhere has one step, and its damage
+	// stays untagged (""), so the tag's presence alone tells a
+	// consumer there is something to sequence. Untagged is also what
+	// an event written before the field existed decodes as, which is
+	// the same answer. Never set on non-combat damage.
+	//
+	// Written in exactly one place, emitDealDamageLocked, from the
+	// damage tail — so a paused event (a CR 616 ordering prompt, or a
+	// CR 510.1c assignment prompt answered later) carries the step it
+	// was created in, not the one current when it lands. Added for
+	// #187 (ADR 0053 Decision 1).
+	CombatStep string `json:"combat_step,omitempty"`
 }
+
+// The two values of Event.CombatStep (and DamageAssignmentFrame's
+// CombatStep). Plain strings rather than a named type: they are wire
+// values, copied verbatim onto protocol.LogEvent.combat_step.
+const (
+	// CombatStepFirstStrike is the first combat damage step: creatures
+	// with first strike or double strike deal their damage (CR 510.4).
+	CombatStepFirstStrike = "first_strike"
+	// CombatStepRegular is the second combat damage step, run after a
+	// first-strike step: creatures with double strike, and creatures
+	// that had neither keyword as the first step began, deal theirs
+	// (CR 510.4). The engine reads the keywords as the second pass
+	// begins instead — that gap is #716, not this tag's concern.
+	CombatStepRegular = "regular"
+)
 
 // emitBecameTargetLocked fans one EventBecomesTarget out per target
 // slot in `targets`. Called from every site that finishes choosing

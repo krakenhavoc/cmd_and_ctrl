@@ -41,15 +41,7 @@ func init() {
 				Label:   "{5}, {T}, Sacrifice this artifact: Return target card from your graveyard to your hand.",
 				Cost:    Plus(ManaCost("{5}"), TapCost(), SacrificeThis()),
 				Targets: TargetCardInGraveyard("target card from your graveyard", YouOwn()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetCard {
-							return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  returnFirstLegalGraveyardTargetToHand,
 			},
 		},
 	})

@@ -456,16 +456,15 @@ func TestPlaguecrafterEdictsThoseWhoCanAndDiscardsThoseWhoCant(t *testing.T) {
 			sac[c.Chooser] = true
 		}
 	}
-	// "Each player who can't discards a card" rides the shared
-	// DiscardPending map, the Mind Rot path.
-	discard := g.DiscardPending
+	// "Each player who can't discards a card" is the Mind Rot path:
+	// its own prompt, addressed to that player over their own hand.
 	if !sac[me.ID] || !sac[opp1.ID] {
 		t.Errorf("the Plaguecrafter's controller and the bear's owner must be asked to sacrifice: %v", sac)
 	}
-	if discard[g.Seats[2].ID] != 1 || discard[g.Seats[3].ID] != 1 {
-		t.Errorf("players with no creature or planeswalker must be asked to discard one card: %v", discard)
+	if discardOwed(g, g.Seats[2].ID) != 1 || discardOwed(g, g.Seats[3].ID) != 1 {
+		t.Error("players with no creature or planeswalker must be asked to discard one card")
 	}
-	if discard[me.ID] != 0 || discard[opp1.ID] != 0 || sac[g.Seats[2].ID] {
+	if discardOwed(g, me.ID) != 0 || discardOwed(g, opp1.ID) != 0 || sac[g.Seats[2].ID] {
 		t.Error("a player gets exactly one of the two prompts")
 	}
 }

@@ -227,6 +227,20 @@ type ReplacementEvent struct {
 	LifePlayer uuid.UUID
 	LifeDelta  int
 
+	// lifeTail is the life half's answer to damageTail: the rest of
+	// the effect that asked for this change, run with the amount that
+	// actually moved once the pipeline settles. Set by the *Then*
+	// entry points in effect_api.go and read only by
+	// runLifeTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// Added in #793, where "each opponent loses X life, you gain life
+	// equal to the life lost this way" read the life total back on the
+	// next line and saw nothing whenever the loss paused on a CR 616
+	// prompt. See life_tail.go.
+	lifeTail *lifeTail
+
 	// --- RepEventDamage fields ---
 
 	// DamageSource / DamageTarget / DamageAmount describe the
@@ -260,6 +274,28 @@ type ReplacementEvent struct {
 	StepTransitionStep Step
 	// StepTransitionSeat is the seat whose step is being entered.
 	StepTransitionSeat int
+
+	// mustSettleNow marks an event that CANNOT pause: the pipeline
+	// must reach a settled answer before applyReplacementsLocked
+	// returns, because the caller has no resume and no way to be
+	// rewound once it has.
+	//
+	// One thing sets it today: paying life as a cost (CR 118.3).
+	// CR 601.2h pays a spell's costs as one indivisible step of
+	// casting it and CR 601.2 rewinds the announcement if they cannot
+	// all be paid, so a CR 616 ordering prompt in the middle leaves a
+	// spell on the stack with its cost half paid. See
+	// payLifeAsCostLocked in life_tail.go for the full argument.
+	//
+	// What it costs the affected player is the CR 616 ordering choice
+	// and any CR 614.10 "may" on the event: the apply-loop applies the
+	// gathered order inline (the escape an eliminated chooser has
+	// always taken) and skips anything that would ask a question
+	// un-applied. Weaker than printed on the "may", arbitrary but
+	// deterministic on the ordering, and never a wedged table.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	mustSettleNow bool
 }
 
 // Cancel marks the event suppressed. Pipeline functions observing
@@ -371,6 +407,29 @@ type ReplacementEffect struct {
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
 
+	// PureCancel declares that Replace does nothing but call
+	// ev.Cancel() — it rewrites no other field on the event and
+	// changes nothing else in the game.
+	//
+	// The engine uses it for exactly one thing. CR 616 asks the
+	// affected player to order the applicable replacements, but when
+	// EVERY applicable replacement is a pure cancel there is nothing
+	// to order: whichever one is put first cancels the event, the
+	// CR 616.1 apply-loop ends there, and the outcome is identical
+	// for every permutation. Prompting would be a question with one
+	// answer, so the engine applies them in gather order instead.
+	//
+	// Only the "skip this step" effects set it today — Stasis's untap
+	// skip and the SkipYourDrawStep half of Necropotence and
+	// Yawgmoth's Bargain — which is the case #710 was filed about:
+	// two of them under one controller.
+	//
+	// Leaving it false is always safe; it costs a prompt, not
+	// correctness. Setting it on an effect that does anything more is
+	// NOT safe — the ordering it suppresses would have been
+	// observable. Added in #710.
+	PureCancel bool
+
 	// PromptQuestion is the text rendered in the yes/no Optional
 	// prompt. Short — fits in a modal header. Defaults to Label
 	// when empty.
@@ -389,7 +448,64 @@ type activeReplacement struct {
 	effect ReplacementEffect
 	source *Card // nil for built-ins
 	id     ReplacementEffectID
+	// identity names WHICH DECLARED EFFECT this is an instance of,
+	// as opposed to `id`, which names this instance of it. Zero for
+	// an effect that has no stable identity — see
+	// replacementIdentity.
+	identity replacementIdentity
 }
+
+// replacementIdentity names one declared replacement effect: the
+// catalog entry it is printed on, the slot it occupies in that
+// entry's Replacements slice, and the player who controls the object
+// contributing it.
+//
+// It is the engine's existing key for a catalog replacement with the
+// object dropped. `ReplacementEffectID` is minted as
+// `battlefieldIndex*256 + slot`, so it says "the Doubling Season in
+// slot 3 of the battlefield"; this says "Doubling Season's counter-
+// doubling replacement, controlled by Ian" — the same for every copy
+// on the board. That is the whole point: two Rhox Faithmenders are
+// two objects contributing ONE effect, and #792 is about not asking
+// which of two identical modifications happened first.
+//
+// The zero value means "no stable identity, never interchangeable
+// with anything". Built-in, turn-scoped and test replacements take
+// it: they are registered per instance rather than declared on a
+// catalog entry, so two of them are two separate declarations that
+// happen to look alike, not two printings of one effect.
+//
+// The controller is part of the identity because a replacement
+// routinely reads its own controller — Notion Thief's "you draw that
+// card instead" writes `src.Controller` into the event, so two
+// Notion Thieves under DIFFERENT controllers replace the same draw
+// two different ways and the order between them is very much
+// observable.
+//
+// What it does NOT capture: an effect whose Replace writes its own
+// SOURCE into the event ("that damage is dealt to this creature
+// instead", "put that counter on this creature instead"). Two copies
+// of such a card would share an identity and would not be
+// interchangeable. Nothing in the catalog does that today, and the
+// note in AGENTS.md §7 tells card authors to flag it rather than
+// ship it quietly. See sameModification.
+type replacementIdentity struct {
+	// card is the source's CatalogAbilityKey — the catalog entry
+	// whose Replacements slice the effect came from. Empty for a
+	// replacement that has no catalog entry behind it.
+	card string
+	// slot is the index into that entry's Replacements slice.
+	slot int
+	// controller is the controller of the object contributing the
+	// effect — a replacement effect is a static ability, so its
+	// controller is whoever controls its source.
+	controller uuid.UUID
+}
+
+// known reports whether this identity is a real one. The zero value
+// is "unidentified", which never matches anything — including
+// another zero value.
+func (r replacementIdentity) known() bool { return r.card != "" }
 
 // errReplacementPending is a sentinel returned by
 // applyReplacementsLocked when a CR 616 order-choose prompt was
@@ -469,22 +585,41 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying — unless nobody is left to answer it, in
-			// which case the gathered order stands and the effects
-			// fire inline (an eliminated player's prompt would block
-			// the table forever; S31 fuzzer finding).
+			// applying — with three exceptions, all of which apply
+			// the gathered order inline instead.
+			//
+			// #710: every applicable effect is a PURE CANCEL, so
+			// every ordering produces the same event. Two "skip your
+			// draw step" enchantments under one controller are one
+			// skipped draw step, and asking which of them skipped it
+			// is a prompt with a single answer.
+			if allPureCancels(applicable) {
+				g.applyGatheredInOrderLocked(ev, applicable)
+				continue
+			}
+			// #792: every applicable effect is the SAME declared
+			// effect on two or more objects — two Doubling Seasons,
+			// two Rhox Faithmenders. The player is being asked to
+			// order N copies of one modification, so again there is
+			// only one answer.
+			if sameModification(applicable) {
+				g.applyGatheredInOrderLocked(ev, applicable)
+				continue
+			}
+			// Nobody is left to answer the prompt: the gathered
+			// order stands (an eliminated player's prompt would
+			// block the table forever; S31 fuzzer finding).
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				for _, chosen := range applicable {
-					if ev.Canceled {
-						break
-					}
-					g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-					if chosen.effect.Replace != nil {
-						if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-							g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-						}
-					}
-				}
+				g.applyGatheredInOrderLocked(ev, applicable)
+				continue
+			}
+			// #793: the event cannot pause — a life payment is a COST
+			// (CR 118.3) and CR 601.2h pays a spell's costs as one
+			// indivisible step. The gathered order stands, for the same
+			// reason it does above: a prompt nobody can answer here is
+			// a spell stuck on the stack with a half-paid cost.
+			if ev.mustSettleNow {
+				g.applyGatheredInOrderLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
@@ -492,6 +627,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if ev.mustSettleNow && asksItsOwnQuestion(chosen.effect) {
+			// #793, the single-effect half of the branch above: an
+			// effect that would ask its controller a question cannot
+			// fire on an event that cannot pause, and firing it blind
+			// would answer the question for them in the direction that
+			// favours it. Skipped un-applied — weaker than printed,
+			// never stronger, which is the posture
+			// optionalReplacementResumableLocked takes for an entry
+			// with nothing to resume it.
+			g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+			continue
+		}
 		if chosen.effect.CopySelector != nil {
 			// "You may have this enter as a copy of ..." — the
 			// picker and its decline-inline cases live in
@@ -562,6 +709,138 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		ErrorMsg: ErrReplacementIterationExceeded.Error(),
 	})
 	return ev, ErrReplacementIterationExceeded
+}
+
+// allPureCancels reports whether every gathered replacement has
+// declared itself a pure cancel (see ReplacementEffect.PureCancel).
+// When they all have, the CR 616 ordering prompt is unobservable —
+// the first one applied cancels the event and ends the apply-loop,
+// and they are interchangeable — so the engine skips the prompt.
+//
+// An effect that asks its controller a question first is never
+// treated as a pure cancel however it is flagged — see
+// asksItsOwnQuestion.
+//
+// An empty slice is not "all pure cancels": the only caller has
+// already established len > 1, and answering true for nothing would
+// be a trap for a future one.
+func allPureCancels(applicable []activeReplacement) bool {
+	if len(applicable) == 0 {
+		return false
+	}
+	for _, a := range applicable {
+		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) {
+			return false
+		}
+	}
+	return true
+}
+
+// sameModification reports whether every gathered replacement is an
+// instance of ONE declared effect — the same slot of the same catalog
+// entry under the same controller, on two or more objects. Two
+// Doubling Seasons, two Rhox Faithmenders, two Hardened Scales.
+//
+// When they are, the CR 616 ordering prompt has one answer. The
+// affected player is being asked to order N copies of a single
+// modification, and doubling then doubling is doubling then doubling
+// whichever Season is named first. Under #730's gate that prompt also
+// holds the whole table until it is answered, so the click is not
+// even free. #792.
+//
+// This deliberately does NOT extend to a MIXED window — two Doubling
+// Seasons and a Hardened Scales. Collapsing the two Seasons there
+// would force them to fire back to back, and CR 616.1 lets the
+// affected player interleave: [DS, HS, DS] puts 6 counters on the
+// creature and neither [DS, DS, HS] (5) nor [HS, DS, DS] (8) can
+// reach it. So a window with any distinct effect in it prompts with
+// every effect listed, exactly as before.
+//
+// An effect that asks its controller a question is excluded for the
+// same reason allPureCancels excludes it — see asksItsOwnQuestion.
+//
+// Fewer than two is not "all the same": the only caller has already
+// established len > 1, and answering true for a single effect (which
+// never prompts anyway) would be a trap for a future one.
+func sameModification(applicable []activeReplacement) bool {
+	if len(applicable) < 2 {
+		return false
+	}
+	want := applicable[0].identity
+	if !want.known() {
+		return false
+	}
+	for _, a := range applicable {
+		if a.identity != want || asksItsOwnQuestion(a.effect) {
+			return false
+		}
+	}
+	return true
+}
+
+// asksItsOwnQuestion reports whether firing this effect puts a
+// question to a player before it changes anything — a CR 614.10
+// "may", a shockland's pay-life, a copy selector.
+//
+// Every caller here is deciding whether to skip the CR 616 ordering
+// prompt and apply the gathered effects inline. Such an effect can
+// never be part of that: skipping the ordering prompt would skip its
+// question too, and firing Replace blind is the bug
+// ResolveReplacementOrder's own CopySelector branch exists to avoid —
+// the permanent enters as a 0/0 and nobody is asked anything. No
+// printed card combines one of these with a reason to skip the
+// prompt; the guard is here so a future one fails loudly by prompting
+// rather than quietly by deciding.
+func asksItsOwnQuestion(e ReplacementEffect) bool {
+	return e.Optional || e.EntryLifeCost > 0 || e.CopySelector != nil
+}
+
+// applyGatheredInOrderLocked fires the gathered replacements in the
+// order the gather pass produced, marking each applied, and stops at
+// the first one that cancels the event. The un-prompted sibling of
+// ResolveReplacementOrder's chosen-order loop, used when the CR 616
+// prompt is skipped — because nobody could answer it (an eliminated
+// chooser) or because every ordering gives the same answer
+// (allPureCancels).
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []activeReplacement) {
+	for _, chosen := range applicable {
+		if ev.Canceled {
+			break
+		}
+		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+		if chosen.effect.Replace != nil {
+			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+			}
+		}
+	}
+}
+
+// skipQuestionsLocked drops the gathered replacements that would ask
+// their controller a question — a CR 614.10 "may", a shockland's
+// pay-life, a copy selector — marking each applied so the apply-loop
+// does not gather it again, and returns the rest in gather order.
+//
+// Only an event that cannot pause (mustSettleNow) uses it: on every
+// other event the question is asked. Skipping is the weaker branch of
+// a "may" and the un-copied branch of a selector, which is what "never
+// stronger than printed" means here.
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeReplacement) []activeReplacement {
+	out := make([]activeReplacement, 0, len(applicable))
+	for _, a := range applicable {
+		if asksItsOwnQuestion(a.effect) {
+			g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 // optionalReplacementResumableLocked reports whether pausing on ev
@@ -654,7 +933,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 			// CatalogAbilityKey: a replacement effect is a static
 			// ability (CR 614.1), so a permanent under a CR 613.1f
 			// ability-removing effect contributes none.
-			reps := CatalogReplacements(CatalogAbilityKey(*card))
+			key := CatalogAbilityKey(*card)
+			reps := CatalogReplacements(key)
 			if len(reps) == 0 {
 				continue
 			}
@@ -670,7 +950,12 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, card) {
 					continue
 				}
-				out = append(out, activeReplacement{effect: eff, source: card, id: id})
+				out = append(out, activeReplacement{
+					effect:   eff,
+					source:   card,
+					id:       id,
+					identity: replacementIdentity{card: key, slot: repIdx, controller: card.Controller},
+				})
 			}
 		}
 	}
@@ -692,7 +977,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
 		const selfReplacementIDBase ReplacementEffectID = 1 << 45
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
-			reps := CatalogReplacements(CatalogKey(entering))
+			key := CatalogKey(entering)
+			reps := CatalogReplacements(key)
 			for repIdx := range reps {
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
 				if applied[id] {
@@ -710,7 +996,12 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, &src) {
 					continue
 				}
-				out = append(out, activeReplacement{effect: eff, source: &src, id: id})
+				out = append(out, activeReplacement{
+					effect:   eff,
+					source:   &src,
+					id:       id,
+					identity: replacementIdentity{card: key, slot: repIdx, controller: src.Controller},
+				})
 			}
 		}
 	}

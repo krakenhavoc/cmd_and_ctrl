@@ -60,6 +60,15 @@ type TargetSpec struct {
 	PlayerOK func(g *Game, caster uuid.UUID, p *Player) bool
 
 	// Min / Max bound the number of targets. Max 0 means unbounded.
+	//
+	// On a SACRIFICE clause (AbilityCost.SacrificeOther,
+	// ManaAbilityShape.SacrificeOther, AdditionalCost.Sacrifice) they
+	// count the permanents sacrificed instead, and Min == Max == N:
+	// "Sacrifice two artifacts" is 2 / 2 (#747). A sacrifice clause
+	// is still a predicate, not targeting (CR 601.2h). effects.Register
+	// refuses a sacrifice clause with Min != Max, a count below 1,
+	// CountFromX, AllowSame or Players — variable counts have no seam
+	// yet. See SacrificeCostCount.
 	Min, Max int
 
 	// CountFromX makes the clause's target count the announced X

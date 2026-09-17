@@ -57,8 +57,12 @@ type CardDef struct {
 	AlternativeCosts []AlternativeCost
 	TapCost          *TapPermanentsCost
 	CostModifiers    []CostModifier
-	CastableZones    []ZoneKind
-	UntapStep        []UntapStepPermission
+	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
+	// addendum §11), read by SelfCostModifiersFor for the spell being
+	// priced and never from the battlefield.
+	SelfCostModifiers []CostModifier
+	CastableZones     []ZoneKind
+	UntapStep         []UntapStepPermission
 
 	CantBeCountered bool
 	NoMaxHandSize   bool

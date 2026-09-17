@@ -1014,6 +1014,17 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// charges — the two would disagree exactly when the player most
 	// needs them to agree. Same "mirrors effectiveCostLocked" rule
 	// the commander tax above follows.
+	//
+	// ADR 0048 addendum §15: the same call also applies the card's
+	// own self modifiers (affinity, Ghalta), because they live inside
+	// the one pricing function. The preview has no targets on its
+	// query string, so it prices with none: a per-target surcharge
+	// (Fireball, strive) reads as the one-target price, which is what
+	// the X picker shows alongside the printed clause
+	// (CardView.target_cost_notes). It also has no face and no
+	// graveyard or exile source, so a back-face or flashback cast of a
+	// self-modified spell is still priced as a front-face hand cast;
+	// that joins the preview-parity list on #696.
 	cost, err = g.ApplyCostModifiers(cost, game.CostQuery{
 		Card:       card,
 		Controller: p.PlayerID,

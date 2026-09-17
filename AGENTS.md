@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0051 user database) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0055 CR 726 loop breaker) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -245,42 +245,56 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_SECURE_COOKIES` — truthy sets the `Secure` attribute on the session cookie. Enable in any TLS deployment; leave unset for plain-HTTP local dev (a `Secure` cookie is never sent over http and would silently break login).
   - `CMDCTRL_TRUST_FORWARDED` — truthy keys the lobby rate limiter off the leftmost `X-Forwarded-For` hop instead of the socket `RemoteAddr`. Enable **only** when the server sits behind a trusted reverse proxy that sets the header; otherwise clients can spoof it to dodge limits.
   - `CMDCTRL_DEV_RELAX_RATE_LIMITS` — truthy effectively disables the lobby rate limiters. For the e2e suite and local load-y dev loops only; logs a loud warning on boot. **Never set in production.**
-  - `CMDCTRL_GITHUB_TOKEN` — enables the in-app "report a bug" button (`POST /bugreport` files a GitHub issue). Use a fine-grained PAT with **Issues: write** on the one repo, nothing broader. Unset disables the feature and the client hides the button. See [ADR 0017](docs/decisions/0017-bug-report-button.md). **Provisioned by CI/CD**: the deploy job upserts it into `/etc/cmd_and_ctrl/env` (the env file the HomeLab cloud-init template writes and the systemd units read) from the `CMDCTRL_GITHUB_TOKEN` Actions secret, via `sudo scripts/set-server-env.sh`; to rotate, update the secret and rerun the deploy — no host access needed.
+  - `CMDCTRL_GITHUB_TOKEN` — enables the in-app "report a bug" button (`POST /bugreport` files a GitHub issue). Use a fine-grained PAT with **Issues: write** on the one repo, nothing broader. Unset disables the feature and the client hides the button. See [ADR 0017](docs/decisions/0017-bug-report-button.md). **Reports are published to everyone who can read the repo, so credentials are redacted before they get there** — client (`client/src/lib/redact.ts`, applied to the protocol log, console capture and the submitted draft) and server (`server/internal/util/redact`, applied in `renderBugIssueBody`); never log a token-bearing URL raw, pass it through `redactURL` (#721, [ADR 0017 §9](docs/decisions/0017-bug-report-button.md); durable sessions #517 depend on it). **Provisioned by CI/CD**: the deploy job upserts it into `/etc/cmd_and_ctrl/env` (the env file the HomeLab cloud-init template writes and the systemd units read) from the `CMDCTRL_GITHUB_TOKEN` Actions secret, via `sudo scripts/set-server-env.sh`; to rotate, update the secret and rerun the deploy — no host access needed.
   - `CMDCTRL_GITHUB_REPO` — `owner/name` slug issues are filed against (default `krakenhavoc/cmd_and_ctrl`).
   - `CMDCTRL_PUBLIC_BASE_URL` — the origin this server is reachable at from the public internet (e.g. `https://cmd.labxp.io`). Needed for bug-report **screenshots**: GitHub renders an issue image by fetching it through its Camo proxy, so the URL in the issue body has to be absolute and publicly resolvable. Falls back to `CMDCTRL_CLIENT_BASE_URL`; with neither set (or no `CMDCTRL_DATA_DIR`) attachments are disabled, `/bugreport/config` reports `attachments:false`, the modal hides its file picker, and text reports keep working. **No default on purpose** — a wrong origin produces issues full of broken images, which is worse than a deploy that doesn't offer upload. Provisioned by CI/CD from the `CMDCTRL_PUBLIC_BASE_URL` repo variable. See [ADR 0017 §6](docs/decisions/0017-bug-report-button.md).
-  - `CMDCTRL_ANTHROPIC_API_KEY` — API key for the model-backed bot tiers (`assisted`, `strong`). Falls back to `ANTHROPIC_API_KEY` when unset. **Both unset is a supported configuration, not a broken one**: the model client is nil, and those tiers keep their names and play on the rules filter plus the heuristic. See the bot-seat section below and [ADR 0033 §6](docs/decisions/0033-ai-bot-seat.md).
+  - `CMDCTRL_OPENAI_ENDPOINT` — an OpenAI-compatible `/v1/chat/completions` server for the model-backed bot tiers (`assisted`, `strong`): Ollama, LM Studio, llama.cpp's server, vLLM. Takes a URL (e.g. `http://192.168.1.18:11434`), or `1` for a stock Ollama on this machine. If both this and an Anthropic key are set, this one wins. Unset by default.
+  - `CMDCTRL_OPENAI_API_KEY` — optional bearer key for that endpoint; most local servers need none.
+  - `CMDCTRL_OPENAI_SEND_THINK` — `0` stops the client sending Ollama's `think: false`. Set it only for a server that rejects the field. A hybrid-thinking model (qwen3, …) left on its default spends the whole deadline thinking and answers nothing.
+  - `CMDCTRL_ANTHROPIC_API_KEY` — the hosted alternative for the model-backed bot tiers. Falls back to `ANTHROPIC_API_KEY` when unset. **No model endpoint at all is a supported configuration, not a broken one.** `random` and `heuristic` work as normal. Since [#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514), `assisted` and `strong` report `available:false` in `GET /bot/options`, with a reason the picker shows, and a request to seat one is a **422**. The server never silently downgrades them. A seat already running when its model goes away keeps playing on the rules filter plus the heuristic. See the bot-seat section below and [docs/bot.md](docs/bot.md#the-model-endpoint).
   - `CMDCTRL_ANTHROPIC_ENDPOINT` — overrides the Messages API URL (default `https://api.anthropic.com/v1/messages`). For pointing a dev stack at a stub; there is no reason to set it in production.
+  - `CMDCTRL_BOT_MODEL` — model id for routine bot windows. **Required with `CMDCTRL_OPENAI_ENDPOINT`**: use the name the server serves, e.g. what you `ollama pull`ed. Without it the Anthropic default ids are sent and the endpoint answers 404. Optional for Anthropic, which defaults to `claude-haiku-4-5`.
+  - `CMDCTRL_BOT_FRONTIER_MODEL` — model id for escalated windows. Defaults to `CMDCTRL_BOT_MODEL` when that is set, otherwise to the Anthropic default, `claude-opus-5`. One model in both slots is supported, and it means `strong` and `assisted` ask the same model.
+  - `CMDCTRL_BOT_MAX_THINK` — Go duration; the model tiers' hard think deadline. It only ever widens a tier's own deadline (2s `assisted`, 5s `strong`). It defaults to `20s` when `CMDCTRL_OPENAI_ENDPOINT` is set, and to the tier deadlines otherwise. An unparseable or non-positive value fails the boot.
 - Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
 
 - Runs **in process** with the game server — no separate binary, no socket. One goroutine per bot seat, started by `Lobby.Start` and by the lobby's restore path. User-facing guide: [docs/bot.md](docs/bot.md); architecture: [ADR 0033](docs/decisions/0033-ai-bot-seat.md).
 - Endpoints: `GET /bot/options`, `POST /games/{id}/seats/bot`, `DELETE /games/{id}/seats/bot/{player_id}` — see [docs/lobby.md](docs/lobby.md).
-- Env vars: the two `CMDCTRL_ANTHROPIC_*` entries above are the only ones the package reads at runtime. Everything else — tier, deck, pacing — is per-seat request data or a compile-time default (`aiseat.Config`: `MinThink` 700ms, `MaxThink` 2s / 5s for `strong`).
+- Env vars: the bot seat reads only the model-transport variables listed above at runtime: `CMDCTRL_OPENAI_ENDPOINT` / `_API_KEY` / `_SEND_THINK`, `CMDCTRL_ANTHROPIC_API_KEY` / `_ENDPOINT` (and `ANTHROPIC_API_KEY`), and `CMDCTRL_BOT_MODEL` / `_FRONTIER_MODEL` / `_MAX_THINK`. They are parsed in `cmd/server/main.go` and `aiseat/model`. Everything else is per-seat request data or a compile-time default. Tier and deck come with the request. Pacing is `aiseat.Config`: `MinThink` 700ms, and `MaxThink` 2s, or 5s for `strong`, which `CMDCTRL_BOT_MAX_THINK` can widen for the model tiers.
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them):
-  - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly runs `AISEAT_GAME_TESTS=1 go test ./internal/aiseat/... -race -timeout 30m`.
-  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI).
+  - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly `bot-games` job runs `go test ./internal/aiseat/... -race -timeout 30m -skip TestFourRandomBotsPlayToAWinner`, then the random-table step, then the catalog soak (`.github/workflows/e2e-nightly.yml`).
+  - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly sets neither, so it plays 3 heuristic seeds. A 20-game nightly gate is [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).
+  - `AISEAT_RANDOM_GAMES=N` / `AISEAT_RANDOM_SEED=<uint64>` — `TestFourRandomBotsPlayToAWinner`, S31's four-`random`-bots test: N consecutive games to a winner, default 3, from base seed 31000. The nightly runs it at `AISEAT_RANDOM_GAMES=20` in its own step without `-race`.
+  - `AISEAT_REPLAY_DIR=<path>` — where that test writes each game's replay JSONL. It sets the location only, not whether replays are kept. Unset uses a temp dir. Either way a passing game's replay is deleted and a failing one kept, since one game is hundreds of MiB. The nightly points it at the workspace and uploads it on failure.
   - `AISEAT_FUNNEL_GAMES=N` — widen the Layer A absorption / model-funnel whole-game run.
-  - `AISEAT_SOAK_GAMES=N` — independent of the master gate; runs `TestRandomBotSoak` for N games. `AISEAT_SOAK_POLICY=random|heuristic|mixed` picks what fills the seats (default `random`), and `AISEAT_SOAK_SEED=<uint64>` pins the base seed (default: the clock). A stall prints its seed for reproduction.
+  - `AISEAT_SOAK_GAMES=N` — independent of the master gate; runs `TestRandomBotSoak` for N games. `AISEAT_SOAK_POLICY=random|heuristic|mixed` picks what fills the seats (default `random`), and `AISEAT_SOAK_SEED=<uint64>` pins the base seed (default: the clock). A stall prints its seed for reproduction. No workflow sets it, so the soak runs only by hand. A 100-game nightly soak is [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).
   - `AISEAT_DEBUG=1` — per-move log in the runner tests.
   - `AISEAT_CATALOG_GAMES=N` / `AISEAT_CATALOG_SEED=<uint64>` — the catalog soak (`TestCatalogSoak`, #601): N four-bot games on decks dealt from the catalog itself rather than from the hand-written vanilla decks the other whole-game tests use. The seed defaults to one derived from the UTC date, so each night deals new decks and coverage accumulates; the log prints the base seed, and every failure prints the seed to replay. Needs `CMDCTRL_SCRYFALL_DUMP` as well (a `Spec` carries an oracle ID and a name, not a type line or a mana cost) and skips without it. It **fails on any `EventEffectError`** — a card whose primitive threw mid-resolution, which the engine logs and survives, so nothing else in the tree goes red over it.
   - `AISEAT_CATALOG_REPORT=<path>` — where the catalog soak writes its per-card JSON (cast / resolved / entered / triggered / errored, per oracle ID). The nightly uploads it as an artifact on every run, green included: the useful half is the list of cards no bot game reached, which is where a unit test buys more than another bot game.
-  - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations, defaults `15s` and `300s`, for the bot-table stall detector and wall-clock budget. Raise them on a loaded runner rather than editing the test.
+  - `AISEAT_STALL` / `AISEAT_WALLCLOCK` — Go durations, defaults `15s` and `300s`. **Only three tests read them:**
+    - `TestFourRandomBotsPlay` uses them as its stall detector and wall clock.
+    - `TestManagerPlaysALobbySeatedTable` uses `AISEAT_WALLCLOCK` as its wait for the table to finish, and `AISEAT_STALL` as its wait for the runners to exit.
+    - `TestCatalogSoak` uses both as its per-game stall detector and wall clock.
+
+    Raise them on a loaded runner rather than editing those tests. Every test that plays through `playGame` / `playGameIn` uses a literal 5s stall and a wall clock the test sets itself, and so does `TestRandomBotSoak` (3s stall, 60s wall clock); these variables do not reach them. That covers the four-heuristic, random-to-a-winner, head-to-head, latency, funnel, model and life-cost games. Making those budgets overridable is part of [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).
   - `CMDCTRL_SCRYFALL_DUMP=<path>` — gates the manual bot-deck test that validates the four curated decks against the real Scryfall dump. Also used by other packages.
 
 ### Discord bot (Go, `server/cmd/bot/`)
 - Separate binary from the game server; runs as `cmd-and-ctrl-bot.service` on the prod VPS. See [docs/decisions/0004-discord-identity.md](docs/decisions/0004-discord-identity.md).
 - `make -C server build-bot` — produces `server/bin/cmd_and_ctrl-bot`
 - Commands: `/cc-invite [name]` (channel-visible invite URL) and `/cc-games` (ephemeral list).
-- Env vars (bot binary reads these; server binary does not):
-  - `CMDCTRL_DISCORD_BOT_TOKEN` — **required**. Discord Developer Portal → Bot → Reset Token.
-  - `CMDCTRL_DISCORD_APP_ID` — **required**. Application ID from the same portal.
-  - `CMDCTRL_DISCORD_GUILD_IDS` — **required**. Comma-separated guild snowflakes; commands register only on these guilds and the bot rejects interactions from any other.
-  - `CMDCTRL_ADMIN_TOKEN` — **required**. Same shared secret the server uses; the bot hits `POST /admin/login` + `POST /games` + `GET /games` over loopback.
+- Env vars (bot binary reads these; server binary does not yet — ADR 0051 Decision 5's DM invites, #613, will add the bot token to the server's env too):
+  - `CMDCTRL_DISCORD_BOT_TOKEN` — **required**. Discord Developer Portal → Bot → Reset Token. In production: the Actions **secret** of the same name.
+  - `CMDCTRL_DISCORD_APP_ID` — **required**. Application ID from the same portal. In production: the Actions **variable** of the same name.
+  - `CMDCTRL_DISCORD_GUILD_IDS` — **required**. Comma-separated guild snowflakes; commands register only on these guilds and the bot rejects interactions from any other. In production: the Actions **variable** of the same name.
+  - `CMDCTRL_ADMIN_TOKEN` — **required**. Same shared secret the server uses; the bot hits `POST /admin/login` + `POST /games` + `GET /games` over loopback. In production: copied by CD from `/etc/cmd_and_ctrl/env` on every deploy, never set separately.
   - `CMDCTRL_SERVER_BASE_URL` — default `http://127.0.0.1:8080`. Where the bot calls the admin API.
   - `CMDCTRL_CLIENT_BASE_URL` — default `https://cmd.labxp.io`. Used to compose the invite URL posted back to Discord.
 - Unset `CMDCTRL_DISCORD_BOT_TOKEN` disables the bot (binary exits 0 after logging `bot disabled`). Convenient for dev stacks without a registered Discord app.
-- Store bot secrets in a dedicated env file (`/etc/cmd_and_ctrl/bot.env`, mode `0640`) rather than the server's env file — ADR 0004 §6 explains why.
+- Bot secrets live in a dedicated env file, `/etc/cmd_and_ctrl/bot.env` (`root:cmdctrl-bot`, mode `0640`), not the server's env file — ADR 0004 §6 explains why. The CD "Sync bot env" step writes it on production only; never hand-edit it. Host setup and verification: [deploy/README.md](deploy/README.md#discord-bot-production-only). Once the `CMDCTRL_DISCORD_BOT_TOKEN` secret is set, CD emits a `::warning::` (never a failure) for a production host that cannot run the bot: no `cmdctrl-bot` user or group, or the unit not enabled or not active after its restart.
+- Each allowed guild authorizes the app with the `bot applications.commands` scopes and `permissions=0` (ADR 0004, revised 2026-09-16): the bot user must be a guild member to open DMs for #613. Install URL: [deploy/README.md](deploy/README.md#discord-scopes).
 
 ### Client (TypeScript + Svelte 5 + Vite, `client/`)
 - `cd client && npm install` — first-time setup
@@ -569,6 +583,9 @@ PendingChoice for the controller to resolve:
 - `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
   the engine narrows the pipe set against the controller's commander
   identity at activation time.
+- `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
+  tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
+  choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -577,6 +594,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | `{T}` | `ManaAbilityCost{Tap: true}` | Sol Ring |
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
+| Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
 
 `SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
 activated abilities use — build it with the `SacrificeACreature()` /
@@ -747,6 +765,23 @@ func init() {
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
 
+**Two copies of your card will not prompt.** When every replacement
+applicable to one event is the *same* declared effect — same catalog
+entry, same slot in its `Replacements` slice, same controller — the
+engine applies them all inline instead of asking the affected player
+to order them, because every order is the same modification N times
+(two Doubling Seasons are ×4, two Rhox Faithmenders are ×4,
+[#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792)). A
+window with any *distinct* effect in it still prompts with everything
+listed. Nothing to declare — but it does mean one thing is now on you:
+**if your `Replace` writes its own source into the event** ("that
+damage is dealt to *this* creature instead", "put the counter on
+*this* creature instead"), two copies of your card are *not*
+interchangeable and collapsing them would be wrong. No catalog card
+does this yet; if yours is the first, say so on the PR rather than
+shipping it quietly — the fix is a declared flag in the `PureCancel`
+mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
+
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
@@ -875,16 +910,19 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"defender"` | Defender (CR 702.3) |
 | `"haste"` | Haste (CR 702.10) |
 | `"flash"` | Flash (CR 702.8) |
-| `"hexproof"` | Hexproof (CR 702.11) — S23, targeting gate |
-| `"shroud"` | Shroud (CR 702.18) — S23, targeting gate |
+| `"hexproof"` | Hexproof (CR 702.11) — #353, targeting gate |
+| `"shroud"` | Shroud (CR 702.18) — #353, targeting gate |
 | `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
+| `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
 
-The last three are not combat keywords, but they ride the same
+The last four are not combat keywords, but they ride the same
 `PrintedKeywords` slot and the same `HasKeyword` reader. Their
-consumers are `CanBeTargetedBy` (hexproof, shroud) and
+consumers are `CanBeTargetedBy` (hexproof, shroud),
 `DestroyPermanentForEffect` + the damage-driven creature SBAs
 (indestructible — see `server/internal/game/indestructible.go` for
-what it deliberately does *not* stop).
+what it deliberately does *not* stop) and `HasAllCreatureTypes` in
+`creature_types.go` (changeling — see "Adding a creature-type card"
+below).
 
 The table is closed on purpose: **a keyword joins it in the same
 change that teaches the engine to honour it.** Declaring a token the
@@ -904,9 +942,15 @@ protection ships without it and says so in `Caveats`, as Baneslayer
 Angel, both Swords and Animar do.
 
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
-grants `"flying"` to *other* Merfolk via a conditional Layer 6
-`StaticAbility` — that pattern stays. `PrintedKeywords` is only for
-the card's own printed keywords.
+grants `"islandwalk"` to *other* Merfolk via a Layer 6
+`StaticAbility` (`TribalKeywordGrant` in `tribal.go`) — that pattern
+stays. The grant itself is a known exception to the closed table:
+islandwalk is not a canonical token and nothing enforces it until
+landwalk lands (#705), which the card declares in `Caveats`. Grant an
+enforced keyword the same way: Stromkirk Captain grants
+`"first strike"` to the other Vampires you control with the same
+builder. `PrintedKeywords` is only for the card's own printed
+keywords.
 
 **Tests** — assert `Effective().Abilities` contains the keyword
 strings after the card is pushed to the battlefield. See
@@ -1046,7 +1090,12 @@ is read off `Game.TurnTally`, never by walking `g.Events`:
 `AttacksDeclared` and `CombatDamageToPlayers`; `g.TurnTally.CreaturesDied`
 is the table-wide count; `g.ResolvedThisTurn(source, label)` and
 `g.TriggeredThisTurn(source, label)` are the "once per turn" gates (an
-empty label sums the source's abilities). A filtered question the tally
+empty label sums the source's abilities);
+`g.EnteredWithSubtypeThisTurn(player, subtype)` counts permanents that
+entered under a player's control with a subtype, judged as they entered
+rather than as they are now (a changeling counts for every creature
+type; a type granted by another permanent's static at that moment is
+not seen, so a card reading it declares that weaker gap). A filtered question the tally
 does not carry ("you sacrificed a *Food* this turn") ranges over
 `g.EventsThisTurn()`, which is bounded at the real turn boundary — the
 old upkeep-bounded scans missed the untap step. A counter the tally
@@ -1106,6 +1155,30 @@ much mana is around at resolution.
 X lives in the MANA component and nowhere else. A cost with a
 variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
 is a different seam and is still open.
+
+**"Activate only if …" / "Activate only during your turn" (#743):**
+the ability's `Condition`, a `func(g, controller, source) bool` built
+from [activation_conditions.go](server/internal/cards/effects/activation_conditions.go)
+(or `ControlsAtLeast`), the same shape a `ManaAbility.Condition`
+takes:
+
+```go
+Condition: OpponentControlsAtLeast(4, MatchLand),   // Tectonic Edge
+Condition: DuringYourTurn(),                        // Sanctum of Eternity
+```
+
+The engine checks it once, at activation, before X, targets or any
+cost (`ErrConditionNotMet`, nothing paid), never at resolution
+(CR 602.1b); the enumerator and the view (`condition_unmet`) read the
+same closure. "Only as a sorcery" stays `SorcerySpeed: true` beside
+it — Speaker of the Heavens sets both. Contract: read-only, runs under
+`g.mu` (use `*ForEffect` accessors and `g.Turn` / `g.Seats`, never a
+locking accessor), and reads only public information, because every
+viewer receives the flag. Never drop a condition you can't express,
+and never move it into `Effect`: the first is stronger than printed
+(#259), the second charges the cost for nothing. "Activate only once
+each turn" and boast still have no shape (the per-source activation
+count in `docs/engine-seams.md`).
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
@@ -1237,6 +1310,74 @@ Two other things the engine handles so a card never has to:
   queues no prompt, and `Then` still runs — the instruction after
   "then" isn't conditional on there having been cards to look at.
 
+**Life changes: "that much life" comes from a continuation, never from
+a read-back (#793).** A life change runs the CR 614 window (#482), so
+it can pause on a CR 616 ordering prompt exactly the way damage can
+(`life_tail.go` is `damage_tail.go`'s sibling; both land a settled event
+in one place that the paused path and the unpaused path share). Reading
+`p.Life` on the line after changing it therefore reads a total that has
+not moved yet, and the card silently drains for nothing. Same lesson as
+`Scry`'s `Then`, same shape:
+
+```go
+// "Target opponent loses X life. You gain life equal to the life lost this way."
+g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
+    return g.ChangePlayerLifeForEffect(src, me, -applied)  // applied is negative
+})
+
+// "EACH opponent loses X life. You gain life equal to the life lost this way."
+g.LoseLifeEachThenForEffect(src, ctx.Opponents(), x, func(g *game.Game, lost int) error {
+    return g.ChangePlayerLifeForEffect(src, me, lost)      // lost is positive
+})
+```
+
+`applied` is the post-replacement amount, and it is `0` when the change
+was replaced away ("your life total can't change") or the player has
+left — the continuation is told either way, so a batch never stalls on a
+leg that moved nothing. The batch form is built on the single one; don't
+write your own loop that waits. A card that only says "gain 3" keeps
+using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing.
+
+**Damage has the same `Then` forms, for the same reason (#807).** A
+damage event runs the CR 614 window too, so "deals N damage to each
+opponent. You gain life equal to the damage dealt this way" (Creeping
+Bloodsucker) is the life drain's twin and reads zero the same way:
+
+```go
+g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error { … })
+g.DealDamageToCreatureThenForEffect(src, card, n, func(g *game.Game, dealt int) error { … })
+g.DealDamageEachThenForEffect(src, ctx.Opponents(), n, func(g *game.Game, total int) error { … })
+```
+
+`dealt` is the post-replacement amount and `0` when nothing landed
+(prevented, Fogged, or the target gone). The batch routes each target
+as the kind of thing it is — player or permanent — the way the
+`DealDamage` primitive does, and is built on the single forms. A card
+that only deals damage keeps using `DealDamage` / the plain
+`...ForEffect` calls. There is one lint for both halves:
+`life_continuation_guard_test.go` fails on a `.Life` read after a life
+change and on a `.Life` / `.DamageMarked` read after a damage call, in
+the same function.
+
+**Destroy clears damage only when it lands (#708).** Marked damage is
+removed by `executeBattlefieldLeaveLocked`, the landed outcome of a
+battlefield exit — not by the destroy entry points. A destruction a
+replacement rewrote (regeneration, "exile it instead", indestructible)
+leaves `DamageMarked` exactly where it was: damage stays until the
+cleanup step (CR 514.2), and the replacement gets to read it. If you
+add a replacement that removes damage — regeneration is the one the
+rules name, CR 701.15a — it does that in its own `Replace`, not by
+leaning on the destroy path.
+
+**Paying life is a cost, and a cost may not pause.** Use
+`g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
+shockland, an activation cost, "pay 2 life. If you do, draw". CR 119.4
+makes the payment a life loss, so the window still runs and a life-loss
+replacement still sees it; what the cost path adds is that it settles in
+one step, because CR 601.2h pays a spell's costs as one indivisible step
+and a half-paid cost cannot be rewound. See
+[ADR 0013 §5b](docs/decisions/0013-replacement-effects.md).
+
 The answer is `{bottom, top_order}` with `top_order` **top-first**, and
 every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for
@@ -1275,6 +1416,45 @@ you capture when you queue the prompt, the same way `Cards`, `Min` and
 always keeps "choose nothing". With `Min` above zero, don't queue a
 prompt that no set can satisfy: nothing could answer it, and the
 enumerator logs it rather than inventing an answer.
+
+**"Put [it / a card from among them] onto the battlefield" off a
+library (#745):** a reveal or a look followed by a put is not a search,
+so never reach for `SearchLibrary` with a predicate (it emits
+`EventSearchLibrary` and shuffles). Say the first half with the right
+visibility, then hand the cards to `PutFromLibraryOntoBattlefield`
+(`put_from_library.go`):
+
+```go
+looked := g.LookAtTopOfLibraryForEffect(controller, 8)   // "look at": only the looker knows
+// revealed := g.RevealTopOfLibraryForEffect(...)         // "reveal": every seat knows
+return PutFromLibraryOntoBattlefield{
+    Cards: looked, Match: OfCreatureType("Dragon"),
+    Max: 1, Optional: true,                 // "you may put a"; Max 0 is "any number"; All for "put all"
+    Then: PutRestOnBottomInRandomOrder,     // or PutRestIntoGraveyard, or your own
+}.Apply(ctx)
+```
+
+The prompt is asynchronous, so "the rest" goes in `Then` — it is the
+only place that knows which cards were not chosen. Several picks enter
+as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
+so don't loop the single-card move over them. The whole-sentence
+shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
+`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
+bottom in a random order" anywhere else is
+`g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
+from the game's keyed RNG (`random_order` stream, ADR 0054) — never
+`math/rand` — and repositions cards already in the library without a
+zone change. `from` is the zone the effect left the cards in
+(`ZoneLibrary` for a reveal or a look, `ZoneExile` for cascade): IDs
+saved before a prompt may name cards that have since moved on, and
+those are skipped rather than pulled back.
+
+A token can end up in a library (Chaos Warp tucks one, and the engine
+has no CR 704.5d sweep). It is not a card (CR 108.2) and can't change
+zones again (CR 111.8), so the move refuses it and the helpers never
+offer or stop on one. If your card moves a revealed card anywhere else
+("otherwise put it into your hand"), skip a token with `IsToken`, as
+Coiling Oracle and Risen Reef do.
 
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
@@ -1437,6 +1617,47 @@ window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
 
+**A reflexive trigger (CR 603.12, #636):** "<do something>. **When
+you do**, <do something else>" — Ziatora's fling, an Overlook land's
+fetch, Invasion of Tarkir's damage. The second sentence is a trigger
+created by the first one *while it resolves*, and it is
+`ReflexiveTrigger`, applied from inside the parent's `Effect` once the
+condition actually held:
+
+```go
+ReflexiveTrigger{
+    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Targets: TargetAny(),          // chosen when the trigger goes on the stack
+    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
+Both go through the harvester's own dispatch
+(`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
+prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
+prints one, and a place on `PendingTriggers` — exactly as a harvested
+trigger does, because by the time it is on the stack it is one.
+
+Two rules, and both are why cards used to get this wrong by folding
+the follow-up into the parent's effect:
+
+- **It uses the stack, above the parent.** The table gets a response
+  window between the two halves. Folding is the mistake ADR 0018
+  retired for ordinary triggers.
+- **Its targets are chosen when it goes on the stack**, not when the
+  parent was announced — after the reveal, the sacrifice, the mill.
+  A clause hung on the parent instead makes the controller pick
+  before making the choice the trigger is about, which is what every
+  folded card declared as a caveat.
+
+"When you do" is conditional on the doing, and the `if` is the card's:
+apply the trigger only on the branch where the thing happened. The
+"you may" of "you MAY sacrifice a creature. When you do, …" belongs to
+the *parent* — set `Optional` only when the reflexive sentence itself
+says it.
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
@@ -1580,6 +1801,50 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### The CR 726 loop breaker (#628)
+
+Two permanents that trigger each other loop forever. The server never
+blocks — one bounded unit of work per pass — but with autopass on for
+every seat the table spins `pass → resolve → broadcast → pass` until
+somebody finds the toggle. So the engine counts, and when the same
+ability has resolved 25 times in one turn with **no player decision in
+between** it raises `Game.LoopNotice` and one `EventLoopSuspected`.
+
+What the notice does is suspend **automatic** passing — the client's
+autopass `$effect` and the bot runner both hold — and nothing else.
+Priority still rotates, `pass_priority` is still accepted, the trigger
+is still on the stack. A human clicks "next" to step the loop on, or
+casts something to end it. See
+[ADR 0055](docs/decisions/0055-loop-breaker.md).
+
+Three things to know if you touch priority, prompts or the tally:
+
+- **Detection is one function**, `loopSuspectedLocked`
+  (`server/internal/game/loop_breaker.go`), over `TurnTally.LoopRun` —
+  `Resolved` restarted at each decision, keyed by
+  `TallyKey(source, label)` like everything else in the tally. It
+  counts ONE ability of ONE permanent in ONE turn, which is why four
+  upkeep triggers from four players never approach it. The threshold is
+  `DefaultLoopThreshold`; `Game.LoopThreshold` overrides it per game for
+  tests. Do not add a second count.
+- **A decision is anything but a pass**, and
+  `notePlayerDecisionLocked` is the only thing that clears the run.
+  Cast / attack / block notch through `turnTallyListener`; an
+  activation notches in `ActivateCatalogAbility` (its announce emits
+  `EventTrigger`, indistinguishable from a triggered one); an answered
+  prompt notches in `dequeueChoiceLocked`. **A prompt the engine
+  withdraws calls `dropChoiceLocked` instead** — the prune paths must
+  not count as somebody deciding something, or a loop that queues and
+  prunes a prompt each iteration never trips.
+- **A bare `pass_priority` is not a decision**, on purpose: if it were,
+  the first manual "next" would clear the notice and four autopassing
+  clients would spin the loop straight back up.
+
+The CR 726 shortcut prompt ("resolve it K more times and stop?") and
+CR 726.4's draw are not built. A new `PendingChoiceKind` would need a
+case in `internal/legal/choices.go` first — see the choice-gate note
+above and #618.
+
 ### Untapping in another player's untap step (#74)
 
 "Untap all permanents you control during each other player's untap
@@ -1704,6 +1969,60 @@ a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
 
+### Adding a choose-a-color card (#742)
+
+"Choose a color" (CR 105.4) is one prompt kind, `choose_color`, in two
+forms, and the builders live in
+[color_choice.go](server/internal/cards/effects/color_choice.go).
+
+**Stored** ("As this enters, choose a color") copies the creature-type
+pattern above: the prompt goes on `AsEnters`, the answer lands on
+`Card.ChosenColor`, and the card's other abilities read it back.
+
+```go
+AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
+ManaAbilities: []ManaAbility{{
+    Cost:                    ManaAbilityCost{Tap: true},
+    ProducedFunc:            ProducedColorOrChosen("U"), // or ProducedChosenColor()
+    Label:                   "Add {U} or one mana of the chosen color",
+    IgnoreCommanderIdentity: true,
+}},
+Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
+```
+
+Until the controller answers, the colour is empty, and every reader
+must treat that as the weaker outcome: no mana, no anthem. Never read
+an empty colour as "any colour". "A color other than blue" is just a
+shorter option list, and colorless is never a colour.
+
+**At resolution** ("Choose a color. …" inside a spell or ability) stores
+nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the
+answer to a continuation that runs the rest of the effect (Wash Out,
+Oona). The continuation receives the live `*Game`; rebuild the context
+with `NewContext(g, item)` inside it. "Each player chooses a color" is a
+chain: each answer's continuation asks the next player in APNAP order
+(Selective Obliteration). Thread the answers through the chain as values
+rather than mutating one shared map, so an undo cannot leak an answer
+from an undone branch.
+
+**"N mana of any one color"** is ONE pick minting N tokens, never N
+pipe slots, which would let the player take N different colours. Write
+it with the produced-mana grammar's per-colour count:
+`OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
+`ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
+a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
+a spell or trigger too, through `AddManaForEffect`. That path narrows a
+pick to the commander's colour identity by default, so an effect whose
+printed text says "any color" or "any one color" passes
+`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+the effect-side twin of the mana ability's flag. The auto-tapper
+plans around such a source, so the player taps it by hand
+([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
+
+**Tests**: `pushChosenColorPermanent` and `answerColor` in
+[color_choice_cards_test.go](server/internal/cards/effects/color_choice_cards_test.go).
+
 ### Shared vocabulary, and the clone gate
 
 The catalog is one package and its helpers are one vocabulary. The
@@ -1745,7 +2064,12 @@ Check it before triaging a skip as "needs machinery", and append a
 batch's skips to it in the batch PR (Discussion #559 item 6).
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
-  carries tap-this, sacrifice-this, sacrifice-another, mana, life,
+  carries tap-this, sacrifice-this, sacrifice-another (since #747
+  **N of them**: `SacrificeN(2, "two artifacts", Artifact())` for an
+  ability, `SacrificeNCost(2, "two creatures", Creature())` for an
+  additional cost to cast; a fixed count only, `Register` refuses
+  "sacrifice X" and "one or more", and a restriction on the set
+  ("with different names") has no shape either), mana, life,
   and since S27 **loyalty** (`LoyaltyCost(n)`, [ADR 0032](docs/decisions/0032-planeswalkers.md) §8)
   and **crew** (`CrewCost(n)`), and since #625 **counter removal**
   (`RemoveCountersFromThis(kind, n)` for "from this",
@@ -1787,8 +2111,6 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.
-- **Aura-attachment + control-change** (Mind Control) — requires
-  aura-attaching state the engine doesn't model. Lands with S24.
 - **Cards that add a layer dependency, or that ability removal gets
   wrong: hold them.** The layer engine applies each layer in timestamp
   order and has no CR 613.8 dependency ordering, and it silences a

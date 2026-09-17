@@ -95,6 +95,8 @@
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
     autopassEnabled?: boolean;
+    // #628: the CR 726 loop-breaker banner line, empty when quiet.
+    loopNotice?: string;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;
     // flipped — top-row opponents. The panel keeps its zones in the
@@ -128,6 +130,7 @@
     onTargetPlayer,
     onTargetCard,
     autopassEnabled = false,
+    loopNotice = "",
     onPassPriority,
     onToggleAutopass,
     onActivateAbility,
@@ -384,6 +387,7 @@
         mulligansOpen={view.mulligans_open === true}
         viewerHasPriority={hasPriority}
         {autopassEnabled}
+        {loopNotice}
         onPassPriority={onPassPriority ?? (() => {})}
         onToggleAutopass={onToggleAutopass ?? (() => {})}
       />

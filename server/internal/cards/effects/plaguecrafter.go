@@ -32,7 +32,11 @@ func init() {
 						continue
 					}
 					if p.Hand.Size() > 0 {
-						g.DiscardChoiceForEffect(p.ID, 1)
+						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+							Player: p.ID,
+							Source: item.SourceCardID,
+							N:      1,
+						})
 					}
 				}
 				return EachPlayerSacrifices{

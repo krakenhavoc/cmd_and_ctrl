@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
+**Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
 
 ## Context
 
@@ -150,6 +151,275 @@ and performs no observable mutation before the prompt queues. A
 partial state is impossible because the actual mutation
 (`actuallyDrawCardLocked`, `applyCounterLocked`, etc.) only runs
 after the replacement loop settles.
+
+### 5a. Amendment, 2026-09-17: when the 616 prompt has only one answer
+
+*Amendment, 2026-09-17, branch `fix/792-identical-replacements-no-prompt`.
+Closes [#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792) and
+records [#710](https://github.com/krakenhavoc/cmd_and_ctrl/issues/710),
+which shipped the first half of this and did not amend §5.*
+
+§5 says "when ≥2 replacements apply in the same iteration, the
+affected player picks the order", and the engine queued the prompt on
+that count alone. CR 616.1 gives the affected player a choice; it does
+not require asking a question whose answers are indistinguishable. Two
+exceptions now apply the gathered order inline instead, both in
+`applyReplacementsLocked`:
+
+1. **Every applicable effect is a pure cancel** (#710) — whichever is
+   put first cancels the event and ends the apply-loop.
+   `ReplacementEffect.PureCancel` is the card's declaration that its
+   `Replace` does nothing but `ev.Cancel()`. Two "skip your draw step"
+   enchantments under one controller.
+2. **Every applicable effect is the same declared effect** (#792) —
+   two Doubling Seasons, two Rhox Faithmenders, two Hardened Scales.
+   Same modification, applied N times, in any order.
+
+"The same declared effect" is `replacementIdentity` in
+`replacements.go`: the source's `CatalogAbilityKey`, the slot index
+into that entry's `Replacements` slice, and the controller of the
+object contributing it. It is the engine's existing catalog-
+replacement key with the OBJECT dropped — `ReplacementEffectID` says
+"the Season in battlefield slot 3", the identity says "Doubling
+Season's counter-doubling, controlled by Ian". The controller belongs
+in it because replacements read their own controller (Notion Thief
+writes `src.Controller` straight into the event), so two copies under
+different controllers are two different modifications. Built-in,
+turn-scoped and test replacements are registered per instance rather
+than declared on a catalog entry and have no identity, so they never
+collapse.
+
+Three deliberate limits:
+
+- **A mixed window still prompts with everything listed.** Two Seasons
+  and a Hardened Scales do not collapse to two entries: CR 616.1 lets
+  the affected player interleave, and Season → Scales → Season is 6
+  counters, which neither Season → Season → Scales (5) nor
+  Scales → Season → Season (8) can reach. Collapsing would remove a
+  legal outcome, which is worse than one extra prompt.
+- **An effect that asks its controller a question is never
+  collapsed** — a CR 614.10 "may", a shockland's pay-life, a copy
+  selector. Skipping the ordering prompt would skip its question too.
+  Shared by both exceptions as `asksItsOwnQuestion`.
+- **An effect whose `Replace` writes its own SOURCE into the event is
+  not covered.** "That damage is dealt to this creature instead" from
+  two copies of one card would share an identity and would not be
+  interchangeable. Nothing in the catalog does that today — the two
+  source-reading replacements that exist are additive, and Arwen is
+  legendary — and AGENTS.md §7 tells card authors to raise it rather
+  than ship it quietly. If one ever lands, the fix is a declared flag
+  in the `PureCancel` mould, not a per-card special case.
+
+### 5b. Amendment, 2026-09-17: what a paused life change owes its caller, and why a cost never pauses
+
+*Amendment, 2026-09-17, branch `fix/793-life-change-continuation`.
+Closes [#793](https://github.com/krakenhavoc/cmd_and_ctrl/issues/793),
+which [#482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/482)
+(PR #790) created by routing every life change through this pipeline.*
+
+§5 says the affected player picks the order and the event lands from the
+resume. Everything in §5 is still true; what it did not say is what
+happens to the code that ASKED for the event while it is waiting.
+
+Before #482, a life change could not pause, so a caller could change a
+life total and read it back on the next line to find out how much
+actually moved. "Each opponent loses X life. You gain life equal to the
+life lost this way" — Exsanguinate, Debt to the Deathless, Gray Merchant
+of Asphodel, Kokusho — is that shape, and after #482 it reads a total
+that has not moved yet and gains nothing. Two decisions:
+
+**1. A life change carries its continuation, the way a damage event
+carries its tail.** `ReplacementEvent.lifeTail` holds `then(g, applied)`
+and `runLifeTailLocked` is the one place it runs, reached from every
+TERMINAL outcome of a life event: landed (`applyResolvedLifeChangeLocked`,
+the same function the CR 616 resume calls), replaced away under
+CR 614.10, or its player gone. `applied` is the post-replacement delta,
+signed the way the event is, and `0` for the two non-outcomes — the
+caller is told either way, because a batch waiting on several players
+must not stall on the one that moved nothing.
+
+The public surface is `ChangePlayerLifeThenForEffect` for one player and
+`LoseLifeEachThenForEffect` for "each opponent", the second built on the
+first so there is one implementation of waiting rather than one per
+card. The batch drains players IN SEQUENCE, each from the previous
+one's continuation: that is what keeps the running total a value carried
+forward rather than a shared accumulator, which is what makes an undo
+across the prompt replay identically. The observable cost is that a
+paused first opponent delays the rest of the drain until the prompt is
+answered; the losses are simultaneous in the rules and sequential in
+this engine either way, and doing them all on the far side of the prompt
+is the closer of the two.
+
+`Then` takes the live `*Game`, the contract every other continuation
+frame in the engine follows. Nothing new is snapshotted: the tail rides
+the `ReplacementEvent` on the existing `replacementResume` frame, which
+`ContinuationCensus.ChoiceResumeFrames` already counts and `Snapshot`
+already refuses to call a restore point.
+
+One thing DID have to change for undo. `Clone` shallow-copied the
+`PendingChoice`, so the undo snapshot shared the in-flight
+`ReplacementEvent` with the live game — and answering a prompt mutates
+that event in place. Undoing the answer and answering again therefore
+doubled an already-doubled delta and found the continuation consumed.
+`cloneReplacementResume` now gives the snapshot its own copy of the
+event (the gathered `applicable` list stays shared; a resume only reads
+it). That was a latent bug for counters and damage too, not just life.
+
+**2. Paying life is a life LOSS, but a cost never pauses.**
+CR 119.4: "If a player pays life, the amount of life paid is subtracted
+from their life total. In other words, paying an amount of life is the
+same as losing that much life." So the window runs on a payment and a
+life-loss replacement sees it; the issue's proposal to route costs
+around the pipeline as "not a life-change effect" would have been a
+rules change. What a payment is *not* is life GAIN, so Rhox Faithmender
+and Alhammarret's Archive never touch it — which is the half the issue
+was actually worried about, and it needs no special case at all.
+
+What the payment cannot do is stop to ask a question. CR 601.2h pays a
+spell's costs as one indivisible step of casting it and CR 601.2 rewinds
+the announcement if they cannot all be paid; CR 602.2b says the same for
+an activated ability, and CR 605.3b resolves a mana ability immediately
+and without the stack. A CR 616 ordering prompt in the middle of any of
+those leaves a half-paid cost that no rewind can take back. So
+`PayLifeForEffect` sets `ReplacementEvent.mustSettleNow` and the
+apply-loop settles without prompting:
+
+- an ordering window applies in the order it was gathered — the escape
+  §5a already uses for a pure-cancel set, for identical effects, and for
+  an eliminated chooser;
+- anything that would ask its own question (`asksItsOwnQuestion`: a
+  CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
+  un-applied, the weaker-never-stronger posture
+  `optionalReplacementResumableLocked` takes for an entry with nothing
+  to resume it.
+
+The affected player gives up their CR 616 ordering choice on a cost
+payment. That is a real, declared simplification: arbitrary but
+deterministic, reachable only with two DIFFERENT life-loss replacements
+on one table, and the alternative is a spell stuck on the stack.
+
+`mustSettleNow` is deliberately a property of the EVENT rather than of
+life: any future entry point with no resume and no rewind can set it,
+and the two branches that honour it are three lines each.
+
+### 5c. Amendment, 2026-09-17: damage owes its caller the same continuation
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#807](https://github.com/krakenhavoc/cmd_and_ctrl/issues/807).*
+
+§5b is about life. Everything in it is true of DAMAGE, word for word,
+because damage has run this window since S22 (players) and S30
+(permanents) and therefore pauses the same way. Creeping Bloodsucker —
+"this creature deals 1 damage to each opponent. You gain life equal to
+the damage dealt this way" — read each opponent's life total back on the
+line after damaging them, which is #793's shape with
+`DealDamageToPlayerForEffect` in place of `ChangePlayerLifeForEffect`,
+and gained nothing for an opponent whose damage was still waiting on a
+CR 616 prompt.
+
+**The decision is to make it one idiom rather than two.**
+`damageTail` already existed (#694) and carried what the ENGINE owes a
+settled damage event; it now also carries `then(g, dealt)`, the CALLER's
+half, exactly as `lifeTail` does. `runDamageTailLocked` is the one place
+it runs, reached from every TERMINAL outcome — landed, fully prevented,
+replaced away, target gone — with `dealt` the post-replacement amount
+and `0` for the three non-outcomes.
+
+The public surface mirrors the life side name for name:
+`DealDamageToPlayerThenForEffect`, `DealDamageToCreatureThenForEffect`,
+and `DealDamageEachThenForEffect` for "each opponent", the batch built
+on the single forms and sequenced through their continuations so the
+running total is a value carried forward rather than a shared
+accumulator. Card authors learn `...ThenForEffect` once.
+
+Two things fell out of doing it this way:
+
+- **Six copies of the pipeline dance became one.**
+  `damageThroughReplacementsLocked` is `changeLifeThroughReplacementsLocked`
+  for damage, and all six entry points (two effect deals, three combat
+  paths, the manual sandbox mark) now call it. Adding a terminal outcome
+  to a damage event is one edit, not six — which is the property #694
+  was reaching for and did not quite get.
+- **`Clone` deep-copies the `damageTail`.** The life tail is cleared by
+  nilling the POINTER on the event, which the snapshot already has its
+  own copy of; the damage tail is cleared by nilling `then` INSIDE it,
+  because the rest of the tail is still being read when the continuation
+  runs. Sharing the struct would let the live game's run consume the
+  snapshot's continuation, so an undone answer would land the damage and
+  skip the rest of the card.
+
+Nothing new is snapshotted: the tail rides the `replacementResume`
+frame, already counted by `ContinuationCensus.ChoiceResumeFrames`.
+
+The catalog lint from #793 grew a second pattern rather than a second
+file — `life_continuation_guard_test.go` now scans for a `.Life` or
+`.DamageMarked` read after a damage call as well as after a life change,
+and recognises the `DealDamage{…}.Apply(ctx)` primitive spelling. One
+card needed converting; the sweep found no others.
+
+### 5d. Amendment, 2026-09-17: a destruction clears damage only when it lands
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#708](https://github.com/krakenhavoc/cmd_and_ctrl/issues/708),
+noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
+(PR #701).*
+
+§6 lists `routeBattlefieldCardToOwnerGraveyardLocked` as a pipeline
+integration point: a battlefield exit runs the CR 614 window so the
+CR 903.9 commander built-in — and any future "if it would be destroyed,
+instead …" — can replace it. What §6 did not notice is that the same
+function cleared `Card.DamageMarked` on the line that found the owner,
+*before* opening that window.
+
+That is the ordering inverted. The damage was gone before the
+replacements could see it, and it was gone whether or not the permanent
+actually left. A destruction a replacement rewrote left the permanent
+standing with its marks erased, which is wrong twice: CR 514.2 removes
+marked damage at the cleanup step, not when something tried and failed
+to destroy the permanent; and the CR 704.5g lethal-damage check would
+not see it again on the next pass.
+
+**Decision: the clear is a TERMINAL-OUTCOME mutation, like landing
+damage and landing a life change.** It moved into
+`executeBattlefieldLeaveLocked`, the one function that actually performs
+the move and the one both the unpaused path and the CR 903.9 resume go
+through. `clearBattlefieldDamageLocked` (permanent_damage.go, next to
+the marking it undoes) is the named verb, and its doc comment is the
+short list of who may call it.
+
+Consequences, checked caller by caller:
+
+| Caller | Before | After |
+| --- | --- | --- |
+| SBA lethal-damage / deathtouch destruction | cleared, then maybe moved | cleared iff it moves |
+| `DestroyPermanentForEffect` (Doom Blade) | same | same |
+| `DestroyPermanentsForEffect` (Wrath) | same, per card | same, per card |
+| Sacrifice (`sacrifice.go`) | cleared on the shared ramp | unchanged — it always lands |
+| Legend rule, aura/equipment SBA | unchanged | unchanged |
+| A REPLACED exit | damage lost | damage kept, and readable by the replacement |
+
+LKI is deliberately untouched: the clear sits just before
+`snapshotLKILocked`, where the old one effectively did, so a
+dies-trigger sees the same permanent it has always seen. Whether a dying
+creature's last-known information should show the damage that killed it
+is a separate question with nobody asking it.
+
+**Regeneration does not ride on this.** CR 701.15a makes removing all
+damage part of the regeneration shield's own replacement, not part of
+being destroyed — which is exactly why the destroy path must not do it.
+Regeneration is still unmodelled (keywords.go's canonical set does not
+contain it); when it lands, it clears the damage in its own `Replace`.
+
+**The SBA does not loop.** A permanent that survives a replaced
+destruction with lethal damage still on it would be doomed again on the
+next pass, so the recurrable cases were enumerated: indestructible is
+filtered out of `doomed` before anything is destroyed (CR 702.12b), a
+paused exit is skipped by #605's `zoneChangePausedLocked`, and an "exile
+it instead" removes the permanent so there is nothing to re-doom. What
+remains is a replacement that cancels a destruction outright without
+regenerating, which no rules text describes and no catalog card
+registers; `runStateChecksLocked`'s 32-pass bound is the backstop, and
+there is a test that says so.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
@@ -313,7 +583,8 @@ without a `Source` (develop at `7c1ae9b`):
 
 | site | what discards there |
 |---|---|
-| `game/mutations.go` `DiscardSelection` | the cleanup hand-size discard, and every `DiscardChoiceForEffect` caller (Mind Rot, looting) |
+| `game/mutations.go` `DiscardSelection` | the cleanup hand-size discard (CR 514.1) |
+| `game/effect_api.go` `discardPicksLocked` | every effect discard the player chooses — Mind Rot, looting (#651 moved these off `DiscardSelection`) |
 | `game/effect_api.go` `DiscardRandomForEffect` | random discards |
 | `game/additional_cost.go` `payAdditionalCostLocked` | discard as an additional cost to cast a spell |
 | `game/pending_choice.go` `PendingChoiceDiscardFromHand` | Thoughtseize-style "you choose, they discard" |
@@ -326,13 +597,15 @@ too: a library search that puts the card into a graveyard (Entomb,
 `effect_api.go`) and surveil (`ResolveSurveil` in `pending_choice.go`).
 So Rest in Peace also needs those two.
 
-**There is also a bug underneath.** An effect discard doesn't block
-the game. `DiscardChoiceForEffect` adds to `DiscardPending`, the map
-the cleanup step uses. `PassPriority` never checks that map, and
-entering cleanup resets it to the hand-size count. So players can pass
-priority while a Mind Rot discard is still owed, and at cleanup the
-discard is lost (#651). That has to be fixed before a discard can
-pause inside the replacement window.
+**There was also a bug underneath, now fixed (#651).** An effect
+discard did not block the game: `DiscardChoiceForEffect` added to
+`DiscardPending`, the map the cleanup step uses, nothing read that map
+outside cleanup, and entering cleanup reset it to the hand-size count
+— so players could pass priority while a Mind Rot discard was still
+owed, and at cleanup the discard was lost. An effect's discard is now
+a `PendingChoice` (ADR 0010 §10 amendment), so it is owed, gated and
+never erased, and it has somewhere stable to pause when the
+replacement window arrives. `DiscardPending` is cleanup-only.
 
 **Where the work went.**
 

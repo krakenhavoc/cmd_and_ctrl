@@ -21,21 +21,22 @@ func lookupDef(key string) *game.CardDef { return defs[key] }
 // buildDef projects one Spec into the shape the engine reads.
 func buildDef(spec Spec) *game.CardDef {
 	d := &game.CardDef{
-		StartingLoyalty:  spec.StartingLoyalty,
-		TargetMode:       spec.TargetMode,
-		Targets:          spec.Targets,
-		Modes:            spec.Modes,
-		Replacements:     spec.Replacements,
-		PrintedKeywords:  spec.PrintedKeywords,
-		Triggered:        spec.Triggered,
-		AdditionalCost:   spec.AdditionalCost,
-		AlternativeCosts: spec.AlternativeCosts,
-		TapCost:          spec.TapCost,
-		CostModifiers:    spec.CostModifiers,
-		CastableZones:    spec.CastableZones,
-		UntapStep:        spec.UntapStep,
-		CantBeCountered:  spec.CantBeCountered,
-		NoMaxHandSize:    spec.NoMaxHandSize,
+		StartingLoyalty:   spec.StartingLoyalty,
+		TargetMode:        spec.TargetMode,
+		Targets:           spec.Targets,
+		Modes:             spec.Modes,
+		Replacements:      spec.Replacements,
+		PrintedKeywords:   spec.PrintedKeywords,
+		Triggered:         spec.Triggered,
+		AdditionalCost:    spec.AdditionalCost,
+		AlternativeCosts:  spec.AlternativeCosts,
+		TapCost:           spec.TapCost,
+		CostModifiers:     spec.CostModifiers,
+		SelfCostModifiers: spec.SelfCostModifiers,
+		CastableZones:     spec.CastableZones,
+		UntapStep:         spec.UntapStep,
+		CantBeCountered:   spec.CantBeCountered,
+		NoMaxHandSize:     spec.NoMaxHandSize,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
@@ -74,6 +75,7 @@ func buildDef(spec Spec) *game.CardDef {
 				Cost:         a.Cost,
 				Targets:      a.Targets,
 				SorcerySpeed: a.SorcerySpeed,
+				Condition:    a.Condition,
 				Effect:       a.Effect,
 			}
 		}

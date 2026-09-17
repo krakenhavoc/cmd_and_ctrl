@@ -15,6 +15,7 @@ import {
   describeBugAttachments,
   formatBytes,
   joinPhrases,
+  redactBugContext,
   validateAttachments,
   validateBugReport,
 } from "./bugReport";
@@ -245,5 +246,28 @@ describe("report kinds", () => {
     expect(describeBugAttachments(bugKindSpec("question"), false)).toEqual([
       "your recent activity log",
     ]);
+  });
+});
+
+describe("redactBugContext (#721)", () => {
+  it("redacts credentials in the free-text fields and leaves numbers alone", () => {
+    const ctx = redactBugContext({
+      game_id: "g?token=abcdefghijklmnop",
+      turn: 3,
+      seq: 9,
+      phase: "main",
+      connection: "wss://h/ws?t=invite-secret",
+    });
+    expect(ctx).toEqual({
+      game_id: "g?token=REDACTED",
+      turn: 3,
+      seq: 9,
+      phase: "main",
+      connection: "wss://h/ws?t=REDACTED",
+    });
+  });
+
+  it("passes undefined through", () => {
+    expect(redactBugContext(undefined)).toBeUndefined();
   });
 });

@@ -15,10 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // #338 stale-simplification sweep: mode 2 used to note that "the
 // 'you choose' picker is still deferred" and discard at random. The
-// picker exists — DiscardChoiceForEffect, wrapped by lootOne, is
-// what Faithless Looting and Frantic Search already use — so the
-// controller now picks their two discards, in the printed order
-// (draw first, so a drawn card is a legal discard).
+// picker exists — lootOne, what Faithless Looting and Frantic Search
+// already use — so the controller now picks their two discards, in
+// the printed order (draw first, so a drawn card is a legal
+// discard), and the mode does not finish until they have.
 func init() {
 	Register(Spec{
 		OracleID:     "a07698f6-5ad5-49a3-9da2-f82d407f5cd7",

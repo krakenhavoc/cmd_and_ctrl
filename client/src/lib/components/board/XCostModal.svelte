@@ -21,6 +21,7 @@
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import { xPickerCostNotes } from "../../costNotes";
   import type { CardView } from "../../protocol";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -56,6 +57,10 @@
   }: Props = $props();
 
   const floor = $derived(Math.max(0, minX));
+  // #746: a spell whose price depends on its targets (Fireball) is
+  // priced here at one target, because targets come after X. Quote
+  // the printed clause rather than show a surcharge nobody knows yet.
+  const costNotes = $derived(xPickerCostNotes(card, abilityIndex));
 
   let x = $state(0);
   let preview = $state<AutoTapPreview | null>(null);
@@ -180,6 +185,14 @@
           {/if}
         </span>
       </label>
+      {#if costNotes.length > 0}
+        <p class="prompt-hint cost-note">
+          Checked at one target.
+          {#each costNotes as note (note)}
+            <span class="cost-clause">{note}</span>
+          {/each}
+        </p>
+      {/if}
       <div class="prompt-foot">
         <button type="button" class="ghost" onclick={onCancel}
           >Cancel <span class="kbd">Esc</span></button
@@ -226,6 +239,14 @@
   }
   .status.bad {
     color: var(--danger);
+  }
+  .cost-note {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  .cost-clause {
+    display: block;
+    font-style: italic;
   }
   .primary .kbd {
     color: var(--accent-fg);
