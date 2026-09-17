@@ -412,7 +412,64 @@ type activeReplacement struct {
 	effect ReplacementEffect
 	source *Card // nil for built-ins
 	id     ReplacementEffectID
+	// identity names WHICH DECLARED EFFECT this is an instance of,
+	// as opposed to `id`, which names this instance of it. Zero for
+	// an effect that has no stable identity — see
+	// replacementIdentity.
+	identity replacementIdentity
 }
+
+// replacementIdentity names one declared replacement effect: the
+// catalog entry it is printed on, the slot it occupies in that
+// entry's Replacements slice, and the player who controls the object
+// contributing it.
+//
+// It is the engine's existing key for a catalog replacement with the
+// object dropped. `ReplacementEffectID` is minted as
+// `battlefieldIndex*256 + slot`, so it says "the Doubling Season in
+// slot 3 of the battlefield"; this says "Doubling Season's counter-
+// doubling replacement, controlled by Ian" — the same for every copy
+// on the board. That is the whole point: two Rhox Faithmenders are
+// two objects contributing ONE effect, and #792 is about not asking
+// which of two identical modifications happened first.
+//
+// The zero value means "no stable identity, never interchangeable
+// with anything". Built-in, turn-scoped and test replacements take
+// it: they are registered per instance rather than declared on a
+// catalog entry, so two of them are two separate declarations that
+// happen to look alike, not two printings of one effect.
+//
+// The controller is part of the identity because a replacement
+// routinely reads its own controller — Notion Thief's "you draw that
+// card instead" writes `src.Controller` into the event, so two
+// Notion Thieves under DIFFERENT controllers replace the same draw
+// two different ways and the order between them is very much
+// observable.
+//
+// What it does NOT capture: an effect whose Replace writes its own
+// SOURCE into the event ("that damage is dealt to this creature
+// instead", "put that counter on this creature instead"). Two copies
+// of such a card would share an identity and would not be
+// interchangeable. Nothing in the catalog does that today, and the
+// note in AGENTS.md §7 tells card authors to flag it rather than
+// ship it quietly. See sameModification.
+type replacementIdentity struct {
+	// card is the source's CatalogAbilityKey — the catalog entry
+	// whose Replacements slice the effect came from. Empty for a
+	// replacement that has no catalog entry behind it.
+	card string
+	// slot is the index into that entry's Replacements slice.
+	slot int
+	// controller is the controller of the object contributing the
+	// effect — a replacement effect is a static ability, so its
+	// controller is whoever controls its source.
+	controller uuid.UUID
+}
+
+// known reports whether this identity is a real one. The zero value
+// is "unidentified", which never matches anything — including
+// another zero value.
+func (r replacementIdentity) known() bool { return r.card != "" }
 
 // errReplacementPending is a sentinel returned by
 // applyReplacementsLocked when a CR 616 order-choose prompt was
@@ -492,7 +549,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying — with two exceptions, both of which apply
+			// applying — with three exceptions, all of which apply
 			// the gathered order inline instead.
 			//
 			// #710: every applicable effect is a PURE CANCEL, so
@@ -501,6 +558,15 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// skipped draw step, and asking which of them skipped it
 			// is a prompt with a single answer.
 			if allPureCancels(applicable) {
+				g.applyGatheredInOrderLocked(ev, applicable)
+				continue
+			}
+			// #792: every applicable effect is the SAME declared
+			// effect on two or more objects — two Doubling Seasons,
+			// two Rhox Faithmenders. The player is being asked to
+			// order N copies of one modification, so again there is
+			// only one answer.
+			if sameModification(applicable) {
 				g.applyGatheredInOrderLocked(ev, applicable)
 				continue
 			}
@@ -594,13 +660,9 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 // the first one applied cancels the event and ends the apply-loop,
 // and they are interchangeable — so the engine skips the prompt.
 //
-// An effect that asks its controller a question first — a CR 614.10
-// "may", a shockland's pay-life, a copy selector — is never treated
-// as a pure cancel however it is flagged: skipping the ordering
-// prompt would skip that question too, and firing Replace blind is
-// the bug ResolveReplacementOrder's own CopySelector branch exists to
-// avoid. No printed card combines them; the guard is here so a future
-// one fails loudly by prompting rather than quietly by deciding.
+// An effect that asks its controller a question first is never
+// treated as a pure cancel however it is flagged — see
+// asksItsOwnQuestion.
 //
 // An empty slice is not "all pure cancels": the only caller has
 // already established len > 1, and answering true for nothing would
@@ -610,12 +672,70 @@ func allPureCancels(applicable []activeReplacement) bool {
 		return false
 	}
 	for _, a := range applicable {
-		if !a.effect.PureCancel || a.effect.Optional ||
-			a.effect.EntryLifeCost > 0 || a.effect.CopySelector != nil {
+		if !a.effect.PureCancel || asksItsOwnQuestion(a.effect) {
 			return false
 		}
 	}
 	return true
+}
+
+// sameModification reports whether every gathered replacement is an
+// instance of ONE declared effect — the same slot of the same catalog
+// entry under the same controller, on two or more objects. Two
+// Doubling Seasons, two Rhox Faithmenders, two Hardened Scales.
+//
+// When they are, the CR 616 ordering prompt has one answer. The
+// affected player is being asked to order N copies of a single
+// modification, and doubling then doubling is doubling then doubling
+// whichever Season is named first. Under #730's gate that prompt also
+// holds the whole table until it is answered, so the click is not
+// even free. #792.
+//
+// This deliberately does NOT extend to a MIXED window — two Doubling
+// Seasons and a Hardened Scales. Collapsing the two Seasons there
+// would force them to fire back to back, and CR 616.1 lets the
+// affected player interleave: [DS, HS, DS] puts 6 counters on the
+// creature and neither [DS, DS, HS] (5) nor [HS, DS, DS] (8) can
+// reach it. So a window with any distinct effect in it prompts with
+// every effect listed, exactly as before.
+//
+// An effect that asks its controller a question is excluded for the
+// same reason allPureCancels excludes it — see asksItsOwnQuestion.
+//
+// Fewer than two is not "all the same": the only caller has already
+// established len > 1, and answering true for a single effect (which
+// never prompts anyway) would be a trap for a future one.
+func sameModification(applicable []activeReplacement) bool {
+	if len(applicable) < 2 {
+		return false
+	}
+	want := applicable[0].identity
+	if !want.known() {
+		return false
+	}
+	for _, a := range applicable {
+		if a.identity != want || asksItsOwnQuestion(a.effect) {
+			return false
+		}
+	}
+	return true
+}
+
+// asksItsOwnQuestion reports whether firing this effect puts a
+// question to a player before it changes anything — a CR 614.10
+// "may", a shockland's pay-life, a copy selector.
+//
+// Every caller here is deciding whether to skip the CR 616 ordering
+// prompt and apply the gathered effects inline. Such an effect can
+// never be part of that: skipping the ordering prompt would skip its
+// question too, and firing Replace blind is the bug
+// ResolveReplacementOrder's own CopySelector branch exists to avoid —
+// the permanent enters as a 0/0 and nobody is asked anything. No
+// printed card combines one of these with a reason to skip the
+// prompt; the guard is here so a future one fails loudly by prompting
+// rather than quietly by deciding.
+func asksItsOwnQuestion(e ReplacementEffect) bool {
+	return e.Optional || e.EntryLifeCost > 0 || e.CopySelector != nil
 }
 
 // applyGatheredInOrderLocked fires the gathered replacements in the
@@ -732,7 +852,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 			// CatalogAbilityKey: a replacement effect is a static
 			// ability (CR 614.1), so a permanent under a CR 613.1f
 			// ability-removing effect contributes none.
-			reps := CatalogReplacements(CatalogAbilityKey(*card))
+			key := CatalogAbilityKey(*card)
+			reps := CatalogReplacements(key)
 			if len(reps) == 0 {
 				continue
 			}
@@ -748,7 +869,12 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, card) {
 					continue
 				}
-				out = append(out, activeReplacement{effect: eff, source: card, id: id})
+				out = append(out, activeReplacement{
+					effect:   eff,
+					source:   card,
+					id:       id,
+					identity: replacementIdentity{card: key, slot: repIdx, controller: card.Controller},
+				})
 			}
 		}
 	}
@@ -770,7 +896,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
 		const selfReplacementIDBase ReplacementEffectID = 1 << 45
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
-			reps := CatalogReplacements(CatalogKey(entering))
+			key := CatalogKey(entering)
+			reps := CatalogReplacements(key)
 			for repIdx := range reps {
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
 				if applied[id] {
@@ -788,7 +915,12 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				if eff.AppliesTo != nil && !eff.AppliesTo(ev, g, &src) {
 					continue
 				}
-				out = append(out, activeReplacement{effect: eff, source: &src, id: id})
+				out = append(out, activeReplacement{
+					effect:   eff,
+					source:   &src,
+					id:       id,
+					identity: replacementIdentity{card: key, slot: repIdx, controller: src.Controller},
+				})
 			}
 		}
 	}
