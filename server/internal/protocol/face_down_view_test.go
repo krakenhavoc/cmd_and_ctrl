@@ -178,6 +178,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Controller:          owner,
 		ScryfallID:          "scryfall",
 		TypeLine:            "Legendary Creature — Test",
+		Colors:              []string{"B", "R"},
 		Power:               3,
 		Toughness:           3,
 		Tapped:              true,

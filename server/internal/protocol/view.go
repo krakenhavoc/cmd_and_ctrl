@@ -700,6 +700,9 @@ type CardView struct {
 	// Omitted for placeholder demo cards that have no resolved type.
 	// Added in S08.
 	TypeLine string `json:"type_line,omitempty"`
+	// Colors is the effective color list (W/U/B/R/G), including layer-5
+	// changes. Absent means colorless; mana cost is not a color fallback.
+	Colors []string `json:"colors,omitempty"`
 	// Power and Toughness are the parsed printed stats. Zero for
 	// non-creatures and for any card with non-numeric printed stats
 	// ("*", "1+*"). The client uses Power to label combat-panel
@@ -2566,6 +2569,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	}
 	out.Name = ""
 	out.TypeLine = ""
+	out.Colors = nil
 	out.ScryfallID = ""
 	out.Power = 0
 	out.Toughness = 0
@@ -2711,6 +2715,7 @@ func viewOfCard(c game.Card) CardView {
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
 		TypeLine:   effectiveTypeLine(c, eff),
+		Colors:     append([]string(nil), eff.Colors...),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /

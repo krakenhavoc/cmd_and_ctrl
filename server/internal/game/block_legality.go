@@ -45,6 +45,20 @@ const (
 	// BlockReasonLandwalk — the attacker has a landwalk ability and the
 	// defending player controls a land it names. CR 702.14c.
 	BlockReasonLandwalk BlockReason = "landwalk"
+	// BlockReasonFear — fear allows only artifact or black blockers.
+	BlockReasonFear BlockReason = "fear"
+	// BlockReasonIntimidate — intimidate allows only artifact blockers or
+	// blockers sharing a color with the attacker.
+	BlockReasonIntimidate BlockReason = "intimidate"
+	// BlockReasonShadow — creatures with shadow can block or be blocked only
+	// by creatures with shadow.
+	BlockReasonShadow BlockReason = "shadow"
+	// BlockReasonHorsemanship — horsemanship can be blocked only by
+	// horsemanship.
+	BlockReasonHorsemanship BlockReason = "horsemanship"
+	// BlockReasonSkulk — skulk cannot be blocked by a creature with greater
+	// power.
+	BlockReasonSkulk BlockReason = "skulk"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -56,6 +70,11 @@ func BlockReasons() []BlockReason {
 		BlockReasonCantBeBlocked,
 		BlockReasonFlying,
 		BlockReasonLandwalk,
+		BlockReasonFear,
+		BlockReasonIntimidate,
+		BlockReasonShadow,
+		BlockReasonHorsemanship,
+		BlockReasonSkulk,
 	}
 }
 
@@ -66,7 +85,9 @@ type BlockRefusal struct {
 	Reason BlockReason
 	// Source is the permanent carrying the refusing ability or
 	// restriction: the blocker for cant_block, the attacker for
-	// cant_be_blocked, flying and landwalk. The engine does not record
+	// cant_be_blocked, flying, landwalk, fear, intimidate, horsemanship
+	// and skulk; shadow uses the creature that has shadow, whether it is
+	// attacking or blocking. The engine does not record
 	// which effect granted a keyword or wrote a restriction bit (a
 	// Pacifism, a Lord of Atlantis), so for those it is the affected
 	// creature rather than the effect's source.
@@ -93,7 +114,8 @@ func (r BlockRefusal) Legal() bool { return r.Reason == "" }
 //
 //  1. the restriction bits: CantBlock on the blocker, CantBeBlocked on
 //     the attacker (CR 509.1b);
-//  2. evasion keywords: flying (CR 702.9b), then landwalk (CR 702.14c);
+//  2. evasion keywords: flying (CR 702.9b), landwalk (CR 702.14c), fear,
+//     intimidate, shadow, horsemanship and skulk;
 //  3. protection (CR 702.16f) — RESERVED for #662;
 //  4. block rules from permanents and until-end-of-turn effects —
 //     RESERVED for #750 (addendum PR 4).
@@ -126,13 +148,32 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 		return BlockRefusal{Reason: BlockReasonCantBeBlocked, Source: attacker.InstanceID}
 	}
 
-	// 2. Evasion keywords. Flying, then landwalk. Fear, intimidate,
-	// shadow, horsemanship and skulk join this slot in #825.
+	// 2. Evasion keywords. Their order is stable because it controls the
+	// reason the client receives when an attacker has more than one.
 	if HasKeyword(attacker, "flying") && !HasKeyword(blocker, "flying") && !HasKeyword(blocker, "reach") {
 		return BlockRefusal{Reason: BlockReasonFlying, Source: attacker.InstanceID}
 	}
 	if _, land := g.landwalkBlockingLandLocked(attacker); land != nil {
 		return BlockRefusal{Reason: BlockReasonLandwalk, Source: attacker.InstanceID}
+	}
+	if HasKeyword(attacker, "fear") && !blocker.IsArtifact() && !blocker.HasColor("B") {
+		return BlockRefusal{Reason: BlockReasonFear, Source: attacker.InstanceID}
+	}
+	if HasKeyword(attacker, "intimidate") && !blocker.IsArtifact() && !sharesColor(attacker, blocker) {
+		return BlockRefusal{Reason: BlockReasonIntimidate, Source: attacker.InstanceID}
+	}
+	if attackerShadow, blockerShadow := HasKeyword(attacker, "shadow"), HasKeyword(blocker, "shadow"); attackerShadow != blockerShadow {
+		source := attacker.InstanceID
+		if !attackerShadow {
+			source = blocker.InstanceID
+		}
+		return BlockRefusal{Reason: BlockReasonShadow, Source: source}
+	}
+	if HasKeyword(attacker, "horsemanship") && !HasKeyword(blocker, "horsemanship") {
+		return BlockRefusal{Reason: BlockReasonHorsemanship, Source: attacker.InstanceID}
+	}
+	if HasKeyword(attacker, "skulk") && blocker.CurrentPower() > attacker.CurrentPower() {
+		return BlockRefusal{Reason: BlockReasonSkulk, Source: attacker.InstanceID}
 	}
 
 	// 3. Protection (CR 702.16f): "attacking creatures with protection
@@ -167,8 +208,8 @@ type BlockRefusedError struct {
 	Attacker     uuid.UUID
 	BlockerName  string
 	AttackerName string
-	// Keyword is the evasion keyword that refused the block, for the
-	// flying and landwalk reasons ("flying", "islandwalk").
+	// Keyword is the evasion keyword that refused the block, for any
+	// evasion reason ("flying", "islandwalk", "fear", …).
 	Keyword string
 	// Defender is the defending player for the attack, and
 	// DefenderName their display name. uuid.Nil when the attacker is
@@ -217,6 +258,16 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 			land += " (" + e.LandName + ")"
 		}
 		return attacker + " has " + nameOr(e.Keyword, "landwalk") + ", and " + who + " " + land + "."
+	case BlockReasonFear:
+		return attacker + " has fear, and " + blocker + " is neither an artifact nor black."
+	case BlockReasonIntimidate:
+		return attacker + " has intimidate, and " + blocker + " is not an artifact and does not share a color with it."
+	case BlockReasonShadow:
+		return "Only one of " + attacker + " and " + blocker + " has shadow, so they can't block each other."
+	case BlockReasonHorsemanship:
+		return attacker + " has horsemanship, and " + blocker + " does not."
+	case BlockReasonSkulk:
+		return attacker + " has skulk, and " + blocker + " has greater power."
 	}
 	return blocker + " can't block " + attacker + "."
 }
@@ -238,8 +289,8 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		}
 	}
 	switch r.Reason {
-	case BlockReasonFlying:
-		e.Keyword = "flying"
+	case BlockReasonFlying, BlockReasonFear, BlockReasonIntimidate, BlockReasonShadow, BlockReasonHorsemanship, BlockReasonSkulk:
+		e.Keyword = string(r.Reason)
 	case BlockReasonLandwalk:
 		if kw, land := g.landwalkBlockingLandLocked(attacker); land != nil {
 			e.Keyword = kw
@@ -250,6 +301,21 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 		}
 	}
 	return e
+}
+
+// sharesColor reports whether two permanents have a color in common, using
+// their current layer-5 color characteristics. Colorless creatures share no
+// color, so intimidate lets them through only when they are artifacts.
+func sharesColor(a, b *Card) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	for _, color := range a.EffectiveColors() {
+		if b.HasColor(color) {
+			return true
+		}
+	}
+	return false
 }
 
 func nameOr(s, fallback string) string {

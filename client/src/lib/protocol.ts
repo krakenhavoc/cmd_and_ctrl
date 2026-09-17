@@ -60,7 +60,16 @@ export interface ErrorPayload {
 // BlockRefusalReason mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
 // shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason = "cant_block" | "cant_be_blocked" | "flying" | "landwalk";
+export type BlockRefusalReason =
+  | "cant_block"
+  | "cant_be_blocked"
+  | "flying"
+  | "landwalk"
+  | "fear"
+  | "intimidate"
+  | "shadow"
+  | "horsemanship"
+  | "skulk";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -1080,6 +1089,9 @@ export interface CardView {
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
   type_line?: string;
+  // Effective colors (W/U/B/R/G), including layer-5 changes. Omitted
+  // means colorless; clients must never infer colors from mana_cost.
+  colors?: string[];
   // Parsed printed creature stats. Omitted (zero) for non-creatures
   // and for cards with non-numeric printed stats. S08.
   power?: number;

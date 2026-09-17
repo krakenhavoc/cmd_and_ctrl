@@ -894,12 +894,14 @@ func NewCommander(name string, owner uuid.UUID) Card {
 	return c
 }
 
-// EffectiveColors returns the card's colors: the stamped Colors list
-// when present, otherwise the colored symbols found in ManaCost
-// (hybrid "{W/U}" contributes both). Layer 5 color-changing effects
-// aren't modelled yet; when they are, this is the seam. Added in
-// S20 sub-PR 1.
+// EffectiveColors returns the card's colors after continuous effects: the
+// layer-5 result on the battlefield, otherwise the stamped Colors list when
+// present, then the colored symbols found in ManaCost (hybrid "{W/U}"
+// contributes both). Added in S20 sub-PR 1.
 func (c Card) EffectiveColors() []string {
+	if c.effective != nil {
+		return c.effective.Colors
+	}
 	if len(c.Colors) > 0 {
 		return c.Colors
 	}

@@ -1123,3 +1123,29 @@ record.
    [#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825)
    (filed 2026-09-17, unscheduled). Applied in Decision 9, the PR split
    and the card first wave.
+
+
+### Evasion follow-up implementation — #825 (2026-09-17)
+
+Fear, intimidate, shadow, horsemanship and skulk now occupy slot 2 after
+flying and landwalk. Each has a stable refusal token and a server-built
+explanation; restrictions combine, so a blocker must satisfy every applicable
+rule. The shared check reads effective characteristics and remains read-only.
+
+The importer and keyword-only coverage scan use the canonical table, while
+the legal move list and block-decision signal use the shared pair check.
+The bot's attack estimate handles the five keywords from public characteristics.
+This follow-up includes one real catalog consumer per keyword; #750's
+parameterized rules and block-count work remain separate.
+
+Measured against the local Scryfall dump on 2026-09-17, the canonical-table
+change also makes 28 Commander-legal, single-faced keyword-only creatures
+fully automatic by import: six with fear, five with intimidate, three with
+shadow, ten with horsemanship and four with skulk. This is a dated measurement,
+not a count of new catalog entries; Bladetusk Boar and Furtive Homunculus are
+both keyword-only creatures and explicit catalog representatives.
+
+The public card view now carries effective colors so the bot's fear and
+intimidate estimates can distinguish a color-changing effect from the printed
+mana cost. Empty colors means colorless, and unknown-card redaction removes
+the field with the other identifying characteristics.
