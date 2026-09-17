@@ -560,6 +560,9 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
+			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
+				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
+			}
 			ev.zoneRoute = &r
 		}
 		out.ev = &ev

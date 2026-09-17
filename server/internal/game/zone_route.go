@@ -181,6 +181,16 @@ type zoneRoute struct {
 	// exit already had. #815.
 	ViaBattlefieldLeave bool
 
+	// simultaneousExit carries the pre-move copies for a destroy batch
+	// whose current leg may pause. The snapshot has to be active around
+	// the physical move on BOTH paths: the inline path and the later
+	// replacement-prompt resume. Keeping it only on the caller's stack
+	// loses it while the prompt is open, so a watcher that died earlier
+	// in the wipe cannot see the resumed leg leave (#815).
+	//
+	// Read-only after construction. Unexported engine plumbing.
+	simultaneousExit []Card
+
 	// AsCommander is the sandbox move_card action's "yes, send this
 	// commander back to the command zone" flavour flag (#707). It is
 	// NOT a gate on the CR 903.9 built-in — that gate was dropped in

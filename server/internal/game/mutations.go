@@ -2821,6 +2821,16 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 //
 // Caller must hold g.mu.
 func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
+	return g.routeBattlefieldExitInBatchThenLocked(cardID, nil, then)
+}
+
+// routeBattlefieldExitInBatchThenLocked is the batched form used by a
+// sequenced simultaneous destruction. `batch` rides the route across a
+// replacement prompt so finishBattlefieldLeaveLocked can publish it around
+// the resumed move itself, before the continuation starts the next leg.
+//
+// Caller must hold g.mu.
+func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, batch []Card, then func(g *Game) error) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -2851,7 +2861,11 @@ func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Gam
 		NewZoneOwner: defaultOwner,
 	}
 	if then != nil {
-		ev.zoneRoute = &zoneRoute{CardID: cardID, ViaBattlefieldLeave: true, then: then}
+		ev.zoneRoute = &zoneRoute{
+			CardID: cardID, ViaBattlefieldLeave: true,
+			simultaneousExit: batch,
+			then:             then,
+		}
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -2892,6 +2906,11 @@ func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Gam
 //
 // Caller must hold g.mu.
 func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player) error {
+	closeBatch := func() {}
+	if ev.zoneRoute != nil {
+		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
+	}
+	defer closeBatch()
 	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {

@@ -270,9 +270,7 @@ func (g *Game) destroyEachStepLocked(
 		return then(g, destroyed)
 	}
 	next, rest := ids[0], ids[1:]
-	closeBatch := g.publishSimultaneousExitLocked(batch)
-	defer closeBatch()
-	return g.routeBattlefieldExitThenLocked(next, func(g *Game) error {
+	return g.routeBattlefieldExitInBatchThenLocked(next, batch, func(g *Game) error {
 		landed := destroyed
 		if g.destroyedThisWayLocked(next) {
 			// A fresh slice rather than an append in place: two runs of
