@@ -516,6 +516,74 @@ event through as-is when the apply-loop hits its cap; the two resumes
 error instead, dropping the event and its continuation on a prompt that
 was already dequeued. They now tolerate it the same way.
 
+### 5f. Amendment, 2026-09-17: the CR 903.9 resume finishes a move from any zone
+
+*Amendment, 2026-09-17, branch `fix/707-816-battlefield-exit`.
+Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
+noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
+(PR #701).*
+
+§8 makes the commander-zone rewrite a CR 614.10 "may", and #529 (see
+the note in `zone_route.go`) moved the window that offers it down into
+the shared exit primitive so CR 903.9's "from ANYWHERE" holds for every
+route: countered, fizzled, exiled, bounced, tucked, milled. Asking is
+not the same as finishing, and one caller was still asking on its own.
+
+`MoveCardByIDAsCommander` — the sandbox `move_card` verb, §6's second
+integration point — kept its own pipeline call, on the stated grounds
+that it accepts an arbitrary source AND destination, the battlefield
+included, which an exit primitive has no business expressing. What it
+did not keep is a continuation: `applyResolvedReplacementEventLocked`
+could finish a BATTLEFIELD exit (`executeBattlefieldLeaveLocked`) or a
+move carrying a `zoneRoute`, and this one was neither. So a commander
+moved by hand out of a graveyard, a hand, a library or the stack paused
+on the prompt and then did nothing at all — the prompt closed, the card
+stayed where it was, and BOTH answers lost the move.
+
+**Decision: the sandbox move is two verbs wearing one name, and only
+one of them is an exit.** A destination of battlefield or stack is an
+ENTRY — it owes enters-tapped, enters-with-counters and the ETB fire,
+and none of CR 903.9's four destinations are among them — and stays
+inline where it was. Every other destination IS an exit and now goes
+through `routeCardToZoneLocked` like every other exit in the engine.
+The resume comes with it: the `zoneRoute` frame records what the move
+asked for and `ev.OldZone` records where the card was, so
+`executeZoneRouteLocked` finishes it from whatever zone the window
+opened over. No second resume, and the `RepEventMove` branch of the
+answer path is now one general case plus the two older hand-rolled
+ones (the battlefield entry and the destroy / sacrifice / SBA leave).
+
+Three things fell out of it:
+
+- **The per-zone details survive the pause, because the route already
+  carries them.** "Library (bottom)" was a post-move reorder (ADR 0028
+  §7) that ran while the paused card was still in its old zone, found
+  nothing, and let the commander land on TOP when its owner declined;
+  it is now `zoneRoute.ToBottom`, honoured against the settled
+  destination. A card moved off the stack by hand now retires its
+  `StackMeta` entry (`DropStackMeta`) instead of leaving a ghost item
+  on the client's stack.
+- **A stale prompt is still pruned** (#701). `pausedZoneChangeStaleLocked`
+  keys on `ev.OldZone` and was already zone-general, and the exit
+  primitive calls the prune on every landing, so a card that leaves by
+  another route while the prompt is open takes the prompt with it —
+  and an answer that races the prune is dropped with a breadcrumb
+  rather than moving the card a second time out of a zone nobody asked
+  about.
+- **The `src` ZoneRef stays load-bearing.** The exit primitive finds
+  the card by scan, so the sandbox verb checks the card is in the
+  named source zone before routing: a stale client request naming a
+  zone the card has already left is still `ErrCardNotFound`, not a
+  move out of wherever it ended up.
+
+What is deliberately NOT fixed here: a DISCARD does not open the window
+at all (`effect_api.go` `discardPicksLocked`, `mutations.go`'s
+`DiscardCards`, `pending_choice.go`'s discard leg all call `MoveCard`
+raw), so a discarded commander is never offered the command zone. That
+is a missing window rather than a missing resume, and every one of
+those sites would have to learn to tolerate a pause — the cost path
+among them, which CR 601.2h says must not pause at all (§5b).
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

@@ -3326,6 +3326,32 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.moveCardByRefLocked(src, dst, cardID, asCommander, false)
+}
+
+// moveCardByRefLocked is the body both sandbox move verbs share —
+// MoveCardByIDAsCommander and, with toBottom set, MoveCardByIDToBottom.
+//
+// It splits the move by what it IS (#707). A destination that is not
+// the battlefield or the stack is an EXIT, and goes through the shared
+// exit primitive (routeCardToZoneLocked, zone_route.go): that opens the
+// CR 614 window with a zoneRoute on the event, so when the CR 903.9
+// "put your commander in the command zone instead?" prompt pauses the
+// move, the primitive's resume finishes it from whatever zone the card
+// was in — graveyard, hand, library, exile, the stack or the
+// battlefield — and honours what this move asked for (to the bottom of
+// the library, retire the stack item) on the far side of the prompt.
+// Before #707 this function ran its own pipeline call with no resume
+// behind it, so a paused move from anywhere but the battlefield was
+// silently dropped: the prompt closed and the card never moved.
+//
+// A destination of battlefield or stack is an ENTRY, and stays inline
+// below: it owes enters-tapped, enters-with-counters and the ETB fire,
+// none of which an exit can express, and no CR 903.9 destination is
+// among them.
+//
+// Caller must hold g.mu.
+func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommander, toBottom bool) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -3333,20 +3359,67 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 	if srcZone == nil {
 		return ErrZoneNotFound
 	}
+	if dstZone := g.zoneFromRefLocked(dst); dstZone == nil {
+		return ErrZoneNotFound
+	} else if srcZone == dstZone {
+		// A no-op move: MoveCard would Remove the card and re-Push it,
+		// and from the battlefield that would run the CR 400.7 exit
+		// cleanup over a card that never left. The pipeline must not
+		// fire for a move that isn't one either, so this returns
+		// before the window — but the card still has to be where the
+		// caller says it is, so a bogus instance ID is still an error.
+		if !srcZone.Contains(cardID) {
+			return ErrCardNotFound
+		}
+		return nil
+	}
+	// The exit primitive finds the card by scan, so the src ref would
+	// otherwise be advisory; a stale client request naming the zone the
+	// card has already left must still fail rather than move it out of
+	// wherever it ended up.
+	if !srcZone.Contains(cardID) {
+		return ErrCardNotFound
+	}
+
+	if dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+		paused, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:   cardID,
+			Dst:      dst.Kind,
+			DstOwner: dst.Owner,
+			ToBottom: toBottom,
+			// A card moved off the stack by hand is no longer a spell
+			// on the stack; leaving its StackMeta entry behind left a
+			// ghost item the client still rendered.
+			DropStackMeta: srcZone.Kind == ZoneStack,
+			AsCommander:   asCommander,
+		})
+		if err != nil {
+			return err
+		}
+		if paused {
+			// The CR 903.9 prompt (or a CR 616 ordering prompt) owns
+			// the move now. Nothing has moved, so there is nothing for
+			// the state checks to see; the resume lands the card.
+			return nil
+		}
+		// A sandbox move is a special action: the mover keeps priority
+		// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
+		// trigger drain at that boundary.
+		g.runStateChecksLocked()
+		return nil
+	}
 
 	// S17 sub-PR 2: route through the replacement pipeline. The
 	// commander-zone built-in (commanderZoneReplacement) gates on
 	// card.IsCommander && an eligible destination — NOT on
 	// ev.asCommanderMove, which stopped being a gate in #171; the
 	// flag survives here only as a routing flavor on the manual
-	// move_card action. When the built-in fires, ev.NewZone /
-	// ev.NewZoneOwner are rewritten to the owner's command zone.
-	//
-	// This is one of two callers that predate the shared exit
-	// primitive in zone_route.go. It keeps its own pipeline call
-	// because it is the admin/sandbox move: it accepts an arbitrary
-	// source AND destination including the battlefield, which the
-	// exit primitive deliberately does not.
+	// move_card action. A battlefield / stack destination is not one
+	// of CR 903.9's four, so the built-in cannot fire on this half —
+	// what can still pause it is a CR 616 ordering prompt between two
+	// entry replacements, which no catalog card produces today and
+	// which this entry site has never been able to resume
+	// (entryResumable is off; see the field's doc comment).
 	ev := &ReplacementEvent{
 		Kind:            RepEventMove,
 		CardID:          cardID,
@@ -3376,11 +3449,8 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		return ErrZoneNotFound
 	}
 	if srcZone == dstZone {
-		// Verify the card is actually present so the caller still
-		// sees ErrCardNotFound for a bogus instance ID.
-		if !srcZone.Contains(cardID) {
-			return ErrCardNotFound
-		}
+		// A replacement rewrote the destination back to where the card
+		// already is. Nothing to do.
 		return nil
 	}
 	if srcZone.Kind == ZoneBattlefield {
@@ -5759,39 +5829,24 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 }
 
 // MoveCardByIDToBottom is MoveCardByIDAsCommander with the card
-// seated at the BOTTOM of the destination zone instead of the top.
+// seated at the BOTTOM of the destination library instead of the top.
 // It backs the move_card action's `to_bottom` flag, which the admin
 // context menu (#170) needs for "put this on the bottom of your
 // library" — the one destination MoveCard (which always PushTops)
 // can't express.
 //
-// Implemented as a post-move reorder rather than a second copy of the
-// replacement pipeline: the move runs exactly as it always does
-// (replacements, LKI snapshot, LTB / ETB events, state-based checks),
-// then the card is pulled back out of the destination and re-pushed
-// at the bottom. If a replacement rewrote the destination — a
-// commander routed to the command zone by CR 903.9 — the card isn't
-// in `dst` at all, Remove fails, and the reorder is a no-op. That is
-// the behaviour we want: the replacement's destination wins.
-//
-// The two-phase locking (the move takes g.mu and releases it, then
-// this retakes it) is safe because ws.Room.Apply holds the room lock
-// across the whole of actions.Dispatch, so no other action can
-// interleave between the move and the reorder.
+// #707: the bottom now rides the exit primitive's route
+// (zoneRoute.ToBottom) rather than being a post-move reorder. The
+// reorder could not survive a pause — a commander tucked to the bottom
+// paused on the CR 903.9 prompt was still in its old zone when the
+// reorder ran, so it found nothing and the card later landed on TOP —
+// and the route already knows how to do this for every effect-side
+// tuck (Condemn, Hinder). Like those, it is honoured only against the
+// SETTLED destination: a commander whose owner takes the command zone
+// is not on the bottom of anything, and a destination that is not a
+// library has no bottom worth naming.
 func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
-	if err := g.MoveCardByIDAsCommander(src, dst, cardID, asCommander); err != nil {
-		return err
-	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	z := g.zoneFromRefLocked(dst)
-	if z == nil {
-		return nil
-	}
-	c, err := z.Remove(cardID)
-	if err != nil {
-		return nil
-	}
-	z.PushBottom(c)
-	return nil
+	return g.moveCardByRefLocked(src, dst, cardID, asCommander, true)
 }

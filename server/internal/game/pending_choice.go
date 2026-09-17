@@ -1345,10 +1345,15 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 	case RepEventMove:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
-		// it is finished by the same code the unpaused path runs.
-		// Checked first because it is the general case — the two
-		// branches below are the older, hand-rolled resumes for the
-		// battlefield entry and battlefield-leave paths.
+		// it is finished by the same code the unpaused path runs —
+		// from WHATEVER zone the card was in when the window opened,
+		// which is what makes CR 903.9's "from anywhere" resumable
+		// rather than just askable. Checked first because it is the
+		// general case: since #707 it covers every exit in the engine
+		// but the destroy / sacrifice / SBA route below, the sandbox
+		// move_card verb included. The two branches after it are the
+		// older, hand-rolled resumes for the battlefield entry and
+		// battlefield-leave paths.
 		if ev.zoneRoute != nil {
 			return g.executeZoneRouteLocked(ev)
 		}
@@ -1367,8 +1372,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return g.executeEntryToBattlefieldLocked(ev)
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// Other non-LTB moves (graveyard → hand for a regrow,
-			// say) don't have a resume path yet.
+			// What is left here is a battlefield ENTRY that is not
+			// entryResumable — an exile → battlefield return (it mints
+			// a new instance ID, CR 400.7) or a library search (it owes
+			// its caller a shuffle). Those bail before moving anything
+			// and are documented as not happening when they pause; see
+			// ReplacementEvent.entryResumable. Since #707 no EXIT lands
+			// here: every one of them carries a zoneRoute or comes off
+			// the battlefield.
 			return nil
 		}
 		var owner *Player

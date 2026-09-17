@@ -32,12 +32,20 @@ import (
 // enters-with-counters, enters-as-a-copy and the ETB fire, none of
 // which an exit has any use for. This file is the exit half.
 //
-// What this deliberately does not do:
+// #707 folded the sandbox move in. MoveCardByIDAsCommander used to
+// keep its own pipeline call, on the grounds that it accepts an
+// arbitrary source AND destination — the battlefield included — which
+// an exit primitive has no business expressing. True of half of it:
+// the half whose destination is the battlefield or the stack is an
+// ENTRY and still runs inline over there. The other half IS an exit,
+// and keeping its own pipeline call meant keeping its own resume,
+// which it never had — a commander moved out of a graveyard, a hand,
+// a library or the stack by hand paused on the CR 903.9 prompt and
+// the move was simply lost, both answers alike. The exit primitive's
+// resume finishes a move from whatever zone the card was in when the
+// window opened, so folding the admin exit in gave it one for free.
 //
-//   - MoveCardByIDAsCommander keeps its own pipeline call. It is the
-//     admin / sandbox move and accepts an arbitrary source AND
-//     destination, the battlefield included, which an exit primitive
-//     has no business expressing.
+// What this deliberately does not do:
 //
 //   - routeBattlefieldCardToOwnerGraveyardLocked keeps its own. The
 //     destroy / sacrifice / SBA route zeroes battlefield-only state
@@ -114,6 +122,15 @@ type zoneRoute struct {
 	// count). DropStackMeta additionally retires the stack item.
 	Countered     bool
 	DropStackMeta bool
+
+	// AsCommander is the sandbox move_card action's "yes, send this
+	// commander back to the command zone" flavour flag (#707). It is
+	// NOT a gate on the CR 903.9 built-in — that gate was dropped in
+	// #171 and the replacement has been destination-only ever since —
+	// and it rides the route only so the breadcrumb on the event
+	// (ReplacementEvent.asCommanderMove) survives a pause along with
+	// everything else the move was asked for.
+	AsCommander bool
 }
 
 // routeCardToZoneLocked opens the CR 614 replacement window for a
@@ -146,13 +163,14 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	}
 
 	ev := &ReplacementEvent{
-		Kind:         RepEventMove,
-		Actor:        r.Actor,
-		CardID:       r.CardID,
-		OldZone:      src.Kind,
-		NewZone:      r.Dst,
-		NewZoneOwner: dstZone.Owner,
-		zoneRoute:    &r,
+		Kind:            RepEventMove,
+		Actor:           r.Actor,
+		CardID:          r.CardID,
+		OldZone:         src.Kind,
+		NewZone:         r.Dst,
+		NewZoneOwner:    dstZone.Owner,
+		zoneRoute:       &r,
+		asCommanderMove: r.AsCommander,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {

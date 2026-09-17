@@ -140,6 +140,16 @@ zone by CR 903.9 — the card is not in `dst`, the `Remove` fails, and the
 reorder is a no-op. The replacement's destination wins, which is
 correct.
 
+*Corrected 2026-09-17 ([#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707)):
+the reorder could not survive a PAUSE. When the CR 903.9 prompt is
+queued the card has not moved at all, so the `Remove` failed for a
+commander that was going to the bottom of its owner's library anyway,
+and it landed on top when its owner declined. The bottom now rides the
+shared exit primitive's route (`zoneRoute.ToBottom`, ADR 0013 §5f),
+which applies it against the SETTLED destination after the answer
+arrives — same rule as before, one prompt later, and only for a library
+destination, which is the only zone whose bottom means anything.*
+
 ### 8. Drill-down submenus, not flyouts
 
 Rows with children replace the panel body and add a "back" row instead
