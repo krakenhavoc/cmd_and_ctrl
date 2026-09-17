@@ -1,7 +1,7 @@
 # ADR 0045 — A restriction vocabulary for declarations and activations
 
 **Status:** Accepted · 2026-09-14 · Sprint S24 · Relates to [#76](https://github.com/krakenhavoc/cmd_and_ctrl/issues/76), [#544](https://github.com/krakenhavoc/cmd_and_ctrl/issues/544), [#546](https://github.com/krakenhavoc/cmd_and_ctrl/pull/546), [ADR 0036](0036-attachments.md), [ADR 0038](0038-protection-style-keywords.md)
-**Addendum (Proposed, 2026-09-17):** [game-aware block legality](#addendum-2026-09-17-game-aware-block-legality--landwalk-conditional-restrictions-and-block-counts-705-750) for [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705) and [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750). Until it is accepted, §1–§6 below stand unchanged.
+**Addendum (Accepted, 2026-09-17):** [game-aware block legality](#addendum-2026-09-17-game-aware-block-legality--landwalk-conditional-restrictions-and-block-counts-705-750) for [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705) and [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750). §1–§6 below stand, except where the addendum's header says it supersedes them.
 
 ## Context
 
@@ -200,7 +200,7 @@ person needs to know they were considered, not overlooked.
 
 ## Addendum (2026-09-17): game-aware block legality — landwalk, conditional restrictions and block counts (#705, #750)
 
-**Status:** Proposed · 2026-09-17 · Wave 2 of the card-coverage audit ·
+**Status:** Accepted · 2026-09-17 · Wave 2 of the card-coverage audit ·
 tracked on [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705)
 (landwalk) and [#750](https://github.com/krakenhavoc/cmd_and_ctrl/issues/750)
 (conditional restrictions and block counts). This status covers this
@@ -209,7 +209,7 @@ section only.
 2026-09-17 all 208 remote branches were checked (after
 `git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune`), and
 none changes this file.
-**Supersedes, once accepted:** [ADR 0014](0014-combat-keywords.md) §9
+**Supersedes:** [ADR 0014](0014-combat-keywords.md) §9
 ("Menace enforced at `DeclareBlocker` close-out, not per-decl"), and the
 "Count restrictions" and "landwalk" bullets of *What this deliberately
 does not express* above.
@@ -218,6 +218,15 @@ does not express* above.
 in the same function ([Decision 9](#9-one-order-of-checks-with-a-reserved-slot-for-protection)).
 **Overlaps:** [#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715)'s
 menace item ([Decision 13](#13-the-stored-declaration-is-always-legal-and-the-menace-close-out-is-deleted)).
+**Coordinates with:** [ADR 0059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/824)
+(turn machinery): `TurnScopedBlockRules` is swept inside its
+`sweepTurnEndLocked` ([Decision 11](#11-rules-with-a-parameter-are-block-rules-read-from-their-sources-at-check-time)).
+**Owner decisions:** answered 2026-09-17 and recorded under
+[Decided (2026-09-17)](#decided-2026-09-17). Multi-blocker blocks are
+staged on the board, attackers the selected blocker can't block are
+dimmed, and the first wave is option (b), with fear, intimidate,
+shadow, horsemanship and skulk moved to
+[#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825).
 
 Line references are to `origin/develop` at `684f2786`. CR citations are
 to the Aug 7, 2026 edition. Oracle text was read from the local Scryfall
@@ -402,7 +411,7 @@ the pair is legal.
 | # | check | reads | rule |
 |---|---|---|---|
 | 1 | the restriction bits: `CantBlock` on the blocker, `CantBeBlocked` on the attacker | both cards | CR 509.1b (§2) |
-| 2 | evasion keywords: flying, then landwalk ([Decision 10](#10-landwalk-is-a-closed-token-set-read-from-effective-characteristics)), then any evasion keyword owner question 3 adds | both cards, the defending player's lands | CR 702.9b, 702.14c |
+| 2 | evasion keywords: flying, then landwalk ([Decision 10](#10-landwalk-is-a-closed-token-set-read-from-effective-characteristics)). Fear, intimidate, shadow, horsemanship and skulk join this slot in [#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825) (owner question 3) | both cards, the defending player's lands | CR 702.9b, 702.14c |
 | 3 | **protection, reserved for #662**: an attacker with protection from a quality the blocker has | both cards | CR 702.16f |
 | 4 | block rules from permanents and from until-end-of-turn effects ([Decision 11](#11-rules-with-a-parameter-are-block-rules-read-from-their-sources-at-check-time)) | the pair, the rule's source, anything else | CR 509.1b |
 
@@ -458,7 +467,7 @@ type BlockRule struct {
 	// Exactly one of these is set.
 	Pair  func(g *Game, attacker, blocker, source *Card) bool // true refuses the pair
 	Count func(g *Game, attacker, source *Card) (min, max int) // 0 means no bound
-	Limit func(g *Game, source *Card) (maxBlockers int)        // whole declaration
+	Limit func(g *Game, source *Card) (maxBlockers int)        // whole declaration; built with its first card (Decision 12)
 
 	Reason BlockReason
 	Label  string
@@ -470,7 +479,26 @@ type BlockRule struct {
   battlefield with `CatalogAbilityKey` (AGENTS.md §7: new readers of a
   "what does this permanent do" hook use that key). Until-end-of-turn
   rules (Gingerbrute) go in a new `Game.TurnScopedBlockRules`, next to
-  `TurnScopedStatics`, and are swept at cleanup by the same pass.
+  `TurnScopedStatics`.
+- **Swept at turn end, inside ADR 0059's `sweepTurnEndLocked`.**
+  `ClearTurnScopedBlockRulesLocked` empties the registry wholesale (a
+  fresh slice, as `ClearTurnScopedReplacementsLocked` does) and joins
+  the non-interactive cleanup sweep that
+  [ADR 0059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/824)
+  Decision 6 moves out of the `StepCleanup` case. So a rule also ends
+  when a departed active player's turn ends through the rotation seam,
+  and when the sandbox's `PassTurn` ends a turn. The registry carries no
+  turn stamp, so it needs no entry in ADR 0059 Decision 10's conversion
+  list. If this addendum's PR 4 lands before ADR 0059's sub-PR 1, the
+  call sits beside `ClearExpiredTurnScopedStaticsLocked` in cleanup, and
+  ADR 0059's sub-PR 1 moves it with the others.
+- **#755 is not expected to fold it in.** #755 gives
+  `TurnScopedStatics` and `TurnScopedReplacements` durations longer than
+  a turn. No card in this wave, and none found while drafting, prints a
+  block rule that outlasts the turn, so `TurnScopedBlockRules` stays an
+  until-end-of-turn registry. #755 extends it only if such a card
+  arrives, and it would use #755's duration model rather than a second
+  one.
 - **Losing abilities works without extra code.** Legolas Greenleaf's
   rule is Legolas's own ability. If Legolas loses all abilities,
   `CatalogAbilityKey` returns `""` and the rule is gone. Prowler's
@@ -486,6 +514,16 @@ type BlockRule struct {
   `MinBlockers(n)`, `CantBeBlockedWhile(pred)` (Thieves' Tools), and
   `…UntilEOT` twins that register a turn-scoped rule for a snapshotted
   set (CR 611.2c), as `RestrictUntilEOT` does.
+- **A builder ships with its first card** (owner policy, 2026-09-17:
+  every new seam path ships with at least one real card). The first
+  wave uses `CantBeBlockedExceptBy`, `CantBeBlockedBy`, `MaxBlockers`,
+  `CantBeBlockedWhile`, one `…UntilEOT` twin (Gingerbrute's) and the
+  scopes they need. `CantBlockAttackers` (Gornog) and `MinBlockers`
+  (Pathrazer of Ulamog) are not built until their cards ship. Each
+  builder lands in the PR that ships its first card: PR 4 for
+  `CantBeBlockedExceptBy` on `OnAttached` (Prowler's Helm),
+  `MaxBlockers` (Hungering Hydra) and Gingerbrute's `…UntilEOT` twin,
+  PR 6+ for the rest.
 - **Everything is read live at declaration.** Predicates read effective
   characteristics after layer 7: the blocker's power for Legolas,
   Champion of Lambholt's own power for its threshold. A pump after the
@@ -517,8 +555,12 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID)
   `too_few_blockers`, two or more as `too_many_blockers`.
 - **Whole-declaration limits** (Silent Arbiter: "no more than one
   creature can block each combat") are `BlockRule.Limit`, checked
-  against every stored block in the combat. The slot ships in PR 4. No
-  first-wave card uses it.
+  against every stored block in the combat. No first-wave card uses it,
+  so under the owner's policy the `Limit` field and its check are
+  **not built in PR 4**. They land with Silent Arbiter, which also needs
+  the attack-side count limit that Decision 18 leaves out. The validator
+  in Decision 13 is written as a list of set checks, so the limit is one
+  more entry there.
 
 #### 13. The stored declaration is always legal, and the menace close-out is deleted
 
@@ -543,7 +585,7 @@ func (g *Game) DeclareBlockers(decls []BlockDeclaration) error
   attacking), the pair function for each new or changed pair, the
   bounds for **every attacker whose set of blockers changed** (including
   one that loses a re-pointed blocker), and the whole-declaration
-  limits.
+  limits once they exist (Decision 12).
 - **All or nothing.** If anything is refused, nothing is stored, no
   event is emitted, and the first refusal is returned. This is
   different from `DeclareAttackers`, which skips ineligible entries,
@@ -659,10 +701,34 @@ server:
 - The `illegal_block` error from Decision 8 for anything the client
   still gets wrong.
 
-How the board uses these is owner questions 1 and 2. Whatever the
-answer, a block that needs several creatures goes out as one
-`declare_blockers` action, so the player never sees an error for a
-block they haven't finished choosing.
+How the board uses these (owner-decided, [questions 1 and 2](#decided-2026-09-17)):
+
+- **Multi-blocker blocks are staged on the board.** Clicking a blocker
+  and then an attacker whose `blockers_min` is 2 or more (menace), and
+  which isn't already blocked by at least that many, stages the pair
+  instead of sending it: a dashed arrow is drawn, and the
+  combat-hint banner reads "needs N more blocker(s)". Each further
+  blocker clicked onto that attacker stages another dashed arrow. When
+  the staged count reaches the minimum, the client sends **one**
+  `declare_blockers` with the whole group, and the arrows become the
+  server's solid ones. Clicking a staged blocker again unstages it, and
+  leaving declare blockers (or the attacker leaving combat) discards
+  the staging. Staging is client state only: nothing is sent, logged or
+  undone until the group is complete, so the player never sees an error
+  for a block they haven't finished choosing.
+- **Attackers the selected blocker can't block are dimmed.** In block
+  mode, once a blocker is selected, attackers not in its
+  `blockable_attackers` are dimmed. A click on a dimmed attacker is
+  still sent, and the banner explains it with the server's
+  `illegal_block` sentence, so the reason always comes from the server.
+  The same banner carries the selection and staging instructions.
+  Attackers with a minimum show "needs N blockers" on hover.
+- **No per-pair reason on the wire** (option (c) was not chosen), no log
+  line beyond today's block entries, and no reveal-strip cue.
+
+The staging and dimming rules are one pure client module
+(`client/src/lib/blockStaging.ts`) reading only the three stamps, so §6
+holds: the client never re-derives a block rule.
 
 #### 17. The bot's attack-side estimate stays an estimate
 
@@ -718,7 +784,9 @@ never contains that string. The restriction is in `restrictions` as
 - **`docs/engine-seams.md`**: the "Conditional blocking restrictions" row
   (line 116) closes with PR 4. The landwalk half of the "Landwalk, fear,
   intimidate …" row (line 120) closes with PR 3, and the rest of that
-  row depends on owner question 3.
+  row stays open, tracked on
+  [#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825)
+  (PR 3 adds it to the row's Tracked column).
 - **Two card caveats change.** Lord of Atlantis's islandwalk caveat goes.
   Its first caveat ("Only Merfolk YOU control get +1/+1") is already
   wrong on develop: `tribal_test.go:90` asserts that the opponent's
@@ -789,29 +857,45 @@ never contains that string. The restriction is in `restrictions` as
 **PR 3 — landwalk (#705).** Depends on PR 1. Can run in parallel with PR 2.
 - Tokens, `landwalkRequirement`, `Card.HasSupertype`, slot 2 of the pair
   function.
-- Cards: owner question 3's landwalk group. Lord of Atlantis loses both
-  caveats.
+- Cards: the landwalk group of the first wave (owner question 3, option
+  (b)): Lord of Atlantis, Elvish Champion, Goblin King, Master of the
+  Pearl Trident, Cold-Eyed Selkie and Trailblazer's Boots. Lord of
+  Atlantis loses both caveats. Every landwalk path (a basic land type,
+  a granted keyword, nonbasic landwalk) ships with a real card here.
 - `couldBlock` learns landwalk. Update the engine-seams row.
 - Fix-list item 10.
 
 **PR 4 — block rules (#750, engine).** Depends on PR 2.
-- `game.BlockRule`, `Spec.BlockRules`, `CatalogBlockRules`,
-  `TurnScopedBlockRules` with its census entry and drift-test row, pair
-  slot 4, and bounds and limits read from rules.
-- `effects/block_rules.go` builders.
+- `game.BlockRule` (`Pair` and `Count`; no `Limit`, Decision 12),
+  `Spec.BlockRules`, `CatalogBlockRules`, `TurnScopedBlockRules` with its
+  census entry, drift-test row and `ClearTurnScopedBlockRulesLocked` in
+  the turn-end sweep (Decision 11), pair slot 4, and bounds read from
+  rules.
+- `effects/block_rules.go` with the scopes, and **one reference card per
+  path** so none lands without a real card: Prowler's Helm (a catalog
+  pair rule, `CantBeBlockedExceptBy` on `OnAttached`), Hungering Hydra
+  (a count rule, `MaxBlockers(1)`) and Gingerbrute (the turn-scoped
+  registry, through its `…UntilEOT` twin). The other builders land with
+  their first cards in PR 6+.
 - Agreement tests in `legal/restrictions_test.go`.
 
 **PR 5 — client.** Depends on PR 2. The max stamp is live after PR 4.
 - The `blockable_attackers`, `blockers_min` and `blockers_max` stamps
   (server side).
-- The board behaviour chosen in owner questions 1 and 2, and the
-  `illegal_block` banner text.
+- The board behaviour decided in owner questions 1 and 2 (Decision 16):
+  staged multi-blocker blocks with dashed arrows and "needs N more
+  blocker(s)", one `declare_blockers` when the minimum is met, dimmed
+  attackers for the selected blocker, and the `illegal_block` banner
+  text.
 - The context menu offers only attackers in `blockable_attackers`.
 
-**PR 6+ — cards (#750's first wave)**, and optionally **PR 3b — the other
-evasion keywords**, depending on owner question 3. Each card follows
-AGENTS.md §7: declared completeness, caveats only ever weaker than
-printed, and a re-check of every other clause.
+**PR 6+ — cards (#750's first wave).** The rest of the pair and count
+cards listed under [Card first wave](#card-first-wave). The other evasion
+keywords are not here: they are
+[#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825), with its
+own PR and soak run. Each card follows AGENTS.md §7: declared
+completeness, caveats only ever weaker than printed, and a re-check of
+every other clause.
 
 ### Test plan
 
@@ -842,11 +926,14 @@ Engine (`internal/game`):
 7. **CR 509.1a.** A tapped blocker, another player's blocker, and a
    block against a creature that isn't attacking are each refused.
 8. **No double announce.** A re-point emits no second `EventBlock`.
-9. **Block rules** (PR 4): one test per builder. A threshold changed by
+9. **Block rules** (PR 4): one test per rule kind with a stubbed
+   rule, and one per builder in the PR that ships it. A threshold changed by
    a pump after declaration leaves the block standing (§5). A rule from
    a source that loses all abilities stops applying. An Equipment's rule
    survives the host losing its abilities. An until-end-of-turn rule
-   ends at cleanup and is counted in `ContinuationCensus`.
+   ends at cleanup and is counted in `ContinuationCensus`, and (once
+   ADR 0059's seam exists) it also ends when the active player leaves
+   mid-turn.
 10. **All or nothing.** One refused entry among three stores none of
     them.
 
@@ -872,15 +959,18 @@ Wire and client:
     `illegal_block` with a non-empty sentence.
 16. `protocol`: the three `CardView` stamps are present only during
     declare blockers and match `CanBlockLocked` and `blockerBoundsLocked`.
-17. Client: the staging helper (owner question 1) is a pure module with
-    vitest coverage. Rendering is checked by hand until #689.
+17. Client: `blockStaging.ts` (Decision 16) is a pure module with
+    vitest coverage: staging and unstaging, the "needs N more" count, one
+    `declare_blockers` payload exactly when the minimum is met, discard on
+    leaving the step, and the dimmed set for a selected blocker. The
+    dashed arrows and dimming are checked by hand until #689.
 
 ### Card first wave
 
 Oracle text below was checked against the dump. Catalog status is
 `origin/develop` at `684f2786`. Each card PR re-checks the card for gaps
-outside this seam. The list is the recommended answer to owner question
-3.
+outside this seam. The list is owner question 3's option (b), decided
+2026-09-17.
 
 **Landwalk (PR 3), all unblocked by this seam alone:**
 
@@ -893,7 +983,7 @@ outside this seam. The list is the recommended answer to owner question
 | Cold-Eyed Selkie | "Islandwalk … Whenever this creature deals combat damage to a player, you may draw that many cards." | not in catalog |
 | Trailblazer's Boots | "Equipped creature has nonbasic landwalk. … Equip {2}" | not in catalog |
 
-**Pair rules (PR 6+):** Legolas Greenleaf ("can't be blocked by creatures
+**Pair rules (Prowler's Helm and Gingerbrute in PR 4, the rest in PR 6+):** Legolas Greenleaf ("can't be blocked by creatures
 with power 2 or less"), Prowler's Helm ("Equipped creature can't be
 blocked except by Walls"), Shifting Sliver ("Slivers can't be blocked
 except by Slivers"), Champion of Lambholt ("Creatures with power less
@@ -906,14 +996,16 @@ and toughness 7/7 and can't be blocked by creatures with power 2 or
 less"; "Equip legendary creature {3}" already exists on Blackblade
 Reforged).
 
-**Counts (PR 6+):** Hungering Hydra ("can't be blocked by more than one
+**Counts (Hungering Hydra in PR 4, the rest in PR 6+):** Hungering Hydra ("can't be blocked by more than one
 creature"), Vorrac Battlehorns ("has trample and can't be blocked by
 more than one creature"), Alpha Authority ("has hexproof and can't be
 blocked by more than one creature"), Goblin War Drums ("Creatures you
 control have menace", the one card whose whole text is a group-block
 test).
 
-**Not in the wave:** Pathrazer of Ulamog (annihilator 3) and Signal Pest
+**Not in the wave:** fear, intimidate, shadow, horsemanship and skulk
+cards ([#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825)).
+Pathrazer of Ulamog (annihilator 3) and Signal Pest
 (battle cry) need card-side attack triggers first. Tromokratis, Silent
 Arbiter, Crawlspace, Lure, Sidar Kondo of Jamuraa and Gornog, the Red
 Reaper are excluded by Decision 18.
@@ -961,11 +1053,15 @@ Bugs found while writing this, all fixed by the PRs above unless noted:
 - Lord of Atlantis's first caveat describes a limitation the card no
   longer has (PR 3).
 
-### Open questions for the owner
+### Decided (2026-09-17)
+
+Answered by the owner on 2026-09-17. The options are kept, the chosen one
+is marked **(chosen)**, and the recommendation text is kept for the
+record.
 
 1. **How does a player declare a block that needs two or more creatures**
    (menace, Pathrazer)?
-   - (a) **Stage it on the board.** Clicking a blocker and then a menace
+   - (a) **(chosen)** **Stage it on the board.** Clicking a blocker and then a menace
      attacker draws a dashed arrow and "needs 1 more blocker" on the
      attention strip. When the minimum is reached, the client sends one
      `declare_blockers`. Clicking the staged blocker again removes it,
@@ -981,10 +1077,15 @@ Bugs found while writing this, all fixed by the PRs above unless noted:
    until the block is complete, so no error appears mid-choice. (b) is a
    fallback that PR 5 can add cheaply later.
 
+   **Decision: (a).** Multi-blocker blocks (menace) are staged on the
+   board: dashed arrows, "needs N more blocker(s)" in the combat-hint
+   banner, and one `declare_blockers` when the minimum is met. Applied in
+   Decision 16 and PR 5.
+
 2. **What does the board show before a block is refused?**
    - (a) **Nothing new.** A refused click shows the `illegal_block`
      banner with its reason.
-   - (b) **Dim what can't be blocked.** In block mode, once a blocker is
+   - (b) **(chosen)** **Dim what can't be blocked.** In block mode, once a blocker is
      selected, attackers not in its `blockable_attackers` are dimmed. A
      click on a dimmed attacker still shows the reason banner. Menace
      attackers show "needs 2 blockers" on hover.
@@ -996,10 +1097,13 @@ Bugs found while writing this, all fixed by the PRs above unless noted:
    cost, and the banner still explains any click. (c) multiplies the view
    by blockers × attackers for text the banner already gives.
 
+   **Decision: (b).** Attackers the selected blocker can't block are
+   dimmed, and the banner explains clicks. Applied in Decision 16.
+
 3. **What is in the first card wave?**
    - (a) **#705 exactly.** Lord of Atlantis, Elvish Champion and Goblin
      King, then #750's pair and count cards as listed above.
-   - (b) (a) plus Master of the Pearl Trident, Cold-Eyed Selkie and
+   - (b) **(chosen)** (a) plus Master of the Pearl Trident, Cold-Eyed Selkie and
      Trailblazer's Boots, which this seam alone unblocks.
    - (c) (b) plus **fear, intimidate, shadow, horsemanship and skulk** as
      canonical tokens (CR 702.36b, 702.13b, 702.28b, 702.31b, 702.118b).
@@ -1013,3 +1117,9 @@ Bugs found while writing this, all fixed by the PRs above unless noted:
    That is correct, but it is a large change in behaviour on real decks,
    and it deserves its own PR and soak run rather than riding along with
    landwalk.
+
+   **Decision: (b).** Fear, intimidate, shadow, horsemanship and skulk
+   go to a separate follow-up issue,
+   [#825](https://github.com/krakenhavoc/cmd_and_ctrl/issues/825)
+   (filed 2026-09-17, unscheduled). Applied in Decision 9, the PR split
+   and the card first wave.
