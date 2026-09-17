@@ -244,6 +244,25 @@ export interface GameView {
   // outlives the moment, because the cards usually go straight back
   // into a hidden zone. Render from the printed identity.
   reveals?: RevealView[];
+  // #628 (CR 726): set when the engine has watched the same triggered
+  // ability resolve 25 times this turn with no player decision in
+  // between, absent otherwise. Its presence is an instruction to this
+  // client: STOP PASSING AUTOMATICALLY. Priority still rotates and
+  // every pass the server is handed still works — the point is that a
+  // person has to ask for the next iteration, with the loop's trigger
+  // still on the stack. Table-wide and identical for every seat.
+  loop_notice?: LoopNoticeView;
+}
+
+// LoopNoticeView is the CR 726 loop breaker's notice. `label` is the
+// repeating ability's stack label, which by catalog convention reads
+// "<card> — <what happens>", so it is the whole banner line.
+// Mirrors `protocol.LoopNoticeView`.
+export interface LoopNoticeView {
+  source?: string;
+  label: string;
+  controller?: string;
+  count: number;
 }
 
 // RevealView is one reveal: the cards a player showed the whole table
@@ -1164,6 +1183,14 @@ export interface CardView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // #746 (ADR 0048 addendum): the printed clauses of this card's own
+  // cost modifiers whose price depends on its targets — Fireball's
+  // "This spell costs {1} more to cast for each target beyond the
+  // first", strive. The X picker opens before targeting and its
+  // affordability readout is priced at one target, so it shows these
+  // clauses under the readout. Absent for nearly every card and on
+  // opponents' cards the viewer cannot read.
+  target_cost_notes?: string[];
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its

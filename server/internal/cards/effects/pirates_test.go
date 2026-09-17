@@ -276,7 +276,7 @@ func TestFaithlessLootingDrawsThenQueuesTheDiscard(t *testing.T) {
 	// The discard is an interactive selection, queued against the
 	// post-draw hand — so the cards just drawn are legal discards,
 	// which is the whole point of a loot.
-	if got := g.DiscardPending[me.ID]; got != 2 {
+	if got := discardOwed(g, me.ID); got != 2 {
 		t.Fatalf("discard pending = %d, want 2", got)
 	}
 }

@@ -90,6 +90,13 @@ var gameFields = plan(
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
 	"TurnTally", carried, "",
+	// #628 CR 726 loop breaker. Carried for the same reason the
+	// per-turn tallies are: a restore mid-loop that forgot the notice
+	// would come back with automatic passing live again, and the
+	// threshold is configuration a restore must not silently
+	// re-default.
+	"LoopNotice", carried, "",
+	"LoopThreshold", carried, "",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",
@@ -101,13 +108,17 @@ var gameFields = plan(
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
-	"rngState", carried, "marshalled via rngSnapshot",
+	// ADR 0054: the key and the per-turn stream counters ARE the
+	// randomness. Clone copies them (undo rewinds) and rngSnapshot
+	// carries them (a restore continues every stream).
+	"rngKey", carried, "rngSnapshot.Key",
+	"rngCounters", carried, "rngSnapshot.Counters",
+	"rngTurn", carried, "rngSnapshot.Turn",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
-	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
@@ -254,6 +265,12 @@ var stackItemFields = plan(
 	"SourceCardID", carried, "",
 	"Label", carried, "",
 	"Targets", carried, "",
+	// #636 reflexive triggers: a pending trigger's payload is what
+	// the resolution that created it told it (the cards revealed,
+	// the creature sacrificed). Carried, and it has to be — the
+	// Effect reads its whole input from here, so a restore that lost
+	// it would resolve the trigger against nothing.
+	"Payload", carried, "",
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",

@@ -39,7 +39,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			mv := manaValueOf(card)
+			mv := card.ManaValue()
 			if mv <= 0 {
 				return nil
 			}

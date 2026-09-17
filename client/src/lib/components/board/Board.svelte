@@ -107,6 +107,8 @@
     onDeclareBlock: (attackerCardID: string) => void;
     // Priority controls forwarded to the self-panel's PhaseDisplay.
     autopassEnabled?: boolean;
+    // #628: the CR 726 loop-breaker banner line, empty when quiet.
+    loopNotice?: string;
     onPassPriority?: () => void;
     onToggleAutopass?: () => void;
     // Game.svelte's live prompts (targeting, combat hint, mulligan
@@ -131,6 +133,7 @@
     onDeclareAttack,
     onDeclareBlock,
     autopassEnabled,
+    loopNotice = "",
     onPassPriority,
     onToggleAutopass,
     attention,
@@ -936,6 +939,7 @@
             onTargetPlayer={handleTargetPlayer}
             onTargetCard={handleTargetCard}
             {autopassEnabled}
+            {loopNotice}
             {onPassPriority}
             {onToggleAutopass}
             onActivateAbility={handleActivateAbility}

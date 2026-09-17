@@ -21,7 +21,7 @@ import (
 // b11CreatureCardsInGraveyard, the tapped-Treasure payout is
 // b13CreateTappedTreasures, the Overlook fetch-land is
 // b08OverlookLand, "this permanent enters" is b06SelfETB, and the
-// mana value of a card off the stack is manaValueOf.
+// mana value of a card off the stack is game.Card.ManaValue.
 
 // --- token templates ---------------------------------------------
 
@@ -71,7 +71,7 @@ func b15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool
 // (CR 202.3e — X is zero, a token with no cost is zero).
 func b15AnotherBigArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && c.IsArtifact() && manaValueOf(c) >= 3
+	return ok && c.IsArtifact() && c.ManaValue() >= 3
 }
 
 // b15EndStepBegan is "at the beginning of each end step" — any

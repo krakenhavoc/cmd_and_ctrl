@@ -223,22 +223,21 @@ func TestExitCriterionDoublingSeasonPlusHardenedScalesOrderMatters(t *testing.T)
 // scheme in the test.
 func replacementIDsForSources(t *testing.T, g *game.Game, ids []game.ReplacementEffectID, hsCardID, dsCardID uuid.UUID) (hsEff, dsEff game.ReplacementEffectID) {
 	t.Helper()
+	return replacementIDForSource(t, g, ids, hsCardID), replacementIDForSource(t, g, ids, dsCardID)
+}
+
+// replacementIDForSource is the one-card half of the above: the
+// prompt entry contributed by that permanent. Fatal when the prompt
+// has none, which is always a test bug.
+func replacementIDForSource(t *testing.T, g *game.Game, ids []game.ReplacementEffectID, cardID uuid.UUID) game.ReplacementEffectID {
+	t.Helper()
 	for _, id := range ids {
-		_, srcCardID := g.ReplacementOptionMetaForEffect(id)
-		switch srcCardID {
-		case hsCardID:
-			hsEff = id
-		case dsCardID:
-			dsEff = id
+		if _, srcCardID := g.ReplacementOptionMetaForEffect(id); srcCardID == cardID {
+			return id
 		}
 	}
-	if hsEff == 0 {
-		t.Fatalf("could not find Hardened Scales effect ID in prompt")
-	}
-	if dsEff == 0 {
-		t.Fatalf("could not find Doubling Season effect ID in prompt")
-	}
-	return hsEff, dsEff
+	t.Fatalf("no prompt entry for source card %s", cardID)
+	return 0
 }
 
 // TestThreeReplacementsSinglePrompt — with Doubling Season +
@@ -296,10 +295,103 @@ func TestThreeReplacementsSinglePrompt(t *testing.T) {
 	}
 }
 
+// TestTwoDoublingSeasonsNeedNoPrompt — #792's headline case. Two
+// copies of ONE card are two objects contributing one effect, so
+// every order the CR 616 prompt could offer applies the same
+// modification twice: 1 → 4. The engine skips the prompt and applies
+// them inline, which also matters because #730's gate means an
+// unanswered prompt holds up the whole table.
+func TestTwoDoublingSeasonsNeedNoPrompt(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+
+	_ = seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", p0)
+	_ = seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", p0)
+	bear := seedCreature(g, "Bears", p0)
+
+	if err := g.AddCounter(bear, "+1/+1", 1); err != nil {
+		t.Fatalf("AddCounter: %v", err)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("two copies of ONE replacement queued %d prompts, want 0 (#792)", len(g.PendingChoices))
+	}
+	if got := countersOn(g, bear, "+1/+1"); got != 4 {
+		t.Errorf("counters = %d, want 4 (1 × 2 × 2, both Seasons applied)", got)
+	}
+}
+
+// TestTwoHardenedScalesNeedNoPrompt — the additive half of the same
+// rule, and the second card #792 names. Two Scales is +2, not a
+// question.
+func TestTwoHardenedScalesNeedNoPrompt(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+
+	_ = seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", p0)
+	_ = seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", p0)
+	bear := seedCreature(g, "Bears", p0)
+
+	if err := g.AddCounter(bear, "+1/+1", 1); err != nil {
+		t.Fatalf("AddCounter: %v", err)
+	}
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("two copies of ONE replacement queued %d prompts, want 0 (#792)", len(g.PendingChoices))
+	}
+	if got := countersOn(g, bear, "+1/+1"); got != 3 {
+		t.Errorf("counters = %d, want 3 (1 + 1 + 1, both Scales applied)", got)
+	}
+}
+
+// TestTwoDoublingSeasonsPlusHardenedScalesStillPrompts — the mixed
+// window, and the reason #792 stops at "ALL of them are the same
+// effect". Collapsing the two Seasons into one entry here would force
+// them to fire back to back, and CR 616.1 lets the affected player
+// interleave: Season, Scales, Season is 6 counters, which neither
+// Season-Season-Scales (5) nor Scales-Season-Season (8) can reach. So
+// the prompt still lists all three, and this checks that the answer
+// the player could only reach by interleaving actually lands.
+func TestTwoDoublingSeasonsPlusHardenedScalesStillPrompts(t *testing.T) {
+	g := newCatalogGame(t)
+	p0 := g.Seats[0].ID
+
+	firstDS := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", p0)
+	hsID := seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", p0)
+	secondDS := seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", p0)
+	bear := seedCreature(g, "Bears", p0)
+
+	if err := g.AddCounter(bear, "+1/+1", 1); err != nil {
+		t.Fatalf("AddCounter: %v", err)
+	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("pending choices = %d, want 1 (a mixed window still prompts)", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if len(prompt.ReplacementEffectIDs) != 3 {
+		t.Fatalf("prompt lists %d effects, want all 3", len(prompt.ReplacementEffectIDs))
+	}
+	// Season → Scales → Season: ((1 * 2) + 1) * 2 = 6.
+	order := []game.ReplacementEffectID{
+		replacementIDForSource(t, g, prompt.ReplacementEffectIDs, firstDS),
+		replacementIDForSource(t, g, prompt.ReplacementEffectIDs, hsID),
+		replacementIDForSource(t, g, prompt.ReplacementEffectIDs, secondDS),
+	}
+	if err := g.ResolveReplacementOrder(prompt.ID, p0, order); err != nil {
+		t.Fatalf("ResolveReplacementOrder: %v", err)
+	}
+	if got := countersOn(g, bear, "+1/+1"); got != 6 {
+		t.Errorf("counters = %d, want 6 (((1*2)+1)*2 — only reachable by interleaving)", got)
+	}
+}
+
 // TestBranchingEvolutionStacksWithDoublingSeason — both are
 // "creatures only, +1/+1 only" doublers. With both + a third
 // counter on a creature, the prompt has 2 entries (same shape,
 // different source cards), and either order produces 4.
+//
+// Two DIFFERENT cards, so #792 does not collapse them: the rules say
+// the affected player chooses, and only an ordering nobody could
+// observe is safe to skip. Commuting by arithmetic accident is not
+// the same thing as being one effect.
 func TestBranchingEvolutionStacksWithDoublingSeason(t *testing.T) {
 	g := newCatalogGame(t)
 	p0 := g.Seats[0].ID

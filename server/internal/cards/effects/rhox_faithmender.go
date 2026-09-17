@@ -25,8 +25,9 @@ import (
 // the public ChangePlayerLife sandbox verb alone — the life change a
 // player makes by dragging their own counter — and the comment here
 // claimed the lifelink it did not actually double. Two Faithmenders
-// quadruple; because two replacements apply to one event, CR 616 asks
-// their controller to order them first, and both orders are x4.
+// quadruple, with no prompt: two applicable replacements are normally
+// a CR 616 ordering question, but these two are the same printed
+// effect and every order is x4, so #792 applies them inline.
 //
 // DAMAGE is not this window. A Lightning Helix's three damage is not
 // reduced or doubled by a life replacement (CR 120.3); only its three

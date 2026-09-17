@@ -557,23 +557,21 @@ func TestB30OppressionMakesEachCasterDiscard(t *testing.T) {
 		t.Fatal("casting a spell triggers Oppression")
 	}
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("the caster owes a discard: %v", g.DiscardPending)
+	if got := discardOwed(g, me.ID); got != 1 {
+		t.Errorf("the caster owes a discard, got %d", got)
 	}
-	if _, owes := g.DiscardPending[opp.ID]; owes {
+	if discardOwed(g, opp.ID) != 0 {
 		t.Error("nobody else does")
 	}
 	card, _ := me.Hand.Top()
-	if err := g.DiscardSelection(me.ID, []uuid.UUID{card.InstanceID}); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
-	}
+	answerDiscard(t, g, me.ID, card.InstanceID)
 	if !me.Graveyard.Contains(card.InstanceID) {
 		t.Error("the chosen card is discarded")
 	}
 	b10OpponentCastsBolt(t, g, opp, game.TargetRef{Kind: game.TargetPlayer, ID: me.ID})
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[opp.ID] != 1 {
-		t.Errorf("an opponent's spell costs the opponent a card: %v", g.DiscardPending)
+	if got := discardOwed(g, opp.ID); got != 1 {
+		t.Errorf("an opponent's spell costs the opponent a card, got %d", got)
 	}
 }
 

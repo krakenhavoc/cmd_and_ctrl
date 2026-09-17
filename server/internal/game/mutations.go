@@ -1324,12 +1324,18 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if !ok {
 		return ParsedCost{}, ErrZoneNotFound
 	}
+	//
+	// The targets ride along because CR 601.2c announces them before
+	// 601.2f totals the cost, and CastSpell has validated them by now.
+	// Only a modifier that declares ReadsTargets ever sees them
+	// (ADR 0048 addendum §13).
 	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
 		FromZone:   fromZone,
 		XValue:     params.XValue,
+		Targets:    params.Targets,
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -5062,7 +5068,7 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		p.Library.PushTop(c)
 	}
 	p.Hand.Cards = nil
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	// S13.5: shuffle wipes per-card knowledge across hand + library
 	// (the hand cards are now indistinguishable from the rest of the
 	// shuffled pile from the opponent's perspective, and the owner
@@ -5137,8 +5143,8 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 }
 
 // ShuffleLibrary reshuffles the given player's library in place,
-// using the RNG captured by Start so deterministic test runs stay
-// deterministic. S13.5: clears KnownBy on every library card —
+// drawing from the player's shuffle stream (rng.go), so seeded test
+// runs stay deterministic and an undone shuffle redoes identically. S13.5: clears KnownBy on every library card —
 // any prior scry / top-of-library knowledge dissolves with the
 // shuffle (CR 701.24 + the per-instance KnownBy invariant).
 func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
@@ -5151,7 +5157,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
 	return nil

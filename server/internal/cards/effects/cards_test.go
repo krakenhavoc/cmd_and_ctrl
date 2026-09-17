@@ -569,6 +569,16 @@ func TestGlimpseMillsTen(t *testing.T) {
 	}
 }
 
+// TestMindRotQueuesDiscardChoice is #651 in one test: the discard is a
+// PendingChoice addressed to the TARGET (CR 701.8a — the discarding
+// player chooses), the table is gated until they answer (CR 608.2c —
+// the discard is part of the resolving effect), the answer moves
+// exactly those cards with one EventDiscardCard each, and the cleanup
+// step's hand-size map is never touched.
+//
+// Before #651 this test asserted g.DiscardPending[target] == 2 and
+// answered through DiscardSelection, which is what made the bug look
+// fine: nothing waited for the discard, and entering cleanup erased it.
 func TestMindRotQueuesDiscardChoice(t *testing.T) {
 	g := newCatalogGame(t)
 	target := g.Seats[1]
@@ -592,18 +602,32 @@ func TestMindRotQueuesDiscardChoice(t *testing.T) {
 	if got := target.Graveyard.Size() - gyBefore; got != 0 {
 		t.Errorf("graveyard changed pre-choice: got delta %d, want 0", got)
 	}
-	if g.DiscardPending[target.ID] != 2 {
-		t.Fatalf("DiscardPending[target]: got %d, want 2", g.DiscardPending[target.ID])
+	c := discardChoiceFor(g, target.ID)
+	if c == nil {
+		t.Fatal("Mind Rot must queue a discard prompt for the target")
+	}
+	if c.ChooseMin != 2 || c.ChooseMax != 2 {
+		t.Errorf("prompt bounds = [%d,%d], want [2,2]", c.ChooseMin, c.ChooseMax)
+	}
+	if len(c.ChooseCards) != handBefore {
+		t.Errorf("the prompt offers the target's whole hand: %d of %d", len(c.ChooseCards), handBefore)
+	}
+	if n := g.DiscardPending[target.ID]; n != 0 {
+		t.Errorf("an effect discard must not touch the cleanup hand-size map: %d", n)
 	}
 
-	// Simulate the target submitting their picks.
+	// #791's gate: the discard is part of the resolving effect, so
+	// nobody passes priority past it.
+	if err := g.PassPriority(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("PassPriority while a Mind Rot is owed: %v, want ErrChoicePending", err)
+	}
+
+	// The target submits their picks.
 	picks := []uuid.UUID{
 		target.Hand.Cards[0].InstanceID,
 		target.Hand.Cards[1].InstanceID,
 	}
-	if err := g.DiscardSelection(target.ID, picks); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
-	}
+	answerDiscard(t, g, target.ID, picks...)
 
 	if got := handBefore - target.Hand.Size(); got != 2 {
 		t.Errorf("post-selection hand delta: got %d, want 2", got)
@@ -611,8 +635,25 @@ func TestMindRotQueuesDiscardChoice(t *testing.T) {
 	if got := target.Graveyard.Size() - gyBefore; got != 2 {
 		t.Errorf("post-selection graveyard delta: got %d, want 2", got)
 	}
-	if _, still := g.DiscardPending[target.ID]; still {
-		t.Errorf("DiscardPending not cleared after selection")
+	for _, id := range picks {
+		if !target.Graveyard.Contains(id) {
+			t.Errorf("picked card %s is not in the graveyard", id)
+		}
+	}
+	discards := 0
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventDiscardCard && ev.Actor == target.ID {
+			discards++
+		}
+	}
+	if discards != 2 {
+		t.Errorf("EventDiscardCard x %d, want 2 — every discard trigger watches it", discards)
+	}
+	if discardOwed(g, target.ID) != 0 {
+		t.Error("the prompt is gone once it is answered")
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Errorf("priority passes once the discard is paid: %v", err)
 	}
 }
 

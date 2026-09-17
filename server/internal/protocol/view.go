@@ -146,6 +146,42 @@ type GameView struct {
 	// reveal_frame.go for why that is the design rather than an
 	// omission. Added in S22.
 	Reveals []RevealView `json:"reveals,omitempty"`
+	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// engine has seen the same triggered ability resolve
+	// game.DefaultLoopThreshold times this turn with no player
+	// decision in between, nil otherwise. Its presence is the
+	// instruction to every client on the table: stop passing
+	// AUTOMATICALLY. Priority still rotates, every pass_priority the
+	// server is handed still works, and the loop's trigger is still
+	// on the stack — the point is only that a person has to ask for
+	// the next iteration. Public, like the stack it describes: a loop
+	// is something the whole table can see running. Added for #628
+	// (ADR 0055).
+	LoopNotice *LoopNoticeView `json:"loop_notice,omitempty"`
+}
+
+// LoopNoticeView is the wire shape of game.LoopNotice. Label is the
+// repeating ability's stack label, which by catalog convention reads
+// "<card> — <what happens>", so a client has the whole banner line
+// without resolving Source against the board.
+type LoopNoticeView struct {
+	Source     string `json:"source,omitempty"`
+	Label      string `json:"label"`
+	Controller string `json:"controller,omitempty"`
+	Count      int    `json:"count"`
+}
+
+// viewOfLoopNotice projects the engine's loop notice, or nil.
+func viewOfLoopNotice(n *game.LoopNotice) *LoopNoticeView {
+	if n == nil {
+		return nil
+	}
+	return &LoopNoticeView{
+		Source:     uuidStringOrEmpty(n.Source),
+		Label:      n.Label,
+		Controller: uuidStringOrEmpty(n.Controller),
+		Count:      n.Count,
+	}
 }
 
 // LegalMoveView is one entry of the viewer's legal-move list. It is
@@ -855,6 +891,16 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// TargetCostNotes are the printed clauses of this card's own cost
+	// modifiers whose price depends on its targets — Fireball's "This
+	// spell costs {1} more to cast for each target beyond the first",
+	// strive — for a card in the viewer's own hand / command zone /
+	// castable graveyard. The X picker opens before targeting and its
+	// readout is priced at one target, so it shows these clauses
+	// under the readout instead of a surcharge it cannot know yet
+	// (ADR 0048 addendum, open question 2). Absent for nearly every
+	// card. Added for #746.
+	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
 	// already implied by the surface: the graveyard, today. Hand and
@@ -1328,6 +1374,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive: g.SplitSecondActive,
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:    viewOfPendingChoices(g),
+			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
@@ -1498,6 +1545,9 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if tc := game.TapPermanentsCostFor(c.oracleID); !tc.Empty() {
 					c.TapCost = viewOfTapCost(g, caster, c, tc)
 				}
+				// #746: the printed clauses of a per-target price, for
+				// the X picker's note.
+				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
@@ -2348,6 +2398,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// that filterPendingChoices has to drop and redactLogForViewer
 		// has to reason about does not exist on this type.
 		Reveals: v.Reveals,
+		// #628: public, and identical for every seat — see the field
+		// comment. Nothing in it names a card in a hidden zone.
+		LoopNotice: v.LoopNotice,
 	}
 }
 
@@ -2489,6 +2542,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// #746: a quoted cost clause names the card like its mana cost.
+	out.TargetCostNotes = nil
 	// S29: "castable from where it sits" is only ever set on cards
 	// whose text grants an extra cast zone, so it partitions the
 	// card the same weak way `unimplemented` does. Cleared with the
@@ -2579,6 +2634,11 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
+			// #746: stamped for the owner's X picker with the other
+			// cast clauses, so it goes with them. Printed text, so
+			// nothing leaks; this keeps the field's documented scope
+			// ("the viewer's own hand") true.
+			c.TargetCostNotes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

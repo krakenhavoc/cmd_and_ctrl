@@ -139,12 +139,24 @@ func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 // lootOne draws a card then queues the discard choice — "draw a
 // card, then discard a card" in the printed order, so the drawn card
 // is a legal discard exactly as it is in paper.
+//
+// The ORDER is the whole helper (#651). DrawCards resolves
+// synchronously and QueueDiscardChoiceForEffect only queues a prompt,
+// so the draw has to be the statement above: the prompt is built from
+// the post-draw hand, and nothing after it may assume the cards are
+// already in the graveyard. A card that reads the other way round
+// ("discard a card, then ...") puts its second half in
+// DiscardPrompt.Then instead.
 func lootOne(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
 		return err
 	}
-	g.DiscardChoiceForEffect(item.Controller, n)
+	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      n,
+	})
 	return nil
 }
 
@@ -175,9 +187,11 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 // IsToken reports whether a card is a token. Token type lines are
 // stamped "Token Creature — Spirit" by the templates in tokens.go;
 // "Token" isn't one of the supertypes ParseTypeLine knows, so a
-// substring check on the printed line is the reliable test.
+// substring check on the printed line is the reliable test. The check
+// itself is game.Card.IsToken, so the engine and the catalog can never
+// disagree about what a token is.
 func IsToken(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, "token")
+	return c.IsToken()
 }
 
 // --- S22: attack triggers ----------------------------------------
@@ -323,4 +337,23 @@ func returnFirstLegalGraveyardTargetToHand(g *game.Game, item *game.StackItem) e
 // Whisper, Blood Liturgist.
 func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
 	return returnFirstLegalGraveyardTarget(g, item, game.ZoneBattlefield)
+}
+
+// counterTheTargetSpell is the whole OnResolve of "Counter target
+// spell." — Cancel's body, named so a new card calls it rather than
+// adding another copy to that clone family.
+func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
+}
+
+// destroyTheTargetPermanent is the whole OnResolve of "Destroy target
+// [permanent]." — Bedevil's body, named for the same reason.
+func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
 }

@@ -18,11 +18,15 @@ import (
 // discarder case: the caster is Chooser, the target is FromPlayer.
 //
 // The existing S13.4 DiscardPending map stays for cleanup-step
-// max-hand-size discards (those are simpler: chooser == owner,
-// and the cursor auto-resumes when the map drains). Effect-
-// driven choices that go through PendingChoices keep resolving
-// asynchronously — the spell routes to graveyard immediately,
-// the pick is made later by a resolve_choice action.
+// max-hand-size discards and NOTHING else (#651): that one is a
+// turn-based action (CR 514.1), chooser == owner, and the cursor
+// auto-resumes when the map drains. An EFFECT's discard is part of
+// the resolving effect (CR 608.2c) and goes through this queue like
+// every other deferred decision — QueueDiscardChoiceForEffect. Two
+// obligations, two mechanisms, no shared map. Effect-driven choices
+// keep resolving asynchronously — the spell routes to graveyard
+// immediately, the pick is made later by a resolve_choice action —
+// but the table does not move on while one is open (choice_gate.go).
 //
 // Introduced in S14 sub-PR 5 as infrastructure for Thoughtseize.
 
@@ -871,9 +875,30 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	return nil
 }
 
-// dequeueChoiceLocked drops the choice at index idx, preserving
-// slice order for the rest. Caller must hold g.mu.
+// dequeueChoiceLocked drops the choice at index idx because its
+// chooser ANSWERED it, preserving slice order for the rest. Every
+// Resolve* path ends here.
+//
+// #628: answering a prompt is a player decision, so it restarts the
+// CR 726 loop run. The engine's own prune paths call
+// dropChoiceLocked instead — a choice the engine withdrew is not a
+// decision anybody made, and counting it as one would let a loop
+// that queues and prunes a prompt each iteration run forever.
+//
+// Caller must hold g.mu.
 func (g *Game) dequeueChoiceLocked(idx int) {
+	if idx < 0 || idx >= len(g.PendingChoices) {
+		return
+	}
+	g.notePlayerDecisionLocked()
+	g.dropChoiceLocked(idx)
+}
+
+// dropChoiceLocked removes the choice at index idx without recording
+// a player decision: the engine withdrawing a prompt nobody answered
+// (a sacrifice choice whose card has left, a stale zone-change
+// prompt). Caller must hold g.mu.
+func (g *Game) dropChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
@@ -2360,7 +2385,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 			}
 		}
 		if len(live) == 0 {
-			g.dequeueChoiceLocked(i)
+			g.dropChoiceLocked(i)
 			continue
 		}
 		c.SacrificeOptions = live
@@ -2442,7 +2467,7 @@ func (g *Game) pruneStaleZoneChangeChoicesLocked() {
 			continue
 		}
 		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
-		g.dequeueChoiceLocked(i)
+		g.dropChoiceLocked(i)
 	}
 }
 

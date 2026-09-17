@@ -471,8 +471,8 @@ func TestB18ThirstForKnowledgeDrawsThreeThenOwesTwo(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+3 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew three (+3)", hand, got)
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Errorf("discard owed = %d, want 2", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Errorf("discard owed = %d, want 2", discardOwed(g, me.ID))
 	}
 	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessCaveats {
 		t.Error("the artifact-discard gap must be declared")
@@ -489,25 +489,25 @@ func TestB18ChartACourseDiscardsUnlessYouAttacked(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+2 {
 		t.Errorf("hand %d → %d: added and cast (net 0), drew two (+2)", hand, got)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Fatalf("no attack yet: discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Fatalf("no attack yet: discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
-	delete(g.DiscardPending, me.ID)
+	discardFromHand(t, g, me.ID)
 
 	attackWith(t, g, opp.ID, bear)
 	advanceTo(t, g, game.StepPostcombatMain)
 	castCatalogSpell(t, g, "Chart a Course", "Sorcery", b18ChartACourseOracle, nil)
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[me.ID] != 0 {
-		t.Errorf("attacked this turn: discard owed = %d, want 0", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 0 {
+		t.Errorf("attacked this turn: discard owed = %d, want 0", discardOwed(g, me.ID))
 	}
 	// A new turn forgets the attack.
 	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)
 	castCatalogSpell(t, g, "Chart a Course", "Sorcery", b18ChartACourseOracle, nil)
 	passPriorityAroundTable(t, g)
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("next turn: discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("next turn: discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 }
 
