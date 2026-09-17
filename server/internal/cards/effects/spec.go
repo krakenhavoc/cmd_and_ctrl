@@ -494,7 +494,12 @@ type ActivatedAbility struct {
 	Cost         game.AbilityCost
 	Targets      *game.TargetSpec
 	SorcerySpeed bool
-	Effect       func(g *game.Game, item *game.StackItem) error
+	// Condition is the "Activate only if …" / "Activate only during
+	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
+	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition
+	// and activation_conditions.go. Nil means no condition.
+	Condition func(g *game.Game, controller, source uuid.UUID) bool
+	Effect    func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

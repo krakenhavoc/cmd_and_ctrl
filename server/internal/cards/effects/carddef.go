@@ -75,6 +75,7 @@ func buildDef(spec Spec) *game.CardDef {
 				Cost:         a.Cost,
 				Targets:      a.Targets,
 				SorcerySpeed: a.SorcerySpeed,
+				Condition:    a.Condition,
 				Effect:       a.Effect,
 			}
 		}

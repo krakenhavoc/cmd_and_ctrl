@@ -31,9 +31,9 @@ type activateParams struct {
 // activatedMoves enumerates catalog activated abilities on the
 // seat's permanents. Requires priority (checked by the caller).
 // Mirrors game.ActivateCatalogAbility's validation: split second,
-// sorcery-speed flag, tap cost (untapped + not summoning sick for
-// creatures), sacrifice costs payable, life cost payable, mana cost
-// affordable, targets legal.
+// sorcery-speed flag, activation condition (#743), tap cost
+// (untapped + not summoning sick for creatures), sacrifice costs
+// payable, life cost payable, mana cost affordable, targets legal.
 func (e *enumerator) activatedMoves() {
 	g, p := e.g, e.p
 	if g.SplitSecondActive {
@@ -55,6 +55,13 @@ func (e *enumerator) activatedMoves() {
 		abilities := game.ActivatedAbilitiesForCard(*source)
 		for idx, ab := range abilities {
 			if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
+				continue
+			}
+			// CR 602.1b (#743): the "Activate only if …" gate, with
+			// the same arguments ActivateCatalogAbility passes, so a
+			// policy is never offered Tectonic Edge while no
+			// opponent has four lands (#544).
+			if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
 				continue
 			}
 			// CR 606: a loyalty ability needs a planeswalker, one

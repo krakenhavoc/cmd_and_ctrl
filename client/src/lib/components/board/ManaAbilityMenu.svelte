@@ -13,6 +13,7 @@
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
+  import { ACTIVATION_CONDITION_UNMET } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -72,12 +73,17 @@
     // stack and have no timing restriction (CR 605.1a) — so the arm
     // below is inert for the first list and live for the second.
     sorcery_speed?: boolean;
+    // #743: the server says the ability's "Activate only if …"
+    // condition is false. Both lists carry it — Temple of the False
+    // God's mana row as much as Tectonic Edge's destroy.
+    condition_unmet?: boolean;
   } & CounterCostShape;
 
   function abilityBlocked(a: CostShaped): string {
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
     if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
+    if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
     // #747: count-aware — "needs three Foods (you have 2)".
     const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
     if (sacrifice) return sacrifice;

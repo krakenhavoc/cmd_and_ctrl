@@ -216,8 +216,10 @@ func TestB36SanctumOfEternityReturnsOnlyACommanderYouOwn(t *testing.T) {
 	theirs := b36Commander(g, opp.ID, "Their Commander")
 	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	spec, _ := Lookup(b36SanctumOfEternityOracle)
-	if len(spec.Activated) != 1 || !spec.Activated[0].SorcerySpeed {
-		t.Fatal("one ability, at sorcery speed (the declared stand-in for \"during your turn\")")
+	// #743: "Activate only during your turn" is a condition, not sorcery
+	// speed — activation_conditions_test.go pins the windows it opens.
+	if len(spec.Activated) != 1 || spec.Activated[0].SorcerySpeed || spec.Activated[0].Condition == nil {
+		t.Fatal("one ability, gated by its during-your-turn condition rather than sorcery speed")
 	}
 	b28TapForMana(t, g, me.ID, sanctum, "C")
 	if got := poolColors(me); len(got) != 1 || got[0] != "C" {
