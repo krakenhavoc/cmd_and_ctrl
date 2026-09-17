@@ -1359,6 +1359,16 @@ that only deals damage keeps using `DealDamage` / the plain
 change and on a `.Life` / `.DamageMarked` read after a damage call, in
 the same function.
 
+**Destroy clears damage only when it lands (#708).** Marked damage is
+removed by `executeBattlefieldLeaveLocked`, the landed outcome of a
+battlefield exit — not by the destroy entry points. A destruction a
+replacement rewrote (regeneration, "exile it instead", indestructible)
+leaves `DamageMarked` exactly where it was: damage stays until the
+cleanup step (CR 514.2), and the replacement gets to read it. If you
+add a replacement that removes damage — regeneration is the one the
+rules name, CR 701.15a — it does that in its own `Replace`, not by
+leaning on the destroy path.
+
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
 shockland, an activation cost, "pay 2 life. If you do, draw". CR 119.4

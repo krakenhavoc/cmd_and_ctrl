@@ -2573,9 +2573,29 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
 // card to its owner's graveyard, clearing battlefield-only state
-// (combat declarations and damage marked are zeroed by MoveCard's
-// CR 400.7 cleanup; we additionally clear DamageMarked here since
-// MoveCard predates the field). Used by SBAs that destroy creatures.
+// (combat declarations and position are zeroed by MoveCard's CR 400.7
+// cleanup; DamageMarked is cleared by executeBattlefieldLeaveLocked,
+// since MoveCard predates the field). Used by SBAs that destroy
+// creatures, by every effect destroy, and — because sacrifice is also
+// a battlefield exit, though it is not destruction — by sacrifice.go.
+//
+// #708: THE DAMAGE IS NOT CLEARED HERE. It used to be, on the line
+// that found the owner, which is BEFORE the CR 614 window below has
+// had a chance to replace the exit. Two things were wrong with that.
+// A replacement that keeps the permanent on the battlefield left it
+// standing with its damage erased — and damage stays marked until the
+// cleanup step (CR 514.2), not until something tried to destroy it —
+// so the CR 704.5g lethal-damage check would not see it again. And a
+// replacement that wants to READ how much damage is on the permanent
+// ("if it would be destroyed, instead …") was handed a zero.
+//
+// So the clear moved to the LANDED outcome, executeBattlefieldLeaveLocked,
+// which is the same terminal-outcome shape damage_tail.go and
+// life_tail.go use: the mutation happens where the event actually
+// resolves, and the paused and unpaused paths reach it through one
+// function. Regeneration, when it ships, removes the damage in its own
+// replacement (CR 701.15a says the shield does it), not as a side
+// effect of the destroy path.
 //
 // If the owner is no longer seated, the card lands in exile so the
 // engine doesn't carry a stale reference. Caller must hold g.mu.
@@ -2584,10 +2604,6 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
 			owner = g.playerByIDLocked(g.Battlefield.Cards[i].Owner)
-			// Zero battlefield-only state in place before the move.
-			// MoveCard handles tapped + counters + position via
-			// existing CR 400.7 cleanup, but DamageMarked is new.
-			g.Battlefield.Cards[i].DamageMarked = 0
 			break
 		}
 	}
@@ -2635,6 +2651,12 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 // out of routeBattlefieldCardToOwnerGraveyardLocked so the resume
 // path (ResolveOptionalReplacement → applyResolvedReplacementEventLocked)
 // shares the same implementation.
+//
+// #708: this is also where DamageMarked is cleared, because this is
+// the one place the permanent actually LEAVES. A destruction that a
+// replacement turned into something else never gets here, and a
+// permanent that is still on the battlefield keeps its damage until
+// the cleanup step (CR 514.2) like every other damaged permanent.
 //
 // Caller must hold g.mu.
 func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
@@ -2701,6 +2723,18 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
+	// #708: the damage goes now, and only now. MoveCard's CR 400.7
+	// cleanup handles tapped, counters, position and the combat
+	// declarations; DamageMarked postdates it and is cleared here.
+	//
+	// Before the LKI snapshot, so the last-known information a
+	// dies-trigger reads is byte-for-byte what it was before this
+	// moved — the clear used to happen even earlier (at the top of
+	// routeBattlefieldCardToOwnerGraveyardLocked) and nothing has ever
+	// seen a dying permanent's damage. Moving WHERE it is cleared is
+	// this fix; changing what LKI shows is not, and would be its own
+	// decision.
+	g.clearBattlefieldDamageLocked(cardID)
 	g.snapshotLKILocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err

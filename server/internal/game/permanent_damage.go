@@ -104,3 +104,37 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 	// caller, and lifelink still triggers off it.
 	return true
 }
+
+// clearBattlefieldDamageLocked wipes the damage marked on a
+// battlefield permanent. The counterpart of the marking above, and the
+// only other thing that writes Card.DamageMarked outside a damage
+// event.
+//
+// WHO IS ALLOWED TO CALL THIS, and it is a short list (#708). Damage
+// marked on a permanent stays there until the cleanup step (CR 514.2);
+// nothing else removes it except a permanent LEAVING the battlefield
+// (where the damage belongs to an object that no longer exists) and,
+// when it ships, a regeneration shield, which CR 701.15a says removes
+// all damage from the permanent as part of the regeneration itself.
+//
+// So the one caller is executeBattlefieldLeaveLocked — the landed
+// outcome of a battlefield exit. (The turn's CR 514.2 cleanup clears
+// every permanent at once in runStepEntryHooksLocked, along with the
+// MarkedLethalByDeathtouch companion flag, and stays a sweep rather
+// than len(battlefield) calls to this.) It is deliberately NOT called
+// from the destroy entry points: a destruction that a replacement
+// effect rewrites into something else must leave the damage exactly
+// where it was, both because the rule says so and because the
+// replacement may want to read it.
+//
+// A card that is not on the battlefield is a no-op.
+//
+// Caller must hold g.mu.
+func (g *Game) clearBattlefieldDamageLocked(cardID uuid.UUID) {
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == cardID {
+			g.Battlefield.Cards[i].DamageMarked = 0
+			return
+		}
+	}
+}

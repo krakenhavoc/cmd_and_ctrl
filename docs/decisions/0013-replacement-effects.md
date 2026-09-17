@@ -357,6 +357,70 @@ file — `life_continuation_guard_test.go` now scans for a `.Life` or
 and recognises the `DealDamage{…}.Apply(ctx)` primitive spelling. One
 card needed converting; the sweep found no others.
 
+### 5d. Amendment, 2026-09-17: a destruction clears damage only when it lands
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#708](https://github.com/krakenhavoc/cmd_and_ctrl/issues/708),
+noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
+(PR #701).*
+
+§6 lists `routeBattlefieldCardToOwnerGraveyardLocked` as a pipeline
+integration point: a battlefield exit runs the CR 614 window so the
+CR 903.9 commander built-in — and any future "if it would be destroyed,
+instead …" — can replace it. What §6 did not notice is that the same
+function cleared `Card.DamageMarked` on the line that found the owner,
+*before* opening that window.
+
+That is the ordering inverted. The damage was gone before the
+replacements could see it, and it was gone whether or not the permanent
+actually left. A destruction a replacement rewrote left the permanent
+standing with its marks erased, which is wrong twice: CR 514.2 removes
+marked damage at the cleanup step, not when something tried and failed
+to destroy the permanent; and the CR 704.5g lethal-damage check would
+not see it again on the next pass.
+
+**Decision: the clear is a TERMINAL-OUTCOME mutation, like landing
+damage and landing a life change.** It moved into
+`executeBattlefieldLeaveLocked`, the one function that actually performs
+the move and the one both the unpaused path and the CR 903.9 resume go
+through. `clearBattlefieldDamageLocked` (permanent_damage.go, next to
+the marking it undoes) is the named verb, and its doc comment is the
+short list of who may call it.
+
+Consequences, checked caller by caller:
+
+| Caller | Before | After |
+| --- | --- | --- |
+| SBA lethal-damage / deathtouch destruction | cleared, then maybe moved | cleared iff it moves |
+| `DestroyPermanentForEffect` (Doom Blade) | same | same |
+| `DestroyPermanentsForEffect` (Wrath) | same, per card | same, per card |
+| Sacrifice (`sacrifice.go`) | cleared on the shared ramp | unchanged — it always lands |
+| Legend rule, aura/equipment SBA | unchanged | unchanged |
+| A REPLACED exit | damage lost | damage kept, and readable by the replacement |
+
+LKI is deliberately untouched: the clear sits just before
+`snapshotLKILocked`, where the old one effectively did, so a
+dies-trigger sees the same permanent it has always seen. Whether a dying
+creature's last-known information should show the damage that killed it
+is a separate question with nobody asking it.
+
+**Regeneration does not ride on this.** CR 701.15a makes removing all
+damage part of the regeneration shield's own replacement, not part of
+being destroyed — which is exactly why the destroy path must not do it.
+Regeneration is still unmodelled (keywords.go's canonical set does not
+contain it); when it lands, it clears the damage in its own `Replace`.
+
+**The SBA does not loop.** A permanent that survives a replaced
+destruction with lethal damage still on it would be doomed again on the
+next pass, so the recurrable cases were enumerated: indestructible is
+filtered out of `doomed` before anything is destroyed (CR 702.12b), a
+paused exit is skipped by #605's `zoneChangePausedLocked`, and an "exile
+it instead" removes the permanent so there is nothing to re-doom. What
+remains is a replacement that cancels a destruction outright without
+regenerating, which no rules text describes and no catalog card
+registers; `runStateChecksLocked`'s 32-pass bound is the backstop, and
+there is a test that says so.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
