@@ -353,3 +353,36 @@ func TestFromStackTriggerFiresOnCastAndOthersDoNot(t *testing.T) {
 		})
 	}
 }
+
+// The pile is saved before the may-cast prompt. A card that leaves
+// exile while the question is open stays where it went, on either
+// answer.
+func TestCascadeBottomSkipsCardsThatLeftExileDuringThePrompt(t *testing.T) {
+	for _, accept := range []bool{true, false} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		hit := libCard(me.ID, "Counterspell", "Instant", "{U}{U}")
+		land := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
+		libraryOf(t, me, hit, land)
+
+		g.WithWriteLock(func() {
+			_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
+			if _, err := MoveCard(g.Exile, me.Hand, land.InstanceID); err != nil {
+				t.Fatal(err)
+			}
+			if !accept {
+				if _, err := MoveCard(g.Exile, me.Graveyard, hit.InstanceID); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+		answerMayCast(t, g, me.ID, accept)
+
+		if !me.Hand.Contains(land.InstanceID) || me.Library.Contains(land.InstanceID) {
+			t.Errorf("accept=%v: a passed-over card that left exile was pulled back to the library", accept)
+		}
+		if !accept && (!me.Graveyard.Contains(hit.InstanceID) || me.Library.Contains(hit.InstanceID)) {
+			t.Error("declined: a hit that left exile was pulled back to the library")
+		}
+	}
+}

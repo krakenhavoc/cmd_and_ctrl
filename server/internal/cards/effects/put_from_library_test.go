@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -702,5 +703,126 @@ func TestThePrismaticBridgeRevealsUntilACreatureOrPlaneswalkerOnUpkeep(t *testin
 	}
 	if !plBottomIDs(me, 1)[land] {
 		t.Error("the land revealed above it goes to the bottom")
+	}
+}
+
+// --- the primitive's error paths ---------------------------------------
+
+// Then runs even when the put returns an error: whatever did enter is
+// reported, and "the rest" still leave the top of the library.
+//
+// The replacement pipeline logs a Replace error rather than returning
+// it, so the failure is staged one step later: the Bear's replacement
+// moves the Bear out of the library while its entry is evaluated, and
+// the batch's move then cannot find it (ErrCardNotFound). The Forest's
+// entry is unaffected.
+func TestPutFromLibraryThenRunsEvenWhenTheBatchErrors(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	floor := plTop(me, "Floor", "Instant", "{U}")
+	rite := plTop(me, "Rite", "Sorcery", "{G}")
+	bear := plTop(me, "Bear", "Creature — Bear", "{1}{G}")
+	forest := plTop(me, "Forest", "Basic Land — Forest", "")
+	size := me.Library.Size()
+
+	var ran bool
+	var res PutFromLibraryResult
+	var err error
+	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(game.ReplacementEffect{
+			Watches: []game.EventKind{game.EventZoneMove},
+			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
+				return ev.Kind == game.RepEventMove && ev.CardID == bear && ev.NewZone == game.ZoneBattlefield
+			},
+			Replace: func(*game.ReplacementEvent, *game.Game, *game.Card) error {
+				_, err := game.MoveCard(me.Library, me.Graveyard, bear)
+				return err
+			},
+			Label: "Test: the Bear leaves the library mid-entry",
+		})
+		err = PutFromLibraryOntoBattlefield{
+			Player: me.ID,
+			Cards:  []uuid.UUID{forest, bear, rite},
+			All:    true,
+			Then: func(g *game.Game, r PutFromLibraryResult) error {
+				ran, res = true, r
+				return PutRestOnBottomInRandomOrder(g, r)
+			},
+		}.Apply(NewContext(g, nil))
+	})
+
+	if !errors.Is(err, game.ErrCardNotFound) {
+		t.Errorf("err = %v, want the Bear's ErrCardNotFound", err)
+	}
+	if !ran {
+		t.Fatal("Then did not run after the batch errored")
+	}
+	if len(res.Entered) != 1 || res.Entered[0] != forest || !g.Battlefield.Contains(forest) {
+		t.Errorf("entered %v, want only the Forest", res.Entered)
+	}
+	if len(res.Rest) != 1 || res.Rest[0] != rite {
+		t.Errorf("rest %v, want [Rite]", res.Rest)
+	}
+	if !plBottomIDs(me, 1)[rite] {
+		t.Error("the rest did not go to the bottom after the batch errored")
+	}
+	if !me.Graveyard.Contains(bear) {
+		t.Error("the Bear, no longer in the library, was pulled back out of the graveyard")
+	}
+	if me.Library.Size() != size-2 || me.Library.Cards[len(me.Library.Cards)-1].InstanceID != floor {
+		t.Error("the card under the revealed ones should now be the top card")
+	}
+}
+
+// One card that cannot be binned does not keep the rest out of the
+// graveyard; the first error is still reported.
+func TestPutRestIntoGraveyardCarriesOnPastAnError(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	a := plTop(me, "A", "Instant", "{U}")
+	b := plTop(me, "B", "Sorcery", "{G}")
+	var err error
+	g.WithWriteLock(func() {
+		err = PutRestIntoGraveyard(g, PutFromLibraryResult{
+			Player: me.ID,
+			Rest:   []uuid.UUID{a, uuid.New(), b},
+		})
+	})
+	if !errors.Is(err, game.ErrCardNotFound) {
+		t.Errorf("err = %v, want ErrCardNotFound for the missing card", err)
+	}
+	if !me.Graveyard.Contains(a) || !me.Graveyard.Contains(b) {
+		t.Error("a card after the failing one stayed in the library")
+	}
+}
+
+// "Put that card on the bottom" is about the card on top of the
+// library. If it has left the library before the answer arrives, a yes
+// does not pull it back out of the hand it went to.
+func TestLurkingPredatorsLeavesACardThatLeftTheLibrary(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Lurking Predators", "Enchantment", plLurkingOracle, 0, 0)
+	rite := plTop(me, "Rite", "Sorcery", "")
+	b10OpponentCastsBolt(t, g, opp, game.TargetRef{Kind: game.TargetPlayer, ID: me.ID})
+	for i := 0; i < 8 && confirmChoiceFor(g, me.ID) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c := confirmChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the bottom was not offered")
+	}
+	g.WithWriteLock(func() {
+		if _, err := game.MoveCard(me.Library, me.Hand, rite); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := g.ResolveConfirm(c.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if !me.Hand.Contains(rite) || me.Library.Contains(rite) {
+		t.Error("a card that left the library was pulled back to its bottom")
 	}
 }

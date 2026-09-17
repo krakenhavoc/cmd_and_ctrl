@@ -288,3 +288,21 @@ func tappedOnBattlefield(t *testing.T, g *game.Game, id uuid.UUID) bool {
 	t.Fatalf("card %s is not on the battlefield", id)
 	return false
 }
+
+// A token is not a permanent CARD (CR 108.2) and can't come back onto
+// the battlefield (CR 111.8), so the hand clause never offers one —
+// the same test the library clause applies.
+func TestHandCardsMatchingSkipsTokens(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	token := handCardForTest(me, "Forest Token", "Token Land — Forest", "")
+	land := handCardForTest(me, "Forest", "Basic Land — Forest", "")
+	var got []uuid.UUID
+	g.WithWriteLock(func() { got = handCardsMatching(g, me.ID, nil) })
+	if hasID(got, token) {
+		t.Error("a token in hand was offered as a permanent card")
+	}
+	if !hasID(got, land) {
+		t.Error("the land card in hand was not offered")
+	}
+}

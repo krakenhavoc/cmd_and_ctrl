@@ -98,12 +98,17 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		// Ran the library out without finding anything. Everything
 		// exiled goes back to the bottom; the deck is reordered but
 		// not lost.
-		return g.PutOnBottomInRandomOrderForEffect(controller, pile)
+		return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, pile)
 	}
 	hitName := "the exiled card"
 	if c, ok := g.cardInZoneLocked(g.Exile, hit); ok {
 		hitName = c.Name
 	}
+	// The pile and the hit are IDs saved before the prompt. Every
+	// bottom below names ZoneExile, so a card that left exile while
+	// the question was open stays where it went rather than being
+	// pulled back.
+	//
 	// "You MAY cast it." Declining is a real choice — a cascade into
 	// a card you do not want cast (an opponent's Bojuka Bog trigger
 	// waiting, a creature that would die to a board wipe already on
@@ -113,12 +118,12 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		func(g *Game) error {
 			g.grantFreeCastLocked(controller, hit)
 			g.scheduleCascadeBottomLocked(controller, source, hit, hitName)
-			return g.PutOnBottomInRandomOrderForEffect(controller, pile)
+			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, pile)
 		},
 		func(g *Game) error {
 			// Declined: the hit joins the rest of the pile and the
 			// whole lot goes to the bottom in a random order.
-			return g.PutOnBottomInRandomOrderForEffect(controller, append(pile, hit))
+			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, append(pile, hit))
 		})
 }
 
@@ -214,7 +219,7 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 			// of one: it routes through the exit path, so the card
 			// goes to its OWNER's library and a commander's owner is
 			// asked about the command zone.
-			return g.PutOnBottomInRandomOrderForEffect(controller, []uuid.UUID{cardID})
+			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, []uuid.UUID{cardID})
 		},
 	})
 }

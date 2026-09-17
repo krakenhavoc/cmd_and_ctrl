@@ -248,7 +248,7 @@ func cardsStillInALibrary(g *game.Game, ids []uuid.UUID) []uuid.UUID {
 // bottom of your library in a random order" — The Regalia, Ureni, Atla
 // Palani, Animist's Awakening.
 func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error {
-	return g.PutOnBottomInRandomOrderForEffect(res.Player, res.Rest)
+	return g.PutOnBottomInRandomOrderForEffect(res.Player, game.ZoneLibrary, res.Rest)
 }
 
 // PutRestIntoGraveyard is the Then for "put all cards revealed this way
@@ -259,16 +259,21 @@ func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error 
 // battlefield can't move to another zone (CR 111.8), and moving it to a
 // graveyard would hand a reanimator an object the rules have already
 // taken off the table.
+//
+// An error on one card does not keep the rest out of the graveyard: the
+// loop carries on and the first error is returned, as the random-order
+// bottom does.
 func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
+	var firstErr error
 	for _, id := range res.Rest {
 		if c, ok := g.LookupCardForEffect(id); ok && c.IsToken() {
 			continue
 		}
-		if err := g.PutIntoGraveyardForEffect(id); err != nil {
-			return err
+		if err := g.PutIntoGraveyardForEffect(id); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
-	return nil
+	return firstErr
 }
 
 // revealUntil reveals cards from the top of `player`'s library until

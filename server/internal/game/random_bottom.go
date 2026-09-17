@@ -15,8 +15,20 @@ import (
 // opened the CR 614 window. This is the public version, and cascade
 // now calls it.
 
-// PutOnBottomInRandomOrderForEffect puts every card in `ids` on the
-// bottom of its owner's library in a random order.
+// PutOnBottomInRandomOrderForEffect puts every card in `ids` that is
+// still in a zone of kind `from` on the bottom of its owner's library
+// in a random order.
+//
+// # Only from where the effect left them
+//
+// `from` is where the effect put or found the cards: ZoneExile for
+// cascade's pile, ZoneLibrary for "the rest" of a reveal or a look.
+// A card no longer in a zone of that kind is skipped. The IDs are
+// usually saved before a prompt (cascade's may-cast, Lurking
+// Predators' yes/no), and a card that has since been cast, drawn or
+// moved by something else is a new object (CR 400.7) the clause no
+// longer refers to — without the check, a stale ID would pull it back
+// out of a hand, a graveyard or off the battlefield.
 //
 // # Randomness
 //
@@ -31,17 +43,16 @@ import (
 // how much it draws from the stream depends only on the list and never
 // on where the cards are.
 //
-// # Where each card comes from
+// # How each card moves
 //
-//   - From any zone other than its owner's library (exile for cascade,
-//     a hand, a graveyard, the battlefield): through
-//     routeCardToZoneLocked with ToBottom, the engine's one exit path.
-//     That is what makes it a real zone change — CR 614 replacements
-//     apply (a commander's owner is offered the command zone, CR
-//     903.9, and a declined offer still lands on the bottom), the card
-//     becomes a new object with no memory of exile (CR 400.7: its
-//     impulse grant and counters are gone), and it arrives in a hidden
-//     zone with nobody knowing it.
+//   - From any zone other than its owner's library (exile for
+//     cascade): through routeCardToZoneLocked with ToBottom, the
+//     engine's one exit path. That is what makes it a real zone
+//     change — CR 614 replacements apply (a commander's owner is
+//     offered the command zone, CR 903.9, and a declined offer still
+//     lands on the bottom), the card becomes a new object with no
+//     memory of exile (CR 400.7: its impulse grant and counters are
+//     gone), and it arrives in a hidden zone with nobody knowing it.
 //   - From its owner's library already (the revealed cards The Regalia
 //     passed over never left the library): a REORDER, not a zone
 //     change. routeCardToZoneLocked deliberately does nothing for a
@@ -52,16 +63,16 @@ import (
 //     watched it be revealed knows it is somewhere in the bottom N,
 //     not where.
 //
-// A card that is no longer anywhere is skipped, and a repeated ID is
-// moved once. A commander's CR 903.9 prompt pauses only that card; the
-// rest still go to the bottom, and the paused one lands on the bottom
-// when its owner declines.
+// A repeated ID is moved once. A commander's CR 903.9 prompt pauses
+// only that card; the rest still go to the bottom, and the paused one
+// lands on the bottom when its owner declines. An error on one card
+// does not stop the rest; the first is returned.
 //
 // `actor` is the player the effect belongs to, stamped on the zone
 // move events.
 //
 // Caller must hold g.mu.
-func (g *Game) PutOnBottomInRandomOrderForEffect(actor uuid.UUID, ids []uuid.UUID) error {
+func (g *Game) PutOnBottomInRandomOrderForEffect(actor uuid.UUID, from ZoneKind, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -78,7 +89,7 @@ func (g *Game) PutOnBottomInRandomOrderForEffect(actor uuid.UUID, ids []uuid.UUI
 	var firstErr error
 	for _, id := range order {
 		src := g.findCardZoneLocked(id)
-		if src == nil {
+		if src == nil || src.Kind != from {
 			continue
 		}
 		card, ok := g.cardInZoneLocked(src, id)

@@ -1412,9 +1412,13 @@ so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
 bottom in a random order" anywhere else is
-`g.PutOnBottomInRandomOrderForEffect`, which draws from the game's keyed
-RNG (`random_order` stream, ADR 0054) — never `math/rand` — and repositions cards already in the
-library without a zone change.
+`g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
+from the game's keyed RNG (`random_order` stream, ADR 0054) — never
+`math/rand` — and repositions cards already in the library without a
+zone change. `from` is the zone the effect left the cards in
+(`ZoneLibrary` for a reveal or a look, `ZoneExile` for cascade): IDs
+saved before a prompt may name cards that have since moved on, and
+those are skipped rather than pulled back.
 
 A token can end up in a library (Chaos Warp tucks one, and the engine
 has no CR 704.5d sweep). It is not a card (CR 108.2) and can't change

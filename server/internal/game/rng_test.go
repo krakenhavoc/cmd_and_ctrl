@@ -474,7 +474,7 @@ func TestRewindCascadeRandomBottom(t *testing.T) {
 	rewinds(t, g, func() []string {
 		p := g.Seats[0]
 		g.WithWriteLock(func() {
-			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ids); err != nil {
+			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ZoneExile, ids); err != nil {
 				t.Fatalf("PutOnBottomInRandomOrderForEffect: %v", err)
 			}
 		})
@@ -513,8 +513,26 @@ func TestRewindPutOnBottomInRandomOrder(t *testing.T) {
 		// a pointer taken before a restore reads a stale library.
 		p := g.Seats[0]
 		g.WithWriteLock(func() {
-			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ids); err != nil {
-				t.Fatalf("PutOnBottomInRandomOrderForEffect: %v", err)
+			// The bottom takes one source zone per call, so the cards
+			// are split by where they are now: the ones still in the
+			// library (a reorder), then the ones in exile (a zone
+			// change). After the first bottom they are all in the
+			// library.
+			var inLibrary, inExile []uuid.UUID
+			for _, id := range ids {
+				switch z := g.findCardZoneLocked(id); {
+				case z == nil:
+				case z.Kind == ZoneLibrary:
+					inLibrary = append(inLibrary, id)
+				case z.Kind == ZoneExile:
+					inExile = append(inExile, id)
+				}
+			}
+			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ZoneLibrary, inLibrary); err != nil {
+				t.Fatalf("PutOnBottomInRandomOrderForEffect(library): %v", err)
+			}
+			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ZoneExile, inExile); err != nil {
+				t.Fatalf("PutOnBottomInRandomOrderForEffect(exile): %v", err)
 			}
 		})
 		// The bottom of a zone is Cards[0] (Zone.PushBottom).
