@@ -355,6 +355,11 @@ func TestB22AethericAmplifierTapsForAnyColourAndDoublesCounters(t *testing.T) {
 	if pick == nil || len(pick.ColorOptions) != 5 {
 		t.Fatalf("any colour, the printed width, got %+v", pick)
 	}
+	// #730: an unanswered colour pick gates the cursor, and this test
+	// walks the turn on below. The colour itself is beside the point.
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
 	b22Untap(g, amp)
 	theirs := pushCounterCreature(g, opp.ID, "Their Hydra", "+1/+1", 3)
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(theirs, "charge", 1) })

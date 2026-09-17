@@ -384,27 +384,27 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail) {
 }
 
 // creditLifelinkLocked credits the tail's lifelink beneficiary with
-// life equal to the damage dealt (CR 702.15). No-op when the source
+// life equal to the damage dealt (CR 702.15a). No-op when the source
 // had no lifelink, or when this entry point has never applied it.
 //
-// Runs through ChangeLife rather than the replacement pipeline: life
-// gain from lifelink is not itself treated as a replaceable event at
-// this scope.
+// #482: this is life GAIN — CR 702.15b, "damage dealt by a source with
+// lifelink causes that source's controller to gain that much life" —
+// so it runs the CR 614 life window like every other life change
+// instead of writing the total directly. Rhox Faithmender doubles its
+// own printed lifelink because of this one line.
+//
+// The credit stays a SEPARATE event from the damage. The damage
+// replacements settled the amount already (CR 120.3); the life gain is
+// then replaced on its own terms, which is why a life doubler doubles
+// the gain without touching the damage.
+//
+// An error here means the beneficiary is no longer seated. There is
+// nothing to gain and it is never a reason to fail the damage.
 //
 // Caller must hold g.mu.
 func (g *Game) creditLifelinkLocked(t *damageTail, sourceID uuid.UUID, amount int) {
 	if amount <= 0 || t.lifelinkTo == uuid.Nil {
 		return
 	}
-	p := g.playerByIDLocked(t.lifelinkTo)
-	if p == nil {
-		return
-	}
-	p.ChangeLife(amount)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: t.lifelinkTo,
-		Source: sourceID,
-		Amount: amount,
-	})
+	_ = g.ChangePlayerLifeForEffect(sourceID, t.lifelinkTo, amount)
 }
