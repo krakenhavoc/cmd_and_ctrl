@@ -617,6 +617,11 @@ export interface PendingChoiceView {
   // choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // CR 603.2d: when this is a trigger_prompt or pick_target choice,
+  // the public permanent that caused the additional trigger. The
+  // server omits both fields for ordinary choices.
+  doubled_by?: string;
+  doubled_by_name?: string;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -683,6 +688,10 @@ export interface StackItemView {
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
   is_copy?: boolean;
+  // CR 603.2d: public attribution for an additional triggered
+  // ability created by a trigger-doubling permanent.
+  doubled_by?: string;
+  doubled_by_name?: string;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a

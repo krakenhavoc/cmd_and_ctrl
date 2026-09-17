@@ -13,6 +13,7 @@
     canConfirm,
   } from "../../targeting";
   import Icon from "../Icon.svelte";
+  import { doubledTriggerLabel } from "../../triggerDoubling";
 
   const state = $derived($targeting);
   const count = $derived(state ? legalTargetCount(state) : -1);
@@ -26,6 +27,7 @@
     if (state.max > 0) return `${n}/${state.max} picked`;
     return `${n} picked`;
   });
+  const doubledLabel = $derived(doubledTriggerLabel(state?.doubledBy, state?.doubledByName));
 
   function modeHint(mode: string | undefined): string {
     switch (mode) {
@@ -64,6 +66,9 @@
       {/if}
       {#if count >= 0}
         <span class="count">· {count} legal</span>
+      {/if}
+      {#if doubledLabel}
+        <span class="count">· {doubledLabel}</span>
       {/if}
       {#if multi}
         <span class="count">· {tally}</span>

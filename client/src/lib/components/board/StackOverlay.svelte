@@ -37,6 +37,7 @@
   import { hoveredCard } from "../../cardTypes";
   import { settings } from "../../settings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
+  import { doubledTriggerLabel } from "../../triggerDoubling";
 
   interface Props {
     stack: ZoneView;
@@ -285,6 +286,7 @@
         {@const src = imgSrcFor(item)}
         {@const stackTargetable = itemTargetable(item)}
         {@const previewable = previewCardFor(item) !== null}
+        {@const doubledLabel = doubledTriggerLabel(item.doubled_by, item.doubled_by_name)}
         <div class="line">
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
           <div
@@ -331,6 +333,9 @@
                 {/if}
                 {#if item.kind !== "spell"}
                   <span class="chip">{item.kind}</span>
+                {/if}
+                {#if doubledLabel}
+                  <span class="chip flag">{doubledLabel}</span>
                 {/if}
                 {#if cardByID.get(item.id)?.auto}
                   <span

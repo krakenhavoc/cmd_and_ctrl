@@ -181,7 +181,8 @@ type GameSnapshot struct {
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
-	LastKnownBattlefield map[uuid.UUID]Characteristic `json:"lastKnownBattlefield,omitempty"`
+	LastKnownBattlefield     map[uuid.UUID]Characteristic     `json:"lastKnownBattlefield,omitempty"`
+	LastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI `json:"lastKnownTriggerIdentity,omitempty"`
 
 	RNG rngSnapshot `json:"rng"`
 
@@ -321,24 +322,26 @@ type cardSnapshot struct {
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
 // func-bearing; see rehydrateStackItem for which ones come back.
 type stackItemSnapshot struct {
-	ID           uuid.UUID         `json:"id"`
-	Kind         StackItemKind     `json:"kind"`
-	Controller   uuid.UUID         `json:"controller"`
-	Owner        uuid.UUID         `json:"owner"`
-	SourceCardID uuid.UUID         `json:"sourceCardId"`
-	Label        string            `json:"label,omitempty"`
-	Targets      []TargetRef       `json:"targets,omitempty"`
-	Payload      []TargetRef       `json:"payload,omitempty"`
-	Modes        []int             `json:"modes,omitempty"`
-	XValue       int               `json:"xValue"`
-	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
-	HoldPriority bool              `json:"holdPriority"`
-	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
-	AltCost      string            `json:"altCost,omitempty"`
-	SplitSecond  bool              `json:"splitSecond"`
-	IsCopy       bool              `json:"isCopy,omitempty"`
-	Seq          uint64            `json:"seq"`
-	Ordered      bool              `json:"ordered"`
+	ID            uuid.UUID         `json:"id"`
+	Kind          StackItemKind     `json:"kind"`
+	Controller    uuid.UUID         `json:"controller"`
+	Owner         uuid.UUID         `json:"owner"`
+	SourceCardID  uuid.UUID         `json:"sourceCardId"`
+	Label         string            `json:"label,omitempty"`
+	DoubledBy     uuid.UUID         `json:"doubledBy,omitempty"`
+	DoubledByName string            `json:"doubledByName,omitempty"`
+	Targets       []TargetRef       `json:"targets,omitempty"`
+	Payload       []TargetRef       `json:"payload,omitempty"`
+	Modes         []int             `json:"modes,omitempty"`
+	XValue        int               `json:"xValue"`
+	Distribution  map[uuid.UUID]int `json:"distribution,omitempty"`
+	HoldPriority  bool              `json:"holdPriority"`
+	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
+	AltCost       string            `json:"altCost,omitempty"`
+	SplitSecond   bool              `json:"splitSecond"`
+	IsCopy        bool              `json:"isCopy,omitempty"`
+	Seq           uint64            `json:"seq"`
+	Ordered       bool              `json:"ordered"`
 
 	// HasEffect / HasTargetSpec record the two closure slots so the
 	// census can count what restore had to drop.
@@ -674,6 +677,12 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.LastKnownBattlefield[k] = v
 		}
 	}
+	if len(g.lastKnownTriggerIdentity) > 0 {
+		s.LastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(g.lastKnownTriggerIdentity))
+		for k, v := range g.lastKnownTriggerIdentity {
+			s.LastKnownTriggerIdentity[k] = v
+		}
+	}
 
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
@@ -848,6 +857,8 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
 		Targets:       copyTargetRefs(s.Targets),
 		Payload:       copyTargetRefs(s.Payload),
 		Modes:         copyInts(s.Modes),
@@ -1130,6 +1141,12 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.lastKnownBattlefield[k] = v
 		}
 	}
+	if len(s.LastKnownTriggerIdentity) > 0 {
+		g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(s.LastKnownTriggerIdentity))
+		for k, v := range s.LastKnownTriggerIdentity {
+			g.lastKnownTriggerIdentity[k] = v
+		}
+	}
 
 	restoreRNG(g, s.RNG)
 
@@ -1315,24 +1332,26 @@ func restorePlayer(p *playerSnapshot) *Player {
 
 func restoreStackItem(s *stackItemSnapshot) *StackItem {
 	out := &StackItem{
-		ID:           s.ID,
-		Kind:         s.Kind,
-		Controller:   s.Controller,
-		Owner:        s.Owner,
-		SourceCardID: s.SourceCardID,
-		Label:        s.Label,
-		Targets:      copyTargetRefs(s.Targets),
-		Payload:      copyTargetRefs(s.Payload),
-		Modes:        copyInts(s.Modes),
-		XValue:       s.XValue,
-		Distribution: copyIntMap(s.Distribution),
-		HoldPriority: s.HoldPriority,
-		CastFromZone: s.CastFromZone,
-		AltCost:      s.AltCost,
-		SplitSecond:  s.SplitSecond,
-		IsCopy:       s.IsCopy,
-		Seq:          s.Seq,
-		Ordered:      s.Ordered,
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Controller:    s.Controller,
+		Owner:         s.Owner,
+		SourceCardID:  s.SourceCardID,
+		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
+		Targets:       copyTargetRefs(s.Targets),
+		Payload:       copyTargetRefs(s.Payload),
+		Modes:         copyInts(s.Modes),
+		XValue:        s.XValue,
+		Distribution:  copyIntMap(s.Distribution),
+		HoldPriority:  s.HoldPriority,
+		CastFromZone:  s.CastFromZone,
+		AltCost:       s.AltCost,
+		SplitSecond:   s.SplitSecond,
+		IsCopy:        s.IsCopy,
+		Seq:           s.Seq,
+		Ordered:       s.Ordered,
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
 		// ability does, which is why a stack item with an Effect is

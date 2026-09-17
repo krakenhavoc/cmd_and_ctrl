@@ -108,6 +108,7 @@ var gameFields = plan(
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
+	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
@@ -264,6 +265,8 @@ var stackItemFields = plan(
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
 	"Label", carried, "",
+	"DoubledBy", carried, "",
+	"DoubledByName", carried, "",
 	"Targets", carried, "",
 	// #636 reflexive triggers: a pending trigger's payload is what
 	// the resolution that created it told it (the cards revealed,

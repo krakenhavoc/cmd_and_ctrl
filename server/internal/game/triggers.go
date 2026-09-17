@@ -252,14 +252,15 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	if ev.Kind == EventTrigger {
 		return
 	}
-	g.harvestFromZone(ev, g.Battlefield)
+	pass := g.newHarvestPassLocked(ev)
+	g.harvestFromZone(&pass, g.Battlefield)
 	// S28: "When you cast this spell, ..." — cascade. The source is
 	// the spell that was just announced, which is on the stack and
 	// invisible to the battlefield scan above. Narrow on purpose:
 	// only EventCast, only the one card the event names, and only
 	// abilities that declared FromStack.
 	if ev.Kind == EventCast && ev.CardID != uuid.Nil {
-		g.harvestCastFromStack(ev)
+		g.harvestCastFromStack(&pass)
 	}
 	// LTB-style events: the source has already moved off the
 	// battlefield, so harvestFromZone(BF) won't find it. The card
@@ -267,7 +268,7 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// the harvester finds it there and pulls battlefield
 	// characteristics from the LKI snapshot.
 	if ev.Kind == EventLTB && ev.CardID != uuid.Nil {
-		g.harvestLTB(ev)
+		g.harvestLTB(&pass)
 	}
 	// S23: watchers that left the battlefield EARLIER IN THIS SAME
 	// event — the Blood Artist that was wiped alongside the creatures
@@ -275,23 +276,34 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// (they are off the battlefield) and harvestLTB is about the one
 	// card whose death is being reported, so a wipe needs its own
 	// pass. No-op unless a simultaneous batch is open.
-	g.harvestSimultaneousExitLocked(ev)
+	g.harvestSimultaneousExitLocked(&pass)
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,
 // cast, draw, combat damage, upkeep). For every battlefield card with
 // a TriggeredAbility whose Watches contains ev.Kind, run AppliesTo
 // then Build and queue the result.
-func (g *Game) harvestFromZone(ev Event, z *Zone) {
+func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
+	ev := pass.ev
 	if z == nil || CatalogTriggers == nil {
 		return
 	}
 	for i := range z.Cards {
 		card := &z.Cards[i]
+		// During a simultaneous exit the live card may already have lost a
+		// continuous effect because another batch member moved. Triggers see
+		// the shared pre-exit snapshot instead (the card can still be in the
+		// battlefield while this particular event is harvested).
+		source := card
+		if isBattlefieldExitEvent(ev) {
+			if batch, ok := g.simultaneousExitCardLocked(card.InstanceID); ok {
+				source = &batch
+			}
+		}
 		// CatalogAbilityKey: a permanent under a CR 613.1f
 		// ability-removing effect has no triggered abilities to
 		// harvest. Off the battlefield this is CatalogKey exactly.
-		oracle := CatalogAbilityKey(*card)
+		oracle := CatalogAbilityKey(*source)
 		if oracle == "" {
 			continue
 		}
@@ -299,15 +311,15 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 		if len(triggers) == 0 {
 			continue
 		}
-		lki := card.Effective()
+		lki := source.Effective()
 		for _, t := range triggers {
 			if !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
-			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
+			if t.AppliesTo != nil && !t.AppliesTo(ev, source, lki, g) {
 				continue
 			}
-			g.dispatchTriggerLocked(ev, *card, lki, t)
+			g.harvestMatchLocked(pass, *source, lki, t, false)
 		}
 	}
 }
@@ -321,7 +333,8 @@ func (g *Game) harvestFromZone(ev Event, z *Zone) {
 // not re-trigger when something is cast above it.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) harvestCastFromStack(ev Event) {
+func (g *Game) harvestCastFromStack(pass *harvestPass) {
+	ev := pass.ev
 	if g.Stack == nil || CatalogTriggers == nil {
 		return
 	}
@@ -342,7 +355,7 @@ func (g *Game) harvestCastFromStack(ev Event) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
 				continue
 			}
-			g.dispatchTriggerLocked(ev, *card, lki, t)
+			g.harvestMatchLocked(pass, *card, lki, t, true)
 		}
 		return
 	}
@@ -365,6 +378,23 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 	if t.OncePerBatch && g.triggerInFlightLocked(source.InstanceID, t.Key) {
 		return
 	}
+	g.dispatchTriggerInstanceLocked(ev, source, lki, t, doublerRef{})
+}
+
+// harvestMatchLocked fixes the additional-instance count at the moment this
+// ability triggered, before prompts or items are queued.
+func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, fromSpell bool) {
+	if t.OncePerBatch && g.triggerInFlightLocked(source.InstanceID, t.Key) {
+		return
+	}
+	extra := g.triggerDoublersLocked(pass, source, lki, t, fromSpell)
+	g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, doublerRef{})
+	for _, d := range extra {
+		g.dispatchTriggerInstanceLocked(pass.ev, source, lki, t, d)
+	}
+}
+
+func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
 	if t.Targets != nil {
 		lt := g.legalTargetsLocked(source.Controller, t.Targets)
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
@@ -372,27 +402,28 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 		}
 	}
 	if t.OptionalPrompt != nil {
-		g.queueTriggerPromptLocked(ev, source, lki, t)
+		g.queueTriggerPromptLocked(ev, source, lki, t, doubledBy)
 		return
 	}
-	g.buildOrPickTriggerLocked(ev, source, lki, t)
+	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy)
 }
 
 // buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
 // queue the target picker for a targeted trigger, or Build and queue
 // the item directly. Caller must hold g.mu.
-func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
 	if t.Build == nil {
 		return
 	}
 	if t.Targets != nil {
-		g.queuePickTargetLocked(ev, source, lki, t)
+		g.queuePickTargetLocked(ev, source, lki, t, doubledBy)
 		return
 	}
 	item := t.Build(ev, &source, lki, g)
 	if item == nil {
 		return
 	}
+	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
 }
 
@@ -401,13 +432,19 @@ func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristi
 // look it up by ID and pull its battlefield characteristics from the
 // LKI map. After the harvest, clear the LKI entry — keeping it would
 // leak across future events and re-fire stale triggers.
-func (g *Game) harvestLTB(ev Event) {
+func (g *Game) harvestLTB(pass *harvestPass) {
+	ev := pass.ev
 	defer delete(g.lastKnownBattlefield, ev.CardID)
+	defer delete(g.lastKnownTriggerIdentity, ev.CardID)
 	card := g.findCardByIDLocked(ev.CardID)
 	if card == nil {
 		return
 	}
-	oracle := CatalogKey(*card)
+	source := g.withLastKnownTriggerIdentityLocked(*card)
+	if batch, ok := g.simultaneousExitCardLocked(ev.CardID); ok {
+		source = batch
+	}
+	oracle := CatalogKey(source)
 	if oracle == "" {
 		return
 	}
@@ -416,6 +453,9 @@ func (g *Game) harvestLTB(ev Event) {
 		return
 	}
 	lki, ok := g.lastKnownBattlefield[ev.CardID]
+	if batch, inBatch := g.simultaneousExitCardLocked(ev.CardID); inBatch {
+		lki, ok = batch.Effective(), true
+	}
 	// S24 layer 6: read the removal off the LKI SNAPSHOT, not off the
 	// card. CatalogAbilityKey cannot answer here — the permanent has
 	// already left the battlefield and clearEffectiveCacheLocked has
@@ -432,7 +472,7 @@ func (g *Game) harvestLTB(ev Event) {
 		// is supposed to stamp the snapshot first. Fall back to the
 		// post-move characteristics so the trigger still fires;
 		// log-shaped EventEffectError surfaces the gap during dev.
-		lki = card.Effective()
+		lki = source.Effective()
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   ev.CardID,
@@ -443,10 +483,10 @@ func (g *Game) harvestLTB(ev Event) {
 		if !triggerWatches(t.Watches, ev.Kind) {
 			continue
 		}
-		if t.AppliesTo != nil && !t.AppliesTo(ev, card, lki, g) {
+		if t.AppliesTo != nil && !t.AppliesTo(ev, &source, lki, g) {
 			continue
 		}
-		g.dispatchTriggerLocked(ev, *card, lki, t)
+		g.harvestMatchLocked(pass, source, lki, t, false)
 	}
 }
 
@@ -495,6 +535,10 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			g.lastKnownBattlefield = make(map[uuid.UUID]Characteristic)
 		}
 		g.lastKnownBattlefield[cardID] = c.Effective()
+		if g.lastKnownTriggerIdentity == nil {
+			g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI)
+		}
+		g.lastKnownTriggerIdentity[cardID] = triggerIdentityLKI{OracleID: c.OracleID, ActiveFace: c.ActiveFace, AttachedTo: c.AttachedTo}
 		return
 	}
 }

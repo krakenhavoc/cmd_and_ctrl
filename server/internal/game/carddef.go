@@ -52,6 +52,7 @@ type CardDef struct {
 	Replacements    []ReplacementEffect
 	PrintedKeywords []string
 	Triggered       []TriggeredAbility
+	TriggerDoublers []TriggerDoubler
 
 	AdditionalCost   *AdditionalCost
 	AlternativeCosts []AlternativeCost
@@ -160,6 +161,12 @@ func init() {
 	CatalogTriggers = func(key string) []TriggeredAbility {
 		if d := catalogDef(key); d != nil {
 			return d.Triggered
+		}
+		return nil
+	}
+	CatalogTriggerDoublers = func(key string) []TriggerDoubler {
+		if d := catalogDef(key); d != nil {
+			return d.TriggerDoublers
 		}
 		return nil
 	}

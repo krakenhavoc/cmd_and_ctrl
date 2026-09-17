@@ -299,6 +299,11 @@ type PendingChoiceView struct {
 	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
+	// DoubledBy / DoubledByName identify the public permanent that
+	// caused this additional trigger (CR 603.2d). They are
+	// present only on trigger_prompt and pick_target choices.
+	DoubledBy     string `json:"doubled_by,omitempty"`
+	DoubledByName string `json:"doubled_by_name,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -521,6 +526,10 @@ type StackItemView struct {
 	// original; countering the original leaves the copy, because a
 	// copy is independent of its source once created).
 	IsCopy bool `json:"is_copy,omitempty"`
+	// DoubledBy / DoubledByName identify the public permanent whose
+	// effect caused this additional trigger (CR 603.2d).
+	DoubledBy     string `json:"doubled_by,omitempty"`
+	DoubledByName string `json:"doubled_by_name,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -1844,6 +1853,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
 		}
+		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
+			doubledBy, doubledByName := c.TriggerDoubler()
+			if doubledBy != uuid.Nil {
+				v.DoubledBy = doubledBy.String()
+				v.DoubledByName = doubledByName
+			}
+		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
 		// projects the cards through isKnower — the Thoughtseize
@@ -2161,6 +2177,10 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		SplitSecond:  it.SplitSecond,
 		AltCost:      it.AltCost,
 		IsCopy:       it.IsCopy,
+	}
+	if it.DoubledBy != uuid.Nil {
+		view.DoubledBy = it.DoubledBy.String()
+		view.DoubledByName = it.DoubledByName
 	}
 	if len(it.Targets) > 0 {
 		view.Targets = make([]TargetRefView, len(it.Targets))

@@ -107,7 +107,8 @@ func (g *Game) beginSimultaneousExitLocked(ids []uuid.UUID) func() {
 // last-known information for a permanent that is no longer there.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) harvestSimultaneousExitLocked(ev Event) {
+func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
+	ev := pass.ev
 	if len(g.simultaneousExit) == 0 || CatalogTriggers == nil {
 		return
 	}
@@ -144,7 +145,7 @@ func (g *Game) harvestSimultaneousExitLocked(ev Event) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, &card, lki, g) {
 				continue
 			}
-			g.dispatchTriggerLocked(ev, card, lki, t)
+			g.harvestMatchLocked(pass, card, lki, t, false)
 		}
 	}
 }

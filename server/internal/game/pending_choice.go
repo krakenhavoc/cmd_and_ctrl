@@ -602,11 +602,12 @@ type mayCastFrame struct {
 // pickTargetFrame is the continuation for a targeted trigger's
 // pick_target prompt. Added in S20 sub-PR 2.
 type pickTargetFrame struct {
-	ev     Event
-	source Card
-	lki    Characteristic
-	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
-	spec   *TargetSpec
+	ev        Event
+	source    Card
+	lki       Characteristic
+	build     func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+	spec      *TargetSpec
+	doubledBy doublerRef
 }
 
 // triggerResumeFrame stashes the per-trigger continuation data the
@@ -621,7 +622,23 @@ type triggerResumeFrame struct {
 	// ability is the full declaration so a "yes" on a TARGETED
 	// optional trigger can continue into the pick_target step
 	// (S20 sub-PR 2) instead of building straight away.
-	ability TriggeredAbility
+	ability   TriggeredAbility
+	doubledBy doublerRef
+}
+
+// TriggerDoubler returns the doubler attribution carried by a harvested
+// trigger's optional or target prompt. Ordinary prompts return zero values.
+func (c *PendingChoice) TriggerDoubler() (uuid.UUID, string) {
+	if c == nil {
+		return uuid.Nil, ""
+	}
+	if c.triggerResume != nil {
+		return c.triggerResume.doubledBy.id, c.triggerResume.doubledBy.name
+	}
+	if c.pickTargetResume != nil {
+		return c.pickTargetResume.doubledBy.id, c.pickTargetResume.doubledBy.name
+	}
+	return uuid.Nil, ""
 }
 
 // DamageAssignmentFrame is the payload for a
@@ -1701,6 +1718,7 @@ func (g *Game) queueTriggerPromptLocked(
 	source Card,
 	lki Characteristic,
 	ability TriggeredAbility,
+	doubledBy doublerRef,
 ) {
 	chooser := source.Controller
 	if ability.OptionalPrompt != nil && ability.OptionalPrompt.Chooser != nil {
@@ -1728,11 +1746,12 @@ func (g *Game) queueTriggerPromptLocked(
 		Reason:        question,
 		NoLegalTarget: noLegalTarget,
 		triggerResume: &triggerResumeFrame{
-			ev:      ev,
-			source:  source,
-			lki:     lki,
-			build:   ability.Build,
-			ability: ability,
+			ev:        ev,
+			source:    source,
+			lki:       lki,
+			build:     ability.Build,
+			ability:   ability,
+			doubledBy: doubledBy,
 		},
 	})
 }
@@ -1743,7 +1762,7 @@ func (g *Game) queueTriggerPromptLocked(
 // ResolvePickTarget re-validates the pick against the spec anyway,
 // since the board can change while the prompt is open. Caller must
 // hold g.mu. Added in S20 sub-PR 2.
-func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
+func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
 	lt := g.legalTargetsLocked(source.Controller, t.Targets)
 	label := t.Targets.Label
 	if label == "" {
@@ -1760,11 +1779,12 @@ func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, 
 		PickTargetMin:     t.Targets.Min,
 		PickTargetMax:     t.Targets.Max,
 		pickTargetResume: &pickTargetFrame{
-			ev:     ev,
-			source: source,
-			lki:    lki,
-			build:  t.Build,
-			spec:   t.Targets,
+			ev:        ev,
+			source:    source,
+			lki:       lki,
+			build:     t.Build,
+			spec:      t.Targets,
+			doubledBy: doubledBy,
 		},
 	})
 }
@@ -1838,6 +1858,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 	}
 	item.Targets = append([]TargetRef(nil), targets...)
 	item.targetSpec = frame.spec
+	item.DoubledBy, item.DoubledByName = frame.doubledBy.id, frame.doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
 	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
 	// it is put on the stack, which is right here. Emitted after the
@@ -1888,7 +1909,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability)
+	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the

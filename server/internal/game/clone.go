@@ -275,6 +275,12 @@ func (g *Game) cloneLocked() *Game {
 			out.lastKnownBattlefield[k] = v
 		}
 	}
+	if len(g.lastKnownTriggerIdentity) > 0 {
+		out.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(g.lastKnownTriggerIdentity))
+		for k, v := range g.lastKnownTriggerIdentity {
+			out.lastKnownTriggerIdentity[k] = v
+		}
+	}
 	// S16 layer-engine version counters. Atomics can't be struct-
 	// copied; mirror via Load/Store so the clone's staleness state
 	// matches the original's at capture time.
@@ -430,19 +436,21 @@ func cloneStackItem(s *StackItem) *StackItem {
 		return nil
 	}
 	out := &StackItem{
-		ID:           s.ID,
-		Kind:         s.Kind,
-		Controller:   s.Controller,
-		Owner:        s.Owner,
-		SourceCardID: s.SourceCardID,
-		Label:        s.Label,
-		XValue:       s.XValue,
-		HoldPriority: s.HoldPriority,
-		SplitSecond:  s.SplitSecond,
-		AltCost:      s.AltCost,
-		CastFromZone: s.CastFromZone,
-		IsCopy:       s.IsCopy,
-		Seq:          s.Seq,
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Controller:    s.Controller,
+		Owner:         s.Owner,
+		SourceCardID:  s.SourceCardID,
+		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
+		XValue:        s.XValue,
+		HoldPriority:  s.HoldPriority,
+		SplitSecond:   s.SplitSecond,
+		AltCost:       s.AltCost,
+		CastFromZone:  s.CastFromZone,
+		IsCopy:        s.IsCopy,
+		Seq:           s.Seq,
 		// Effect takes the live *Game at resolve time rather than
 		// capturing one, so sharing the func between original and
 		// snapshot is safe — an undo that restores this item
@@ -597,6 +605,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
+	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

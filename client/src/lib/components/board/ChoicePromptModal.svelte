@@ -27,6 +27,7 @@
     type ChoiceSubmission,
     type ServerErrorLike,
   } from "../../choiceRejection";
+  import { doubledTriggerLabel } from "../../triggerDoubling";
 
   interface Props {
     snap: GameView;
@@ -467,6 +468,7 @@
   // picker lands, the auto-targeter silently no-ops in that case —
   // which reads as a bug. Warn the chooser and relabel "Yes".
   const noLegalTarget = $derived(active?.no_legal_target === true);
+  const doubledLabel = $derived(doubledTriggerLabel(active?.doubled_by, active?.doubled_by_name));
 
   // Y / N answer the yes-no prompts (optional replacement, may-
   // trigger, pay-unless) from the keyboard; the footer shows the
@@ -807,6 +809,9 @@
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
           <span class="prompt-src" aria-hidden="true">may trigger · CR 603.5</span>
+          {#if doubledLabel}
+            <span class="prompt-src">{doubledLabel}</span>
+          {/if}
         </h2>
         {#if noLegalTarget}
           <p class="prompt-hint warn">
