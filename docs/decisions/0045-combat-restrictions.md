@@ -1149,3 +1149,137 @@ The public card view now carries effective colors so the bot's fear and
 intimidate estimates can distinguish a color-changing effect from the printed
 mana cost. Empty colors means colorless, and unknown-card redaction removes
 the field with the other identifying characteristics.
+
+---
+
+## Amendment (2026-09-17): the block declaration is announced at its lock-in (#830)
+
+Amends the addendum's [Decision 13](#13-the-stored-declaration-is-always-legal-and-the-menace-close-out-is-deleted),
+which said "events come after the commit … a re-point emits no second
+`EventBlock`" and left the other half of the re-point to its own issue.
+That issue is [#830](https://github.com/krakenhavoc/cmd_and_ctrl/issues/830),
+and this is its answer. Decision 13's own PR has not landed yet; this
+amendment is written against the per-pair `DeclareBlocker` that is
+still the only block verb, and Decision 13's bulk `DeclareBlockers`
+inherits it unchanged — the lock-in is where the events are emitted,
+whichever verb stages the pairings.
+
+### The bug
+
+The defender could re-point a blocker from attacker A to attacker B
+before the declaration was complete (the client's "Re-declare
+blocker", `contextMenu.logic.ts:794`). The first click had already
+emitted `EventBlock` naming A, so A's "becomes blocked" trigger was
+already harvested, and nothing withdrew it. A ended the declaration
+**unblocked** and its trigger still resolved: Cyberman Patrol's
+afflict 3 fired for an attacker nobody blocked, and Grazilaxx offered
+to bounce an unblocked creature.
+
+The per-attacker readers deduplicated by walking the event log back
+to the attacker's own `EventAttack` (`b18AttackerAlreadyBlocked`), so
+a withdrawn block also suppressed a later real one: block A with X,
+re-point X to B, then block A with Y, and Y's block was declined as
+"not the first".
+
+### Decision 19. Nothing is announced until the declaration is locked in
+
+CR 509.1 declares blockers as ONE turn-based action and CR 509.2a puts
+its triggers on the stack when the declaration is complete, before
+anyone receives priority. `DeclareBlocker` therefore **stages** the
+pairing on `Card.BlockingTarget` and emits nothing.
+`commitBlockDeclarationLocked` (`blockers.go`) is the single place the
+declaration is announced, and the single place block-declaration
+triggers are harvested from — through the ordinary event harvester,
+which is still keyed by event kind. There is no second harvester and
+no per-card special case.
+
+The lock-in runs at the first point play moves on inside the step:
+
+- `runStateChecksLocked`, which is the engine's "a player would
+  receive priority" boundary (a trick cast during the step, a
+  resolution), and
+- the two places the cursor can leave the step — `AdvanceStep` and
+  `PassPriority`'s wrap — both of which call `runStateChecksLocked`
+  themselves when a declaration is still staged, so the lock-in always
+  happens INSIDE `declare_blockers` and never a step late.
+
+`PassPriority`'s wrap locks in **before** choosing between advancing
+and resolving: if the declaration put anything on the stack or queued
+a trigger prompt, priority returns to the active player (CR 509.2a)
+and the step does not advance on that pass. `AdvanceStep` locks in
+above the #730 prompt gate, so an optional block trigger's yes/no
+holds the cursor rather than being walked past.
+
+**Alternative rejected: withdraw on re-point** (#830's option (b) —
+delete A's not-yet-resolved instances from `PendingTriggers` and the
+open prompts when a blocker leaves it). It keeps the per-click
+announcement and then unpicks it, which means every trigger sink
+(pending queue, prompts, the stack, the log) needs a retraction path,
+and a trigger that had already resolved cannot be retracted at all. A
+declaration that is never announced until it is final has nothing to
+retract.
+
+### Decision 20. Two events: one per blocker, one per blocked attacker
+
+The old single `EventBlock` had to serve both readings, which is why
+every "becomes blocked" card carried a log-walking dedupe. The lock-in
+emits both, in one event batch:
+
+- **`EventBlock`**, one per (blocker, attacker) pair of the final
+  declaration. "Whenever this creature blocks" (CR 509.3a), "becomes
+  blocked by a creature", and the public game log's block entry.
+  Actor is the blocker's controller, CardID the blocker, Target the
+  attacker — unchanged fields, so Savvy Hunter and Brimaz read it
+  exactly as before.
+- **`EventBecomesBlocked`**, one per blocked attacker, however many
+  creatures block it (CR 506.4 — an attacking creature is blocked
+  once, at the moment the declaration is complete). Actor is the
+  defending player; Source, CardID and Target are all the attacker,
+  the way `EventBattleDefeated` names the battle three ways. Cyberman
+  Patrol (afflict, CR 702.131) and Grazilaxx watch this and need no
+  dedupe; `b18AttackerAlreadyBlocked` is deleted.
+
+Not logged: `EventBecomesBlocked` has no `protocol.LogEvent`
+projection, because the per-pair `EventBlock` entries already say who
+blocked what and a second line per attacker would only repeat them.
+
+**One batch.** Nothing in the lock-in opens an event batch, so the
+whole declaration carries one `Event.Batch` and a `OncePerBatch`
+ability collapses it — the same property `DeclareAttacker` relies on
+for Adeline (#854, ADR 0049's batch amendment).
+
+### Decision 21. The announcements are combat-scoped state
+
+`Game.announcedBlocks` (blocker → the attacker its `EventBlock` named)
+and `Game.announcedBecameBlocked` (attackers that have had their one
+`EventBecomesBlocked`) are what makes the commit idempotent and
+incremental: the sandbox lets the defender keep clicking after the
+lock-in, and a second blocker added to an already-blocked attacker
+announces its own block and no second "becomes blocked". Both are
+cleared by `clearCombatLocked`, alongside the `BlockingTarget` wipe
+they describe, and both are carried by `Clone` / `RestoreFrom` and the
+persisted snapshot — an undo that rewound the declaration but kept the
+announcements would swallow the re-done trigger, and the reverse would
+double-fire it.
+
+### What this fixes, and what it leaves
+
+Fixed: the attacker a blocker left never becomes blocked; a blocker
+re-pointed back to where it started is one declaration; a double block
+is one "becomes blocked" and one "blocks" per blocker; a later real
+block of an attacker is no longer suppressed by a withdrawn one.
+
+Narrowed but not closed, #388: the lock-in drains block triggers onto
+the stack inside `declare_blockers`, so under ordinary priority play
+afflict resolves before combat damage — which it did not before. A
+seat that clicks `advance_step` straight out of the step still walks
+past the trigger on the stack and takes the damage first. Cyberman
+Patrol's caveat now says exactly that.
+
+Unchanged: the attack side. `DeclareAttacker` announces per creature
+as it is declared and drains immediately, which is what Adeline and
+the rest of the attack triggers depend on; a re-pointed attacker's
+`EventAttack` keeps naming the defender it was first declared against.
+That is a stale FIELD on a trigger that is legitimately owed, not a
+trigger that should not exist, so it is a different fix and is not
+made here.

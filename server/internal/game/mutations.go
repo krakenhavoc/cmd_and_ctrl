@@ -2491,6 +2491,13 @@ func (g *Game) stateBasedActionsLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) runStateChecksLocked() {
+	// #830 / CR 509.2a: a player is about to receive priority, so the
+	// block declaration is complete. Lock it in first, so the
+	// "becomes blocked" and "blocks" triggers it produces are on
+	// PendingTriggers before this pass drains them — one harvest, off
+	// the final assignment. No-op when nothing is staged, which is
+	// every call outside the declare-blockers step.
+	g.commitBlockDeclarationLocked()
 	const maxIter = 32
 	for i := 0; i < maxIter; i++ {
 		fired := g.stateBasedActionsLocked()
@@ -4291,7 +4298,28 @@ func (g *Game) PassPriority() error {
 			return nil
 		}
 	}
-	// Wrapped (or only the active seat is alive). Two cases:
+	// Wrapped (or only the active seat is alive).
+	//
+	// #830 first: priority has passed all the way around, so the
+	// block declaration is complete (CR 509.1). Lock it in BEFORE the
+	// advance-or-resolve choice below, so its triggers reach the
+	// stack inside the declare-blockers step rather than a step late,
+	// after combat damage. If it put anything there, priority returns
+	// to the active player (CR 509.2a) and the table gets a window to
+	// respond before those triggers resolve — the step does not
+	// advance on this pass.
+	if g.blockDeclarationPendingLocked() {
+		g.runStateChecksLocked()
+		// A blocking choice counts as much as a stack item here: an
+		// optional block trigger (Grazilaxx) queues its yes/no rather
+		// than an item, and walking the cursor past an unanswered
+		// prompt is the thing #730 forbids.
+		if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
+			g.Turn.PriorityHolder = g.Turn.ActiveSeat
+			return nil
+		}
+	}
+	// Then the two ordinary cases:
 	//
 	// S13.1: if the stack has any items (spells in Game.Stack OR
 	// abilities in StackMeta), resolve the top one and reset
@@ -4637,23 +4665,18 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
 				return g.blockRefusedErrorLocked(attacker, blocker, r)
 			}
-			// S31 sub-PR 0: announce the declaration for the public
-			// game log, but only when the pairing is NEW. The sandbox
-			// lets a defender re-point a blocker at a different
-			// attacker; that is one decision being revised, not two
-			// blocks, and EventAttack draws the same line.
-			announce := blocker.BlockingTarget != attackerID
+			// #830: the verb STAGES the pairing and announces
+			// nothing. CR 509.1 declares blockers as one turn-based
+			// action, so the events — EventBlock per pair, one
+			// EventBecomesBlocked per blocked attacker — are emitted
+			// by commitBlockDeclarationLocked when the declaration is
+			// locked in, at the first priority boundary of the step.
+			// The sandbox lets a defender re-point a blocker at a
+			// different attacker before then; that is one decision
+			// being revised, and the attacker the blocker left must
+			// never have become blocked at all.
 			blocker.BlockingTarget = attackerID
 			blocker.AttackingTarget = uuid.Nil
-			if announce {
-				g.EmitEvent(Event{
-					Kind:   EventBlock,
-					Actor:  blocker.Controller,
-					Source: blocker.InstanceID,
-					CardID: blocker.InstanceID,
-					Target: attackerID,
-				})
-			}
 			return nil
 		}
 	}
@@ -5150,6 +5173,9 @@ func (g *Game) clearCombatLocked() {
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
 	}
+	// #830: the block declaration's announcements describe the
+	// declaration being wiped here, so they go with it.
+	g.clearBlockAnnouncementsLocked()
 }
 
 // Concede marks the given player as eliminated. If exactly one
