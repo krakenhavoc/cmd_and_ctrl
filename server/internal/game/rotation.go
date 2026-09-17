@@ -61,10 +61,12 @@ func (g *Game) sweepTurnEndLocked() {
 	//
 	// S18 sub-PR 3: MarkedLethalByDeathtouch is the companion flag
 	// (CR 702.2c) set by combat damage from deathtouch sources. Same
-	// per-turn scope as DamageMarked, cleared at the same site.
+	// per-turn scope as DamageMarked, cleared at the same site — and,
+	// since #816, by the same helper the battlefield exit uses, so the
+	// two places that clear marked damage cannot disagree about what
+	// clearing means.
 	for i := range g.Battlefield.Cards {
-		g.Battlefield.Cards[i].DamageMarked = 0
-		g.Battlefield.Cards[i].MarkedLethalByDeathtouch = false
+		clearBattlefieldDamage(&g.Battlefield.Cards[i])
 	}
 	// S17 sub-PR 5: "until end of turn" replacement effects (Fog's
 	// prevent-all-combat-damage, future prevention shields with a

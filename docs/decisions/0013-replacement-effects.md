@@ -405,6 +405,22 @@ through. `clearBattlefieldDamageLocked` (permanent_damage.go, next to
 the marking it undoes) is the named verb, and its doc comment is the
 short list of who may call it.
 
+*Extended, 2026-09-17 (#816):* "the one function that actually performs
+the move" was only true of the DESTROY route. Every other exit —
+exile, bounce, tuck, mill, the sandbox move — reaches the battlefield
+through `MoveCard`'s CR 400.7 cleanup instead, and cleared nothing, so
+an exiled or bounced permanent carried its damage into the new zone,
+showed it there, and brought it back onto the battlefield when the card
+was replayed. (Not every return: the exile → battlefield helper scrubs
+the card as it mints the new instance ID, so a blink was fine and a
+recast was not — per-path coverage, which is the thing being ended.)
+The clear now lives
+in that ONE exit cleanup (`clearBattlefieldDamage`, card-level, called
+from `MoveCard` and from the CR 514.2 sweep), which is still the landed
+outcome and is now the landed outcome of every route; it takes the
+CR 702.2c deathtouch flag with it. Nothing above changes: a replaced
+destruction still never reaches a move, so it still keeps its damage.
+
 Consequences, checked caller by caller:
 
 | Caller | Before | After |
