@@ -221,9 +221,10 @@ type ReplacementEvent struct {
 
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
-	// down in exile, this was a mill, this was a counterspell) that a
-	// paused move has to carry across the pause so the resume can
-	// finish it exactly as the mover asked. Set by
+	// down in exile, this was a mill, this was a counterspell, this
+	// was a discard) that a paused move has to carry across the pause
+	// so the resume can finish it exactly as the mover asked — plus,
+	// since #853, the rest of the effect that asked for it. Set by
 	// routeCardToZoneLocked and read by executeZoneRouteLocked; a
 	// non-nil value is what makes a RepEventMove resumable on the
 	// EXIT side, the way entryResumable does on the entry side.
@@ -309,12 +310,15 @@ type ReplacementEvent struct {
 	// returns, because the caller has no resume and no way to be
 	// rewound once it has.
 	//
-	// One thing sets it today: paying life as a cost (CR 118.3).
-	// CR 601.2h pays a spell's costs as one indivisible step of
-	// casting it and CR 601.2 rewinds the announcement if they cannot
-	// all be paid, so a CR 616 ordering prompt in the middle leaves a
-	// spell on the stack with its cost half paid. See
-	// payLifeAsCostLocked in life_tail.go for the full argument.
+	// Two things set it today, and they are the two halves of one cost
+	// line: paying life as a cost (CR 118.3, payLifeAsCostLocked in
+	// life_tail.go, which carries the full argument) and discarding a
+	// card as a cost (CR 701.8a, discard.go, which sets it through
+	// zoneRoute.MustSettleNow). CR 601.2h pays a spell's costs as one
+	// indivisible step of casting it and CR 601.2 rewinds the
+	// announcement if they cannot all be paid, so a CR 616 ordering
+	// prompt — or a CR 903.9 "may" — in the middle leaves a spell on
+	// the stack with its cost half paid.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
 	// and any CR 614.10 "may" on the event: the apply-loop applies the

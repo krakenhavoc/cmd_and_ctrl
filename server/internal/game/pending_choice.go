@@ -1456,6 +1456,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if ev.Kind == RepEventDamage {
 		return g.runDamageTailLocked(ev, 0)
 	}
+	// #853: and the same for a cancelled EXIT that carries a route.
+	// The card stays where it is, but a multi-card discard sequenced
+	// through the route's continuation has to be told, or the rest of
+	// the batch — and the "then draw two" behind it — never happens.
+	if ev.Kind == RepEventMove {
+		return g.runRouteTailLocked(ev.zoneRoute)
+	}
 	if ev.Kind != RepEventStepTransition {
 		return nil
 	}

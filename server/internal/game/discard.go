@@ -24,9 +24,10 @@ import "github.com/google/uuid"
 // discard-shaped change to land, and #853 was exactly that change —
 // no discard opened the CR 614 replacement window, so a discarded
 // commander was never offered the command zone (CR 903.9). Folding
-// the loops together first meant the window had one place to go.
-// Madness (#657) and a replaceable discard with a cause (#650) are
-// the next two, and they land here too.
+// the loops together first meant the window had one place to go, and
+// #853 is the four lines of zoneRoute below. Madness (#657) and a
+// replaceable discard that knows its cause (#650) are the next two,
+// and they land here too.
 //
 // What the callers keep is what is genuinely theirs: WHICH cards
 // (picked, randomly chosen, or named by the client) and what happens
@@ -85,6 +86,48 @@ type discardOptions struct {
 // you discard a card" trigger and every graveyard payoff in the
 // catalog watches.
 //
+// THROUGH THE EXIT PRIMITIVE (#853). Each card takes
+// routeCardToZoneLocked, the one move that opens the CR 614
+// replacement window, exactly as destroy, exile, mill, counter and
+// bounce have since #539/#851. Before this every discard was a raw
+// MoveCard, so a discarded commander was the one way out of a hand
+// that never offered CR 903.9's "put it into the command zone
+// instead" — and a discard was the one exit a replacement effect could
+// not see at all.
+//
+// SO A DISCARD CAN PAUSE, which is the whole reason this function is
+// shaped the way it is. The card whose owner is being asked about the
+// command zone has NOT moved yet, and the answer arrives an action
+// later. The cards after it in the batch therefore cannot be discarded
+// on the next line: they are the route's continuation, and each one
+// starts the next from the point the previous one lands. The batch is
+// a value carried forward — the `cards` slice, one card shorter each
+// time — rather than a shared accumulator, which is what makes an undo
+// across the prompt land where a clean run would. Same idiom as
+// LoseLifeEachThenForEffect.
+//
+// Two consequences worth stating, because they are what a caller sees:
+//
+//   - opts.then runs when the WHOLE batch has landed, not when this
+//     function returns. A Mind Rot on a commander returns nil with one
+//     card discarded, one prompt open and "then draw a card" still
+//     owed.
+//   - The discards of one batch are sequential in the log even though
+//     CR 701.8a makes them simultaneous. They already were; what is
+//     new is that a paused one puts the rest on the far side of a
+//     prompt. Mill made the opposite call (#529) because a paused mill
+//     must not re-read the top of the library; a discard reads a list
+//     that was fixed before the first card moved, so sequencing costs
+//     it nothing and buys the honest "then".
+//
+// A COST MAY NOT PAUSE. CR 601.2h pays a spell's costs as one
+// indivisible step and CR 602.2b says the same for an activated
+// ability, so discardCauseCost sets zoneRoute.MustSettleNow: the
+// window still runs — a discard replacement would still see it — but
+// it settles without asking, and CR 903.9 being a "may" means a
+// commander pitched to a cost goes to the graveyard. The argument, and
+// the other half of the same cost line, is payLifeAsCostLocked.
+//
 // A card that is no longer in the hand is skipped rather than
 // erroring: the answer paths re-check the live zone before they
 // dequeue, so an answer that got here was legal when it arrived, and
@@ -94,22 +137,32 @@ type discardOptions struct {
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
 	p := g.playerByIDLocked(playerID)
-	for _, id := range cards {
-		if p == nil || !p.Hand.Contains(id) {
+	for len(cards) > 0 {
+		next, rest := cards[0], cards[1:]
+		if p == nil || !p.Hand.Contains(next) {
+			cards = rest
 			continue
 		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			Source:  opts.source,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
+		// Paused or not, the rest of the batch belongs to the route's
+		// continuation from here: it runs inline the moment this card
+		// lands, or from the CR 903.9 resume when its owner answers.
+		_, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID: next,
+			Dst:    ZoneGraveyard,
+			// The discarding player's graveyard, named rather than
+			// inferred: CR 701.8a moves the card to the hand owner's
+			// graveyard, and every hand in this engine holds only its
+			// owner's cards.
+			DstOwner:      playerID,
+			Actor:         playerID,
+			Discard:       true,
+			Source:        opts.source,
+			MustSettleNow: opts.cause == discardCauseCost,
+			then: func(g *Game) error {
+				return g.discardCardsLocked(playerID, rest, opts)
+			},
 		})
+		return err
 	}
 	if opts.then == nil {
 		return nil
