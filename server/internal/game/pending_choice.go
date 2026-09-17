@@ -944,6 +944,47 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 	return chooser
 }
 
+// offerOptionalReplacementLocked handles an applicable CR 614.10
+// "may" replacement. Returns true when the yes/no prompt was queued
+// and the caller must stop where it is — errReplacementPending from
+// the apply-loop, a bare nil from the chosen-order resume — which is
+// the pause-and-bail contract offerCopyChoiceLocked and
+// offerEntryLifePaymentLocked already have.
+//
+// Returns false — the "may" is DECLINED, and marked applied so the
+// apply-loop does not gather it a second time (CR 614.10: the
+// decision is once per event) — in the two cases where there is no
+// question to ask:
+//
+//   - the chooser has left the game, or cannot be identified. The
+//     commander of an eliminated player going to the graveyard rather
+//     than the command zone changes nothing for anyone.
+//   - the event has nothing to resume it (#359, see
+//     optionalReplacementResumableLocked). Pausing a battlefield entry
+//     that cannot be finished afterwards strands the card in its old
+//     zone; declining is weaker than printed and never stronger, the
+//     posture #268 chose for the shockland's payment and #272
+//     reaffirmed.
+//
+// It is a shared helper rather than two inline copies because the
+// multi-effect order path had NO copy (#847): applyReplacementsLocked
+// asked the question for a "may" that was the only applicable effect,
+// and ResolveReplacementOrder fired the same "may" blind when a second
+// effect had put it in a CR 616 ordering prompt — answering it in the
+// direction that favours it, which is the bug the CopySelector branch
+// beside it already existed to avoid.
+//
+// Caller must hold g.mu.
+func (g *Game) offerOptionalReplacementLocked(ev *ReplacementEvent, chosen activeReplacement) bool {
+	if !g.optionalReplacementResumableLocked(ev) ||
+		g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
+		g.markReplacementAppliedLocked(ev, chosen.id)
+		return false
+	}
+	g.queueOptionalReplacementPromptLocked(ev, chosen)
+	return true
+}
+
 // ResolveOptionalReplacement processes a resolve_choice action
 // for a PendingChoiceOptionalReplacement entry. `apply` is the
 // owner's yes/no decision: true → fire the stashed Replace; false
@@ -1209,6 +1250,22 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// the chosen order are still unapplied, so the apply-loop
 			// re-entry after the answer picks them up.
 			if g.offerEntryLifePaymentLocked(ev, chosen) {
+				return nil
+			}
+			continue
+		}
+		if chosen.effect.Optional {
+			// #847: and a CR 614.10 "may" is the third of them. This
+			// branch was missing, so a "may" ordered alongside any
+			// other effect fired without ever being offered — the
+			// engine said yes on its controller's behalf, which is
+			// precisely what the two branches above exist to prevent.
+			// Same pause-and-bail, same one resume: the chain
+			// continues from this effect when
+			// ResolveOptionalReplacement re-enters the apply-loop,
+			// with the effects later in the chosen order still
+			// unapplied and therefore still gatherable.
+			if g.offerOptionalReplacementLocked(ev, chosen) {
 				return nil
 			}
 			continue

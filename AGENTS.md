@@ -797,6 +797,18 @@ does this yet; if yours is the first, say so on the PR rather than
 shipping it quietly — the fix is a declared flag in the `PureCancel`
 mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
 
+**A `may` is always offered, however many effects share the window.**
+`Optional: true` (CR 614.10) queues a yes/no prompt for the effect's
+controller before `Replace` runs, and that is now true on the
+multi-effect paths too: an effect ordered alongside others by a CR 616
+prompt pauses for its own question when the chain reaches it
+([#847](https://github.com/krakenhavoc/cmd_and_ctrl/issues/847)), and
+a window nobody is left to order — or one that cannot pause at all,
+like a cost — skips it un-applied rather than firing it. So don't write
+a `Replace` that assumes it only ever runs after a "yes"; it never runs
+otherwise, but it may never run at all. See
+[ADR 0013 §5h](docs/decisions/0013-replacement-effects.md).
+
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.

@@ -695,8 +695,17 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// Nobody is left to answer the prompt: the gathered
 			// order stands (an eliminated player's prompt would
 			// block the table forever; S31 fuzzer finding).
+			//
+			// #847: through skipQuestionsLocked, exactly as the
+			// mustSettleNow branch below does. An effect that asks its
+			// own question cannot ride an order nobody chose either —
+			// firing a CR 614.10 "may" or a copy selector here would
+			// answer it blind, in the direction that favours it, on
+			// an event whose affected player is no longer at the
+			// table. Skipped un-applied is the weaker branch, which is
+			// the posture every other un-prompted path takes.
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				g.applyFirstGatheredLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			// #793: the event cannot pause — a life payment is a COST
@@ -749,33 +758,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no). A chooser who
-			// has left the game gets the "no" inline: the commander
-			// of an eliminated player going to the graveyard rather
-			// than the command zone changes nothing for anyone.
-			//
-			// #359: so does an event with nothing to resume it. This
-			// branch used to queue unconditionally while the
-			// EntryLifeCost branch below has checked entryResumable
-			// since #268, so an Optional self-replacement on a
-			// permanent entering by an unresumable route would pause
-			// with no way to finish — the card stranded in its old
-			// zone and the prompt answerable to no effect. Taking the
-			// un-applied branch is weaker than printed and never
-			// stranded, which is the posture #268 chose and #272
-			// reaffirmed. It is also what blocked the six reveal-
-			// lands ("as this enters, you may reveal a land from your
-			// hand") from shipping.
-			if !g.optionalReplacementResumableLocked(ev) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
+			// (yes) or marks applied and skips (no). The two cases
+			// that decline it inline instead — a chooser who has left
+			// the game, an event with nothing to resume it (#359) —
+			// live in the helper with the prompt, because
+			// ResolveReplacementOrder's chosen-order loop needs the
+			// same three answers and used to have none of them
+			// (#847). A queued prompt bails; a decline falls through
+			// to the next iteration.
+			if g.offerOptionalReplacementLocked(ev, chosen) {
+				return ev, errReplacementPending
 			}
-			if g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
-			}
-			g.queueOptionalReplacementPromptLocked(ev, chosen)
-			return ev, errReplacementPending
+			continue
 		}
 		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
@@ -924,10 +918,12 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 // pay-life, a copy selector — marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
 //
-// Only an event that cannot pause (mustSettleNow) uses it: on every
-// other event the question is asked. Skipping is the weaker branch of
-// a "may" and the un-copied branch of a selector, which is what "never
-// stronger than printed" means here.
+// Two windows use it, and both are windows in which the question
+// could not be put to anybody anyway: an event that cannot pause
+// (mustSettleNow), and an ordering window whose affected player has
+// left the game (#847). Everywhere else the question is asked.
+// Skipping is the weaker branch of a "may" and the un-copied branch of
+// a selector, which is what "never stronger than printed" means here.
 //
 // Caller must hold g.mu, and must have allocated the once-per-event
 // map entry for ev.ID.
