@@ -104,6 +104,14 @@ func newAristocratsThemeGame(t *testing.T) *game.Game {
 // a decklist bug rather than an engine one.
 func tutorToHand(t *testing.T, g *game.Game, p *game.Player, name string) uuid.UUID {
 	t.Helper()
+	// A copy the seeded shuffle already dealt or drew into hand will
+	// do: the helper's job is "have this card in hand", and pinning a
+	// library order to the RNG derivation broke once already (#744).
+	for _, c := range p.Hand.Cards {
+		if c.Name == name {
+			return c.InstanceID
+		}
+	}
 	for _, c := range p.Library.Cards {
 		if c.Name != name {
 			continue

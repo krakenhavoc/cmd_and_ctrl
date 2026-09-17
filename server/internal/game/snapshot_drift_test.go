@@ -101,13 +101,17 @@ var gameFields = plan(
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
 	"lastKnownBattlefield", carried, "",
-	"rngState", carried, "marshalled via rngSnapshot",
+	// ADR 0054: the key and the per-turn stream counters ARE the
+	// randomness. Clone copies them (undo rewinds) and rngSnapshot
+	// carries them (a restore continues every stream).
+	"rngKey", carried, "rngSnapshot.Key",
+	"rngCounters", carried, "rngSnapshot.Counters",
+	"rngTurn", carried, "rngSnapshot.Turn",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
-	"rng", rebuilt, "rebuilt by wrapping the restored rngState",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",

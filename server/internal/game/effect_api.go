@@ -320,28 +320,35 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	return nil
 }
 
-// DiscardRandomForEffect discards n cards from playerID's hand at
-// random order (top of the stack — hand isn't visibly ordered to
-// opponents, so the RNG choice isn't observable). Emits one
-// EventDiscardCard per card and no EventZoneMove. The move is a direct
-// MoveCard, so the discard bypasses the CR 614 window (#650). If the
-// hand has fewer than n cards, discards all of them.
+// DiscardRandomForEffect discards n cards from playerID's hand,
+// chosen at random. Emits one EventDiscardCard per card and no
+// EventZoneMove. The move is a direct MoveCard, so the discard
+// bypasses the CR 614 window (#650). If the hand has fewer than n
+// cards, discards all of them.
+//
+// The cards are one pick on the discarding player's "pick" stream
+// (ADR 0054 Decision 5), so an undone random discard redoes with the
+// same cards. There is no "first card when the game has no RNG"
+// branch any more: every game draws from a key (rng.go).
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	for i := 0; i < n; i++ {
-		if p.Hand.Size() == 0 {
-			return nil
+	if n <= 0 || p.Hand.Size() == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(p.Hand.Cards))
+	for i, c := range p.Hand.Cards {
+		ids[i] = c.InstanceID
+	}
+	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
+		if !p.Hand.Contains(cardID) {
+			// Nothing between two discards moves hand cards today;
+			// if something ever does, a card that already left is
+			// not discarded twice.
+			continue
 		}
-		// Pop a random index. The RNG is the captured per-game source
-		// so deterministic tests stay deterministic.
-		idx := 0
-		if p.Hand.Size() > 1 && g.rng != nil {
-			idx = g.rng.IntN(p.Hand.Size())
-		}
-		cardID := p.Hand.Cards[idx].InstanceID
 		if _, err := MoveCard(p.Hand, p.Graveyard, cardID); err != nil {
 			return err
 		}
@@ -1520,7 +1527,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		Amount: len(found),
 	})
 	if spec.Shuffle {
-		p.Library.Shuffle(g.rng)
+		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// The shuffle is what un-knows the library again: whatever
 		// the searcher saw while looking, they no longer know where
 		// any of it is.
@@ -1884,7 +1891,7 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	if p == nil || p.Library == nil {
 		return nil
 	}
-	p.Library.Shuffle(g.rng)
+	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 	clearKnownInZoneLocked(p.Library)
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Label: "shuffle"})
 	return nil

@@ -1,8 +1,6 @@
 package game
 
 import (
-	"math/rand/v2"
-
 	"github.com/google/uuid"
 )
 
@@ -24,10 +22,10 @@ import (
 //     firing while its own spell is still on the stack.
 //
 //  2. **Reproducible randomness.** "In a random order" has to come
-//     out the same on replay, so the shuffle draws from g.rng — the
-//     same source Start, Mulligan and ShuffleLibrary use, seeded from
-//     a persisted *rand.PCG. Reaching for math/rand directly would
-//     desynchronise every snapshot after the cascade.
+//     out the same after an undo or a restore, so the order draws from
+//     the game's keyed RNG (rng.go, ADR 0054) on the owner's
+//     "random_order" stream. Reaching for math/rand directly would
+//     make it neither rewindable nor persistable.
 //
 //  3. **A yes/no during a resolution.** "You MAY cast it" is a
 //     decision taken while the trigger is resolving, which is the
@@ -232,11 +230,9 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 // bottomInRandomOrderLocked moves every card in `ids` from exile to
 // the bottom of `p`'s library in a random order (CR 702.85a).
 //
-// Randomness draws from g.rng, the game's own seeded source, so a
-// replayed game bottoms them in the same order the live one did. A
-// nil rng falls back to math/rand/v2's global source, matching
-// Zone.Shuffle's contract for the same reason (tests that never call
-// Start).
+// The order is one draw on p's "random_order" stream (rng.go, ADR
+// 0054 Decision 8), so an undone cascade bottoms the cards in the same
+// order when it is redone, and a restored game continues the stream.
 //
 // Cards are stripped of their knower set on the way in: they were
 // face up in exile, and a library is a hidden zone. Leaving KnownBy
@@ -250,11 +246,7 @@ func (g *Game) bottomInRandomOrderLocked(p *Player, ids []uuid.UUID) {
 	}
 	order := append([]uuid.UUID(nil), ids...)
 	swap := func(i, j int) { order[i], order[j] = order[j], order[i] }
-	if g.rng != nil {
-		g.rng.Shuffle(len(order), swap)
-	} else {
-		rand.Shuffle(len(order), swap)
-	}
+	g.randForLocked(rngStream{kind: rngStreamRandomOrder, player: p.ID}).Shuffle(len(order), swap)
 	for _, id := range order {
 		c, err := g.Exile.Remove(id)
 		if err != nil {
