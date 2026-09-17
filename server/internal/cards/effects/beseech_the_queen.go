@@ -21,12 +21,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # Declared sandbox simplification: THE MONOCOLOUR HYBRID COST
 //
 // {2/B} means "two generic OR one black", three times over, and the
-// card's mana value is 6 regardless. Whether the cost parser handles
-// monocolour hybrid is a casting-cost question, not an effect one —
-// this file describes what happens on resolution, and that part is
-// complete. If the printed cost does not parse, the engine's existing
-// cost-warning path handles it the same way it handles every other
-// unparsed cost; no behaviour is special-cased here.
+// card's mana value is 6 regardless (CR 202.3f — game.ParsedCost's
+// ManaValue counts each {2/B} as its larger component, so a Beseech
+// in the library is only findable with six lands). How the cost is
+// PAID is a casting-cost question, not an effect one: the engine's
+// payment path pays each {2/B} with its black half. This file
+// describes what happens on resolution, and that part is complete.
 func init() {
 	Register(Spec{
 		OracleID: "cf94cafc-527e-4b27-8a28-7807435aaccf",
@@ -41,7 +41,7 @@ func init() {
 			}
 			return SearchLibrary{
 				Player:    controller,
-				Predicate: func(c game.Card) bool { return manaValueOf(c) <= lands },
+				Predicate: func(c game.Card) bool { return c.ManaValue() <= lands },
 				Dest:      game.ZoneHand,
 				Limit:     1,
 				Reveal:    true,

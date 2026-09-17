@@ -240,7 +240,7 @@ func b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(oracleID st
 	return TargetCardInGraveyard("up to one target permanent card with mana value less than or equal to Carmen's power from your graveyard",
 		YouOwn(), Permanent(),
 		func(g *game.Game, caster uuid.UUID, c game.Card) bool {
-			return manaValueOf(c) <= b26GreatestPowerOfOracleYouControl(g, caster, oracleID)
+			return c.ManaValue() <= b26GreatestPowerOfOracleYouControl(g, caster, oracleID)
 		},
 	).WithCount(0, 1)
 }
@@ -313,7 +313,7 @@ func b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard(ctx *Context, player
 	}
 	var ids []uuid.UUID
 	for _, c := range p.Graveyard.Cards {
-		if c.IsCreature() && manaValueOf(c) <= n {
+		if c.IsCreature() && c.ManaValue() <= n {
 			ids = append(ids, c.InstanceID)
 		}
 	}
