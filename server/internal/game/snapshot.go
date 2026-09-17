@@ -322,6 +322,7 @@ type stackItemSnapshot struct {
 	SourceCardID uuid.UUID         `json:"sourceCardId"`
 	Label        string            `json:"label,omitempty"`
 	Targets      []TargetRef       `json:"targets,omitempty"`
+	Payload      []TargetRef       `json:"payload,omitempty"`
 	Modes        []int             `json:"modes,omitempty"`
 	XValue       int               `json:"xValue"`
 	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
@@ -821,6 +822,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		SourceCardID:  s.SourceCardID,
 		Label:         s.Label,
 		Targets:       copyTargetRefs(s.Targets),
+		Payload:       copyTargetRefs(s.Payload),
 		Modes:         copyInts(s.Modes),
 		XValue:        s.XValue,
 		Distribution:  copyIntMap(s.Distribution),
@@ -1310,6 +1312,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		SourceCardID: s.SourceCardID,
 		Label:        s.Label,
 		Targets:      copyTargetRefs(s.Targets),
+		Payload:      copyTargetRefs(s.Payload),
 		Modes:        copyInts(s.Modes),
 		XValue:       s.XValue,
 		Distribution: copyIntMap(s.Distribution),

@@ -413,6 +413,47 @@ func TestB06RiveteersOverlookSacrificesFetchesTappedAndGainsOne(t *testing.T) {
 	}
 }
 
+// TestB06RiveteersOverlookFetchesThroughAReflexiveTrigger is the
+// #636 half: the sacrifice and the search are TWO stack items with a
+// response window between them (CR 603.12), not one.
+func TestB06RiveteersOverlookFetchesThroughAReflexiveTrigger(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedSearchLibrary(me,
+		searchTestLand("Swamp", "Basic Land — Swamp"),
+		searchTestLand("Forest", "Basic Land — Forest"),
+	)
+	overlook := playLandFromHand(t, g, "Riveteers Overlook", b06RiveteersOverlookOracle)
+	// One trip around the table resolves the entry trigger.
+	for i := 0; i < len(g.Seats); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !me.Graveyard.Contains(overlook) {
+		t.Fatal("the entry trigger should have sacrificed the Overlook")
+	}
+	// The reflexive trigger is on the stack, from a source that is
+	// already in a graveyard, and nothing has been searched yet.
+	reflexive := triggerOnStack(g, overlook)
+	if reflexive == nil {
+		t.Fatal(`"when you do" should be a second trigger on the stack`)
+	}
+	if reflexive.Controller != me.ID {
+		t.Errorf("reflexive trigger controlled by %v, want the sacrificing player", reflexive.Controller)
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Error("the search happened inside the entry trigger's resolution")
+	}
+	passPriorityAroundTable(t, g)
+	if searchChoiceFor(g, me.ID) == nil {
+		t.Error("the reflexive trigger should search when it resolves")
+	}
+	if spec, _ := Lookup(b06RiveteersOverlookOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the reflexive trigger (#636) closed the card's only gap")
+	}
+}
+
 func TestB06RiveteersOverlookDoesNothingIfItLeftBeforeResolving(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

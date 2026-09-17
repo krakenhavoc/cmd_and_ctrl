@@ -193,12 +193,12 @@ func b08KrosanVergeFetch(g *game.Game, item *game.StackItem) error {
 //	 library for a basic <A>, <B>, or <C> card, put it onto the
 //	 battlefield tapped, then shuffle and you gain 1 life."
 //
-// Same posture as the Overlook, with the same declared gap: the
-// printed card is a trigger with a REFLEXIVE trigger inside it, two
-// stack items with a response window between them, and here it is
-// one item — sacrifice, search, gain. "When you do" is honoured: a
-// land bounced in response cannot be sacrificed, so nothing is
-// searched.
+// Two stack items as printed (#636): the entry trigger sacrifices the
+// land, and "when you do" is a CR 603.12 reflexive trigger carrying
+// the search and the life, with a response window between them. The
+// condition is honoured in both directions — a land bounced in
+// response cannot be sacrificed, so no reflexive trigger is created
+// and nothing is searched.
 func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 	pred := func(c game.Card) bool {
 		if !IsBasicLand(c) {
@@ -222,38 +222,58 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The sacrifice and the search happen as one ability, so there is no separate chance to respond between them."},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, name+" — sacrifice it, fetch a basic tapped, gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
-							return nil
-						}
-						if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-							return err
-						}
-						source, controller := item.SourceCardID, item.Controller
-						return SearchLibrary{
-							Player:        controller,
-							Predicate:     pred,
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Reveal:        true,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Reason:        reason,
-							Then: func(g *game.Game, _ []uuid.UUID) error {
-								return g.ChangePlayerLifeForEffect(source, controller, 1)
-							},
-						}.Apply(ctx)
-					})
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, b06SelfETB, name+" — sacrifice it",
+				b08OverlookSacrifice(name+" — fetch a basic tapped, gain 1 life", reason, pred)),
+		},
+	}
+}
+
+// b08OverlookSacrifice is the Overlook family's entry-trigger body:
+// sacrifice the land, and — only if that happened — create the
+// reflexive trigger that does the searching.
+//
+// The land has to still be on the battlefield: "when you do" is
+// conditional on the doing, so a land bounced in response to the
+// entry trigger sacrifices nothing and fetches nothing.
+//
+// `pred` and the two strings are plain data captured by value, which
+// is the whole capture — no *Card, no *Game, so the reflexive
+// trigger's Effect survives Clone / undo like any other.
+func b08OverlookSacrifice(fetchLabel, reason string, pred func(game.Card) bool) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+			return nil
+		}
+		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+			return err
+		}
+		return WhenYouDo(fetchLabel, b08OverlookFetch(reason, pred)).Apply(ctx)
+	}
+}
+
+// b08OverlookFetch is the reflexive half: search, put it onto the
+// battlefield tapped, shuffle, gain 1 life. The land that made this
+// trigger is in a graveyard by now, which is fine — the life gain is
+// attributed to it by ID and nothing reads the permanent.
+func b08OverlookFetch(reason string, pred func(game.Card) bool) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		source, controller := item.SourceCardID, item.Controller
+		return SearchLibrary{
+			Player:        controller,
+			Predicate:     pred,
+			Dest:          game.ZoneBattlefield,
+			Limit:         1,
+			Reveal:        true,
+			Shuffle:       true,
+			TappedOnEntry: true,
+			Reason:        reason,
+			Then: func(g *game.Game, _ []uuid.UUID) error {
+				return g.ChangePlayerLifeForEffect(source, controller, 1)
 			},
-		}},
+		}.Apply(NewContext(g, item))
 	}
 }
 

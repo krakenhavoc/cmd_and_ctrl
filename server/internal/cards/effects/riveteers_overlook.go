@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Riveteers Overlook — Land (EDHREC rank 714):
 //
@@ -17,55 +13,31 @@ import (
 // pays a life back. It is a land drop that becomes a basic of your
 // choice, tapped, plus a life.
 //
-// Sandbox simplification: the printed card is a trigger ("when this
-// enters, sacrifice it") with a REFLEXIVE trigger inside it ("when
-// you do, search…"), two stack items with a response window between
-// them. Here it is one item: sacrifice, then search, then gain — the
-// search cannot be responded to separately from the sacrifice. Weaker
-// than printed only for an opponent who wanted that second window.
-// The search is the S22 chooser, so the basic is the player's pick.
+// Two stack items, as printed (#636). The entry trigger sacrifices
+// the land; "when you do" is a CR 603.12 reflexive trigger that
+// carries the search and the life, so the table gets a response
+// window between the sacrifice and the fetch. The condition is real
+// in both directions: an Overlook bounced in response to the entry
+// trigger is not on the battlefield to be sacrificed, so no reflexive
+// trigger is created and nothing is searched.
 //
-// "When you do" is still honoured: if the Overlook is no longer on
-// the battlefield when the trigger resolves (bounced in response),
-// it cannot be sacrificed, so the reflexive half never happens and
-// nothing is searched — as printed.
+// The whole card is b08OverlookSacrifice, the shape four more New
+// Capenna lands print; this one keeps its own spec only because it
+// names its three basics in its labels.
 func init() {
 	Register(Spec{
 		OracleID:     "5548ff43-e5f6-4a63-8562-a2b1de06d6f5",
 		Name:         "Riveteers Overlook",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The sacrifice and the search happen as one ability, so there is no separate chance to respond between them."},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
-			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				return game.NewTriggeredItem(source, "Riveteers Overlook — sacrifice it, fetch a basic Swamp, Mountain, or Forest tapped, gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
-							return nil
-						}
-						if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-							return err
-						}
-						source, controller := item.SourceCardID, item.Controller
-						return SearchLibrary{
-							Player: controller,
-							Predicate: func(c game.Card) bool {
-								return IsBasicLand(c) && (c.HasSubtype("Swamp") || c.HasSubtype("Mountain") || c.HasSubtype("Forest"))
-							},
-							Dest:          game.ZoneBattlefield,
-							Limit:         1,
-							Reveal:        true,
-							Shuffle:       true,
-							TappedOnEntry: true,
-							Reason:        "Riveteers Overlook — a basic Swamp, Mountain, or Forest",
-							Then: func(g *game.Game, _ []uuid.UUID) error {
-								return g.ChangePlayerLifeForEffect(source, controller, 1)
-							},
-						}.Apply(ctx)
-					})
-			},
-		}},
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			On(game.EventETB, b06SelfETB, "Riveteers Overlook — sacrifice it",
+				b08OverlookSacrifice(
+					"Riveteers Overlook — fetch a basic Swamp, Mountain, or Forest tapped, gain 1 life",
+					"Riveteers Overlook — a basic Swamp, Mountain, or Forest",
+					func(c game.Card) bool {
+						return IsBasicLand(c) && (c.HasSubtype("Swamp") || c.HasSubtype("Mountain") || c.HasSubtype("Forest"))
+					},
+				)),
+		},
 	})
 }
