@@ -232,7 +232,12 @@ func wardPayLifeOrCounter(g *game.Game, source, payer uuid.UUID, life int, targe
 			if p := g.PlayerByIDForEffect(payer); p == nil || p.Life < life {
 				return counter(g)
 			}
-			return g.ChangePlayerLifeForEffect(source, payer, -life)
+			// Ward's "unless that player pays N life" is a COST
+			// (CR 118.3), so it goes through the cost path: the
+			// CR 614 window runs (CR 119.4 — paying life is losing
+			// life) but settles in one step rather than leaving the
+			// countered-or-not question hanging on a CR 616 prompt.
+			return g.PayLifeForEffect(source, payer, life)
 		},
 		OnDecline: counter,
 	})

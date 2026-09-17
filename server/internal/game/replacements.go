@@ -227,6 +227,20 @@ type ReplacementEvent struct {
 	LifePlayer uuid.UUID
 	LifeDelta  int
 
+	// lifeTail is the life half's answer to damageTail: the rest of
+	// the effect that asked for this change, run with the amount that
+	// actually moved once the pipeline settles. Set by the *Then*
+	// entry points in effect_api.go and read only by
+	// runLifeTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// Added in #793, where "each opponent loses X life, you gain life
+	// equal to the life lost this way" read the life total back on the
+	// next line and saw nothing whenever the loss paused on a CR 616
+	// prompt. See life_tail.go.
+	lifeTail *lifeTail
+
 	// --- RepEventDamage fields ---
 
 	// DamageSource / DamageTarget / DamageAmount describe the
@@ -260,6 +274,28 @@ type ReplacementEvent struct {
 	StepTransitionStep Step
 	// StepTransitionSeat is the seat whose step is being entered.
 	StepTransitionSeat int
+
+	// mustSettleNow marks an event that CANNOT pause: the pipeline
+	// must reach a settled answer before applyReplacementsLocked
+	// returns, because the caller has no resume and no way to be
+	// rewound once it has.
+	//
+	// One thing sets it today: paying life as a cost (CR 118.3).
+	// CR 601.2h pays a spell's costs as one indivisible step of
+	// casting it and CR 601.2 rewinds the announcement if they cannot
+	// all be paid, so a CR 616 ordering prompt in the middle leaves a
+	// spell on the stack with its cost half paid. See
+	// payLifeAsCostLocked in life_tail.go for the full argument.
+	//
+	// What it costs the affected player is the CR 616 ordering choice
+	// and any CR 614.10 "may" on the event: the apply-loop applies the
+	// gathered order inline (the escape an eliminated chooser has
+	// always taken) and skips anything that would ask a question
+	// un-applied. Weaker than printed on the "may", arbitrary but
+	// deterministic on the ordering, and never a wedged table.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	mustSettleNow bool
 }
 
 // Cancel marks the event suppressed. Pipeline functions observing
@@ -577,11 +613,32 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 				g.applyGatheredInOrderLocked(ev, applicable)
 				continue
 			}
+			// #793: the event cannot pause — a life payment is a COST
+			// (CR 118.3) and CR 601.2h pays a spell's costs as one
+			// indivisible step. The gathered order stands, for the same
+			// reason it does above: a prompt nobody can answer here is
+			// a spell stuck on the stack with a half-paid cost.
+			if ev.mustSettleNow {
+				g.applyGatheredInOrderLocked(ev, g.skipQuestionsLocked(ev, applicable))
+				continue
+			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
 			return ev, errReplacementPending
 		}
 		// Exactly one applicable.
 		chosen := applicable[0]
+		if ev.mustSettleNow && asksItsOwnQuestion(chosen.effect) {
+			// #793, the single-effect half of the branch above: an
+			// effect that would ask its controller a question cannot
+			// fire on an event that cannot pause, and firing it blind
+			// would answer the question for them in the direction that
+			// favours it. Skipped un-applied — weaker than printed,
+			// never stronger, which is the posture
+			// optionalReplacementResumableLocked takes for an entry
+			// with nothing to resume it.
+			g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+			continue
+		}
 		if chosen.effect.CopySelector != nil {
 			// "You may have this enter as a copy of ..." — the
 			// picker and its decline-inline cases live in
@@ -760,6 +817,30 @@ func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []act
 			}
 		}
 	}
+}
+
+// skipQuestionsLocked drops the gathered replacements that would ask
+// their controller a question — a CR 614.10 "may", a shockland's
+// pay-life, a copy selector — marking each applied so the apply-loop
+// does not gather it again, and returns the rest in gather order.
+//
+// Only an event that cannot pause (mustSettleNow) uses it: on every
+// other event the question is asked. Skipping is the weaker branch of
+// a "may" and the un-copied branch of a selector, which is what "never
+// stronger than printed" means here.
+//
+// Caller must hold g.mu, and must have allocated the once-per-event
+// map entry for ev.ID.
+func (g *Game) skipQuestionsLocked(ev *ReplacementEvent, applicable []activeReplacement) []activeReplacement {
+	out := make([]activeReplacement, 0, len(applicable))
+	for _, a := range applicable {
+		if asksItsOwnQuestion(a.effect) {
+			g.replacementsAppliedThisEvent[ev.ID][a.id] = true
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 // optionalReplacementResumableLocked reports whether pausing on ev

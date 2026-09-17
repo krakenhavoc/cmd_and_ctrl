@@ -185,6 +185,21 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			// #793: the replacement resume frame holds the in-flight
+			// ReplacementEvent, and answering the prompt MUTATES it —
+			// Doubling Season doubles CounterDelta in place, Rhox
+			// Faithmender doubles LifeDelta, and a life change's
+			// continuation is consumed as it runs. Sharing that event
+			// with the undo snapshot makes an UNDONE answer
+			// unrepeatable: the replay doubles an already-doubled
+			// value and finds the continuation gone. Giving the
+			// snapshot its own copy is what makes "undo the answer,
+			// answer again" land where answering once would.
+			//
+			// The gathered `applicable` list stays shared, like every
+			// other server-only frame on a PendingChoice: a resume
+			// reads it and never writes it.
+			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -458,6 +473,40 @@ func cloneStackItem(s *StackItem) *StackItem {
 		}
 	}
 	return out
+}
+
+// cloneReplacementResume gives an undo snapshot its own copy of the
+// in-flight ReplacementEvent a paused CR 614 pipeline is sitting on.
+//
+// Only the EVENT is copied. The gathered `applicable` list is shared:
+// a resume reads it to decide what to fire and never writes it, and its
+// entries point at battlefield cards that the snapshot has its own
+// copies of anyway — the same shallow sharing every other server-only
+// resume frame on a PendingChoice already has.
+//
+// The event's own pointer fields (zoneRoute, damageTail, lifeTail) are
+// shared for the same reason: each is written once by the entry point
+// before the pipeline runs and only ever read afterwards. What the
+// resume DOES write is the event's scalar payload — the counter delta,
+// the life delta, Canceled — and the lifeTail POINTER, which a
+// continuation clears as it runs. Both live in the struct this copies,
+// so the snapshot keeps the values the prompt was queued with. #793.
+func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	if f.ev != nil {
+		ev := *f.ev
+		if len(f.ev.EntersWithCounters) > 0 {
+			ev.EntersWithCounters = make(map[string]int, len(f.ev.EntersWithCounters))
+			for k, v := range f.ev.EntersWithCounters {
+				ev.EntersWithCounters[k] = v
+			}
+		}
+		out.ev = &ev
+	}
+	return &out
 }
 
 func cloneVote(v *Vote) *Vote {

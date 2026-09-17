@@ -331,26 +331,153 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 //
 // A CR 616 ordering prompt (two life replacements on one event)
 // returns nil with the change not yet applied; it lands from the
-// resume when the affected player answers. A caller that re-reads the
-// player's life afterwards to find out how much actually moved
-// (Exsanguinate's "life lost this way") therefore sees zero for that
-// one event — weaker than printed, never stronger, and it takes two
-// life replacements on one table to reach.
+// resume when the affected player answers. This entry point is the
+// FIRE-AND-FORGET form and that is fine for it: a caller that only
+// says "gain 3" has nothing left to do. A caller that needs to know how
+// much actually moved — "you gain life equal to the life lost this
+// way" — must use ChangePlayerLifeThenForEffect or
+// LoseLifeEachThenForEffect instead, because reading the life total
+// back on the next line reads it before the prompt is answered (#793).
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
+	return g.ChangePlayerLifeThenForEffect(source, playerID, delta, nil)
+}
+
+// ChangePlayerLifeThenForEffect is a life change with a CONTINUATION:
+// `then` runs with the amount that actually moved, once the CR 614
+// window has settled it. Lock-free.
+//
+// This is the life sibling of the search, scry and confirm prompts'
+// `Then`, and card authors should learn it as one idiom: the engine
+// never hands a catalog effect a half-finished answer, it hands the
+// rest of the effect back to the engine. The shape is
+//
+//	g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
+//	        return g.ChangePlayerLifeForEffect(src, me, -applied)
+//	})
+//
+// for "target opponent loses X life; you gain life equal to the life
+// lost this way", and LoseLifeEachThenForEffect for the several-players
+// version of the same sentence.
+//
+// WHAT `then` RECEIVES. The post-replacement delta, signed the way the
+// event is: -3 for three life lost, +6 for a gain of three under Rhox
+// Faithmender. Zero means nothing moved — the change was replaced away
+// (CR 614.10, "your life total can't change") or the player has left
+// the game. `then` is told either way, because a caller adding up what
+// several players lost would otherwise wait forever on the one that
+// lost nothing.
+//
+// WHEN IT RUNS. Immediately, on the ordinary path, before this function
+// returns. After the affected player answers the CR 616 ordering prompt
+// when two different life replacements apply to one event — the case
+// #793 exists for, and the reason `then` is a continuation rather than
+// a return value. Either way it runs with g.mu held and with the
+// change's own EventChangeLife already emitted, so it may start the
+// next life change or queue the next prompt itself.
+//
+// `then` takes the live *Game rather than capturing one, on the same
+// undo-safety contract every other continuation frame follows.
+func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
 	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
 	// The event is built before the pipeline runs and carries
-	// everything the tail needs, because a CR 616 ordering prompt
-	// returns below without changing anything and the resume has
-	// nothing else to go on.
-	_, err := g.changeLifeThroughReplacementsLocked(&ReplacementEvent{
+	// everything the tail needs — the continuation included — because a
+	// CR 616 ordering prompt returns below without changing anything
+	// and the resume has nothing else to go on.
+	ev := &ReplacementEvent{
 		Kind:       RepEventLife,
 		Source:     source,
 		LifePlayer: playerID,
 		LifeDelta:  delta,
-	})
+	}
+	if then != nil {
+		ev.lifeTail = &lifeTail{then: then}
+	}
+	_, err := g.changeLifeThroughReplacementsLocked(ev)
 	return err
+}
+
+// LoseLifeEachThenForEffect is the batch form: each of `players` loses
+// `amount` life, and then `then` runs with the TOTAL actually lost —
+// "each opponent loses X life. You gain life equal to the life lost
+// this way" (Exsanguinate, Debt to the Deathless, Gray Merchant of
+// Asphodel, Kokusho). Lock-free.
+//
+// The total is the sum of what each player really lost after their own
+// replacements, not amount × len(players): a player under a life-loss
+// doubler loses more, a player whose life total can't change loses
+// nothing, and the gain follows. It is reported POSITIVE, so the
+// continuation reads the way the card does.
+//
+// Built on ChangePlayerLifeThenForEffect rather than beside it, so
+// there is one place that knows how to wait rather than one per card.
+// The players are drained IN SEQUENCE, each from the previous one's
+// continuation: that is what makes the running total a plain value
+// carried forward instead of a shared accumulator, which is what makes
+// an undo across the prompt land where a clean run would. A player who
+// has left the game is skipped, exactly as a fire-and-forget loop over
+// them would skip them.
+//
+// The sequencing is observable only when a loss pauses: with two
+// different life replacements on the first opponent, the second
+// opponent's loss happens when the CR 616 prompt is answered rather
+// than before it. The losses are simultaneous in the rules (CR 101.4)
+// and sequential in this engine either way; doing them all on the far
+// side of the prompt is the closer of the two, and it is the only one
+// that can report a true total.
+func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, amount int, then func(g *Game, totalLost int) error) error {
+	return g.loseLifeEachStepLocked(source, players, amount, 0, then)
+}
+
+// loseLifeEachStepLocked drains the head of `players` and continues
+// with the tail, carrying the running total forward by value. The empty
+// list is the base case: the batch is done and `then` gets the total.
+//
+// Caller must hold g.mu.
+func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
+	for len(players) > 0 {
+		next, rest := players[0], players[1:]
+		if g.playerByIDLocked(next) == nil {
+			players = rest
+			continue
+		}
+		return g.ChangePlayerLifeThenForEffect(source, next, -amount, func(g *Game, applied int) error {
+			lost := lostSoFar
+			if applied < 0 {
+				// Only a LOSS counts as life lost this way. A
+				// replacement that turned the loss into a gain lost
+				// nobody anything, and must not be subtracted from
+				// what the others lost either.
+				lost -= applied
+			}
+			return g.loseLifeEachStepLocked(source, rest, amount, lost, then)
+		})
+	}
+	if then == nil {
+		return nil
+	}
+	return then(g, lostSoFar)
+}
+
+// PayLifeForEffect pays `amount` life as a COST (CR 118.3) — a spell's
+// additional or alternative cost, an activated ability's {T}, Pay 2
+// life, a ward's "unless that player pays N life", a shockland's "as
+// this enters, you may pay 2 life". Lock-free.
+//
+// CR 119.4 makes paying life the same as losing that much life, so this
+// runs the same CR 614 window every other life change runs and a
+// life-loss replacement sees it. What it will not do is PAUSE: a cost
+// is paid as one indivisible step of casting or activating (CR 601.2h,
+// CR 602.2b), so the window settles without a prompt. The full argument
+// and what the affected player gives up for it are in
+// payLifeAsCostLocked (life_tail.go) and ADR 0013 §5b.
+//
+// Returns ErrInvalidParam when the payment cannot be made from the
+// payer's life total (CR 119.4). Callers validate before they start
+// paying; this is the backstop.
+func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
+	return g.payLifeAsCostLocked(source, playerID, amount)
 }
 
 // DealDamageToPlayerForEffect writes amount damage to a player's

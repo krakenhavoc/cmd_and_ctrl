@@ -1268,7 +1268,10 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 				Kind:     EventEffectError,
 				ErrorMsg: "life change dropped: its player is no longer in the game",
 			})
-			return nil
+			// #793: the rest of the effect still runs, with zero. A
+			// drain whose second opponent conceded during the prompt
+			// gains what the first one lost, not nothing.
+			return g.runLifeTailLocked(ev, 0)
 		}
 		if err != nil {
 			return err
@@ -1403,7 +1406,18 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if out != nil && !out.Canceled {
 		return g.applyResolvedReplacementEventLocked(out)
 	}
-	if ev == nil || ev.Kind != RepEventStepTransition {
+	if ev == nil {
+		return nil
+	}
+	// #793: a cancelled LIFE change is still an answer to whoever
+	// asked for it. "You gain life equal to the life lost this way"
+	// gains nothing when the loss was replaced away — but a drain
+	// adding up several players' losses has to be told so, or it waits
+	// on this one forever.
+	if ev.Kind == RepEventLife {
+		return g.runLifeTailLocked(ev, 0)
+	}
+	if ev.Kind != RepEventStepTransition {
 		return nil
 	}
 	return g.applyResolvedReplacementEventLocked(ev)
