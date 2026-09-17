@@ -493,8 +493,63 @@ func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 // Ignition pays its controller exactly as a swing does. A source that
 // is not a battlefield permanent (a spell, an emblem, uuid.Nil) has no
 // lifelink to read, so Lightning Bolt still just deals 3.
+//
+// This is the FIRE-AND-FORGET form, and that is fine for it: a card
+// that only says "deal 3 damage to target player" has nothing left to
+// do. A caller that needs to know how much actually landed — "you gain
+// life equal to the damage dealt this way" — must use
+// DealDamageToPlayerThenForEffect or DealDamageEachThenForEffect
+// instead, because a damage event can pause on a CR 616 ordering prompt
+// and reading the life total back on the next line reads it before the
+// prompt is answered (#807).
 func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount int) error {
+	return g.DealDamageToPlayerThenForEffect(source, playerID, amount, nil)
+}
+
+// DealDamageToPlayerThenForEffect is damage to a player with a
+// CONTINUATION: `then` runs with the amount that actually landed, once
+// the CR 614 window has settled it. Lock-free.
+//
+// The damage sibling of ChangePlayerLifeThenForEffect, and deliberately
+// the same idiom — card authors learn `...ThenForEffect` once:
+//
+//	g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error {
+//	        return g.ChangePlayerLifeForEffect(src, me, dealt)
+//	})
+//
+// for "~ deals N damage to target opponent. You gain life equal to the
+// damage dealt this way", and DealDamageEachThenForEffect for the
+// each-opponent version of the same sentence.
+//
+// WHAT `then` RECEIVES. The post-replacement amount, non-negative: 6
+// for a Lightning Bolt under Angrath's Marauders, 2 for one under a
+// "prevent 1" shield. Zero means nothing landed — fully prevented,
+// replaced away (CR 614.10, a Fog), or the player has left the game.
+// `then` is told either way, because a caller adding up what several
+// opponents took would otherwise wait forever on the one that took
+// nothing.
+//
+// WHEN IT RUNS. Immediately, on the ordinary path, before this function
+// returns. After the affected player answers the CR 616 ordering prompt
+// when two DIFFERENT damage replacements apply to one event — the case
+// #807 exists for, and the reason `then` is a continuation rather than
+// a return value. Either way it runs with g.mu held and with the
+// event's own EventDealDamage already emitted, so it may start the next
+// damage event or queue the next prompt itself.
+//
+// Returns ErrPlayerNotFound without running `then` when the target is
+// not seated at all, exactly as ChangePlayerLifeThenForEffect does. The
+// batch form skips absent targets rather than failing on them.
+func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
+		// Not an event at all — "deals 0 damage" deals no damage
+		// (CR 120.8) and fires no window. The continuation is still an
+		// outcome, and it is zero. Checked before the seat, so a
+		// zero-damage deal at a player who has left stays the no-op it
+		// has always been rather than becoming an error.
+		if then != nil {
+			return then(g, 0)
+		}
 		return nil
 	}
 	if g.playerByIDLocked(playerID) == nil {
@@ -515,7 +570,9 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on.
+		// damage and the resume has nothing else to go on. #807: the
+		// caller's continuation rides the same tail for the same
+		// reason.
 		//
 		// #711: it carries the source's CR 702.15b lifelink, read
 		// here rather than when the damage lands, so a prompt
@@ -524,21 +581,9 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 		// those are combat-damage business.
 		damageTail: g.effectDamageTailLocked(damageTailPlayer, source),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A replacement queued a choice (CR 616 ordering); the
-		// pipeline resumes when it's answered.
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedDamageLocked(out)
+	ev.damageTail.then = then
+	_, err := g.damageThroughReplacementsLocked(ev)
+	return err
 }
 
 // DealDamageToCreatureForEffect marks amount damage on a
@@ -579,8 +624,28 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // the damageTail, so the paused CR 616 path applies them identically;
 // a source that is not a battlefield permanent (a spell, an emblem,
 // uuid.Nil) has neither.
+//
+// The FIRE-AND-FORGET form. Use DealDamageToCreatureThenForEffect when
+// the card goes on to say something about how much was dealt (#807).
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
+	return g.DealDamageToCreatureThenForEffect(source, cardID, amount, nil)
+}
+
+// DealDamageToCreatureThenForEffect is damage to a battlefield
+// permanent with a CONTINUATION — the permanent-target sibling of
+// DealDamageToPlayerThenForEffect, with the identical contract: `then`
+// runs once, with the post-replacement amount, and with 0 when the
+// damage was fully prevented, replaced away, or the permanent left
+// between a CR 616 prompt and its answer.
+//
+// "~ deals damage equal to its power to target creature. You gain that
+// much life" is the sentence this exists for; a card that only deals
+// the damage keeps using DealDamageToCreatureForEffect.
+func (g *Game) DealDamageToCreatureThenForEffect(source, cardID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
+		if then != nil {
+			return then(g, 0)
+		}
 		return nil
 	}
 	ev := &ReplacementEvent{
@@ -591,33 +656,86 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 		DamageAmount: amount,
 		// #694: the tail goes on BEFORE the pipeline runs, because a
 		// CR 616 ordering prompt returns below without landing the
-		// damage and the resume has nothing else to go on.
+		// damage and the resume has nothing else to go on. #807: the
+		// caller's continuation rides the same tail for the same
+		// reason.
 		//
 		// #711: it carries the source's CR 702.2b deathtouch and
 		// CR 702.15b lifelink, snapshotted here so a prompt answered
 		// after the source has died still applies what it dealt with.
 		damageTail: g.effectDamageTailLocked(damageTailPermanent, source),
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A replacement queued a CR 616 ordering choice; the
-		// pipeline resumes when it is answered.
-		return nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
+	ev.damageTail.then = then
 	// Through the permanent-aware tail: a creature marks damage, a
 	// planeswalker loses loyalty (CR 120.3c, the #406 fix) and a
 	// battle loses defence. The old inline loop here only ever
 	// incremented DamageMarked, which is why damage could not kill a
 	// planeswalker.
-	return g.applyResolvedDamageLocked(out)
+	_, err := g.damageThroughReplacementsLocked(ev)
+	return err
+}
+
+// DealDamageEachThenForEffect is the batch form: `source` deals
+// `amount` damage to each of `targets`, and then `then` runs with the
+// TOTAL actually dealt — "this creature deals 1 damage to each
+// opponent. You gain life equal to the damage dealt this way" (Creeping
+// Bloodsucker). Lock-free.
+//
+// The total is the sum of what each target really took after its own
+// replacements, not amount × len(targets): a target under a damage
+// doubler takes more, one behind a prevention shield takes less or
+// nothing, and the gain follows.
+//
+// Each target is damaged as the kind of thing it is, the way the
+// DealDamage primitive already routes: a seated player takes life loss
+// through the CR 120.3 player path, a battlefield permanent takes the
+// CR 120.3 permanent split, and anything that is neither any more is
+// skipped exactly as a fire-and-forget loop would skip it.
+//
+// Built on the single forms rather than beside them, so there is one
+// place that knows how to wait rather than one per card. The targets
+// are damaged IN SEQUENCE, each from the previous one's continuation:
+// that is what makes the running total a plain value carried forward
+// instead of a shared accumulator, which is what makes an undo across
+// the prompt land where a clean run would.
+//
+// The sequencing is observable only when a leg pauses: with two
+// different damage replacements on the first opponent, the second
+// opponent's damage happens when the CR 616 prompt is answered rather
+// than before it. The damage is simultaneous in the rules (CR 101.4)
+// and sequential in this engine either way; doing the rest on the far
+// side of the prompt is the closer of the two, and it is the only one
+// that can report a true total. Same trade LoseLifeEachThenForEffect
+// makes, for the same reason.
+func (g *Game) DealDamageEachThenForEffect(source uuid.UUID, targets []uuid.UUID, amount int, then func(g *Game, totalDealt int) error) error {
+	return g.dealDamageEachStepLocked(source, targets, amount, 0, then)
+}
+
+// dealDamageEachStepLocked damages the head of `targets` and continues
+// with the tail, carrying the running total forward by value. The empty
+// list is the base case: the batch is done and `then` gets the total.
+//
+// Caller must hold g.mu.
+func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, amount, dealtSoFar int, then func(g *Game, totalDealt int) error) error {
+	for len(targets) > 0 {
+		next, rest := targets[0], targets[1:]
+		step := func(g *Game, dealt int) error {
+			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
+		}
+		if g.playerByIDLocked(next) != nil {
+			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
+		}
+		if findBattlefieldCard(g, next) != nil {
+			return g.DealDamageToCreatureThenForEffect(source, next, amount, step)
+		}
+		// Neither a seated player nor a battlefield permanent: the
+		// target is gone. Skip it and keep the total.
+		targets = rest
+	}
+	if then == nil {
+		return nil
+	}
+	return then(g, dealtSoFar)
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one

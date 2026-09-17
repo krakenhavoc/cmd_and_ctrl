@@ -246,26 +246,30 @@ func b14HandSize(g *game.Game, player uuid.UUID) int {
 
 // b14DamageEachOpponentGainThatMuch is Creeping Bloodsucker's body:
 // the source deals n damage to each opponent, then its controller
-// gains life equal to the damage actually dealt — read as the sum of
-// each opponent's life change, so a prevention shield that ate some
-// of it shrinks the gain, as printed.
+// gains life equal to the damage actually dealt — so a prevention
+// shield that ate some of it shrinks the gain and a damage doubler
+// grows it, as printed.
+//
+// #807: the total comes from DealDamageEachThenForEffect's
+// continuation, which reports what really landed. This used to read
+// each opponent's life total back on the line after damaging them, and
+// a damage event runs the CR 614 window — so two DIFFERENT damage
+// replacements on one opponent pause it on a CR 616 ordering prompt,
+// the read-back happens before the prompt is answered, and that
+// opponent counts as having taken nothing. Same bug #793 fixed on the
+// life side, same shape of fix.
 func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int) error {
-	ctx := NewContext(g, item)
-	dealt := 0
-	for _, opp := range ctx.Opponents() {
-		p := ctx.PlayerByID(opp)
-		if p == nil {
-			continue
-		}
-		before := p.Life
-		if err := g.DealDamageToPlayerForEffect(ctx.Source(), opp, n); err != nil {
-			return err
-		}
-		if after := ctx.PlayerByID(opp); after != nil && before > after.Life {
-			dealt += before - after.Life
-		}
+	if n <= 0 {
+		return nil
 	}
-	return GainLife{Player: item.Controller, Amount: dealt}.Apply(ctx)
+	ctx := NewContext(g, item)
+	controller, source := item.Controller, ctx.Source()
+	return g.DealDamageEachThenForEffect(source, ctx.Opponents(), n, func(g *game.Game, totalDealt int) error {
+		if totalDealt <= 0 {
+			return nil
+		}
+		return g.ChangePlayerLifeForEffect(source, controller, totalDealt)
+	})
 }
 
 // b14EachOpponentMillsUntilLand is Consuming Aberration's rider:

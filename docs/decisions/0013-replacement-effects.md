@@ -302,6 +302,125 @@ on one table, and the alternative is a spell stuck on the stack.
 life: any future entry point with no resume and no rewind can set it,
 and the two branches that honour it are three lines each.
 
+### 5c. Amendment, 2026-09-17: damage owes its caller the same continuation
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#807](https://github.com/krakenhavoc/cmd_and_ctrl/issues/807).*
+
+§5b is about life. Everything in it is true of DAMAGE, word for word,
+because damage has run this window since S22 (players) and S30
+(permanents) and therefore pauses the same way. Creeping Bloodsucker —
+"this creature deals 1 damage to each opponent. You gain life equal to
+the damage dealt this way" — read each opponent's life total back on the
+line after damaging them, which is #793's shape with
+`DealDamageToPlayerForEffect` in place of `ChangePlayerLifeForEffect`,
+and gained nothing for an opponent whose damage was still waiting on a
+CR 616 prompt.
+
+**The decision is to make it one idiom rather than two.**
+`damageTail` already existed (#694) and carried what the ENGINE owes a
+settled damage event; it now also carries `then(g, dealt)`, the CALLER's
+half, exactly as `lifeTail` does. `runDamageTailLocked` is the one place
+it runs, reached from every TERMINAL outcome — landed, fully prevented,
+replaced away, target gone — with `dealt` the post-replacement amount
+and `0` for the three non-outcomes.
+
+The public surface mirrors the life side name for name:
+`DealDamageToPlayerThenForEffect`, `DealDamageToCreatureThenForEffect`,
+and `DealDamageEachThenForEffect` for "each opponent", the batch built
+on the single forms and sequenced through their continuations so the
+running total is a value carried forward rather than a shared
+accumulator. Card authors learn `...ThenForEffect` once.
+
+Two things fell out of doing it this way:
+
+- **Six copies of the pipeline dance became one.**
+  `damageThroughReplacementsLocked` is `changeLifeThroughReplacementsLocked`
+  for damage, and all six entry points (two effect deals, three combat
+  paths, the manual sandbox mark) now call it. Adding a terminal outcome
+  to a damage event is one edit, not six — which is the property #694
+  was reaching for and did not quite get.
+- **`Clone` deep-copies the `damageTail`.** The life tail is cleared by
+  nilling the POINTER on the event, which the snapshot already has its
+  own copy of; the damage tail is cleared by nilling `then` INSIDE it,
+  because the rest of the tail is still being read when the continuation
+  runs. Sharing the struct would let the live game's run consume the
+  snapshot's continuation, so an undone answer would land the damage and
+  skip the rest of the card.
+
+Nothing new is snapshotted: the tail rides the `replacementResume`
+frame, already counted by `ContinuationCensus.ChoiceResumeFrames`.
+
+The catalog lint from #793 grew a second pattern rather than a second
+file — `life_continuation_guard_test.go` now scans for a `.Life` or
+`.DamageMarked` read after a damage call as well as after a life change,
+and recognises the `DealDamage{…}.Apply(ctx)` primitive spelling. One
+card needed converting; the sweep found no others.
+
+### 5d. Amendment, 2026-09-17: a destruction clears damage only when it lands
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#708](https://github.com/krakenhavoc/cmd_and_ctrl/issues/708),
+noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
+(PR #701).*
+
+§6 lists `routeBattlefieldCardToOwnerGraveyardLocked` as a pipeline
+integration point: a battlefield exit runs the CR 614 window so the
+CR 903.9 commander built-in — and any future "if it would be destroyed,
+instead …" — can replace it. What §6 did not notice is that the same
+function cleared `Card.DamageMarked` on the line that found the owner,
+*before* opening that window.
+
+That is the ordering inverted. The damage was gone before the
+replacements could see it, and it was gone whether or not the permanent
+actually left. A destruction a replacement rewrote left the permanent
+standing with its marks erased, which is wrong twice: CR 514.2 removes
+marked damage at the cleanup step, not when something tried and failed
+to destroy the permanent; and the CR 704.5g lethal-damage check would
+not see it again on the next pass.
+
+**Decision: the clear is a TERMINAL-OUTCOME mutation, like landing
+damage and landing a life change.** It moved into
+`executeBattlefieldLeaveLocked`, the one function that actually performs
+the move and the one both the unpaused path and the CR 903.9 resume go
+through. `clearBattlefieldDamageLocked` (permanent_damage.go, next to
+the marking it undoes) is the named verb, and its doc comment is the
+short list of who may call it.
+
+Consequences, checked caller by caller:
+
+| Caller | Before | After |
+| --- | --- | --- |
+| SBA lethal-damage / deathtouch destruction | cleared, then maybe moved | cleared iff it moves |
+| `DestroyPermanentForEffect` (Doom Blade) | same | same |
+| `DestroyPermanentsForEffect` (Wrath) | same, per card | same, per card |
+| Sacrifice (`sacrifice.go`) | cleared on the shared ramp | unchanged — it always lands |
+| Legend rule, aura/equipment SBA | unchanged | unchanged |
+| A REPLACED exit | damage lost | damage kept, and readable by the replacement |
+
+LKI is deliberately untouched: the clear sits just before
+`snapshotLKILocked`, where the old one effectively did, so a
+dies-trigger sees the same permanent it has always seen. Whether a dying
+creature's last-known information should show the damage that killed it
+is a separate question with nobody asking it.
+
+**Regeneration does not ride on this.** CR 701.15a makes removing all
+damage part of the regeneration shield's own replacement, not part of
+being destroyed — which is exactly why the destroy path must not do it.
+Regeneration is still unmodelled (keywords.go's canonical set does not
+contain it); when it lands, it clears the damage in its own `Replace`.
+
+**The SBA does not loop.** A permanent that survives a replaced
+destruction with lethal damage still on it would be doomed again on the
+next pass, so the recurrable cases were enumerated: indestructible is
+filtered out of `doomed` before anything is destroyed (CR 702.12b), a
+paused exit is skipped by #605's `zoneChangePausedLocked`, and an "exile
+it instead" removes the permanent so there is nothing to re-doom. What
+remains is a replacement that cancels a destruction outright without
+regenerating, which no rules text describes and no catalog card
+registers; `runStateChecksLocked`'s 32-pass bound is the backstop, and
+there is a test that says so.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
