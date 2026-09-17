@@ -899,7 +899,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 |
 | 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | — |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
-| 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 ¹ |
+| 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 / #748 ¹ |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
 | 11 | Exile-and-return (blink) and exile-until-leaves | **24** | 52 | 29 | — |
 | 12 | "As this enters, choose …" — creature type / colour / name a card | **23** | 47 | 24 | — |
@@ -908,7 +908,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 15 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **13** | 49 | 44 | #92 |
 | 16 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 29 | 14 | — |
 | 17 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **9** | 23 | 9 | — |
-| 18 | Change of control (gain control, exchange control) | **7** | 16 | 8 | #76 |
+| 18 | Change of control (gain control, exchange control) | **7** | 16 | 8 | #756 ³ |
 | 19 | Shuffle a card or permanent into a library | **5** | 10 | 6 | — |
 | 20 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **4** | 9 | 4 | — |
 | 21 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **4** | 6 | 4 | — |
@@ -926,9 +926,12 @@ that row have all shipped (#353, #421/#433 and #647, #380, #420), and
 copying's open pieces are #665 and #666. In the combat-keywords row,
 landwalk is [#705](https://github.com/krakenhavoc/cmd_and_ctrl/issues/705)
 and prowess is [#706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/706);
-changeling shipped in S26 (#404), and infect, persist, undying, exalted
+changeling shipped in S26 (#404), and persist, undying, exalted
 and the other legacy keywords have no tracker and are built on demand,
-when a card needs one. In the last row, regeneration is
+when a card needs one. *Update 2026-09-17:* infect, with wither and
+toxic, now has one,
+[#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748), filed
+from the card-coverage audit. In the last row, regeneration is
 [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
 and totem armor are on demand too. The same footnote applies to the
 two tables below.
@@ -947,6 +950,17 @@ correction, for `class`; `case` checks out the same against the dump),
 so neither is multi-face. The counts are from the original pass, under
 the old label, and are unchanged. The same footnote applies to the two
 tables below.
+
+³ *Update 2026-09-17:* this row used to say #76, the S24 attachments
+tracker, which is closed. S24 shipped layer 2 for a control Aura only
+(Mind Control, [ADR 0036](../decisions/0036-attachments.md) decision
+17); no other spell or ability can gain or exchange control yet. That
+work is [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756),
+filed from the card-coverage audit, and it builds on the
+permanent-duration registry,
+[#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755). The
+counts are from the original pass and are unchanged. The same footnote
+applies to the two tables below.
 
 **769 of the 2000 (38%) need no new machinery at all.** That is the most
 actionable number in this document: there is more than a sprint of
@@ -997,7 +1011,7 @@ Same detectors, ranks 2,235–4,253.
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **110** | 282 | 225 | #93 |
 | 2 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **93** | 248 | 149 | #662 / #665 / #666 ¹ |
-| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **64** | 214 | 64 | #705 / #706 ¹ |
+| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **64** | 214 | 64 | #705 / #706 / #748 ¹ |
 | 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **63** | 270 | 180 | #279 |
 | 5 | Attachments — Equipment and Auras | **55** | 123 | 117 | #280 |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 |
@@ -1015,7 +1029,7 @@ Same detectors, ranks 2,235–4,253.
 | 18 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **10** | 38 | 13 | — |
 | 19 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 39 | 15 | — |
 | 20 | Shuffle a card or permanent into a library | **7** | 21 | 7 | — |
-| 21 | Change of control (gain control, exchange control) | **6** | 25 | 8 | #76 |
+| 21 | Change of control (gain control, exchange control) | **6** | 25 | 8 | #756 ³ |
 | 22 | Recurring self-drawbacks (cumulative upkeep, echo, fading, vanishing, doesn't untap) | **6** | 7 | 6 | — |
 | 23 | Face-down permanents (morph, manifest, disguise, cloak, mutate) | **4** | 23 | 19 | #95 |
 | 24 | Regeneration, phasing, totem armor | **1** | 13 | 7 | #667 ¹ |
@@ -1030,7 +1044,8 @@ format you go, the weirder the card. Two rows move enough to matter:
   the bucket buys more cards down here than the mana pipeline does.
   *(Update 2026-09-16: the bucket's umbrella, #176, is closed. Landwalk
   is #705, prowess is #706, changeling shipped in S26, and the rest are
-  built on demand; see note ¹ under the first table.)*
+  built on demand; see note ¹ under the first table. Update 2026-09-17:
+  infect, wither and toxic are #748.)*
 - **Attachments (#280) move from 6th to 5th and the count rises** — 55
   sole, 123 touched. Equipment and Auras are a mid-rarity staple shape,
   not a top-of-format one.
@@ -1046,7 +1061,7 @@ Same detectors, ranks 4,254–6,289.
 |---:|---|---:|---:|---:|---|
 | 1 | Cost modification, alternative casts and costs computed at activation | **114** | 296 | 228 | #93 |
 | 2 | Until-end-of-turn continuous effects (turn-scoped statics) | **77** | 300 | 189 | #279 |
-| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #705 / #706 ¹ |
+| 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #705 / #706 / #748 ¹ |
 | 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #662 / #665 / #666 ¹ |
 | 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 |
 | 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 |
@@ -1059,7 +1074,7 @@ Same detectors, ranks 4,254–6,289.
 | 13 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **19** | 106 | 87 | #92 |
 | 14 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **16** | 40 | 16 | — |
 | 15 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **14** | 39 | 17 | — |
-| 16 | Change of control (gain control, exchange control) | **13** | 26 | 14 | #76 |
+| 16 | Change of control (gain control, exchange control) | **13** | 26 | 14 | #756 ³ |
 | 17 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **13** | 25 | 14 | — |
 | 18 | "As this enters, choose …" — creature type / colour / name a card | **11** | 23 | 12 | — |
 | 19 | Multi-face cards (MDFC / transform / adventure / split ~~/ class / case~~) | **10** | 71 | 71 | #343 / #719 ² |
