@@ -28,7 +28,11 @@ func init() {
 			if b18AttackedThisTurn(ctx.Game, item.Controller) {
 				return nil
 			}
-			ctx.Game.DiscardChoiceForEffect(item.Controller, 1)
+			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+				Player: item.Controller,
+				Source: item.SourceCardID,
+				N:      1,
+			})
 			return nil
 		},
 	})

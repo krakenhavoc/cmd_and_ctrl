@@ -290,7 +290,11 @@ func b16DrawThenDiscard(g *game.Game, item *game.StackItem, draw, discard int) e
 	if err := (DrawCards{Player: item.Controller, N: draw}).Apply(ctx); err != nil {
 		return err
 	}
-	g.DiscardChoiceForEffect(item.Controller, discard)
+	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      discard,
+	})
 	return nil
 }
 

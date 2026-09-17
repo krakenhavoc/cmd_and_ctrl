@@ -17,8 +17,9 @@ import (
 // itself is never a legal discard, and a caster with an otherwise
 // empty hand discards nothing. Oppression's own cast does not
 // trigger it (it is not on the battlefield yet). The caster is
-// captured off the cast event; the discard is their choice, queued
-// as the discard obligation the client already renders.
+// captured off the cast event; the discard is their own choice, and
+// until they make it nobody passes priority, so the spell underneath
+// cannot resolve out from under the trigger (#651).
 //
 // No simplification.
 func init() {
@@ -34,8 +35,12 @@ func init() {
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				caster := ev.Actor
 				return game.NewTriggeredItem(source, "Oppression — the spell's caster discards a card",
-					func(g *game.Game, _ *game.StackItem) error {
-						g.DiscardChoiceForEffect(caster, 1)
+					func(g *game.Game, item *game.StackItem) error {
+						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+							Player: caster,
+							Source: item.SourceCardID,
+							N:      1,
+						})
 						return nil
 					})
 			},

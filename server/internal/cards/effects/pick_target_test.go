@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -54,6 +55,12 @@ func castAndResolveCreature(t *testing.T, g *game.Game, name, typeLine, oracle s
 	id := castCatalogSpell(t, g, name, typeLine, oracle, nil)
 	for i := 0; i < 8 && g.Stack.Size() > 0; i++ {
 		if err := g.PassPriority(); err != nil {
+			// #730: a prompt queued on the way down (a cast trigger
+			// that asks something) gates the table. Stop here — the
+			// caller answers it and passes again.
+			if errors.Is(err, game.ErrChoicePending) {
+				break
+			}
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}

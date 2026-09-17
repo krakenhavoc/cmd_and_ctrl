@@ -296,7 +296,11 @@ type cardSnapshot struct {
 	// made by a player and nothing in the catalog can re-derive it, so
 	// a restore that lost it would leave a Cavern of Souls producing
 	// mana for a tribe nobody named.
-	NamedTribe        string    `json:"namedTribe,omitempty"`
+	NamedTribe string `json:"namedTribe,omitempty"`
+	// ChosenColor is the "as this enters, choose a color" answer
+	// (#742). Carried for NamedTribe's reason: a player made it and
+	// nothing can re-derive it.
+	ChosenColor       string    `json:"chosenColor,omitempty"`
 	StartingDefense   int       `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
 
@@ -318,6 +322,7 @@ type stackItemSnapshot struct {
 	SourceCardID uuid.UUID         `json:"sourceCardId"`
 	Label        string            `json:"label,omitempty"`
 	Targets      []TargetRef       `json:"targets,omitempty"`
+	Payload      []TargetRef       `json:"payload,omitempty"`
 	Modes        []int             `json:"modes,omitempty"`
 	XValue       int               `json:"xValue"`
 	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
@@ -367,6 +372,7 @@ type pendingChoiceSnapshot struct {
 	Reason               string                 `json:"reason,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
+	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
 	NoLegalTarget        bool                   `json:"noLegalTarget"`
@@ -743,6 +749,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		ChosenColor:              c.ChosenColor,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
@@ -815,6 +822,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		SourceCardID:  s.SourceCardID,
 		Label:         s.Label,
 		Targets:       copyTargetRefs(s.Targets),
+		Payload:       copyTargetRefs(s.Payload),
 		Modes:         copyInts(s.Modes),
 		XValue:        s.XValue,
 		Distribution:  copyIntMap(s.Distribution),
@@ -896,6 +904,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		Reason:               c.Reason,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
@@ -940,6 +949,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// drops the rest of the card. See chained_choice.go.
 		"confirmResume":     c.confirmResume != nil,
 		"chooseCardsResume": c.chooseCardsResume != nil,
+		// #742's resolution-time "choose a color".
+		"chooseColorResume": c.chooseColorResume != nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -1209,6 +1220,7 @@ func restoreCard(c *cardSnapshot) Card {
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		ChosenColor:              c.ChosenColor,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 	}
@@ -1300,6 +1312,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		SourceCardID: s.SourceCardID,
 		Label:        s.Label,
 		Targets:      copyTargetRefs(s.Targets),
+		Payload:      copyTargetRefs(s.Payload),
 		Modes:        copyInts(s.Modes),
 		XValue:       s.XValue,
 		Distribution: copyIntMap(s.Distribution),
@@ -1350,6 +1363,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		Reason:               c.Reason,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
+		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
@@ -1391,6 +1405,18 @@ func labelOr(s, fallback string) string {
 		return s
 	}
 	return fallback
+}
+
+// copyManaAmounts deep-copies PendingChoice.ManaAmounts (#742).
+func copyManaAmounts(in map[string]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 func copyStrings(in []string) []string {

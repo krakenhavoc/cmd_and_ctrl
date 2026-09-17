@@ -8,9 +8,9 @@ package effects
 //
 // The Esper member of the Streets of New Capenna "Overlook" cycle
 // Riveteers Overlook established (batch 06). Same shape through the
-// b08OverlookLand helper, same declared gap: the printed reflexive
-// trigger is folded into the entry trigger, so the sacrifice and the
-// search are one stack item.
+// b08OverlookLand helper, and since #636 the same two stack items:
+// the entry trigger sacrifices the land and a CR 603.12 reflexive
+// trigger does the searching, with a response window between them.
 func init() {
 	Register(b08OverlookLand("dc31a6f8-6228-4a25-b937-5d8d78514333", "Obscura Storefront", "Plains", "Island", "Swamp"))
 }

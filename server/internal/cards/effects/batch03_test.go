@@ -298,11 +298,11 @@ func TestGeierReachSanitariumEachPlayerLoots(t *testing.T) {
 		if p.Hand.Size() != before[i]+1 {
 			t.Errorf("seat %d drew %d, want 1", i, p.Hand.Size()-before[i])
 		}
-		// DiscardChoiceForEffect books the discard per player; the
-		// prompt is materialised from DiscardPending, so each seat
-		// chooses their own card (the Faithless Looting assertion).
-		if got := g.DiscardPending[p.ID]; got != 1 {
-			t.Errorf("seat %d has %d discards pending, want 1 — each player chooses their own", i, got)
+		// One discard prompt per seat, addressed to that seat over
+		// their own hand, so each player chooses their own card (the
+		// Faithless Looting assertion).
+		if got := discardOwed(g, p.ID); got != 1 {
+			t.Errorf("seat %d is owed %d discards, want 1 — each player chooses their own", i, got)
 		}
 	}
 }

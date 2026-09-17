@@ -14,13 +14,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // choices.
 //
 // Sandbox simplification, declared, Thirst for Knowledge's exactly:
-// the "unless" is NOT offered. The resolution-time discard prompt is
-// a fixed count with no validate clause, so it cannot accept "one
-// card, provided it is a basic land" as an alternative to "two
-// cards" — the player always discards two. Weaker than printed (the
-// cheaper discard is never available), never stronger. It becomes
-// whole the day the discard prompt takes a validate clause, the way
-// the search prompt does.
+// the "unless" is NOT offered. The card asks for a fixed count, so
+// it cannot accept "one card, provided it is a basic land" as an
+// alternative to "two cards" — the player always discards two.
+// Weaker than printed (the cheaper discard is never available),
+// never stronger. #651 gave the discard prompt the set-level
+// Validate hook the search prompt has (DiscardPrompt.Validate), so
+// the branch is now expressible; offering it is card work this
+// engine fix deliberately left alone.
 func init() {
 	Register(Spec{
 		OracleID:     "1e05e6ef-14af-451d-9d54-e75b1f8871ab",
@@ -28,11 +29,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You always discard two cards — discarding a single basic land card instead isn't offered."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.DiscardChoiceForEffect(item.Controller, 2)
-			return nil
+			return b16DrawThenDiscard(ctx.Game, item, 3, 2)
 		},
 	})
 }

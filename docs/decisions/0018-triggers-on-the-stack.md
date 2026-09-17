@@ -152,6 +152,52 @@ It matches how the table plays it in paper ("you paying for that?"
 while the next spell is already being cast) and avoids a modal
 lockstep across four browsers.
 
+**Amendment (2026-09-17, #730): the looseness is `pay_unless` only.**
+Nothing refused `advance_step`, or a priority pass that would advance
+the step, while *any* prompt sat in `Game.PendingChoices` — so the
+sandbox latitude this section granted Rhystic Study was in practice
+granted to every prompt in the engine, and a sacrifice, a scry or a
+CR 616 ordering could be walked past and then answered against a game
+that had moved on (#701 and #725 each had to add a stale-frame guard
+for exactly that; #651 reports the same shape for effect discards).
+
+`Game.blockingChoiceLocked` (`server/internal/game/choice_gate.go`) now
+gates `AdvanceStep`, `PassPriority` and `PassTurn`, which return a
+`*ChoicePendingError` (wrapping `ErrChoicePending`, naming the choice's
+ID and kind) while a blocking prompt is outstanding. It is
+**deny-by-default with an explicit allowlist**, so a choice kind added
+later blocks without its author having to know this rule exists. The
+allowlist, verbatim:
+
+- **`pay_unless` — does not block.** The reason this section already
+  gives: the ability has resolved and left the stack, the question is
+  addressed to a *different* player, and the answer spends from that
+  player's pool or runs `OnDecline` — neither reads the step. Play
+  continues, as it does in paper.
+
+Every other kind **blocks**: `discard_from_hand`, `mana_pick`,
+`replacement_order`, `optional_replacement`, `damage_assignment`,
+`trigger_prompt`, `trigger_order`, `pick_target`, `sacrifice_choice`,
+`scry`, `surveil`, `look_at_top`, `search_library`, `may_cast`,
+`choose_protector`, `legend_rule`, `choose_color`, `confirm`,
+`choose_cards`, `entry_pay_life`, `copy_target`,
+`choose_creature_type` — and anything added after this line.
+
+`mana_pick` is the near miss worth recording: it looks like background
+bookkeeping, but an unanswered colour pick is mana that has *not*
+entered the pool, `internal/legal` already offers a seat nothing else
+while one is open, and the auto-tapper refuses to create one precisely
+because its contract is "no further player decisions required". It
+blocks.
+
+What the gate does **not** do: answering a prompt (`resolve_choice`
+and its kin), `concede`, chat, undo, and the admin context menu's raw
+sandbox moves (`move_card`, `change_life`, `add_counter`,
+`mark_damage` — ADR 0033 §8's list) are all untouched, so a table can
+always be unstuck by hand. Casting and activating are not gated either;
+`internal/legal` declines to offer them, and widening the refusal that
+far is a bigger behaviour change than this bug needs.
+
 Two more drains fell out of the sub-PR 6 cards: `CastSpell` (the
 caster gets priority right after casting, CR 117.3c — Rhystic's
 trigger must be on the stack by then) and the sandbox `draw_card`
