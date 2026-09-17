@@ -5,7 +5,7 @@
     "block",
     "combat"
   ],
-  "note": "The 7/7 survives every block on offer, so it should eat the largest attacker it can. Spending it on a 2/2 prevents two damage at 13 life while a 4/4 walks past.",
+  "note": "Eighteen power of attackers against 13 life, and the untapped 7/7 survives any block on offer, so it should spend itself where the block is worth something: on a 4/4 Ogre (prevents four and kills it) or on their COMMANDER (prevents three, kills the commander and stops the one attacker that also accumulates commander damage). Both are accepted; the label deliberately does not rank them. Putting the 7/7 in front of a 2/2 is the reject \u2014 it prevents two while a 4/4 walks past, and at this life total the difference is not academic. The Drake is flying, which is why no block on it exists.",
   "source": {
     "game_id": "e270f104-8229-47b4-9e7a-699d7571910b",
     "seat": 1,

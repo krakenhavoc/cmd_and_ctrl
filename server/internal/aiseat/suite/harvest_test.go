@@ -192,6 +192,58 @@ func TestHarvestFiltersAndSampling(t *testing.T) {
 	})
 }
 
+// TestARepeatHarvestIntoTheSameInboxWritesNothing: harvesting is a
+// command someone re-runs — a new log arrives, the filter is widened
+// — and the inbox is the same directory each time. Writing every
+// already-harvested window again under a -2 id would double the
+// corpus on every run and leave the labeller re-reading positions
+// they had already judged.
+func TestARepeatHarvestIntoTheSameInboxWritesNothing(t *testing.T) {
+	logDir := t.TempDir()
+	path := writeLog(t, logDir,
+		record(0, 10, model.LayerC, 1, idx(1), harvestMoves(), false),
+		record(1, 30, model.LayerC, 1, idx(2), harvestMoves(), true),
+	)
+	out := t.TempDir()
+
+	first, err := Harvest([]string{path}, HarvestFilter{}, out)
+	if err != nil {
+		t.Fatalf("harvest: %v", err)
+	}
+	if first.Written != 2 || first.Unchanged != 0 {
+		t.Fatalf("first harvest wrote %d / unchanged %d, want 2 / 0", first.Written, first.Unchanged)
+	}
+
+	second, err := Harvest([]string{path}, HarvestFilter{}, out)
+	if err != nil {
+		t.Fatalf("re-harvest: %v", err)
+	}
+	if second.Written != 0 || second.Unchanged != 2 {
+		t.Fatalf("re-harvest wrote %d / unchanged %d, want 0 / 2", second.Written, second.Unchanged)
+	}
+
+	positions, err := Load(out)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(positions) != 2 {
+		t.Fatalf("inbox holds %d positions after two identical harvests, want 2", len(positions))
+	}
+
+	// A genuinely different window that collides on the id scheme
+	// still gets its own file rather than being mistaken for the one
+	// already there.
+	other := record(0, 10, model.LayerC, 0, idx(0), harvestMoves(), false)
+	otherPath := writeLog(t, t.TempDir(), other)
+	third, err := Harvest([]string{otherPath}, HarvestFilter{}, out)
+	if err != nil {
+		t.Fatalf("collision harvest: %v", err)
+	}
+	if third.Written != 1 {
+		t.Fatalf("a colliding but different window wrote %d files, want 1", third.Written)
+	}
+}
+
 func TestHarvestTimeoutFilterIncludesModelTimeouts(t *testing.T) {
 	rec := record(0, 1, model.LayerB, 0, nil, harvestMoves(), false)
 	rec.Trace.Fallback = model.FallbackError

@@ -315,14 +315,22 @@ func decide(ctx context.Context, p Position, policy aiseat.Policy, tracer aiseat
 	case tr.Fallback == model.FallbackNoBudget:
 		res.Outcome = OutcomeError
 		return res
+	case tr.Fallback == model.FallbackNoClient:
+		// A model tier built with no transport answers every window
+		// out of Layer B and reports "no-client". tiers documents a
+		// nil Client as legal, so this is reachable by construction —
+		// and without this case a run of `assisted` against nothing
+		// would report the HEURISTIC's agreement under the model
+		// tier's name. That is the single most misleading number this
+		// harness could print, so it is an error like the rest of the
+		// funnel's failures.
+		res.Outcome = OutcomeError
+		return res
 	}
 
 	switch {
 	case d.Index == aiseat.Decline:
-		res.Outcome = OutcomeDecline
-		if p.Expected.DeclineOK {
-			res.Outcome = OutcomeAgree
-		}
+		res.Outcome, res.Label = declineGrade(p)
 	case d.Index < 0 || d.Index >= len(p.Input.Moves):
 		res.Outcome = OutcomeOutOfRange
 	case p.Rejects(d.Index):
@@ -333,6 +341,48 @@ func decide(ctx context.Context, p Position, policy aiseat.Policy, tracer aiseat
 		res.Outcome = OutcomeDisagree
 	}
 	return res
+}
+
+// declineGrade grades a decline the way a real table would resolve
+// it, and returns the outcome plus the label to show in the report.
+//
+// runner.decide substitutes the PASS move for a decline from a seat
+// that holds priority ("decline → pass"), because a seat that
+// declines while holding priority stalls the table. Grading a decline
+// as agreement on DeclineOK alone would therefore report agreement
+// for a move the label never endorsed — live plays the pass, and
+// nothing said the pass was right — and would let a policy that
+// declines because it is BROKEN score as agreement.
+//
+// So a tolerated decline is graded as the pass the runner would
+// substitute. Load already refuses a decline_ok label that does not
+// also accept its pass (Position.prepare), which makes the two
+// consistent by construction; this is the same rule applied to
+// positions built in memory, which never go through Load.
+//
+// A decline the label does not allow stays its own bucket whatever
+// the pass would have been: a policy that stops answering is a
+// different operational problem from one that answers badly. And
+// where there is no pass on offer the runner leaves the decline
+// standing (the window really does stall), so DeclineOK is graded on
+// its own there.
+func declineGrade(p Position) (Outcome, string) {
+	if !p.Expected.DeclineOK {
+		return OutcomeDecline, ""
+	}
+	pi := aiseat.PassIndex(p.Input.Moves)
+	if pi < 0 {
+		return OutcomeAgree, ""
+	}
+	label := "decline → " + p.Input.Moves[pi].Label
+	switch {
+	case p.Rejects(pi):
+		return OutcomeRejectHit, label
+	case p.Accepts(pi):
+		return OutcomeAgree, label
+	default:
+		return OutcomeDisagree, label
+	}
 }
 
 func summarise(policyName string, positions []Position, results []Result) Report {

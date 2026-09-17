@@ -1,6 +1,8 @@
 package suite
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -51,9 +53,13 @@ type HarvestFilter struct {
 	Tags []string
 	// Limit caps how many positions are written. Zero is no cap.
 	Limit int
-	// Seed makes the sampling deterministic when Limit cuts. Two
-	// harvests of the same logs with the same seed write the same
-	// files, which is what makes a harvested corpus reviewable.
+	// Seed makes the sampling deterministic when Limit cuts: the
+	// same logs and the same seed select the same windows, which is
+	// what makes a harvested corpus reviewable. Re-running that
+	// harvest into the inbox it already filled is a no-op — a
+	// position whose file is already there, byte for byte, is
+	// counted as Unchanged rather than written again under a new
+	// id.
 	Seed int64
 }
 
@@ -71,6 +77,10 @@ type HarvestReport struct {
 	// names them.
 	Written int      `json:"written"`
 	Paths   []string `json:"paths,omitempty"`
+	// Unchanged is how many candidates were already in the inbox,
+	// byte for byte, and so were not written again. A repeat of the
+	// same harvest reports every candidate here and writes nothing.
+	Unchanged int `json:"unchanged,omitempty"`
 }
 
 // Harvest reads the named decision logs and writes one unlabelled
@@ -107,8 +117,16 @@ func Harvest(paths []string, filter HarvestFilter, outDir string) (HarvestReport
 	}
 	used := map[string]bool{}
 	for _, p := range candidates {
-		p.ID = uniqueID(p.ID, used, outDir)
-		used[p.ID] = true
+		id, already, err := placeID(p, used, outDir)
+		if err != nil {
+			return rep, err
+		}
+		used[id] = true
+		if already {
+			rep.Unchanged++
+			continue
+		}
+		p.ID = id
 		written, err := p.Write(outDir)
 		if err != nil {
 			return rep, err
@@ -296,24 +314,46 @@ func harvestID(rec decisionlog.Record) string {
 	return fmt.Sprintf("%s-s%d-seq%d", game, rec.SeatIndex, rec.Seq)
 }
 
-// uniqueID disambiguates the handful of collisions the id scheme
-// admits: a window that committed nothing has seq 0, and a seat can
-// have several of those in a row.
-func uniqueID(id string, used map[string]bool, outDir string) string {
-	exists := func(cand string) bool {
-		if used[cand] {
-			return true
+// placeID picks the id this position is written under and reports
+// whether it is already in the inbox unchanged.
+//
+// Two things collide here and they want opposite answers. Within one
+// harvest the id scheme admits genuine duplicates — a window that
+// committed nothing has seq 0, and a seat can have several in a row —
+// and those are different positions that both deserve a file, so they
+// get a -2, -3 suffix. Across harvests the same window harvested
+// twice is the SAME position, and writing it again under a new id
+// would quietly double the corpus every time someone re-ran the
+// command.
+//
+// So an existing file is compared byte for byte against what would be
+// written: identical means the candidate is already there and is
+// skipped; different under the same id means a real collision with
+// something else, and the suffix search continues.
+func placeID(p Position, used map[string]bool, outDir string) (string, bool, error) {
+	for n := 1; ; n++ {
+		cand := p.ID
+		if n > 1 {
+			cand = fmt.Sprintf("%s-%d", p.ID, n)
 		}
-		_, err := os.Stat(filepath.Join(outDir, cand+".json"))
-		return err == nil
-	}
-	if !exists(id) {
-		return id
-	}
-	for n := 2; ; n++ {
-		cand := fmt.Sprintf("%s-%d", id, n)
-		if !exists(cand) {
-			return cand
+		if used[cand] {
+			continue
+		}
+		q := p
+		q.ID = cand
+		blob, err := q.Marshal()
+		if err != nil {
+			return "", false, err
+		}
+		path := filepath.Join(outDir, cand+".json")
+		onDisk, err := os.ReadFile(path)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			return cand, false, nil
+		case err != nil:
+			return "", false, fmt.Errorf("suite: read %s: %w", path, err)
+		case bytes.Equal(bytes.TrimSpace(onDisk), bytes.TrimSpace(blob)):
+			return cand, true, nil
 		}
 	}
 }

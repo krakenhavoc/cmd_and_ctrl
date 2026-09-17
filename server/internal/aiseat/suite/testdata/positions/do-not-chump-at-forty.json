@@ -5,7 +5,7 @@
     "block",
     "combat"
   ],
-  "note": "40 life against one 7/7 trampler: any block loses a creature to stop at most four damage. Take the seven.",
+  "note": "40 life against one 7/7 trampler, and blockers are declared ONE AT A TIME here (see block-or-die), so this window is only the first blocker. Taking the seven is free at this life total, which is why the pass is the labelled answer. Single-blocking with a creature that cannot kill the Wurm is the blunder: trample assigns the blocker's toughness and spills the rest over, so the Drake stops three damage and dies and the Bear stops two and dies, and every gang block either one could start is dominated by the two-Ogre block. The three Ogre blocks are deliberately UNCLASSIFIED: two Ogres kill the Wurm (8 power) and take nothing through trample (4+4 lethal exceeds its 7 power), trading one 4/4 for their 7/7 \u2014 a legitimate alternative line this position does not judge either way.",
   "gate": [
     "heuristic"
   ],
@@ -28,7 +28,10 @@
     ],
     "reject": [
       {
-        "kind": "block"
+        "label": "Block Wurm with Drake"
+      },
+      {
+        "label": "Block Wurm with Bear"
       }
     ]
   },

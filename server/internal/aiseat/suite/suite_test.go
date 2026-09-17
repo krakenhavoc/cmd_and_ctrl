@@ -188,12 +188,21 @@ func TestUnlabelledPositionsAreSkipped(t *testing.T) {
 
 // TestDeclineIsGradedAgainstTheLabel: declining is right on some
 // windows and a stalled seat on others, and only the label knows
-// which.
+// which. A tolerated decline is graded as the PASS the runner
+// substitutes for it, so the suite answers the same question a real
+// table does.
 func TestDeclineIsGradedAgainstTheLabel(t *testing.T) {
 	for _, ok := range []bool{true, false} {
+		accept := []Matcher{{Label: "Alpha"}}
+		if ok {
+			// decline_ok means the pass is on the table, so the
+			// label has to say the pass is acceptable. prepare()
+			// enforces exactly that — see the test below.
+			accept = append(accept, Matcher{Label: "Pass priority"})
+		}
 		p := Position{
-			ID: "d", V: PositionVersion, Input: twoMoveInput(),
-			Expected: Expected{Accept: []Matcher{{Label: "Alpha"}}, DeclineOK: ok},
+			ID: "d", V: PositionVersion, Input: threeMoveInput(),
+			Expected: Expected{Accept: accept, DeclineOK: ok},
 		}
 		if err := p.prepare(); err != nil {
 			t.Fatalf("prepare: %v", err)
@@ -206,13 +215,35 @@ func TestDeclineIsGradedAgainstTheLabel(t *testing.T) {
 		if got := rep.Results[0].Outcome; got != want {
 			t.Errorf("decline_ok=%v gave %q, want %q", ok, got, want)
 		}
+		if ok && rep.Results[0].Label != "decline \u2192 Pass priority" {
+			t.Errorf("decline_ok=true reported label %q, want the substituted pass named", rep.Results[0].Label)
+		}
+	}
+}
+
+// TestDeclineOKMustAcceptThePassTheRunnerSubstitutes pins the
+// consistency rule. runner.decide turns a decline from a seat holding
+// priority into the pass, so a label that tolerates declining while
+// its accept set does not contain the pass would report agreement for
+// a move nobody endorsed. Load refuses it instead.
+func TestDeclineOKMustAcceptThePassTheRunnerSubstitutes(t *testing.T) {
+	p := Position{
+		ID: "decline-without-the-pass", V: PositionVersion, Input: threeMoveInput(),
+		Expected: Expected{Accept: []Matcher{{Label: "Alpha"}}, DeclineOK: true},
+	}
+	err := p.prepare()
+	if err == nil {
+		t.Fatal("decline_ok with an unaccepted pass was allowed")
+	}
+	if !strings.Contains(err.Error(), "decline_ok") {
+		t.Fatalf("error does not name the rule it enforces: %v", err)
 	}
 }
 
 func TestDeclineOnlyPositionIsLabelled(t *testing.T) {
 	p := Position{
-		ID: "decline-only", V: PositionVersion, Input: twoMoveInput(),
-		Expected: Expected{DeclineOK: true},
+		ID: "decline-only", V: PositionVersion, Input: threeMoveInput(),
+		Expected: Expected{Accept: []Matcher{{Label: "Pass priority"}}, DeclineOK: true},
 	}
 	if err := p.prepare(); err != nil {
 		t.Fatalf("prepare: %v", err)
@@ -220,6 +251,109 @@ func TestDeclineOnlyPositionIsLabelled(t *testing.T) {
 	rep := Run(context.Background(), []Position{p}, declinePolicy{}, RunOptions{})
 	if rep.Labelled != 1 || rep.Agree != 1 || rep.Results[0].Outcome != OutcomeAgree {
 		t.Fatalf("decline-only label was not graded: %+v", rep)
+	}
+}
+
+// TestLabelReIsAnchored: a pattern that is too WIDE silently enlarges
+// a label — it starts judging moves nobody looked at while the suite
+// keeps reporting a number — so label_re matches the whole label or
+// nothing, and a pattern written as a prefix fails Load loudly
+// instead of quietly matching more than it names.
+func TestLabelReIsAnchored(t *testing.T) {
+	in := aiseat.Input{Moves: []legal.Move{
+		{Kind: legal.KindPass, Type: "pass_priority", Label: "Pass priority"},
+		{Kind: legal.KindAttack, Type: "declare_attacker", Label: "Attack Bot1 with Ogre"},
+		{Kind: legal.KindAttack, Type: "declare_attacker", Label: "Do not attack with Ogre"},
+	}}
+	// Unanchored, "Attack" would match both attack moves. Anchored,
+	// it matches neither, and that is a Load failure rather than a
+	// silent widening.
+	p := Position{ID: "wide", V: PositionVersion, Input: in, Expected: Expected{Accept: []Matcher{{LabelRe: "Attack"}}}}
+	if err := p.prepare(); err == nil {
+		t.Fatal("an unanchored-style label_re matched; label_re is not anchored")
+	}
+	// Spelled with the slack it needs, it names exactly the one move.
+	q := Position{ID: "narrow", V: PositionVersion, Input: in, Expected: Expected{Accept: []Matcher{{LabelRe: "Attack .* with Ogre"}}}}
+	if err := q.prepare(); err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if got := q.Accept(); !reflect.DeepEqual(got, []int{1}) {
+		t.Fatalf("matched %v, want [1]", got)
+	}
+}
+
+// TestAcceptingEveryMoveFailsLoad: a label that accepts the whole
+// move list asks no question. It agrees with every policy, including
+// a broken one, while inflating the agree% denominator and the gated
+// count.
+func TestAcceptingEveryMoveFailsLoad(t *testing.T) {
+	p := Position{
+		ID: "accepts-everything", V: PositionVersion, Input: twoMoveInput(),
+		Expected: Expected{Accept: []Matcher{{Label: "Alpha"}, {Label: "Pass priority"}}},
+	}
+	err := p.prepare()
+	if err == nil {
+		t.Fatal("a position accepting every legal move was allowed")
+	}
+	if !strings.Contains(err.Error(), "all 2 legal moves") {
+		t.Fatalf("error does not say what is wrong: %v", err)
+	}
+}
+
+// TestABogusGateNameFailsLoad: a gate is the one thing in this
+// package that must never fail silently. `gate: ["heuristics"]` pins
+// nothing, because nothing answers to that name.
+func TestABogusGateNameFailsLoad(t *testing.T) {
+	p := Position{
+		ID: "typo-gate", V: PositionVersion, Input: twoMoveInput(),
+		Gate:     []string{"heuristics"},
+		Expected: Expected{Accept: []Matcher{{Label: "Alpha"}}},
+	}
+	err := p.prepare()
+	if err == nil {
+		t.Fatal("a gate naming no policy was allowed")
+	}
+	if !strings.Contains(err.Error(), "heuristics") {
+		t.Fatalf("error does not name the bad gate: %v", err)
+	}
+
+	// The real names still pass, whatever their case.
+	for _, good := range []string{"heuristic", "Assisted", "STRONG", "random"} {
+		q := Position{
+			ID: "gate-" + good, V: PositionVersion, Input: twoMoveInput(),
+			Gate:     []string{good},
+			Expected: Expected{Accept: []Matcher{{Label: "Alpha"}}},
+		}
+		if err := q.prepare(); err != nil {
+			t.Errorf("gate %q was refused: %v", good, err)
+		}
+	}
+}
+
+// TestAModelTierWithNoTransportCannotScoreAgreement is the most
+// misleading number this harness could print: `assisted` reported at
+// 100% agreement when no model was ever called. tiers documents a nil
+// Client as legal (the seat plays Layer A + B under the tier's own
+// name), so the funnel answers every window with a "no-client"
+// fallback — which is a failure, not an answer.
+func TestAModelTierWithNoTransportCannotScoreAgreement(t *testing.T) {
+	p := Position{
+		ID: "no-transport", V: PositionVersion, Input: twoMoveInput(),
+		Expected: Expected{Accept: []Matcher{{Label: "Alpha"}}},
+	}
+	if err := p.prepare(); err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	pol, err := tiers.New(tiers.Assisted, tiers.Options{})
+	if err != nil {
+		t.Fatalf("tier: %v", err)
+	}
+	rep := Run(context.Background(), []Position{p}, pol, RunOptions{})
+	if rep.Agree != 0 || rep.Errors != 1 {
+		t.Fatalf("a clientless model tier scored agreement: %+v", rep)
+	}
+	if got := rep.Results[0].Outcome; got != OutcomeError {
+		t.Fatalf("outcome %q, want %q", got, OutcomeError)
 	}
 }
 
@@ -239,7 +373,7 @@ func TestMatchersNameMovesRatherThanIndices(t *testing.T) {
 		want    []int
 	}{
 		{"label", Matcher{Label: "Pass priority"}, []int{0}},
-		{"label_re", Matcher{LabelRe: `^Send it\?: `}, []int{1, 2}},
+		{"label_re", Matcher{LabelRe: `^Send it\?: .*`}, []int{1, 2}},
 		{"kind", Matcher{Kind: legal.KindChoice}, []int{1, 2}},
 		{"type+params", Matcher{Type: "resolve_choice", ParamsSubset: json.RawMessage(`{"apply":true}`)}, []int{1}},
 	}
@@ -356,6 +490,17 @@ func TestRenderPrintsThePromptAndTheMarkers(t *testing.T) {
 }
 
 // --- helpers ---------------------------------------------------------
+
+// threeMoveInput is twoMoveInput plus a second real move, for the
+// labels that have to accept the pass without thereby accepting
+// everything on offer.
+func threeMoveInput() aiseat.Input {
+	return aiseat.Input{Moves: []legal.Move{
+		{Kind: legal.KindCast, Type: "cast_spell", Label: "Alpha"},
+		{Kind: legal.KindPass, Type: "pass_priority", Label: "Pass priority", AlwaysLegal: true},
+		{Kind: legal.KindCast, Type: "cast_spell", Label: "Beta"},
+	}}
+}
 
 func twoMoveInput() aiseat.Input {
 	return aiseat.Input{Moves: []legal.Move{

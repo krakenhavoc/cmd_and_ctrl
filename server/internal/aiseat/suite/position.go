@@ -42,6 +42,7 @@ import (
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
@@ -96,7 +97,17 @@ type AtCapture struct {
 type Matcher struct {
 	// Label matches legal.Move.Label exactly.
 	Label string `json:"label,omitempty"`
-	// LabelRe matches legal.Move.Label as an RE2 regexp.
+	// LabelRe matches legal.Move.Label as an RE2 regexp, ANCHORED at
+	// both ends: the pattern has to match the WHOLE label, so
+	// `label_re: "Attack"` matches the move labelled exactly "Attack"
+	// and NOT "Do not attack with the Bear". Write `.*` where you
+	// want the slack ("^Send it\\?: .*", `Block .* with Wurm`).
+	//
+	// Anchored is the safe direction. A matcher that is too WIDE
+	// silently enlarges a label — it starts accepting or rejecting
+	// moves nobody looked at, and the suite keeps reporting a number
+	// — while one that is too narrow matches nothing and fails Load
+	// loudly, naming the position.
 	LabelRe string `json:"label_re,omitempty"`
 	// Kind matches legal.Move.Kind — the coarse matcher, and the
 	// right one for "make the land drop" or "pass".
@@ -152,13 +163,21 @@ func (m *Matcher) compile() error {
 		}
 	}
 	if m.LabelRe != "" {
-		re, err := regexp.Compile(m.LabelRe)
+		re, err := compileLabelRe(m.LabelRe)
 		if err != nil {
 			return fmt.Errorf("label_re %q: %w", m.LabelRe, err)
 		}
 		m.re = re
 	}
 	return nil
+}
+
+// compileLabelRe compiles a label_re anchored at both ends, which is
+// what the field promises. The anchors are added here rather than
+// asked of the labeller so that every path — Load, a hand-built
+// matcher, the render screen — agrees on what the pattern means.
+func compileLabelRe(pattern string) (*regexp.Regexp, error) {
+	return regexp.Compile(`\A(?:` + pattern + `)\z`)
 }
 
 // Matches reports whether mv is one of the moves this matcher names.
@@ -171,7 +190,7 @@ func (m Matcher) Matches(mv legal.Move) bool {
 	case m.LabelRe != "":
 		// compile() was never run (a hand-built matcher). Compile now
 		// rather than silently matching nothing.
-		re, err := regexp.Compile(m.LabelRe)
+		re, err := compileLabelRe(m.LabelRe)
 		if err != nil {
 			return false
 		}
@@ -387,7 +406,63 @@ func (p *Position) prepare() error {
 			}
 		}
 	}
+	// A label that accepts EVERY legal move asks no question. It
+	// agrees with any policy, including a broken one, while adding
+	// itself to the agree% denominator and to the gated-position
+	// count — so it makes the suite look better and measure less. A
+	// window where every move really is fine is a window not worth
+	// labelling.
+	if len(accept) == len(p.Input.Moves) {
+		return fmt.Errorf("suite: position %q (%s): expected.accept matches all %d legal moves, so this position agrees with every policy; "+
+			"narrow the label or leave the position unlabelled", where, p.path, len(p.Input.Moves))
+	}
+	// decline_ok has to agree with what the runner would actually do.
+	// runner.decide turns a decline from a seat holding priority into
+	// the PASS move ("decline → pass"), so a label that tolerates
+	// declining is tolerating that pass; if the accept set does not
+	// contain it, the suite would report agreement for a move nobody
+	// endorsed. See declineGrade in run.go, which grades it the same
+	// way.
+	if p.Expected.DeclineOK {
+		if pi := aiseat.PassIndex(p.Input.Moves); pi >= 0 && !containsInt(accept, pi) {
+			return fmt.Errorf("suite: position %q (%s): decline_ok is set but move %d %q — the pass the runner substitutes for a decline — is not accepted; "+
+				"accept it, or drop decline_ok", where, p.path, pi, p.Input.Moves[pi].Label)
+		}
+	}
+	if err := p.checkGates(); err != nil {
+		return err
+	}
 	p.accept, p.reject = accept, reject
+	return nil
+}
+
+// checkGates refuses a gate that names something no policy answers
+// to. `gate: ["heuristics"]` is not a gate at all — Gates and
+// gatedBy compare the string against the policy's own name, so the
+// typo pins nothing and does it silently, which is the one failure
+// mode a regression gate must not have.
+//
+// The names come from tiers.All(), the same list `boteval suite run
+// --policy` and the lobby validate against.
+func (p *Position) checkGates() error {
+	for _, g := range p.Gate {
+		name := strings.TrimSpace(g)
+		known := false
+		for _, t := range tiers.All() {
+			if strings.EqualFold(name, string(t)) {
+				known = true
+				break
+			}
+		}
+		if !known {
+			names := make([]string, 0, len(tiers.All()))
+			for _, t := range tiers.All() {
+				names = append(names, string(t))
+			}
+			return fmt.Errorf("suite: position %q (%s): gate %q is not a policy; a gate on a name nothing answers to pins nothing. Want one of %v",
+				p.ID, p.path, g, names)
+		}
+	}
 	return nil
 }
 
