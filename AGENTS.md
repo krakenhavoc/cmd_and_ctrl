@@ -1772,7 +1772,12 @@ it with the produced-mana grammar's per-colour count:
 `OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
 `ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
 a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
-a spell or trigger too, through `AddManaForEffect`. The auto-tapper
+a spell or trigger too, through `AddManaForEffect`. That path narrows a
+pick to the commander's colour identity by default, so an effect whose
+printed text says "any color" or "any one color" passes
+`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+the effect-side twin of the mana ability's flag. The auto-tapper
 plans around such a source, so the player taps it by hand
 ([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
 

@@ -2260,6 +2260,27 @@ func addManaReason(slot ProducedManaEntry) string {
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) error {
+	return g.AddManaWithOptionsForEffect(playerID, source, produced, AddManaOptions{})
+}
+
+// AddManaOptions tunes AddManaWithOptionsForEffect.
+type AddManaOptions struct {
+	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
+	// width instead of intersecting it with the controller's commander
+	// colour identity: the effect-side twin of the mana ability's
+	// IgnoreCommanderIdentity. Set it whenever the printed text says
+	// "any color" or "any one color" with no commander-identity clause
+	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
+	// Added for #742.
+	IgnoreCommanderIdentity bool
+}
+
+// AddManaWithOptionsForEffect is AddManaForEffect with options.
+// AddManaForEffect is this with the zero options, so the existing
+// callers keep the commander-identity narrowing they declared.
+//
+// Caller must hold g.mu.
+func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return nil
@@ -2278,6 +2299,10 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
+		colorOptions := options
+		if !opts.IgnoreCommanderIdentity {
+			colorOptions = filterPipeByCommanderIdentity(options, p)
+		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,
@@ -2285,7 +2310,7 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 			Count:        1,
 			Source:       source,
 			Reason:       addManaReason(slot),
-			ColorOptions: filterPipeByCommanderIdentity(options, p),
+			ColorOptions: colorOptions,
 			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})
 	}

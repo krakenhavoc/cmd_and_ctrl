@@ -97,8 +97,19 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 1, "canonical damage assignment"
 
 	case choiceMana:
+		// #742: a one-pick-N-mana choice adds a different amount per
+		// colour (Nyx Lotus's devotion). The amount leads, so four {G}
+		// beats one {U} the hand wants; the hand's colour need only
+		// breaks ties between equal amounts, which is every ordinary
+		// pick (amount one).
+		n := 1
+		if ch != nil {
+			if v, ok := ch.ColorAmounts[cp.Color]; ok {
+				n = v
+			}
+		}
 		need := colorSymbols(st.seatHand())
-		return 1 + 0.1*float64(need[cp.Color]), "add {" + cp.Color + "}"
+		return float64(n) + 0.1*float64(need[cp.Color]), "add {" + cp.Color + "}"
 
 	case choiceColor:
 		// #742 "choose a color": the colour the bot's hand asks for

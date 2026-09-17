@@ -34,16 +34,19 @@ func init() {
 		Name:         "Selective Obliteration",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			selectiveObliterationAsk(ctx.Game, item, apnapPlayers(ctx.Game), map[uuid.UUID]string{})
-			return nil
+			return selectiveObliterationAsk(ctx.Game, item, apnapPlayers(ctx.Game), map[uuid.UUID]string{})
 		},
 	})
 }
 
-func selectiveObliterationAsk(g *game.Game, item *game.StackItem, order []uuid.UUID, chosen map[uuid.UUID]string) {
+// selectiveObliterationAsk asks the first player in `order`, or, once
+// every player has answered, exiles. The exile's error is returned, so
+// from the last answer's continuation it reaches ResolveColorChoice,
+// which logs it as EventEffectError instead of losing it.
+func selectiveObliterationAsk(g *game.Game, item *game.StackItem, order []uuid.UUID, chosen map[uuid.UUID]string) error {
 	if len(order) == 0 {
 		// Every player has chosen.
-		_ = ExileAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return ExileAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 			if c.IsColorless() {
 				return false
 			}
@@ -51,7 +54,6 @@ func selectiveObliterationAsk(g *game.Game, item *game.StackItem, order []uuid.U
 			pick, ok := chosen[c.Controller]
 			return !(ok && len(colors) == 1 && colors[0] == pick)
 		}}.Apply(NewContext(g, item))
-		return
 	}
 	player := order[0]
 	ChooseColorThen(g, player, item.SourceCardID, "Selective Obliteration — choose a color",
@@ -61,9 +63,9 @@ func selectiveObliterationAsk(g *game.Game, item *game.StackItem, order []uuid.U
 				next[k] = v
 			}
 			next[player] = color
-			selectiveObliterationAsk(g, item, order[1:], next)
-			return nil
+			return selectiveObliterationAsk(g, item, order[1:], next)
 		})
+	return nil
 }
 
 // apnapPlayers lists the players still in the game in APNAP order

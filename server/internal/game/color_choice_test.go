@@ -79,6 +79,44 @@ func TestColorChoiceRefusesAnswersOffTheList(t *testing.T) {
 	}
 }
 
+// The permanent left while its "as this enters" prompt was open: the
+// answer is still accepted (the choice is made; it has nowhere to
+// land), the prompt closes, and nothing is stamped — not on the card
+// in the graveyard, and not on anything else.
+func TestColorChoiceStoredAnswerAfterTheSourceLeft(t *testing.T) {
+	g := newActiveGame(t)
+	seat := g.Seats[0].ID
+	heart := pushTypedTestCard(g, Card{Name: "Coldsteel Heart", TypeLine: "Snow Artifact", Owner: seat, Controller: seat})
+	bystander := pushTypedTestCard(g, Card{Name: "Sol Ring", TypeLine: "Artifact", Owner: seat, Controller: seat})
+	var id uuid.UUID
+	g.WithWriteLock(func() {
+		id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil)
+		if _, err := MoveCard(g.Battlefield, g.Seats[0].Graveyard, heart); err != nil {
+			t.Fatalf("MoveCard: %v", err)
+		}
+	})
+
+	if err := g.ResolveColorChoice(id, seat, "G"); err != nil {
+		t.Fatalf("ResolveColorChoice after the source left: %v, want no error", err)
+	}
+	if choiceByKind(g, PendingChoiceColor) != nil {
+		t.Error("the prompt is still open")
+	}
+	for _, c := range g.Seats[0].Graveyard.Cards {
+		if c.InstanceID == heart && c.ChosenColor != "" {
+			t.Errorf("the departed card was stamped %q", c.ChosenColor)
+		}
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.ChosenColor != "" {
+			t.Errorf("%s (%s) was stamped %q", c.Name, c.InstanceID, c.ChosenColor)
+		}
+	}
+	if got := g.ChosenColorOf(bystander); got != "" {
+		t.Errorf("ChosenColorOf(bystander) = %q, want empty", got)
+	}
+}
+
 // Colorless is not a colour (CR 105.4), so a caller cannot put it on
 // offer by accident.
 func TestColorChoiceOptionsAreRealColorsOnly(t *testing.T) {
@@ -305,5 +343,49 @@ func TestAddManaForEffectOneColorAmount(t *testing.T) {
 	}
 	if len(me.ManaPool) != 2 {
 		t.Errorf("pool = %v, want two {G}", me.ManaPool)
+	}
+}
+
+// AddManaForEffect narrows a pick to the commander's colour identity;
+// the IgnoreCommanderIdentity option keeps the printed "any color"
+// width (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
+func TestAddManaForEffectIdentityOptOut(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	g.WithWriteLock(func() {
+		// Replace the test deck's commander, whose identity is not
+		// mono-green.
+		me.Command.Cards = nil
+		me.Command.PushTop(Card{
+			InstanceID: uuid.New(), Name: "Mono-Green Commander", TypeLine: "Legendary Creature — Elf",
+			ManaCost: "{2}{G}", Owner: me.ID, Controller: me.ID, IsCommander: true,
+		})
+	})
+
+	g.WithWriteLock(func() {
+		if err := g.AddManaForEffect(me.ID, uuid.New(), "{W3|U3|B3|R3|G3}"); err != nil {
+			t.Fatalf("AddManaForEffect: %v", err)
+		}
+	})
+	narrowed := choiceByKind(g, PendingChoiceMana)
+	if narrowed == nil || !reflect.DeepEqual(narrowed.ColorOptions, []string{"G"}) {
+		t.Fatalf("default pick = %+v, want narrowed to [G]", narrowed)
+	}
+	if err := g.ResolveManaChoice(narrowed.ID, me.ID, "G"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.AddManaWithOptionsForEffect(me.ID, uuid.New(), "{W3|U3|B3|R3|G3}",
+			AddManaOptions{IgnoreCommanderIdentity: true}); err != nil {
+			t.Fatalf("AddManaWithOptionsForEffect: %v", err)
+		}
+	})
+	wide := choiceByKind(g, PendingChoiceMana)
+	if wide == nil || !reflect.DeepEqual(wide.ColorOptions, AllColors) {
+		t.Fatalf("opted-out pick = %+v, want all five colours", wide)
+	}
+	if wide.ManaAmounts["B"] != 3 {
+		t.Errorf("opted-out pick amounts = %v, want three of each", wide.ManaAmounts)
 	}
 }

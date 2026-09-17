@@ -235,6 +235,36 @@ func TestHeraldicBannerPumpsYourCreaturesOfTheChosenColor(t *testing.T) {
 	}
 }
 
+// Before its colour is chosen the Banner is the weaker card: no
+// creature of any colour gets +1/+0, and it taps for nothing — never
+// "every colour".
+func TestHeraldicBannerPumpsNothingBeforeTheColorIsChosen(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0].ID
+	creatures := map[uuid.UUID]int{
+		b31Push(g, me, "Savannah Lions", "Creature — Cat", "", "{W}", 2, 1, "W"):        2,
+		b31Push(g, me, "Goblin Guide", "Creature — Goblin Scout", "", "{R}", 2, 2, "R"): 2,
+		b31Push(g, me, "Grizzly Bears", "Creature — Bear", "", "{1}{G}", 2, 2, "G"):     2,
+		b31Push(g, me, "Memnite", "Artifact Creature — Construct", "", "{0}", 1, 1):     1,
+	}
+	banner := b31Push(g, me, "Heraldic Banner", "Artifact", "3525e263-e29a-49bf-a29f-fb3ce43bbd33", "{3}", 0, 0)
+
+	for id, want := range creatures {
+		if got := effectivePower(t, g, id); got != want {
+			t.Errorf("power of %s = %d, want %d with no colour chosen", id, got, want)
+		}
+	}
+	if err := g.ActivateManaAbility(me, banner, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if got := poolColors(g.Seats[0]); len(got) != 0 {
+		t.Errorf("pool = %v, want nothing while no colour is chosen", got)
+	}
+	if pendingOfKind(g, game.PendingChoiceMana) != nil {
+		t.Error("an unchosen Banner offered a colour pick")
+	}
+}
+
 // --- one pick, N tokens ---------------------------------------------
 
 func TestGildedLotusAddsThreeOfOneColor(t *testing.T) {
@@ -259,8 +289,8 @@ func TestGildedLotusAddsThreeOfOneColor(t *testing.T) {
 func TestLotusFieldEntersTappedAndSacrificesTwoLands(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	b31Push(g, me.ID, "Forest", "Basic Land — Forest", "", "", 0, 0)
-	b31Push(g, me.ID, "Island", "Basic Land — Island", "", "", 0, 0)
+	forest := b31Push(g, me.ID, "Forest", "Basic Land — Forest", "", "", 0, 0)
+	island := b31Push(g, me.ID, "Island", "Basic Land — Island", "", "", 0, 0)
 	field := b13PlayAs(t, g, 0, "Lotus Field", "Land", "134d5b82-7940-4b33-a922-7f9d1f403e50")
 	passPriorityAroundTable(t, g)
 	if !b13Tapped(t, g, field) {
@@ -275,7 +305,33 @@ func TestLotusFieldEntersTappedAndSacrificesTwoLands(t *testing.T) {
 		}
 	})
 	if n != 2 {
-		t.Errorf("sacrifice prompts = %d, want 2", n)
+		t.Fatalf("sacrifice prompts = %d, want 2", n)
+	}
+
+	// Answering both sacrifices two DIFFERENT lands: the second prompt
+	// cannot name the land the first one already took.
+	answerSacrifice(t, g, me.ID, forest)
+	second := sacrificeChoiceFor(g, me.ID)
+	if second == nil {
+		t.Fatal("the second sacrifice prompt is gone after the first answer")
+	}
+	if err := g.ResolveSacrificeChoice(second.ID, me.ID, forest); err == nil {
+		t.Error("the second prompt accepted the land the first one already sacrificed")
+	}
+	answerSacrifice(t, g, me.ID, island)
+	for _, id := range []uuid.UUID{forest, island} {
+		if _, ok := battlefieldCard(g, id); ok {
+			t.Errorf("%s is still on the battlefield", id)
+		}
+		if !me.Graveyard.Contains(id) {
+			t.Errorf("%s is not in the graveyard", id)
+		}
+	}
+	if _, ok := battlefieldCard(g, field); !ok {
+		t.Error("Lotus Field left the battlefield; it was not one of the two picks")
+	}
+	if c := sacrificeChoiceFor(g, me.ID); c != nil {
+		t.Errorf("a third sacrifice prompt is open: %+v", c)
 	}
 }
 
@@ -431,6 +487,55 @@ func TestSanctumOfFruitfulHarvestAddsOneColorPerShrine(t *testing.T) {
 	if got := poolColors(g.Seats[0]); !reflect.DeepEqual(got, []string{"G", "G"}) {
 		t.Errorf("pool = %v, want two {G}", got)
 	}
+}
+
+// "Any one color" / "any color" on an effect (not a mana ability) is
+// printed with no commander-identity clause, so a mono-green commander
+// does not narrow the pick.
+func TestEffectManaAnyColorIgnoresCommanderIdentity(t *testing.T) {
+	t.Run("Sanctum of Fruitful Harvest", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		riderGiveCommander(g, me, "{G}")
+		b31Push(g, me.ID, "Sanctum of Fruitful Harvest", "Legendary Enchantment — Shrine", "132859dd-de66-45c6-8af4-ab5e202a17b0", "{2}{G}", 0, 0)
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		pick := pendingOfKind(g, game.PendingChoiceMana)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
+			t.Fatalf("pick = %+v, want all five colours", pick)
+		}
+	})
+	t.Run("Lotus Cobra", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		riderGiveCommander(g, me, "{G}")
+		pushCatalogPermanent(g, me.ID, "Lotus Cobra", "Creature — Snake", b02LotusCobraOracle, false)
+		playLandFromHand(t, g, "Forest", "")
+		passPriorityAroundTable(t, g)
+		pick := riderLatestManaPick(g, me.ID)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
+			t.Fatalf("pick = %+v, want all five colours", pick)
+		}
+	})
+	t.Run("Deathrite Shaman", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		riderGiveCommander(g, me, "{G}")
+		shaman := pushCatalogPermanent(g, me.ID, "Deathrite Shaman", "Creature — Elf Shaman", b05DeathriteShamanOracle, false)
+		land := batch01GraveyardCard(opp, "Forest", "Basic Land — Forest")
+		if err := g.ActivateCatalogAbility(me.ID, shaman, 0, game.ActivateAbilityParams{
+			Targets: []game.TargetRef{{Kind: game.TargetCard, ID: land}},
+		}); err != nil {
+			t.Fatalf("activate: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		pick := riderLatestManaPick(g, me.ID)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
+			t.Fatalf("pick = %+v, want all five colours", pick)
+		}
+	})
 }
 
 // --- colour chosen at resolution ------------------------------------

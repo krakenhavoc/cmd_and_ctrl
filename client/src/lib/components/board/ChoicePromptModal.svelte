@@ -744,9 +744,11 @@
           {active.reason || "Choose a color"}
           <span class="prompt-src" aria-hidden="true">choose a color · CR 105.4</span>
         </h2>
-        <p class="prompt-hint">
-          A permanent that asks as it enters remembers the color until it leaves the battlefield.
-        </p>
+        <!-- Neutral on purpose: the same prompt comes from a permanent
+             entering (the color is remembered) and from a spell or
+             ability resolving (it is used once), and the view does not
+             say which. -->
+        <p class="prompt-hint">Pick exactly one color. The card's text says how it is used.</p>
         <div class="color-row">
           {#each colorOptions as color (color)}
             {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}

@@ -235,6 +235,12 @@ snapshot. Three rules keep the rest of the pipeline unchanged:
   common case, and a zero count drops its option.
 - `ResolveManaChoice` and `AddManaForEffect` mint the picked colour's
   amount; an ordinary pick has no entry and mints one.
+- `AddManaForEffect` still narrows a pick to the commander's colour
+  identity by default. `AddManaWithOptionsForEffect` with
+  `AddManaOptions{IgnoreCommanderIdentity: true}` (and the `AddMana`
+  primitive's field of the same name) is the effect-side twin of the
+  mana ability's opt-out, for printed "any color" text: Sanctum of
+  Fruitful Harvest, Lotus Cobra, Deathrite Shaman.
 - **The auto-tapper plans around a one-colour-N-mana source.** Its model
   is one slot, one mana, one colour choice per slot, and a Gilded Lotus
   planned as three any-colour slots could be booked for `{W}`, `{U}` and
