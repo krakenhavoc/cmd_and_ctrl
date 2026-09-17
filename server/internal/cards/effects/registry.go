@@ -85,6 +85,23 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	// ADR 0048 addendum §11: no printed card sets a floor on its own
+	// cost, and an untested kind should not be declarable. A mana Unit
+	// belongs on an increase only (open question 3); the engine would
+	// refuse every cast of a card that put one anywhere else, so say
+	// so at boot instead.
+	for i, m := range spec.SelfCostModifiers {
+		if m.Kind == game.CostFloor {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
+		}
+	}
+	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
+		for i, m := range mods {
+			if m.Unit != nil && (m.Kind != game.CostIncrease || m.Unit.XSlots > 0) {
+				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares a mana unit on something other than a fixed increase", spec.Name, i, m.Label))
+			}
+		}
+	}
 	// The completeness declaration is published verbatim on the
 	// public catalog page, so the two ways of getting it wrong are
 	// both caught at boot rather than shipped to a reader.

@@ -1147,6 +1147,14 @@ export interface CardView {
   // flow opens a picker after X and before targeting. Absent for
   // nearly every card.
   tap_cost?: TapCostView;
+  // #746 (ADR 0048 addendum): the printed clauses of this card's own
+  // cost modifiers whose price depends on its targets — Fireball's
+  // "This spell costs {1} more to cast for each target beyond the
+  // first", strive. The X picker opens before targeting and its
+  // affordability readout is priced at one target, so it shows these
+  // clauses under the readout. Absent for nearly every card and on
+  // opponents' cards the viewer cannot read.
+  target_cost_notes?: string[];
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its

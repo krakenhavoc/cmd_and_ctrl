@@ -296,3 +296,22 @@ func targetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) er
 	}
 	return nil
 }
+
+// counterTheTargetSpell is the whole OnResolve of "Counter target
+// spell." — Cancel's body, named so a new card calls it rather than
+// adding another copy to that clone family.
+func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
+}
+
+// destroyTheTargetPermanent is the whole OnResolve of "Destroy target
+// [permanent]." — Bedevil's body, named for the same reason.
+func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
+}

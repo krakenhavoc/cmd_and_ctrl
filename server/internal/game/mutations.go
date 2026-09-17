@@ -1316,12 +1316,18 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if !ok {
 		return ParsedCost{}, ErrZoneNotFound
 	}
+	//
+	// The targets ride along because CR 601.2c announces them before
+	// 601.2f totals the cost, and CastSpell has validated them by now.
+	// Only a modifier that declares ReadsTargets ever sees them
+	// (ADR 0048 addendum §13).
 	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
 		FromZone:   fromZone,
 		XValue:     params.XValue,
+		Targets:    params.Targets,
 	})
 	if err != nil {
 		return ParsedCost{}, err

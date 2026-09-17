@@ -148,17 +148,32 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	if from == "command" {
 		fromZone = game.ZoneCommand
 	}
-	cost, err = e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
-		Card:       card,
-		Controller: e.seat,
-		FromZone:   fromZone,
-	})
-	if err != nil {
-		return
-	}
-	x, ok := e.affordableX(cost, game.ManaSpendForCast(card))
-	if !ok {
-		return
+	// ADR 0048 addendum §14: when something on the board or the card
+	// itself prices by target (Fireball's surcharge, Price of Fame's
+	// discount), one price up front is not the price — and a
+	// nil-targets price cannot even be used as a gate, because a
+	// target-reading REDUCTION makes the real cast cheaper than it.
+	// So the up-front price and its early return run only when
+	// nothing reads targets, which is every board without such a
+	// card; otherwise each (modes, targets) set below is priced on its
+	// own and carries its own X.
+	spend := game.ManaSpendForCast(card)
+	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
+	x := 0
+	if !perTarget {
+		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
+			Card:       card,
+			Controller: e.seat,
+			FromZone:   fromZone,
+		})
+		if err != nil {
+			return
+		}
+		var ok bool
+		x, ok = e.affordableX(priced, spend)
+		if !ok {
+			return
+		}
 	}
 
 	// Modes → each choice of modes yields a target spec (at most one
@@ -217,6 +232,27 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 			}
 		}
 		for _, targets := range targetSets {
+			setX := x
+			if perTarget {
+				// §14: priced with this set's targets. An unaffordable
+				// set is skipped before any budget is spent on it, so
+				// a Fireball the seat can pay for at one target is not
+				// crowded out by the three-target sets it cannot.
+				priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
+					Card:       card,
+					Controller: e.seat,
+					FromZone:   fromZone,
+					Targets:    targets,
+				})
+				if err != nil {
+					continue
+				}
+				var ok bool
+				setX, ok = e.affordableX(priced, spend)
+				if !ok {
+					continue
+				}
+			}
 			for _, discards := range discardSets {
 				for _, sacs := range sacrificeSets {
 					if budget <= 0 {
@@ -227,8 +263,8 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					if from == "command" {
 						label += " from the command zone"
 					}
-					if x > 0 {
-						label += fmt.Sprintf(" for X=%d", x)
+					if setX > 0 {
+						label += fmt.Sprintf(" for X=%d", setX)
 					}
 					label += targetLabel(g, targets)
 					e.add(Move{
@@ -242,7 +278,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 							FromZone:     from,
 							Targets:      wireTargets(targets),
 							Modes:        modes,
-							XValue:       x,
+							XValue:       setX,
 							DiscardIDs:   idStrings(discards),
 							SacrificeIDs: idStrings(sacs),
 							Strict:       true,
