@@ -44,7 +44,7 @@ func lurkingPredatorsReveal(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	c, ok := g.LookupCardForEffect(top)
-	if !ok || c.IsCreature() {
+	if !ok || (c.IsCreature() && !IsToken(c)) {
 		return nil
 	}
 	g.QueueConfirmForEffect(game.ConfirmPrompt{
@@ -54,6 +54,15 @@ func lurkingPredatorsReveal(g *game.Game, item *game.StackItem) error {
 		AcceptLabel:  "Put it on the bottom",
 		DeclineLabel: "Leave it on top",
 		OnAccept: func(g *game.Game) error {
+			// "That card" is the one on top of the library. If it has
+			// left the library before the answer arrived, there is
+			// nothing to put on the bottom — and the random-order
+			// bottom takes cards from ANY zone, so without this check
+			// a stale ID would pull it out of a hand or off the
+			// battlefield.
+			if z := g.FindCardZoneForEffect(top); z == nil || z.Kind != game.ZoneLibrary {
+				return nil
+			}
 			// A pile of one: the random-order bottom is the plain
 			// bottom, and it is the move that repositions a card
 			// already in its owner's library.

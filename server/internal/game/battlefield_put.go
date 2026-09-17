@@ -87,8 +87,10 @@ type LibraryEntryOptions = ZoneEntryOptions
 // Returns the entering permanent's ID (the library instance ID; only
 // an exile return mints a new one), or uuid.Nil with a nil error
 // when a replacement canceled or redirected the entry or the pipeline
-// paused. Refuses a card not in a library with ErrCardNotFound and a
-// nonpermanent card with ErrInvalidParam (CR 110.4), moving nothing.
+// paused. Refuses a card not in a library with ErrCardNotFound, and a
+// nonpermanent card (CR 110.4) or a token (CR 111.8: a token that has
+// left the battlefield can't come back onto it) with ErrInvalidParam,
+// moving nothing.
 //
 // Caller must hold g.mu.
 func (g *Game) PutFromLibraryOntoBattlefieldForEffect(cardID uuid.UUID, opts LibraryEntryOptions) (uuid.UUID, error) {
@@ -139,8 +141,9 @@ func (g *Game) PutFromLibraryOntoBattlefieldForEffect(cardID uuid.UUID, opts Lib
 // stronger. Returns the IDs that entered, in the order given.
 //
 // Every ID is validated before anything happens: one that is not in
-// a library (ErrCardNotFound) or not a permanent card
-// (ErrInvalidParam) refuses the whole batch and moves nothing, so a
+// a library (ErrCardNotFound) or not a permanent card — a nonpermanent
+// or a token (ErrInvalidParam) — refuses the whole batch and moves
+// nothing, so a
 // caller holding one stale ID cannot half-apply an effect. A repeated
 // ID is taken once.
 //
@@ -155,9 +158,12 @@ type pendingPut struct {
 	cardID     uuid.UUID
 	src        *Zone
 	controller uuid.UUID
-	out        *ReplacementEvent
-	eventID    ReplacementEventID
-	entered    bool
+	// priorController is the Controller the card carried in its
+	// source zone, put back if it does not enter.
+	priorController uuid.UUID
+	out             *ReplacementEvent
+	eventID         ReplacementEventID
+	entered         bool
 }
 
 // putOntoBattlefieldFromZoneLocked is the shared body of the hand and
@@ -186,11 +192,21 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		if !c.IsPermanent() {
 			return nil, ErrInvalidParam
 		}
+		if c.IsToken() {
+			// CR 111.8: a token that has left the battlefield can't
+			// move to another zone or come back onto the battlefield,
+			// and CR 108.2: it is not a "card" at all. The engine has
+			// no CR 704.5d sweep, so a token tucked into a library
+			// (Chaos Warp) is still sitting there; putting it back
+			// would undo the removal that tucked it. Refused like a
+			// nonpermanent.
+			return nil, ErrInvalidParam
+		}
 		controller := opts.Controller
 		if controller == uuid.Nil || g.playerByIDLocked(controller) == nil {
 			controller = src.Owner
 		}
-		batch = append(batch, &pendingPut{cardID: id, src: src, controller: controller})
+		batch = append(batch, &pendingPut{cardID: id, src: src, controller: controller, priorController: c.Controller})
 	}
 	if len(batch) == 0 {
 		return nil, nil
@@ -293,6 +309,23 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		}
 		p.entered = true
 		entered = append(entered, moved.InstanceID)
+	}
+
+	// A card that did not enter (canceled, redirected, paused, or its
+	// move failed) is still in its source zone wearing the controller
+	// phase 1 stamped for the entry. Give it back what it had, so a put
+	// under someone other than the owner (Lonis) leaves no trace on a
+	// card it never moved.
+	for _, p := range batch {
+		if p.entered {
+			continue
+		}
+		for i := range p.src.Cards {
+			if p.src.Cards[i].InstanceID == p.cardID {
+				p.src.Cards[i].Controller = p.priorController
+				break
+			}
+		}
 	}
 
 	// Phase 3: announce. Every permanent of the batch is on the

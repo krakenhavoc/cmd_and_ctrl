@@ -60,6 +60,11 @@ func risenReefLook(g *game.Game, item *game.StackItem) error {
 		Label:    "Risen Reef — you may put the land onto the battlefield tapped (otherwise it goes into your hand)",
 		Then: func(g *game.Game, res PutFromLibraryResult) error {
 			for _, id := range res.Rest {
+				if c, ok := g.LookupCardForEffect(id); ok && IsToken(c) {
+					// A token tucked into the library earlier can't
+					// move to a hand (CR 111.8); it stays on top.
+					continue
+				}
 				if err := g.BounceToHandForEffect(id); err != nil {
 					return err
 				}

@@ -39,7 +39,10 @@ func init() {
 					if err != nil || top == uuid.Nil {
 						return err
 					}
-					if c, ok := g.LookupCardForEffect(top); ok && c.IsLand() {
+					if c, ok := g.LookupCardForEffect(top); ok && (c.IsLand() || IsToken(c)) {
+						// A token tucked into the library earlier is
+						// neither put nor moved to hand: it can't
+						// change zones again (CR 111.8).
 						return nil
 					}
 					return g.BounceToHandForEffect(top)

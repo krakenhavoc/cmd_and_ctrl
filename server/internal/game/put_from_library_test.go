@@ -193,13 +193,25 @@ func TestPutFromLibraryCanceledLeavesTheCardInTheLibrary(t *testing.T) {
 			Label: "Test: this entry is replaced with nothing",
 		})
 	})
-	entered, err := putFromLibrary(t, g, land, LibraryEntryOptions{})
+	var prior uuid.UUID
+	g.WithWriteLock(func() {
+		c, _ := g.LookupCardForEffect(land)
+		prior = c.Controller
+	})
+	// Put under another player's control (the Lonis shape), so the
+	// controller stamped for the entry differs from what the card had.
+	entered, err := putFromLibrary(t, g, land, LibraryEntryOptions{Controller: g.Seats[1].ID})
 	if err != nil || entered != uuid.Nil {
 		t.Errorf("entered %s err %v, want uuid.Nil and nil", entered, err)
 	}
 	if !me.Library.Contains(land) {
 		t.Error("the canceled land left the library anyway")
 	}
+	g.WithWriteLock(func() {
+		if c, _ := g.LookupCardForEffect(land); c.Controller != prior {
+			t.Errorf("the canceled card kept the entry's controller %s, want %s back", c.Controller, prior)
+		}
+	})
 }
 
 // It is a LIBRARY move: a card in a hand, on the battlefield or nowhere
@@ -212,6 +224,10 @@ func TestPutFromLibraryRefusesTheWrongZoneAndNonpermanents(t *testing.T) {
 	onBattlefield := permanentFor(g, me, "Bear", "Creature — Bear", "{1}{G}")
 	bolt := topOfLibraryFor(me, "Lightning Bolt", "Instant")
 	land := topOfLibraryFor(me, "Island", "Basic Land — Island")
+	// #773 review: a token tucked into a library earlier (the engine has
+	// no CR 704.5d sweep) is not a card (CR 108.2) and can't come back
+	// onto the battlefield (CR 111.8).
+	token := topOfLibraryFor(me, "Goblin", "Token Creature — Goblin")
 
 	for _, tc := range []struct {
 		name string
@@ -222,6 +238,7 @@ func TestPutFromLibraryRefusesTheWrongZoneAndNonpermanents(t *testing.T) {
 		{"on the battlefield", onBattlefield, ErrCardNotFound},
 		{"nowhere at all", uuid.New(), ErrCardNotFound},
 		{"an instant", bolt, ErrInvalidParam},
+		{"a token", token, ErrInvalidParam},
 	} {
 		if _, err := putFromLibrary(t, g, tc.id, LibraryEntryOptions{}); !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v, want %v", tc.name, err, tc.want)
@@ -234,7 +251,7 @@ func TestPutFromLibraryRefusesTheWrongZoneAndNonpermanents(t *testing.T) {
 	if !errors.Is(err, ErrCardNotFound) {
 		t.Errorf("the hand move took a library card: err = %v", err)
 	}
-	if !me.Hand.Contains(inHand) || !me.Library.Contains(bolt) || !me.Library.Contains(land) {
+	if !me.Hand.Contains(inHand) || !me.Library.Contains(bolt) || !me.Library.Contains(land) || !me.Library.Contains(token) {
 		t.Error("a refused put moved something anyway")
 	}
 }

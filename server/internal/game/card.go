@@ -712,6 +712,20 @@ func (c Card) IsPermanent() bool {
 		c.IsBattle()
 }
 
+// IsToken reports whether the object is a token (CR 111). Token type
+// lines are stamped "Token Creature — Goblin" by the catalog's token
+// templates and "Token" is not a card type, so the printed line is
+// the test — the one effects.IsToken has always made, now here so the
+// engine can make it too.
+//
+// A token is not a card (CR 108.2), and a token that has left the
+// battlefield can't move to another zone or come back onto the
+// battlefield (CR 111.8). The engine has no CR 704.5d sweep, so a
+// token tucked into a library (Chaos Warp) is still sitting there as
+// an object; a move that promises "a permanent card" out of a hidden
+// zone refuses it with this.
+func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
+
 // HasCardType reports whether the card's effective card types
 // include `lowerType`, which MUST be lowercase (every caller in
 // this package passes a literal).

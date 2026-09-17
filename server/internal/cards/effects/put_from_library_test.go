@@ -150,20 +150,112 @@ func TestChaosWarpReplacesThePermanentForItsOwner(t *testing.T) {
 	}
 	bear := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
 	onBattlefield := g.Battlefield.Size()
+	before := len(g.Events)
 
 	castCatalogSpell(t, g, "Chaos Warp", "Instant", plChaosWarpOracle, b16TargetCard(bear))
 	passPriorityAroundTable(t, g)
 
+	// The shuffle decides whether a Forest or the Bear itself comes up,
+	// so pin the card by the reveal rather than by the seed: exactly one
+	// card was revealed, and that card is the one that entered.
+	var revealed []uuid.UUID
+	for _, ev := range g.Events[before:] {
+		if ev.Kind == game.EventRevealCards && ev.Actor == opp.ID {
+			revealed = append(revealed, ev.CardID)
+		}
+	}
+	if len(revealed) != 1 {
+		t.Fatalf("revealed %d cards, want the top one", len(revealed))
+	}
+	entered, ok := g.LookupCardForEffect(revealed[0])
+	if !ok || !g.Battlefield.Contains(revealed[0]) {
+		t.Fatal("the revealed card is not the one that entered")
+	}
+	if entered.Controller != opp.ID {
+		t.Errorf("%s entered under %s, want its owner", entered.Name, entered.Controller)
+	}
 	if g.Battlefield.Size() != onBattlefield {
 		t.Errorf("battlefield %d → %d: one permanent left and one arrived", onBattlefield, g.Battlefield.Size())
 	}
 	if opp.Library.Size() != 4 {
 		t.Errorf("owner's library = %d, want 4 (four lands + the bear − the card put)", opp.Library.Size())
 	}
-	for _, c := range g.Battlefield.Cards {
-		if c.Owner == opp.ID && c.Controller != opp.ID {
-			t.Errorf("%s entered under %s, want its owner", c.Name, c.Controller)
+	if entered.Name != "Bear" && g.Battlefield.Contains(bear) {
+		t.Error("a Forest came up, yet the Bear is still on the battlefield")
+	}
+}
+
+// #773 review: a token is not a card (CR 108.2) and a token that has
+// left the battlefield can't come back (CR 111.8). Chaos Warp on a token
+// whose owner's library is empty tucks it, reveals it as the top card —
+// and must not put it straight back, or the removal removed nothing.
+func TestChaosWarpOnATokenDoesNotPutItBack(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	opp.Library.Cards = nil
+	goblin := b12Creature(g, opp.ID, "Goblin", "Token Creature — Goblin", 1, 1)
+	onBattlefield := g.Battlefield.Size()
+	before := len(g.Events)
+
+	castCatalogSpell(t, g, "Chaos Warp", "Instant", plChaosWarpOracle, b16TargetCard(goblin))
+	passPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(goblin) {
+		t.Fatal("the warped token came back onto the battlefield")
+	}
+	if g.Battlefield.Size() != onBattlefield-1 {
+		t.Errorf("battlefield %d → %d, want one fewer", onBattlefield, g.Battlefield.Size())
+	}
+	for _, ev := range g.Events[before:] {
+		if ev.Kind == game.EventEffectError {
+			t.Errorf("a revealed token must read as \"not a permanent card\", not an engine error: %s", ev.ErrorMsg)
 		}
+	}
+}
+
+// A token already sitting in a library (from an earlier tuck) is never
+// offered by "any number of permanent cards from among them", and it
+// is not moved with the rest either (CR 111.8).
+func TestGenesisWaveNeverOffersAToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	token := plTop(me, "Goblin", "Token Creature — Goblin", "")
+	bear := plTop(me, "Bear", "Creature — Bear", "{1}{G}")
+
+	b12PlayFromHand(t, g, "Genesis Wave", "Sorcery", plGenesisWaveOracle, game.CastSpellParams{XValue: 2})
+	passPriorityAroundTable(t, g)
+
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("Genesis Wave asked nothing")
+	}
+	if hasID(pick.ChooseCards, token) {
+		t.Error("a token was offered as a permanent card")
+	}
+	answerChooseCards(t, g, me.ID, bear)
+	if g.Battlefield.Contains(token) || me.Graveyard.Contains(token) {
+		t.Error("the token changed zones")
+	}
+}
+
+// The reveal-until family does not stop on a token: it is not "a land
+// card", and "put that card onto the battlefield" could not bring it
+// back (CR 111.8).
+func TestTheRegaliaDoesNotStopOnAToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	regalia := b12Push(g, me.ID, "The Regalia", "Legendary Artifact Creature — Vehicle", plRegaliaOracle, 4, 4)
+	land := plTop(me, "Forest", "Basic Land — Forest", "")
+	token := plTop(me, "Dryad Arbor Copy", "Token Land Creature — Forest Dryad", "")
+
+	declareAttack(t, g, opp.ID, regalia)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(token) {
+		t.Fatal("the reveal stopped on a token and put it onto the battlefield")
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("the reveal should have carried on to the land card under the token")
 	}
 }
 

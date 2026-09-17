@@ -1327,6 +1327,13 @@ bottom in a random order" anywhere else is
 seeded RNG — never `math/rand` — and repositions cards already in the
 library without a zone change.
 
+A token can end up in a library (Chaos Warp tucks one, and the engine
+has no CR 704.5d sweep). It is not a card (CR 108.2) and can't change
+zones again (CR 111.8), so the move refuses it and the helpers never
+offer or stop on one. If your card moves a revealed card anywhere else
+("otherwise put it into your hand"), skip a token with `IsToken`, as
+Coiling Oracle and Risen Reef do.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 

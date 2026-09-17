@@ -59,6 +59,9 @@ func init() {
 }
 
 // chaosWarpAnyPermanent is "if it's a permanent card"; the reveal
-// helper already refuses nonpermanents, so every card it asks about
-// qualifies.
+// helper already refuses nonpermanents and tokens, so every card it
+// asks about qualifies. The token half matters here more than anywhere:
+// Chaos Warp on a token tucks it, and without the refusal a token that
+// came back up as the top card would be put straight back onto the
+// battlefield (CR 111.8 says it can't be).
 func chaosWarpAnyPermanent(game.Card) bool { return true }

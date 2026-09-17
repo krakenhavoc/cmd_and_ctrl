@@ -62,8 +62,9 @@ import (
 // the bottom of your library in a random order" — which must know
 // which cards were NOT chosen — goes in Then. Then runs in every case:
 // after the answer, immediately when there was nothing to choose from,
-// and immediately when All or a forced answer made the choice for the
-// player.
+// immediately when All or a forced answer made the choice for the
+// player, and even when the put itself returned an error (with whatever
+// did enter), so the rest never stay on top because one card failed.
 type PutFromLibraryOntoBattlefield struct {
 	// Player chooses, and is who the permanents enter under. uuid.Nil
 	// means the resolving item's controller.
@@ -75,8 +76,9 @@ type PutFromLibraryOntoBattlefield struct {
 	Cards []uuid.UUID
 
 	// Match is the clause's filter ("a land card", "a Dragon creature
-	// card"). Nil means any permanent card; nonpermanent cards are
-	// dropped whatever Match says (CR 110.4).
+	// card"). Nil means any permanent card; nonpermanent cards (CR
+	// 110.4) and tokens (CR 108.2, CR 111.8) are dropped whatever
+	// Match says.
 	Match CardPredicate
 
 	// Max is "a" (1) or "any number" (0). Ignored with All.
@@ -129,22 +131,27 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped}
 	finish := func(g *game.Game, picked []uuid.UUID) error {
 		var entered []uuid.UUID
+		var putErr error
 		if len(picked) > 0 {
-			ids, err := g.PutCardsFromLibraryOntoBattlefieldForEffect(picked, opts)
-			if err != nil {
-				return err
-			}
-			entered = ids
+			// An error still reports whatever did enter, and Then
+			// still runs: the revealed or looked-at rest must not be
+			// left on top (with its knowers) because one card of the
+			// batch failed.
+			entered, putErr = g.PutCardsFromLibraryOntoBattlefieldForEffect(picked, opts)
 		}
 		if then == nil {
-			return nil
+			return putErr
 		}
-		return then(g, PutFromLibraryResult{
+		thenErr := then(g, PutFromLibraryResult{
 			Source:  source,
 			Player:  player,
 			Entered: entered,
 			Rest:    cardsStillInALibrary(g, cards),
 		})
+		if putErr != nil {
+			return putErr
+		}
+		return thenErr
 	}
 
 	candidates := libraryCardsMatching(ctx.Game, player, cards, p.Match)
@@ -190,6 +197,12 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 // library that pass `pred`, in the order given. Characteristics are
 // read off the card in the library, where they are printed.
 //
+// A token is never a candidate, whatever its type line says: it is not
+// a "card" (CR 108.2), and a token that has left the battlefield can't
+// come back onto it (CR 111.8). One only gets into a library because
+// the engine has no CR 704.5d sweep (Chaos Warp tucks a token), and the
+// move itself refuses it (game.PutCardsFromLibraryOntoBattlefieldForEffect).
+//
 // Caller holds g.mu.
 func libraryCardsMatching(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred CardPredicate) []uuid.UUID {
 	var out []uuid.UUID
@@ -199,7 +212,7 @@ func libraryCardsMatching(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred 
 			continue
 		}
 		c, ok := g.LookupCardForEffect(id)
-		if !ok || !c.IsPermanent() {
+		if !ok || !isPermanentCard(c) {
 			continue
 		}
 		if pred != nil && !pred(g, player, c) {
@@ -208,6 +221,13 @@ func libraryCardsMatching(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred 
 		out = append(out, id)
 	}
 	return out
+}
+
+// isPermanentCard is "a permanent card" as the library-to-battlefield
+// family prints it: a permanent type (CR 110.4) on something that is a
+// card rather than a token (CR 108.2, CR 111.8).
+func isPermanentCard(c game.Card) bool {
+	return c.IsPermanent() && !c.IsToken()
 }
 
 // cardsStillInALibrary is "the rest": the cards of `ids` that have not
@@ -234,8 +254,16 @@ func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error 
 // PutRestIntoGraveyard is the Then for "put all cards revealed this way
 // that weren't put onto the battlefield into your graveyard" (Genesis
 // Wave). Not a mill: see game.PutIntoGraveyardForEffect.
+//
+// A token among the rest stays where it is: a token that has left the
+// battlefield can't move to another zone (CR 111.8), and moving it to a
+// graveyard would hand a reanimator an object the rules have already
+// taken off the table.
 func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
 	for _, id := range res.Rest {
+		if c, ok := g.LookupCardForEffect(id); ok && c.IsToken() {
+			continue
+		}
 		if err := g.PutIntoGraveyardForEffect(id); err != nil {
 			return err
 		}
@@ -253,6 +281,11 @@ func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
 // not a loss. The whole run is announced as one reveal, which is what
 // the table sees happen.
 //
+// A token in the library is revealed with the rest but never stops the
+// run: "until you reveal a creature card" asks for a card, and a token
+// is not one (CR 108.2) — nor could "put that card onto the
+// battlefield" bring it back (CR 111.8).
+//
 // Caller holds g.mu.
 func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reason string) ([]uuid.UUID, uuid.UUID) {
 	p := ctx.PlayerByID(player)
@@ -264,7 +297,7 @@ func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reas
 	for i := len(p.Library.Cards) - 1; i >= 0; i-- {
 		c := p.Library.Cards[i]
 		run = append(run, c.InstanceID)
-		if pred(c) {
+		if !c.IsToken() && pred(c) {
 			hit = c.InstanceID
 			break
 		}
@@ -320,6 +353,10 @@ func (r RevealUntilThenPutOntoBattlefield) Apply(ctx *Context) error {
 // The permanent enters under `player`'s control, which on every card
 // that prints this sentence is the library's owner.
 //
+// A revealed token is "not a [match] card" (CR 108.2) and is left where
+// it is (CR 111.8): the card's "otherwise" branch sees it and must not
+// move it either (see IsToken).
+//
 // Caller holds g.mu.
 func revealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(game.Card) bool, tapped bool, reason string) (uuid.UUID, error) {
 	ids := g.RevealTopOfLibraryForEffect(player, source, 1, reason)
@@ -328,7 +365,7 @@ func revealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(
 	}
 	top := ids[0]
 	c, ok := g.LookupCardForEffect(top)
-	if !ok || !c.IsPermanent() || !match(c) {
+	if !ok || !isPermanentCard(c) || !match(c) {
 		return top, nil
 	}
 	_, err := g.PutFromLibraryOntoBattlefieldForEffect(top, game.LibraryEntryOptions{
