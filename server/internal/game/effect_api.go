@@ -146,19 +146,37 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 
 // ChangePlayerLifeForEffect adjusts a player's life by delta and
 // emits EventChangeLife. Lock-free.
+//
+// #482: routed through the CR 614 replacement window, the way
+// DealDamageToPlayerForEffect has been since S22. Before this, every
+// catalog GainLife, every drain and every "pay N life" cost wrote the
+// total directly, so a life-change replacement — Rhox Faithmender's
+// "you gain twice that much life instead" — only ever saw a life total
+// typed in by hand through the public sandbox verb, which is the one
+// path a game never takes. See life_tail.go.
+//
+// A CR 616 ordering prompt (two life replacements on one event)
+// returns nil with the change not yet applied; it lands from the
+// resume when the affected player answers. A caller that re-reads the
+// player's life afterwards to find out how much actually moved
+// (Exsanguinate's "life lost this way") therefore sees zero for that
+// one event — weaker than printed, never stronger, and it takes two
+// life replacements on one table to reach.
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
+	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	p.ChangeLife(delta)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Source: source,
-		Target: playerID,
-		Amount: delta,
+	// The event is built before the pipeline runs and carries
+	// everything the tail needs, because a CR 616 ordering prompt
+	// returns below without changing anything and the resume has
+	// nothing else to go on.
+	_, err := g.changeLifeThroughReplacementsLocked(&ReplacementEvent{
+		Kind:       RepEventLife,
+		Source:     source,
+		LifePlayer: playerID,
+		LifeDelta:  delta,
 	})
-	return nil
+	return err
 }
 
 // DealDamageToPlayerForEffect writes amount damage to a player's
