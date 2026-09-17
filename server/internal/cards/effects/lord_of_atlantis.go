@@ -16,21 +16,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // lord has and a modern one does not. Goblin King and Elvish Champion
 // are in the same family and are written the same way; Goblin
 // Chieftain and Elvish Archdruid really do say "you control" and set
-// YoursOnly.
+// YoursOnly. (The "only Merfolk you control" caveat outlived that fix
+// by a year; tribal_test.go asserts the opponent's Merfolk is pumped.)
 //
-// The islandwalk grant is left in place. It is inert — CanBlock never
-// sees the defending player's lands, so landwalk has nowhere to be
-// enforced — and S26's new lords deliberately do NOT grant their own
-// landwalk for that reason (see tribal.go). Removing this one would
-// be a behaviour change to a shipped card in a sprint about something
-// else; it goes when landwalk lands, alongside the others.
+// LIVE SINCE #705. The islandwalk grant was inert from S16 until the
+// block-legality check could see the defending player's lands
+// (game/landwalk.go, ADR 0045 addendum Decision 10). The grant is a
+// layer-6 keyword, so it stops the moment the Lord leaves, and it is
+// symmetrical like the anthem: an opponent's Merfolk attacking you
+// has islandwalk too, and it bites if YOU control an Island.
+//
+// No simplification.
 func init() {
 	otherMerfolk := TribeFilter{Tribes: []string{"Merfolk"}, Others: true}
 	Register(Spec{
 		OracleID:     "cc7f290f-ca00-4285-9bdb-4b4402444f30",
 		Name:         "Lord of Atlantis",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Only Merfolk YOU control get +1/+1 — the printed card pumps every other Merfolk on the battlefield, opponents' included.", "Islandwalk is granted but does nothing: the engine's blocking rules never consult it."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			TribalAnthem(otherMerfolk, 1, 1),
 			TribalKeywordGrant(otherMerfolk, "islandwalk"),

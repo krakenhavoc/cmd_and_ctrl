@@ -657,7 +657,7 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	}
 }
 
-func TestB31BlossomingTortoiseMillIsBoundedByTheLibrary(t *testing.T) {
+func TestB31BlossomingTortoiseMillPastTheLibraryNeverLoses(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	for me.Library.Size() > 1 {
@@ -668,7 +668,7 @@ func TestB31BlossomingTortoiseMillIsBoundedByTheLibrary(t *testing.T) {
 	if me.Library.Size() != 0 {
 		t.Error("the one card is milled")
 	}
-	if me.LosesAtNextSBA {
+	if me.AttemptedEmptyDraw {
 		t.Error("a mill does not lose the game")
 	}
 }
@@ -721,7 +721,7 @@ func TestB31NephaliaDrownyardMillsATargetPlayer(t *testing.T) {
 	}
 	b31AddMana(me, "C", "U", "B")
 	b16Activate(t, g, me.ID, yard, 0, game.ActivateAbilityParams{Targets: b16TargetPlayer(opp.ID)})
-	if opp.Library.Size() != 0 || opp.LosesAtNextSBA {
+	if opp.Library.Size() != 0 || opp.AttemptedEmptyDraw {
 		t.Error("two cards milled, no loss flagged")
 	}
 }

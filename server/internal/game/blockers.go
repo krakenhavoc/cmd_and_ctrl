@@ -58,7 +58,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // declare_blockers, at least one creature is attacking that seat, and
 // the seat controls at least one creature that could legally be
 // declared as a blocker against at least one of those attackers
-// (CR 509.1a / 509.1b, evasion included via CanBlock).
+// (CR 509.1a / 509.1b, evasion included via CanBlockLocked).
 //
 // Deliberately NOT consumed by a block already declared. A defender
 // who has assigned one blocker may still want to assign a second, so
@@ -71,7 +71,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // auto-passing the window costs the player nothing and is the right
 // behaviour.
 //
-// Menace is deliberately not folded in. CanBlock is per-pair, while
+// Menace is deliberately not folded in. CanBlockLocked is per-pair, while
 // menace is a block-COUNT rule the engine enforces at the step's
 // close-out (BlockerCountValid), so a defender holding exactly one
 // eligible creature against a lone menace attacker is reported as
@@ -93,7 +93,7 @@ func (g *Game) SeatOwesBlockDecision(seat uuid.UUID) bool {
 }
 
 // seatOwesBlockDecisionLocked is SeatOwesBlockDecision without the
-// lock. Layers must already be fresh — CanBlock reads the effective
+// lock. Layers must already be fresh — CanBlockLocked reads the effective
 // characteristic, so flying granted by an anthem this turn has to be
 // visible. Caller must hold g.mu (read or write).
 func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
@@ -132,7 +132,7 @@ func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
 			continue
 		}
 		for _, a := range attackers {
-			if CanBlock(a, b) {
+			if g.CanBlockLocked(a, b) {
 				return true
 			}
 		}
@@ -165,4 +165,140 @@ func (g *Game) SeatsOwingBlockDecisionLocked() []int {
 		}
 	}
 	return out
+}
+
+// --- the block declaration's lock-in (#830) -----------------------
+//
+// CR 509.1 makes declaring blockers ONE turn-based action, and
+// CR 509.2a puts the triggers it produces on the stack when the
+// declaration is complete — before anyone receives priority. This
+// engine's DeclareBlocker is a per-pair verb the defender may send
+// repeatedly while the declare-blockers window is open (see the file
+// comment), and the sandbox's "Re-declare blocker" re-points a
+// blocker from one attacker to another.
+//
+// So the verb only STAGES the pairing. Nothing is announced until
+// the declaration is locked in, which is the first point at which
+// play moves on inside the step:
+//
+//   - runStateChecksLocked, the engine's "a player would receive
+//     priority" boundary (a trick cast in the step, a resolution), and
+//   - the two places the cursor can leave the step — AdvanceStep and
+//     PassPriority's wrap — which call runStateChecksLocked
+//     themselves when a declaration is still pending, so the lock-in
+//     always happens INSIDE declare_blockers.
+//
+// commitBlockDeclarationLocked is the one place block-declaration
+// triggers are harvested from: it emits the events, and the ordinary
+// event harvester (triggers.go) does the rest. Before #830 the
+// per-click EventBlock was the trigger-bearing event, so a blocker
+// pointed at Cyberman Patrol and then re-pointed elsewhere left the
+// Patrol's afflict trigger standing on an unblocked attacker.
+
+// blockDeclarationPendingLocked reports whether the staged block
+// declaration differs from what has already been announced — i.e.
+// whether a lock-in would emit anything. Cheap battlefield scan;
+// callers use it to avoid running a state-check pass for nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) blockDeclarationPendingLocked() bool {
+	if g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.BlockingTarget == uuid.Nil {
+			continue
+		}
+		if g.announcedBlocks[c.InstanceID] != c.BlockingTarget {
+			return true
+		}
+	}
+	return false
+}
+
+// commitBlockDeclarationLocked locks the staged block declaration in:
+// one EventBlock per (blocker, attacker) pair that has not been
+// announced yet, then one EventBecomesBlocked per attacker that is
+// newly blocked (CR 506.4 — an attacker is blocked once, however many
+// creatures block it).
+//
+// Idempotent, and cheap when there is nothing to do, so it can sit at
+// the top of runStateChecksLocked. Everything it emits lands in one
+// event batch (nothing here opens a new one), which is what makes a
+// whole declaration one occurrence for OncePerBatch — the same
+// property DeclareAttacker relies on for Adeline (#854, ADR 0049).
+//
+// Both passes walk the battlefield in order, so the events of one
+// declaration are deterministic and a replay reproduces them.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) commitBlockDeclarationLocked() {
+	if !g.blockDeclarationPendingLocked() {
+		return
+	}
+	// Pass 1: the per-pair blocks. "Whenever this creature blocks"
+	// (CR 509.3a) and "becomes blocked by a creature" read these, and
+	// so does the public game log.
+	type pairing struct {
+		blocker  uuid.UUID
+		attacker uuid.UUID
+		actor    uuid.UUID
+	}
+	var fresh []pairing
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.BlockingTarget == uuid.Nil || g.announcedBlocks[c.InstanceID] == c.BlockingTarget {
+			continue
+		}
+		fresh = append(fresh, pairing{blocker: c.InstanceID, attacker: c.BlockingTarget, actor: c.Controller})
+	}
+	if g.announcedBlocks == nil {
+		g.announcedBlocks = map[uuid.UUID]uuid.UUID{}
+	}
+	for _, p := range fresh {
+		g.announcedBlocks[p.blocker] = p.attacker
+	}
+	for _, p := range fresh {
+		g.EmitEvent(Event{
+			Kind:   EventBlock,
+			Actor:  p.actor,
+			Source: p.blocker,
+			CardID: p.blocker,
+			Target: p.attacker,
+		})
+	}
+	// Pass 2: "becomes blocked", once per attacker. An attacker that
+	// was already announced as blocked earlier in this combat does
+	// not become blocked a second time when another creature is added
+	// to its block (CR 506.4, CR 509.1h).
+	if g.announcedBecameBlocked == nil {
+		g.announcedBecameBlocked = map[uuid.UUID]bool{}
+	}
+	var blocked []pairing
+	for _, p := range fresh {
+		if g.announcedBecameBlocked[p.attacker] {
+			continue
+		}
+		g.announcedBecameBlocked[p.attacker] = true
+		blocked = append(blocked, p)
+	}
+	for _, p := range blocked {
+		g.EmitEvent(Event{
+			Kind:   EventBecomesBlocked,
+			Actor:  p.actor,
+			Source: p.attacker,
+			CardID: p.attacker,
+			Target: p.attacker,
+		})
+	}
+}
+
+// clearBlockAnnouncementsLocked forgets this combat's announcements.
+// Called from clearCombatLocked, alongside the BlockingTarget wipe
+// they describe: next combat's identical pairing is a new declaration
+// and announces again. Caller must hold g.mu.
+func (g *Game) clearBlockAnnouncementsLocked() {
+	g.announcedBlocks = nil
+	g.announcedBecameBlocked = nil
 }

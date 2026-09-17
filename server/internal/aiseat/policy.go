@@ -26,10 +26,17 @@ import (
 // Input is everything a Policy may know when deciding. View is the
 // seat's own filtered view — byte-identical to what a human client in
 // that seat receives — and Moves is the closed list of legal moves.
+//
+// The JSON tags are load-bearing rather than decorative: a decision
+// log records Inputs verbatim so that a window can be replayed
+// offline through rules.Resolve and heuristic.Decide, both of which
+// are pure functions of this struct. protocol.GameView and legal.Move
+// are already fully tagged; these three make the whole thing
+// round-trip.
 type Input struct {
-	View  protocol.GameView
-	Seat  uuid.UUID
-	Moves []legal.Move
+	View  protocol.GameView `json:"view"`
+	Seat  uuid.UUID         `json:"seat"`
+	Moves []legal.Move      `json:"moves"`
 }
 
 // Decision names a move by index into Input.Moves. A policy cannot

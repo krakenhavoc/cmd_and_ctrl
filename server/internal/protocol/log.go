@@ -344,6 +344,14 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 // Every `return LogEvent{}, false` here is a deliberate scoping
 // decision, not an oversight: the engine emits far more than a table
 // log should show.
+//
+// game.Event.Batch (#829) is deliberately NOT forwarded: it is the
+// engine's "these happened at the same time" identity for
+// OncePerBatch, and the log already collapses adjacent lines by the
+// rules the table cares about (LogReveal's RevealSeq, the
+// draw / step runs in projectEvents). A second grouping key on the
+// wire would be a second thing to keep consistent for no rendering
+// gain. RevealSeq stays the one grouping the client reads.
 func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *string, sacrificed *uuid.UUID) (LogEvent, bool) {
 	base := LogEvent{Seq: ev.Seq, Seat: seatOf(ev.Actor)}
 	// Anything but the zone move that follows a sacrifice clears the

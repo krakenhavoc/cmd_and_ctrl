@@ -12,15 +12,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The attack-with-ETB-creatures commander. Two triggers:
 //
-//   - "Becomes blocked" is EventBlock (S31), which names the blocker
-//     in CardID and the attacker in Target, and is emitted once per
-//     BLOCKER — so a double block would fire the printed ability
-//     twice. CR 509.1h says once per attacker, so the second and
-//     later blocks of the same attacker are declined by walking the
-//     log back to the attacker's own EventAttack
-//     (b18AttackerAlreadyBlocked). The "may" is a real prompt; the
-//     bounce reads the attacker off the event and returns it if it
-//     is still on the battlefield.
+//   - "Becomes blocked" is EventBecomesBlocked (#830), emitted once
+//     per blocked attacker when the block declaration is locked in
+//     (CR 506.4), and naming the attacker in Target. So a double
+//     block is one trigger without any dedupe, and a blocker
+//     re-pointed away before the lock-in never blocked this creature
+//     at all. The "may" is a real prompt; the bounce reads the
+//     attacker off the event and returns it if it is still on the
+//     battlefield.
 //   - "One or more … deal combat damage" is the Professional
 //     Face-Breaker dedup by label: the engine emits one damage event
 //     per creature, and the second is declined while the first
@@ -36,16 +35,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
-				Watches: []game.EventKind{game.EventBlock},
+				Watches: []game.EventKind{game.EventBecomesBlocked},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.Kind != game.EventBlock {
+					if ev.Kind != game.EventBecomesBlocked {
 						return false
 					}
 					attacker, ok := g.LookupCardForEffect(ev.Target)
-					if !ok || !attacker.IsCreature() || attacker.Controller != source.Controller {
-						return false
-					}
-					return !b18AttackerAlreadyBlocked(g, ev)
+					return ok && attacker.IsCreature() && attacker.Controller == source.Controller
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Grazilaxx — return the blocked creature to its owner's hand?"},
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {

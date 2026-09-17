@@ -182,6 +182,17 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
 		c.GoadedBy = uuid.Nil
+		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
+		// flag belong to the permanent that took them, and the card in
+		// the new zone is a new object. This is the ONE battlefield
+		// exit — every destroy, sacrifice, exile, bounce, tuck, mill
+		// and sandbox move comes through here — so clearing it here is
+		// what makes "a creature that leaves loses its damage" true of
+		// all of them. #813 cleared it on the destroy path only, so an
+		// exiled or bounced creature sat in its new zone showing the
+		// number and brought it back with it when it was replayed —
+		// dying to the first ping. See clearBattlefieldDamage.
+		clearBattlefieldDamage(&c)
 		// S24 / ADR 0036 decision 12: an Equipment or Aura that
 		// leaves the battlefield stops being attached. This is the
 		// FORWARD direction only — permanents attached to a host

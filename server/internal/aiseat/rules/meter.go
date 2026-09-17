@@ -155,3 +155,48 @@ func (f *Filter) ShouldConcede(in aiseat.Input) bool {
 	c, ok := f.Inner.(aiseat.Conceder)
 	return ok && c.ShouldConcede(in)
 }
+
+// Compile-time assertion: the filter is a Tracer.
+var _ aiseat.Tracer = (*Filter)(nil)
+
+// DecideTraced is Decide with the verdict shown: Layer A's own answer
+// when it absorbed the window, and otherwise whatever the inner
+// policy has to say about it.
+//
+// It is a SEPARATE path from Decide rather than a wrapper around it,
+// because both run Resolve and both tick the meter: calling one from
+// the other would double-count every window the absorption rate is
+// computed from, and that rate is ADR 0033 §5's acceptance number.
+// The runner calls one or the other, never both.
+func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
+	v := Resolve(in)
+	f.Meter.Observe(v)
+	if v.Absorbed() {
+		// HeuristicIndex stays Decline: nobody asked Layer B, and
+		// recording 0 here would read as "the heuristic wanted the
+		// first move", which is a different and false claim.
+		return aiseat.Decision{Index: v.Index, Reason: v.Reason},
+			aiseat.Trace{Layer: "A", Rule: v.Rule, HeuristicIndex: aiseat.Decline}, nil
+	}
+	if t, ok := f.Inner.(aiseat.Tracer); ok {
+		return t.DecideTraced(ctx, in)
+	}
+	// The inner policy cannot say how it decided, so neither can this.
+	// Calling it Layer B and recording its index as HeuristicIndex
+	// would be two claims the filter has no evidence for: a Filter
+	// wraps whatever it was given, and over a random policy "Layer B
+	// wanted move 3" would be a lie about a coin flip. Name the
+	// policy instead and leave HeuristicIndex unset.
+	d, err := f.Inner.Decide(ctx, in)
+	return d, aiseat.Trace{Layer: innerLayer(f.Inner), HeuristicIndex: aiseat.Decline}, err
+}
+
+// innerLayer names an untraceable inner policy. RandomPolicy gets the
+// layer name the runner uses for it, so a log does not have two
+// spellings of the same seat.
+func innerLayer(p aiseat.Policy) string {
+	if _, ok := p.(*aiseat.RandomPolicy); ok {
+		return aiseat.TraceLayerRandom
+	}
+	return p.Name()
+}

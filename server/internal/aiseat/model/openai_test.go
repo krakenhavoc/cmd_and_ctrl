@@ -68,18 +68,30 @@ func TestOpenAIRequestShape(t *testing.T) {
 	if got["max_tokens"] != float64(128) {
 		t.Errorf("max_tokens = %v", got["max_tokens"])
 	}
-	for _, forbidden := range []string{"cache_control", "thinking", "output_config", "effort", "system\":"} {
+	// "output_config" and the bare key "effort" are Anthropic-only
+	// (output_config.effort). "reasoning_effort" is NOT forbidden —
+	// it is this transport's own field, checked for below — so the
+	// forbidden list checks for the Anthropic spellings rather than
+	// the substring "effort", which "reasoning_effort" also contains.
+	for _, forbidden := range []string{"cache_control", "thinking", "output_config", "\"effort\"", "system\":"} {
 		if strings.Contains(raw, forbidden) {
 			t.Errorf("request carries %q, which this endpoint does not take:\n%s", forbidden, raw)
 		}
 	}
 
-	// The one extra field this transport DOES send, and it sends
-	// false: a hybrid-thinking model left on its default spends the
-	// whole deadline thinking and answers nothing, which the funnel
-	// scores as a timeout and covers with the heuristic's move.
+	// The two fields this transport sends to turn thinking off, and
+	// it sends BOTH by default: a hybrid-thinking model left on its
+	// default spends the whole deadline thinking and answers nothing,
+	// which the funnel scores as malformed and covers with the
+	// heuristic's move. `think: false` is Ollama's native switch, but
+	// measured against a real host (Ollama 0.34.0, qwen3:14b) it is
+	// IGNORED on this endpoint — `reasoning_effort: "none"` is the
+	// field that actually works, so both are sent.
 	if got["think"] != false {
 		t.Errorf("think = %v, want false — thinking must default OFF on this transport:\n%s", got["think"], raw)
+	}
+	if got["reasoning_effort"] != "none" {
+		t.Errorf("reasoning_effort = %v, want %q — this is the field Ollama's /v1 endpoint actually honours:\n%s", got["reasoning_effort"], "none", raw)
 	}
 
 	// The system blocks are flattened into ONE system message, in
@@ -278,14 +290,15 @@ func TestFunnelCountsTimeoutsSeparately(t *testing.T) {
 // rather than being quietly dropped.
 func TestOpenAIThinkingSwitch(t *testing.T) {
 	for _, tc := range []struct {
-		thinking string
-		omit     bool
-		want     any // nil means "the field must be absent"
+		thinking   string
+		omit       bool
+		want       any // nil means "the field must be absent"
+		wantEffort any // nil means "the field must be absent"
 	}{
-		{thinking: "", want: false},
-		{thinking: "disabled", want: false},
-		{thinking: "adaptive", want: true},
-		{thinking: "adaptive", omit: true, want: nil},
+		{thinking: "", want: false, wantEffort: "none"},
+		{thinking: "disabled", want: false, wantEffort: "none"},
+		{thinking: "adaptive", want: true, wantEffort: nil},
+		{thinking: "adaptive", omit: true, want: nil, wantEffort: nil},
 	} {
 		var got map[string]any
 		c := serveOpenAI(t, func(w http.ResponseWriter, r *http.Request) {
@@ -307,6 +320,84 @@ func TestOpenAIThinkingSwitch(t *testing.T) {
 		case tc.want != nil && v != tc.want:
 			t.Errorf("thinking=%q: think = %v, want %v", tc.thinking, v, tc.want)
 		}
+		ev, epresent := got["reasoning_effort"]
+		switch {
+		case tc.wantEffort == nil && epresent:
+			t.Errorf("thinking=%q omit=%v: reasoning_effort was sent (%v) although it should be absent", tc.thinking, tc.omit, ev)
+		case tc.wantEffort != nil && !epresent:
+			t.Errorf("thinking=%q: reasoning_effort was not sent — this is the field Ollama's /v1 endpoint actually honours", tc.thinking)
+		case tc.wantEffort != nil && ev != tc.wantEffort:
+			t.Errorf("thinking=%q: reasoning_effort = %v, want %v", tc.thinking, ev, tc.wantEffort)
+		}
+	}
+}
+
+// TestOpenAIRequestTurnsThinkingOffTheWayOllamaHonours pins the
+// regression this file exists to fix. Measured against a real host —
+// Ollama 0.34.0, qwen3:14b — sending only `think: false` to
+// POST /v1/chat/completions does NOTHING: the model kept thinking,
+// `content` came back empty, `finish_reason` was "length", and the
+// thinking text was in `message.reasoning`. Every call was then
+// scored FallbackMalformed and the seat played the heuristic under
+// the `assisted` label. `reasoning_effort: "none"` is what actually
+// suppressed thinking on that endpoint (verified: a valid
+// `{"index": 1}` answer in 7 output tokens). Do not remove
+// reasoning_effort because `think: false` "should" be enough — it
+// measurably is not, on the server this transport is named for.
+func TestOpenAIRequestTurnsThinkingOffTheWayOllamaHonours(t *testing.T) {
+	var got map[string]any
+	c := serveOpenAI(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &got)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"index\": 1}"},"finish_reason":"stop"}]}`))
+	})
+	if _, err := c.Complete(context.Background(), Request{Model: "m", User: "u"}); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if got["think"] != false {
+		t.Errorf("think = %v, want false", got["think"])
+	}
+	if got["reasoning_effort"] != "none" {
+		t.Errorf("reasoning_effort = %v, want %q — this is the field the real endpoint honours, `think` alone was measured to do nothing", got["reasoning_effort"], "none")
+	}
+}
+
+// A thinking model that ignores the thinking-off switch does not
+// leave the reply blank and silent: it puts the reasoning somewhere
+// the caller can log. Response.Reasoning is filled from whichever
+// field the server used.
+func TestOpenAIResponseReasoningIsSurfaced(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "reasoning",
+			body: `{"choices":[{"message":{"content":"","reasoning":"thinking hard...","finish_reason":"length"}}]}`,
+			want: "thinking hard...",
+		},
+		{
+			name: "reasoning_content",
+			body: `{"choices":[{"message":{"content":"","reasoning_content":"pondering...","finish_reason":"length"}}]}`,
+			want: "pondering...",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(tc.body))
+			})
+			resp, err := c.Complete(context.Background(), Request{Model: "m", User: "u"})
+			if err != nil {
+				t.Fatalf("Complete: %v", err)
+			}
+			if resp.Reasoning != tc.want {
+				t.Errorf("Reasoning = %q, want %q", resp.Reasoning, tc.want)
+			}
+			if resp.Text != "" {
+				t.Errorf("Text = %q, want empty — this is the observed failure mode", resp.Text)
+			}
+		})
 	}
 }
 
@@ -336,5 +427,45 @@ func TestNewOpenAIClientShorthandEndpoint(t *testing.T) {
 	t.Setenv(EnvOpenAISendThink, "1")
 	if c := NewOpenAIClient(); c.OmitThink {
 		t.Error("CMDCTRL_OPENAI_SEND_THINK=1 suppressed the think field")
+	}
+}
+
+// TestOpenAIUsageReportsThePrefixCacheHits covers the one number a
+// local endpoint reports that a hosted one does not: how much of the
+// prompt it served from its own KV cache instead of re-prefilling.
+//
+// It is NOT CacheReadTokens. That field is Anthropic's billed
+// cache-breakpoint read, and ADR 0033 §5's cost arithmetic rests on
+// it; folding a free local optimisation into it would corrupt the
+// only measurement that argument has. Hence a field of its own, and
+// CacheReadTokens still coming back zero here.
+func TestOpenAIUsageReportsThePrefixCacheHits(t *testing.T) {
+	c := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"index\": 0}"},"finish_reason":"stop"}],
+			"usage":{"prompt_tokens":6231,"completion_tokens":7,"prompt_tokens_details":{"cached_tokens":4096}}}`))
+	})
+	resp, err := c.Complete(context.Background(), Request{Model: "m", User: "u"})
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if resp.Usage.CachedPromptTokens != 4096 {
+		t.Errorf("CachedPromptTokens = %d, want 4096", resp.Usage.CachedPromptTokens)
+	}
+	if resp.Usage.InputTokens != 6231 || resp.Usage.OutputTokens != 7 {
+		t.Errorf("usage = %+v", resp.Usage)
+	}
+	if resp.Usage.CacheReadTokens != 0 || resp.Usage.CacheWriteTokens != 0 {
+		t.Errorf("this endpoint has no billed prompt cache to report: %+v", resp.Usage)
+	}
+	// A server that reports no details block must not invent one.
+	c2 := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"}}],"usage":{"prompt_tokens":10,"completion_tokens":1}}`))
+	})
+	resp2, err := c2.Complete(context.Background(), Request{Model: "m", User: "u"})
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if resp2.Usage.CachedPromptTokens != 0 {
+		t.Errorf("CachedPromptTokens = %d with no details block", resp2.Usage.CachedPromptTokens)
 	}
 }

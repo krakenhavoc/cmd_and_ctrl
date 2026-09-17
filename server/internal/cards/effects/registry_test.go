@@ -2,6 +2,8 @@ package effects
 
 import (
 	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // TestRegisterAndLookup covers the baseline registry contract:
@@ -59,6 +61,38 @@ func TestRegisterEmptyIDPanics(t *testing.T) {
 		}
 	}()
 	Register(Spec{Name: "MissingID"})
+}
+
+// TestRegisterTooManyReplacementsPanics pins #801's bound: a
+// catalog ReplacementEffectID packs the source's battlefield index
+// and its slot into one number, so a Spec declaring more slots than
+// the stride would mint IDs belonging to the next permanent along.
+// Unreachable from any printed card — which is why it is cheap to
+// make impossible at boot.
+func TestRegisterTooManyReplacementsPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("over-budget Register did not panic")
+		}
+	}()
+	Register(Spec{
+		OracleID:     "test-registry-replacement-budget",
+		Name:         "Slot Hog",
+		Replacements: make([]game.ReplacementEffect, game.MaxCatalogReplacementSlots+1),
+	})
+}
+
+// TestRegisterAtTheReplacementBudgetIsFine is the other side of the
+// bound: the budget is inclusive, so a Spec exactly at it registers.
+func TestRegisterAtTheReplacementBudgetIsFine(t *testing.T) {
+	Register(Spec{
+		OracleID:     "test-registry-replacement-budget-exact",
+		Name:         "Slot Hog Jr",
+		Replacements: make([]game.ReplacementEffect, game.MaxCatalogReplacementSlots),
+	})
+	if !Has("test-registry-replacement-budget-exact") {
+		t.Errorf("a Spec at the slot budget did not register")
+	}
 }
 
 // TestAllReturnsSnapshot proves All returns a fresh slice —

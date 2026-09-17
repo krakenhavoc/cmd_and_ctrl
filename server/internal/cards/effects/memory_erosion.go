@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // off EventCast with the caster in Actor) with Memory Erosion's
 // body: the caster, captured in Build by value, mills two, or the
 // rest of their library when it holds fewer — a mill never loses a
-// player the game (CR 704.5b). Copies are not cast, so a copied
+// player the game (CR 701.17b). Copies are not cast, so a copied
 // spell is silent, as printed.
 //
 // No simplification.

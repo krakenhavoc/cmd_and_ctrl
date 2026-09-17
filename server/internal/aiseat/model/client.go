@@ -84,6 +84,14 @@ type Usage struct {
 	OutputTokens     int
 	CacheReadTokens  int
 	CacheWriteTokens int
+	// CachedPromptTokens is a LOCAL server's prefix-cache hit count
+	// (Ollama's usage.prompt_tokens_details.cached_tokens). It is its
+	// own field rather than CacheReadTokens because they are not the
+	// same thing: CacheReadTokens is Anthropic's explicit
+	// cache-breakpoint read, which is billed and which ADR 0033 §5's
+	// cost arithmetic rests on, and this one is an optimisation an
+	// endpoint applied by itself and charges nothing for.
+	CachedPromptTokens int
 }
 
 // Response is one model reply.
@@ -94,7 +102,22 @@ type Response struct {
 	Model string
 	// StopReason is the provider's stop reason, for the log.
 	StopReason string
-	Usage      Usage
+	// Reasoning is a thinking model's chain-of-thought, when the
+	// provider returns it separately from Text rather than inline —
+	// which is what a hybrid-thinking model that ignored the
+	// thinking-off switch does: Text comes back empty and the answer
+	// it never gave is sitting here instead. OpenAI-compatible
+	// servers put it in message.reasoning or message.reasoning_content.
+	// Empty when the provider does not report it separately.
+	//
+	// It is recorded — in a decision trace, and by `boteval probe` —
+	// and it is NEVER parsed for an index. An answer is what the
+	// model committed to in `content`; reading a number out of its
+	// thinking would be reading a draft. What this field is for is
+	// the diagnosis, so that failure mode is visible in a log instead
+	// of showing up as FallbackMalformed with no explanation.
+	Reasoning string
+	Usage     Usage
 }
 
 // Client is the model transport, and the whole of Layer C's contact

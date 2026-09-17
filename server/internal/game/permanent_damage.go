@@ -105,10 +105,10 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 	return true
 }
 
-// clearBattlefieldDamageLocked wipes the damage marked on a
-// battlefield permanent. The counterpart of the marking above, and the
-// only other thing that writes Card.DamageMarked outside a damage
-// event.
+// clearBattlefieldDamage wipes the damage marked on a permanent and
+// the CR 702.2c deathtouch flag that rides with it. The counterpart of
+// the marking above, and the only other thing that writes
+// Card.DamageMarked outside a damage event.
 //
 // WHO IS ALLOWED TO CALL THIS, and it is a short list (#708). Damage
 // marked on a permanent stays there until the cleanup step (CR 514.2);
@@ -117,24 +117,38 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 // when it ships, a regeneration shield, which CR 701.15a says removes
 // all damage from the permanent as part of the regeneration itself.
 //
-// So the one caller is executeBattlefieldLeaveLocked — the landed
-// outcome of a battlefield exit. (The turn's CR 514.2 cleanup clears
-// every permanent at once in runStepEntryHooksLocked, along with the
-// MarkedLethalByDeathtouch companion flag, and stays a sweep rather
-// than len(battlefield) calls to this.) It is deliberately NOT called
-// from the destroy entry points: a destruction that a replacement
-// effect rewrites into something else must leave the damage exactly
-// where it was, both because the rule says so and because the
-// replacement may want to read it.
+// So there are two callers (#816). MoveCard's battlefield-exit cleanup
+// is the one place a permanent physically leaves, whatever sent it —
+// destroyed, sacrificed, exiled, bounced, tucked, milled or moved by
+// hand — and CR 400.7 makes what lands in the new zone a new object,
+// which must not arrive carrying the damage its previous existence
+// took. Before #816 only the destroy path cleared it, so an exiled or
+// bounced creature showed the number in its new zone and carried it
+// back onto the battlefield when it was replayed. (The one entry that
+// was safe is the exile → battlefield RETURN helper, which scrubs the
+// card itself as it mints the new instance ID — a blink was fine and a
+// recast was not, which is exactly the kind of per-path coverage this
+// helper exists to end.) The other caller is the turn's CR 514.2 sweep
+// (sweepTurnEndLocked, rotation.go), which clears every permanent at
+// once and goes through here per card so "what clearing means" is
+// written down once.
 //
-// A card that is not on the battlefield is a no-op.
+// It is deliberately NOT called from the destroy entry points: a
+// destruction that a replacement effect rewrites into something else
+// must leave the damage exactly where it was, both because the rule
+// says so and because the replacement may want to read it. Nothing has
+// moved while that window is open, so nothing is cleared — and that is
+// why this is reached through the MOVE rather than through the
+// destruction (#708).
 //
-// Caller must hold g.mu.
-func (g *Game) clearBattlefieldDamageLocked(cardID uuid.UUID) {
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == cardID {
-			g.Battlefield.Cards[i].DamageMarked = 0
-			return
-		}
+// The deathtouch flag goes with the damage rather than being cleared
+// on its own: CR 702.2c marks the creature as a consequence of damage
+// dealt to it, so the two are one piece of per-turn state on one
+// object.
+func clearBattlefieldDamage(c *Card) {
+	if c == nil {
+		return
 	}
+	c.DamageMarked = 0
+	c.MarkedLethalByDeathtouch = false
 }

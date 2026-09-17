@@ -9,7 +9,10 @@ line and one undo entry, the same as yours.
 This page is the player-facing guide: how to add one, what the tiers
 and decks are, and what a bot will and will not do. The architecture,
 and the reasoning behind every decision below, is in
-[ADR 0033 — AI bot seat](decisions/0033-ai-bot-seat.md). The HTTP
+[ADR 0033 — AI bot seat](decisions/0033-ai-bot-seat.md); the eval loop
+and decision harness that measure and tune the model tiers — decision
+logs, the position suite and the bot-vs-bot arena — are in
+[ADR 0052](decisions/0052-bot-decision-harness-and-eval.md). The HTTP
 surface is specified in [docs/lobby.md](lobby.md); the chat and view
 fields are in [docs/protocol.md](protocol.md).
 
@@ -154,7 +157,7 @@ server picks the local one when both are set.
 |---|---|
 | `CMDCTRL_OPENAI_ENDPOINT` | An OpenAI-compatible `/v1/chat/completions` server — Ollama, LM Studio, llama.cpp's server, vLLM. A URL (`http://192.168.1.18:11434` for a box on the LAN), or `1` for a stock Ollama on this machine. |
 | `CMDCTRL_OPENAI_API_KEY` | Optional; most local servers want no key at all. |
-| `CMDCTRL_OPENAI_SEND_THINK` | `0` stops the client sending Ollama's `think: false`. Only for a server that rejects the field — see below. |
+| `CMDCTRL_OPENAI_SEND_THINK` | `0` stops the client sending the two thinking-off fields below. Only for a server that rejects one of them — see below. |
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
 | `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and escalation then changes how a window is asked, not which model answers it (see [Known limitations](#known-limitations)). |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
@@ -164,10 +167,50 @@ server picks the local one when both are set.
 deadline decision.** Several strong local models — qwen3 among them —
 ship hybrid thinking on by default, and a thinking model inside a
 2-to-20 second budget spends the budget on thinking tokens and answers
-nothing. The server sends `think: false` to an OpenAI-compatible
-endpoint for exactly that reason. If your server rejects the field,
-`CMDCTRL_OPENAI_SEND_THINK=0` stops it being sent — at the cost of
-getting the behaviour above back.
+nothing. Turning it off was measured, against a real host (Ollama
+0.34.0, `qwen3:14b`), to need two fields, not one: `think: false`
+alone is IGNORED by `POST /v1/chat/completions` — the model kept
+thinking, the reply came back empty, and every call scored as a
+malformed reply, with the seat quietly playing the heuristic under the
+`assisted` label. `reasoning_effort: "none"` is the field that
+endpoint actually honours, so the server now sends both — `think:
+false` for a server that honours it, `reasoning_effort: "none"` for
+one that (like Ollama's) does not. `CMDCTRL_OPENAI_SEND_THINK=0` stops
+both fields being sent, for a server that rejects one of them — at the
+cost of getting the behaviour above back.
+
+**Probe the endpoint before you trust it.** `boteval probe` sends one
+request in the funnel's exact shape and prints what came back: the
+endpoint and model it dialled, the prompt's byte size and a rough
+token estimate, `usage.prompt_tokens` and `completion_tokens`, the
+server's prefix-cache hit count, `finish_reason`, whether the reply
+text was empty, whether a `reasoning` field came back, the first 300
+characters of the reply, the parsed index or the parse error, and the
+wall time. It ends with a verdict line for each of the two failures
+that make a model seat look like a heuristic seat: **truncation** (the
+server counted far fewer prompt tokens than were sent, so it silently
+dropped the front of the prompt — the primer and the instructions),
+and **thinking not suppressed** (a `reasoning` field came back, or
+`finish_reason` was `length` with nothing usable in `content`). It
+always exits 0: it is a diagnostic, and "the endpoint is down" is a
+finding.
+
+The probe sends what the seat sends — the same `OpenAIClient`, so both
+thinking-off fields go with it — which means **`THINKING: suppressed`
+is the expected verdict now that `reasoning_effort` ships**. A probe
+that still says "not suppressed" is telling you this server honours
+neither field, and that tier will play the heuristic on every window.
+
+Point it at a Scryfall dump. Without one the static block is the deck
+NAME alone, about 1.5 KB, and the truncation verdict is then measuring
+a prompt an order of magnitude smaller than the one a real seat sends.
+
+```bash
+make -C server build-boteval
+CMDCTRL_BOT_MODEL=qwen3:14b \
+  ./server/bin/boteval probe --endpoint http://192.168.1.18:11434 \
+    --dump data/scryfall/default-cards.json
+```
 
 **Running without one is still a supported deployment.** The model
 tiers are complete policies with no endpoint — they play the rules
@@ -312,6 +355,77 @@ another seat's hidden state.
 
 The setting does **not** gate improvisation announcements. Those are
 mandatory disclosure and are shown at every setting, to everyone.
+
+---
+
+## Decision log
+
+**Off by default. Operator-only. Never served, never attached to a bug
+report.** Rationale: [ADR 0052](decisions/0052-bot-decision-harness-and-eval.md).
+
+`CMDCTRL_BOT_DECISION_LOG=<dir>` makes the server write one JSONL file
+per game — `<dir>/<game-id>.decisions.jsonl` — with one line per
+decision window per bot seat. A line records the turn and step, which
+seat, which layer of the funnel answered, the Layer A rule or the
+heuristic's whole ranking, the exact prompt the model was shown and
+its raw reply, the index parsed out of it, the runner's own fallback
+cause when it overruled the policy, whether the engine accepted the
+move, and how long the decision took.
+
+Two facts are recorded separately on purpose: why the runner did not
+use the answer the policy returned (a timeout, an error, an
+out-of-range index) and what it did *instead* (forced a pass, took the
+enumerator's unconditional answer, ran out of answers, or was
+cancelled mid-window). A window can be both, and collapsing them loses
+the half that says the model is too slow.
+
+It exists because nothing else can measure the bot. Play strength,
+the funnel's absorption rate, whether the model is being truncated,
+whether a blunder was the heuristic's fault or the model's — all of
+those need the evidence of individual windows, and until now that
+evidence lived for a microsecond inside one function call. Because a
+record carries the seat's whole `Input`, a window can be **replayed
+offline**: the rules filter and the heuristic are pure functions of
+it, so a recorded decision can be re-taken years later by a tool that
+never touched a game.
+
+`CMDCTRL_BOT_DECISION_LOG_MODE` sets how much is kept:
+
+| Mode | What it writes |
+|---|---|
+| `escalated` (default) | Every window. The full board view only for windows that left Layer A; the rest keep their move list and trace. On the `heuristic` tier that is about 85% of windows compacted; a policy that never runs Layer A saves nothing. |
+| `all` | Every window, with the full board view. Roughly 38 KiB per window at two seats, 59 KiB at four — a 12-turn two-seat game is ~23 MiB, and a four-seat game to a winner is 100–250 MiB. |
+| `model` | Only the windows that actually reached a model, with the full view. The mode for reviewing a model tier's play. |
+
+Writing happens on one background goroutine per game, fed by a bounded
+queue; a bot seat hands over its record and returns. The log never
+slows the table down, and the cost of that is that it can lose lines:
+if the seats outrun the disk the record is dropped and counted, the
+same way the byte cap does. `Stats` says which cause.
+
+The static half of a model prompt — the rules primer and the deck
+list, several KiB, identical on every window — is written **once per
+file** and carried by a `system_hash` on every later record. A reader
+walking the file in order keeps the blocks it has seen by hash; the
+per-decision half of the prompt is always present.
+
+One game's file is capped at 256 MiB; past the cap records are dropped
+and counted, with a single WARN. A long four-seat game can reach that
+cap, so this is a real limit, not a theoretical one. Nothing rotates
+these files — the operator who turns them on cleans them up. The
+directory is created `0700` and each file `0600`.
+
+**Why operator-only.** Each individual record is the seat's *own*
+filtered view — the same bytes a human in that chair receives — so no
+record leaks anything its seat could not see. The *file* is the
+problem: it aggregates every bot seat at the table, so reading it end
+to end shows several hands at once. That is fine for an operator
+debugging their own server and is not something to serve over HTTP,
+paste into an issue, or leave on a shared box. It is off unless you
+turn it on.
+
+Whole-game tests have the same knob under `AISEAT_DECISION_LOG=<dir>`,
+which is how the position corpus gets harvested.
 
 ---
 

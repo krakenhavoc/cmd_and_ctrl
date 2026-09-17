@@ -19,12 +19,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // from each other is a real and printed outcome. Goblin Chieftain and
 // Elvish Archdruid say "you control" and do not.
 //
-// LANDWALK IS NOT GRANTED. Elvish Champion's forestwalk and Goblin
-// King's mountainwalk are absent, not forgotten: CanBlock sees the
-// attacker and the blocker and never the defending player's lands, so
-// there is nothing to enforce, and a badge for an evasion the engine
-// does not provide is worse than no badge. See the note at the top of
-// tribal.go. The haste and deathtouch grants below are real.
+// LANDWALK IS GRANTED SINCE #705. Elvish Champion's forestwalk and
+// Goblin King's mountainwalk were left out in S26, because the
+// block check could not see the defending player's lands and a badge
+// for an evasion the engine did not provide was worse than no badge.
+// The check is game-aware now (game/landwalk.go), so both lords grant
+// their landwalk, symmetrically like their anthems, and are complete.
 
 func init() {
 	for _, lord := range []struct {
@@ -58,12 +58,16 @@ func init() {
 			oracleID: "7e40f37c-9a0c-40e0-b195-7ea94b12f798",
 			name:     "Elvish Champion",
 			filter:   TribeFilter{Tribes: []string{"Elf"}, Others: true},
+			keyword:  "forestwalk",
+			spec:     func(s *Spec) { s.Completeness = CompletenessFull },
 		},
 		{
 			// "Other Goblins get +1/+1 and have mountainwalk."
 			oracleID: "d236b3fc-0d3f-4d99-875d-e32a33fe5767",
 			name:     "Goblin King",
 			filter:   TribeFilter{Tribes: []string{"Goblin"}, Others: true},
+			keyword:  "mountainwalk",
+			spec:     func(s *Spec) { s.Completeness = CompletenessFull },
 		},
 		{
 			// "Haste. Other Goblin creatures you control get +1/+1

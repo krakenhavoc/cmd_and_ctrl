@@ -84,19 +84,21 @@ func b26NontokenCreatureEntered(ev game.Event, g *game.Game) (game.Card, bool) {
 
 // b26ArtifactCreatureYouControlBecameBlocked is the afflict trigger
 // Cyberman Patrol carries for every artifact creature its controller
-// controls (itself included — it is one): the attacker named by an
-// EventBlock is an artifact creature the source's controller
-// controls, and this is the first blocker declared against it, so a
-// double block is one "becomes blocked" (CR 509.1h).
+// controls (itself included — it is one): the creature named by an
+// EventBecomesBlocked is an artifact creature the source's controller
+// controls.
+//
+// No dedupe. EventBecomesBlocked is emitted once per blocked attacker
+// at the block declaration's lock-in (CR 506.4, #830), so a double
+// block is already one event; before that the engine emitted one
+// event per BLOCKER and every reader had to walk the log back to the
+// attacker's EventAttack to tell the first from the rest.
 func b26ArtifactCreatureYouControlBecameBlocked(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventBlock {
+	if ev.Kind != game.EventBecomesBlocked {
 		return false
 	}
 	attacker, ok := g.LookupCardForEffect(ev.Target)
-	if !ok || !attacker.IsCreature() || !attacker.IsArtifact() || attacker.Controller != source.Controller {
-		return false
-	}
-	return !b18AttackerAlreadyBlocked(g, ev)
+	return ok && attacker.IsCreature() && attacker.IsArtifact() && attacker.Controller == source.Controller
 }
 
 // b26SelfEnteredOrWasSacrificed is "when this enters and when you

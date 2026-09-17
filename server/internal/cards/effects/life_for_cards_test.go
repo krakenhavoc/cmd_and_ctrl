@@ -373,7 +373,7 @@ func TestNecropotenceEmptyLibraryCostsLifeAndDoesNotKill(t *testing.T) {
 	if me.Life != lifeBefore-1 {
 		t.Errorf("life %d -> %d, want -1: the cost is paid regardless", lifeBefore, me.Life)
 	}
-	if me.LosesAtNextSBA {
+	if me.AttemptedEmptyDraw {
 		t.Errorf("exiling from an empty library is not drawing from an empty library")
 	}
 	if len(g.DelayedTriggers) != 0 {

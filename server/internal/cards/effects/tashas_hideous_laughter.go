@@ -12,9 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // order, through MillToZone into exile with an Until that keeps a
 // running mana-value total and stops on the card that reaches 20 —
 // that card is exiled too, as printed. Exile, not mill: no EventMill
-// fires, so mill payoffs and Bruvac stay out of it. The run is
-// bounded by the library's size: an opponent whose whole library
-// totals less than 20 simply exiles it all and does not lose for it.
+// fires, so mill payoffs and Bruvac stay out of it. An opponent whose
+// whole library totals less than 20 simply exiles it all and does not
+// lose for it (CR 701.17b).
 //
 // No simplification.
 func init() {

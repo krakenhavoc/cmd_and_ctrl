@@ -46,18 +46,34 @@ import (
 //
 // # Thinking is off by default, and that is a deadline decision
 //
-// The one extra field this client DOES send is Ollama's `think`, and
-// it sends `false` unless asked otherwise. Several strong local
-// models — qwen3 among them — ship hybrid thinking ON by default, and
-// a thinking model inside a 2-to-20 second budget spends the whole
-// budget on thinking tokens and then answers nothing. The funnel
-// scores that as a timeout and plays the heuristic's move: a seat
-// labelled `assisted` playing Layer B on every window, which is the
-// failure this whole tier system exists to prevent. So the default is
-// off, and Request.Thinking == "adaptive" is what turns it back on.
+// Turning thinking off takes TWO fields, not one, and both were
+// measured against a real host: Ollama 0.34.0 running qwen3:14b, on
+// POST /v1/chat/completions. Sending Ollama's native `think: false`
+// on that endpoint does NOTHING — the model still thinks, `content`
+// comes back empty, `finish_reason` is `length`, and the thinking
+// text is sitting in `message.reasoning`. The field that endpoint
+// actually honours is `reasoning_effort`; `"none"` was verified to
+// suppress thinking (a valid `{"index": 1}` answer in 7 output
+// tokens). So this client sends BOTH: `think: false`, kept because
+// older or newer Ollama builds and other OpenAI-compatible servers
+// (LM Studio, llama.cpp, vLLM) may honour it, and
+// `reasoning_effort: "none"`, which is what actually works on the
+// endpoint this was tested against. Either field turning thinking off
+// is enough; sending both costs nothing on a server that ignores one
+// of them.
 //
-// A server that rejects the unknown field can be told to stop sending
-// it with CMDCTRL_OPENAI_SEND_THINK=0.
+// Without this, a hybrid-thinking model — qwen3 among them — inside a
+// 2-to-20 second budget spends the whole budget on thinking tokens
+// and answers nothing. The funnel scores that as a malformed reply
+// and plays the heuristic's move: a seat labelled `assisted` playing
+// Layer B on every window, which is the failure this whole tier
+// system exists to prevent. So the default is off, and
+// Request.Thinking == "adaptive" is what turns it back on — sending
+// `think: true` and omitting `reasoning_effort` so the model uses its
+// own default effort.
+//
+// A server that rejects either unknown field can be told to stop
+// sending both with CMDCTRL_OPENAI_SEND_THINK=0.
 //
 // # The deadline is the real hazard
 //
@@ -104,11 +120,11 @@ type OpenAIClient struct {
 	// Label names the transport in logs and in the startup banner.
 	// Empty reports "openai-compatible".
 	Label string
-	// OmitThink stops this client from sending the `think` field at
-	// all, for a server strict enough to reject it. The cost of
-	// setting it is that a hybrid-thinking model goes back to
-	// thinking, which on a tight deadline means no answer — see the
-	// file comment.
+	// OmitThink stops this client from sending the `think` field AND
+	// the `reasoning_effort` field, for a server strict enough to
+	// reject one of them. The cost of setting it is that a
+	// hybrid-thinking model goes back to thinking, which on a tight
+	// deadline means no answer — see the file comment.
 	OmitThink bool
 	// HTTP is the client used for the call. Nil builds one with a
 	// conservative timeout; the per-call deadline that actually
@@ -126,7 +142,8 @@ const (
 	// EnvOpenAIKey is optional — see OpenAIClient.APIKey.
 	EnvOpenAIKey = "CMDCTRL_OPENAI_API_KEY"
 	// EnvOpenAISendThink set to a falsey value stops the client
-	// sending `think` — see OpenAIClient.OmitThink.
+	// sending `think` AND `reasoning_effort` — see
+	// OpenAIClient.OmitThink.
 	EnvOpenAISendThink = "CMDCTRL_OPENAI_SEND_THINK"
 )
 
@@ -154,9 +171,10 @@ func NewOpenAIClient() *OpenAIClient {
 		Endpoint: endpoint,
 		APIKey:   strings.TrimSpace(os.Getenv(EnvOpenAIKey)),
 	}
-	// Sending `think: false` is the default because a hybrid-thinking
-	// model on a deadline is a model that does not answer. The escape
-	// hatch is for a server that rejects the field.
+	// Sending `think: false` and `reasoning_effort: "none"` is the
+	// default because a hybrid-thinking model on a deadline is a model
+	// that does not answer. The escape hatch is for a server that
+	// rejects one of the fields.
 	if raw := strings.TrimSpace(strings.ToLower(os.Getenv(EnvOpenAISendThink))); raw != "" {
 		switch raw {
 		case "0", "false", "no", "off":
@@ -205,6 +223,20 @@ func openAIChatURL(endpoint string) string {
 type openAIMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	// Reasoning and ReasoningContent are where a thinking model's
+	// chain-of-thought lands when the endpoint sends it back
+	// separately from Content — which is exactly what happened when
+	// `think: false` was ignored: Content came back empty and the
+	// thinking was here. Ollama 0.34 with qwen3 uses `reasoning`;
+	// other servers use `reasoning_content`; whichever is non-empty
+	// goes into Response.Reasoning.
+	//
+	// They are DECODE-ONLY: `omitempty` keeps them off the wire on
+	// the way out, and nothing parses them for an answer. They exist
+	// so that failure is visible — to a log, to a decision trace and
+	// to `boteval probe` — instead of silently discarded.
+	Reasoning        string `json:"reasoning,omitempty"`
+	ReasoningContent string `json:"reasoning_content,omitempty"`
 }
 
 type openAIRequest struct {
@@ -214,7 +246,21 @@ type openAIRequest struct {
 	// Think is Ollama's hybrid-thinking switch. A POINTER because
 	// the difference between "false" and "absent" is the whole
 	// point: false turns a thinking model off, absent leaves it on.
+	//
+	// Measured against a real host (Ollama 0.34.0, qwen3:14b) this
+	// field is IGNORED on POST /v1/chat/completions: the model kept
+	// thinking, content came back empty, finish_reason was "length".
+	// It is kept anyway — older/newer Ollama builds and other
+	// OpenAI-compatible servers may still honour it — alongside
+	// ReasoningEffort below, which is the field that actually turned
+	// thinking off on the endpoint this was tested against.
 	Think *bool `json:"think,omitempty"`
+	// ReasoningEffort is the field /v1/chat/completions actually
+	// honours on Ollama. "none" was verified to suppress thinking
+	// (a valid, short answer came back). Empty omits the field,
+	// which leaves the model at its own default effort — used when
+	// Request.Thinking == "adaptive".
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 }
 
 type openAIChoice struct {
@@ -226,6 +272,14 @@ type openAIChoice struct {
 type openAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
+	// PromptTokensDetails.CachedTokens is the server's own
+	// prefix-cache hit count. Ollama reports it; it is how a
+	// deployment can tell whether the static system block is being
+	// re-prefilled on every window (four seats thrashing one KV
+	// slot) or reused.
+	PromptTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
 }
 
 type openAIResponse struct {
@@ -255,8 +309,19 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		// this transport: the alternative is a model that spends the
 		// whole deadline thinking and answers nothing. "adaptive" is
 		// the caller explicitly asking for it back.
-		think := req.Thinking == "adaptive"
+		//
+		// Both fields are sent when thinking should be off: `think`
+		// for a server that honours it, `reasoning_effort` for one
+		// that (like Ollama's /v1 endpoint, measured) does not. When
+		// thinking should stay on, `think: true` is sent and
+		// ReasoningEffort is left empty so the model keeps its own
+		// default effort.
+		adaptive := req.Thinking == "adaptive"
+		think := adaptive
 		body.Think = &think
+		if !adaptive {
+			body.ReasoningEffort = "none"
+		}
 	}
 	// The static blocks become ONE system message. The cache
 	// breakpoint is dropped, not translated: see the file comment.
@@ -313,13 +378,25 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 	if len(out.Choices) == 0 {
 		return Response{}, fmt.Errorf("openai: reply had no choices")
 	}
+	// Whichever of the two reasoning fields the server used, it goes
+	// into Response.Reasoning so the failure this file is about — a
+	// thinking model that filled its budget with reasoning and left
+	// Content empty — is visible in a log instead of just showing up
+	// as FallbackMalformed with no explanation.
+	msg := out.Choices[0].Message
+	reasoning := msg.Reasoning
+	if reasoning == "" {
+		reasoning = msg.ReasoningContent
+	}
 	return Response{
-		Text:       out.Choices[0].Message.Content,
+		Text:       msg.Content,
 		Model:      out.Model,
 		StopReason: out.Choices[0].FinishReason,
+		Reasoning:  reasoning,
 		Usage: Usage{
-			InputTokens:  out.Usage.PromptTokens,
-			OutputTokens: out.Usage.CompletionTokens,
+			InputTokens:        out.Usage.PromptTokens,
+			OutputTokens:       out.Usage.CompletionTokens,
+			CachedPromptTokens: out.Usage.PromptTokensDetails.CachedTokens,
 			// Cache reads and writes stay ZERO. This endpoint has no
 			// prompt cache to report, and a fabricated number here
 			// would corrupt the one measurement the funnel's cost

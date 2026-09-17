@@ -3,6 +3,7 @@
 **Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
 **Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
+**Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
 
 ## Context
 
@@ -265,11 +266,18 @@ doubled an already-doubled delta and found the continuation consumed.
 event (the gathered `applicable` list stays shared; a resume only reads
 it). That was a latent bug for counters and damage too, not just life.
 
+*Corrected by §5e (#808):* the event was not the only thing the answer
+consumed. An effect that applied on its own BEFORE the prompt was queued
+is marked only in `Game.replacementsAppliedThisEvent`, which `Clone` did
+not copy and the answer deletes when the event settles, so undoing into
+the open prompt and answering again fired that effect a second time.
+The map is now part of the undo snapshot, and "undo across the prompt
+replays the same way" holds for that case too.
+
 **2. Paying life is a life LOSS, but a cost never pauses.**
-CR 119.4: "If a player pays life, the amount of life paid is subtracted
-from their life total. In other words, paying an amount of life is the
-same as losing that much life." So the window runs on a payment and a
-life-loss replacement sees it; the issue's proposal to route costs
+CR 119.4: "If a player pays life, the payment is subtracted from their
+life total; in other words, the player loses that much life." So the
+window runs on a payment and a life-loss replacement sees it; the issue's proposal to route costs
 around the pipeline as "not a life-change effect" would have been a
 rules change. What a payment is *not* is life GAIN, so Rhox Faithmender
 and Alhammarret's Archive never touch it — which is the half the issue
@@ -286,7 +294,8 @@ apply-loop settles without prompting:
 
 - an ordering window applies in the order it was gathered — the escape
   §5a already uses for a pure-cancel set, for identical effects, and for
-  an eliminated chooser;
+  an eliminated chooser — one effect at a time, re-gathering after each
+  (CR 616.1f; §5e);
 - anything that would ask its own question (`asksItsOwnQuestion`: a
   CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
   un-applied, the weaker-never-stronger posture
@@ -297,6 +306,16 @@ The affected player gives up their CR 616 ordering choice on a cost
 payment. That is a real, declared simplification: arbitrary but
 deterministic, reachable only with two DIFFERENT life-loss replacements
 on one table, and the alternative is a spell stuck on the stack.
+
+**A payment the window cancels is refused, not free** (§5e, #808).
+CR 119.8: if a player can't lose life, "a cost that involves having that
+player pay life can't be paid", and CR 614.17b: "If an event can't
+happen, a player can't choose to pay a cost that includes that event."
+The engine models "your life total can't change" as a null replacement,
+so `PayLifeForEffect` returns `ErrInvalidParam` when the window cancels
+the payment. A replacement that only changes the amount is still a
+payment. This amendment originally said nothing about the cancelled
+case and the code paid the cost for nothing.
 
 `mustSettleNow` is deliberately a property of the EVENT rather than of
 life: any future entry point with no resume and no rewind can set it,
@@ -387,6 +406,22 @@ through. `clearBattlefieldDamageLocked` (permanent_damage.go, next to
 the marking it undoes) is the named verb, and its doc comment is the
 short list of who may call it.
 
+*Extended, 2026-09-17 (#816):* "the one function that actually performs
+the move" was only true of the DESTROY route. Every other exit —
+exile, bounce, tuck, mill, the sandbox move — reaches the battlefield
+through `MoveCard`'s CR 400.7 cleanup instead, and cleared nothing, so
+an exiled or bounced permanent carried its damage into the new zone,
+showed it there, and brought it back onto the battlefield when the card
+was replayed. (Not every return: the exile → battlefield helper scrubs
+the card as it mints the new instance ID, so a blink was fine and a
+recast was not — per-path coverage, which is the thing being ended.)
+The clear now lives
+in that ONE exit cleanup (`clearBattlefieldDamage`, card-level, called
+from `MoveCard` and from the CR 514.2 sweep), which is still the landed
+outcome and is now the landed outcome of every route; it takes the
+CR 702.2c deathtouch flag with it. Nothing above changes: a replaced
+destruction still never reaches a move, so it still keeps its damage.
+
 Consequences, checked caller by caller:
 
 | Caller | Before | After |
@@ -420,6 +455,209 @@ remains is a replacement that cancels a destruction outright without
 regenerating, which no rules text describes and no catalog card
 registers; `runStateChecksLocked`'s 32-pass bound is the backstop, and
 there is a test that says so.
+
+### 5e. Amendment, 2026-09-17: a player leaving mid-event, and CR 616.1f
+
+*Amendment, 2026-09-17, branch `fix/808-life-continuation-leave`.
+Closes [#808](https://github.com/krakenhavoc/cmd_and_ctrl/issues/808),
+the post-merge review of #806 (§5b).*
+
+§5b says the continuation runs on every TERMINAL outcome of a life
+event, and §5c says the same for damage. Leaving the game was a terminal
+outcome neither had:
+
+**1. A dropped prompt finishes its event.** `cleanupStackForEliminatedLocked`
+drops every prompt the departed player owed (the S31 fuzzer fix), and
+that used to discard the `replacementResume` frame with it. The drain
+batches run each leg from the previous leg's continuation, so dropping
+the first opponent's frame dropped every later opponent's loss and the
+caster's gain. `finishDroppedReplacementLocked` now settles a dropped
+life or damage event:
+
+- when the departed player is the one the event happens to (the CR 616
+  chooser always is), nothing lands — CR 800.4a takes them out of the
+  game — and the continuation runs with zero;
+- when they only owned a CR 614.10 "may" on somebody else's event, the
+  pipeline resumes and the existing gone-chooser escapes decide for them
+  (the "may" is declined), and the event lands with its continuation.
+
+Other event kinds are unchanged apart from clearing their once-per-event
+entry, which nothing would clear otherwise.
+
+**2. An eliminated player is gone** (CR 800.4a). An eliminated seat stays
+in `g.Seats`, so the `playerByIDLocked == nil` checks never fired for a
+player who had conceded. The drain and damage batches skip eliminated
+players, the single `...ThenForEffect` entry points treat one as a no-op
+with a zero continuation, and the landing functions
+(`applyResolvedLifeChangeLocked`, `applyResolvedDamageToPlayerLocked`)
+return `ErrPlayerEliminated` after running the continuation with zero,
+which the CR 616 resume logs and moves past.
+
+**3. CR 616.1f re-checks after each applied effect.** "Once the chosen
+effect has been applied, this process is repeated (taking into account
+only replacement or prevention effects that would now be applicable)."
+Every path that applied several effects without a prompt — pure
+cancels, identical effects, an eliminated chooser, a cost — applied the
+whole gathered list back to back, so an effect the first one had switched
+off still fired. Those paths now apply the first gathered effect and go
+round the apply-loop again (`applyFirstGatheredLocked`). The CR 616
+ordering answer keeps "one prompt, one ordering decision" but checks each
+chosen effect still applies (`stillAppliesLocked`) before firing it; an
+effect that no longer does is left unmarked for the re-entered loop.
+
+**4. Undo into an open prompt replays exactly.** See the correction
+under §5b: `Game.replacementsAppliedThisEvent` is deep-copied by `Clone`
+and restored by `RestoreFrom`. It stays out of the persisted snapshot —
+between actions it is non-empty only while a replacement prompt is open,
+and `Snapshot` already refuses to call that a restore point.
+
+**5. The iteration cap on a resume.** Every unpaused entry point lets an
+event through as-is when the apply-loop hits its cap; the two resumes
+(`ResolveReplacementOrder`, `ResolveOptionalReplacement`) returned the
+error instead, dropping the event and its continuation on a prompt that
+was already dequeued. They now tolerate it the same way.
+
+### 5f. Amendment, 2026-09-17: the CR 903.9 resume finishes a move from any zone
+
+*Amendment, 2026-09-17, branch `fix/707-816-battlefield-exit`.
+Closes [#707](https://github.com/krakenhavoc/cmd_and_ctrl/issues/707),
+noticed while fixing [#605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/605)
+(PR #701).*
+
+§8 makes the commander-zone rewrite a CR 614.10 "may", and #529 (see
+the note in `zone_route.go`) moved the window that offers it down into
+the shared exit primitive so CR 903.9's "from ANYWHERE" holds for every
+route: countered, fizzled, exiled, bounced, tucked, milled. Asking is
+not the same as finishing, and one caller was still asking on its own.
+
+`MoveCardByIDAsCommander` — the sandbox `move_card` verb, §6's second
+integration point — kept its own pipeline call, on the stated grounds
+that it accepts an arbitrary source AND destination, the battlefield
+included, which an exit primitive has no business expressing. What it
+did not keep is a continuation: `applyResolvedReplacementEventLocked`
+could finish a BATTLEFIELD exit (`executeBattlefieldLeaveLocked`) or a
+move carrying a `zoneRoute`, and this one was neither. So a commander
+moved by hand out of a graveyard, a hand, a library or the stack paused
+on the prompt and then did nothing at all — the prompt closed, the card
+stayed where it was, and BOTH answers lost the move.
+
+**Decision: the sandbox move is two verbs wearing one name, and only
+one of them is an exit.** A destination of battlefield or stack is an
+ENTRY — it owes enters-tapped, enters-with-counters and the ETB fire,
+and none of CR 903.9's four destinations are among them — and stays
+inline where it was. Every other destination IS an exit and now goes
+through `routeCardToZoneLocked` like every other exit in the engine.
+The resume comes with it: the `zoneRoute` frame records what the move
+asked for and `ev.OldZone` records where the card was, so
+`executeZoneRouteLocked` finishes it from whatever zone the window
+opened over. No second resume, and the `RepEventMove` branch of the
+answer path is now one general case plus the two older hand-rolled
+ones (the battlefield entry and the destroy / sacrifice / SBA leave).
+
+Three things fell out of it:
+
+- **The per-zone details survive the pause, because the route already
+  carries them.** "Library (bottom)" was a post-move reorder (ADR 0028
+  §7) that ran while the paused card was still in its old zone, found
+  nothing, and let the commander land on TOP when its owner declined;
+  it is now `zoneRoute.ToBottom`, honoured against the settled
+  destination. A card moved off the stack by hand now retires its
+  `StackMeta` entry (`DropStackMeta`) instead of leaving a ghost item
+  on the client's stack.
+- **A stale prompt is still pruned** (#701). `pausedZoneChangeStaleLocked`
+  keys on `ev.OldZone` and was already zone-general, and the exit
+  primitive calls the prune on every landing, so a card that leaves by
+  another route while the prompt is open takes the prompt with it —
+  and an answer that races the prune is dropped with a breadcrumb
+  rather than moving the card a second time out of a zone nobody asked
+  about.
+- **The `src` ZoneRef stays load-bearing.** The exit primitive finds
+  the card by scan, so the sandbox verb checks the card is in the
+  named source zone before routing: a stale client request naming a
+  zone the card has already left is still `ErrCardNotFound`, not a
+  move out of wherever it ended up.
+
+What is deliberately NOT fixed here: a DISCARD does not open the window
+at all (`effect_api.go` `discardPicksLocked`, `mutations.go`'s
+`DiscardCards`, `pending_choice.go`'s discard leg all call `MoveCard`
+raw), so a discarded commander is never offered the command zone. That
+is a missing window rather than a missing resume, and every one of
+those sites would have to learn to tolerate a pause — the cost path
+among them, which CR 601.2h says must not pause at all (§5b).
+*Closed by [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too).*
+
+### 5g. Amendment, 2026-09-17: a discard is an exit too
+
+*Amendment, 2026-09-17, branch `fix/799-853-discard-helper`.
+Closes [#853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/853)
+and [#799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/799).
+This is the paragraph §5f left open.*
+
+§5f named the last exit that did not go through the primitive and left
+it there. It is fixed now, and the reason it took a second PR is the
+reason §5f gave: there was no ONE place to put the window. Five sites
+discarded — the CR 514.1 cleanup discard, the effect-discard
+continuation (#797), the revealed-hand leg of `ResolvePendingChoice`,
+the random discard, and the discard component of an additional cost —
+and each moved the card with a raw `MoveCard` in its own three-line
+loop. #799 folded them onto `discardCardsLocked(player, cards, opts)`
+in `discard.go` first; #853 is then four lines of `zoneRoute` in one
+function.
+
+**Decision: a discard is an ordinary exit, and `zoneRoute.Discard` is
+the flag that keeps its event shape.** A routed move emits one event,
+never two — `EventCounterSpell` for a counter, `EventMill` for a mill,
+otherwise `EventZoneMove` — because Syr Konrad and Bloodchief Ascension
+watch the whole family and a second event double-counts. A discard
+takes the same slot with `EventDiscardCard`, so nothing downstream sees
+a discard differently than it did before the window existed.
+
+Where it does NOT follow the mill is the redirect. `Mill` is honoured
+only when the card really lands in a graveyard, because CR 701.17a
+defines the keyword action by its destination; `Discard` is honoured
+wherever the card lands, because CR 701.8a defines a discard by its
+SOURCE — "move it from its owner's hand". A commander whose owner takes
+the CR 903.9 offer was still discarded, so Megrim and Containment
+Construct still see it, and the event's `NewZone` says `command` for a
+listener that cares.
+
+Three things fell out of it:
+
+- **A discard can pause, so a multi-card discard is sequenced through
+  the resume.** The card whose owner is being asked has not moved, and
+  the answer arrives an action later, so the cards after it in the
+  batch cannot be discarded on the next line. `zoneRoute.then` carries
+  the rest of the batch — the remaining slice, one card shorter each
+  time — and the last card's continuation runs the discard's own
+  `Then` (#797). A value carried forward rather than a shared cursor,
+  for `LoseLifeEachThenForEffect`'s reason (§5b): an undo across the
+  open prompt has nothing to put back. Mill made the opposite call in
+  #529 and was right to — a paused mill must not re-read the top of
+  the library, so it proceeds around the paused card — but a discard
+  reads a list that was fixed before the first card moved, so
+  sequencing costs it nothing and buys an honest "then".
+- **The cost site settles instead of asking.** `zoneRoute.MustSettleNow`
+  sets the event's `mustSettleNow`, so the CR 903.9 "may" is skipped
+  un-applied and a commander pitched to an additional cost goes to the
+  graveyard. Weaker than printed, never stronger; the same posture and
+  the same rule (CR 601.2h) as `payLifeAsCostLocked` (§5b), which is
+  the other half of the same cost line.
+- **The undo snapshot needs its own copy of the route.**
+  `cloneReplacementResume` shared the `zoneRoute` on the stated grounds
+  that it is written once and only read afterwards. That stopped being
+  true the moment it carried a continuation: `runRouteTailLocked` clears
+  `then` THROUGH the pointer, exactly as `runDamageTailLocked` does
+  (§5c), so a shared struct would let the live game's answer consume
+  the snapshot's continuation and a replayed answer would move the card
+  and skip the rest of the discard.
+
+What is still NOT fixed: the event a discard pushes through the window
+is a plain `RepEventMove` with no CAUSE on it. The destination is
+replaceable — which is all CR 903.9 needs — but "if you would discard a
+card" is not, so Library of Leng and madness still wait on #650 and
+§10a still stands. No catalog replacement fires on a discard today
+except the built-in: every `RepEventMove` watcher in the catalog gates
+on `OldZone == ZoneBattlefield` or `NewZone == ZoneBattlefield`.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
@@ -615,7 +853,10 @@ replacement window arrives. `DiscardPending` is cleanup-only.
   cost case, picking random discard sets up front, the CR 903.9 prompt
   on a discarded commander, and what bots answer. It also decides
   whether that lands as another amendment here or as a new ADR.
-  Depends on #651.
+  Depends on #651. *Partly delivered by #799/#853, see
+  [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too): the single
+  route, the up-front random set, the CR 903.9 prompt and the cost
+  case are done. What #650 still owes is the CAUSE on the event.*
 - [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651): bug.
   Effect discards can be passed through and are wiped at cleanup.
 - [#657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/657):

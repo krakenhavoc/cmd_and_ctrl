@@ -17,6 +17,11 @@ export const ErrorCode = {
   // the client can render an "Override strict mode for this cast"
   // toast that re-fires the action with `force_cast: true`.
   InsufficientMana: "insufficient_mana",
+  // #705 (ADR 0045 addendum Decision 8): a declare_blocker was refused
+  // by the server's block-legality check. `message` is a server-built
+  // sentence to show verbatim, `reason` the stable token and `card_id`
+  // the blocker. The client never re-derives the rule.
+  IllegalBlock: "illegal_block",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -45,9 +50,17 @@ export interface ErrorPayload {
   missing?: string[];
   // S15: instance ID of the card whose cast was rejected. Lets the
   // client correlate the toast with the cast UI without keeping an
-  // in-flight map.
+  // in-flight map. #705: the refused blocker on an illegal_block frame.
   card_id?: string;
+  // #705: why a block was refused, populated when
+  // code === "illegal_block". One of BlockRefusalReason.
+  reason?: BlockRefusalReason;
 }
+
+// BlockRefusalReason mirrors game.BlockReason (server/internal/game/
+// block_legality.go): the tokens the server sends today. Stable once
+// shipped; new ones join in the change that first sends them.
+export type BlockRefusalReason = "cant_block" | "cant_be_blocked" | "flying" | "landwalk";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's

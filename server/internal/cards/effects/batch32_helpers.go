@@ -20,8 +20,7 @@ import (
 // pick-prompt third leg OncePerBatch, "you gained life
 // this turn" is b15LifeGainedThisTurn, "each opponent loses N" is
 // eachOpponentLosesLife, "untap each X you control" is
-// b16UntapAllYouControlMatching, the bounded mill is
-// b31MillAtMost, the first-legal-target read is
+// b16UntapAllYouControlMatching, the first-legal-target read is
 // b16FirstLegalTargetCard and its destroy body
 // destroyFirstLegalTarget, the Mirage fetch body is fetchDual,
 // the painless {C} half is painlessColorless, the 4/4 Angel is
@@ -292,7 +291,10 @@ func b32CounterTargetThenControllerMills(ctx *Context, n int) error {
 		if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
 			return err
 		}
-		return b31MillAtMost(ctx, controller, n)
+		if ctx.PlayerByID(controller) == nil {
+			return nil
+		}
+		return MillCards{Player: controller, N: n}.Apply(ctx)
 	}
 	return nil
 }

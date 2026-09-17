@@ -178,6 +178,28 @@ type GameSnapshot struct {
 	Events   []Event `json:"events,omitempty"`
 	EventSeq uint64  `json:"eventSeq"`
 
+	// EventBatch is the live Event.Batch counter and OncePerBatchFired
+	// the per-ability record of the batch each "whenever one or more …"
+	// ability last fired for (#829, event_batch.go). Both restore as
+	// zero / empty from a file written before them, which reads as
+	// "no batch has fired yet" — the safe direction: the first event
+	// after the restore opens a fresh batch and every OncePerBatch
+	// ability is free to fire for it. No schema bump.
+	EventBatch        uint64            `json:"eventBatch,omitempty"`
+	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
+
+	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
+	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// blocker has had its EventBlock announced against which
+	// attacker, and which attackers have had their one
+	// EventBecomesBlocked. Both are empty outside a combat with
+	// blockers declared, and a file written before them restores as
+	// empty — which reads as "nothing announced yet", so the next
+	// lock-in announces the declaration the battlefield already
+	// carries. No schema bump.
+	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -215,24 +237,24 @@ type playerSnapshot struct {
 	// player-ID keys, which read as damage from commanders that do
 	// not exist: harmless (they render nowhere and can never reach
 	// 21 again) but not migrated.
-	CommanderDamage   map[uuid.UUID]int `json:"commanderDamage,omitempty"`
-	LifeHistory       []LifeChange      `json:"lifeHistory,omitempty"`
-	Eliminated        bool              `json:"eliminated"`
-	HandKept          bool              `json:"handKept"`
-	MulligansTaken    int               `json:"mulligansTaken"`
-	DeckImported      bool              `json:"deckImported"`
-	UndosRemaining    int               `json:"undosRemaining"`
-	DiscordID         string            `json:"discordId,omitempty"`
-	DiscordAvatarHash string            `json:"discordAvatarHash,omitempty"`
-	DisplayName       string            `json:"displayName,omitempty"`
-	IsBot             bool              `json:"isBot,omitempty"`
-	BotTier           string            `json:"botTier,omitempty"`
-	BotDeck           string            `json:"botDeck,omitempty"`
-	LosesAtNextSBA    bool              `json:"losesAtNextSba"`
-	CommanderCasts    map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters          map[string]int    `json:"counters,omitempty"`
-	MaxHandSize       int               `json:"maxHandSize"`
-	ManaPool          ManaPool          `json:"manaPool,omitempty"`
+	CommanderDamage    map[uuid.UUID]int `json:"commanderDamage,omitempty"`
+	LifeHistory        []LifeChange      `json:"lifeHistory,omitempty"`
+	Eliminated         bool              `json:"eliminated"`
+	HandKept           bool              `json:"handKept"`
+	MulligansTaken     int               `json:"mulligansTaken"`
+	DeckImported       bool              `json:"deckImported"`
+	UndosRemaining     int               `json:"undosRemaining"`
+	DiscordID          string            `json:"discordId,omitempty"`
+	DiscordAvatarHash  string            `json:"discordAvatarHash,omitempty"`
+	DisplayName        string            `json:"displayName,omitempty"`
+	IsBot              bool              `json:"isBot,omitempty"`
+	BotTier            string            `json:"botTier,omitempty"`
+	BotDeck            string            `json:"botDeck,omitempty"`
+	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters           map[string]int    `json:"counters,omitempty"`
+	MaxHandSize        int               `json:"maxHandSize"`
+	ManaPool           ManaPool          `json:"manaPool,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -591,7 +613,11 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
+		EventBatch:        g.eventBatch,
 	}
+	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -803,32 +829,32 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 
 func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	out := playerSnapshot{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           snapshotZone(p.Library, cen),
-		Hand:              snapshotZone(p.Hand, cen),
-		Graveyard:         snapshotZone(p.Graveyard, cen),
-		Command:           snapshotZone(p.Command, cen),
-		CommanderDamage:   copyIntMap(p.CommanderDamage),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		CommanderCasts:    copyIntMap(p.CommanderCasts),
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            snapshotZone(p.Library, cen),
+		Hand:               snapshotZone(p.Hand, cen),
+		Graveyard:          snapshotZone(p.Graveyard, cen),
+		Command:            snapshotZone(p.Command, cen),
+		CommanderDamage:    copyIntMap(p.CommanderDamage),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		CommanderCasts:     copyIntMap(p.CommanderCasts),
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
 	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -1075,6 +1101,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
+	g.eventBatch = s.EventBatch
+	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
+	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1278,30 +1308,30 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           restoreZone(p.Library, ZoneLibrary),
-		Hand:              restoreZone(p.Hand, ZoneHand),
-		Graveyard:         restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:           restoreZone(p.Command, ZoneCommand),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            restoreZone(p.Library, ZoneLibrary),
+		Hand:               restoreZone(p.Hand, ZoneHand),
+		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:            restoreZone(p.Command, ZoneCommand),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.
@@ -1508,6 +1538,20 @@ func copyUUIDListMap(in map[uuid.UUID][]uuid.UUID) map[uuid.UUID][]uuid.UUID {
 	return out
 }
 
+// copyUUIDPairMap is copyBoolMap for a card-to-card map —
+// Game.announcedBlocks, blocker to the attacker its EventBlock named
+// (#830).
+func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uuid.UUID, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
 func copyBoolMap(in map[uuid.UUID]bool) map[uuid.UUID]bool {
 	if len(in) == 0 {
 		return nil
@@ -1524,6 +1568,19 @@ func copyStringIntMap(in map[string]int) map[string]int {
 		return nil
 	}
 	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// copyStringUint64Map is copyStringIntMap for Game.oncePerBatchFired,
+// whose values are batch ids (#829).
+func copyStringUint64Map(in map[string]uint64) map[string]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]uint64, len(in))
 	for k, v := range in {
 		out[k] = v
 	}
