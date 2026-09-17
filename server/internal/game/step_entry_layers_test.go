@@ -139,3 +139,54 @@ func TestUpkeepHarvestReadsLayersRefreshedByTheCleanupSweep(t *testing.T) {
 	}
 	t.Errorf("the ability came back at cleanup, so the next upkeep triggers it (fired for %v)", fired)
 }
+
+// The skip-step replacement window reads fresh layers on its own.
+// A Stasis-style "players skip their untap steps" whose source's
+// ability loss ended at cleanup skips the very next untap step. The
+// untap step's own recompute can't cover this read: a skipped untap
+// step never runs performUntapStepLocked, and the window is read
+// before it would. Only runStepEntryHooksLocked's recompute makes the
+// window see the ability again. Without it the stale cache says the
+// source has no abilities, the step is not skipped, and the rock
+// untaps.
+func TestSkipStepWindowReadsLayersRefreshedByTheCleanupSweep(t *testing.T) {
+	const oracle = "test-stasis-probe"
+	stubCatalogReplacements(t, map[string][]ReplacementEffect{
+		oracle: {{
+			Watches: []EventKind{EventStepTransition},
+			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
+				return ev.Kind == RepEventStepTransition && ev.StepTransitionStep == StepUntap
+			},
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.Cancel()
+				return nil
+			},
+			PureCancel: true,
+			Label:      "probe: players skip their untap steps",
+		}},
+	})
+
+	g := newFourPlayerActiveGame(t)
+	if g.Turn.ActiveSeat != 0 {
+		t.Fatalf("setup: seat %d is active, want 0", g.Turn.ActiveSeat)
+	}
+	probe := pushTappedPermanent(g, g.Seats[2].ID, "Probe", oracle, "Enchantment", false)
+	// Seat 1 takes the next turn, so its rock untaps only if that
+	// untap step is not skipped.
+	rock := pushTappedPermanent(g, g.Seats[1].ID, "Rock", "", "Artifact", true)
+	silenceUntilEndOfTurn(t, g, probe)
+
+	endTurnWithoutADiscardPause(t, g)
+	if g.Turn.ActiveSeat != 1 {
+		t.Fatalf("seat %d is active, want 1", g.Turn.ActiveSeat)
+	}
+	if len(g.TurnScopedStatics) != 0 {
+		t.Fatal("the ability loss did not end at cleanup")
+	}
+	if c, _ := battlefieldCardByID(g, rock); !c.Tapped {
+		t.Error("the ability loss ended at cleanup, so the replacement skips the next untap step and the rock stays tapped")
+	}
+	if n := untapEventsFor(g, rock); n != 0 {
+		t.Errorf("the skipped untap step untapped the rock %d time(s)", n)
+	}
+}

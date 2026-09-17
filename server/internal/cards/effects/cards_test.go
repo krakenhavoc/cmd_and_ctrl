@@ -587,7 +587,7 @@ func TestGlimpseOnAShortLibraryLosesOnlyAtTheDraw(t *testing.T) {
 	if n := target.Library.Size(); n != 0 {
 		t.Fatalf("library holds %d, want the five milled", n)
 	}
-	if target.LosesAtNextSBA || target.Eliminated {
+	if target.AttemptedEmptyDraw || target.Eliminated {
 		t.Fatal("milling out is not losing: the target survives the state checks")
 	}
 	for i := 0; i < 400 && !(g.Turn.ActiveSeat == 1 && g.Turn.Step == game.StepUpkeep); i++ {

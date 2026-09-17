@@ -160,13 +160,21 @@ type Player struct {
 	BotTier string
 	BotDeck string
 
-	// LosesAtNextSBA marks a player who has tried to draw from an
-	// empty library since the last SBA check (CR 704.5b) and will
-	// be eliminated on the next state-based-action loop. Set by the
-	// auto-draw step entry hook and the manual DrawCard action when
-	// PopTop returns ErrZoneEmpty; cleared on elimination. Added in
-	// S13.1.
-	LosesAtNextSBA bool
+	// AttemptedEmptyDraw records the one fact CR 704.5b reads: this
+	// player has attempted to draw a card from an empty library since
+	// the last state-based-action check. The SBA loop eliminates a
+	// player with it set. Set by actuallyDrawCardLocked (every draw
+	// path: the draw step, the DrawCard action, draw effects) when
+	// PopTop returns ErrZoneEmpty; cleared on elimination. A mill,
+	// an "exile the top N" or any other run off the bottom of the
+	// library never sets it (CR 701.17b, #767).
+	//
+	// Named LosesAtNextSBA until ADR 0057 sub-PR 1; the JSON tag
+	// keeps the old name so snapshots need no schema bump. One other
+	// writer remains until ADR 0057 sub-PR 2 makes an effect loss
+	// immediate: LoseTheGameForEffect (the Pact cycle) borrows the
+	// flag to defer its loss to the next SBA check. Added in S13.1.
+	AttemptedEmptyDraw bool
 
 	// CommanderCasts tracks the per-commander cast count from the
 	// command zone for the Commander tax (CR 903.8 — each cast costs

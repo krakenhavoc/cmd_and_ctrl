@@ -213,24 +213,24 @@ type playerSnapshot struct {
 	// player-ID keys, which read as damage from commanders that do
 	// not exist: harmless (they render nowhere and can never reach
 	// 21 again) but not migrated.
-	CommanderDamage   map[uuid.UUID]int `json:"commanderDamage,omitempty"`
-	LifeHistory       []LifeChange      `json:"lifeHistory,omitempty"`
-	Eliminated        bool              `json:"eliminated"`
-	HandKept          bool              `json:"handKept"`
-	MulligansTaken    int               `json:"mulligansTaken"`
-	DeckImported      bool              `json:"deckImported"`
-	UndosRemaining    int               `json:"undosRemaining"`
-	DiscordID         string            `json:"discordId,omitempty"`
-	DiscordAvatarHash string            `json:"discordAvatarHash,omitempty"`
-	DisplayName       string            `json:"displayName,omitempty"`
-	IsBot             bool              `json:"isBot,omitempty"`
-	BotTier           string            `json:"botTier,omitempty"`
-	BotDeck           string            `json:"botDeck,omitempty"`
-	LosesAtNextSBA    bool              `json:"losesAtNextSba"`
-	CommanderCasts    map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters          map[string]int    `json:"counters,omitempty"`
-	MaxHandSize       int               `json:"maxHandSize"`
-	ManaPool          ManaPool          `json:"manaPool,omitempty"`
+	CommanderDamage    map[uuid.UUID]int `json:"commanderDamage,omitempty"`
+	LifeHistory        []LifeChange      `json:"lifeHistory,omitempty"`
+	Eliminated         bool              `json:"eliminated"`
+	HandKept           bool              `json:"handKept"`
+	MulligansTaken     int               `json:"mulligansTaken"`
+	DeckImported       bool              `json:"deckImported"`
+	UndosRemaining     int               `json:"undosRemaining"`
+	DiscordID          string            `json:"discordId,omitempty"`
+	DiscordAvatarHash  string            `json:"discordAvatarHash,omitempty"`
+	DisplayName        string            `json:"displayName,omitempty"`
+	IsBot              bool              `json:"isBot,omitempty"`
+	BotTier            string            `json:"botTier,omitempty"`
+	BotDeck            string            `json:"botDeck,omitempty"`
+	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters           map[string]int    `json:"counters,omitempty"`
+	MaxHandSize        int               `json:"maxHandSize"`
+	ManaPool           ManaPool          `json:"manaPool,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -795,32 +795,32 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 
 func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	out := playerSnapshot{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           snapshotZone(p.Library, cen),
-		Hand:              snapshotZone(p.Hand, cen),
-		Graveyard:         snapshotZone(p.Graveyard, cen),
-		Command:           snapshotZone(p.Command, cen),
-		CommanderDamage:   copyIntMap(p.CommanderDamage),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		CommanderCasts:    copyIntMap(p.CommanderCasts),
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            snapshotZone(p.Library, cen),
+		Hand:               snapshotZone(p.Hand, cen),
+		Graveyard:          snapshotZone(p.Graveyard, cen),
+		Command:            snapshotZone(p.Command, cen),
+		CommanderDamage:    copyIntMap(p.CommanderDamage),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		CommanderCasts:     copyIntMap(p.CommanderCasts),
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
 	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -1263,30 +1263,30 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           restoreZone(p.Library, ZoneLibrary),
-		Hand:              restoreZone(p.Hand, ZoneHand),
-		Graveyard:         restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:           restoreZone(p.Command, ZoneCommand),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            restoreZone(p.Library, ZoneLibrary),
+		Hand:               restoreZone(p.Hand, ZoneHand),
+		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:            restoreZone(p.Command, ZoneCommand),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.

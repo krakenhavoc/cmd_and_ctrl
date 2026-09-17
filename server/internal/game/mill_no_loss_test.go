@@ -5,8 +5,9 @@ import "testing"
 // mill_no_loss_test.go — #767. CR 701.17b: a player told to mill more
 // cards than their library holds "mill[s] as many as possible", and
 // only an attempt to DRAW from an empty library loses the game
-// (CR 704.5b). MillToZoneForEffect used to set LosesAtNextSBA whenever
-// a run went past the bottom of the library, so every mill, every
+// (CR 704.5b). MillToZoneForEffect used to set the empty-draw flag
+// (then LosesAtNextSBA, now AttemptedEmptyDraw) whenever a run went
+// past the bottom of the library, so every mill, every
 // "exile the top N" and every until-run that never found its card
 // eliminated a player the rules leave in the game.
 
@@ -22,7 +23,7 @@ func runOutAndCheck(t *testing.T, g *Game, p *Player, mill func() error) {
 	if n := p.Library.Size(); n != 0 {
 		t.Fatalf("library holds %d, want it run out", n)
 	}
-	if p.LosesAtNextSBA {
+	if p.AttemptedEmptyDraw {
 		t.Error("running a library out is not a draw: no loss is flagged (CR 701.17b)")
 	}
 	g.WithWriteLock(func() { g.runStateChecksLocked() })
@@ -91,7 +92,7 @@ func TestDrawAfterMillingOutStillLoses(t *testing.T) {
 	if err := g.DrawCard(p.ID); err != ErrZoneEmpty {
 		t.Fatalf("draw from the empty library: %v, want ErrZoneEmpty", err)
 	}
-	if !p.LosesAtNextSBA {
+	if !p.AttemptedEmptyDraw {
 		t.Error("drawing from an empty library flags the loss")
 	}
 	g.WithWriteLock(func() { g.runStateChecksLocked() })

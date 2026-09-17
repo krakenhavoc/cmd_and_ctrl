@@ -66,8 +66,8 @@ func (g GainLife) Apply(ctx *Context) error {
 }
 
 // DrawCards draws N cards for `Player`. Non-positive N is a no-op.
-// Drawing from an empty library flags the player as LosesAtNextSBA
-// via the standard drawCardLocked path.
+// Drawing from an empty library sets the player's AttemptedEmptyDraw
+// via the standard drawCardLocked path (CR 704.5b).
 type DrawCards struct {
 	Player uuid.UUID
 	N      int

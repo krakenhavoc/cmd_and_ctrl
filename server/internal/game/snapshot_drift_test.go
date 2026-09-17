@@ -244,7 +244,7 @@ var playerFields = plan(
 	"IsBot", carried, "",
 	"BotTier", carried, "",
 	"BotDeck", carried, "",
-	"LosesAtNextSBA", carried, "",
+	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
