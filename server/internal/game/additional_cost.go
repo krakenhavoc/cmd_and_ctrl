@@ -181,22 +181,13 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	if len(discardIDs) == 0 {
 		return nil
 	}
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
+	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	for _, id := range discardIDs {
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
+	// Through the COST path of the one discard helper (discard.go):
+	// a discard is a discard, but CR 601.2h pays a spell's costs as
+	// one indivisible step, so this one may not pause.
+	return g.discardCardsLocked(playerID, discardIDs, discardOptions{
+		cause: discardCauseCost,
+	})
 }

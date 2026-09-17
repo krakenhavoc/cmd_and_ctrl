@@ -518,22 +518,23 @@ func cloneStackItem(s *StackItem) *StackItem {
 // deep-copies and RestoreFrom puts back, so a replayed answer skips
 // exactly the effects the first answer skipped (#808).
 //
-// The event's zoneRoute is shared: it is written once by the entry
-// point before the pipeline runs and only ever read afterwards. What
-// the resume DOES write is the event's scalar payload — the counter
+// What the resume writes is the event's scalar payload — the counter
 // delta, the life delta, Canceled — and the lifeTail POINTER, which a
 // continuation clears as it runs. Both live in the struct this copies,
 // so the snapshot keeps the values the prompt was queued with. #793.
 //
-// The damageTail is the exception, and it is why it gets a copy of its
-// own (#807). Its continuation is cleared THROUGH the pointer —
-// runDamageTailLocked nils `then` on the tail rather than the tail on
-// the event, because the rest of the tail (the CR 120.3 target kind,
-// the deathtouch / lifelink / commander snapshot) is what
-// applyResolvedDamageLocked is still reading when it runs. Sharing the
-// struct would let the live game's run consume the snapshot's
-// continuation, so undoing the answer to a CR 616 prompt and answering
-// it again would land the damage and skip the rest of the card.
+// The damageTail and the zoneRoute are the exceptions, and it is why
+// they each get a copy of their own (#807, #853). Their continuations
+// are cleared THROUGH the pointer — runDamageTailLocked and
+// runRouteTailLocked nil `then` on the tail rather than the tail on the
+// event, because the REST of what they carry (the CR 120.3 target
+// kind, the deathtouch / lifelink / commander snapshot; the
+// destination, the to-the-bottom instruction, the discard flag) is
+// what applyResolvedDamageLocked and executeZoneRouteLocked are still
+// reading when it runs. Sharing the struct would let the live game's
+// run consume the snapshot's continuation, so undoing the answer to a
+// CR 903.9 prompt and answering it again would move the card and skip
+// the rest of the discard.
 func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 	if f == nil {
 		return nil
@@ -550,6 +551,10 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.damageTail != nil {
 			t := *f.ev.damageTail
 			ev.damageTail = &t
+		}
+		if f.ev.zoneRoute != nil {
+			r := *f.ev.zoneRoute
+			ev.zoneRoute = &r
 		}
 		out.ev = &ev
 	}

@@ -695,15 +695,26 @@ optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
 Fog, Stone of Erech.
 
-**A discard can't be replaced yet.** All four places that discard move
-the card straight to the graveyard without going through the pipeline,
-and the event records no cause (effect, cost or turn-based action). So
-Library of Leng, Rest in Peace, madness and the Obstinate Baloth family
-have nothing to watch. Don't ship one of them with the replacement
-omitted; they wait on
-[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650), which
-in turn waits on
-[#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651). See
+**A discard goes through the exit primitive** (#853). Every discard
+site — the CR 514.1 cleanup discard, the effect-discard continuation,
+the revealed-hand leg, the random discard and the discard component of
+an additional cost — shares `discardCardsLocked` (`server/internal/game/discard.go`),
+which routes each card through `routeCardToZoneLocked` like every other
+exit. So the CR 614 window opens on a discard, a discarded commander
+gets the CR 903.9 offer, and a discard can PAUSE: `...ForEffect` returns
+with the card still in hand and the rest of the batch (and the prompt's
+`Then`) owed until the owner answers. The COST site is the exception —
+CR 601.2h pays a spell's costs as one indivisible step, so it sets
+`zoneRoute.MustSettleNow` and settles without asking, which means a
+commander pitched to a cost goes to the graveyard.
+
+**A discard still can't be replaced *as a discard*.** What the window
+sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
+(effect, cost or turn-based action), so the cause-sensitive family —
+Library of Leng, madness, the Obstinate Baloth shape — still has
+nothing to key on. Don't ship one of them with the replacement omitted;
+they wait on
+[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650). See
 [ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
 
 Unlike static abilities, replacements fire **before** the event

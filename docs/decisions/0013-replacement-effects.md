@@ -3,6 +3,7 @@
 **Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
 **Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
+**Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
 
 ## Context
 
@@ -583,6 +584,80 @@ raw), so a discarded commander is never offered the command zone. That
 is a missing window rather than a missing resume, and every one of
 those sites would have to learn to tolerate a pause — the cost path
 among them, which CR 601.2h says must not pause at all (§5b).
+*Closed by [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too).*
+
+### 5g. Amendment, 2026-09-17: a discard is an exit too
+
+*Amendment, 2026-09-17, branch `fix/799-853-discard-helper`.
+Closes [#853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/853)
+and [#799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/799).
+This is the paragraph §5f left open.*
+
+§5f named the last exit that did not go through the primitive and left
+it there. It is fixed now, and the reason it took a second PR is the
+reason §5f gave: there was no ONE place to put the window. Five sites
+discarded — the CR 514.1 cleanup discard, the effect-discard
+continuation (#797), the revealed-hand leg of `ResolvePendingChoice`,
+the random discard, and the discard component of an additional cost —
+and each moved the card with a raw `MoveCard` in its own three-line
+loop. #799 folded them onto `discardCardsLocked(player, cards, opts)`
+in `discard.go` first; #853 is then four lines of `zoneRoute` in one
+function.
+
+**Decision: a discard is an ordinary exit, and `zoneRoute.Discard` is
+the flag that keeps its event shape.** A routed move emits one event,
+never two — `EventCounterSpell` for a counter, `EventMill` for a mill,
+otherwise `EventZoneMove` — because Syr Konrad and Bloodchief Ascension
+watch the whole family and a second event double-counts. A discard
+takes the same slot with `EventDiscardCard`, so nothing downstream sees
+a discard differently than it did before the window existed.
+
+Where it does NOT follow the mill is the redirect. `Mill` is honoured
+only when the card really lands in a graveyard, because CR 701.17a
+defines the keyword action by its destination; `Discard` is honoured
+wherever the card lands, because CR 701.8a defines a discard by its
+SOURCE — "move it from its owner's hand". A commander whose owner takes
+the CR 903.9 offer was still discarded, so Megrim and Containment
+Construct still see it, and the event's `NewZone` says `command` for a
+listener that cares.
+
+Three things fell out of it:
+
+- **A discard can pause, so a multi-card discard is sequenced through
+  the resume.** The card whose owner is being asked has not moved, and
+  the answer arrives an action later, so the cards after it in the
+  batch cannot be discarded on the next line. `zoneRoute.then` carries
+  the rest of the batch — the remaining slice, one card shorter each
+  time — and the last card's continuation runs the discard's own
+  `Then` (#797). A value carried forward rather than a shared cursor,
+  for `LoseLifeEachThenForEffect`'s reason (§5b): an undo across the
+  open prompt has nothing to put back. Mill made the opposite call in
+  #529 and was right to — a paused mill must not re-read the top of
+  the library, so it proceeds around the paused card — but a discard
+  reads a list that was fixed before the first card moved, so
+  sequencing costs it nothing and buys an honest "then".
+- **The cost site settles instead of asking.** `zoneRoute.MustSettleNow`
+  sets the event's `mustSettleNow`, so the CR 903.9 "may" is skipped
+  un-applied and a commander pitched to an additional cost goes to the
+  graveyard. Weaker than printed, never stronger; the same posture and
+  the same rule (CR 601.2h) as `payLifeAsCostLocked` (§5b), which is
+  the other half of the same cost line.
+- **The undo snapshot needs its own copy of the route.**
+  `cloneReplacementResume` shared the `zoneRoute` on the stated grounds
+  that it is written once and only read afterwards. That stopped being
+  true the moment it carried a continuation: `runRouteTailLocked` clears
+  `then` THROUGH the pointer, exactly as `runDamageTailLocked` does
+  (§5c), so a shared struct would let the live game's answer consume
+  the snapshot's continuation and a replayed answer would move the card
+  and skip the rest of the discard.
+
+What is still NOT fixed: the event a discard pushes through the window
+is a plain `RepEventMove` with no CAUSE on it. The destination is
+replaceable — which is all CR 903.9 needs — but "if you would discard a
+card" is not, so Library of Leng and madness still wait on #650 and
+§10a still stands. No catalog replacement fires on a discard today
+except the built-in: every `RepEventMove` watcher in the catalog gates
+on `OldZone == ZoneBattlefield` or `NewZone == ZoneBattlefield`.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
@@ -778,7 +853,10 @@ replacement window arrives. `DiscardPending` is cleanup-only.
   cost case, picking random discard sets up front, the CR 903.9 prompt
   on a discarded commander, and what bots answer. It also decides
   whether that lands as another amendment here or as a new ADR.
-  Depends on #651.
+  Depends on #651. *Partly delivered by #799/#853, see
+  [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too): the single
+  route, the up-front random set, the CR 903.9 prompt and the cost
+  case are done. What #650 still owes is the CAUSE on the event.*
 - [#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651): bug.
   Effect discards can be passed through and are wiped at cleanup.
 - [#657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/657):
