@@ -275,6 +275,26 @@ func (g *Game) cloneLocked() *Game {
 			out.lastKnownBattlefield[k] = v
 		}
 	}
+	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
+	// CR 614.10 prompt (#808). Between actions the map holds an entry
+	// only for an event whose prompt is still open, and that entry is
+	// part of the prompt's state: an effect that applied on its own
+	// before the prompt was queued is marked there, and nowhere else.
+	// Answering the prompt deletes the entry when the event settles, so
+	// an undo snapshot that did not carry its own copy would replay the
+	// answer with the mark gone — and the effect would fire a second
+	// time. Deep-copied, because the live pipeline writes the inner
+	// sets in place.
+	if len(g.replacementsAppliedThisEvent) > 0 {
+		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
+		for evID, set := range g.replacementsAppliedThisEvent {
+			cp := make(map[ReplacementEffectID]bool, len(set))
+			for k, v := range set {
+				cp[k] = v
+			}
+			out.replacementsAppliedThisEvent[evID] = cp
+		}
+	}
 	// S16 layer-engine version counters. Atomics can't be struct-
 	// copied; mirror via Load/Store so the clone's staleness state
 	// matches the original's at capture time.
@@ -479,10 +499,17 @@ func cloneStackItem(s *StackItem) *StackItem {
 // in-flight ReplacementEvent a paused CR 614 pipeline is sitting on.
 //
 // Only the EVENT is copied. The gathered `applicable` list is shared:
-// a resume reads it to decide what to fire and never writes it, and its
-// entries point at battlefield cards that the snapshot has its own
-// copies of anyway — the same shallow sharing every other server-only
-// resume frame on a PendingChoice already has.
+// a resume reads it to decide what to fire and never writes it. Its
+// entries' `source` pointers point into the LIVE battlefield the gather
+// walked, not into the snapshot's copy of it — harmless, because the
+// resume only ever reads through them — which is the same shallow
+// sharing every other server-only resume frame on a PendingChoice
+// already has.
+//
+// The event's once-per-event marks (CR 614.5) are not on the frame:
+// they live in Game.replacementsAppliedThisEvent, which cloneLocked
+// deep-copies and RestoreFrom puts back, so a replayed answer skips
+// exactly the effects the first answer skipped (#808).
 //
 // The event's zoneRoute is shared: it is written once by the entry
 // point before the pipeline runs and only ever read afterwards. What
@@ -597,6 +624,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
+	// #808: the paused events' once-per-event marks rewind with the
+	// prompts that own them — see cloneLocked.
+	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

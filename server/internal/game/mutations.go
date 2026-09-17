@@ -2550,11 +2550,22 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	// (CR 800.4a), so a damage assignment, target pick or scry they
 	// owed has nothing left to act on. Same for a cleanup-discard
 	// pause in their name. Found by the S31 bot fuzzer.
+	//
+	// #808: a dropped prompt may be holding a paused replacement event,
+	// and a life or damage event carries its CALLER's continuation — the
+	// rest of a drain, every later opponent's loss, the caster's gain.
+	// Those frames are collected here and finished below, once the queue
+	// no longer holds the dropped prompts.
+	var dropped []*replacementResumeFrame
 	if len(g.PendingChoices) > 0 {
 		kept := g.PendingChoices[:0]
 		for _, c := range g.PendingChoices {
 			if c == nil || c.Chooser != playerID {
 				kept = append(kept, c)
+				continue
+			}
+			if c.replacementResume != nil && c.replacementResume.ev != nil {
+				dropped = append(dropped, c.replacementResume)
 			}
 		}
 		g.PendingChoices = kept
@@ -2569,6 +2580,93 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	for _, frame := range dropped {
+		g.finishDroppedReplacementLocked(playerID, frame)
+	}
+}
+
+// finishDroppedReplacementLocked settles a paused replacement event
+// whose prompt was dropped because its chooser left the game.
+//
+// Before #808 the frame was simply discarded. For most event kinds
+// that is still all there is to do, and the only cleanup owed is the
+// event's CR 614.5 once-per-event entry, which nothing will clear now.
+// A LIFE or DAMAGE event is different: it carries its caller's
+// continuation (lifeTail / damageTail.then), and "each opponent loses 3
+// life, you gain life equal to the life lost this way" is sequenced
+// through those continuations, so discarding the first leg's frame
+// silently dropped every later opponent's loss and the caster's gain.
+// Every terminal outcome of those events has to reach the tail; this is
+// the one leaving the game adds.
+//
+// Two cases, split on whose event it was:
+//
+//   - The player who left IS the one the event happens to — the life
+//     player, the damaged player, or the controller of the damaged
+//     permanent (the CR 616 chooser is always that player). CR 800.4a
+//     takes them and their objects out of the game, so nothing lands
+//     and the continuation runs with zero.
+//   - They were only the chooser of a CR 614.10 "may" on somebody
+//     ELSE's event. That event still happens. The pipeline is resumed,
+//     and the apply-loop's existing gone-chooser escapes decide for the
+//     player who left (the "may" is declined, an ordering stands as
+//     gathered); the event then lands through the same functions the
+//     unpaused path uses, continuation included.
+//
+// It deliberately lands WITHOUT the state-based sweep the CR 616 resume
+// runs: this is reached from eliminatePlayerLocked, which the SBA loop
+// itself calls, and the sweep the change owes happens on the loop's
+// next pass or at the next priority boundary.
+//
+// Caller must hold g.mu, and must already have removed the dropped
+// prompt from g.PendingChoices.
+func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacementResumeFrame) {
+	ev := frame.ev
+	if ev.Kind != RepEventLife && ev.Kind != RepEventDamage {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	logErr := func(what string, err error) {
+		if err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: what + ": " + err.Error()})
+		}
+	}
+	runTail := func(amount int) {
+		if ev.Kind == RepEventLife {
+			logErr("life continuation failed", g.runLifeTailLocked(ev, amount))
+			return
+		}
+		logErr("damage continuation failed", g.runDamageTailLocked(ev, amount))
+	}
+	if affectedPlayerForEvent(ev, frame.applicable, g) == gone {
+		g.clearReplacementEventLocked(ev.ID)
+		runTail(0)
+		return
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// The affected player has a question of their own to answer;
+		// the event resumes from that prompt like any other.
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		logErr("replacement resume failed", err)
+		runTail(0)
+		return
+	}
+	if out == nil || out.Canceled {
+		runTail(0)
+		return
+	}
+	// Both landing functions run the continuation themselves on every
+	// outcome, a vanished player or permanent included; what is left to
+	// do with an error is log it.
+	if out.Kind == RepEventLife {
+		logErr("life change dropped", g.applyResolvedLifeChangeLocked(out))
+		return
+	}
+	logErr("damage dropped", g.applyResolvedDamageLocked(out))
 }
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield

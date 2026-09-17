@@ -474,6 +474,12 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	if p == nil {
 		return 0, ErrPlayerNotFound
 	}
+	if p.Eliminated {
+		// #808, CR 800.4a: an eliminated seat stays in g.Seats, so the
+		// nil check alone let a player who conceded between a CR 616
+		// prompt and its answer take the damage.
+		return 0, ErrPlayerEliminated
+	}
 	// The event is emitted before the life change on the non-combat
 	// path so the log reads "damage dealt → life changed"; the combat
 	// path has always changed life first. Both orders are kept as they
