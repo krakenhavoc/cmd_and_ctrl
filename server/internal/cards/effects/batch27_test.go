@@ -655,7 +655,7 @@ func TestB27TashasHideousLaughterExilesToTwentyManaValue(t *testing.T) {
 	if opp1.Library.Size() != 1 || opp1.Library.Cards[0].Name != "Deep" {
 		t.Errorf("opp1 exiles until 20: %d cards left, want the one deepest", opp1.Library.Size())
 	}
-	if opp2.Library.Size() != 0 || opp2.LosesAtNextSBA {
+	if opp2.Library.Size() != 0 || opp2.AttemptedEmptyDraw {
 		t.Error("opp2 exiles the whole library and does not lose for it")
 	}
 	if opp3.Library.Size() != 1 {

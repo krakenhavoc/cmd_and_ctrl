@@ -107,6 +107,20 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #829 event batches. Carried for the same reason the per-turn
+	// tallies are, and carried TOGETHER: the counter names the batch
+	// the marks are recorded against, so a restore that kept one and
+	// not the other would either double-fire a "whenever one or more"
+	// trigger or swallow it.
+	"eventBatch", carried, "",
+	"oncePerBatchFired", carried, "",
+	// #830 block-declaration lock-in. Carried for the same reason and
+	// in the same pair-wise way: the map of announced pairings names
+	// what the "became blocked" marks were recorded for, so a restore
+	// that kept one and not the other would either re-announce an
+	// attacker that is already blocked or swallow a real block.
+	"announcedBlocks", carried, "",
+	"announcedBecameBlocked", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
@@ -125,7 +139,7 @@ var gameFields = plan(
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
-	"replacementsAppliedThisEvent", dropped, "per-pipeline-call scope, defer-cleared; always empty between Applies",
+	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
@@ -245,7 +259,7 @@ var playerFields = plan(
 	"IsBot", carried, "",
 	"BotTier", carried, "",
 	"BotDeck", carried, "",
-	"LosesAtNextSBA", carried, "",
+	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",

@@ -78,6 +78,19 @@ var canonicalKeywords = map[string]bool{
 	// and through it every "of the chosen type" / "shares a creature
 	// type" read in the engine.
 	KeywordChangeling: true,
+	// Landwalk (CR 702.14) joins with #705, in the same change that
+	// teaches BlockPairRefusalLocked to read the defending player's
+	// lands (landwalk.go). One token per kind the engine enforces;
+	// the rarer variants (snow swampwalk, legendary landwalk,
+	// desertwalk) join with their first card. landwalkTokens in
+	// landwalk.go is the other half of this list, and
+	// TestLandwalkTokensAreCanonical keeps the two in step.
+	"plainswalk":        true,
+	"islandwalk":        true,
+	"swampwalk":         true,
+	"mountainwalk":      true,
+	"forestwalk":        true,
+	"nonbasic landwalk": true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -172,7 +185,8 @@ func CanonicalKeyword(s string) (string, bool) {
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
-// "hexproof", "shroud", "indestructible".
+// "hexproof", "shroud", "indestructible", "changeling", and the
+// landwalk tokens ("islandwalk", "nonbasic landwalk", …).
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
@@ -280,58 +294,12 @@ func HasSummoningSickness(c *Card) bool {
 	return !HasKeyword(c, "haste")
 }
 
-// CanBlock reports whether blocker can legally block attacker given
-// evasion keywords (flying, menace, fear, shadow, etc.) AND
-// defensive keywords (reach, reach-adjacent). Does NOT check tap
-// state, declare-blockers-step gating, or "defender can't attack"
-// — those are caller-side checks specific to the declaration path.
-// A creature with defender CAN block; defender only restricts
-// attacking.
-//
-// S18 rules enforced:
-//   - Flying attackers can only be blocked by flying or reach
-//     blockers (CR 702.9b).
-//   - Menace is not checked here — it's a block-count rule, see
-//     BlockerCountValid. This function runs per-pair.
-//
-// S24 adds the restriction vocabulary (restrictions.go), and this is
-// the ONE place both halves of it are read — "~ can't block" on the
-// blocker (Pacifism, Carrion Feeder) and "~ can't be blocked" on the
-// attacker (Whispersilk Cloak, Rogue's Passage). Putting both here
-// rather than splitting the blocker's half into BlockerEligible is
-// deliberate: DeclareBlocker calls only this function, while the
-// legal-move enumerator and the #328 auto-pass signal call
-// BlockerEligible AND this function. One predicate all three reach is
-// the only arrangement in which the engine cannot refuse a block the
-// enumerator offered.
-//
-// nil arguments return false (defensive — no card can block a
-// missing attacker, and a nil blocker can't block).
-func CanBlock(attacker, blocker *Card) bool {
-	if attacker == nil || blocker == nil {
-		return false
-	}
-	// CR 509.1b restrictions. Read before the evasion keywords
-	// because they are absolute: no defensive keyword answers
-	// "can't be blocked" the way reach answers flying.
-	if Restricted(attacker, CantBeBlocked) {
-		return false
-	}
-	if Restricted(blocker, CantBlock) {
-		return false
-	}
-	// Flying: blocker must have flying or reach.
-	if HasKeyword(attacker, "flying") {
-		if !HasKeyword(blocker, "flying") && !HasKeyword(blocker, "reach") {
-			return false
-		}
-	}
-	return true
-}
-
 // BlockerCountValid reports whether the given blocker set is
-// legal against the attacker under block-count keywords (menace).
-// Called at the declare-blockers step close-out, per CR 702.110.
+// legal against the attacker under block-count keywords (menace,
+// CR 702.111b). Only keywords_test.go calls it: menace is enforced at
+// the top of assignAndDealCombatDamageLocked, not here. ADR 0045's
+// addendum (Decision 12) deletes this function when block
+// declarations become sets.
 //
 // Menace requires ≥2 blockers: a single blocker against a menace
 // attacker is illegal and the single block is reverted (attacker

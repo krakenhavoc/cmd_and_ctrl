@@ -227,9 +227,14 @@ type openAIMessage struct {
 	// chain-of-thought lands when the endpoint sends it back
 	// separately from Content — which is exactly what happened when
 	// `think: false` was ignored: Content came back empty and the
-	// thinking was here. Nothing reads these yet beyond Complete
-	// copying one into Response.Reasoning for the log; they exist so
-	// that failure is visible instead of silently discarded.
+	// thinking was here. Ollama 0.34 with qwen3 uses `reasoning`;
+	// other servers use `reasoning_content`; whichever is non-empty
+	// goes into Response.Reasoning.
+	//
+	// They are DECODE-ONLY: `omitempty` keeps them off the wire on
+	// the way out, and nothing parses them for an answer. They exist
+	// so that failure is visible — to a log, to a decision trace and
+	// to `boteval probe` — instead of silently discarded.
 	Reasoning        string `json:"reasoning,omitempty"`
 	ReasoningContent string `json:"reasoning_content,omitempty"`
 }
@@ -267,6 +272,14 @@ type openAIChoice struct {
 type openAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
+	// PromptTokensDetails.CachedTokens is the server's own
+	// prefix-cache hit count. Ollama reports it; it is how a
+	// deployment can tell whether the static system block is being
+	// re-prefilled on every window (four seats thrashing one KV
+	// slot) or reused.
+	PromptTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
 }
 
 type openAIResponse struct {
@@ -381,8 +394,9 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		StopReason: out.Choices[0].FinishReason,
 		Reasoning:  reasoning,
 		Usage: Usage{
-			InputTokens:  out.Usage.PromptTokens,
-			OutputTokens: out.Usage.CompletionTokens,
+			InputTokens:        out.Usage.PromptTokens,
+			OutputTokens:       out.Usage.CompletionTokens,
+			CachedPromptTokens: out.Usage.PromptTokensDetails.CachedTokens,
 			// Cache reads and writes stay ZERO. This endpoint has no
 			// prompt cache to report, and a fabricated number here
 			// would corrupt the one measurement the funnel's cost

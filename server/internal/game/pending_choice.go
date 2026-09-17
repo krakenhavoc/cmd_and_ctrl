@@ -748,10 +748,9 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 //   - every pick is in the expected source zone (for
 //     discard_from_hand, entry.FromPlayer's hand)
 //
-// On success, applies the kind-specific side effect (for
-// discard_from_hand: move each pick to FromPlayer's graveyard,
-// emit EventDiscardCard per pick), dequeues the entry, and
-// returns nil.
+// On success, dequeues the entry and applies the kind-specific side
+// effect (for discard_from_hand: hand the picks to discardCardsLocked,
+// the one discard path — see discard.go).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
@@ -797,24 +796,18 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 				return ErrCardNotFound
 			}
 		}
-		for _, id := range picks {
-			if _, err := MoveCard(from.Hand, from.Graveyard, id); err != nil {
-				return err
-			}
-			g.markCardKnownInZoneLocked(from.Graveyard, id)
-			g.EmitEvent(Event{
-				Kind:    EventDiscardCard,
-				Actor:   from.ID,
-				CardID:  id,
-				OldZone: ZoneHand,
-				NewZone: ZoneGraveyard,
-			})
-		}
+		// Dequeued BEFORE the discard rather than after it: the
+		// discard runs through the one discard path (discard.go),
+		// which can queue prompts of its own and drop stale ones, and
+		// an index into g.PendingChoices does not survive that.
+		g.dequeueChoiceLocked(idx)
+		return g.discardCardsLocked(from.ID, picks, discardOptions{
+			cause:  discardCauseEffect,
+			source: choice.Source,
+		})
 	default:
 		return ErrInvalidParam
 	}
-	g.dequeueChoiceLocked(idx)
-	return nil
 }
 
 // ResolveManaChoice processes a resolve_choice action for a
@@ -1030,7 +1023,11 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	if errors.Is(err, errReplacementPending) {
 		return nil
 	}
-	if err != nil {
+	// #808: the iteration cap lets the event through as-is, exactly as
+	// the unpaused entry points treat it. Returning here instead would
+	// drop the event AND its caller's continuation on a prompt that is
+	// already dequeued.
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
@@ -1195,6 +1192,19 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// A prior Cancel short-circuits the remaining chain.
 			break
 		}
+		if !g.stillAppliesLocked(ev, chosen) {
+			// CR 616.1f: after each applied effect the process repeats
+			// "taking into account only replacement or prevention
+			// effects that would now be applicable". An effect an
+			// earlier one in the chosen order has switched off — a
+			// "lose more than 3" gate after a halving — does not fire
+			// on the strength of the gather the prompt was built from
+			// (#808), and neither does one whose source stopped
+			// applying between the prompt and the answer. It is left
+			// unmarked, so the apply-loop re-entry below still picks
+			// it up if a later effect switches it back on.
+			continue
+		}
 		if chosen.effect.CopySelector != nil {
 			// Same reason as the pay-life branch below: an effect
 			// with a CHOICE inside it can't be fired blind. Clone's
@@ -1237,7 +1247,9 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		// Another prompt queued; unroll asynchronously.
 		return nil
 	}
-	if err != nil {
+	// #808: the iteration cap lets the event through as-is, as every
+	// unpaused entry point does — see ResolveOptionalReplacement.
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
@@ -1275,20 +1287,23 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// emitted EventChangeLife with no Source, so a life change
 		// that paused lost the card that caused it. See life_tail.go.
 		err := g.applyResolvedLifeChangeLocked(ev)
-		if errors.Is(err, ErrPlayerNotFound) {
+		if errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			// The player left between the prompt and the answer. The
 			// life change simply does not happen — but the choice is
 			// already dequeued, so returning the error here would
 			// fail the action AND take the prompt away with nothing
 			// to show for it. Log it and move on.
+			//
+			// #793 / #808: the rest of the effect has already run,
+			// with zero, inside applyResolvedLifeChangeLocked. A drain
+			// whose second opponent conceded during the prompt gains
+			// what the first one lost, not nothing — and not what the
+			// conceded one would have lost either (CR 800.4a).
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "life change dropped: its player is no longer in the game",
 			})
-			// #793: the rest of the effect still runs, with zero. A
-			// drain whose second opponent conceded during the prompt
-			// gains what the first one lost, not nothing.
-			return g.runLifeTailLocked(ev, 0)
+			return nil
 		}
 		if err != nil {
 			return err
@@ -1311,7 +1326,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// DamageMarked on everything and returned ErrCardNotFound for
 		// a player. See damage_tail.go.
 		err := g.applyResolvedDamageLocked(ev)
-		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) {
+		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			// The target left between the prompt and the answer. The
 			// damage simply does not happen — but the choice is
 			// already dequeued, so returning the error here would
@@ -1340,10 +1355,15 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 	case RepEventMove:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
-		// it is finished by the same code the unpaused path runs.
-		// Checked first because it is the general case — the two
-		// branches below are the older, hand-rolled resumes for the
-		// battlefield entry and battlefield-leave paths.
+		// it is finished by the same code the unpaused path runs —
+		// from WHATEVER zone the card was in when the window opened,
+		// which is what makes CR 903.9's "from anywhere" resumable
+		// rather than just askable. Checked first because it is the
+		// general case: since #707 it covers every exit in the engine
+		// but the destroy / sacrifice / SBA route below, the sandbox
+		// move_card verb included. The two branches after it are the
+		// older, hand-rolled resumes for the battlefield entry and
+		// battlefield-leave paths.
 		if ev.zoneRoute != nil {
 			return g.executeZoneRouteLocked(ev)
 		}
@@ -1362,8 +1382,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			return g.executeEntryToBattlefieldLocked(ev)
 		}
 		if ev.OldZone != ZoneBattlefield {
-			// Other non-LTB moves (graveyard → hand for a regrow,
-			// say) don't have a resume path yet.
+			// What is left here is a battlefield ENTRY that is not
+			// entryResumable — an exile → battlefield return (it mints
+			// a new instance ID, CR 400.7) or a library search (it owes
+			// its caller a shuffle). Those bail before moving anything
+			// and are documented as not happening when they pause; see
+			// ReplacementEvent.entryResumable. Since #707 no EXIT lands
+			// here: every one of them carries a zoneRoute or comes off
+			// the battlefield.
 			return nil
 		}
 		var owner *Player
@@ -1446,6 +1472,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// told so before it can move on to the next opponent.
 	if ev.Kind == RepEventDamage {
 		return g.runDamageTailLocked(ev, 0)
+	}
+	// #853: and the same for a cancelled EXIT that carries a route.
+	// The card stays where it is, but a multi-card discard sequenced
+	// through the route's continuation has to be told, or the rest of
+	// the batch — and the "then draw two" behind it — never happens.
+	if ev.Kind == RepEventMove {
+		return g.runRouteTailLocked(ev.zoneRoute)
 	}
 	if ev.Kind != RepEventStepTransition {
 		return nil

@@ -101,7 +101,7 @@ func (e *enumerator) combatMoves() {
 				continue
 			}
 			for _, a := range attackers {
-				if !game.CanBlock(a, b) {
+				if !g.CanBlockLocked(a, b) {
 					continue
 				}
 				e.add(Move{

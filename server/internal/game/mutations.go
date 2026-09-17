@@ -171,7 +171,7 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	c, err := p.Library.PopTop()
 	if err != nil {
 		if err == ErrZoneEmpty {
-			p.LosesAtNextSBA = true
+			p.AttemptedEmptyDraw = true
 		}
 		return err
 	}
@@ -1502,6 +1502,12 @@ func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
 //
 // Caller must hold g.mu.
 func (g *Game) resolveTopOfStackLocked() error {
+	// #829: a resolution is one of the two points where play moves on,
+	// so everything this item emits is one occurrence and the next
+	// resolution's events are a different one — which is what lets a
+	// second bounce trigger Dour Port-Mage again while the first
+	// bounce's draw is still on the stack. See event_batch.go.
+	g.beginEventBatchLocked()
 	if g.Stack == nil || len(g.Stack.Cards) == 0 {
 		// No spell on the stack — but there could still be ability
 		// items in StackMeta. Find the most recent and resolve it.
@@ -2275,13 +2281,27 @@ func (g *Game) stateBasedActionsLocked() bool {
 		}
 	}
 
-	// Player-loss SBAs.
+	// Player-loss SBAs. CR 704.3 performs them all at once, so every
+	// loser leaves first and play moves on once, after the batch
+	// (#766): moving the turn on per player would begin the turn of a
+	// seat that is leaving in this same pass.
+	//
+	// "After the batch" means after the whole pass, not after this
+	// loop. Moving play on can end the turn, and ending the turn runs
+	// the cleanup sweep, which removes marked damage and deathtouch
+	// marks. The destruction SBAs below read exactly those, and they
+	// belong to the same event as the losses (CR 704.3): an active
+	// player whose own Earthquake kills them still kills every
+	// creature it dealt lethal damage to. So the game-over check runs
+	// here, as it always has, and the turn moves on as the pass's
+	// last act (see the end of this function).
+	left := false
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
 		}
-		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
-			g.eliminatePlayerLocked(p)
+		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage() {
+			left = g.leaveGameLocked(p) || left
 			fired = true
 			continue
 		}
@@ -2296,10 +2316,11 @@ func (g *Game) stateBasedActionsLocked() bool {
 			poison = p.Poison
 		}
 		if poison >= PoisonLethal {
-			g.eliminatePlayerLocked(p)
+			left = g.leaveGameLocked(p) || left
 			fired = true
 		}
 	}
+	moveOn := left && !g.endGameIfDecidedLocked()
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
@@ -2354,9 +2375,13 @@ func (g *Game) stateBasedActionsLocked() bool {
 			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
 			// damage from a deathtouch source is destroyed at the
 			// next SBA regardless of toughness. The flag stays set
-			// until cleanup (or the card's destruction, via the
-			// zone-move listener) so a subsequent SBA pass on the
-			// same event cycle doesn't "un-doom" the creature.
+			// until the cleanup step (CR 514.2) or until the creature
+			// LEAVES the battlefield, whichever comes first, so a
+			// subsequent SBA pass on the same event cycle doesn't
+			// "un-doom" the creature. The exit case is MoveCard's
+			// battlefield-exit cleanup, which clears the flag with the
+			// damage it belongs to (#816) — there is no "zone-move
+			// listener", which is what this comment used to claim.
 			if c.MarkedLethalByDeathtouch && !indestructible {
 				doomed = append(doomed, c.InstanceID)
 			}
@@ -2434,6 +2459,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 		fired = true
 	}
 
+	// The departures from the loss loop move play on last (#766), once
+	// every other state-based action of this pass has been performed
+	// on the board it applied to. That includes the legend rule: its
+	// prompt, if one was just queued, is part of this event and is
+	// queued before the turn ends, so it stays open into the next
+	// turn like any other prompt a departure leaves unanswered.
+	if moveOn {
+		g.advancePastEliminatedLocked()
+	}
+
 	return fired
 }
 
@@ -2456,6 +2491,13 @@ func (g *Game) stateBasedActionsLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) runStateChecksLocked() {
+	// #830 / CR 509.2a: a player is about to receive priority, so the
+	// block declaration is complete. Lock it in first, so the
+	// "becomes blocked" and "blocks" triggers it produces are on
+	// PendingTriggers before this pass drains them — one harvest, off
+	// the final assignment. No-op when nothing is staged, which is
+	// every call outside the declare-blockers step.
+	g.commitBlockDeclarationLocked()
 	const maxIter = 32
 	for i := 0; i < maxIter; i++ {
 		fired := g.stateBasedActionsLocked()
@@ -2471,24 +2513,63 @@ func (g *Game) runStateChecksLocked() {
 	}
 }
 
-// eliminatePlayerLocked transitions a seated player to eliminated
-// state, cleans up their stack items + pending triggers, walks the
-// cursor past them if they were the active seat, and runs the
-// game-end check. Used by Concede AND by the SBA loop. Caller must
-// hold g.mu.
+// eliminatePlayerLocked is one player leaving the game on their own:
+// leaveGameLocked, then settleDeparturesLocked. Used by Concede. The
+// SBA loss pass calls the two halves itself so a batch of losers
+// moves play on once. Caller must hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
-	if p.Eliminated {
+	if !g.leaveGameLocked(p) {
 		return
 	}
+	g.settleDeparturesLocked()
+}
+
+// leaveGameLocked transitions a seated player to eliminated state,
+// cleans up their stack items, pending triggers and prompts, and
+// emits EventPlayerEliminated. It does not move the turn on or check
+// whether the game is over; settleDeparturesLocked does both, once
+// per batch. Reports whether the player left (false when they had
+// already). Caller must hold g.mu.
+func (g *Game) leaveGameLocked(p *Player) bool {
+	if p.Eliminated {
+		return false
+	}
 	p.Eliminated = true
-	p.LosesAtNextSBA = false
+	p.AttemptedEmptyDraw = false
 	g.cleanupStackForEliminatedLocked(p.ID)
-	g.advancePastEliminatedLocked()
 	g.EmitEvent(Event{
 		Kind:  EventPlayerEliminated,
 		Actor: p.ID,
 	})
-	// Game-end check.
+	return true
+}
+
+// settleDeparturesLocked runs after one or more players have left:
+// the game ends when one player or none is left, and otherwise play
+// moves on (advancePastEliminatedLocked — the rest of a departed
+// active player's turn ends through the rotation seam, #766).
+//
+// Used where the departures are the whole event (Concede). The SBA
+// loss pass calls the two halves itself, because the rest of that
+// pass must be performed before the turn ends — see
+// stateBasedActionsLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) settleDeparturesLocked() {
+	if g.endGameIfDecidedLocked() {
+		return
+	}
+	g.advancePastEliminatedLocked()
+}
+
+// endGameIfDecidedLocked ends the game when one player or none is
+// left, and reports whether it did.
+//
+// A game that has ended keeps its cursor where it was: its caller does
+// not move play on. Ending the last turn would sweep marked damage and
+// pull attackers out of combat on the board the game ended with, and
+// begin a turn nobody takes. Caller must hold g.mu.
+func (g *Game) endGameIfDecidedLocked() bool {
 	survivors := 0
 	for _, s := range g.Seats {
 		if !s.Eliminated {
@@ -2497,7 +2578,9 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 	}
 	if survivors <= 1 {
 		g.State = StateEnded
+		return true
 	}
+	return false
 }
 
 // cleanupStackForEliminatedLocked implements CR 800.4a — when a
@@ -2550,11 +2633,22 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	// (CR 800.4a), so a damage assignment, target pick or scry they
 	// owed has nothing left to act on. Same for a cleanup-discard
 	// pause in their name. Found by the S31 bot fuzzer.
+	//
+	// #808: a dropped prompt may be holding a paused replacement event,
+	// and a life or damage event carries its CALLER's continuation — the
+	// rest of a drain, every later opponent's loss, the caster's gain.
+	// Those frames are collected here and finished below, once the queue
+	// no longer holds the dropped prompts.
+	var dropped []*replacementResumeFrame
 	if len(g.PendingChoices) > 0 {
 		kept := g.PendingChoices[:0]
 		for _, c := range g.PendingChoices {
 			if c == nil || c.Chooser != playerID {
 				kept = append(kept, c)
+				continue
+			}
+			if c.replacementResume != nil && c.replacementResume.ev != nil {
+				dropped = append(dropped, c.replacementResume)
 			}
 		}
 		g.PendingChoices = kept
@@ -2569,15 +2663,102 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	for _, frame := range dropped {
+		g.finishDroppedReplacementLocked(playerID, frame)
+	}
+}
+
+// finishDroppedReplacementLocked settles a paused replacement event
+// whose prompt was dropped because its chooser left the game.
+//
+// Before #808 the frame was simply discarded. For most event kinds
+// that is still all there is to do, and the only cleanup owed is the
+// event's CR 614.5 once-per-event entry, which nothing will clear now.
+// A LIFE or DAMAGE event is different: it carries its caller's
+// continuation (lifeTail / damageTail.then), and "each opponent loses 3
+// life, you gain life equal to the life lost this way" is sequenced
+// through those continuations, so discarding the first leg's frame
+// silently dropped every later opponent's loss and the caster's gain.
+// Every terminal outcome of those events has to reach the tail; this is
+// the one leaving the game adds.
+//
+// Two cases, split on whose event it was:
+//
+//   - The player who left IS the one the event happens to — the life
+//     player, the damaged player, or the controller of the damaged
+//     permanent (the CR 616 chooser is always that player). CR 800.4a
+//     takes them and their objects out of the game, so nothing lands
+//     and the continuation runs with zero.
+//   - They were only the chooser of a CR 614.10 "may" on somebody
+//     ELSE's event. That event still happens. The pipeline is resumed,
+//     and the apply-loop's existing gone-chooser escapes decide for the
+//     player who left (the "may" is declined, an ordering stands as
+//     gathered); the event then lands through the same functions the
+//     unpaused path uses, continuation included.
+//
+// It deliberately lands WITHOUT the state-based sweep the CR 616 resume
+// runs: this is reached from eliminatePlayerLocked, which the SBA loop
+// itself calls, and the sweep the change owes happens on the loop's
+// next pass or at the next priority boundary.
+//
+// Caller must hold g.mu, and must already have removed the dropped
+// prompt from g.PendingChoices.
+func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacementResumeFrame) {
+	ev := frame.ev
+	if ev.Kind != RepEventLife && ev.Kind != RepEventDamage {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	logErr := func(what string, err error) {
+		if err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: what + ": " + err.Error()})
+		}
+	}
+	runTail := func(amount int) {
+		if ev.Kind == RepEventLife {
+			logErr("life continuation failed", g.runLifeTailLocked(ev, amount))
+			return
+		}
+		logErr("damage continuation failed", g.runDamageTailLocked(ev, amount))
+	}
+	if affectedPlayerForEvent(ev, frame.applicable, g) == gone {
+		g.clearReplacementEventLocked(ev.ID)
+		runTail(0)
+		return
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// The affected player has a question of their own to answer;
+		// the event resumes from that prompt like any other.
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		logErr("replacement resume failed", err)
+		runTail(0)
+		return
+	}
+	if out == nil || out.Canceled {
+		runTail(0)
+		return
+	}
+	// Both landing functions run the continuation themselves on every
+	// outcome, a vanished player or permanent included; what is left to
+	// do with an error is log it.
+	if out.Kind == RepEventLife {
+		logErr("life change dropped", g.applyResolvedLifeChangeLocked(out))
+		return
+	}
+	logErr("damage dropped", g.applyResolvedDamageLocked(out))
 }
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
 // card to its owner's graveyard, clearing battlefield-only state
-// (combat declarations and position are zeroed by MoveCard's CR 400.7
-// cleanup; DamageMarked is cleared by executeBattlefieldLeaveLocked,
-// since MoveCard predates the field). Used by SBAs that destroy
-// creatures, by every effect destroy, and — because sacrifice is also
-// a battlefield exit, though it is not destruction — by sacrifice.go.
+// (combat declarations, position, marked damage and the CR 702.2c
+// deathtouch flag are all zeroed by MoveCard's CR 400.7 cleanup).
+// Used by SBAs that destroy creatures, by every effect destroy, and —
+// because sacrifice is also a battlefield exit, though it is not
+// destruction — by sacrifice.go.
 //
 // #708: THE DAMAGE IS NOT CLEARED HERE. It used to be, on the line
 // that found the owner, which is BEFORE the CR 614 window below has
@@ -2589,11 +2770,11 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 // replacement that wants to READ how much damage is on the permanent
 // ("if it would be destroyed, instead …") was handed a zero.
 //
-// So the clear moved to the LANDED outcome, executeBattlefieldLeaveLocked,
-// which is the same terminal-outcome shape damage_tail.go and
-// life_tail.go use: the mutation happens where the event actually
-// resolves, and the paused and unpaused paths reach it through one
-// function. Regeneration, when it ships, removes the damage in its own
+// So the clear moved to the LANDED outcome, and #816 moved it one step
+// further down into MoveCard's battlefield-exit cleanup, which is the
+// landed outcome of EVERY exit rather than of this one: same
+// terminal-outcome shape damage_tail.go and life_tail.go use, one
+// place. Regeneration, when it ships, removes the damage in its own
 // replacement (CR 701.15a says the shield does it), not as a side
 // effect of the destroy path.
 //
@@ -2652,11 +2833,14 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 // path (ResolveOptionalReplacement → applyResolvedReplacementEventLocked)
 // shares the same implementation.
 //
-// #708: this is also where DamageMarked is cleared, because this is
-// the one place the permanent actually LEAVES. A destruction that a
-// replacement turned into something else never gets here, and a
-// permanent that is still on the battlefield keeps its damage until
-// the cleanup step (CR 514.2) like every other damaged permanent.
+// #708 / #816: the marked damage and the CR 702.2c deathtouch flag go
+// with the move rather than with the destruction, and MoveCard's
+// battlefield-exit cleanup is where that happens now — one exit
+// cleanup for every route off the battlefield. A destruction that a
+// replacement turned into something else never reaches a move at all,
+// and a permanent that is still on the battlefield keeps its damage
+// until the cleanup step (CR 514.2) like every other damaged
+// permanent.
 //
 // Caller must hold g.mu.
 func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player) error {
@@ -2723,18 +2907,11 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
-	// #708: the damage goes now, and only now. MoveCard's CR 400.7
-	// cleanup handles tapped, counters, position and the combat
-	// declarations; DamageMarked postdates it and is cleared here.
-	//
-	// Before the LKI snapshot, so the last-known information a
-	// dies-trigger reads is byte-for-byte what it was before this
-	// moved — the clear used to happen even earlier (at the top of
-	// routeBattlefieldCardToOwnerGraveyardLocked) and nothing has ever
-	// seen a dying permanent's damage. Moving WHERE it is cleared is
-	// this fix; changing what LKI shows is not, and would be its own
-	// decision.
-	g.clearBattlefieldDamageLocked(cardID)
+	// The LKI snapshot is taken here, while the permanent is still on
+	// the battlefield with everything that was true of it — including
+	// the damage that killed it, which MoveCard's exit cleanup zeroes
+	// a line later (#816). CR 603.10: an LTB trigger is judged on what
+	// the permanent looked like while it was still there.
 	g.snapshotLKILocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
@@ -2995,31 +3172,27 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 			return ErrCardNotFound
 		}
 	}
-	for _, id := range cardIDs {
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	delete(g.DiscardPending, playerID)
-	if len(g.DiscardPending) == 0 {
-		g.DiscardPending = nil
-	}
-	// Resume the cleanup auto-advance if the pending map is now
-	// empty. Re-fires runStepEntryHooksLocked which rechecks
-	// DiscardPending; with the map empty, the auto-advance branch
-	// runs and the cursor walks on to the next seat's Untap.
-	if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
-		g.runStepEntryHooksLocked()
-	}
-	return nil
+	// The discard itself is the one discard path (discard.go); the
+	// hand-size bookkeeping is this site's own and runs once the whole
+	// batch has landed.
+	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
+		cause: discardCauseCleanup,
+		then: func(g *Game) error {
+			delete(g.DiscardPending, playerID)
+			if len(g.DiscardPending) == 0 {
+				g.DiscardPending = nil
+			}
+			// Resume the cleanup auto-advance if the pending map is
+			// now empty. Re-fires runStepEntryHooksLocked which
+			// rechecks DiscardPending; with the map empty, the
+			// auto-advance branch runs and the cursor walks on to the
+			// next seat's Untap.
+			if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
+				g.runStepEntryHooksLocked()
+			}
+			return nil
+		},
+	})
 }
 
 // SetMaxHandSize updates the named player's per-player hand-size
@@ -3162,6 +3335,32 @@ func (g *Game) MoveCardByID(src, dst ZoneRef, cardID uuid.UUID) error {
 func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.moveCardByRefLocked(src, dst, cardID, asCommander, false)
+}
+
+// moveCardByRefLocked is the body both sandbox move verbs share —
+// MoveCardByIDAsCommander and, with toBottom set, MoveCardByIDToBottom.
+//
+// It splits the move by what it IS (#707). A destination that is not
+// the battlefield or the stack is an EXIT, and goes through the shared
+// exit primitive (routeCardToZoneLocked, zone_route.go): that opens the
+// CR 614 window with a zoneRoute on the event, so when the CR 903.9
+// "put your commander in the command zone instead?" prompt pauses the
+// move, the primitive's resume finishes it from whatever zone the card
+// was in — graveyard, hand, library, exile, the stack or the
+// battlefield — and honours what this move asked for (to the bottom of
+// the library, retire the stack item) on the far side of the prompt.
+// Before #707 this function ran its own pipeline call with no resume
+// behind it, so a paused move from anywhere but the battlefield was
+// silently dropped: the prompt closed and the card never moved.
+//
+// A destination of battlefield or stack is an ENTRY, and stays inline
+// below: it owes enters-tapped, enters-with-counters and the ETB fire,
+// none of which an exit can express, and no CR 903.9 destination is
+// among them.
+//
+// Caller must hold g.mu.
+func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommander, toBottom bool) error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -3169,20 +3368,67 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 	if srcZone == nil {
 		return ErrZoneNotFound
 	}
+	if dstZone := g.zoneFromRefLocked(dst); dstZone == nil {
+		return ErrZoneNotFound
+	} else if srcZone == dstZone {
+		// A no-op move: MoveCard would Remove the card and re-Push it,
+		// and from the battlefield that would run the CR 400.7 exit
+		// cleanup over a card that never left. The pipeline must not
+		// fire for a move that isn't one either, so this returns
+		// before the window — but the card still has to be where the
+		// caller says it is, so a bogus instance ID is still an error.
+		if !srcZone.Contains(cardID) {
+			return ErrCardNotFound
+		}
+		return nil
+	}
+	// The exit primitive finds the card by scan, so the src ref would
+	// otherwise be advisory; a stale client request naming the zone the
+	// card has already left must still fail rather than move it out of
+	// wherever it ended up.
+	if !srcZone.Contains(cardID) {
+		return ErrCardNotFound
+	}
+
+	if dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+		paused, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:   cardID,
+			Dst:      dst.Kind,
+			DstOwner: dst.Owner,
+			ToBottom: toBottom,
+			// A card moved off the stack by hand is no longer a spell
+			// on the stack; leaving its StackMeta entry behind left a
+			// ghost item the client still rendered.
+			DropStackMeta: srcZone.Kind == ZoneStack,
+			AsCommander:   asCommander,
+		})
+		if err != nil {
+			return err
+		}
+		if paused {
+			// The CR 903.9 prompt (or a CR 616 ordering prompt) owns
+			// the move now. Nothing has moved, so there is nothing for
+			// the state checks to see; the resume lands the card.
+			return nil
+		}
+		// A sandbox move is a special action: the mover keeps priority
+		// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
+		// trigger drain at that boundary.
+		g.runStateChecksLocked()
+		return nil
+	}
 
 	// S17 sub-PR 2: route through the replacement pipeline. The
 	// commander-zone built-in (commanderZoneReplacement) gates on
 	// card.IsCommander && an eligible destination — NOT on
 	// ev.asCommanderMove, which stopped being a gate in #171; the
 	// flag survives here only as a routing flavor on the manual
-	// move_card action. When the built-in fires, ev.NewZone /
-	// ev.NewZoneOwner are rewritten to the owner's command zone.
-	//
-	// This is one of two callers that predate the shared exit
-	// primitive in zone_route.go. It keeps its own pipeline call
-	// because it is the admin/sandbox move: it accepts an arbitrary
-	// source AND destination including the battlefield, which the
-	// exit primitive deliberately does not.
+	// move_card action. A battlefield / stack destination is not one
+	// of CR 903.9's four, so the built-in cannot fire on this half —
+	// what can still pause it is a CR 616 ordering prompt between two
+	// entry replacements, which no catalog card produces today and
+	// which this entry site has never been able to resume
+	// (entryResumable is off; see the field's doc comment).
 	ev := &ReplacementEvent{
 		Kind:            RepEventMove,
 		CardID:          cardID,
@@ -3212,11 +3458,8 @@ func (g *Game) MoveCardByIDAsCommander(src, dst ZoneRef, cardID uuid.UUID, asCom
 		return ErrZoneNotFound
 	}
 	if srcZone == dstZone {
-		// Verify the card is actually present so the caller still
-		// sees ErrCardNotFound for a bogus instance ID.
-		if !srcZone.Contains(cardID) {
-			return ErrCardNotFound
-		}
+		// A replacement rewrote the destination back to where the card
+		// already is. Nothing to do.
 		return nil
 	}
 	if srcZone.Kind == ZoneBattlefield {
@@ -4055,7 +4298,28 @@ func (g *Game) PassPriority() error {
 			return nil
 		}
 	}
-	// Wrapped (or only the active seat is alive). Two cases:
+	// Wrapped (or only the active seat is alive).
+	//
+	// #830 first: priority has passed all the way around, so the
+	// block declaration is complete (CR 509.1). Lock it in BEFORE the
+	// advance-or-resolve choice below, so its triggers reach the
+	// stack inside the declare-blockers step rather than a step late,
+	// after combat damage. If it put anything there, priority returns
+	// to the active player (CR 509.2a) and the table gets a window to
+	// respond before those triggers resolve — the step does not
+	// advance on this pass.
+	if g.blockDeclarationPendingLocked() {
+		g.runStateChecksLocked()
+		// A blocking choice counts as much as a stack item here: an
+		// optional block trigger (Grazilaxx) queues its yes/no rather
+		// than an item, and walking the cursor past an unanswered
+		// prompt is the thing #730 forbids.
+		if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
+			g.Turn.PriorityHolder = g.Turn.ActiveSeat
+			return nil
+		}
+	}
+	// Then the two ordinary cases:
 	//
 	// S13.1: if the stack has any items (spells in Game.Stack OR
 	// abilities in StackMeta), resolve the top one and reset
@@ -4353,9 +4617,10 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 // creature.
 //
 // Returns ErrWrongStep outside the declare_blockers step,
-// ErrNotACreature for a non-creature blocker, and ErrCardNotFound
-// when either card is missing from the battlefield. Idempotent on
-// the same pair.
+// ErrNotACreature for a non-creature blocker, ErrCardNotFound
+// when either card is missing from the battlefield, and a
+// *BlockRefusedError (which wraps ErrIllegalBlock) for a pair
+// BlockPairRefusalLocked refuses. Idempotent on the same pair.
 //
 // The attacker need not currently have AttackingTarget set — the
 // sandbox accepts pre-emptive blocker declarations.
@@ -4369,8 +4634,9 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 		return ErrWrongStep
 	}
 	// Layers must be fresh so HasKeyword reads the current effective
-	// characteristic (flying granted by an anthem this turn has to
-	// be visible to CanBlock below).
+	// characteristic (flying granted by an anthem this turn, or a
+	// land Urborg made a Swamp, has to be visible to
+	// BlockPairRefusalLocked below).
 	g.RecomputeLayersIfStaleLocked()
 	// Verify the attacker exists on the battlefield. Without this the
 	// blocker would silently point at a non-existent attacker ID.
@@ -4390,31 +4656,27 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !blocker.IsCreature() {
 				return ErrNotACreature
 			}
-			// CR 509.1b: evasion keywords (flying, menace, fear,
-			// shadow, …) restrict which creatures can be declared
-			// as blockers. CanBlock is the single helper that
-			// consolidates all current S18 evasion rules; future
-			// keywords (protection, #662) land there.
-			if !CanBlock(attacker, blocker) {
-				return ErrIllegalBlock
+			// CR 509.1b: restrictions and evasion keywords (flying,
+			// landwalk) restrict which creatures can be declared as
+			// blockers. BlockPairRefusalLocked is the single pair
+			// check the enumerator and the #328 signal also read;
+			// protection (#662) and block rules (#750) land there.
+			// Menace is a block COUNT and is not checked here.
+			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
+				return g.blockRefusedErrorLocked(attacker, blocker, r)
 			}
-			// S31 sub-PR 0: announce the declaration for the public
-			// game log, but only when the pairing is NEW. The sandbox
-			// lets a defender re-point a blocker at a different
-			// attacker; that is one decision being revised, not two
-			// blocks, and EventAttack draws the same line.
-			announce := blocker.BlockingTarget != attackerID
+			// #830: the verb STAGES the pairing and announces
+			// nothing. CR 509.1 declares blockers as one turn-based
+			// action, so the events — EventBlock per pair, one
+			// EventBecomesBlocked per blocked attacker — are emitted
+			// by commitBlockDeclarationLocked when the declaration is
+			// locked in, at the first priority boundary of the step.
+			// The sandbox lets a defender re-point a blocker at a
+			// different attacker before then; that is one decision
+			// being revised, and the attacker the blocker left must
+			// never have become blocked at all.
 			blocker.BlockingTarget = attackerID
 			blocker.AttackingTarget = uuid.Nil
-			if announce {
-				g.EmitEvent(Event{
-					Kind:   EventBlock,
-					Actor:  blocker.Controller,
-					Source: blocker.InstanceID,
-					CardID: blocker.InstanceID,
-					Target: attackerID,
-				})
-			}
 			return nil
 		}
 	}
@@ -4911,6 +5173,9 @@ func (g *Game) clearCombatLocked() {
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
 	}
+	// #830: the block declaration's announcements describe the
+	// declaration being wiped here, so they go with it.
+	g.clearBlockAnnouncementsLocked()
 }
 
 // Concede marks the given player as eliminated. If exactly one
@@ -4947,61 +5212,21 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	return nil
 }
 
-// advancePastEliminatedLocked moves the turn cursor forward to the
-// next non-eliminated seat if the current ActiveSeat is eliminated.
-// Called from Concede (and intended for future state-based action
-// elimination paths). Caller must hold g.mu.
-func (g *Game) advancePastEliminatedLocked() {
-	numSeats := len(g.Seats)
-	if numSeats == 0 {
-		return
-	}
-	if !g.Seats[g.Turn.ActiveSeat].Eliminated {
-		// Active seat still standing — nothing to advance.
-		// But priority might be on an eliminated seat; reset it to
-		// the active seat (priority always defaults to active at
-		// step boundaries). NoPriority means no one holds priority
-		// (Untap/Cleanup) — leave it alone.
-		ph := g.Turn.PriorityHolder
-		if ph >= 0 && ph < numSeats && g.Seats[ph].Eliminated {
-			g.Turn.PriorityHolder = g.Turn.ActiveSeat
-		}
-		return
-	}
-	// Active seat eliminated — find the next survivor in turn order.
-	// Bounded by numSeats to terminate even if every seat is
-	// eliminated (the surrounding Concede caller transitions to
-	// StateEnded in that case; the cursor doesn't matter post-end
-	// but should not infinite-loop here).
-	for i := 0; i < numSeats; i++ {
-		next := (g.Turn.ActiveSeat + 1) % numSeats
-		nextNumber := g.Turn.Number
-		if next == 0 {
-			nextNumber++
-		}
-		g.Turn = Turn{
-			Number:         nextNumber,
-			ActiveSeat:     next,
-			PriorityHolder: initialPriorityHolder(StepUntap, next),
-			Phase:          PhaseOf(StepUntap),
-			Step:           StepUntap,
-		}
-		if !g.Seats[next].Eliminated {
-			// New active seat starts on Untap; run the entry hook so
-			// the auto-untap fires and the cursor advances out of the
-			// no-priority step, matching the rest of the engine.
-			g.runStepEntryHooksLocked()
-			return
-		}
-	}
-}
-
 // PassTurn skips to the next player's untap step, regardless of
 // whatever step the current turn is in. Useful for forfeiting a turn
 // or when all steps are uneventful. Lands on Untap with NoPriority
 // (S13); the entry hook auto-untaps and walks the cursor on to
 // Upkeep, matching the normal-flow behaviour of priority wraps and
 // AdvanceStep so callers always end at a priority-granting step.
+//
+// The rest of the turn ends through the rotation seam (rotation.go,
+// #766): attackers and blockers leave combat, and the cleanup sweep
+// removes marked damage and ends "until end of turn" effects. The
+// steps in between do not happen — no end step, so no "at the
+// beginning of the end step" triggers — and the cleanup discard to
+// hand size is skipped. This is a sandbox verb, not a rules action;
+// a player who wants the discard and the end step passes priority
+// through them instead.
 func (g *Game) PassTurn() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -5015,10 +5240,11 @@ func (g *Game) PassTurn() error {
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
-	// Jump to this turn's cleanup and wrap through the shared seam so
-	// eliminated seats are skipped and per-turn caches clear.
-	g.Turn.Step = StepCleanup
-	g.advanceCursorLocked()
+	// End the turn through the shared seam so eliminated seats are
+	// skipped, the cleanup sweep runs and per-turn caches clear.
+	g.clearCombatLocked()
+	g.sweepTurnEndLocked()
+	g.beginNextTurnLocked()
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-
@@ -5631,39 +5857,24 @@ func (g *Game) controllerOfBattlefieldCardLocked(cardID uuid.UUID) uuid.UUID {
 }
 
 // MoveCardByIDToBottom is MoveCardByIDAsCommander with the card
-// seated at the BOTTOM of the destination zone instead of the top.
+// seated at the BOTTOM of the destination library instead of the top.
 // It backs the move_card action's `to_bottom` flag, which the admin
 // context menu (#170) needs for "put this on the bottom of your
 // library" — the one destination MoveCard (which always PushTops)
 // can't express.
 //
-// Implemented as a post-move reorder rather than a second copy of the
-// replacement pipeline: the move runs exactly as it always does
-// (replacements, LKI snapshot, LTB / ETB events, state-based checks),
-// then the card is pulled back out of the destination and re-pushed
-// at the bottom. If a replacement rewrote the destination — a
-// commander routed to the command zone by CR 903.9 — the card isn't
-// in `dst` at all, Remove fails, and the reorder is a no-op. That is
-// the behaviour we want: the replacement's destination wins.
-//
-// The two-phase locking (the move takes g.mu and releases it, then
-// this retakes it) is safe because ws.Room.Apply holds the room lock
-// across the whole of actions.Dispatch, so no other action can
-// interleave between the move and the reorder.
+// #707: the bottom now rides the exit primitive's route
+// (zoneRoute.ToBottom) rather than being a post-move reorder. The
+// reorder could not survive a pause — a commander tucked to the bottom
+// paused on the CR 903.9 prompt was still in its old zone when the
+// reorder ran, so it found nothing and the card later landed on TOP —
+// and the route already knows how to do this for every effect-side
+// tuck (Condemn, Hinder). Like those, it is honoured only against the
+// SETTLED destination: a commander whose owner takes the command zone
+// is not on the bottom of anything, and a destination that is not a
+// library has no bottom worth naming.
 func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asCommander bool) error {
-	if err := g.MoveCardByIDAsCommander(src, dst, cardID, asCommander); err != nil {
-		return err
-	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	z := g.zoneFromRefLocked(dst)
-	if z == nil {
-		return nil
-	}
-	c, err := z.Remove(cardID)
-	if err != nil {
-		return nil
-	}
-	z.PushBottom(c)
-	return nil
+	return g.moveCardByRefLocked(src, dst, cardID, asCommander, true)
 }

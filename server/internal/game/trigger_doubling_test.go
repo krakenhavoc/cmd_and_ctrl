@@ -669,6 +669,17 @@ func TestTriggerDoublerOncePerBatchChecksMatchNotInstance(t *testing.T) {
 	if got := len(g.PendingTriggers); got != 2 {
 		t.Fatalf("once-per-batch instances = %d, want 2", got)
 	}
+	// A later batch must add both instances even while the previous
+	// batch's triggers are still waiting. The guard belongs to the
+	// match, not each instance or the lifetime of a queued trigger.
+	g.WithWriteLock(func() {
+		g.beginEventBatchLocked()
+		g.EmitEvent(Event{Kind: EventAttack, CardID: source})
+		g.EmitEvent(Event{Kind: EventAttack, CardID: uuid.New()})
+	})
+	if got := len(g.PendingTriggers); got != 4 {
+		t.Fatalf("two batches' doubled instances = %d, want 4", got)
+	}
 }
 
 func TestTriggerDoublerOptionalPromptsAreIndependent(t *testing.T) {

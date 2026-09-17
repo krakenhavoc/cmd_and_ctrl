@@ -146,8 +146,8 @@ type DiscardPrompt struct {
 // discard system. The live-zone re-check, the set-level Validate
 // hook, the bot enumerator case and the client's ChoicePromptModal
 // all come with it; what makes it a DISCARD is the continuation,
-// which moves the picks to the graveyard and emits one
-// EventDiscardCard per card before running Then.
+// which hands the picks to discardCardsLocked — the one discard path
+// (discard.go) — and lets it run Then once they have landed.
 //
 // Two things it deliberately does not do. It does not prompt for a
 // random discard (CR 701.8b — DiscardRandomForEffect stays a
@@ -200,7 +200,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
 	discarder := p.Player
-	then := p.Then
+	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -212,13 +212,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		Zone:       ZoneHand,
 		Validate:   p.Validate,
 		Then: func(g *Game, picked []uuid.UUID) error {
-			if err := g.discardPicksLocked(discarder, picked); err != nil {
-				return err
-			}
-			if then == nil {
-				return nil
-			}
-			return then(g)
+			return g.discardCardsLocked(discarder, picked, opts)
 		},
 	})
 }
@@ -245,42 +239,6 @@ func (g *Game) discardQuestionLocked(source uuid.UUID, n int, upTo bool) string 
 		}
 	}
 	return "Discard " + what
-}
-
-// discardPicksLocked moves the chosen cards from a player's hand to
-// their graveyard, emitting one EventDiscardCard per card — the event
-// every "whenever you discard a card" trigger and every madness /
-// graveyard payoff in the catalog watches.
-//
-// A pick that is no longer in the hand is skipped rather than
-// erroring: ResolveChooseCards re-checks the live zone before it
-// dequeues, so an answer that got here was legal when it arrived, and
-// a half-applied discard that abandoned its continuation would be the
-// worse failure.
-//
-// Caller must hold g.mu.
-func (g *Game) discardPicksLocked(playerID uuid.UUID, picks []uuid.UUID) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return nil
-	}
-	for _, id := range picks {
-		if !p.Hand.Contains(id) {
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
 }
 
 // DiscardChoiceForEffect is the plain "this player discards n cards"
@@ -378,8 +336,20 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // `then` takes the live *Game rather than capturing one, on the same
 // undo-safety contract every other continuation frame follows.
 func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: a player who has left the game neither gains
+		// nor loses life, and there is no event for a replacement to
+		// see. Not an error — an effect reaching for a seat that
+		// conceded mid-resolution has done nothing wrong — but still a
+		// terminal outcome, so the continuation is told zero.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// The event is built before the pipeline runs and carries
 	// everything the tail needs — the continuation included — because a
@@ -416,8 +386,9 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 // continuation: that is what makes the running total a plain value
 // carried forward instead of a shared accumulator, which is what makes
 // an undo across the prompt land where a clean run would. A player who
-// has left the game is skipped, exactly as a fire-and-forget loop over
-// them would skip them.
+// has left the game — never seated, or eliminated (CR 800.4a), which
+// is the case that actually happens because an eliminated seat stays
+// in g.Seats — is skipped and adds nothing to the total (#808).
 //
 // The sequencing is observable only when a loss pauses: with two
 // different life replacements on the first opponent, the second
@@ -438,7 +409,7 @@ func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, 
 func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
 	for len(players) > 0 {
 		next, rest := players[0], players[1:]
-		if g.playerByIDLocked(next) == nil {
+		if p := g.playerByIDLocked(next); p == nil || p.Eliminated {
 			players = rest
 			continue
 		}
@@ -473,8 +444,10 @@ func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amo
 // and what the affected player gives up for it are in
 // payLifeAsCostLocked (life_tail.go) and ADR 0013 §5b.
 //
-// Returns ErrInvalidParam when the payment cannot be made from the
-// payer's life total (CR 119.4). Callers validate before they start
+// Returns ErrInvalidParam when the payment cannot be made: from the
+// payer's life total (CR 119.4), or at all because the window cancelled
+// it — a player who can't lose life can't pay life (CR 119.8,
+// CR 614.17b; #808). Callers validate the first before they start
 // paying; this is the backstop.
 func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 	return g.payLifeAsCostLocked(source, playerID, amount)
@@ -538,8 +511,10 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // damage event or queue the next prompt itself.
 //
 // Returns ErrPlayerNotFound without running `then` when the target is
-// not seated at all, exactly as ChangePlayerLifeThenForEffect does. The
-// batch form skips absent targets rather than failing on them.
+// not seated at all, exactly as ChangePlayerLifeThenForEffect does. A
+// seated player who has been eliminated is not an error: nothing is
+// dealt and `then` runs with zero (CR 800.4a, #808). The batch form
+// skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
@@ -552,8 +527,18 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 		}
 		return nil
 	}
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: no damage reaches a player who has left the
+		// game. A terminal outcome with nothing dealt, like the
+		// zero-damage case above.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// S22: route through the CR 614 replacement pipeline, the way
 	// combat damage to a player already did. Before this, damage
@@ -722,7 +707,13 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 		step := func(g *Game, dealt int) error {
 			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
 		}
-		if g.playerByIDLocked(next) != nil {
+		if p := g.playerByIDLocked(next); p != nil {
+			if p.Eliminated {
+				// #808, CR 800.4a: a player who has left the game is
+				// skipped, not dealt zero through a pipeline run.
+				targets = rest
+				continue
+			}
 			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
 		}
 		if findBattlefieldCard(g, next) != nil {
@@ -741,7 +732,7 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 // DrawNForEffect draws n cards for the given player, emitting one
 // EventDrawCard per card (drawCardLocked already emits). Returns
 // an error only on the first failure — partial draws are allowed
-// (ErrZoneEmpty on the Nth card flags LosesAtNextSBA for the loss
+// (ErrZoneEmpty on the Nth card sets AttemptedEmptyDraw for the loss
 // on the next SBA pass, which is already the drawCardLocked
 // behaviour).
 func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
@@ -758,10 +749,9 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 }
 
 // DiscardRandomForEffect discards n cards from playerID's hand,
-// chosen at random. Emits one EventDiscardCard per card and no
-// EventZoneMove. The move is a direct MoveCard, so the discard
-// bypasses the CR 614 window (#650). If the hand has fewer than n
-// cards, discards all of them.
+// chosen at random (CR 701.8b). Emits one EventDiscardCard per card
+// and no EventZoneMove, through the one discard path (discard.go).
+// If the hand has fewer than n cards, discards all of them.
 //
 // The cards are one pick on the discarding player's "pick" stream
 // (ADR 0054 Decision 5), so an undone random discard redoes with the
@@ -779,26 +769,8 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
-	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
-		if !p.Hand.Contains(cardID) {
-			// Nothing between two discards moves hand cards today;
-			// if something ever does, a card that already left is
-			// not discarded twice.
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, cardID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, cardID)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  cardID,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
+	picked := g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n)
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the
@@ -806,13 +778,14 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 // game" (Pact of Negation and the rest of the Pact cycle), and of
 // every other card that says those words outright.
 //
-// Routed through LosesAtNextSBA rather than eliminating the player on
-// the spot, because CR 104.3 says a player who "loses the game" does
-// so as a state-based action (CR 704.5a-adjacent): the ability
-// finishes resolving first, and the loss lands at the next SBA check
-// alongside the empty-library and zero-life losses. That ordering is
-// observable — a replacement or a second effect in the same
-// resolution still happens.
+// Routed through the AttemptedEmptyDraw flag rather than eliminating
+// the player on the spot, so the ability finishes resolving first and
+// the loss lands at the next SBA check alongside the empty-library
+// and zero-life losses. That borrows the CR 704.5b flag for a loss
+// that is not a draw, and CR 104.3e actually makes an effect loss
+// immediate; ADR 0057 sub-PR 2 replaces this writer with
+// loseGameLocked, after which actuallyDrawCardLocked is the flag's
+// only writer.
 //
 // Caller must hold g.mu. Added in S28.
 func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
@@ -820,15 +793,14 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.LosesAtNextSBA = true
+	p.AttemptedEmptyDraw = true
 	return nil
 }
 
 // MillNForEffect moves n cards from the top of playerID's library
-// to their graveyard. Emits EventMill per card. An empty library
-// during the mill sets LosesAtNextSBA (CR 704.5b-equivalent read
-// from the top of an empty library) via the same path drawCardLocked
-// uses.
+// to their graveyard. Emits EventMill per card. A library holding
+// fewer than n mills what it has (CR 701.17b) and nobody loses for
+// it — see MillToZoneForEffect.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
 	return err
@@ -851,10 +823,23 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // `until` set, n <= 0 means "no limit but the library", so an
 // unbounded mill is expressible without inventing a sentinel.
 //
-// Running the library out mid-mill sets LosesAtNextSBA, the same
-// CR 704.5b-equivalent read-from-an-empty-library the draw path uses,
-// and stops rather than erroring: the player loses at the next SBA
-// check, not here.
+// Running the library out stops the run, with no error and NO loss.
+// CR 701.17b: a player instructed to mill more cards than their
+// library holds "mill[s] as many as possible", and only an attempt to
+// DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
+// The same holds for "exile the top N cards" and for an `until` run
+// that never finds its card — both simply end when the library does,
+// exactly as ExileTopFaceDownForEffect stops on an empty library.
+// (#767: this used to set the empty-draw flag, then named
+// LosesAtNextSBA, so Glimpse the Unthinkable on a nine-card library
+// eliminated its target.)
+//
+// Mill COSTS are the other half of CR 701.17b — "can't pay a cost
+// that includes milling a number of cards greater than the number of
+// cards in their library" — and they are not this function's
+// business: the engine has no mill cost component. The one catalog
+// card with a mill-a-card cost, Millikin, gates its activation on a
+// non-empty library itself; The Warring Triad declares the gap.
 //
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
@@ -917,13 +902,8 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 			return moved, nil
 		}
 	}
-	// Reading from the top of an empty library is the CR
-	// 704.5b-equivalent loss — recorded for the next SBA check rather
-	// than raised here. An unbounded `until` mill that never found
-	// its card has read the library dry by definition.
-	if want < n || (unbounded && until != nil) {
-		p.LosesAtNextSBA = true
-	}
+	// The library ran out (or the batch was the whole library): the
+	// run ends here. No loss — CR 701.17b, see above.
 	return moved, nil
 }
 
@@ -997,7 +977,7 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // card the rules say nobody can.
 //
 // Exiling off an empty library is not an error and is not a draw —
-// it moves nothing and does NOT set LosesAtNextSBA. Necropotence
+// it moves nothing and does NOT set AttemptedEmptyDraw. Necropotence
 // with an empty library charges the life and exiles nothing, which
 // is why its controller does not lose on the spot.
 //

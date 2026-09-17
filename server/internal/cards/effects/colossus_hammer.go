@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attachment predicate; the removal simply runs the grant backwards.
 //
 // The drawback is real here and the engine honours it: flying is read
-// by CanBlock, so a Hammered flier really can be blocked by anything
+// by Game.CanBlockLocked, so a Hammered flier really can be blocked by anything
 // on the ground. That is the whole cost of a one-mana +10/+10 — the
 // equip cost being eight is the other, and the format's answer to it
 // (Sigarda's Aid, Puresteel Paladin, Ardenn) is not in the catalog

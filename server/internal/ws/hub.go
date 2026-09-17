@@ -908,6 +908,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			})
 			return
 		}
+		// ADR 0045 addendum Decision 8: a refused block carries its
+		// reason token, the blocker, and a sentence addressed to the
+		// caller ("… and you control an Island").
+		if body, ok := blockRefusalPayload(err, c.playerID); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -971,6 +978,14 @@ func classifyActionError(err error) (code, message string) {
 		// by casting it (CR 712.4).
 		return protocol.CodeBadRequest,
 			"that isn't a face you can play on this card"
+	case errors.Is(err, game.ErrIllegalBlock):
+		// ADR 0045 addendum Decision 8. The hub sends the structured
+		// frame (blockRefusalPayload) before reaching this classifier;
+		// this arm is the same code and a viewer-neutral sentence for
+		// any other caller, and for a bare ErrIllegalBlock with no
+		// refusal attached.
+		body, _ := blockRefusalPayload(err, uuid.Nil)
+		return body.Code, body.Message
 	case errors.Is(err, game.ErrChoiceSetRejected):
 		// #624: the picks were individually fine but the card's rule
 		// about them as a set refused them. The prompt stays open, so
@@ -985,6 +1000,35 @@ func classifyActionError(err error) (code, message string) {
 	msg = strings.TrimPrefix(msg, "game: ")
 	msg = strings.TrimPrefix(msg, "actions: ")
 	return protocol.CodeBadRequest, msg
+}
+
+// blockRefusalPayload builds the `illegal_block` error frame for a
+// refused block (ADR 0045 addendum Decision 8): the reason token, the
+// blocker's instance ID, and the engine's sentence addressed to
+// `viewer`. ok is false for any error that is not a block refusal.
+//
+// The sentence is built by the engine from the refusal it already
+// computed, so the client never re-derives a block rule (ADR 0045 §6).
+func blockRefusalPayload(err error, viewer uuid.UUID) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrIllegalBlock) {
+		return protocol.ErrorPayload{}, false
+	}
+	var br *game.BlockRefusedError
+	if !errors.As(err, &br) {
+		return protocol.ErrorPayload{
+			Code:    protocol.CodeIllegalBlock,
+			Message: "that creature can't block that attacker",
+		}, true
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalBlock,
+		Message: br.Sentence(viewer),
+		Reason:  string(br.Reason),
+	}
+	if br.Blocker != uuid.Nil {
+		body.CardID = br.Blocker.String()
+	}
+	return body, true
 }
 
 func (c *Client) handlePing(frame protocol.Frame) {

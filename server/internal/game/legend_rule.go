@@ -51,13 +51,7 @@ const PendingChoiceLegendRule PendingChoiceKind = "legend_rule"
 // the supertype is visible here the day one is written — and so a
 // TOKEN copy of a legendary permanent is legendary, which is exactly
 // the case the rule most often bites on.
-func (c Card) IsLegendary() bool {
-	if c.effective == nil {
-		super, _, _ := ParseTypeLine(c.TypeLine)
-		return typeListHas(super, "legendary")
-	}
-	return typeListHas(c.effective.Supertypes, "legendary")
-}
+func (c Card) IsLegendary() bool { return c.HasSupertype("legendary") }
 
 // legendRuleChoicesLocked finds the legend-rule violations on the
 // battlefield: for each (controller, name) pair with two or more

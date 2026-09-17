@@ -148,10 +148,11 @@ Any server-side failure in processing a client frame.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana` — see below. |
+| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana`, and #705 adds `illegal_block` — see below. |
 | `payload.message` | string | yes | Human-readable message safe to display to the user. |
 | `payload.missing` | string[] | no | Present only when `code == "insufficient_mana"` (S15). List of mana symbols the caller's pool could not cover, in the order they appear in the printed cost (e.g. `["{R}", "{1}"]`). Client renders these verbatim into the override toast. |
-| `payload.card_id` | string (UUID) | no | Present only when `code == "insufficient_mana"` (S15). Instance ID of the card whose cast was rejected. Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. |
+| `payload.card_id` | string (UUID) | no | Present when `code == "insufficient_mana"` (S15): instance ID of the card whose cast was rejected. Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. Also present when `code == "illegal_block"` (#705): instance ID of the refused blocker. |
+| `payload.reason` | string | no | Present only when `code == "illegal_block"` (#705). The stable snake_case token naming why the block was refused — see below. |
 
 `id` matches the originating client frame's `id` when possible; otherwise
 empty string.
@@ -172,6 +173,30 @@ them and offers two buttons:
    `GET /games/:id/auto-tap-preview?card=<id>`, render the plan in
    `AutoTapPreviewModal`, and on confirm re-fire the cast with
    `auto_tap: true` (atomic server-side tap-and-cast, see below).
+
+#### `illegal_block` (#705)
+
+Emitted when a `declare_blocker` names a pair the engine's block-legality
+check refuses (CR 509.1b; [ADR 0045](decisions/0045-combat-restrictions.md)
+addendum, Decision 8). Nothing is stored, logged or announced. `message` is a
+player-facing sentence the server builds and addresses to the caller, so the
+client shows it verbatim and never re-derives the rule — for example
+`"Cold-Eyed Selkie has islandwalk, and you control an Island (Island)."` (a
+player other than the defending player reads the defender's name instead of
+"you"). `card_id` is the blocker; `reason` is one of:
+
+| `reason` | Refused because |
+|---|---|
+| `cant_block` | a "can't block" restriction is on the blocker (Pacifism, Carrion Feeder) |
+| `cant_be_blocked` | a "can't be blocked" restriction is on the attacker (Whispersilk Cloak, Rogue's Passage) |
+| `flying` | the attacker has flying and the blocker has neither flying nor reach (CR 702.9b) |
+| `landwalk` | the attacker has a landwalk ability (`islandwalk`, …, `nonbasic landwalk`) and the defending player controls a land it names (CR 702.14c) |
+
+The tokens are stable once shipped. The addendum reserves more
+(`too_few_blockers`, `too_many_blockers`, `cant_be_blocked_except_by`,
+`not_defending`, `tapped`, `protection`, …); each is added to this table in
+the change that first sends it. Menace (a block count) is not refused here
+yet.
 
 ### `action` (client → server) — added in S03
 
@@ -216,12 +241,12 @@ sites for verbs the server already accepts.
 |---|---|---|---|
 | `draw_card` | yes | — | Moves the top of `player`'s library to their hand. S13: server-side no-op when called during the active player's `draw` step (the step-entry hook has already drawn automatically, except on the starting player's turn 1 of a **two-player** game per CR 103.8a — CR 103.8c has nobody skip in a larger multiplayer game). Outside that window the action behaves as before. |
 | `play_card` | yes | `{ "instance_id": "<uuid>" }` | Moves the card from `player`'s hand to the battlefield; stamps controller to `player`. |
-| `move_card` | no | `{ "src": <ZoneRef>, "dst": <ZoneRef>, "instance_id": "<uuid>", "as_commander"?: bool, "to_bottom"?: bool }` | General-purpose zone-to-zone move. Clears tapped state + counters if leaving the battlefield (CR 400.7). Caller must control the card. S13.1: when `as_commander` is true AND the card is a commander AND `dst` is graveyard / exile / hand / library, the destination is rewritten to the owner's command zone (CR 903.9 commander zone replacement, exercised as an explicit player choice rather than an automatic engine transform). #170: when `to_bottom` is true the card is seated at the BOTTOM of the destination zone instead of the top — only meaningful for a library destination, and a no-op if a replacement rewrote the destination. |
+| `move_card` | no | `{ "src": <ZoneRef>, "dst": <ZoneRef>, "instance_id": "<uuid>", "as_commander"?: bool, "to_bottom"?: bool }` | General-purpose zone-to-zone move. Clears tapped state, counters, marked damage and the deathtouch mark if leaving the battlefield (CR 400.7). Caller must control the card. S13.1: when the card is a commander AND `dst` is graveyard / exile / hand / library, its owner is asked whether to put it in the command zone instead (CR 903.9 commander zone replacement, exercised as an explicit player choice rather than an automatic engine transform) — nothing moves until that prompt is answered, and #707 made the move complete afterwards from whatever zone the card was in; `as_commander` is a routing flavour on the request, not a gate on the offer. #170: when `to_bottom` is true the card is seated at the BOTTOM of the destination library instead of the top — a no-op if a replacement rewrote the destination, or if the destination is not a library. |
 | `tap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to true. Caller must control the card (admin sessions bypass) — see "controller-only card actions" below. |
 | `untap` | no | `{ "instance_id": "<uuid>" }` | Sets a battlefield card's tapped state to false. Same controller gate as `tap`. |
 | `untap_all` | yes | — | Untaps all of `player`'s cards on the battlefield. S13: server-side no-op when called during the active player's `untap` step (the step-entry hook has already untapped automatically). Outside that window the action behaves as before — sandbox / replay support. |
 | `pass_priority` | no | — | Rotates priority to the next non-eliminated seat. When priority would wrap back to the active seat, the step auto-advances and `priority_holder` resets per the new step's rules. S13: skips eliminated seats during the rotation; rejects with `bad_request` ("no player holds priority this step") on `untap` / `cleanup` (those don't grant priority per CR 502.4 / 514.3). Stack-aware semantics (priority resets on spell resolution) arrive with S13.1. |
-| `pass_turn` | no | — | Jumps to the next seat's turn. Lands on Untap with `priority_holder = -1`; the step-entry hook auto-untaps and walks the cursor on to Upkeep before the next snapshot is broadcast. |
+| `pass_turn` | no | — | Ends the current turn at once and jumps to the next seat's turn. Attackers and blockers leave combat and the cleanup sweep runs (marked damage removed, "until end of turn" effects end); the steps in between are skipped, so there is no end step and no discard to hand size. Lands on Untap with `priority_holder = -1`; the step-entry hook auto-untaps and walks the cursor on to Upkeep before the next snapshot is broadcast. |
 | `mulligan` | yes | `{ "hand_size": <int> }` | Shuffles `player`'s hand back into their library and draws `hand_size` cards. Simplified London mulligan — no card-to-bottom penalty. |
 | `shuffle_library` | yes | — | Reshuffles `player`'s library. |
 | `change_life` | yes | `{ "delta": <int> }` | Adjusts `player`'s life by `delta` (positive for gain, negative for loss). |
