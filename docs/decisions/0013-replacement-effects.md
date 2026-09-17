@@ -851,7 +851,7 @@ its chooser left the game (`finishDroppedReplacementLocked`,
 mutations.go) or it went stale (`dropStaleReplacementResumeLocked`,
 pending_choice.go) — never runs its route's continuation, so a
 sequenced batch behind it stalls. That hole is #853's as much as this
-one's; both are filed separately.
+one's; both are filed separately. (Both are now closed — §5j and §5k.)
 
 ### 5j. Amendment, 2026-09-17: a prompt taken away is still an outcome
 
@@ -923,6 +923,90 @@ callee mutates it is the bug this avoids.
 what an answered prompt does. The only observable difference is that a
 batch behind an abandoned prompt now finishes, with the abandoned leg
 counted as nothing.
+
+### 5k. Amendment, 2026-09-17: one batch body, and "this way" means arrived
+
+*Amendment, 2026-09-17, branch `fix/865-866-route-tail`.
+Closes [#866](https://github.com/krakenhavoc/cmd_and_ctrl/issues/866),
+filed by the #847/#815 agent in PR #863 and listed as not-fixed at the
+end of §5i.*
+
+§5i fixed the destroy sweep's count and left the exile and bounce
+sweeps counting the way it used to: a leg the CR 614 window had
+cancelled, and a leg that had merely PAUSED on the CR 903.9 prompt,
+were both counted as having moved. Settle the Wreckage
+(`b29ExileAttackersThenTheyFetchBasics`) read one of those numbers
+synchronously, so it handed its victim a basic land for every attacking
+creature whose owner had been *asked* about the command zone.
+
+**1. The rule for these two is CR 400.7, not CR 701.7a.** A card that
+changes zones becomes a new object in the zone it arrives in, so "for
+each card exiled this way" means the cards that reached EXILE.
+`landedInZoneLocked` (simultaneous.go) asks exactly that, against the
+destination the route requested:
+
+| Where it landed | Exiled this way? |
+| --- | --- |
+| exile | yes |
+| the command zone (CR 903.9 took the offer) | **no** |
+| anywhere else (a replacement rewrote the destination) | no |
+| still where it was (cancelled, or the prompt abandoned — §5j) | no |
+
+The command-zone row is where this parts company with destroy, and the
+difference is not an inconsistency. §5i counts a commander as destroyed
+because CR 903.9 replaces the zone change and not the destruction — the
+permanent was still destroyed. Nothing correspondingly replaces the
+fact that an exile put the card in exile: it did not, so it was not
+exiled this way. The two rules live one function apart
+(`destroyedThisWayLocked`, `landedInZoneLocked`) and
+`routeLegLandedLocked` picks between them.
+
+**2. One body, not three.** Writing §5i's sequencing twice more would
+have been three copies of one loop. It is now
+`routeAllThenLocked(route, ids, then(landed))` plus its fire-and-forget
+twin `routeAllLocked(route, ids) int`, parameterised by a `zoneRoute`
+TEMPLATE — the description of what each leg is — and three small
+switches on it: which mover the leg takes (`routeLegLocked`), what
+counts as nothing to do (`routeLegNothingToDoLocked`), and what counts
+as landed (`routeLegLandedLocked`). The destroy sequencing from §5i was
+rebased onto it and `destroyEachStepLocked` is gone; the destroy
+fire-and-forget loop the SBA sweep shares went the same way. The
+templates are `destroyRoute`, `exileRoute`, `bounceRoute`, and the
+destroy one carries no destination at all — `ViaBattlefieldLeave` says
+the move belongs to `executeBattlefieldLeaveLocked`, which names its
+own (§5i.2, §5f).
+
+A leg with nothing to do is now SKIPPED rather than routed — a card
+that is not where the route expects it, or is already at the
+destination. That was true of the destroy sweep's sequenced form
+already; extending it is what stops a batch from opening a CR 614
+window (and a commander's prompt) for a move that cannot happen.
+
+**3. The pause keeps the batch open on this side too.** `zoneRoute`
+already carried `simultaneousExit` for §5i's destroy legs;
+`executeZoneRouteLocked` now publishes it around the move and the
+continuation the way `finishBattlefieldLeaveLocked` does, so an exile
+or bounce batch that stops for a CR 903.9 answer is still one event to
+the watchers in it.
+
+**4. What can now pause that could not before.** An `ExileAllMatching`
+or `BounceAllMatching` with a `Then`, and `ReturnAllToHand` with one —
+and only those; every fire-and-forget sweep in the catalog (Farewell,
+Merciless Eviction, Evacuation, Cyclonic Rift, River's Rebuke, Whelming
+Wave, Wash Out, Aetherize, Aether Gale, Selective Obliteration,
+Desynchronization, Wave Goodbye, Perplexing Test) is untouched. One
+card reads such a count today: **Settle the Wreckage**. When an
+attacking commander is caught in it, the rest of the sweep and the
+"search for that many basic lands" now happen when its owner answers
+CR 903.9, an action later, instead of happening immediately with the
+commander counted on the strength of the prompt having been queued.
+
+**5. The fire-and-forget counts.** `ExileCardsForEffect` and
+`BounceCardsToHandForEffect` keep their `int` and their signatures, and
+the number now means what `DestroyPermanentsForEffect`'s has meant
+since §5i: how many of the legs that SETTLED landed where the route
+asked. A cancelled leg is not in it; a paused leg cannot be, which is
+what the `Then` forms are for.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
