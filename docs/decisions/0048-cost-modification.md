@@ -326,3 +326,353 @@ structural reason rather than for time:
   payload and a per-symbol picker; it is the one item here that is
   purely additive to this ADR's machinery rather than blocked by
   something else.
+
+---
+
+## Addendum (2026-09-17): a spell's own cost modifier, affinity, and targets in `CostQuery` (#746)
+
+**Status:** Proposed · 2026-09-17 · tracked on
+[#746](https://github.com/krakenhavoc/cmd_and_ctrl/issues/746). This
+status covers this section only. §1–§10 are unchanged and stay accepted.
+The section narrows the "Modifiers from outside the battlefield" line
+under **Not covered** to the gaps listed in *Out of scope* below. Open
+questions for the owner are at the end.
+
+### Context
+
+§1 built cost modifiers as statics of **battlefield** permanents. A spell
+that changes **its own** cost has nowhere to declare it:
+
+- "This spell costs {1} less to cast for each creature on the
+  battlefield" (Blasphemous Act, Vanquish the Horde)
+- affinity for artifacts, CR 702.41a: "This spell costs {1} less to cast
+  for each [text] you control" (Thought Monitor, Myr Enforcer)
+- "This spell costs {X} less to cast, where X is the total power of
+  creatures you control" (Ghalta, Primal Hunger)
+- "This spell costs {1} more to cast for each target beyond the first"
+  (Fireball), and strive's "{1}{W} more … for each target beyond the
+  first" (Call the Coppercoats)
+- "This spell costs {7} less to cast if it targets a spell or ability
+  that targets a creature you control with power 7 or greater" (Not of
+  This World)
+
+Checked on develop at `bcac391`:
+
+- **Battlefield only.** `activeCostModifiersLocked`
+  (`server/internal/game/cost_modifier.go:230`) walks only
+  `g.Battlefield.Cards` (`:235-240`). Its comment calls widening it "a
+  one-line change" (`:223-227`), and **Not covered** above says the same
+  (`:189-190`). That widening would be wrong. A Sphere of Resistance in a
+  hand would start taxing spells. A card's own modifier needs its own
+  slot next to `CardDef.CostModifiers` (`game/carddef.go:59`, read at
+  `:180`), per AGENTS.md §7, "Adding a `Spec` slot".
+- **One pricing function.** `applyCostModifiersLocked`
+  (`cost_modifier.go:258`) serves all three pricing surfaces (§6):
+  - the cast (`mutations.go:1319`, inside `effectiveCostLocked` at `:1290`);
+  - the enumerator (`legal/cast.go:151`);
+  - the auto-tap preview (`lobby/http.go:1017`).
+- **No targets.** `CostQuery` (`cost_modifier.go:113-152`) has Card,
+  Controller, Source, FromZone, XValue and Cost. Targets are announced
+  before the total cost is determined (CR 601.2c, then 601.2f). The cast
+  path validates them first (`mutations.go:702`, before pricing at `:877`
+  and `:889`), and `CastSpellParams.Targets` exists
+  (`mutations.go:272`). No modifier can see them.
+- **The enumerator prices once, before targets.** It prices a cast before
+  it expands modes and targets (`legal/cast.go:140-165`), and only for
+  hand and command-zone casts (`:147-150`).
+- **The preview prices the printed cost.** It prices without targets
+  and without a face, and has its own copy of the price logic (#696).
+- **A shipped caveat.** Blasphemous Act says "The cost reduction is
+  missing" (`cards/effects/blasphemous_act.go:29`).
+
+### Decisions
+
+#### 11. `Spec.SelfCostModifiers`: a separate slot, read only for the spell being cast
+
+`Spec.SelfCostModifiers []game.CostModifier` becomes
+`CardDef.SelfCostModifiers`, with one line in `effects.buildDef` and one
+reader, `game.SelfCostModifiersFor(card Card)`. That reader looks the card
+up by `CatalogKey(card)`. It is the four-edit slot recipe in AGENTS.md §7.
+No per-slot `Catalog…` variable is added until a game-package test needs
+to stub it.
+
+A separate slot, not a flag on `CostModifier`, because the question "does
+this modifier apply to other spells?" is answered by where the card
+declares it. A modifier in `CostModifiers` is read from the battlefield
+and never from a hand. A modifier in `SelfCostModifiers` is read only
+while its own card is being priced, and never from the battlefield. A
+card can have both. Mycosynth Golem has affinity for artifacts itself and
+also grants affinity to artifact creature spells from the battlefield.
+
+Card files reuse the existing constructors (`CostsLess`, `CostsLessEach`,
+`CostsMore`, `CostsMoreEach`). The slot, not the constructor, is what
+makes a modifier apply to its own spell. Two new constructors:
+
+- `AffinityFor(label string, match CardPredicate)` is `CostsLessEach`
+  counting the caster's permanents that match (CR 702.41a). Each
+  `AffinityFor` entry is its own modifier, so a card with two instances
+  applies both (CR 702.41b). No card needs two yet, and the rule costs
+  nothing extra.
+- `CostsMorePerTargetBeyondFirst(per string, label string)` is Fireball
+  (`"{1}"`) and strive (`"{1}{W}"`). It reads targets (§13), and it adds
+  `per` for each target beyond the first, and nothing for zero or one.
+  Its amount never goes negative, so an unpriced zero-target query cannot
+  trip §4's refusal.
+
+`effects.Register` panics when `SelfCostModifiers` contains a
+`CostFloor`. No printed card sets a floor on its own cost, and an
+untested kind should not be declarable.
+
+#### 12. Self modifiers join the same three passes, bound to the card as it is cast
+
+`activeCostModifiersLocked` takes the query and appends the cast card's
+self modifiers after the battlefield ones. §2's increase, reduction and
+floor passes, §3's generic-only floor and §4's refusal of a negative
+amount apply unchanged. Two consequences:
+
+- **The order stays CR 601.2f's.** Every increase, from the battlefield
+  and from the spell, is added before any reduction. Ghalta, Primal Hunger
+  under a Sphere of Resistance goes from {10}{G}{G} to {11}{G}{G} before
+  its power reduction runs. The reduction then spends generic mana only.
+  With enough power it reaches {G}{G} and stops there, because
+  `reduceGeneric` never touches a coloured requirement.
+- **Self modifiers come after battlefield modifiers within a pass.** That
+  is for determinism. It changes no result today: reductions clamp and
+  add up, so their order does not matter unless an `Amount` reads
+  `q.Cost`, and no catalog modifier does.
+
+The bound source is **the card being cast, with `Controller` set to the
+caster**. CR 601.2a makes the caster the spell's controller, and a card in
+a hand carries no controller of its own. Setting it keeps a `YourSpell()`
+predicate true, where it would otherwise be quietly false.
+
+**Zones.** CR 113.6d: an ability that "modifies what that particular
+object costs to cast functions on the stack". So a self modifier applies
+whatever zone the spell is cast from: hand, command zone, graveyard or
+exile. The engine prices before it moves the card, so at pricing time
+the card is still in its source zone. Counting helpers therefore
+**exclude `q.Card` itself**. Under CR 601.2a the card is already on the
+stack when the total cost is determined. "For each card in your
+graveyard", read during a flashback cast, must not count the card being
+cast.
+
+**Alternative costs.** CR 118.9d applies increases and reductions to an
+alternative cost. `printedCostLocked` has already swapped in the
+alternative cost, the exile-grant override and the commander tax before
+modifiers run (§5). A Fireball cast without paying its mana cost still
+pays its per-target surcharge, and a Blasphemous Act cast with an
+alternative cost still gets its reduction.
+
+**Faces.** `CatalogKey(q.Card)` reads the face the cast stamped
+(`mutations.go:530`), and the enumerator stamps the same face per
+castable face (`legal/cast.go`, `CastableFaces` and `SetFace`). An MDFC
+or split card uses the self modifiers of the face being cast and no
+others.
+
+#### 13. `CostQuery.Targets`, shown only to modifiers that declare they read it
+
+`CostQuery.Targets []TargetRef` is filled from `params.Targets` in
+`effectiveCostLocked`. A new field, `CostModifier.ReadsTargets bool`,
+controls who sees it: `amountFor` passes the targets to a modifier that
+sets the flag, and nil to every other modifier.
+
+The flag does two jobs:
+
+- **It tells the enumerator whether it can price before expanding
+  targets** (§14).
+- **It keeps the engine and the enumerator in agreement even when a card
+  gets the flag wrong.** A modifier that reads `q.Targets` without the
+  flag sees nil in both places. The card's own test catches it. The other
+  failure mode, where the engine sees targets and the enumerator does
+  not, would offer bots casts the engine refuses (#544).
+
+Battlefield modifiers get the field too. "Spells your opponents cast that
+target a Merfolk you control cost {2} more" (Kopala, Warden of Waves)
+needs no further change. Target-reading constructors set the flag
+themselves: `CostsMorePerTargetBeyondFirst`, and a `TargetsMatch(pred)`
+cost predicate paired with a `CostsLessIf…` constructor for Not of This
+World.
+
+#### 14. The enumerator prices per target set only when something reads targets
+
+A new read, `g.CastPriceReadsTargetsForEffect(card)`, returns true when
+the card's self modifiers, or any battlefield modifier, set
+`ReadsTargets`. It ignores `AppliesTo`, so it errs toward true.
+
+- **False** (every card and board today): nothing changes. The cast is
+  priced once, before modes and targets, and the early affordability
+  return stays.
+- **True:** there is no early return. After modes and targets are
+  expanded (`legal/cast.go:209-225`), each (mode, target set) is priced
+  with its targets, and `affordableX` runs on that price. An unaffordable
+  set is skipped **without spending expansion budget**, so a Fireball
+  that is affordable at one target is not crowded out by the three-target
+  sets ahead of it. Each move carries its own X.
+
+A nil-targets price cannot be used as a gate, because target-reading
+reductions exist. Not of This World costs {7} at nil targets and {0} with
+a qualifying target. A nil-targets check would hide it from a player
+who has less than seven mana, even when the cast is free.
+
+Only hand and command-zone casts are enumerated (#673). A graveyard or
+exile cast of a self-modified spell is not offered to bots, like every
+other such cast.
+
+#### 15. The preview prices with the targets it is given
+
+The auto-tap preview has no targets and no face on its query string, and
+it copies the price logic rather than calling it (`lobby/http.go:994-1027`,
+#696). The technical rule is that the preview prices through the same
+function as the cast, with whatever targets and face it is given, and
+with nil targets when it has none. What the X picker shows for a spell
+whose price depends on targets is a product choice, because the picker
+opens before targeting (ADR 0021 §3). How the preview work is sequenced
+against #696 is also the owner's. Both are in the open questions.
+
+#### 16. Cards
+
+- **Blasphemous Act** drops its caveat.
+- **Engine PR:** Thought Monitor (`AffinityFor` artifacts), Myr Enforcer,
+  Ghalta, Primal Hunger, Vanquish the Horde.
+- **Enumerator PR (§14):** Fireball. A target-priced card must not ship
+  before the enumerator can price it. Call the Coppercoats depends on open
+  question 3.
+- Not of This World, Ancient Stone Idol, Voyage Home, Sapling Nursery,
+  Mycosynth Golem and Thrumming Hivepool become catalog work. Earthquake
+  Dragon and Metalwork Colossus also wait on #655.
+
+### Out of scope
+
+- **Coloured reductions**, such as "costs {W}{B} less" (CR 118.7c): §3
+  still holds.
+- **Cost modifiers on activated abilities**: the separate "Cost
+  modification for activated abilities" row in `docs/engine-seams.md`.
+- **Per-player, duration-scoped modifiers** (Will Kenrith): still
+  **Not covered**.
+- **Showing a modified price on a card in hand.** Nothing in the client
+  shows a modified price today, including under a Sphere.
+
+### Consequences
+
+- About a dozen cards become catalog work. Blasphemous Act becomes whole.
+- Each cast adds one more `CardDef` read, for its own self modifiers.
+  The early return for a cast with no modifiers stays.
+- The enumerator does more work only on boards where a target-reading
+  modifier exists, and at most one price per target set it already
+  expands.
+- `CostQuery` gains a field that most modifiers never see. That is on
+  purpose (§13).
+
+### Alternatives considered
+
+- **Widening `activeCostModifiersLocked` to every zone.** Sphere of
+  Resistance in a hand would tax the table. Filtering on
+  "source == q.Card" inside the walk makes every cast scan every hand and
+  graveyard. Rejected.
+- **A `SelfOnly bool` on `CostModifier` in the existing slot.** Every
+  battlefield walk would have to remember to skip self-only modifiers. A
+  slot makes the wrong read impossible. Rejected.
+- **Always pricing per target set in the enumerator.** This drops the
+  early return for every unaffordable targeted spell in every hand, on
+  every snapshot, to serve a handful of cards. Rejected in favour of §14's
+  flag.
+- **Showing all modifiers the targets.** A modifier that reads targets
+  without saying so would split the engine from the enumerator, and
+  nothing would catch it. Rejected (§13).
+
+### Implementation plan
+
+1. **Engine PR.**
+   - the `SelfCostModifiers` slot (the four §7 edits);
+   - binding inside `activeCostModifiersLocked`;
+   - `CostQuery.Targets`, `CostModifier.ReadsTargets` and the hiding in
+     `amountFor`;
+   - `effectiveCostLocked` passes the targets;
+   - the registration guard, `AffinityFor` and `CostsMorePerTargetBeyondFirst`;
+   - the §16 engine-PR cards, and the census regenerated.
+
+   No card that reads targets is registered in this PR.
+2. **Enumerator PR.** `CastPriceReadsTargetsForEffect`, pricing per target
+   set, Fireball (and Call the Coppercoats, per open question 3), and
+   `docs/engine-seams.md`'s "A spell's own cost modifier" row moved to
+   Closed.
+3. **Preview**, as the owner decides in open question 1.
+
+### Test plan
+
+- **Floor.** Ghalta with more total power than its generic cost costs
+  exactly {G}{G}, not less, and never touches a colour.
+- **Ordering.** Ghalta under Sphere of Resistance, and a noncreature
+  self-reducer under Thalia: every increase lands before any reduction
+  (the §2 Lightning Bolt case, with the reducer on the spell).
+- **A Sphere in hand taxes nothing.** A Sphere of Resistance in the
+  caster's hand, and one in an opponent's, leaves a Lightning Bolt at {R}.
+- **A self modifier on the battlefield does nothing.** Thought Monitor on
+  the battlefield does not reduce another artifact spell.
+- **Zones.**
+  - A command-zone cast pays the tax, then gets the reduction.
+  - A flashback-style graveyard cast of a "for each card in your
+    graveyard" reducer does not count itself.
+  - An alternative-cost cast is reduced (CR 118.9d).
+- **Faces.** An MDFC whose front has a self reduction and whose back has
+  none: the back costs its printed cost, and the front is reduced.
+- **Targets.**
+  - Fireball at one, two and three targets costs {X}{R}, {X}{1}{R} and
+    {X}{2}{R}.
+  - A modifier without `ReadsTargets` sees nil targets in both the engine
+    and the enumerator.
+- **Refusal.** A self modifier returning a negative number refuses the
+  cast (§4), and names the card.
+- **Enumerator parity.**
+  - For each card above, every cast move the enumerator offers is
+    accepted by `CastSpell` with `auto_tap`.
+  - A board with no target-reading modifier offers the same moves as
+    before.
+  - Fireball offers the one-target set when only that one is affordable,
+    even behind unaffordable larger sets.
+- **Catalog soak** with the new cards.
+
+### Open questions for the owner
+
+1. **How does the auto-tap preview catch up?** The preview's copy of the
+   price logic will not see self modifiers. When a strict-mana cast of
+   Blasphemous Act is refused and the player clicks "Auto-tap & cast", the
+   modal can show the printed {8}{R} as missing and keep the button
+   disabled, even though the cast itself would succeed.
+   - **(a)** The self-modifier work waits for #696's shared pricing entry
+     point, so the preview is fixed once.
+   - **(b)** Ship the engine and enumerator PRs now. Extend the preview's
+     copy with self modifiers as a stopgap, and delete it when #696 lands.
+   - **(c)** Ship the engine and enumerator PRs now. Leave the preview
+     wrong for self-modified spells, add them to #696's list (with a
+     `face` parameter), and fix it there.
+
+   **Recommendation: (c).** The cast, the bots and the census are right
+   from day one. The preview only matters after a strict-mana refusal. And
+   (b) grows the duplicate code #696 exists to remove.
+2. **What does the X picker show for a spell whose price depends on
+   targets?** Fireball's X picker opens before targeting (ADR 0021 §3), so
+   the per-target surcharge is not known yet.
+   - **(a)** Price at one target, and show the modifier's printed clause
+     under the readout ("costs {1} more for each target beyond the
+     first").
+   - **(b)** For such cards, collect targets before X, so the readout is
+     exact.
+   - **(c)** Price at one target with no note.
+
+   **Recommendation: (a).** It is honest and cheap, and it keeps one cast
+   flow. (b) reorders the client flow for a handful of cards.
+3. **Coloured cost increases (strive): in this work?** §2's
+   `CostIncrease` adds generic mana only. Strive's "{1}{W} more for each
+   target beyond the first" adds a coloured requirement. Call the
+   Coppercoats is on #746's first list, and strive is an ability word
+   (CR 207.2c) across a cycle of cards.
+   - **(a)** In. `CostsMorePerTargetBeyondFirst` takes a mana string, and
+     the increase pass adds its coloured symbols as `Required` entries.
+     Reductions stay generic-only (§3).
+   - **(b)** Out. Fireball ships, strive gets its own seam row, and Call
+     the Coppercoats waits.
+
+   **Recommendation: (a).** It is one field on the increase pass. The
+   solver already pays coloured requirements, and a Sphere or Thalia test
+   pins the order.
