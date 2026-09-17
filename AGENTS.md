@@ -1463,6 +1463,47 @@ window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
 
+**A reflexive trigger (CR 603.12, #636):** "<do something>. **When
+you do**, <do something else>" — Ziatora's fling, an Overlook land's
+fetch, Invasion of Tarkir's damage. The second sentence is a trigger
+created by the first one *while it resolves*, and it is
+`ReflexiveTrigger`, applied from inside the parent's `Effect` once the
+condition actually held:
+
+```go
+ReflexiveTrigger{
+    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Targets: TargetAny(),          // chosen when the trigger goes on the stack
+    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
+Both go through the harvester's own dispatch
+(`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
+prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
+prints one, and a place on `PendingTriggers` — exactly as a harvested
+trigger does, because by the time it is on the stack it is one.
+
+Two rules, and both are why cards used to get this wrong by folding
+the follow-up into the parent's effect:
+
+- **It uses the stack, above the parent.** The table gets a response
+  window between the two halves. Folding is the mistake ADR 0018
+  retired for ordinary triggers.
+- **Its targets are chosen when it goes on the stack**, not when the
+  parent was announced — after the reveal, the sacrifice, the mill.
+  A clause hung on the parent instead makes the controller pick
+  before making the choice the trigger is about, which is what every
+  folded card declared as a caveat.
+
+"When you do" is conditional on the doing, and the `if` is the card's:
+apply the trigger only on the branch where the thing happened. The
+"you may" of "you MAY sacrifice a creature. When you do, …" belongs to
+the *parent* — set `Optional` only when the reflexive sentence itself
+says it.
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana

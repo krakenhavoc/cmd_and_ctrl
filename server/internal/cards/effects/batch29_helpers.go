@@ -153,27 +153,6 @@ func b29AuraNamesControlled(g *game.Game, controller uuid.UUID) map[string]bool 
 	return out
 }
 
-// b29ResolvingAbilityOf reports whether an ability of `source`
-// labelled `label` is resolving right now: the most recent
-// EventResolve names it, and nothing that cannot happen
-// mid-resolution — another resolution, a cast, a mana ability, an
-// attack, a fizzle or a step beginning (b13ResolutionInProgressBy's
-// boundary set) — has been logged since. What a reflexive "when you
-// do" trigger reads to tell the sacrifice its own ability just made
-// from any other.
-func b29ResolvingAbilityOf(g *game.Game, source uuid.UUID, label string) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		switch ev := g.Events[i]; ev.Kind {
-		case game.EventResolve:
-			return ev.Source == source && ev.Label == label
-		case game.EventCast, game.EventManaAbilityActivated, game.EventAttack, game.EventFizzle,
-			game.EventBeginUpkeep, game.EventBeginPrecombatMain, game.EventBeginEndStep, game.EventStepBegan:
-			return false
-		}
-	}
-	return false
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b29ArtifactSpellCastByYou is Vedalken Archmage's condition — Sai's
@@ -231,8 +210,8 @@ func b29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
 // (counters and anthems included) while it is on the battlefield,
 // and otherwise its printed power plus the counters it had when it
 // left, read back off the log (b17LastKnownPowerOffBattlefield). A
-// reflexive trigger's Build runs once its target has been picked,
-// by which time the sacrificed creature is in the graveyard with
+// reflexive trigger resolves well after the parent ability created
+// it, by which time the sacrificed creature is in the graveyard with
 // its counters cleared — which is why the second branch exists. A
 // static bonus from another permanent is not in that branch;
 // declared on the card that reads this.
@@ -243,26 +222,6 @@ func b29PowerAsItLastStood(g *game.Game, cardID uuid.UUID) int {
 		}
 	}
 	return b17LastKnownPowerOffBattlefield(g, cardID)
-}
-
-// b29SacrificedByYouDuring is the reflexive-trigger condition —
-// Ziatora's "when you do": the source's controller sacrificed a
-// creature, and the sacrifice happened while the source's ability
-// labelled `label` was resolving. EventSacrifice fires before the
-// zone move, so the creature is still on the battlefield to be
-// read; it is returned for its power.
-func b29SacrificedByYouDuring(ev game.Event, source *game.Card, g *game.Game, label string) (game.Card, bool) {
-	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == uuid.Nil {
-		return game.Card{}, false
-	}
-	if !b29ResolvingAbilityOf(g, source.InstanceID, label) {
-		return game.Card{}, false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCreature() {
-		return game.Card{}, false
-	}
-	return c, true
 }
 
 // --- effect bodies -----------------------------------------------
@@ -396,32 +355,49 @@ func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem, maxMV int
 }
 
 // b29ZiatoraSacrificeLabel is the stack label of Ziatora's end-step
-// trigger — the reflexive trigger keys on it.
+// trigger.
 const b29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another creature"
 
 // b29SacrificeChosenCreature is Ziatora's end-step body: the
 // creature chosen when the trigger went on the stack is sacrificed
-// if it is still there and still legal. The "when you do" is a
-// separate trigger watching for exactly that sacrifice
-// (b29SacrificedByYouDuring).
+// if it is still there and still legal, and — because it was — the
+// printed "when you do" goes on the stack as a CR 603.12 reflexive
+// trigger with its own "any target" clause, carrying the creature
+// that just died as its payload.
+//
+// Nothing follows when the chosen creature has already left: "when
+// you do" is conditional on the doing, so a creature removed in
+// response takes the damage and the Treasures with it.
 func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == item.SourceCardID {
 			continue
 		}
-		return SacrificePermanent{Target: t.ID}.Apply(ctx)
+		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+		return ReflexiveTrigger{
+			Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
+			Targets: TargetAny(),
+			Cards:   []uuid.UUID{t.ID},
+			Effect:  b29ZiatoraFling,
+		}.Apply(ctx)
 	}
 	return nil
 }
 
-// b29DamageChosenTargetAndThreeTreasures is Ziatora's reflexive
-// body: `power` damage from the source to the target chosen when
-// the reflexive trigger went on the stack, and three Treasures
-// either way — the Treasures are not conditional on the damage
+// b29ZiatoraFling is Ziatora's reflexive body: damage equal to the
+// power of the creature this trigger carries, as it last stood, to
+// the target chosen when the trigger went on the stack — plus three
+// Treasures either way, since they are not conditional on the damage
 // landing.
-func b29DamageChosenTargetAndThreeTreasures(g *game.Game, item *game.StackItem, power int) error {
+func b29ZiatoraFling(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	power := 0
+	if sacrificed := ctx.PayloadCards(); len(sacrificed) > 0 {
+		power = b29PowerAsItLastStood(g, sacrificed[0])
+	}
 	if ts := ctx.LegalTargets(); len(ts) > 0 {
 		if err := (DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: power}).Apply(ctx); err != nil {
 			return err

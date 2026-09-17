@@ -254,6 +254,12 @@ var stackItemFields = plan(
 	"SourceCardID", carried, "",
 	"Label", carried, "",
 	"Targets", carried, "",
+	// #636 reflexive triggers: a pending trigger's payload is what
+	// the resolution that created it told it (the cards revealed,
+	// the creature sacrificed). Carried, and it has to be — the
+	// Effect reads its whole input from here, so a restore that lost
+	// it would resolve the trigger against nothing.
+	"Payload", carried, "",
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",
