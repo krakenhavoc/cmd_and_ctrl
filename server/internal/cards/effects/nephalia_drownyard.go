@@ -11,10 +11,9 @@ package effects
 // resolution. Either player is a legal target — milling yourself is
 // the graveyard deck's use of it.
 //
-// The mill is bounded by the target's library (b31MillAtMost): a
-// mill does not lose the game, only a draw from an empty library
-// does (CR 704.5b), and the engine's mill would otherwise flag the
-// loss when it runs a library out.
+// A library holding fewer than three mills what it has: a mill does
+// not lose the game (CR 701.17b), only a draw from an empty library
+// does (CR 704.5b).
 //
 // No simplification.
 func init() {

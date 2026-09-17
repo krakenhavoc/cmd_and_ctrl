@@ -171,7 +171,7 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	c, err := p.Library.PopTop()
 	if err != nil {
 		if err == ErrZoneEmpty {
-			p.LosesAtNextSBA = true
+			p.AttemptedEmptyDraw = true
 		}
 		return err
 	}
@@ -2274,7 +2274,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 		if p.Eliminated {
 			continue
 		}
-		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
+		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage() {
 			g.eliminatePlayerLocked(p)
 			fired = true
 			continue
@@ -2475,7 +2475,7 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 		return
 	}
 	p.Eliminated = true
-	p.LosesAtNextSBA = false
+	p.AttemptedEmptyDraw = false
 	g.cleanupStackForEliminatedLocked(p.ID)
 	g.advancePastEliminatedLocked()
 	g.EmitEvent(Event{
@@ -2544,11 +2544,22 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	// (CR 800.4a), so a damage assignment, target pick or scry they
 	// owed has nothing left to act on. Same for a cleanup-discard
 	// pause in their name. Found by the S31 bot fuzzer.
+	//
+	// #808: a dropped prompt may be holding a paused replacement event,
+	// and a life or damage event carries its CALLER's continuation — the
+	// rest of a drain, every later opponent's loss, the caster's gain.
+	// Those frames are collected here and finished below, once the queue
+	// no longer holds the dropped prompts.
+	var dropped []*replacementResumeFrame
 	if len(g.PendingChoices) > 0 {
 		kept := g.PendingChoices[:0]
 		for _, c := range g.PendingChoices {
 			if c == nil || c.Chooser != playerID {
 				kept = append(kept, c)
+				continue
+			}
+			if c.replacementResume != nil && c.replacementResume.ev != nil {
+				dropped = append(dropped, c.replacementResume)
 			}
 		}
 		g.PendingChoices = kept
@@ -2563,6 +2574,93 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 		}
 	}
 	g.recomputeSplitSecondLocked()
+	for _, frame := range dropped {
+		g.finishDroppedReplacementLocked(playerID, frame)
+	}
+}
+
+// finishDroppedReplacementLocked settles a paused replacement event
+// whose prompt was dropped because its chooser left the game.
+//
+// Before #808 the frame was simply discarded. For most event kinds
+// that is still all there is to do, and the only cleanup owed is the
+// event's CR 614.5 once-per-event entry, which nothing will clear now.
+// A LIFE or DAMAGE event is different: it carries its caller's
+// continuation (lifeTail / damageTail.then), and "each opponent loses 3
+// life, you gain life equal to the life lost this way" is sequenced
+// through those continuations, so discarding the first leg's frame
+// silently dropped every later opponent's loss and the caster's gain.
+// Every terminal outcome of those events has to reach the tail; this is
+// the one leaving the game adds.
+//
+// Two cases, split on whose event it was:
+//
+//   - The player who left IS the one the event happens to — the life
+//     player, the damaged player, or the controller of the damaged
+//     permanent (the CR 616 chooser is always that player). CR 800.4a
+//     takes them and their objects out of the game, so nothing lands
+//     and the continuation runs with zero.
+//   - They were only the chooser of a CR 614.10 "may" on somebody
+//     ELSE's event. That event still happens. The pipeline is resumed,
+//     and the apply-loop's existing gone-chooser escapes decide for the
+//     player who left (the "may" is declined, an ordering stands as
+//     gathered); the event then lands through the same functions the
+//     unpaused path uses, continuation included.
+//
+// It deliberately lands WITHOUT the state-based sweep the CR 616 resume
+// runs: this is reached from eliminatePlayerLocked, which the SBA loop
+// itself calls, and the sweep the change owes happens on the loop's
+// next pass or at the next priority boundary.
+//
+// Caller must hold g.mu, and must already have removed the dropped
+// prompt from g.PendingChoices.
+func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacementResumeFrame) {
+	ev := frame.ev
+	if ev.Kind != RepEventLife && ev.Kind != RepEventDamage {
+		g.clearReplacementEventLocked(ev.ID)
+		return
+	}
+	logErr := func(what string, err error) {
+		if err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: what + ": " + err.Error()})
+		}
+	}
+	runTail := func(amount int) {
+		if ev.Kind == RepEventLife {
+			logErr("life continuation failed", g.runLifeTailLocked(ev, amount))
+			return
+		}
+		logErr("damage continuation failed", g.runDamageTailLocked(ev, amount))
+	}
+	if affectedPlayerForEvent(ev, frame.applicable, g) == gone {
+		g.clearReplacementEventLocked(ev.ID)
+		runTail(0)
+		return
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		// The affected player has a question of their own to answer;
+		// the event resumes from that prompt like any other.
+		return
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		logErr("replacement resume failed", err)
+		runTail(0)
+		return
+	}
+	if out == nil || out.Canceled {
+		runTail(0)
+		return
+	}
+	// Both landing functions run the continuation themselves on every
+	// outcome, a vanished player or permanent included; what is left to
+	// do with an error is log it.
+	if out.Kind == RepEventLife {
+		logErr("life change dropped", g.applyResolvedLifeChangeLocked(out))
+		return
+	}
+	logErr("damage dropped", g.applyResolvedDamageLocked(out))
 }
 
 // routeBattlefieldCardToOwnerGraveyardLocked moves a battlefield
@@ -4409,9 +4507,10 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 // creature.
 //
 // Returns ErrWrongStep outside the declare_blockers step,
-// ErrNotACreature for a non-creature blocker, and ErrCardNotFound
-// when either card is missing from the battlefield. Idempotent on
-// the same pair.
+// ErrNotACreature for a non-creature blocker, ErrCardNotFound
+// when either card is missing from the battlefield, and a
+// *BlockRefusedError (which wraps ErrIllegalBlock) for a pair
+// BlockPairRefusalLocked refuses. Idempotent on the same pair.
 //
 // The attacker need not currently have AttackingTarget set — the
 // sandbox accepts pre-emptive blocker declarations.
@@ -4425,8 +4524,9 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 		return ErrWrongStep
 	}
 	// Layers must be fresh so HasKeyword reads the current effective
-	// characteristic (flying granted by an anthem this turn has to
-	// be visible to CanBlock below).
+	// characteristic (flying granted by an anthem this turn, or a
+	// land Urborg made a Swamp, has to be visible to
+	// BlockPairRefusalLocked below).
 	g.RecomputeLayersIfStaleLocked()
 	// Verify the attacker exists on the battlefield. Without this the
 	// blocker would silently point at a non-existent attacker ID.
@@ -4446,13 +4546,14 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !blocker.IsCreature() {
 				return ErrNotACreature
 			}
-			// CR 509.1b: evasion keywords (flying, menace, fear,
-			// shadow, …) restrict which creatures can be declared
-			// as blockers. CanBlock is the single helper that
-			// consolidates all current S18 evasion rules; future
-			// keywords (protection, #662) land there.
-			if !CanBlock(attacker, blocker) {
-				return ErrIllegalBlock
+			// CR 509.1b: restrictions and evasion keywords (flying,
+			// landwalk) restrict which creatures can be declared as
+			// blockers. BlockPairRefusalLocked is the single pair
+			// check the enumerator and the #328 signal also read;
+			// protection (#662) and block rules (#750) land there.
+			// Menace is a block COUNT and is not checked here.
+			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
+				return g.blockRefusedErrorLocked(attacker, blocker, r)
 			}
 			// S31 sub-PR 0: announce the declaration for the public
 			// game log, but only when the pairing is NEW. The sandbox

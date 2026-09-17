@@ -779,6 +779,23 @@ func (c Card) HasSubtype(subtype string) bool {
 	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
 }
 
+// HasSupertype reports whether the card's effective supertypes
+// include `supertype` ("basic", "legendary", "snow"),
+// case-insensitively. Effective, not printed, so a supertype an effect
+// adds or removes is visible here — the reader landwalk's "nonbasic"
+// needs (CR 205.4c: a land without the basic supertype is nonbasic,
+// whatever land types it has).
+//
+// Added for nonbasic landwalk (#705); IsLegendary is the same read for
+// the one supertype the legend rule asks about.
+func (c Card) HasSupertype(supertype string) bool {
+	if c.effective == nil {
+		super, _, _ := ParseTypeLine(c.TypeLine)
+		return typeListHas(super, supertype)
+	}
+	return typeListHas(c.effective.Supertypes, supertype)
+}
+
 // --- printed card-type predicates -----------------------------
 //
 // The deliberate other half of the split. These read the printed

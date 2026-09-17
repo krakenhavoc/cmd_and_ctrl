@@ -585,8 +585,9 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying — with three exceptions, all of which apply
-			// the gathered order inline instead.
+			// applying — with four exceptions, all of which apply
+			// the gathered order inline instead, one effect per pass
+			// round this loop (CR 616.1f; applyFirstGatheredLocked).
 			//
 			// #710: every applicable effect is a PURE CANCEL, so
 			// every ordering produces the same event. Two "skip your
@@ -594,7 +595,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// skipped draw step, and asking which of them skipped it
 			// is a prompt with a single answer.
 			if allPureCancels(applicable) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, applicable)
 				continue
 			}
 			// #792: every applicable effect is the SAME declared
@@ -603,14 +604,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// order N copies of one modification, so again there is
 			// only one answer.
 			if sameModification(applicable) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, applicable)
 				continue
 			}
 			// Nobody is left to answer the prompt: the gathered
 			// order stands (an eliminated player's prompt would
 			// block the table forever; S31 fuzzer finding).
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, applicable)
 				continue
 			}
 			// #793: the event cannot pause — a life payment is a COST
@@ -619,7 +620,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// reason it does above: a prompt nobody can answer here is
 			// a spell stuck on the stack with a half-paid cost.
 			if ev.mustSettleNow {
-				g.applyGatheredInOrderLocked(ev, g.skipQuestionsLocked(ev, applicable))
+				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
@@ -795,26 +796,40 @@ func asksItsOwnQuestion(e ReplacementEffect) bool {
 	return e.Optional || e.EntryLifeCost > 0 || e.CopySelector != nil
 }
 
-// applyGatheredInOrderLocked fires the gathered replacements in the
-// order the gather pass produced, marking each applied, and stops at
-// the first one that cancels the event. The un-prompted sibling of
-// ResolveReplacementOrder's chosen-order loop, used when the CR 616
-// prompt is skipped — because nobody could answer it (an eliminated
-// chooser) or because every ordering gives the same answer
-// (allPureCancels).
+// applyFirstGatheredLocked fires the FIRST gathered replacement and
+// marks it applied. The un-prompted sibling of ResolveReplacementOrder's
+// chosen-order loop, used when the CR 616 prompt is skipped — because
+// nobody could answer it (an eliminated chooser), because every
+// ordering gives the same answer (allPureCancels, sameModification), or
+// because the event cannot pause (mustSettleNow).
+//
+// Only the first, and the caller goes round the apply-loop again, which
+// re-gathers. CR 616.1f: "Once the chosen effect has been applied, this
+// process is repeated (taking into account only replacement or
+// prevention effects that would now be applicable)". This used to fire
+// the whole gathered list back to back, so an effect whose AppliesTo
+// the first one had just made false — a "lose life greater than 3"
+// gate after a halving, say — fired anyway on a stale gather (#808).
+// Going round again also lets an effect the first one ENABLED join in
+// at its proper place instead of after the rest of the list. The
+// orderings the skipped prompt would have offered are still not
+// offered — the gather order stands — which is the declared
+// simplification those branches already carry.
+//
+// An empty list is a no-op: skipQuestionsLocked can drop every entry,
+// and the next gather then finds them marked.
 //
 // Caller must hold g.mu, and must have allocated the once-per-event
 // map entry for ev.ID.
-func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []activeReplacement) {
-	for _, chosen := range applicable {
-		if ev.Canceled {
-			break
-		}
-		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-			}
+func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activeReplacement) {
+	if len(applicable) == 0 || ev.Canceled {
+		return
+	}
+	chosen := applicable[0]
+	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if chosen.effect.Replace != nil {
+		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 		}
 	}
 }
@@ -873,6 +888,34 @@ func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
 		return true
 	}
 	return ev.entryResumable
+}
+
+// stillAppliesLocked reports whether a gathered replacement would
+// still be gathered for ev as the effects applied so far have left it:
+// it has not fired for this event, and its Watches filter and AppliesTo
+// predicate still pass.
+//
+// CR 616.1f re-checks applicability after every applied effect ("taking
+// into account only replacement or prevention effects that would now be
+// applicable"). The CR 616 ordering answer fires the whole chosen order
+// in one go, so it asks this before each effect rather than trusting
+// the gather the prompt was built from (#808).
+//
+// It tests the entry the frame is holding rather than re-gathering and
+// looking the ID up, because a catalog effect's ID is its battlefield
+// index: a permanent leaving between the prompt and the answer shifts
+// every ID after it, and a lookup would then answer for a different
+// effect.
+//
+// Caller must hold g.mu.
+func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) bool {
+	if ev == nil || g.replacementsAppliedThisEvent[ev.ID][a.id] {
+		return false
+	}
+	if !eventKindMatches(a.effect.Watches, ev.Kind) {
+		return false
+	}
+	return a.effect.AppliesTo == nil || a.effect.AppliesTo(ev, g, a.source)
 }
 
 // clearReplacementEventLocked drops the per-event tracking map

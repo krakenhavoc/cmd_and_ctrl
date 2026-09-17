@@ -1015,7 +1015,11 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	if errors.Is(err, errReplacementPending) {
 		return nil
 	}
-	if err != nil {
+	// #808: the iteration cap lets the event through as-is, exactly as
+	// the unpaused entry points treat it. Returning here instead would
+	// drop the event AND its caller's continuation on a prompt that is
+	// already dequeued.
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
@@ -1180,6 +1184,19 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			// A prior Cancel short-circuits the remaining chain.
 			break
 		}
+		if !g.stillAppliesLocked(ev, chosen) {
+			// CR 616.1f: after each applied effect the process repeats
+			// "taking into account only replacement or prevention
+			// effects that would now be applicable". An effect an
+			// earlier one in the chosen order has switched off — a
+			// "lose more than 3" gate after a halving — does not fire
+			// on the strength of the gather the prompt was built from
+			// (#808), and neither does one whose source stopped
+			// applying between the prompt and the answer. It is left
+			// unmarked, so the apply-loop re-entry below still picks
+			// it up if a later effect switches it back on.
+			continue
+		}
 		if chosen.effect.CopySelector != nil {
 			// Same reason as the pay-life branch below: an effect
 			// with a CHOICE inside it can't be fired blind. Clone's
@@ -1222,7 +1239,9 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 		// Another prompt queued; unroll asynchronously.
 		return nil
 	}
-	if err != nil {
+	// #808: the iteration cap lets the event through as-is, as every
+	// unpaused entry point does — see ResolveOptionalReplacement.
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
 		return err
 	}
@@ -1260,20 +1279,23 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// emitted EventChangeLife with no Source, so a life change
 		// that paused lost the card that caused it. See life_tail.go.
 		err := g.applyResolvedLifeChangeLocked(ev)
-		if errors.Is(err, ErrPlayerNotFound) {
+		if errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			// The player left between the prompt and the answer. The
 			// life change simply does not happen — but the choice is
 			// already dequeued, so returning the error here would
 			// fail the action AND take the prompt away with nothing
 			// to show for it. Log it and move on.
+			//
+			// #793 / #808: the rest of the effect has already run,
+			// with zero, inside applyResolvedLifeChangeLocked. A drain
+			// whose second opponent conceded during the prompt gains
+			// what the first one lost, not nothing — and not what the
+			// conceded one would have lost either (CR 800.4a).
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "life change dropped: its player is no longer in the game",
 			})
-			// #793: the rest of the effect still runs, with zero. A
-			// drain whose second opponent conceded during the prompt
-			// gains what the first one lost, not nothing.
-			return g.runLifeTailLocked(ev, 0)
+			return nil
 		}
 		if err != nil {
 			return err
@@ -1296,7 +1318,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// DamageMarked on everything and returned ErrCardNotFound for
 		// a player. See damage_tail.go.
 		err := g.applyResolvedDamageLocked(ev)
-		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) {
+		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
 			// The target left between the prompt and the answer. The
 			// damage simply does not happen — but the choice is
 			// already dequeued, so returning the error here would

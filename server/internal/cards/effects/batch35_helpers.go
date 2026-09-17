@@ -16,7 +16,7 @@ import (
 // b33LandYouControlEntered, "an opponent cast a spell" is
 // b15OpponentCastSpell, "a creature you control dealt combat damage
 // to a player" is combatDamageToPlayerBy, "another creature died" is
-// diedCreature, the bounded mill is b31MillAtMost, the per-event
+// diedCreature, the per-event
 // counter delta is b33CountersPlacedDelta, "lands with different
 // names" is b04LandNamesControlled, "exile all graveyards" is
 // b02ExileAllGraveyards, "each opponent loses N life" is
@@ -219,28 +219,6 @@ func b35EndStepAndThirtyCounters(ev game.Event, source *game.Card, g *game.Game)
 
 // --- effect bodies -----------------------------------------------
 
-// b35MillAtMostCollect mills `n` cards from `player`'s library, or
-// the whole library when it holds fewer, and returns the IDs that
-// moved top-first — b31MillAtMost with the milled batch kept, for a
-// body that reads what was milled. A mill does not lose a player the
-// game (CR 704.5b); the engine's mill flags the loss when it runs a
-// library out, so the count is bounded here.
-func b35MillAtMostCollect(ctx *Context, player uuid.UUID, n int) ([]uuid.UUID, error) {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil {
-		return nil, nil
-	}
-	if size := p.Library.Size(); n > size {
-		n = size
-	}
-	if n <= 0 {
-		return nil, nil
-	}
-	var milled []uuid.UUID
-	err := MillToZone{Player: player, N: n, Milled: &milled}.Apply(ctx)
-	return milled, err
-}
-
 // b35DrawTwoThenEachPlayerLosesTwo is Risky Shortcut's body: the
 // controller draws two, then every live player — the controller
 // first, then the opponents in seat order — loses 2 life. A loss,
@@ -319,7 +297,7 @@ func b35ThatPlayerMillsTwo(caster uuid.UUID) func(g *game.Game, item *game.Stack
 		if g.PlayerByIDForEffect(caster) == nil {
 			return nil
 		}
-		return b31MillAtMost(NewContext(g, item), caster, 2)
+		return MillCards{Player: caster, N: 2}.Apply(NewContext(g, item))
 	}
 }
 
@@ -341,8 +319,8 @@ func b35TutelageMill(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		for guard := 0; guard < 200; guard++ {
-			milled, err := b35MillAtMostCollect(ctx, t.ID, 2)
-			if err != nil {
+			var milled []uuid.UUID
+			if err := (MillToZone{Player: t.ID, N: 2, Milled: &milled}).Apply(ctx); err != nil {
 				return err
 			}
 			if !b35TwoNonlandCardsShareAColor(g, milled) {
@@ -429,8 +407,8 @@ func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Contex
 	x := ctx.X()
 	creatures := 0
 	for _, id := range tablePlayers(ctx) {
-		milled, err := b35MillAtMostCollect(ctx, id, x)
-		if err != nil {
+		var milled []uuid.UUID
+		if err := (MillToZone{Player: id, N: x, Milled: &milled}).Apply(ctx); err != nil {
 			return err
 		}
 		for _, cardID := range milled {
@@ -457,7 +435,7 @@ func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Contex
 // the card.
 func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := b31MillAtMost(ctx, item.Controller, 2); err != nil {
+	if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 		return err
 	}
 	return b34ReturnChosenGraveyardCardToHand(ctx)
@@ -465,7 +443,7 @@ func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
 
 // b35MillTwo is Eden's plain body: the controller mills two.
 func b35MillTwo(g *game.Game, item *game.StackItem) error {
-	return b31MillAtMost(NewContext(g, item), item.Controller, 2)
+	return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 }
 
 // b35GainLifeEqualToToughness is Ikra Shidiqi's body: life equal to

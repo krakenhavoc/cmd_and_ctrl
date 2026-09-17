@@ -13,8 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The lands deck's engine: a land back from the graveyard on entry
 // and on every attack. The trigger is ONE printed ability with two
-// trigger conditions (b21SelfEnteredOrAttacked), Teval's body with
-// the mill bounded by the library (b31MillThreeThenReturnChosenLandTapped).
+// trigger conditions (b21SelfEnteredOrAttacked) and Teval's body
+// (b25MillThreeThenReturnChosenLandTapped). The two used to differ
+// only in a clamp that bounded the mill by the library; a mill never
+// loses the game (CR 701.17b, #767), so the clamp went and the bodies
+// became one.
 //
 // "Then return a land card from your graveyard" is written as a
 // target clause over the controller's graveyard (Teval's posture),
@@ -75,12 +78,12 @@ func init() {
 				},
 				Targets: TargetCardInGraveyard("a land card in your graveyard to return tapped", YouOwn(), Land()),
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b31BlossomingTortoiseLabel, b31MillThreeThenReturnChosenLandTapped)
+					return game.NewTriggeredItem(source, b31BlossomingTortoiseLabel, b25MillThreeThenReturnChosenLandTapped)
 				},
 			},
 			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21SelfEnteredOrAttacked(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
-			}, b31BlossomingTortoiseLabel, b31MillThreeThenReturnChosenLandTapped),
+			}, b31BlossomingTortoiseLabel, b25MillThreeThenReturnChosenLandTapped),
 		},
 	})
 }

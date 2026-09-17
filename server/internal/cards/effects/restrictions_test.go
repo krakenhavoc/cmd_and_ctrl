@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -186,7 +187,7 @@ func TestWhispersilkCloakMakesTheCarrierUnblockable(t *testing.T) {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
 	advanceToStepInTurn(t, g, game.StepDeclareBlockers)
-	if err := g.DeclareBlocker(blocker, carrier); err != game.ErrIllegalBlock {
+	if err := g.DeclareBlocker(blocker, carrier); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("a cloaked attacker was blocked: %v", err)
 	}
 }
@@ -216,7 +217,7 @@ func TestCarrionFeederCannotBlock(t *testing.T) {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
 	advanceToStepInTurn(t, g, game.StepDeclareBlockers)
-	if err := g.DeclareBlocker(feeder, attacker); err != game.ErrIllegalBlock {
+	if err := g.DeclareBlocker(feeder, attacker); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("the Feeder blocked: %v", err)
 	}
 	// It still attacks — "can't block" is one bit, not both.

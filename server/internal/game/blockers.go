@@ -58,7 +58,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // declare_blockers, at least one creature is attacking that seat, and
 // the seat controls at least one creature that could legally be
 // declared as a blocker against at least one of those attackers
-// (CR 509.1a / 509.1b, evasion included via CanBlock).
+// (CR 509.1a / 509.1b, evasion included via CanBlockLocked).
 //
 // Deliberately NOT consumed by a block already declared. A defender
 // who has assigned one blocker may still want to assign a second, so
@@ -71,7 +71,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 // auto-passing the window costs the player nothing and is the right
 // behaviour.
 //
-// Menace is deliberately not folded in. CanBlock is per-pair, while
+// Menace is deliberately not folded in. CanBlockLocked is per-pair, while
 // menace is a block-COUNT rule the engine enforces at the step's
 // close-out (BlockerCountValid), so a defender holding exactly one
 // eligible creature against a lone menace attacker is reported as
@@ -93,7 +93,7 @@ func (g *Game) SeatOwesBlockDecision(seat uuid.UUID) bool {
 }
 
 // seatOwesBlockDecisionLocked is SeatOwesBlockDecision without the
-// lock. Layers must already be fresh — CanBlock reads the effective
+// lock. Layers must already be fresh — CanBlockLocked reads the effective
 // characteristic, so flying granted by an anthem this turn has to be
 // visible. Caller must hold g.mu (read or write).
 func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
@@ -132,7 +132,7 @@ func (g *Game) seatOwesBlockDecisionLocked(seat uuid.UUID) bool {
 			continue
 		}
 		for _, a := range attackers {
-			if CanBlock(a, b) {
+			if g.CanBlockLocked(a, b) {
 				return true
 			}
 		}

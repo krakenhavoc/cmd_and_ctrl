@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     enforces it. It is the first restriction a card prints on
 //     ITSELF rather than handing to something it is attached to,
 //     which is all RestrictSelf is: the same layer-6 write scoped by
-//     selfOnly instead of by the attachment. CanBlock refuses the
+//     selfOnly instead of by the attachment. CanBlockLocked refuses the
 //     pairing and internal/legal never offers it, so a bot seat is
 //     not shown a block its own engine would bounce.
 func init() {

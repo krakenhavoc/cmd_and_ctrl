@@ -227,7 +227,7 @@ func TestRevealTopOfEmptyOrShortLibrary(t *testing.T) {
 	if len(none) != 0 {
 		t.Errorf("revealed %d cards off an empty library", len(none))
 	}
-	if me.LosesAtNextSBA {
+	if me.AttemptedEmptyDraw {
 		t.Error("revealing off an empty library set up the draw-from-empty loss; revealing is not drawing")
 	}
 }
