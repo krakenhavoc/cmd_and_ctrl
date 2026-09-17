@@ -788,8 +788,7 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 			// A cancelled run reports what it managed, rather than
 			// throwing away an hour of games because the last one
 			// was interrupted.
-			sum.Elapsed = time.Since(started)
-			sum.PerPolicy = acc.totals(len(cfg.Seats))
+			finishSummary(&sum, acc, cfg, started)
 			return sum, err
 		}
 		res, err := Play(ctx, cfg, cfg.Seed+uint64(i), Order(len(cfg.Seats), i, cfg.Rotate))
@@ -800,16 +799,14 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 			// started as would print a report with empty Play, Funnel
 			// and Latency tables and `elapsed 0s` over a games.jsonl
 			// full of real games.
-			sum.Elapsed = time.Since(started)
-			sum.PerPolicy = acc.totals(len(cfg.Seats))
+			finishSummary(&sum, acc, cfg, started)
 			return sum, err
 		}
 		if res.Aborted {
 			// Cancelled mid-game: a fraction of a game, not a result.
 			// Dropped rather than tallied — a half-played game folded
 			// into every policy's win rate is worse than no game.
-			sum.Elapsed = time.Since(started)
-			sum.PerPolicy = acc.totals(len(cfg.Seats))
+			finishSummary(&sum, acc, cfg, started)
 			if cerr := ctx.Err(); cerr != nil {
 				return sum, cerr
 			}
@@ -824,7 +821,18 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 		}
 		sum.Games = append(sum.Games, digest(res))
 	}
+	finishSummary(&sum, acc, cfg, started)
+	return sum, nil
+}
+
+// finishSummary derives result-shaped metadata from the games that actually
+// completed. Config.Games remains the requested run length, while Chairs and
+// ChairWarning describe the evidence present in this summary. That distinction
+// matters when cancellation or a later game-start error returns a partial run.
+func finishSummary(sum *Summary, acc *accumulator, cfg Config, started time.Time) {
 	sum.Elapsed = time.Since(started)
 	sum.PerPolicy = acc.totals(len(cfg.Seats))
-	return sum, nil
+	played := len(sum.Games)
+	sum.Config.Chairs = ChairCounts(len(cfg.Seats), played, cfg.Rotate)
+	sum.Config.ChairWarning = ChairBalanceWarning(len(cfg.Seats), played, cfg.Rotate)
 }

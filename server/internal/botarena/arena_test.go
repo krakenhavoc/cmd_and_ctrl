@@ -705,6 +705,7 @@ func TestRunErrorKeepsTheGamesItPlayed(t *testing.T) {
 		Seats:       []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 		Games:       3,
 		Seed:        505,
+		Rotate:      true,
 		Wall:        time.Nanosecond, // as above: a deal, not a game
 		DecisionLog: dl,
 	}
@@ -742,6 +743,24 @@ func TestRunErrorKeepsTheGamesItPlayed(t *testing.T) {
 	}
 	if len(sum.Games) != 1 {
 		t.Errorf("the summary lists %d games, want 1", len(sum.Games))
+	}
+	if sum.Config.Games != 3 {
+		t.Errorf("the summary forgot the requested run length: got %d, want 3", sum.Config.Games)
+	}
+	if len(sum.Config.Chairs) != len(cfg.Seats) {
+		t.Fatalf("the partial summary has %d chair rows, want %d", len(sum.Config.Chairs), len(cfg.Seats))
+	}
+	for k, row := range sum.Config.Chairs {
+		total := 0
+		for _, n := range row {
+			total += n
+		}
+		if total != len(sum.Games) {
+			t.Errorf("contestant %d's chair histogram counts %d games, but the partial summary contains %d: %v", k, total, len(sum.Games), row)
+		}
+	}
+	if sum.Config.ChairWarning == "" {
+		t.Error("one completed game over two rotated seats should report the residual chair imbalance")
 	}
 	// And the report renders rather than printing empty tables.
 	if md := sum.Markdown(); !strings.Contains(md, "| heuristic |") {

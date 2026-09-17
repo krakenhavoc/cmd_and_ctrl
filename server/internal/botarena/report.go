@@ -244,8 +244,6 @@ func describeConfig(cfg Config) ConfigSummary {
 		Rotate: cfg.Rotate, TurnBudget: cfg.TurnBudget, Wall: cfg.Wall, Stall: cfg.Stall,
 		MaxThink: cfg.MaxThink, Routine: cfg.Models.Routine, Frontier: frontierOf(cfg),
 		HasIndex: cfg.Index != nil, ReplayDir: cfg.ReplayDir, Revision: revision(), Note: cfg.Note,
-		Chairs:       ChairCounts(len(cfg.Seats), cfg.Games, cfg.Rotate),
-		ChairWarning: ChairBalanceWarning(len(cfg.Seats), cfg.Games, cfg.Rotate),
 	}
 	if cfg.DecisionLog != nil {
 		c.DecisionLog = cfg.DecisionLog.Dir()
