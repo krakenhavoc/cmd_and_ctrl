@@ -182,12 +182,12 @@ func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 		if c.Controller != player || !(c.IsCreature() || c.IsPlaneswalker()) {
 			return false
 		}
-		best := manaValueOf(c)
+		best := c.ManaValue()
 		for _, other := range g.BattlefieldCardsForEffect() {
 			if other.Controller != player || !(other.IsCreature() || other.IsPlaneswalker()) {
 				continue
 			}
-			if manaValueOf(other) > best {
+			if other.ManaValue() > best {
 				return false
 			}
 		}

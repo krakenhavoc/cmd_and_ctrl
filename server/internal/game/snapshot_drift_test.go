@@ -90,6 +90,13 @@ var gameFields = plan(
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
 	"TurnTally", carried, "",
+	// #628 CR 726 loop breaker. Carried for the same reason the
+	// per-turn tallies are: a restore mid-loop that forgot the notice
+	// would come back with automatic passing live again, and the
+	// threshold is configuration a restore must not silently
+	// re-default.
+	"LoopNotice", carried, "",
+	"LoopThreshold", carried, "",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",

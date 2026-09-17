@@ -70,6 +70,13 @@ type TurnTally struct {
 	// Triggered counts triggered abilities announced onto
 	// PendingTriggers this turn, keyed the same way.
 	Triggered map[string]int `json:"triggered,omitempty"`
+	// LoopRun is Resolved restarted at every player decision: the
+	// CR 726 loop breaker's count of how many times one ability has
+	// resolved with nobody casting, activating, answering a prompt
+	// or declaring a creature in between. Reset to nil by
+	// notePlayerDecisionLocked; read by loopSuspectedLocked and
+	// nothing else. See loop_breaker.go (#628).
+	LoopRun map[string]int `json:"loopRun,omitempty"`
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
@@ -133,6 +140,11 @@ func (g *Game) EventsThisTurn() []Event {
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
 	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
+	// #628: the loop notice is a claim about THIS turn's resolutions,
+	// so it dies with the counts it was derived from. A table that
+	// stepped its way past a loop by hand starts the next turn with
+	// automatic passing live again.
+	g.LoopNotice = nil
 }
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
@@ -146,6 +158,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.Triggered = copyStringIntMap(t.Triggered)
+	out.LoopRun = copyStringIntMap(t.LoopRun)
 	return out
 }
 
@@ -187,6 +200,21 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.PermanentsSacrificed++ })
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		g.notePlayerDecisionLocked()
+	case EventCast, EventBlock:
+		// #628: these two bump no counter — they are here only as
+		// decision events for the CR 726 loop breaker. Casting a
+		// spell and declaring a blocker are both "a player did
+		// something other than pass", which restarts the loop run.
+		// Activations and answered prompts have no event of their own
+		// and notch notePlayerDecisionLocked directly; see
+		// loop_breaker.go.
+		//
+		// An EventCast the ENGINE produced (a trigger that casts a
+		// card) restarts the run too, which is over-clearing. That is
+		// the safe direction: the cost is a loop that takes longer to
+		// notice, never a breaker that fires on a real turn.
+		g.notePlayerDecisionLocked()
 	case EventETB:
 		if ev.CardID == uuid.Nil {
 			return
@@ -219,10 +247,14 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Source == uuid.Nil {
 			return
 		}
+		key := TallyKey(ev.Source, ev.Label)
 		if g.TurnTally.Resolved == nil {
 			g.TurnTally.Resolved = map[string]int{}
 		}
-		g.TurnTally.Resolved[TallyKey(ev.Source, ev.Label)]++
+		g.TurnTally.Resolved[key]++
+		// #628: the same count, restarted at each player decision, is
+		// the CR 726 loop breaker's input. See loop_breaker.go.
+		g.noteResolutionForLoopLocked(ev, key)
 	case EventTrigger:
 		if ev.Source == uuid.Nil {
 			return

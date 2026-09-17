@@ -70,7 +70,7 @@ func b09IsEquipmentCard(c game.Card) bool { return c.HasSubtype("Equipment") }
 // sorcery card with mana value 2 or less". Off the stack, so X is
 // zero (CR 202.3e) and a Fireball is a legal find.
 func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
-	return (c.IsInstant() || c.IsSorcery()) && manaValueOf(c) <= 2
+	return (c.IsInstant() || c.IsSorcery()) && c.ManaValue() <= 2
 }
 
 // b09CounterThenUntapLands is the shared OnResolve of Rewind and

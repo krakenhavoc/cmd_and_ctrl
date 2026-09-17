@@ -34,6 +34,12 @@
     // always wired to *viewer* state.
     viewerHasPriority: boolean;
     autopassEnabled: boolean;
+    // #628 (CR 726): the loop-breaker banner line the server's
+    // notice produced, or "" when the table is quiet. While it is
+    // non-empty NOTHING passes automatically — the autopass toggle
+    // is suspended rather than switched off, so a table that turns
+    // it on mid-loop is not surprised when it comes back.
+    loopNotice?: string;
     onPassPriority: () => void;
     onToggleAutopass: () => void;
   }
@@ -44,9 +50,16 @@
     mulligansOpen,
     viewerHasPriority,
     autopassEnabled,
+    loopNotice = "",
     onPassPriority,
     onToggleAutopass,
   }: Props = $props();
+
+  // The toggle reads "paused" rather than "off": the player's intent
+  // is untouched and it resumes the moment somebody makes a real
+  // decision (a cast, an activation, an answered prompt, a
+  // declaration) or the turn ends.
+  const autopassPaused = $derived(loopNotice !== "");
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -191,17 +204,30 @@
     <button
       type="button"
       class="action autopass"
-      class:on={autopassEnabled}
+      class:on={autopassEnabled && !autopassPaused}
+      class:paused={autopassPaused}
       aria-pressed={autopassEnabled}
       onclick={onToggleAutopass}
-      title={(autopassEnabled
-        ? "autopass ON — every time priority lands on you, it passes; click to turn off"
-        : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)") +
+      title={(autopassPaused
+        ? "autopass PAUSED — a loop is resolving (CR 726). Use next to step through it; passing resumes on the next real play"
+        : autopassEnabled
+          ? "autopass ON — every time priority lands on you, it passes; click to turn off"
+          : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)") +
         keyHint(keys.toggleAutopass)}
     >
-      {autopassEnabled ? "autopass ✓" : "autopass"}
+      {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
     </button>
   </div>
+
+  <!-- #628 (CR 726): the loop breaker. Lives directly under the
+       toggle it is talking about, because "why has autopass stopped
+       working" is the only question this banner answers. -->
+  {#if autopassPaused}
+    <div class="row loop-notice" role="status" aria-live="polite">
+      <span class="loop-label">loop detected</span>
+      <span class="loop-text">{loopNotice} Autopass paused.</span>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -423,5 +449,35 @@
   .action.autopass.on:hover:not(:disabled) {
     background: rgba(217, 180, 92, 0.24);
     border-color: var(--accent);
+  }
+  /* #628: suspended, not switched off — a distinct look from both
+     `on` (gold) and `off` (flat), so a player can tell "the server
+     is holding this" from "I turned it off". */
+  .action.autopass.paused {
+    background: rgba(255, 107, 107, 0.14);
+    border-color: rgba(255, 107, 107, 0.5);
+    color: var(--danger);
+    font-weight: 700;
+  }
+  .loop-notice {
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 107, 107, 0.45);
+    border-radius: 6px;
+    background: rgba(255, 107, 107, 0.1);
+    line-height: 1.35;
+  }
+  .loop-label {
+    flex: none;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--danger);
+  }
+  .loop-text {
+    font-size: 0.72rem;
+    opacity: 0.9;
   }
 </style>

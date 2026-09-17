@@ -42,6 +42,12 @@ func (g *Game) cloneLocked() *Game {
 		UndoLimit:         g.UndoLimit,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
+		// #628: both halves of the CR 726 breaker. The threshold is
+		// configuration and copies by value; the notice is a per-turn
+		// fact an undo must be able to rewind past, so it gets its own
+		// pointer rather than sharing the live one.
+		LoopThreshold: g.LoopThreshold,
+		LoopNotice:    cloneLoopNotice(g.LoopNotice),
 		// The randomness is copied, not shared: the key by value
 		// (an array) and the counters deeply, because randForLocked
 		// increments the live map in place. The clone therefore

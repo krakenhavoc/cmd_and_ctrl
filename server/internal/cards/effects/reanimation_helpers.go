@@ -36,23 +36,6 @@ func targetCreatureInAnyGraveyard() *game.TargetSpec {
 	return TargetCardInGraveyard("target creature card in a graveyard", Creature())
 }
 
-// manaValueOf is a card's mana value: generic pips plus one per
-// coloured pip. {X} contributes 0, which is what CR 202.3e says for
-// a card anywhere other than the stack — and a reanimated card is
-// always somewhere other than the stack when its mana value is read.
-//
-// Mirrors the arithmetic ManaValueLE already uses rather than
-// introducing a second notion of the same number. An unparseable
-// cost yields 0 rather than an error: a card with no mana cost
-// (a reanimated token-turned-card, a fixture) has mana value 0.
-func manaValueOf(c game.Card) int {
-	cost, err := game.ParseCost(c.ManaCost)
-	if err != nil {
-		return 0
-	}
-	return cost.Generic + len(cost.Required)
-}
-
 // reanimateSingleTarget is the body every card in the family shares:
 // read the spell's single graveyard target, then move it to the
 // battlefield under `controller`. It returns the card AS IT SAT IN
