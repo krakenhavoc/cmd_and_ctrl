@@ -171,6 +171,15 @@ func TestMaskOfMemoryDrawsTwoAndDiscardsOne(t *testing.T) {
 	dealCombatDamageToPlayer(g, bear, opp.ID, 2)
 	passPriorityAroundTable(t, g)
 
+	// The draw lands as the trigger resolves; the linked discard is a
+	// prompt over the post-draw hand and the controller picks (#651).
+	if got := me.Hand.Size(); got != before+2 {
+		t.Errorf("hand %d -> %d, want +2 before the discard is answered", before, got)
+	}
+	if got := discardOwed(g, me.ID); got != 1 {
+		t.Fatalf("the linked discard owes %d, want 1", got)
+	}
+	discardFromHand(t, g, me.ID)
 	if got := me.Hand.Size(); got != before+1 {
 		t.Errorf("hand %d -> %d, want +1 (draw two, discard one)", before, got)
 	}

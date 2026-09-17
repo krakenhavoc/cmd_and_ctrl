@@ -50,12 +50,16 @@ func init() {
 			{
 				Label: "+1: Each player discards a card.",
 				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, _ *game.StackItem) error {
+				Effect: func(g *game.Game, item *game.StackItem) error {
 					for _, p := range g.Seats {
 						if p == nil || p.Eliminated {
 							continue
 						}
-						g.DiscardChoiceForEffect(p.ID, 1)
+						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+							Player: p.ID,
+							Source: item.SourceCardID,
+							N:      1,
+						})
 					}
 					return nil
 				},
