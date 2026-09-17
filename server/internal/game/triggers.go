@@ -183,14 +183,23 @@ type TriggeredAbility struct {
 
 	// OncePerBatch is "whenever ONE OR MORE …": the engine emits one
 	// event per creature that attacks, enters or deals damage, and a
-	// printed once-per-batch ability must not fire once per event. With
-	// this set the harvester declines the event while an item of this
-	// ability (matched by Key, or by source when Key is empty) is still
-	// on PendingTriggers, on the stack, or waiting on its "you may" /
-	// target prompt — which is the whole window one batch of events
-	// can occupy before priority passes. Before #587 every card that
-	// needed it scanned those places by hand, four slightly different
+	// printed once-per-batch ability must not fire once per event.
+	// With this set the harvester fires the ability (matched by Key,
+	// or by source when Key is empty) for the FIRST matching event of
+	// an event batch and declines every later event of that SAME
+	// batch — and fires again for the next batch, whatever is still
+	// on the stack from the last one (CR 603.2c). Before #587 every
+	// card that needed it scanned by hand, four slightly different
 	// ways.
+	//
+	// A batch is every event emitted between two points where play
+	// moves on: a stack item beginning to resolve, and the turn cursor
+	// entering a new step. One resolution is one batch, one turn-based
+	// action is one batch. #594 shipped this flag with an "is an item
+	// of this ability in flight" check standing in for the batch;
+	// #829 replaced that with the real batch identity on Event.Batch,
+	// because an item on the stack outlives the batch that put it
+	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
 	// Chapter is the Saga chapter number this ability is printed
@@ -362,7 +371,7 @@ func (g *Game) harvestCastFromStack(ev Event) {
 //
 // Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
 func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
-	if t.OncePerBatch && g.triggerInFlightLocked(source.InstanceID, t.Key) {
+	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, t.Key) {
 		return
 	}
 	if t.Targets != nil {
@@ -546,12 +555,26 @@ func (g *Game) findCardByIDLocked(cardID uuid.UUID) *Card {
 	return nil
 }
 
-// triggerInFlightLocked reports whether an instance of the ability
+// TriggerInFlightForEffect reports whether an instance of the ability
 // identified by (source, key) is between "fired" and "resolved": on
 // PendingTriggers, on the stack, or waiting on a trigger prompt or a
 // target pick. An empty key matches any trigger from the source.
-// Caller must hold g.mu.
-func (g *Game) triggerInFlightLocked(source uuid.UUID, key string) bool {
+//
+// This is NOT the "whenever one or more …" guard. That is
+// OncePerBatch, and since #829 it keys on Event.Batch
+// (event_batch.go) rather than on what is in flight. What is left
+// here is the narrower case OncePerBatch cannot express: a card whose
+// dedup key is computed PER EVENT and so cannot ride the static
+// TriggeredAbility.Key — Breena's per-opponent label and Nature's
+// Will's per-damaged-player label, which are its only two callers.
+// Those two still carry #829's failure in their own dimension (a
+// second batch aimed at the same player, while the first batch's
+// trigger is on the stack, is declined); #784 is the issue that gives
+// a per-event key a real batch identity and retires this helper.
+//
+// Runs under the lock the caller already holds; caller must hold
+// g.mu.
+func (g *Game) TriggerInFlightForEffect(source uuid.UUID, key string) bool {
 	match := func(item *StackItem) bool {
 		return item != nil && item.Kind == StackItemTriggered && item.SourceCardID == source && (key == "" || item.Label == key)
 	}
@@ -580,14 +603,6 @@ func (g *Game) triggerInFlightLocked(source uuid.UUID, key string) bool {
 		}
 	}
 	return false
-}
-
-// TriggerInFlightForEffect is triggerInFlightLocked for card code
-// whose label is computed per event and so cannot ride
-// TriggeredAbility.Key (Breena's per-opponent label). Runs under the
-// lock the caller already holds.
-func (g *Game) TriggerInFlightForEffect(source uuid.UUID, key string) bool {
-	return g.triggerInFlightLocked(source, key)
 }
 
 // triggerWatches reports whether kinds contains kind. Linear scan;

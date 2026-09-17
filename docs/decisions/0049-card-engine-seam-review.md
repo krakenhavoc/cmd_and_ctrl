@@ -93,3 +93,56 @@ The review's benchmark is committed as `bench_test.go`.
   index of battlefield permanents (invalidation cost exceeds the
   microseconds saved), an instance-ID index over zones (too many
   slice-moving writers).
+
+## Amendment (2026-09-17, #829): D2.2's `BatchID` shipped, and the in-flight check was wrong
+
+D2.2 above specified "`OncePerBatch` on `TriggeredAbility` **plus a
+`BatchID` on events**". #594 shipped the flag without the batch id and
+stood something else in its place: `dispatchTriggerLocked` declined a
+matching event while an item of the same ability was in flight — on
+`PendingTriggers`, on `StackMeta`, or waiting on its trigger or target
+prompt. The queue and the prompts are bounded by the next priority
+boundary and were a fair proxy for "this batch". **The stack is not.**
+An item on the stack outlives the batch that put it there, so a
+second, separate batch arriving while the first batch's trigger waited
+to resolve was swallowed as if it were part of the first: Dour
+Port-Mage drew one card for two bounces, which is weaker than printed
+(#829, and #587's own description of the failure).
+
+The batch id ships now, as specified:
+
+- **`Event.Batch uint64`**, stamped by `EmitEvent` from a monotonic
+  `Game.eventBatch`.
+- **One boundary.** `beginEventBatchLocked`
+  (`server/internal/game/event_batch.go`) advances the counter at the
+  two points where play moves on, and nowhere else: a stack item
+  beginning to resolve (`resolveTopOfStackLocked`) and the turn cursor
+  entering a new step (`advanceCursorLocked`). One resolution is one
+  batch; one turn-based action is one batch however many engine calls
+  the sandbox splits it across, which is what keeps a three-creature
+  attack declared one `DeclareAttacker` at a time to a single Adeline
+  trigger with no special case for the declaration.
+- **One guard.** `oncePerBatchAllowsLocked(batch, source, key)` is a
+  test-and-set against `Game.oncePerBatchFired`, a
+  `TallyKey(source, key) → batch` map. The in-flight scan is gone from
+  the dispatch path.
+- **Undo and restore.** The counter and the map are carried together
+  by `Clone` / `RestoreFrom` and by the persisted snapshot, for the
+  reason `TurnTally` is: rewinding one without the other would either
+  double-fire a trigger or swallow it. No schema bump — both read as
+  "no batch has fired yet" from an older file, which is the free
+  direction.
+
+What is deliberately **not** covered, and stays with #784: a dedup key
+computed PER EVENT cannot ride the static `TriggeredAbility.Key`, so
+Breena, the Demagogue (per attacked opponent) and Nature's Will (per
+damaged player) still call `Game.TriggerInFlightForEffect` and still
+carry this failure in their own dimension. That helper survives for
+those two callers only, with its doc narrowed to say so; #784's
+per-event batch key retires it.
+
+One gap remains and is declared rather than papered over: two
+SANDBOX-MANUAL mutations in a row, with nothing resolving and no step
+change between them, share a batch. The old check behaved the same
+way, and hand-shoving cards between zones has no rules occurrence to
+count.

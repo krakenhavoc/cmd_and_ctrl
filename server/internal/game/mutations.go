@@ -1502,6 +1502,12 @@ func cloneDistributionLocked(in map[uuid.UUID]int) map[uuid.UUID]int {
 //
 // Caller must hold g.mu.
 func (g *Game) resolveTopOfStackLocked() error {
+	// #829: a resolution is one of the two points where play moves on,
+	// so everything this item emits is one occurrence and the next
+	// resolution's events are a different one — which is what lets a
+	// second bounce trigger Dour Port-Mage again while the first
+	// bounce's draw is still on the stack. See event_batch.go.
+	g.beginEventBatchLocked()
 	if g.Stack == nil || len(g.Stack.Cards) == 0 {
 		// No spell on the stack — but there could still be ability
 		// items in StackMeta. Find the most recent and resolve it.

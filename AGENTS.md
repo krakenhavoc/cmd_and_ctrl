@@ -1768,10 +1768,26 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
-| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the batch while the first trigger is pending, on the stack or waiting on its prompt. Without it the card ships **stronger** than printed. A label computed per event (Breena) calls `g.TriggerInFlightForEffect(source, label)` directly |
+| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed. A label computed per event (Breena, Nature's Will) calls `g.TriggerInFlightForEffect(source, label)` directly; that helper is the per-event-key leftover, not the batch guard (#784) |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
+
+**What a batch is** (#829, CR 603.2c) — **a batch is every event the
+engine emits between two points where play moves on: a stack item
+beginning to resolve, and the turn cursor entering a new step.**
+Nothing else opens one. So one resolution is one batch (a Cyclonic
+Rift bouncing four creatures draws Dour Port-Mage one card), one
+turn-based action is one batch however many engine calls the sandbox
+splits it across (three `DeclareAttacker` clicks are one declaration
+and one Adeline trigger), and the NEXT resolution is a new batch
+however much of the last one is still on the stack (two Unsummons in
+one turn draw two cards). The batch id is stamped on `Event.Batch`
+and the guard is `oncePerBatchAllowsLocked`
+([event_batch.go](server/internal/game/event_batch.go)) — one
+counter, one guard, no per-card special cases. Known gap: two
+SANDBOX-MANUAL mutations in a row with nothing resolving in between
+share a batch.
 
 **The two rules that matter:**
 

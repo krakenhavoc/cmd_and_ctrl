@@ -613,6 +613,26 @@ Panharmonicon for an all-creature batch) is exact. The implementing PR adds a
 test that pins this limitation, so fixing it later shows up as a deliberate test
 change.
 
+**Amendment (2026-09-17, #829): the check this decision keeps is gone; the
+decision is not.** The follow-up named two paragraphs up has shipped. The
+engine now HAS a batch identity on events — `Event.Batch`, advanced at one
+boundary (a stack item beginning to resolve, or the turn cursor entering a new
+step; see `server/internal/game/event_batch.go` and ADR 0049's #829
+amendment) — and `dispatchTriggerLocked`'s in-flight scan is replaced by
+`oncePerBatchAllowsLocked(ev.Batch, source, key)`. Two consequences for this
+ADR, neither of which changes what it decides:
+
+- The code samples above still spell the guard `g.triggerInFlightLocked(...)`;
+  when `harvestMatchLocked` is written it takes the batch guard instead, in
+  exactly the same place. Decision 4 stands as written: the guard runs ONCE per
+  match, before any instance is dispatched, and the extras are queued without
+  consulting it.
+- The declared limitation's premise ("the engine has no batch identity on
+  events") is no longer true, so the implementing PR may be able to read the
+  doubler count off the whole batch rather than off its first event. If it
+  still takes the first-event reading, it should say so on its own terms rather
+  than cite a missing identity.
+
 ### Decision 5 — An extra instance is an ordinary item with one attribution field
 
 ```go

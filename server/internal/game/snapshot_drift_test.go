@@ -107,6 +107,13 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #829 event batches. Carried for the same reason the per-turn
+	// tallies are, and carried TOGETHER: the counter names the batch
+	// the marks are recorded against, so a restore that kept one and
+	// not the other would either double-fire a "whenever one or more"
+	// trigger or swallow it.
+	"eventBatch", carried, "",
+	"oncePerBatchFired", carried, "",
 	"lastKnownBattlefield", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
