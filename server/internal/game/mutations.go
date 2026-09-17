@@ -3984,6 +3984,14 @@ func (g *Game) PassPriority() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #730: an unanswered prompt gates the table. Every pass is
+	// refused, not only the one that would wrap into a step advance —
+	// a pass that resolves the top of the stack moves the game on
+	// just as surely, and the enumerator has always modelled the rule
+	// this way. See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return choicePendingErrorLocked(c)
+	}
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
 		return ErrGameNotActive
@@ -5006,6 +5014,13 @@ func (g *Game) PassTurn() error {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
+	}
+	// #730: gated for the same reason advance_step is, and more so —
+	// this verb walks the cursor through every remaining step of the
+	// turn. A prompt left open behind it is unanswerable in practice.
+	// See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return choicePendingErrorLocked(c)
 	}
 	// Jump to this turn's cleanup and wrap through the shared seam so
 	// eliminated seats are skipped and per-turn caches clear.

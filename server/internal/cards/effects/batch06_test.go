@@ -275,6 +275,10 @@ func TestB06ForbiddenOrchardGivesTheChosenOpponentASpirit(t *testing.T) {
 	if pick := riderLatestManaPick(g, me.ID); pick == nil || len(pick.ColorOptions) != 5 {
 		t.Fatalf("any colour means all five, got %+v", pick)
 	}
+	// #730: the colour pick gates the table, so it is answered before
+	// the Orchard's own trigger is passed around. Which colour the
+	// mana is does not matter here.
+	riderAnswerManaPicks(t, g, me.ID, "G")
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)
