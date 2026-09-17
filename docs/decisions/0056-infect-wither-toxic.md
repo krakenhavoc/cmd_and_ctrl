@@ -1,6 +1,6 @@
 # ADR 0056 — Infect, wither and toxic: damage results as -1/-1 counters and poison, inside the one damage tail
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)), and 0055
 is the loop breaker already on `develop`. 0056 to 0059 were handed out
@@ -15,9 +15,10 @@ and #711, and #807's continuation), [ADR 0014](0014-combat-keywords.md)
 (the closed keyword table), [ADR 0053](0053-combat-damage-beats.md)
 Decision 1 (`DamageAssignmentFrame.CombatStep`), and the S13.2 player
 counters (`Player.Counters`, the CR 704.5c SBA).
-**Related:** [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749)
-("can't lose the game" gates, which will wrap the poison SBA without changing
-it), [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667)
+**Related:** [ADR 0057](0057-win-and-lose-by-effect.md) and
+[#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749) ("can't lose
+the game" gates, which wrap the poison SBA without changing it, and the loss
+cause `"poison"` that names the elimination), [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667)
 (regeneration: Skithiryx, Toxic Nim, Cinderbones),
 [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662) (protection:
 Phyrexian Crusader).
@@ -401,8 +402,9 @@ creditLifelinkLocked(amount)             // CR 120.3f, unchanged
 - **The 10-poison SBA doesn't change.** The tail never runs SBAs (file
   comment, `damage_tail.go:48-54`). The combat step sweeps after the step,
   the effect paths sweep at the resolution bookend, and the counter resume
-  sweeps at its answer (Decision 3). When #749 lands its "can't lose" gate,
-  the gate wraps the same check.
+  sweeps at its answer (Decision 3). ADR 0057 (#749) Decision 2 wraps the
+  same check in its "can't lose" gate and records the loss with cause
+  `"poison"` (`LossPoison`). This ADR doesn't change the check.
 
 ## Decision 5 — Counters on players go through the replacement window, and every counter event says who put it
 
@@ -463,6 +465,12 @@ player-targeted event, so a future card that forgets the check fails CI.
 - **`EventCounterPlaced` gains `Actor` (the placer) and `Source`** when they
   are known. `applyCounterLocked` takes them from the event. Unknown stays
   `uuid.Nil`, as it is today.
+- **Removals are not placements.** A rules-driven counter removal (loyalty
+  off from damage, `permanent_damage.go:30-36`; the stun-counter removal
+  in [ADR 0058](0058-doesnt-untap.md) Decision 3) keeps calling
+  `applyCounterLocked` directly, stays outside `RepEventCounter`, and
+  carries a Nil placer. `CounterPlacer` and `CounterFromCombatDamage` are
+  about who puts or gives counters, and no catalog card replaces a removal.
 
 **Catalog readers move onto the placer in the same PR** (PR 1), because
 PR 2 makes the wrong answers reachable:
@@ -484,20 +492,39 @@ today. A future Vizier of Remedies entry must carry that caveat or wait for
 a batched counter window (the `OncePerBatch` idea from #594, on the
 replacement side).
 
-## Decision 6 — The client shows the keywords, and poison stays where it is (display: owner)
+## Decision 6 — The client shows the keywords, the damage results and the poison clock
 
 Engine side (fixed): `PlayerView.poison` and `counters` already carry the
 value (`docs/protocol.md` PlayerView). `PlayerIdentity.svelte` already has a
 poison stepper (`:313-331`) and a poison marker when the count is above
 zero (`:368-370`), and `POISON_LETHAL` mirrors the server's
 (`counterTypes.ts:27`). `KEYWORD_ICONS` (`keywordIcons.ts`) gets entries for
-`infect` and `wither`. `toxic N` tokens fall back to the three-letter badge
-until the owner picks a treatment. `docs/protocol.md` documents the new
-tokens and `player_counter_placed`.
+`infect` and `wither`. `docs/protocol.md` documents the new tokens and
+`player_counter_placed`.
 
-What a player *sees* when poison or -1/-1 counters happen is a product
-decision. It is open question 2 below. PR 3 is written only after it is
-answered.
+What a player sees was decided by the owner on 2026-09-17: option (b) of
+[question 2](#decided-2026-09-17), without its elimination-line clause.
+PR 3 builds exactly this:
+
+- **Damage-result log suffixes.** A damage line names the result when it
+  isn't life loss or marked damage: "dealt 2 damage (as -1/-1 counters)",
+  "dealt 3 damage (as poison)". The suffix comes from the damage event's
+  source traits, so it describes the damage, not how many counters a
+  replacement let through.
+- **A `poison` log entry** for each `EventPlayerCounterPlaced` with label
+  `poison` and a positive delta: "Alice got 3 poison counters (7/10)". The
+  count in brackets is the total after the placement.
+- **The poison chip shows `N/10`** and switches to a danger style from 7.
+- **Toxic shows one badge** with the creature's total (`TOX 3`), from
+  `ToxicTotal`'s sum over every `toxic N` token. Repeated tokens don't
+  make repeated badges.
+- **No elimination-line change here.** Why a player lost comes from
+  [ADR 0057](0057-win-and-lose-by-effect.md) Decision 7: `LogEliminated`
+  carries the loss cause, which for this clock is `"poison"`
+  (`LossPoison`), shown as "(10 poison counters)". Its text is written
+  there, once, for every cause. This ADR adds nothing to that line.
+- **No reveal-strip cue.** Option (c) was not chosen, and the owner's
+  policy for these seams is no reveal-strip cues for these events.
 
 ## Decision 7 — Bots value poison
 
@@ -511,7 +538,9 @@ answered.
   damage to a player is poison progress (`PoisonLethal - poison`) and not
   life. A toxic attacker adds `ToxicTotal` poison on top of the life. The
   view reads the tokens from `CardView.abilities`. `lethalPush` checks both
-  clocks.
+  clocks. It skips the poison clock for a seat whose `cant_lose` includes
+  `"poison"` ([ADR 0057](0057-win-and-lose-by-effect.md) Decision 6), the
+  same way it skips the life clock for `"life"`.
 - Blocking an infect attacker values the permanent -1/-1 counters on the
   blocker. It is not marked damage that goes away at cleanup.
 - The model tier's prompt (`aiseat/model/prompt.go`) states poison counts.
@@ -525,9 +554,14 @@ No legal-move enumerator changes. None of this adds a move or a prompt kind.
 
 - Durable post-departure LKI for damage sources (Decision 2, step 4).
 - Batched counter replacements across simultaneous damage (Decision 5).
-- Game-level "as though it had wither" (Everlasting Torment) and "damage
-  becomes -1/-1 counters" damage replacements (Soul-Scar Mage). Both are
-  CR 614 damage-window effects, not keywords.
+- Damage dealt "as though its source had wither" or "as though its source
+  had infect" when the source has neither keyword: game-level (Everlasting
+  Torment) or scoped to one player (Phyrexian Unlife: "As long as you have
+  0 or less life, all damage is dealt to you as though its source had
+  infect"). Also "damage becomes -1/-1 counters" damage replacements
+  (Soul-Scar Mage). All of these are CR 614 damage-window effects, not
+  keywords. [ADR 0057](0057-win-and-lose-by-effect.md)'s first-wave
+  exclusion of Phyrexian Unlife points at this item.
 - Two-Headed Giant shared poison (CR 810.10). The engine has no team model.
 - Regeneration (#667). It blocks Skithiryx, Toxic Nim and Cinderbones.
   Protection (#662) blocks Phyrexian Crusader.
@@ -627,14 +661,34 @@ No keywords yet.
   infect and wither, the engine-seams row moved to Closed, `docs/sprints.md`
   and roadmap pointers. Census regenerated.
 
-**PR 3 — client display of poison and the damage results** (after open
-question 2).
+**PR 3 — client display of poison and the damage results** (Decision 6).
+The damage-result log suffixes, the `poison` log kind (`docs/protocol.md`,
+`protocol.ts`), the `N/10` chip with its danger style from 7, and the one
+`TOX N` badge. No elimination-line work (ADR 0057's sub-PR 2 owns that
+line) and no reveal-strip cue.
 
 **PR 4 — bots** (Decision 7) and the catalog soak pool.
 
-**PR 5 onward — cards**, in the wave the owner picks (open question 1). Each
-card follows AGENTS.md: completeness declared, caveats weaker than printed
-and never stronger, and oracle text checked against the dump.
+**PR 5 and PR 6 — cards**, first wave (c) as decided (question 1), in two
+card PRs:
+
+- **PR 5, the sole-blocker cards** of option (b): Tainted Strike, Triumph
+  of the Hordes, Phyresis, Corrupted Conscience, Grafted Exoskeleton,
+  Blighted Agent, Plague Myr, Ichor Rats, Viral Drake, Blightbelly Rat,
+  Karumonix, the Rat King, Bloated Contaminator, Massacre Girl, Known
+  Killer and Puncture Blast. The 30 keyword-only creatures need no file
+  and land with PR 2.
+- **PR 6, the poison-count readers**: Vishgraz, the Doomhive, Skrelv's
+  Hive, Phyrexian Swarmlord, Septic Rats and Contaminant Grafter. These
+  are the real cards behind PR 1's layer bump. Owner policy: every new
+  seam path ships with at least one real card, even with a declared
+  weaker caveat.
+
+Each card follows AGENTS.md: completeness declared, caveats weaker than
+printed and never stronger, and oracle text checked against the dump. A
+card whose other text turns out not to be expressible moves out of its PR
+with the reason, rather than shipping stronger than printed. PR 4's soak
+pool takes each card as its PR lands.
 
 Checks for every engine PR: `go test ./internal/game/... ./internal/cards/... ./internal/deck/... ./internal/aiseat/... ./internal/legal/...`,
 then `go test ./...` and `make lint`.
@@ -714,14 +768,28 @@ Bots (`internal/aiseat`), PR 4:
     and blocks change when an infect attacker would finish a 9-poison seat.
     The soak runs with the new pool and reports no new stalls.
 
-Client, PR 3: vitest for any pure display helper. The rest is checked by
-hand until #689.
+Protocol (`internal/protocol`), PR 3:
 
-## Open questions for the owner
+23. An infect hit on a player logs "dealt N damage (as poison)", a wither
+    hit on a creature logs "(as -1/-1 counters)", and a plain hit has no
+    suffix. A poison placement logs one `poison` entry with the delta and
+    the new total. A player eliminated at 10 poison gets ADR 0057's
+    `LogEliminated` with cause `"poison"`, and PR 3 adds no text to it.
+
+Client, PR 3: vitest for the pure display helpers (the `N/10` label and the
+danger threshold at 7; the `TOX N` total from an ability list with repeated
+`toxic N` entries). The rest is checked by hand until #689.
+
+Cards, PR 5 and PR 6: each card's own test, per AGENTS.md. PR 6 includes a
+Corrupted static that switches on in the same action that gives an
+opponent their third poison counter.
+
+## Decided (2026-09-17)
+
+The owner answered both open questions on 2026-09-17. The options are kept
+as they were proposed. The chosen one is marked.
 
 ### 1. First card wave
-
-Three options, which build on each other:
 
 - **(a) Engine only.** The 30 keyword-only creatures become automatic by
   import (listed in Context), and no catalog cards ship.
@@ -734,17 +802,18 @@ Three options, which build on each other:
   isn't moves out with the reason.
 - **(c) (b) plus the poison-count readers** that PR 1's layer bump enables:
   Vishgraz, the Doomhive, Skrelv's Hive, Phyrexian Swarmlord, Septic Rats
-  and Contaminant Grafter.
+  and Contaminant Grafter. **Chosen.**
 
-**Recommendation: (c), in two card PRs.** (b) first, then the
-poison-readers. Corrupted cards are why PR 1 exists, and without one of
-them in the wave nothing in production uses the bump.
+**Decision: (c), in two card PRs** (PR 5 with (b)'s cards, then PR 6 with
+the poison-count readers; see [PR split](#pr-split)). This was the
+recommendation: Corrupted cards are why PR 1's layer bump exists, and
+without one of them in the wave nothing in production uses the bump.
 
 ### 2. How poison and -1/-1 results show to players
 
-Today the poison chip and stepper exist, the public log has no line for any
-counter, a damage line says "dealt 2 damage" whatever the result was, and
-elimination doesn't give a reason.
+When this was asked, the poison chip and stepper existed, the public log
+had no line for any counter, a damage line said "dealt 2 damage" whatever
+the result was, and elimination gave no reason.
 
 - **(a) Minimal.** Keyword badges only (infect and wither icons, toxic on
   the three-letter fallback). Nothing else changes.
@@ -753,10 +822,14 @@ elimination doesn't give a reason.
   3 poison counters (7/10)"). The elimination line says "10 poison
   counters". The poison chip shows `N/10` and switches to a danger style
   from 7. Toxic shows one badge with the creature's total ("TOX 3").
+  **Chosen, without the elimination-line clause.**
 - **(c) (b) plus a reveal-strip cue** when a player gains poison, the ADR
   0053 and 0054 pattern.
 
-**Recommendation: (b).** Poison is a second life total with a much shorter
-clock. A player needs to see how close to 10 they are, and why they lost,
-without opening the stepper. (c) adds motion for an event that happens once
-per combat at most.
+**Decision: (b) minus the elimination-line clause** (Decision 6). The
+damage-result log suffixes, the `poison` log entry, the `N/10` chip with a
+danger style from 7, and one `TOX` badge. The elimination reason is not
+this ADR's: [ADR 0057](0057-win-and-lose-by-effect.md) Decision 7 gives
+every elimination its cause, and for poison that cause is `"poison"`,
+shown as "(10 poison counters)", whether or not this ADR ships. No
+reveal-strip cue.
