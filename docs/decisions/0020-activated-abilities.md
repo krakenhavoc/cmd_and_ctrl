@@ -203,3 +203,763 @@ payload cannot name rides the move.
 - Counter costs on **mana abilities** (`ManaAbilityCost`).
 
 `docs/engine-seams.md`'s counter-cost row lists what is still waiting.
+
+## Addendum (2026-09-17): activation conditions (#743)
+
+**Status:** Accepted · 2026-09-17 · tracked on
+[#743](https://github.com/krakenhavoc/cmd_and_ctrl/issues/743). This
+status covers this section only. The decisions above and the #625
+addendum are unchanged and stay accepted.
+**Decided by the owner (2026-09-17):** mana abilities get the same
+`condition_unmet` flag, on `ManaAbilityView`, in the same server and
+client PRs. Temple of the False God and Mox Opal grey out like a
+non-mana ability whose condition fails (§9). The options considered are
+kept in [Decided questions (#743)](#decided-questions-743) at the end
+of the section.
+
+### Context
+
+A non-mana activated ability can carry one activation restriction today:
+`SorcerySpeed`. Nothing can say "Activate only if an opponent controls
+four or more lands" (Tectonic Edge), "Activate only during your turn"
+(Sanctum of Eternity) or "Activate only if this creature is attacking"
+(Glint-Horn Buccaneer). CR 602.1b calls these activation instructions.
+They restrict when the ability can be activated, they "function at all
+times", and they are "not part of the ability's effect".
+
+Checked on develop at `bcac391`:
+
+- `game.ActivatedAbilityShape` (`server/internal/game/activated.go:211`)
+  and `effects.ActivatedAbility` (`cards/effects/spec.go:467-473`) have
+  Label, Cost, Targets, SorcerySpeed and Effect, and nothing else.
+- `ActivateCatalogAbility` (`activated.go:335`) checks timing only for
+  `SorcerySpeed` or a loyalty cost (`activated.go:384`). The enumerator
+  does the same (`legal/abilities.go:56`).
+- `ActivatedAbilityView` has `sorcery_speed` and no condition field
+  (`protocol/view.go:1049`). `ManaAbilityView` has no condition field
+  either (`view.go:1145`).
+
+Mana abilities already have this shape. `ManaAbilityShape.Condition
+func(g *Game, controller, source uuid.UUID) bool`
+(`game/effect_hooks.go:183-197`, #352) is read-only and runs under
+`g.mu`. It is checked before any cost in four places:
+
+- `ActivateManaAbility` (`mutations.go:3373-3374`)
+- the auto-tapper (`mutations.go:1190`, `autotap.go:189`)
+- the enumerator (`legal/abilities.go:383`)
+
+A false condition returns `ErrConditionNotMet` (`errors.go:267-272`), and
+`effects.ControlsAtLeast` (`cards/effects/mana_derivation.go:274`) builds
+conditions.
+
+Two shipped cards settle for less:
+
+- **Sanctum of Eternity** uses sorcery speed in place of "during your
+  turn", and declares a caveat for it (`sanctum_of_eternity.go:21-33`).
+- **Glint-Horn Buccaneer** leaves out its attacking-only ability
+  (`glint_horn_buccaneer.go:14-24`). That ability also needs a discard
+  cost (#660).
+
+The census counts 29 cards where this is the only core blocker.
+
+### Decisions
+
+#### 6. `Condition` on the activated ability, with the mana ability's contract
+
+Add `ActivatedAbilityShape.Condition` and `effects.ActivatedAbility.Condition`,
+both typed `func(g *Game, controller, source uuid.UUID) bool`. They are
+carried through `effects.buildDef` like every other field of the ability
+(AGENTS.md §7, "Adding a `Spec` slot"). Nil means no condition, which is
+every ability in the catalog today.
+
+The contract is the mana ability's, word for word:
+
+- it is read-only;
+- it runs under `g.mu`, held for write by the activation and for read by
+  the view and the enumerator;
+- it uses `*ForEffect` accessors and never a public locking accessor.
+
+`g.ActivePlayer()` takes the read lock, so a condition that calls it
+deadlocks the activation. That is why the helpers in §10 read `g.Turn`
+and `g.Seats` directly, as `b23IsYourTurn` already does.
+
+`controller` is the activating player, and "you" in the printed text
+means that player. `source` is the permanent's instance ID. That is
+enough to read a per-source activation count later, so the signature
+does not change when the once-each-turn count lands (see *Out of scope*).
+
+`SorcerySpeed` stays a separate flag. Some cards print both (Speaker of
+the Heavens: "only if you have at least 7 life more than your starting
+life total and only as a sorcery"). The two fail with different errors
+and different client copy.
+
+#### 7. Checked once, at activation, before anything is announced or paid
+
+The check goes in `ActivateCatalogAbility`, immediately after the timing
+check at `activated.go:384`. That puts it before X, the loyalty checks,
+the costs and the targets:
+
+```go
+if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
+    return ErrConditionNotMet
+}
+```
+
+CR 602.5 says a player "can't begin to activate" an ability that is
+prohibited from being activated. So a failed condition stops the
+activation at this point: no later check runs and nothing is paid. The
+layers are already current here, because `RecomputeLayersIfStaleLocked`
+runs above the controller check. A condition that counts creatures
+therefore sees the post-layer board.
+
+When both checks fail, the error is `ErrSorcerySpeedRequired`, because
+the timing check runs first. That order is our choice, not a rule, and
+it only changes which error the player sees.
+
+The condition is **not** checked again at resolution. Under CR 602.1b it
+is an activation instruction, not part of the effect. Suppose Tectonic
+Edge is activated while an opponent has four lands, and that opponent
+sacrifices a land in response. The ability still resolves.
+`resolveTopAbilityLocked` needs no change.
+
+#### 8. The enumerator checks the same closure
+
+In `legal/abilities.go`, `activatedMoves` checks `ab.Condition` with the
+same arguments, right after the `speed` check at `:56`. This is what
+`manaMoves` already does at `:383`. The enumerator then never offers a
+bot an activation that the engine refuses (#544).
+
+#### 9. Both ability views carry `condition_unmet`, evaluated for the controller
+
+Add `ConditionUnmet bool` (`json:"condition_unmet,omitempty"`) to
+**`ActivatedAbilityView` and `ManaAbilityView`** (owner decision, see
+[Decided questions (#743)](#decided-questions-743)). It is true when
+the ability has a condition and that condition is false right now. It is
+absent when there is no condition, or when the condition holds. The flag
+is negative because wire booleans use `omitempty`, which would drop a
+positive `condition_met: false` from the JSON.
+
+It is evaluated once per ability, with the permanent's controller as
+`controller`:
+
+- **Non-mana abilities:** in `viewOfActivatedAbilities`. That function
+  already computes every sacrifice, crew and target option from the
+  controller's side.
+- **Mana abilities:** in `stampActivatedAbilities` (`view.go:1645`),
+  beside `stampManaSacrificeOptions` (`:1665`, `:1717`). That pass has
+  the game handle and the parsed controller. `viewOfManaAbilities`
+  (`:2969`) takes only the card and cannot evaluate a closure. The
+  closure is the `ManaAbilityShape.Condition` the activation, the
+  auto-tapper and the enumerator already call, so no second copy of the
+  rule is written.
+
+Neither list is stripped per viewer. One value is right for every
+viewer: the condition is about the controller, and only the controller
+can open the menu.
+
+Every viewer receives the flag, so **a condition must read only public
+information**. Counts of permanents, graveyard cards and cards in hand,
+life totals, the turn and the step are all public. A future condition
+that needs hidden information, such as which cards are in a hand, must
+not be written as a `Condition` unless the flag is first stripped for
+other viewers. None of the 29 census cards needs hidden information.
+Neither does any shipped mana-ability condition: they read permanents
+controlled (Mox Opal, Temple of the False God, Shrine of the Forsaken
+Gods, the Shapeshifter tokens from Springleaf Parade), counters on the source
+(Gemstone Mine, Runaway Steam-Kin) and library size (Millikin).
+
+The client greys the row the way it greys `sorcery_speed`: one arm in
+`abilityBlocked` (`client/src/lib/contextMenu.logic.ts`) and one in
+`ManaAbilityMenu.svelte`, with the reason "activation condition not
+met". Both predicates already take mana and non-mana rows through one
+cost-shaped type (`AbilityCost`, `CostShaped`), so `condition_unmet` is
+added to that type once and the same arm greys both kinds of row.
+`protocol.ts` gets the field on `ActivatedAbilityView` and
+`ManaAbilityView`. The arm runs after the sorcery-speed and loyalty arms,
+so those rows keep their more specific reasons, and after the existing
+`cant_activate_mana` restriction check in `abilityItems`, which still
+wins for a mana row. The row's label is already the full printed
+ability, including the instruction, so the reason does not repeat the
+clause.
+
+Greying rather than hiding follows the `sorcery_speed` precedent from
+S31. The player can see that the permanent has the ability, and that it
+is not available right now.
+
+#### 10. Helpers in `cards/effects`
+
+Each helper returns a condition closure, and each is a pure read.
+
+| Helper | Printed | Reads |
+|---|---|---|
+| `ControlsAtLeast(n, match)` (exists) | "only if you control N or more …" (Bonders' Enclave: "a creature with power 4 or greater") | the battlefield, as today |
+| `OpponentControlsAtLeast(n, match)` | "only if an opponent controls four or more lands" (Tectonic Edge) | true when **one** opponent controls at least N on their own. In a four-player game the opponents' lands are not added together |
+| `OpponentControlsMore(match)` | "only if an opponent controls more lands than you" (Weathered Wayfarer) | the same per-opponent comparison, against the activator's own count |
+| `DuringYourTurn()` | "Activate only during your turn" | `g.Seats[g.Turn.ActiveSeat].ID == controller` (the body of `b23IsYourTurn`, moved to a shared helper) |
+| `DuringStep(steps...)`, `DuringYourStep(steps...)` | "only during your upkeep", "only during combat", "only before blockers are declared" | `g.Turn.Step`, plus the `DuringYourTurn` check for the "your" forms. "During combat" is the list of combat steps. "Before blockers are declared" is every step up to and including declare attackers |
+| `GraveyardAtLeast(n, match)` | threshold, "seven or more cards are in your graveyard" (Cephalid Coliseum, Barbarian Ring) | the controller's graveyard |
+| `SourceIsAttacking()` | "only if this creature is attacking" | the source's `AttackingTarget != uuid.Nil`, which the combat code already sets and clears (CR 508.1k, 506.4) |
+| `SourceHasCountersAtLeast(kind, n)` | "only if this enchantment has four or more quest counters on it" (Luminarch Ascension) | the source's counters |
+| `LifeAtLeastAboveStarting(n)` | Speaker of the Heavens | `p.Life` against `game.StartingLife` |
+| `AllOf(conds...)` | a card that prints two conditions | ANDs them |
+
+"This turn" conditions read `Game.TurnTally` (#586) through
+`TurnTallyFor`. Examples are Idol of Oblivion ("if you created a token
+this turn") and Lagomos, Hand of Hatred ("if five or more creatures died
+this turn"). They get no helper until a second card uses the same one.
+
+The names are for the implementation to settle. Each row sets scope
+only: a helper is added together with its first card, not before.
+
+#### 11. Cards
+
+- **Sanctum of Eternity** gets `Condition: DuringYourTurn()`, loses
+  `SorcerySpeed`, and loses its caveat. It becomes activatable during
+  your combat and end step, and in response on your own turn, as
+  printed.
+- **The first new cards** are Tectonic Edge, Weathered Wayfarer and
+  Bonders' Enclave.
+- The rest of the census list becomes ordinary catalog work through the
+  batch issues. Three cards are misattributed and stay blocked on their
+  own seams: Barad-dûr (amass), Hydra Broodmaster (monstrosity) and
+  Broadside Bombardiers (boast).
+
+### Out of scope
+
+- **"Activate only once each turn"** and **boast**. Boast is CR
+  702.142a: "Activate only if this creature attacked this turn and only
+  once each turn". Both need a count of how many times *this source's*
+  ability was activated this turn. Boast also needs "attacked this turn".
+  `TurnTally` counts resolutions and triggers, not activations. That gap
+  is the "Per-source activations-this-turn count" row in
+  `docs/engine-seams.md`, and Beledros Witherbloom's untap waits on it.
+  Once the count exists, a once-each-turn check is an ordinary
+  `Condition` that reads the count by `source`, with this signature.
+- **Restrictions that persist through a change of control** (CR 602.5b).
+  This rule matters only for restrictions that carry state, like the
+  count above. A `Condition` with no state is re-evaluated against the
+  current controller on every activation, which is what the printed text
+  means.
+- **Restrictions on abilities granted by another object** (CR 602.5c).
+  A granted ability is not a catalog `ActivatedAbilityShape` today.
+
+### Consequences
+
+- About twenty cards become catalog work with no further engine change,
+  and Sanctum of Eternity loses its caveat.
+- Each view build runs every declared condition once, on the snapshot
+  path. At worst each run walks the battlefield. `ControlsAtLeast` already
+  adds the same cost for mana abilities.
+- Mana and non-mana conditions share one error, one signature, one set
+  of helpers and one wire flag. A helper written for one kind of ability
+  works for the other, and the menu greys both kinds of row the same way.
+- Temple of the False God, Mox Opal and the other shipped mana abilities
+  with a condition stop showing a clickable row that the server refuses.
+  Their conditions now also run on every view build, not only in the
+  activation, the auto-tapper and the enumerator.
+
+### Alternatives considered
+
+- **Declarative fields** (`MinLands int`, `YourTurnOnly bool`, and so
+  on). Every census card would add a field, and the mana ability's
+  condition is already a closure. Rejected.
+- **Widening `SorcerySpeed` into a timing enum** that includes "during
+  your turn". That covers two of the 29 cards and none of the board-count
+  conditions. Rejected.
+- **Checking the condition again at resolution.** That is wrong under CR
+  602.1b, and the player would pay for an activation that then does
+  nothing. Rejected.
+- **Hiding an ability whose condition fails, instead of greying it.** An
+  alternative-cost offer with a failed `Condition` is hidden (ADR 0048
+  §7). But an offer is one way to cast a spell, and a menu row is an
+  ability the permanent has. Greying matches `sorcery_speed`.
+
+### Implementation plan
+
+1. **Server PR.**
+   - the field on both structs, and the `buildDef` line;
+   - the check in `ActivateCatalogAbility`, and the same check in the
+     enumerator;
+   - the `condition_unmet` field on `ActivatedAbilityView` and
+     `ManaAbilityView`, documented in `docs/protocol.md` at both;
+   - the §10 helpers the cards below need;
+   - the cards: Sanctum of Eternity, Tectonic Edge, Weathered Wayfarer and
+     Bonders' Enclave;
+   - the regenerated census;
+   - `docs/engine-seams.md`: the activation-condition row moves to Closed.
+
+   The server refuses a failed activation whether or not the client greys
+   the row, so the cards can ship in this PR.
+2. **Client PR.**
+   - `condition_unmet` on both ability views in `protocol.ts`;
+   - the greying arm in `abilityBlocked` and in `ManaAbilityMenu.svelte`,
+     reached by mana and non-mana rows alike;
+   - vitest cases.
+
+### Test plan
+
+- **Game package, failed condition.** Use an ability whose cost includes
+  mana, {T} and a sacrifice. A failed condition returns
+  `ErrConditionNotMet` and changes nothing:
+  - the mana pool is unchanged;
+  - the source stays untapped;
+  - the permanent named for the sacrifice stays on the battlefield;
+  - the counters for a counter cost stay on;
+  - no stack item and no `EventTrigger` appear.
+- **Game package, both checks.** A condition that holds lets the
+  activation go through. On an ability with both sorcery speed and a
+  condition, each check failing alone refuses the activation with its own
+  error.
+- **No resolution check.** Activate Tectonic Edge while an opponent has
+  four lands, then have that opponent sacrifice one in response. The
+  ability still resolves (CR 602.1b).
+- **`DuringYourTurn`.** Refused on an opponent's turn. Allowed in your
+  own combat, in your end step, and with an item on the stack. The Sanctum
+  of Eternity regression test changes from "sorcery speed only" to this.
+- **`OpponentControlsAtLeast`, four players.** Three opponents with two
+  lands each do not meet "four". One opponent with four lands does.
+- **`SourceIsAttacking`.** True while the creature is declared as an
+  attacker. False before attackers are declared, and after combat ends.
+- **Enumerator.** On the same board as the engine test, the ability is
+  missing from the legal moves while the condition fails, and present
+  once it holds.
+- **Protocol.** `condition_unmet` is present only while the condition
+  fails, and never present on an ability with no condition.
+  - Non-mana: Tectonic Edge's ability with an opponent at three lands,
+    then at four.
+  - Mana: Temple of the False God's `mana_abilities[0]` with the
+    controller at four lands carries the flag, and at five it does not.
+    Mox Opal with two artifacts carries it, and with three it does not.
+  - A mana ability with no condition (a basic land) never carries it.
+- **Client.** `abilityBlocked` returns the condition reason for
+  `condition_unmet`, on a mana row and on a non-mana row. A
+  sorcery-speed row keeps its own, more specific reason. A mana row that
+  is both restricted (`cant_activate_mana`) and condition-failed shows
+  the restriction.
+- **Catalog soak.** `go test ./internal/aiseat -run TestCatalogSoak` with
+  the new cards in the catalog shows no refused move.
+
+### Decided questions (#743)
+
+Answered by the owner on 2026-09-17. The chosen option is marked
+**(chosen)**; the recommendation text is kept for the record.
+
+1. **Should mana abilities get the same flag?** `ManaAbilityView` has no
+   condition field. So Temple of the False God with four lands, or Mox
+   Opal with two artifacts, shows a clickable row that the server then
+   refuses.
+   - **(a) (chosen)** Add `condition_unmet` to `ManaAbilityView` in the
+     same two PRs, with the same closure and the same client arm.
+   - **(b)** Leave mana abilities alone and track the gap separately.
+
+   **Recommendation: (a).** It takes a few lines on each side. Without it,
+   the same menu greys one kind of row whose condition fails and leaves the
+   other clickable.
+
+   Applied in §9, *Consequences*, the implementation plan and the test
+   plan.
+
+## Addendum (2026-09-17): sacrifice costs of N permanents (#747)
+
+**Status:** Accepted · 2026-09-17 · tracked on
+[#747](https://github.com/krakenhavoc/cmd_and_ctrl/issues/747). This
+status covers this section only. It amends §2 and §3 above for every
+sacrifice cost site. [ADR 0021](0021-additional-costs.md) has a short
+matching addendum for the additional-cost site.
+**Decided by the owner (2026-09-17):** the picker is a multi-select that
+confirms at exactly N, plus a "Choose for me" button that fills the
+selection in the enumerator's §15 order (tokens first, lowest mana
+value, source last). The button never confirms (§16).
+**Decided by the lead on the owner's standing guidance (2026-09-17):**
+Transmutation Font's "with different names" is out of this work. The
+Font keeps its caveat, and a seam row covers set-level restrictions on a
+sacrifice cost (§17, *Out of scope*). The options considered are kept in
+[Decided questions (#747)](#decided-questions-747) at the end of the
+section.
+
+### Context
+
+Every sacrifice cost pays **exactly one** permanent besides the source.
+So "Sacrifice two artifacts", "Sacrifice three Foods" and "Sacrifice five
+Treasures" cannot be written. Checked on develop at `bcac391`:
+
+- **Three cost sites share one validator.** The sites are
+  `AbilityCost.SacrificeOther` (`game/activated.go:43-49`),
+  `ManaAbilityShape.SacrificeOther` (`game/effect_hooks.go:134-147`) and
+  `AdditionalCost.Sacrifice` (`game/additional_cost.go:48`). All three call
+  `validateSacrificeCostLocked` (`activated.go:651`): the activation at
+  `activated.go:443`, the mana ability at `mutations.go:3399`, and the
+  additional cost at `additional_cost.go:140`.
+- **The validator accepts only one pick.** It refuses anything else with
+  `if len(chosen) != 1 { return nil, ErrInvalidParam }` (`activated.go:662`).
+- **The wire and payment already handle a list.** `ActivateAbilityParams.SacrificeIDs`
+  is a slice "so the wire shape survives contact with Altar of
+  Dementia-style" costs (`activated.go:274-279`), and every payment loop
+  already ranges over the IDs.
+- **The enumerator hard-codes one.** It calls `combinations(pool, 1, 1, …)`
+  at `legal/abilities.go:148`, `:410` and `legal/cast.go:202`, although
+  `combinations` (`cast.go:440`) takes a lower and upper bound.
+- **The client picker holds one choice.** `SacrificeCostModal.svelte`
+  keeps a single `chosen` ID (`:27`).
+
+Every sacrifice clause is built by `sacrificeSpec`
+(`cards/effects/activated.go:116`), which is `TargetPermanent`. That
+constructor stamps `Min: 1, Max: 1` (`cards/effects/targets.go:306`). The
+card-specific helpers (`b12SacrificeAGoblin`, `b27SacrificeAForest`,
+`b29SacrificeALand`) all call it. The three sacrifice views already put
+the clause's `Min` and `Max` on the wire: `abilityClauseView`
+(`protocol/view.go:2892`) for abilities and mana abilities, and
+`viewOfLegalTargets` (`view.go:1513`) for the additional cost.
+
+Six catalog cards leave the ability out and declare a caveat: Savvy
+Hunter, Samwise Gamgee, Sai, Master Thopterist, Magda, the Hoardmaster,
+Magda, Brazen Outlaw, and Transmutation Font. Transmutation Font also
+needs "with different names".
+
+### Decisions
+
+#### 12. The count lives on the sacrifice clause: `Min == Max == N`
+
+A cost of "sacrifice N" is a sacrifice clause whose `TargetSpec` has
+`Min == Max == N`. The constructors:
+
+```go
+// "Sacrifice two artifacts" (Sai), "Sacrifice three Foods" (Samwise).
+func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
+    return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
+}
+```
+
+A mana ability takes `SacrificeN(...).SacrificeOther`, the same way it
+takes `SacrificeACreature().SacrificeOther` today. An additional cost
+gets `SacrificeNCost(n, label, preds...)`. `SacrificeACreature()` and the
+existing helpers are unchanged, because a count of 1 is what they
+already build.
+
+For a sacrifice clause, `Min` and `Max` count the permanents sacrificed.
+§2 still holds: this is a predicate, not targeting. The field comment on
+`TargetSpec.Min` says so.
+
+This is chosen over a separate `SacrificeCount int` on each of the three
+cost structs, for three reasons:
+
+- **One place, not three.** Every site already carries the
+  `*TargetSpec`, so the validator, the enumerator and all three views get
+  the count with no new field.
+- **No silent merge bug.** A new `AbilityCost` field would also need a
+  line in `effects.Plus`. If that line were forgotten,
+  `Plus(TapCost(), SacrificeN(3, …))` would silently cost one Food.
+  That is stronger than printed (#259), the same hazard the #625
+  addendum found for counters. On the clause, the count cannot be
+  separated from the thing it counts.
+- **The wire already carries it.** All three views already send the
+  clause's `Min` and `Max` as `sacrifice_options.min` and `max`. Today
+  both are 1.
+
+`effects.Register` panics on a sacrifice clause where any of these holds:
+
+- `Min != Max`, or `Min < 1`;
+- `CountFromX` is set;
+- `AllowSame` is set;
+- `Players` is set.
+
+The variable forms are refused until their seam exists (see *Out of
+scope*), so no card can declare one and have it quietly read as a fixed
+count. Every clause in the catalog today is 1/1, so the guard changes no
+shipped card. The first sub-PR proves that with the catalog-wide
+registration test.
+
+#### 13. Validation: exactly N, distinct, yours, matching
+
+`validateSacrificeCostLocked` reads `n := spec.Max` and requires:
+
+1. `len(chosen) == n`, else `ErrInvalidParam`.
+2. No ID twice, else `ErrInvalidParam`.
+3. Each permanent is on the battlefield (`ErrCardNotFound`), controlled
+   by the payer (`ErrCardCallerMismatch`, CR 701.21a), and matches the
+   clause through `specMatchLocked(..., false)` (`ErrIllegalTarget`). The
+   `false` means no targeting check, so hexproof never matters.
+4. None is the source when `SacrificeSelf` is also set, else
+   `ErrInvalidParam`. This check exists today.
+
+Any failure refuses the whole activation or cast with nothing paid (§3,
+and ADR 0021 §2). All three sites share the validator, so each site gets
+all four checks with no further change.
+
+#### 14. Payment: one event per permanent, observed as one simultaneous exit
+
+The payment order does not change: mana → tap → crew → life → loyalty →
+counters → sacrifice. Each permanent still goes through
+`sacrificePermanentLocked`, which emits one `EventSacrifice`. So "whenever
+you sacrifice a permanent" and dies triggers fire once per permanent.
+
+**The sacrifices of one payment are wrapped in
+`beginSimultaneousExitLocked`**, together with the source when
+`SacrificeSelf` is set. That wrapper is the batch that
+`destroyPermanentsLocked` (`game/simultaneous.go:195`) already uses for
+board wipes. The trigger harvester consults the batch for every event
+kind (`triggers.go:278`), `EventSacrifice` included.
+
+Here is why the batch is needed. Suppose Priest of Forgotten Gods
+sacrifices Blood Artist and a Goblin together. Blood Artist must see both
+deaths: leaves-the-battlefield and sacrifice triggers look back in time
+(CR 603.10a). Paid one at a time, the outcome depends on slice order. If
+Blood Artist goes first, it is gone before the Goblin dies, and one drain
+is lost.
+
+`beginSimultaneousExitLocked` has no indestructible filter of its own.
+That filter lives in `DestroyPermanentsForEffect`, which this path does
+not call. So an indestructible permanent can still be sacrificed, as CR
+701.21a requires.
+
+The payment loop in `payAdditionalCostLocked` and the mana ability's
+payment loop open the same batch. The batch also fixes today's
+two-permanent case, where `SacrificeSelf` and `SacrificeOther` on one
+ability are paid in order. With a batch the result is the same as the
+player picking the best order, which CR 601.2h allows ("in any order").
+
+#### 15. The enumerator: N from the clause, and one payment per move when N ≥ 2
+
+All three enumerator sites call `combinations(pool, n, n, cap)`, with `n`
+taken from the clause. When the pool has fewer than N permanents,
+`combinations` returns nil (`cast.go:441`), so the ability or spell is not
+offered (#544).
+
+- **N = 1:** unchanged. Every candidate is its own move, up to
+  `MaxExpansionPerSource`.
+- **N ≥ 2:** one sacrifice set per move, not every combination. The set
+  is the first N candidates in a policy-neutral order:
+  1. tokens before nontokens;
+  2. then lower mana value;
+  3. then the ability's own source last, when the clause admits it;
+  4. then board order, so the result is stable.
+
+  Three reasons:
+  - **The budget.** The expansion loops put targets outside and
+    sacrifice sets inside, and they share one budget of 12. Ten Treasures
+    choose five is 252 sets. Enumerating them would spend the whole budget
+    on the first target and never reach the second, which is the #544
+    failure again.
+  - **The choice is about loss.** The sets differ only in which
+    permanents are lost. `crewPayment` answers the same kind of choice
+    with one answer (`legal/abilities.go:319`).
+  - **Neutral.** The ordering favours no policy. `legal` must not import
+    `aiseat` (#687). #687 orders *targets* by threat, which is a different
+    question.
+
+**The order is one shared helper in `game`.** The enumerator's three
+sites and the protocol views (§16) sort the same candidate list with the
+same function, for example `game.SacrificePaymentOrderForEffect(source,
+ids)`; the name is for the implementation to settle. It lives in `game`
+because `legal` and `protocol` both import `game`, and neither may own a
+rule the other copies. Every key it reads (token, mana value, instance
+ID, board position) is public.
+
+The mana move's label (`abilities.go`, `len(sacs) == 1`) becomes a
+comma-joined list of the sacrificed names.
+
+#### 16. Wire and client: the existing `min`/`max`, a multi-select picker, and "Choose for me"
+
+No new wire field. `sacrifice_options.min` and `sacrifice_options.max`
+carry N on `activated_abilities[i]`, `mana_abilities[i]` and
+`additional_cost`. `sacrifice_ids` is already a list on `activate_ability`,
+`activate_mana_ability` and `cast_spell`. `docs/protocol.md` documents
+both at the three places.
+
+**`sacrifice_options.cards` is sent in §15's order.** `sacrificeCostOptions`
+(`protocol/view.go:2883`) and the additional-cost stamp (`view.go:1482`)
+sort the controller's candidates with the shared helper before they go
+on the wire. The client has no token or mana-value field to sort by, and
+it must not derive the rule (#429). For N ≥ 2, the first N entries of
+the list are exactly the set the enumerator offers a bot for the same
+board. At N = 1 the enumerator still offers every candidate, and the
+list's order is the only change.
+`docs/protocol.md` documents the order at the three places.
+
+`SacrificeCostModal.svelte` takes the count from `options.max`. It
+becomes a multi-select that confirms only when exactly N permanents are
+chosen, and `onConfirm` takes `string[]` (owner decision). At N = 1 it
+works as it does today.
+
+**"Choose for me"** (owner decision) is a button in the modal when
+N ≥ 2. It replaces the current selection with the first N entries of
+`sacrifice_options.cards`, in wire order. It does not confirm: the player
+can still change any pick, and Confirm and Enter stay the only ways to
+pay. It is disabled when there are fewer than N options, which the menu
+already prevents from opening. The client does no ordering of its own.
+
+The menu's "nothing to sacrifice" check in `abilityBlocked` changes from
+"no options" to "fewer options than `min`". Its reason names the count,
+for example "needs 3 Foods (you have 2)".
+
+#### 17. Cards
+
+- **Caveats removed:** Savvy Hunter, Samwise Gamgee, Sai, Master
+  Thopterist, Magda, the Hoardmaster, and Magda, Brazen Outlaw.
+- **Transmutation Font keeps its caveat** (lead decision): its "three
+  artifact tokens with different names" is a restriction on the set,
+  which this addendum does not build (*Out of scope*).
+- **Added:** Priest of Forgotten Gods and Kuldotha Forgemaster. After
+  that, the fixed-N census cards (Hedron Detonator, Whisper, Blood
+  Liturgist, Teysa, Orzhov Scion, and the rest) go through the batch
+  issues.
+
+### Out of scope
+
+- **Variable counts:** "Sacrifice X Treasures", and "one or more" (Radiant
+  Lotus). These need `Min != Max` or `CountFromX`, an announced count, and
+  a record of the count that was paid. §12's registration guard refuses
+  them until then.
+- **Effects that read what was sacrificed** ("the sacrificed creature's
+  power"). These need last-known information on the stack item.
+- **Restrictions on the set as a whole**, such as "with different names"
+  (Transmutation Font). Decided out (see
+  [Decided questions (#747)](#decided-questions-747)). It could reuse a
+  set-level `Validate` in the style of #682, but the enumerator would then
+  have to search for a valid set rather than take the first N, and "Choose
+  for me" could no longer take the first N entries. The cards PR adds a
+  "Set-level restriction on a sacrifice cost" row to
+  `docs/engine-seams.md`, with Transmutation Font as its first card.
+- **Ward's sacrifice cost** (`effects.WardCost.Sacrifice`) is a separate
+  shape on a separate path.
+- The misattributed census cards stay out:
+  - Liliana, Dreadhorde General's sacrifice is an effect on resolution,
+    not a cost;
+  - Phyrexian Soulgorger needs cumulative upkeep (#567);
+  - Jolene, the Plunder Queen also needs a replacement effect for token
+    creation.
+
+### Consequences
+
+- Fourteen cards become catalog work, and five shipped caveats go away.
+- A clause's `Min` and `Max` now have two meanings, depending on the
+  field that holds the spec: a target count, or a sacrifice count. The
+  registration guard and the field comment keep the second meaning to
+  the one shape this addendum supports.
+- Bots with a sacrifice-N cost always offer the cheapest-looking payment.
+  A policy cannot choose to sacrifice a better creature. That is the same
+  trade crew made.
+- The order of `sacrifice_options.cards` becomes part of the wire
+  contract. A human's "Choose for me" and a bot's payment are the same
+  set on the same board, because both come from one helper.
+- Magda, Brazen Outlaw's "Sacrifice five Treasures" is one click and a
+  confirm, not five clicks and a confirm.
+
+### Alternatives considered
+
+- **`SacrificeCount int`** on `AbilityCost`, `ManaAbilityShape` and
+  `AdditionalCost`. That is three fields, one `Plus` line that must not be
+  forgotten, and a count stored apart from its clause. Rejected (§12).
+- **A `SacrificeCostSpec{Spec, N}` wrapper.** It would change the type of
+  every existing `SacrificeOther` and `Sacrifice` field and every call site
+  that reads one, for information the spec can already hold. Rejected.
+- **Enumerating every combination for N ≥ 2.** This exhausts the
+  expansion budget on the first target (§15). Rejected.
+- **Paying the sacrifices one at a time, with no batch.** The
+  trigger count would depend on the order of IDs on the wire. Rejected.
+
+### Implementation plan
+
+1. **Server PR, no catalog card changes.**
+   - the registration guard;
+   - the validator reads N;
+   - the batch at all three payment sites;
+   - the shared §15 order helper in `game`;
+   - the enumerator at all three sites;
+   - `sacrifice_options.cards` sorted by the helper at all three views;
+   - the `SacrificeN` and `SacrificeNCost` constructors;
+   - `docs/protocol.md`, including the option order.
+
+   The tests use fixture cards. No shipped card declares N ≥ 2 yet, so a
+   human cannot hit an N-cost the client cannot pay.
+2. **Client PR.** The multi-select `SacrificeCostModal` with its
+   "Choose for me" button, used by the ability picker and `Board.svelte`'s
+   cast-time picker; the count-aware arm in `abilityBlocked`; and vitest
+   cases.
+3. **Cards PR.**
+   - the five caveat removals (Transmutation Font keeps its caveat);
+   - Priest of Forgotten Gods and Kuldotha Forgemaster;
+   - the regenerated census;
+   - `docs/engine-seams.md`: the "Sacrifice cost of more than one
+     permanent" row moves to Closed, and a new "Set-level restriction on
+     a sacrifice cost" row lists Transmutation Font.
+
+### Test plan
+
+- **N at every cost site.** Run a fixture N = 2 cost at each of the
+  three sites: an activated ability, a mana ability, and an additional
+  cost to cast. Each pays both permanents and emits two `EventSacrifice`.
+- **Refused payments.** Each of these refuses with nothing paid, and each
+  test asserts the pool, the tap state and the battlefield afterwards:
+  - one ID for an N = 2 cost;
+  - three IDs;
+  - the same ID twice;
+  - an opponent's permanent;
+  - a permanent that does not match the clause;
+  - the source named when `SacrificeSelf` is also set.
+- **Simultaneity.** Blood Artist and a Goblin sacrificed together to an
+  N = 2 cost drain twice, in both wire orders. Add a regression for the
+  existing `SacrificeSelf` plus `SacrificeOther` case.
+- **Registration guard.** `Register` panics on a sacrifice clause with
+  `Min != Max`, with `CountFromX`, or with `Min` 0. The catalog-wide
+  registration test still passes.
+- **Enumerator.**
+  - A pool of N-1 offers no move.
+  - A pool of N offers one.
+  - Tokens are chosen before nontokens.
+  - A targeted N = 2 ability still reaches its second target.
+  - Every offered move is accepted by dispatch.
+- **Protocol.**
+  - `sacrifice_options.min` and `max` are N on all three views.
+  - `sacrifice_options.cards` is in §15's order on all three views: a
+    token before a nontoken, a lower mana value before a higher one, and
+    the source last when the clause admits it.
+  - **Parity:** for an N = 2 fixture on the same board, the first N
+    entries of the view's list equal the sacrifice set of the
+    enumerator's move, at each of the three sites.
+- **Client.**
+  - The modal cannot confirm below or above N. `abilityBlocked` names
+    the shortfall.
+  - "Choose for me" selects the first N options in wire order and
+    replaces an existing partial selection.
+  - "Choose for me" never calls `onConfirm`. After it, changing one pick
+    and confirming sends the changed set.
+  - The button is absent at N = 1.
+- **Catalog soak** with the cards PR applied.
+
+### Decided questions (#747)
+
+Answered on 2026-09-17: question 1 by the owner, question 2 by the lead
+on the owner's standing guidance. The chosen option is marked
+**(chosen)**; the recommendation text is kept for the record.
+
+1. **Picker ergonomics for identical tokens.** Magda, Brazen Outlaw's
+   "Sacrifice five Treasures" means five clicks and a confirm in a plain
+   multi-select.
+   - **(a)** A plain multi-select that confirms at exactly N.
+   - **(b) (chosen)** (a), plus a "Choose for me" button that fills the
+     selection in the enumerator's §15 order (tokens first, lowest mana
+     value, source last). The player can still change the picks before
+     confirming, and the button never confirms.
+   - **(c)** When the pool has exactly N candidates, preselect all of
+     them. Not chosen.
+
+   **Recommendation: (b).** It is one button, it uses the order the bots
+   already use, and it never confirms for the player. (c) fits in
+   alongside it if wanted.
+
+   Applied in §15 (the shared order helper), §16 (the wire order and the
+   button), *Consequences*, the implementation plan and the test plan.
+2. **Transmutation Font's "three artifact tokens with different names":
+   in this work or not?**
+   - **(a) (chosen)** Out. The Font keeps its caveat, and "a set-level
+     restriction on a sacrifice cost" becomes its own seam row.
+   - **(b)** In. The clause gains a set-level validator (#682 style), and
+     the enumerator searches for a valid set instead of taking the first
+     N.
+
+   **Recommendation: (a).** One card needs it. It turns §15's "take the
+   first N" into a search, and the addendum stays a count and nothing
+   else.
+
+   Applied in §17, *Out of scope* and the cards PR.

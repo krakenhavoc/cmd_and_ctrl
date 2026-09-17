@@ -364,6 +364,15 @@ type Card struct {
 	// chooses again (CR 614.12 fires on each entry). Added in S26.
 	NamedTribe string
 
+	// ChosenColor is the colour chosen for this permanent by an "as
+	// this enters, choose a color" instruction (CR 105.4) — Coldsteel
+	// Heart, Heraldic Banner, the Thriving lands. One uppercase letter
+	// (W/U/B/R/G), or empty when none has been chosen. Same lifecycle
+	// as NamedTribe: per instance, carried by the snapshot, cleared
+	// when the permanent leaves the battlefield. Added for #742; see
+	// color_choice.go.
+	ChosenColor string
+
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent

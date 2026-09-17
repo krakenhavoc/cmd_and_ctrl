@@ -178,6 +178,12 @@ type PendingChoiceView struct {
 	// Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
+	// ColorAmounts populates a "mana_pick" that adds more than one mana
+	// of the picked colour (#742: Gilded Lotus's "three mana of any one
+	// color", Nyx Lotus's devotion) — colour letter to amount. A colour
+	// missing from the map adds one; absent on every ordinary pick.
+	ColorAmounts map[string]int `json:"color_amounts,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -1838,6 +1844,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// ActivateManaAbility). Clone the slice so post-wire
 		// mutations on the engine's copy don't leak onto the view.
 		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
+			v.ColorOptions = append([]string(nil), c.ColorOptions...)
+			if len(c.ManaAmounts) > 0 {
+				v.ColorAmounts = make(map[string]int, len(c.ManaAmounts))
+				for k, n := range c.ManaAmounts {
+					v.ColorAmounts[k] = n
+				}
+			}
+		}
+		// PendingChoiceColor — #742 "choose a color" (CR 105.4). The
+		// legal colours ride in the same field a mana pick uses, so
+		// the client's colour buttons render both.
+		if c.Kind == game.PendingChoiceColor && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
 		}
 		// PendingChoiceCreatureType — S26. The option set is the

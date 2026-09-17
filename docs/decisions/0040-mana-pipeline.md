@@ -217,3 +217,35 @@ pay for.
   that "mana / life / counter sub-costs land with later sprints when a
   catalog card demands them". #267 took life; this takes mana. No
   catalog card has yet demanded counters.
+
+## Addendum (#742): one colour pick, N tokens
+
+"Three mana of any ONE colour" (Gilded Lotus, Lotus Field) is now
+expressible, without a new ability field. The produced-mana grammar
+takes a count after a colour inside a pipe brace: `"{W3|U3|B3|R3|G3}"`
+is one `mana_pick` whose answer mints three tokens of the picked
+colour, and the counts may differ per colour (`"{G4|U1}"` is Nyx
+Lotus's devotion). The counts ride on `ProducedManaEntry.Amounts` and
+`PendingChoice.ManaAmounts`, reach the wire as
+`PendingChoiceView.color_amounts`, and are carried by clone and the
+snapshot. Three rules keep the rest of the pipeline unchanged:
+
+- A single-option count (`"{G3}"`) is expanded by the parser into three
+  ordinary `{G}` slots, so nothing downstream sees an amount for the
+  common case, and a zero count drops its option.
+- `ResolveManaChoice` and `AddManaForEffect` mint the picked colour's
+  amount; an ordinary pick has no entry and mints one.
+- `AddManaForEffect` still narrows a pick to the commander's colour
+  identity by default. `AddManaWithOptionsForEffect` with
+  `AddManaOptions{IgnoreCommanderIdentity: true}` (and the `AddMana`
+  primitive's field of the same name) is the effect-side twin of the
+  mana ability's opt-out, for printed "any color" text: Sanctum of
+  Fruitful Harvest, Lotus Cobra, Deathrite Shaman.
+- **The auto-tapper plans around a one-colour-N-mana source.** Its model
+  is one slot, one mana, one colour choice per slot, and a Gilded Lotus
+  planned as three any-colour slots could be booked for `{W}`, `{U}` and
+  `{B}` at once, a plan the one-colour activation cannot honour. It is
+  the restricted-output exclusion's shape: the player taps the source by
+  hand (one prompt) and the cast spends the floated mana. Planning such
+  a source inline, choosing the colour that pays the most of the
+  remaining requirements, is possible later if it turns out to matter.

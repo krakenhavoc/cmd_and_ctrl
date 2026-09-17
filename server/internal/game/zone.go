@@ -195,6 +195,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// bounced Cavern of Souls names a tribe again when it is
 		// replayed, and a Cavern in a graveyard names none.
 		c.NamedTribe = ""
+		// #742: the chosen colour belongs to the entry too, for the
+		// same reason — a bounced Coldsteel Heart chooses again.
+		c.ChosenColor = ""
 		// S27 / CR 400.7: a battle that leaves and returns is a new
 		// object and chooses a new protector. Keeping the old one
 		// would make the returning battle defended by whoever
