@@ -1,6 +1,6 @@
 # ADR 0057 — Winning and losing the game by effect, and "can't lose" / "can't win"
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#749](https://github.com/krakenhavoc/cmd_and_ctrl/issues/749). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)); 0055 is
 the loop breaker on `develop`; 0056, 0058 and 0059 are being drafted in
@@ -16,8 +16,13 @@ flag this ADR gates.
 **Coordinates with:** [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769)
 (what leaving the game does to a player's objects, CR 800.4a),
 [#808](https://github.com/krakenhavoc/cmd_and_ctrl/issues/808) (a player
-who leaves mid-drain), [#766](https://github.com/krakenhavoc/cmd_and_ctrl/issues/766)
-(the turn rotation when the active player leaves), and
+who leaves mid-drain), [ADR 0059](0059-turn-machinery.md) Decision 6
+(the one rotation seam, which fixes
+[#766](https://github.com/krakenhavoc/cmd_and_ctrl/issues/766): the turn
+rotation when the active player leaves; see Decision 3 here for the
+effect-loss constraint both ADRs share), [ADR 0056](0056-infect-wither-toxic.md)
+(the poison clock, and the "as though its source had infect" item that
+Phyrexian Unlife waits on), and
 [#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623) (emblems,
 for Gideon of the Trials' "can't lose" emblem).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (bots read only
@@ -229,8 +234,12 @@ const (
    Decision 5.
 
 The turn-cursor rotation (`advancePastEliminatedLocked`) runs once after
-a batch, not once per player inside the SBA loop. What that rotation
-does is #766's.
+a batch, not once per player inside the SBA loop, and only if the game
+did not end in that batch. What that rotation does is
+[ADR 0059](0059-turn-machinery.md) Decision 6's (#766): when the active
+seat has left, it ends the rest of the turn and begins the next one.
+Because beginning a turn runs step entry hooks, the rotation never runs
+inside a resolving callback (Decision 3).
 
 `Concede` calls `leaveGameLocked(p, LossConcede)` and then
 `checkGameOverLocked()`. It never reads a gate: CR 104.3a, and the Platinum
@@ -269,7 +278,11 @@ for _, p := range g.Seats {
     }
 }
 for _, l := range losers { g.leaveGameLocked(l.p, l.cause) }
-if len(losers) > 0 { g.advancePastEliminatedLocked(); g.checkGameOverLocked(); fired = true }
+if len(losers) > 0 || g.ActiveSeatLeftPending { // Decision 3's deferred departure
+    g.ActiveSeatLeftPending = false
+    if !g.checkGameOverLocked() { g.advancePastEliminatedLocked() }
+    fired = true
+}
 ```
 
 - **Every gate is read at the check**, against the battlefield as it is
@@ -314,10 +327,35 @@ func (g *Game) WinTheGameForEffect(player, source uuid.UUID) (won bool, err erro
 ```
 
 - **`LoseTheGameForEffect`** calls `loseGameLocked(p, LossEffect,
-  source)`, then the rotation and `checkGameOverLocked()`, right away. It
-  stops writing the flag. Its only caller today, `pactPayment`, passes
-  the Pact as `source`. The new signature exists for the source, which
-  the log and the "can't lose" log line name.
+  source)` right away. The player is `Eliminated`, and their stack items
+  and prompts are cleaned up (`leaveGameLocked`), before the call
+  returns. It stops writing the flag. Its only caller today,
+  `pactPayment`, passes the Pact as `source`. The new signature exists
+  for the source, which the log names.
+- **The rotation and the game-over check depend on who left.**
+  - **The loser is not the active seat.** `checkGameOverLocked()` and,
+    if the game goes on, the rotation run right away. The rotation's
+    only work here is its priority-holder branch.
+  - **The loser is the active seat.** Both are **deferred**.
+    `LoseTheGameForEffect` sets `Game.ActiveSeatLeftPending`, and the
+    next SBA loss pass consumes it (Decision 2): the resolution
+    bookend's sweep around `resolveTopOfStackLocked`, or the sweep at a
+    later prompt answer, whichever comes first. The pass runs
+    `checkGameOverLocked()` and, if the game goes on, the rotation.
+    Only the stack and prompt cleanup and `ErrStopResolution` happen at
+    once. The reason is [ADR 0059](0059-turn-machinery.md) Decision 6:
+    with the active seat gone, the rotation ends the turn and begins the
+    next one (untap, per-turn resets, step entry hooks, upkeep
+    triggers), and none of that may run inside a callback that is still
+    resolving. Until the pass, the rest of the resolution sees a turn
+    whose active player has left, which is CR 800.4j for the length of
+    one resolution. The flag is plain data: `Clone` copies it, the
+    snapshot carries it (`activeSeatLeftPending`, omitempty), and the
+    drift test marks it `carried`.
+  - The shapes that reach the deferred branch: Final Fortune and Last
+    Chance's end-step loss (ADR 0059's first wave), the Pact cycle's
+    decline (always in its controller's upkeep), and Lich's Mastery's
+    leaves-the-battlefield trigger on its controller's turn.
 - **`WinTheGameForEffect`** checks `canWinLocked(p)` (Decision 4). If the
   player can't win, it emits `EventWinPrevented{Actor, Source}` and
   returns false. Otherwise it calls `endGameLocked` with
@@ -337,7 +375,10 @@ func (g *Game) WinTheGameForEffect(player, source uuid.UUID) (won bool, err erro
 ### What happens to the rest of the resolution
 
 - **The game ended (a win, or a loss that left one player or none).**
-  Every later mutation in that resolution is moot. `endGameLocked`
+  For an effect win or a non-active player's loss this is at once. For
+  the active seat's loss it is at the next SBA pass (above), and the
+  resolution has already stopped if that seat controlled it. Every later
+  mutation in that resolution is moot. `endGameLocked`
   clears `PendingChoices`, `PendingTriggers` and `DiscardPending`, so no
   prompt is left open over the game-over banner. The public mutators and
   choice resolvers already refuse a game that is not active
@@ -417,7 +458,7 @@ type GameEndGate struct {
        You        uuid.UUID   // the spell's controller at resolution
        SourceID   uuid.UUID
        SourceName string
-       Turn       int         // the turn it was registered on
+       Seq        int         // Turn.Seq it was registered on (ADR 0059 Decision 1)
    }
    func (g *Game) RegisterTurnScopedGameEndGateForEffect(gate GameEndGate, you, sourceID uuid.UUID)
    ```
@@ -428,8 +469,35 @@ type GameEndGate struct {
    `Clone` copies the slice, the snapshot carries it, and the drift test
    marks the field `carried`. Registration refuses a gate with a
    non-nil `While`.
+
+   [ADR 0059](0059-turn-machinery.md) Decision 6 moves the cleanup body
+   into `sweepTurnEndLocked` and names this sweep in it, so the gates
+   also end when the active player leaves or `PassTurn` skips cleanup.
+
+   **The stamp is `Seq`, named as ADR 0059 names turn identity.** If this
+   sub-PR lands before ADR 0059's sub-PR 1, it is stamped from
+   `Turn.Number` under the name `Seq`, and ADR 0059 sub-PR 1 re-stamps it
+   with its other readers (its Decision 2 table) and converts it when an
+   older snapshot is restored (its Decision 10 list).
+
+   **#755 is expected to fold this registry in.** #755's "until your next
+   turn" durations replace `ScopedStatic`'s expiry stamp (ADR 0059
+   Decision 2), and this registry is the same shape. When #755 lands,
+   its duration replaces `Seq` here too, and the sweep becomes that
+   duration's check. Until then the registry only knows "this turn".
+
 3. **Emblems**, when #623 lands. The reader is one loop, and #623 adds
    a third source to it.
+
+**Built with its first card.** Owner policy is that every new seam path
+ships with at least one real card. No first-wave card (question 3)
+narrows `Causes`, sets `While`, or uses `GateEachPlayer`. Sub-PR 3 builds
+whole gates only (every cause except concede, scopes `GateYou` and
+`GateOpponents`), and the type keeps the shape above so the first card
+that needs each part adds it: `Causes` with Phyrexian Unlife (after ADR
+0056's "as though its source had infect" item), Pact Weapon (#660) or
+Transcendence; `While` with Gideon of the Trials' emblem (#623);
+`GateEachPlayer` with Everybody Lives!.
 
 **Queries.** `canLoseLocked(p, cause) bool` and `canWinLocked(p) bool`
 walk the three sources. A gate applies to `p` when its scope includes
@@ -484,8 +552,11 @@ Outcome *GameOutcome
 `EventGameOver{Actor: Winner, Source, Label: Cause}`. It is the only
 writer of `StateEnded` apart from `Game.End()`.
 
-**`checkGameOverLocked()`** runs after every batch of departures: an SBA
-pass, an effect loss, or a concede.
+**`checkGameOverLocked() (ended bool)`** runs after every batch of
+departures: an SBA pass, an effect loss (at once, or at the next pass
+when the active seat left mid-resolution; Decision 3), or a concede. It
+reports whether the game ended, and the rotation runs only when it
+didn't.
 
 1. If no player is left, the game is a draw: `{Kind: "draw", Cause:
    "all_lost"}` (CR 104.4a).
@@ -514,8 +585,9 @@ range of influence option, which the engine does not offer.
 `RestoreFrom` and by the snapshot (`outcome`, omitempty, so no schema
 bump). The drift test gains the row. A restore point is removed once the
 game ends (`ws/room.go:536-541`), so the snapshot field matters for
-fixtures and forensics rather than restarts. Whether undo can reach back
-past the end is owner question 1.
+fixtures and forensics rather than restarts. **Undo can't reach back
+past the end** (decided, question 1): once `State` is `StateEnded`, the
+room refuses `undo` from every caller except the admin.
 
 ## Decision 6 — Bots and the legal enumerator
 
@@ -524,16 +596,28 @@ past the end is owner question 1.
 - **The view is enough.** Bots read only `GameView` (ADR 0033 §3), so the
   gate reaches them through the seat fields in Decision 7.
 - **Heuristic** (`aiseat/heuristic`):
+  - **Each clock is read against its own cause.** Life reads `"life"`,
+    [ADR 0056](0056-infect-wither-toxic.md)'s poison clock (its
+    Decision 7) reads `"poison"`, and commander damage reads
+    `"commander_damage"`. A seat whose `cant_lose` names a clock's cause
+    can't be finished on that clock, and every reader below skips or
+    clamps that clock only.
   - `ShouldConcede` (`concede.go:66`) returns false while the bot's own
-    seat has `cant_lose` including `"life"`. A bot at −10 behind a Lich's
-    Mastery is not hopeless, and conceding is the one loss its gate can't
-    stop.
+    seat has `cant_lose` including `"life"`, `"poison"` or
+    `"commander_damage"` for the clock that makes it look hopeless.
+    Today `hopeless` is judged on life alone. A bot at −10 behind a
+    Lich's Mastery is not hopeless, and conceding is the one loss its
+    gate can't stop.
   - `lethalPush` (`combat.go:197`) and the finish-life targeting
     (`moves.go:321`) skip a seat whose `cant_lose` includes `"life"`,
-    because damage can't finish it.
-  - `lifeDanger` (`score.go:379-385`) is clamped at 0 life for such a
-    seat. Otherwise the squared penalty keeps growing on a player the
-    penalty can't hurt, and the bot plays as if it were losing.
+    because damage can't finish it. ADR 0056's poison push skips a seat
+    with `"poison"`. The heuristic has no commander-damage push today.
+    One added later skips `"commander_damage"`.
+  - `lifeDanger` (`score.go:379-385`) is clamped at 0 life for a seat
+    with `"life"`, and ADR 0056's `PoisonDanger` is clamped at 9 poison
+    for a seat with `"poison"`. Otherwise the squared penalty keeps
+    growing on a player the penalty can't hurt, and the bot plays as if
+    it were losing.
 - **No new threat weighting.** A gate source is not scored as a priority
   removal target in this ADR. The catalog soak (#601) reports stalls
   rather than failing on them, so a table stuck behind a Platinum Angel
@@ -569,9 +653,12 @@ spells), so they are not redacted.
 **Log.**
 
 - `LogEliminated` gains `cause`. Its text says why: "Alice lost the game
-  (0 or less life)", "… (drew from an empty library)", "… (ten poison
+  (0 or less life)", "… (drew from an empty library)", "… (10 poison
   counters)", "… (21 commander damage)", "… (Pact of Negation)", "Alice
-  conceded". `Amount` keeps its concede bit for older clients.
+  conceded". `Amount` keeps its concede bit for older clients. This is
+  the only place an elimination's reason is written. ADR 0056 adds no
+  text to it, and the poison cause is `"poison"` (`LossPoison`) in both
+  ADRs.
 - A new `LogGameOver` ("game_over") entry: "Alice won the game (Felidar
   Sovereign)", "Alice won the game: every opponent has left", "The game
   is a draw".
@@ -591,8 +678,20 @@ mirrors the types.
 derivation (`Game.svelte:480`) stays only as the fallback for a view
 with `state: "ended"` and no `outcome`: JSONL replays written before this
 change, and `Game.End()`. The win and loss sounds follow `outcome`. A
-spectator hears neither, as today. What else the board shows is owner
-question 2.
+spectator hears neither, as today.
+
+**What the board shows** (decided, question 2, option (b)):
+
+- **The log** as above.
+- **A cause on the game-over banner**, from `outcome`: "Alice wins the
+  game — Felidar Sovereign" for an effect win, "Alice wins the game" for
+  the last player standing, "The game is a draw" for `all_lost`.
+- **A "can't lose" / "can't win" badge on a gated seat**, from
+  `cant_lose` and `cant_win`. Its tooltip names the sources from
+  `end_gates`.
+- **No reveal-strip cue** for a prevented win (option (c) was not
+  chosen). The `win_prevented` log line covers it. Owner policy: no
+  reveal-strip cues for these events.
 
 **ADR 0051.** The `games` row gains `outcome TEXT` (`win` | `draw` |
 NULL) next to `winner_seat`. A NULL `winner_seat` otherwise can't tell a
@@ -614,13 +713,15 @@ shipped, not a migration.
   Exalted Deeds). See Decision 4.
 - **Emblem gates** (Gideon of the Trials). Waits on #623.
 - **What leaving the game does to objects** (CR 800.4a) is #769.
-  **The turn after the active player leaves** is #766.
+  **The turn after the active player leaves** is
+  [ADR 0059](0059-turn-machinery.md) Decision 6 (#766). This ADR only
+  fixes when the rotation may run (Decision 3).
 - **Restarting the game** (CR 104.6, Karn Liberated).
 - **Angel's Grace's second sentence** ("damage that would reduce your
   life total to less than 1 reduces it to 1 instead") is a
   damage-result replacement that keeps lifelink whole (the 2021-03-19
-  ruling). That is a separate seam, and owner question 3 covers shipping
-  the card with a caveat.
+  ruling). That is a separate seam. Angel's Grace ships without it,
+  declared incomplete (question 3).
 
 ## Consequences
 
@@ -643,6 +744,11 @@ shipped, not a migration.
   ends with three seats still standing, and the banner names the right
   player.
 - **One concede is one log line.**
+- **The end is final.** Once a game has ended, only the admin can undo.
+  A player who passed priority into an effect win can't take it back.
+- **An active player who loses by effect mid-resolution leaves at once,
+  but the turn moves on at the next SBA pass.** The rest of that
+  resolution runs on a turn with no active player.
 - **A player can sit at 0 or less life indefinitely** behind a gate. The
   engine's life, poison and commander damage values are unbounded
   integers already, and the life-payment refusals already exist.
@@ -655,7 +761,7 @@ shipped, not a migration.
 - **`AGENTS.md`**: the Spec field list gains `GameEndGates`, and the
   catalog guidance gains one rule: a card that wins or loses the game
   calls `effects.WinTheGame` / `effects.LoseTheGame` and returns their
-  error.
+  error. It never calls the rotation or the game-over check itself.
 
 ## Alternatives considered
 
@@ -715,23 +821,37 @@ losses and wins, outcome, wire. After #808.**
 - Clone, snapshot and drift test for `Outcome`.
 - `effects.WinTheGame` / `effects.LoseTheGame`, and `pactPayment` moved
   onto `LoseTheGame`.
-- Owner question 1, if it is (a): the room refuses `undo` on an ended
-  game.
+- `ActiveSeatLeftPending`: set by an effect loss of the active seat,
+  consumed by the SBA loss pass; clone, snapshot and drift-test row.
+- The end is final (question 1): the room refuses `undo` once the game
+  has ended, for every caller except the admin.
 
 **Sub-PR 3 — gates.**
-- `GameEndGate`, `Spec.GameEndGates`, the `CatalogGameEndGates` hook,
-  the turn-scoped registry and its cleanup sweep, clone, snapshot and
-  drift test.
+- `GameEndGate` (whole gates only; see "Built with its first card" in
+  Decision 4), `Spec.GameEndGates`, the `CatalogGameEndGates` hook, the
+  turn-scoped registry and its cleanup sweep, clone, snapshot and drift
+  test.
 - `PlayerView.cant_lose` / `cant_win` / `end_gates`, and the model
   prompt line.
 - Heuristic changes (Decision 6).
 - `docs/engine-seams.md`: move the row to Closed.
 
-**Sub-PR 4 — client**, per owner question 2.
+**Sub-PR 4 — client** (question 2, option (b)): the cause on the
+game-over banner, and the "can't lose" / "can't win" seat badge with its
+`end_gates` tooltip. No reveal-strip cue.
 
-**Card PRs**, per owner question 3. Each card follows AGENTS.md (`Spec`
-slots, completeness declared, caveats weaker than printed and never
-stronger).
+**Card PRs** (question 3, option (c)): every card this seam alone
+blocks, plus Angel's Grace declared incomplete. The list is in
+[Decided (2026-09-17)](#decided-2026-09-17). Each path the engine PRs
+build has a real card in the wave: effect wins (Felidar Sovereign and the
+upkeep cycle), the draw-replacement win (Laboratory Maniac, Jace), an
+effect loss of another player (Strixhaven Stadium), battlefield gates
+(Platinum Angel, Herald of Eternal Dawn), "can't win" (Abyssal
+Persecutor) and the turn-scoped registry (Angel's Grace). Each card
+follows AGENTS.md (`Spec` slots, completeness declared, caveats weaker
+than printed and never stronger). A card found to be blocked by
+something else drops out of the wave rather than shipping stronger than
+printed.
 
 ## Test plan
 
@@ -752,17 +872,29 @@ Engine (`internal/game`):
    them. When the loser is the controller, the helper returns
    `ErrStopResolution`, the rest of the effect doesn't run, and no
    `EventEffectError` is emitted.
-4. **Effect loss down to one player.** A two-seat `LoseTheGameForEffect`:
-   the other seat wins with `Cause: "last_standing"`.
+
+   **By the active seat, the rotation is deferred.** Three seats, the
+   active player's own spell calls `LoseTheGame` on them: they are
+   `Eliminated` and their stack items are gone at once, but the cursor
+   still names their turn, no untap or upkeep trigger has run, and
+   `ActiveSeatLeftPending` is set when the callback returns. The
+   resolution bookend's sweep rotates once to the next seat's turn and
+   clears the flag. In a two-seat game the same loss ends the game at
+   that sweep with `last_standing`, and no next turn begins. The flag
+   survives `Clone` and a snapshot round trip.
+4. **Effect loss down to one player.** A two-seat `LoseTheGameForEffect`
+   on the seat that is not active: the other seat wins at once with
+   `Cause: "last_standing"`. (The active-seat case is in test 3.)
 5. **Platinum Angel at 0 life.** Several state checks: the player stays
    in, and nothing is logged. The Angel is destroyed, and the player
    loses at the next check with `LossLife`.
 6. **Empty-library draw under the Angel, then the Angel removed.** The
    player does not lose (CR 704.5b), and the flag is false after the
    first check.
-7. **Poison and commander damage under the Angel.** No loss. Under a
-   Phyrexian Unlife-shaped gate (`Causes: {LossLife}`), 0 life does not
-   lose but 10 poison does.
+7. **Poison and commander damage under the Angel.** No loss. (The
+   `Causes: {LossLife}` case, where 0 life does not lose but 10 poison
+   does, is tested by the first card that narrows `Causes`; see
+   Decision 4.)
 8. **Concede under the Angel** loses, logs one line, and ends a two-seat
    game with the opponent winning.
 9. **Ability removal.** An Angel that has lost all abilities gates
@@ -779,7 +911,8 @@ Engine (`internal/game`):
     eliminates both, and seat 3 wins (`last_standing`). Two seats, both
     at 0: a draw (`all_lost`) with no winner. The turn cursor rotates
     once per pass.
-14. **Angel's Grace-shaped turn gate.** Registered on turn N: the caster
+14. **Angel's Grace turn gate** (the real card, in its card PR; a
+    registry unit test in sub-PR 3). Registered on a turn: the caster
     can't lose and the opponents can't win until cleanup. At the next
     turn's upkeep the gate is gone. It survives `Clone` / `RestoreFrom`
     and a snapshot round trip.
@@ -788,10 +921,10 @@ Engine (`internal/game`):
 
 Room (`internal/ws`):
 
-16. Per owner question 1. With (a): after a concede or an effect win ends
-    the game, `Undo` returns an error and the state stays ended. A probe
-    on `684f2786` shows that today the undo succeeds and the game is
-    active again.
+16. **The end is final** (question 1). After a concede or an effect win
+    ends the game, a player's `Undo` returns an error and the state stays
+    ended. The admin's undo still succeeds. A probe on `684f2786` shows
+    that today every undo succeeds and the game is active again.
 
 Protocol:
 
@@ -809,12 +942,18 @@ Bots:
 Client:
 
 20. The winner and sounds come from `outcome`. An ended view with no
-    `outcome` falls back to the survivors. Pure helpers are unit-tested
-    with vitest, and the banner is checked by hand until #689.
+    `outcome` falls back to the survivors. The banner's cause text for a
+    win by effect, a last-standing win and a draw, and the seat badge's
+    label from `cant_lose` / `cant_win`, are pure helpers unit-tested
+    with vitest. The banner and badge are checked by hand until #689.
 
-## Open questions for the owner
+## Decided (2026-09-17)
 
-1. **Can a player undo past the end of the game?** Today they can. On
+The owner answered all three open questions on 2026-09-17. The options
+are kept as they were proposed. The chosen one is marked.
+
+1. **Can a player undo past the end of the game?** When this was asked,
+   they could. On
    `684f2786`, a room where one of two seats concedes and then calls
    `Undo` gets a nil error and an active game again. By then the restore
    point has already been deleted (`ws/room.go:536-541`), and bot
@@ -822,15 +961,16 @@ Client:
    With effect wins, whoever took the last action (often the loser, by
    passing priority) owns the undo entry that ended the game.
    - (a) **The end is final.** The room refuses `undo` once the game has
-     ended, for every caller except the admin.
+     ended, for every caller except the admin. **Chosen.**
    - (b) Undo keeps working within the budget, and the room rewrites the
      restore point and relaunches bot runners after an undo that
      reactivates the game.
 
-   **Recommendation: (a).** A game that has announced a winner, played
-   the win sound and been written to the database should not come back.
-   (b) is real work to support a take-back nobody asks for once the
-   banner is up. The admin keeps undo for mistakes.
+   **Decision: (a)**, as recommended. A game that has announced a
+   winner, played the win sound and been written to the database should
+   not come back. (b) is real work to support a take-back nobody asks
+   for once the banner is up. The admin keeps undo for mistakes.
+   Applied in Decision 5, sub-PR 2 and test 16.
 
 2. **How much does the board show about wins, losses and gates?**
    - (a) The log only. The banner stays "Alice wins the game." and
@@ -838,13 +978,14 @@ Client:
    - (b) The log, plus a cause on the game-over banner ("Alice wins the
      game — Felidar Sovereign", "The game is a draw"), plus a small
      "can't lose" / "can't win" badge on a gated seat. The badge's
-     tooltip names the sources from `end_gates`.
+     tooltip names the sources from `end_gates`. **Chosen.**
    - (c) (b), plus a reveal-strip cue when a win is prevented.
 
-   **Recommendation: (b).** A player at −8 who is still in the game is
-   confusing unless the seat says why, and a four-player game that ends
-   with three players standing needs the banner to say how. A prevented
-   win is rare, and the log line covers it.
+   **Decision: (b)**, as recommended. A player at −8 who is still in the
+   game is confusing unless the seat says why, and a four-player game
+   that ends with three players standing needs the banner to say how. A
+   prevented win is rare, and the log line covers it. No reveal-strip
+   cue. Applied in Decision 7 and sub-PR 4.
 
 3. **Which cards ship in the first wave?**
    - (a) A reference set that exercises every path: Platinum Angel,
@@ -862,7 +1003,7 @@ Client:
      size, and otherwise with that as a declared caveat.
    - (c) (b), plus Angel's Grace declared incomplete: it has "can't lose
      / can't win this turn" and split second, but not the life floor
-     (Decision 8).
+     (Decision 8). **Chosen.**
 
    Excluded either way, because they are blocked elsewhere: Approach of
    the Second Sun (a whole-game record of spells cast by name), Maze's
@@ -872,12 +1013,18 @@ Client:
    (transform, #343), Pact Weapon (#660), Everybody Lives! (player
    hexproof and "can't lose life"), The Golden Throne (Decision 8), Lich's
    Mastery (its exile-for-each-life prompt), Phyrexian Unlife (damage "as
-   though its source had infect", #748) and Gideon of the Trials (#623).
+   though its source had infect", out of scope in
+   [ADR 0056](0056-infect-wither-toxic.md) Decision 8) and Gideon of the
+   Trials (#623).
 
-   **Recommendation: (c).** Angel's Grace is the only card in the list
-   that uses the turn-scoped gate registry. If it doesn't ship, that code
-   ships with no real card behind it (the same argument ADR 0054 made for
-   Fiery Gambit). Its missing clause makes it weaker than printed, and
-   AGENTS.md allows that when it is declared. Each card in (b) is checked
-   for other blockers in its own PR, and one that turns out to be blocked
-   drops out rather than shipping stronger than printed.
+   **Decision: (c)**, as recommended. Angel's Grace is the only card in
+   the list that uses the turn-scoped gate registry. If it doesn't ship,
+   that code ships with no real card behind it (the same argument ADR
+   0054 made for Fiery Gambit). Its missing clause makes it weaker than
+   printed, and AGENTS.md allows that when it is declared. Each card in
+   (b) is checked for other blockers in its own PR, and one that turns
+   out to be blocked drops out rather than shipping stronger than
+   printed. This is also the owner's cross-cutting policy: every new
+   seam path ships with at least one real card, even with a declared
+   weaker caveat. Applied in Decision 4 ("Built with its first card")
+   and the card PRs.
