@@ -36,6 +36,14 @@ const (
 	// for this cast" toast re-fires the action with `force_cast:
 	// true` to bypass the gate. Added in S15 sub-PR 3.
 	CodeInsufficientMana = "insufficient_mana"
+	// CodeIllegalBlock — a declare_blocker named a pair the engine's
+	// block-legality check refuses (CR 509.1b): a "can't block" or
+	// "can't be blocked" restriction, flying, or landwalk. The message
+	// is a player-facing sentence built server-side; the frame also
+	// carries the refusal's token in ErrorPayload.Reason and the
+	// blocker in ErrorPayload.CardID. ADR 0045 addendum Decision 8
+	// (#705).
+	CodeIllegalBlock = "illegal_block"
 )
 
 // Frame is the envelope around every message. Payload is left as raw JSON
@@ -76,11 +84,18 @@ type ErrorPayload struct {
 	Missing []string `json:"missing,omitempty"`
 	// CardID populates the structured-error frames that reference
 	// a specific card the user was acting on (insufficient_mana
-	// carries the card being cast). Lets the client correlate the
+	// carries the card being cast, illegal_block the blocker). Lets the client correlate the
 	// toast with its cast UI without keeping an in-flight map of
 	// "what was the last action's instance_id?". Empty for
 	// generic errors. Added in S15 sub-PR 3.
 	CardID string `json:"card_id,omitempty"`
+	// Reason populates `code: "illegal_block"`: the stable snake_case
+	// token naming why the block was refused ("cant_block",
+	// "cant_be_blocked", "flying", "landwalk"), the value of
+	// game.BlockReason. Stable once shipped, like the restriction
+	// tokens. CardID carries the refused blocker on the same frame.
+	// Omitted for other codes. ADR 0045 addendum Decision 8 (#705).
+	Reason string `json:"reason,omitempty"`
 }
 
 // ActionPayload is the payload body for a Kind == KindAction frame
