@@ -159,14 +159,15 @@ func ArtifactOrEnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
 }
 
-// SpellManaValueAtLeast passes when the spell's PRINTED mana value
-// is at least n — Imoti's "spells you cast with mana value 6 or
-// greater". Printed, not effective: CR 202.3c is explicit that a
-// cost modifier changes what a spell costs and never what its mana
-// value is, so a Goblin Electromancer cannot drop a spell out of
-// Imoti's range.
+// SpellManaValueAtLeast passes when the mana value of the spell
+// being cast is at least n. It reads the mana cost, not the price:
+// CR 202.3c says a cost modifier changes what a spell costs and never
+// its mana value, so a Goblin Electromancer can't drop a spell below
+// n. {X} counts as the announced value (CR 202.3e). By the time the
+// total cost is locked in, the spell is on the stack with X chosen
+// (CR 601.2b, 601.2f).
 func SpellManaValueAtLeast(n int) CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.ManaValue() >= n }
+	return func(q game.CostQuery) bool { return q.Card.ManaValueWithX(q.XValue) >= n }
 }
 
 // --- the source's own state --------------------------------------

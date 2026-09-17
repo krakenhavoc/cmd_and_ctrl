@@ -26,14 +26,16 @@ func b03TriMana(a, b, c string) ManaAbility {
 }
 
 // b03ManaValueIs passes when the card's mana value is exactly n —
-// Mental Misstep's "target spell with mana value 1". Same
-// arithmetic as ManaValueLE (game.Card.ManaValue); {X} counts 0, so
-// a spell with X in its printed cost is mana value 1 only when the rest of
-// the cost says so (the sandbox reads the printed cost here; Mana
-// Drain's refund is the one place the announced X is read).
+// Mental Misstep's "target spell with mana value 1". Same read as
+// ManaValueLE (game.(*Game).ManaValueForEffect): on the stack {X}
+// counts as the value chosen for it (CR 202.3e), so a {X}{U} spell
+// cast with X=1 is mana value 2 and not a legal target, and a {X}
+// spell cast with X=1 is mana value 1 and is. A card whose cost the
+// engine can't read never passes.
 func b03ManaValueIs(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.ManaValue() == n
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		mv, ok := g.ManaValueForEffect(c)
+		return ok && mv == n
 	}
 }
 

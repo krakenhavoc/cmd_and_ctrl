@@ -84,13 +84,18 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
 // Ugin's condition: the controller cast a colorless spell whose mana
-// value is at least n. The spell is read off the stack.
+// value is at least n. The spell is read off the stack, X included
+// (CR 202.3e), so a Walking Ballista cast with X=4 is mana value 8.
 func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.Card, g *game.Game, n int) bool {
 	if !b11ColorlessSpellCastByYou(ev, source, g) {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.ManaValue() >= n
+	if !ok {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(spell)
+	return ok && mv >= n
 }
 
 // b27AnotherElfYouControlEntered is Wolverine Riders' second
