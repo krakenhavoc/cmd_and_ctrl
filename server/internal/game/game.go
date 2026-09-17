@@ -192,6 +192,23 @@ type Game struct {
 	// (#586).
 	TurnTally TurnTally
 
+	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// same triggered ability has resolved LoopThreshold times this
+	// turn with no player decision in between, nil otherwise. While
+	// it is set, AUTOMATIC passing is suspended — the client's
+	// autopass toggle and the bot runner both hold — so the humans
+	// get priority back with the loop's trigger still on the stack.
+	// Cleared by the next cast, activation, answered prompt or
+	// combat declaration. See loop_breaker.go and ADR 0055 (#628).
+	LoopNotice *LoopNotice
+
+	// LoopThreshold overrides DefaultLoopThreshold for this game.
+	// Zero (the production value) means "use the default". It is a
+	// field rather than a package global so a test can trip the
+	// breaker in three resolutions without every other test in the
+	// tree sharing the setting; set it before Start.
+	LoopThreshold int
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by

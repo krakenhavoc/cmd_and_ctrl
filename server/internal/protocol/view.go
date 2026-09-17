@@ -146,6 +146,42 @@ type GameView struct {
 	// reveal_frame.go for why that is the design rather than an
 	// omission. Added in S22.
 	Reveals []RevealView `json:"reveals,omitempty"`
+	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// engine has seen the same triggered ability resolve
+	// game.DefaultLoopThreshold times this turn with no player
+	// decision in between, nil otherwise. Its presence is the
+	// instruction to every client on the table: stop passing
+	// AUTOMATICALLY. Priority still rotates, every pass_priority the
+	// server is handed still works, and the loop's trigger is still
+	// on the stack — the point is only that a person has to ask for
+	// the next iteration. Public, like the stack it describes: a loop
+	// is something the whole table can see running. Added for #628
+	// (ADR 0055).
+	LoopNotice *LoopNoticeView `json:"loop_notice,omitempty"`
+}
+
+// LoopNoticeView is the wire shape of game.LoopNotice. Label is the
+// repeating ability's stack label, which by catalog convention reads
+// "<card> — <what happens>", so a client has the whole banner line
+// without resolving Source against the board.
+type LoopNoticeView struct {
+	Source     string `json:"source,omitempty"`
+	Label      string `json:"label"`
+	Controller string `json:"controller,omitempty"`
+	Count      int    `json:"count"`
+}
+
+// viewOfLoopNotice projects the engine's loop notice, or nil.
+func viewOfLoopNotice(n *game.LoopNotice) *LoopNoticeView {
+	if n == nil {
+		return nil
+	}
+	return &LoopNoticeView{
+		Source:     uuidStringOrEmpty(n.Source),
+		Label:      n.Label,
+		Controller: uuidStringOrEmpty(n.Controller),
+		Count:      n.Count,
+	}
 }
 
 // LegalMoveView is one entry of the viewer's legal-move list. It is
@@ -1323,6 +1359,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive: g.SplitSecondActive,
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:    viewOfPendingChoices(g),
+			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
@@ -2345,6 +2382,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// that filterPendingChoices has to drop and redactLogForViewer
 		// has to reason about does not exist on this type.
 		Reveals: v.Reveals,
+		// #628: public, and identical for every seat — see the field
+		// comment. Nothing in it names a card in a hidden zone.
+		LoopNotice: v.LoopNotice,
 	}
 }
 
