@@ -404,8 +404,8 @@ func TestCephalidColiseumThresholdWheelsThree(t *testing.T) {
 	if opp.Hand.Size() != handBefore+3 {
 		t.Errorf("target hand %d → %d, want three drawn", handBefore, opp.Hand.Size())
 	}
-	if g.DiscardPending[opp.ID] != 3 {
-		t.Errorf("discard pending = %d, want three", g.DiscardPending[opp.ID])
+	if got := discardOwed(g, opp.ID); got != 3 {
+		t.Errorf("discard owed = %d, want three", got)
 	}
 }
 
