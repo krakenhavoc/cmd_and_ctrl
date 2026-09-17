@@ -104,7 +104,8 @@ Commander deck. Decisions 2 and 4 are built to close this.
 - **CR 705.1-705.3** (flipping a coin). CR 705.2: an effect that cares
   only about heads or tails has no winner or loser, and for every other
   flip "the player that flips the coin calls 'heads' or 'tails'". CR 705.3:
-  an effect can fix a flip's result (Krark's Thumb, Pixie Guide's cousins).
+  an effect can fix a flip's result. Krark's Thumb ("flip two coins
+  and ignore one") is the nearest card.
 - **CR 706.1-706.8** (rolling a die). A dN has N equally likely results
   from 1 to N (706.1a). The *natural result* is the number before
   modifiers (706.2). Rerolls come before +/- modifiers (706.2b).
@@ -158,8 +159,8 @@ type rngStream struct {
 func (g *Game) randForLocked(s rngStream) *rand.Rand
 ```
 
-`Game.rng` and `Game.rngState` are removed. Every call site in the table
-above moves to `randForLocked`. That includes cascade's fallback to the
+`Game.rng` and `Game.rngState` are removed. Every one of the seven call sites in the
+table above moves to `randForLocked`. That includes cascade's fallback to the
 global source and the random discard's "index 0 when nil" branch. No
 file in `internal/game` imports `math/rand/v2` for drawing afterwards,
 except `rng.go` and `Zone.Shuffle`'s signature.
@@ -361,6 +362,7 @@ type CoinFlipSpec struct {
     Question  string // the card's sentence, for the prompt header
     Coins     int    // coins flipped under this call; see open question 2
     AllowStop bool   // Fiery Gambit's "or choose to stop flipping"
+    MaxUsefulWins int // bot hint: wins after which stopping is right; 0 = none
     Then      func(g *Game, r CoinFlipResult) error
 }
 type CoinFlipResult struct {
@@ -441,8 +443,9 @@ open question 1.
   offered move is accepted (`dispatchAll`, #499).
 - **Bots call at random (owner).** The heuristic (`aiseat/heuristic/choices.go`)
   gains `choiceCoinCall` and scores the call answers from a per-policy
-  random source. "Stop" is never taken while a flip is being offered: the
-  heuristic keeps flipping (Fiery Gambit's payoff grows with each win).
+  random source. "Stop" is taken once the chain has won
+  `CoinFlipSpec.MaxUsefulWins` flips (Fiery Gambit: 3, after which
+  another flip can only lose). Zero means the heuristic keeps flipping.
   Layer A (`aiseat/rules/rules.go:104`) **absorbs** a coin-call window
   with a random call, so a model tier never spends a call on a choice
   that carries no information. The Layer-A/heuristic agreement test
@@ -567,7 +570,7 @@ knower clearing are all #745's, and none of them change here.
 **Sub-PR 1 — engine: keyed streams, rewind, persistence. No card changes.**
 - `internal/game/rng.go`: key, counters, `randForLocked`,
   `SetRNGKeyForTest`, key derivation in `Start` / `StartWithSource`.
-- Move the six call sites in the Context table (and #745's draw, if it
+- Move the seven call sites in the Context table (and #745's draw, if it
   has merged). Remove `Game.rng` / `rngState`. Add `TestNoDirectRandomSource`.
 - `cloneLocked` / `RestoreFrom`, and rewrite the clone.go comments.
 - `rngSnapshot` `"keyed"`, restoring older `"pcg"` / `"external"` files, and the drift
@@ -695,13 +698,15 @@ Client:
    - (a) Only the cards this seam fully unblocks: Ancient Copper /
      Gold / Silver Dragon, Hoarding Ogre, Deadbridge Chant, Exalted Flamer
      of Tzeentch, The Gold Saucer, Vexing Puzzlebox, Clown Car, Reckless
-     Endeavor, Stitch in Time, Goblin Archaeologist, Chance Encounter,
-     plus Urza's Bauble's caveat removal.
+     Endeavor, Goblin Archaeologist, plus Urza's
+     Bauble's caveat removal.
    - (b) (a) plus the flip-until-lose cards (Fiery Gambit, Game of Chaos)
      and Yusri, which exercise the chained prompt.
    - (c) Seam only, with cards left to the batch issues.
 
-   Mana Crypt is banned in Commander and is excluded either way. Out of
+   Excluded either way: Mana Crypt (banned in Commander); Stitch in Time
+   and Ral Zarek (the engine has no extra turns); Chance Encounter (no
+   "you win the game" effect); Frenetic Efreet (no phasing). Out of
    scope as stated in Decision 10: Pixie Guide, Barbarian Class,
    Krark's Thumb, Centaur of Attention, the planar die.
 
