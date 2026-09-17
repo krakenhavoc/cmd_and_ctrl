@@ -228,6 +228,12 @@ type Spec struct {
 	// Added in S19 sub-PR 1.
 	Triggered []game.TriggeredAbility
 
+	// TriggerDoublers are CR 603.2d effects that add one instance to
+	// a matching triggered ability when it is harvested. The game
+	// package owns the query and applies the predicates at trigger
+	// time; the catalog only declares the card's printed condition.
+	TriggerDoublers []game.TriggerDoubler
+
 	// Modes is the S20 sub-PR 4 modal-spell clause ("Choose one —").
 	// Each option carries its oracle bullet and, when the bullet
 	// targets, its own TargetSpec; the engine derives the cast's

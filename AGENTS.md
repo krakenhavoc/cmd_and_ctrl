@@ -2311,6 +2311,26 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   both use it. The S14 "auto-pick the top of the graveyard" fallback is
   only for cards that never declared a clause.
 
+### Adding a trigger doubler (#752)
+
+Declare `Spec.TriggerDoublers` using `DoublesEntering`, `DoublesDying`,
+`DoublesAttacking`, or `DoublesAbilitiesOf` in
+[trigger_doubling.go](server/internal/cards/effects/trigger_doubling.go).
+Set the declaration's `Label` to the card's printed name for the stack and
+prompt attribution. The cause helpers filter the event's subject; the
+source helper filters the permanent whose ability triggered. Those are
+different objects, and death predicates must use battlefield last-known
+characteristics. See Panharmonicon, Teysa Karlov, Isshin and Cloud for examples.
+
+The harvester creates independent instances: each gets its own optional
+choice and targets. Do not copy an existing stack item or double inside a
+card's `Build`/`Effect`. Delayed, reflexive and manual triggers are excluded.
+Two matching doublers add two instances, giving three total. Tests should
+exercise the actual card and check controller restrictions and a negative
+cause, not just the helper predicate. The `OncePerBatch` first-event
+limitation and remaining card wave are tracked in
+[ADR 0018's addendum](docs/decisions/0018-triggers-on-the-stack.md#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted).
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

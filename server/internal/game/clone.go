@@ -294,6 +294,12 @@ func (g *Game) cloneLocked() *Game {
 			out.lastKnownBattlefield[k] = v
 		}
 	}
+	if len(g.lastKnownTriggerIdentity) > 0 {
+		out.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(g.lastKnownTriggerIdentity))
+		for k, v := range g.lastKnownTriggerIdentity {
+			out.lastKnownTriggerIdentity[k] = v
+		}
+	}
 	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
 	// CR 614.10 prompt (#808). Between actions the map holds an entry
 	// only for an event whose prompt is still open, and that entry is
@@ -474,19 +480,21 @@ func cloneStackItem(s *StackItem) *StackItem {
 		return nil
 	}
 	out := &StackItem{
-		ID:           s.ID,
-		Kind:         s.Kind,
-		Controller:   s.Controller,
-		Owner:        s.Owner,
-		SourceCardID: s.SourceCardID,
-		Label:        s.Label,
-		XValue:       s.XValue,
-		HoldPriority: s.HoldPriority,
-		SplitSecond:  s.SplitSecond,
-		AltCost:      s.AltCost,
-		CastFromZone: s.CastFromZone,
-		IsCopy:       s.IsCopy,
-		Seq:          s.Seq,
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Controller:    s.Controller,
+		Owner:         s.Owner,
+		SourceCardID:  s.SourceCardID,
+		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
+		XValue:        s.XValue,
+		HoldPriority:  s.HoldPriority,
+		SplitSecond:   s.SplitSecond,
+		AltCost:       s.AltCost,
+		CastFromZone:  s.CastFromZone,
+		IsCopy:        s.IsCopy,
+		Seq:           s.Seq,
 		// Effect takes the live *Game at resolve time rather than
 		// capturing one, so sharing the func between original and
 		// snapshot is safe — an undo that restores this item
@@ -665,6 +673,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
+	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent

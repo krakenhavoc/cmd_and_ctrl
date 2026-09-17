@@ -140,6 +140,10 @@ export interface TargetingState {
   // cast_spell, and the prompt can't be cancelled — the trigger
   // needs a target.
   choiceID?: string;
+  // CR 603.2d: attribution for an additional trigger awaiting its
+  // target. The server supplies the public doubler metadata.
+  doubledBy?: string;
+  doubledByName?: string;
   // S22: the announce-time payments and choices collected before
   // this prompt opened — X, additional-cost picks, the alternative
   // cost being paid. They ride the cast_spell payload verbatim via
@@ -477,6 +481,8 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
     legal: { players: new Set(pt.players ?? []), cards: new Set(pt.cards ?? []) },
     choiceID: choice.id,
     label: choice.reason,
+    doubledBy: choice.doubled_by,
+    doubledByName: choice.doubled_by_name,
     ...countOf(pt),
     picked: [],
   });

@@ -319,6 +319,11 @@ type Game struct {
 	// sub-PR 1.
 	lastKnownBattlefield map[uuid.UUID]Characteristic
 
+	// lastKnownTriggerIdentity retains the small part of a leaving card that
+	// CR 400.7 cleanup removes before the move-form event is harvested. It is
+	// paired with lastKnownBattlefield and cleared at the same boundary.
+	lastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI
+
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
 	// state-based-action sweep. Non-empty only for the duration of

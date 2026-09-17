@@ -367,6 +367,11 @@ var CatalogPrintedKeywords func(oracleID string) []string
 // sub-PR 1.
 var CatalogTriggers func(oracleID string) []TriggeredAbility
 
+// CatalogTriggerDoublers returns the CR 603.2d doublers declared by a
+// catalog card. It is a separate slot so game-package tests can stub the
+// count without importing the effects package.
+var CatalogTriggerDoublers func(oracleID string) []TriggerDoubler
+
 // CatalogNoMaxHandSize reports whether the given oracle ID is a
 // permanent whose controller has no maximum hand size (Thought
 // Vessel, Reliquary Tower, Spellbook, Venser's Journal). Populated

@@ -622,16 +622,18 @@ amendment) — and `dispatchTriggerLocked`'s in-flight scan is replaced by
 `oncePerBatchAllowsLocked(ev.Batch, source, key)`. Two consequences for this
 ADR, neither of which changes what it decides:
 
-- The code samples above still spell the guard `g.triggerInFlightLocked(...)`;
-  when `harvestMatchLocked` is written it takes the batch guard instead, in
-  exactly the same place. Decision 4 stands as written: the guard runs ONCE per
+- The historical code samples above spell the guard `g.triggerInFlightLocked(...)`;
+  `harvestMatchLocked` uses the batch guard instead, in exactly the same place. Decision 4 stands as written: the guard runs ONCE per
   match, before any instance is dispatched, and the extras are queued without
   consulting it.
 - The declared limitation's premise ("the engine has no batch identity on
   events") is no longer true, so the implementing PR may be able to read the
   doubler count off the whole batch rather than off its first event. If it
   still takes the first-event reading, it should say so on its own terms rather
-  than cite a missing identity.
+  than cite a missing identity. The implementation retains that reading: the
+  count is fixed when the first matching event is harvested, before later
+  members of the batch are emitted. A batch ID alone does not expose those
+  future members.
 
 ### Decision 5 — An extra instance is an ordinary item with one attribution field
 
@@ -1037,3 +1039,35 @@ marked **(chosen)**, and the recommendation text is kept for the record.
 
    **Decision: (a).** One yes/no prompt per doubled optional instance.
    Grouping is considered only if play demands it.
+
+
+### Implementation checkpoint (2026-09-17)
+
+The #752 implementation combines the engine, reference-card, and wire/client
+stages so the mechanic ships with Panharmonicon, Teysa Karlov, Isshin and
+Cloud's previously missing ability. The remaining card wave stays on #752.
+
+Review also found that characteristics alone did not preserve a copied
+permanent's catalog identity or an Equipment's attachment through a zone
+change. The leave snapshot now carries a small companion record containing
+the oracle ID, active face and attachment. Harvesting reads that record before
+discarding it alongside the existing LKI; clone and snapshot round trips carry
+it too. This keeps copied doublers and attached Equipment triggers correct
+when they leave individually, as well as in a simultaneous batch.
+
+The Saga reading was checked against the pinned [August 2026 rules
+text](https://media.wizards.com/2026/downloads/MagicCompRules%2020260819.txt),
+714.2b and 714.3a, and Wizards' [Saga
+explanation](https://magic.wizards.com/en/news/feature/dominaria-mechanics-2018-03-21).
+Chapter abilities trigger from lore counters; the entry counter is a
+replacement effect. Therefore entry doublers do not double the chapter just
+because its Saga entered. A regression test uses an artifact Saga so its
+permanent type would otherwise satisfy Panharmonicon's filter.
+
+The linked-state audit searched the catalog's exile/imprint helpers and
+stored card IDs. `b27ExiledWith` keeps all matching exiles across resolutions;
+Angel of Serenity's linked return already consumes that whole list. Duplicant
+intentionally selects the last creature because its Oracle text says so.
+Delayed-return payloads carry their own slices; none of these paths overwrites
+a single per-source linked-card slot. The doubled Angel regression independently
+targets two creatures and requires both to return.

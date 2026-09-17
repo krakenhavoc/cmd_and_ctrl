@@ -134,6 +134,16 @@ func altCost(key string) func(effects.Spec) bool {
 // in.
 var mechanics = []Mechanic{
 	{
+		Name:    "trigger doubling",
+		Phrases: []string{"trigger doubling", "trigger-doubling", "trigger an additional time", "triggers an additional time"},
+		Implements: func(s effects.Spec) bool {
+			return game.CatalogTriggerDoublers != nil && len(game.CatalogTriggerDoublers(s.OracleID)) > 0
+		},
+		Evidence:   "game.CatalogTriggerDoublers(oracleID) declares a doubler",
+		Confidence: Exact,
+		Adopt:      "Declare Spec.TriggerDoublers using the cause helpers in trigger_doubling.go",
+	},
+	{
 		Name:       "flashback",
 		Phrases:    []string{"flashback"},
 		Implements: altCost("flashback"),
