@@ -1372,14 +1372,29 @@ change and on a `.Life` / `.DamageMarked` read after a damage call, in
 the same function.
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
-removed by `executeBattlefieldLeaveLocked`, the landed outcome of a
-battlefield exit — not by the destroy entry points. A destruction a
-replacement rewrote (regeneration, "exile it instead", indestructible)
-leaves `DamageMarked` exactly where it was: damage stays until the
-cleanup step (CR 514.2), and the replacement gets to read it. If you
-add a replacement that removes damage — regeneration is the one the
-rules name, CR 701.15a — it does that in its own `Replace`, not by
-leaning on the destroy path.
+removed by the landed outcome of a battlefield exit — not by the
+destroy entry points. A destruction a replacement rewrote
+(regeneration, "exile it instead", indestructible) leaves
+`DamageMarked` exactly where it was: damage stays until the cleanup
+step (CR 514.2), and the replacement gets to read it. If you add a
+replacement that removes damage — regeneration is the one the rules
+name, CR 701.15a — it does that in its own `Replace`, not by leaning on
+the destroy path.
+
+**And EVERY battlefield exit clears it, not just a destruction
+(#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup
+(`clearBattlefieldDamage`, permanent_damage.go), so a creature that is
+exiled, bounced, tucked, milled, sacrificed or moved by hand leaves its
+marked damage and its CR 702.2c deathtouch flag behind with everything
+else CR 400.7 strips — the card in the new zone is a new object, and a
+creature that comes back (replayed, reanimated, blinked) must not
+arrive already damaged. Last
+known information is unaffected: `snapshotLKILocked` runs while the
+permanent is still on the battlefield, one line before the move, so a
+dies-trigger reads the creature that died (the LKI `Characteristic` has
+never carried marked damage, and the `source` card a trigger is handed
+is the new object, which by CR 400.7 has none). Don't clear damage in a
+card's effect: if your card leaves the battlefield, it is already done.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
