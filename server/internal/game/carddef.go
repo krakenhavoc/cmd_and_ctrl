@@ -60,9 +60,10 @@ type CardDef struct {
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
-	SelfCostModifiers []CostModifier
-	CastableZones     []ZoneKind
-	UntapStep         []UntapStepPermission
+	SelfCostModifiers     []CostModifier
+	CastableZones         []ZoneKind
+	UntapStep             []UntapStepPermission
+	UntapStepRestrictions []UntapStepRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
@@ -196,6 +197,12 @@ func init() {
 	CatalogUntapStepPermissions = func(key string) []UntapStepPermission {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStep
+		}
+		return nil
+	}
+	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.UntapStepRestrictions
 		}
 		return nil
 	}

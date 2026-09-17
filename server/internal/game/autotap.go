@@ -69,9 +69,18 @@ func (g *Game) AutoTapForCostExcluding(
 	xValue int,
 	excluded map[uuid.UUID]bool,
 ) ([]uuid.UUID, bool) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return g.autoTapLocked(controller, cost, xValue, excluded)
+	var (
+		plan []uuid.UUID
+		ok   bool
+	)
+	// A plan reads effective power and ability removal through the
+	// untap-step restrictions. ReadSnapshot upgrades safely when a
+	// layer pass is pending; recomputing while holding only RLock
+	// would race the cache writes.
+	g.ReadSnapshot(func() {
+		plan, ok = g.autoTapLocked(controller, cost, xValue, excluded)
+	})
+	return plan, ok
 }
 
 // AutoTapForCostForEffect is the *ForEffect-surface twin of
@@ -98,10 +107,10 @@ func (g *Game) AutoTapForCostForEffectExcluding(
 	return g.autoTapLocked(controller, cost, xValue, excluded)
 }
 
-// autoTapLocked is the lock-aware core. Public callers use the
-// RLock-wrapped exported methods above; internal callers that
-// already hold either lock can route here directly. Read-only —
-// does not mutate any game state, just inspects the battlefield
+// autoTapLocked is the lock-aware core. Public callers enter through
+// ReadSnapshot so effective characteristics are current; internal callers
+// must already hold a lock and ensure the same freshness themselves.
+// Read-only — does not mutate any game state, just inspects the battlefield
 // and the catalog.
 func (g *Game) autoTapLocked(
 	controller uuid.UUID,
@@ -118,6 +127,9 @@ func (g *Game) autoTapLocked(
 	// requirement, so restrictive sources get reserved for the
 	// requirements that need them most.
 	sort.SliceStable(sources, func(i, j int) bool {
+		if sources[i].Frozen != sources[j].Frozen {
+			return !sources[i].Frozen
+		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
 	need := cost.Generic + cost.XSlots*xValue
@@ -146,6 +158,7 @@ func (g *Game) autoTapLocked(
 type tapSource struct {
 	CardID uuid.UUID
 	Slots  []ProducedManaEntry
+	Frozen bool
 }
 
 // gatherTapSources walks the battlefield and collects every tap-
@@ -159,6 +172,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		return nil
 	}
 	var out []tapSource
+	restrictions := g.activeUntapStepRestrictionsLocked()
 	p := g.playerByIDLocked(controller)
 	identity := commanderIdentityFor(g, p)
 	for _, c := range g.Battlefield.Cards {
@@ -223,7 +237,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		for i, slot := range slots {
 			slots[i].Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
 		}
-		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots})
+		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots, Frozen: untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller)})
 	}
 	return out
 }
@@ -433,10 +447,13 @@ func recruitGeneric(
 // — they preserve colored mana for future casts. Then any-color
 // (Birds-style), then plain monocolored. Within a tier, slot
 // count descending so a single recruitment plan covers more
-// generic faster.
+// generic faster. A frozen source comes after every ordinary source
+// regardless of its generic tier, preserving a permanent that will
+// miss its next normal untap unless no other source can pay.
 func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 	type rank struct {
 		idx     int
+		frozen  bool
 		tier    int // 0 = colorless-only, 1 = any-color, 2 = monocolored
 		slotCnt int
 	}
@@ -446,9 +463,12 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			continue
 		}
 		t := tierForGeneric(s)
-		out = append(out, rank{idx: i, tier: t, slotCnt: len(s.Slots)})
+		out = append(out, rank{idx: i, frozen: s.Frozen, tier: t, slotCnt: len(s.Slots)})
 	}
 	sort.SliceStable(out, func(a, b int) bool {
+		if out[a].frozen != out[b].frozen {
+			return !out[a].frozen
+		}
 		if out[a].tier != out[b].tier {
 			return out[a].tier < out[b].tier
 		}

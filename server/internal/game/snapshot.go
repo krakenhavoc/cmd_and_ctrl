@@ -301,6 +301,7 @@ type cardSnapshot struct {
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
 	Tapped                   bool                `json:"tapped"`
+	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
 	BattleX                  float64             `json:"battleX"`
 	BattleY                  float64             `json:"battleY"`
 	Counters                 map[string]int      `json:"counters,omitempty"`
@@ -783,6 +784,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -1241,6 +1243,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),

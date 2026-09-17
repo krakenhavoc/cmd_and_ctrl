@@ -175,6 +175,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// re-tap if needed, and positions are re-stamped on re-entry.
 	if src.Kind == ZoneBattlefield {
 		c.Tapped = false
+		c.NextUntapSkips = nil
 		c.Counters = nil
 		c.LostLastCounter = false
 		c.BattleX = 0

@@ -450,6 +450,9 @@ type Spec struct {
 	// Nil for every card that does not print the clause, which is
 	// nearly all of them. Issue #74.
 	UntapStep []game.UntapStepPermission
+	// UntapStepRestrictions declares permanents that stay tapped during
+	// their controller's untap step (Mana Vault, Meekstone, and Auras).
+	UntapStepRestrictions []game.UntapStepRestriction
 
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose

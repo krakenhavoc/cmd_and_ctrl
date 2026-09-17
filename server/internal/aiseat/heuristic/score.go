@@ -47,6 +47,9 @@ type Weights struct {
 	// that cannot block or cannot act yet.
 	TappedCreature float64
 	SickCreature   float64
+	// FrozenCreature further discounts a tapped creature that will miss
+	// its controller's next untap step.
+	FrozenCreature float64
 
 	// Permanent is the flat value of a non-creature, non-land
 	// permanent. Planeswalker adds on top of it, and Loyalty values
@@ -59,6 +62,7 @@ type Weights struct {
 	// what a tapped one is still worth (it untaps next turn).
 	ManaSource       float64
 	TappedManaSource float64
+	FrozenManaSource float64
 
 	// CommanderTax is the penalty per commander cast already made —
 	// the {2} surcharge compounds and a seat that has recast its
@@ -107,6 +111,7 @@ func DefaultWeights() Weights {
 		Keyword:        1.00,
 		TappedCreature: 0.85,
 		SickCreature:   0.90,
+		FrozenCreature: 0.65,
 
 		Permanent:    1.20,
 		Planeswalker: 3.00,
@@ -114,6 +119,7 @@ func DefaultWeights() Weights {
 
 		ManaSource:       1.00,
 		TappedManaSource: 0.55,
+		FrozenManaSource: 0.25,
 
 		CommanderTax: 1.00,
 		Unknown:      1.50,
@@ -227,6 +233,9 @@ func (w Weights) CreatureValue(c *protocol.CardView) float64 {
 	}
 	if c.Tapped {
 		v *= w.TappedCreature
+		if WontUntap(c) {
+			v *= w.FrozenCreature
+		}
 	}
 	if c.SummoningSick {
 		v *= w.SickCreature
@@ -297,12 +306,33 @@ func (w Weights) permanentValue(c *protocol.CardView) float64 {
 		return w.Permanent + w.Planeswalker + w.Loyalty*float64(c.Counters["loyalty"])
 	case len(c.ManaAbilities) > 0 || isLand(c):
 		if c.Tapped {
+			if WontUntap(c) {
+				return w.FrozenManaSource
+			}
 			return w.TappedManaSource
 		}
 		return w.ManaSource
 	default:
 		return w.Permanent
 	}
+}
+
+// WontUntap reads the public projection for the controller's next untap
+// step. A marker naming another player doesn't freeze this resource for
+// its controller, and an untapped permanent is still available now.
+func WontUntap(c *protocol.CardView) bool {
+	if c == nil || !c.Tapped || c.NoUntap == nil {
+		return false
+	}
+	if c.NoUntap.Static {
+		return true
+	}
+	for _, id := range c.NoUntap.Next {
+		if id == c.Controller {
+			return true
+		}
+	}
+	return false
 }
 
 // producesMana reports whether a permanent can be tapped for mana
