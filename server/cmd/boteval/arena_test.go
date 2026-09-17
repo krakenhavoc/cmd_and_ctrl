@@ -2,6 +2,8 @@ package main
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -175,6 +177,36 @@ func TestParseArenaFlagsRejectsBadDecisionLogMode(t *testing.T) {
 func TestParseArenaFlagsRejectsZeroGames(t *testing.T) {
 	if _, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--games", "0"}, io.Discard); err == nil {
 		t.Fatal("--games 0 was accepted")
+	}
+}
+
+func TestParseArenaFlagsRejectsMultipleStdoutFormats(t *testing.T) {
+	if _, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--md", "--json"}, io.Discard); err == nil {
+		t.Fatal("--md and --json together were accepted")
+	}
+}
+
+func TestCreateArenaRunDirNeverReusesADirectory(t *testing.T) {
+	root := t.TempDir()
+	started := time.Date(2026, time.September, 17, 18, 19, 4, 0, time.UTC)
+	first, err := createArenaRunDir(root, started)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := createArenaRunDir(root, started)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatalf("two runs reused %s", first)
+	}
+	for _, dir := range []string{first, second} {
+		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+			t.Errorf("run directory %s was not created: %v", dir, err)
+		}
+		if filepath.Dir(dir) != root {
+			t.Errorf("run directory %s escaped root %s", dir, root)
+		}
 	}
 }
 

@@ -164,6 +164,9 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	if (a.decLog || a.replays) && a.out == "" {
 		return nil, errors.New("--decision-log and --replays need somewhere to write: pass --out DIR")
 	}
+	if a.printMD && a.printJSON {
+		return nil, errors.New("--md and --json are mutually exclusive")
+	}
 	if !a.printMD && !a.printJSON {
 		a.printMD = true
 	}
@@ -282,6 +285,10 @@ func runArena(args []string) int {
 		fmt.Fprintf(os.Stderr, "boteval arena: %v\n", err)
 		return 2
 	}
+	progress := io.Writer(out)
+	if a.printJSON {
+		progress = os.Stderr
+	}
 
 	// A model tier with no endpoint is refused rather than quietly
 	// downgraded — the same rule the lobby applies to a tier whose
@@ -301,16 +308,16 @@ func runArena(args []string) int {
 		}
 		client = c
 		if a.thinkDefaulted {
-			say(out, "bot think deadline raised to %s for the local model transport; pass --max-think to choose your own\n", a.maxThink)
+			say(progress, "bot think deadline raised to %s for the local model transport; pass --max-think to choose your own\n", a.maxThink)
 		}
 		if a.maxThink < 5*time.Second {
-			say(out, "WARNING: --max-think %s is short for a self-hosted model; windows that overrun it play the HEURISTIC's move under the model tier's name\n", a.maxThink)
+			say(progress, "WARNING: --max-think %s is short for a self-hosted model; windows that overrun it play the HEURISTIC's move under the model tier's name\n", a.maxThink)
 		}
 	}
 
 	var idx *cards.Index
 	if a.needsIndex {
-		if idx = loadIndex(out, a.dump); idx == nil && anyDeck(a.decks) {
+		if idx = loadIndex(progress, a.dump); idx == nil && anyDeck(a.decks) {
 			fmt.Fprintln(os.Stderr, "boteval arena: curated decks need a Scryfall dump: pass --dump or set CMDCTRL_SCRYFALL_DUMP")
 			return 2
 		}
@@ -319,8 +326,7 @@ func runArena(args []string) int {
 	started := time.Now().UTC()
 	runDir := ""
 	if a.out != "" {
-		runDir = filepath.Join(a.out, started.Format(time.RFC3339))
-		if err := os.MkdirAll(runDir, 0o755); err != nil {
+		if runDir, err = createArenaRunDir(a.out, started); err != nil {
 			fmt.Fprintf(os.Stderr, "boteval arena: %v\n", err)
 			return 1
 		}
@@ -333,7 +339,7 @@ func runArena(args []string) int {
 			fmt.Fprintf(os.Stderr, "boteval arena: %v\n", err)
 			return 1
 		}
-		say(out, "DECISION LOG IS ON: %s — operator-only; it aggregates every seat's own view of a game and must never be attached to a bug report.\n", dl.Dir())
+		say(progress, "DECISION LOG IS ON: %s — operator-only; it aggregates every seat's own view of a game and must never be attached to a bug report.\n", dl.Dir())
 	}
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
@@ -358,7 +364,7 @@ func runArena(args []string) int {
 		defer func() { _ = jsonl.Close() }()
 	}
 
-	say(out, "arena: %d games, seats [%s], seed %d, rotation %s\n",
+	say(progress, "arena: %d games, seats [%s], seed %d, rotation %s\n",
 		a.games, strings.Join(tierNames(a.seats), ", "), a.seed, onOff(a.rotate))
 
 	enc := (*json.Encoder)(nil)
@@ -375,7 +381,7 @@ func runArena(args []string) int {
 		if r.Stalled {
 			verdict = "STALLED"
 		}
-		say(out, "  game %d/%d seed %d: %s at turn %d in %s\n",
+		say(progress, "  game %d/%d seed %d: %s at turn %d in %s\n",
 			played, a.games, r.Seed, verdict, r.Turns, r.Elapsed.Round(time.Millisecond))
 		if enc != nil {
 			if eerr := enc.Encode(r); eerr != nil {
@@ -416,9 +422,28 @@ func runArena(args []string) int {
 		}
 	}
 	if runDir != "" {
-		say(out, "\nartifacts: %s\n", runDir)
+		say(progress, "\nartifacts: %s\n", runDir)
 	}
 	return 0
+}
+
+func createArenaRunDir(root string, started time.Time) (string, error) {
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
+	base := started.UTC().Format(time.RFC3339Nano)
+	for n := 1; ; n++ {
+		name := base
+		if n > 1 {
+			name = fmt.Sprintf("%s-%d", base, n)
+		}
+		dir := filepath.Join(root, name)
+		if err := os.Mkdir(dir, 0o755); err == nil {
+			return dir, nil
+		} else if !errors.Is(err, os.ErrExist) {
+			return "", err
+		}
+	}
 }
 
 func tierNames(t []tiers.Tier) []string {
