@@ -430,6 +430,13 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// A reflexive trigger's payload (#636): its own backing array for
+	// the same reason Targets gets one — an undo that shared it would
+	// let the restored game mutate the live one.
+	if len(s.Payload) > 0 {
+		out.Payload = make([]TargetRef, len(s.Payload))
+		copy(out.Payload, s.Payload)
+	}
 	if len(s.Modes) > 0 {
 		out.Modes = make([]int, len(s.Modes))
 		copy(out.Modes, s.Modes)

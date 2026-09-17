@@ -115,6 +115,25 @@ type StackItem struct {
 	// mutations.go.
 	Targets []TargetRef
 
+	// Payload is what the effect that CREATED this item had to tell
+	// it — the cards that were revealed, the creature that was
+	// sacrificed, the player that was chosen. Only a reflexive
+	// trigger (CR 603.12, reflexive.go) carries one today; it is
+	// empty on every cast spell and every harvested trigger, whose
+	// Build reads the event instead.
+	//
+	// Separate from Targets because the two mean different things
+	// and one of them is rewritten: Targets is the announce-time
+	// TARGET choice, replaced wholesale when a pick_target prompt is
+	// answered, so a payload parked there would be lost on exactly
+	// the triggers that most need one. Nothing re-checks Payload
+	// against the board — a payload is a record of what happened,
+	// not a target, so hexproof and CR 608.2b are both irrelevant to
+	// it and the Effect checks what it still needs itself.
+	//
+	// Added in #636.
+	Payload []TargetRef
+
 	// Modes is the list of mode indices chosen at announce time for
 	// modal spells / abilities. Empty for non-modal items.
 	Modes []int

@@ -786,11 +786,26 @@ func TestB19GenerousPlundererGiftsTreasureAndPunishesArtifacts(t *testing.T) {
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
+	// CR 603.12 / 603.3d (#636): the opponent is picked for the
+	// REFLEXIVE trigger, which exists only because the upkeep ability
+	// already resolved — so your Treasure is on the battlefield by the
+	// time the prompt opens, and theirs is not.
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 1 {
+		t.Errorf("%d Treasures when the reflexive trigger asks for its target, want just yours", got)
+	}
 	p := latestPickTarget(g, me.ID)
 	if hasID(p.PickTargetPlayers, me.ID) || !hasID(p.PickTargetPlayers, opp.ID) {
 		t.Error("target OPPONENT")
 	}
 	pickPlayer(t, g, me.ID, opp.ID)
+	// And it is a stack item of its own, with a response window: the
+	// second Treasure has not been made yet.
+	if triggerOnStack(g, plunderer) == nil {
+		t.Error("the reflexive trigger should be on the stack, not folded into the upkeep ability")
+	}
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 1 {
+		t.Errorf("%d Treasures while the reflexive trigger is still on the stack, want 1", got)
+	}
 	passPriorityAroundTable(t, g)
 	treasures := battlefieldIDsNamed(g, "Treasure")
 	if len(treasures) != 2 {
@@ -822,8 +837,8 @@ func TestB19GenerousPlundererGiftsTreasureAndPunishesArtifacts(t *testing.T) {
 	if other.Life != otherLife {
 		t.Error("only the defending player")
 	}
-	if spec, _ := Lookup(b19GenerousPlundererOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the folded reflexive trigger must be declared")
+	if spec, _ := Lookup(b19GenerousPlundererOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the reflexive trigger (#636) closed the card's only gap")
 	}
 }
 

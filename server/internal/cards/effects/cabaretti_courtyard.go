@@ -8,9 +8,9 @@ package effects
 //
 // The Naya member of the Streets of New Capenna "Overlook" cycle
 // Riveteers Overlook established (batch 06). Same shape through the
-// b08OverlookLand helper, same declared gap: the printed reflexive
-// trigger is folded into the entry trigger, so the sacrifice and the
-// search are one stack item.
+// b08OverlookLand helper, and since #636 the same two stack items:
+// the entry trigger sacrifices the land and a CR 603.12 reflexive
+// trigger does the searching, with a response window between them.
 func init() {
 	Register(b08OverlookLand("65424bea-fd53-4f85-9757-0b91a6d40ba4", "Cabaretti Courtyard", "Mountain", "Forest", "Plains"))
 }
