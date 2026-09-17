@@ -658,7 +658,7 @@ func TestB20KwainEveryoneDrawsAndGainsExceptAnEmptyLibrary(t *testing.T) {
 			t.Errorf("seat %d: hand %d life %d, want hand %d life %d", i, p.Hand.Size(), p.Life, wantHand, wantLife)
 		}
 	}
-	if empty.LosesAtNextSBA {
+	if empty.AttemptedEmptyDraw {
 		t.Error("a player with no library is treated as declining, not as drawing from nothing")
 	}
 	if spec, _ := Lookup(b20KwainOracle); spec.Completeness != CompletenessCaveats {

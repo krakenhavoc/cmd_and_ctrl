@@ -341,7 +341,7 @@ func TestB32DidntSayPleaseCountersAndTheControllerMillsThree(t *testing.T) {
 	if opp.Graveyard.Size() != graveyard+4 {
 		t.Errorf("graveyard grew by %d, want 4 (the Bolt and three milled)", opp.Graveyard.Size()-graveyard)
 	}
-	if opp.LosesAtNextSBA {
+	if opp.AttemptedEmptyDraw {
 		t.Error("a mill never loses the game")
 	}
 }

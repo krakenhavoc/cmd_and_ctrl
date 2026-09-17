@@ -737,8 +737,11 @@ shipped, not a migration.
   flags the loss" comments go. So do the comments at `effect_api.go:827-831`,
   `:854-857` and `:920-923`, `primitives.go:113`,
   `glimpse_the_unthinkable.go:7` and `nephalia_drownyard.go:15-18`. The
-  catalog has no mill *cost*, so CR 701.17b's "can't pay" clause has no
-  caller. The mill code comment says so.
+  engine has no mill *cost* component, so CR 701.17b's "can't pay"
+  clause has no engine caller. Two catalog cards print a mill cost:
+  Millikin (`{T}, Mill a card`) allows the activation only while the
+  library isn't empty, and The Warring Triad declares the gap. The mill
+  code comment says so.
 - **The engine names a winner.** The client, `docs/protocol.md` and ADR
   0051 stop inferring one. A four-player game won by Felidar Sovereign
   ends with three seats still standing, and the banner names the right

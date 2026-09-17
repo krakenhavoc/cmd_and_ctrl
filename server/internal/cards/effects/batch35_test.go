@@ -208,7 +208,7 @@ func TestB35DreadSummonsMillsEveryoneAndZombifiesTheCreatureCards(t *testing.T) 
 	if me.Library.Size() != 1 || opp.Library.Size() != 1 || other.Library.Size() != 0 {
 		t.Errorf("libraries %d/%d/%d, want 1/1/0", me.Library.Size(), opp.Library.Size(), other.Library.Size())
 	}
-	if other.LosesAtNextSBA {
+	if other.AttemptedEmptyDraw {
 		t.Error("a mill never loses a player the game")
 	}
 	zombies := battlefieldIDsNamed(g, "Zombie")
@@ -376,7 +376,7 @@ func TestB35MemoryErosionMillsAnOpponentWhoCasts(t *testing.T) {
 	seedSearchLibrary(opp, game.Card{Name: "Last", TypeLine: "Sorcery"})
 	b13OpponentCasts(t, g, opp, "Their Opt", "Instant", "", "{U}", nil)
 	passPriorityAroundTable(t, g)
-	if opp.Library.Size() != 0 || opp.LosesAtNextSBA {
+	if opp.Library.Size() != 0 || opp.AttemptedEmptyDraw {
 		t.Error("a mill never loses a player the game")
 	}
 }
@@ -439,7 +439,7 @@ func TestB35SphinxsTutelageMillsTwoAndRepeatsWhileTheyShareAColor(t *testing.T) 
 	if opp.Library.Size() != 0 {
 		t.Errorf("the looted card mills two more: library %d", opp.Library.Size())
 	}
-	if opp.LosesAtNextSBA {
+	if opp.AttemptedEmptyDraw {
 		t.Error("a mill never loses a player the game")
 	}
 }

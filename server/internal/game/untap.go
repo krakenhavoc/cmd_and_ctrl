@@ -316,11 +316,22 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 // HasSummoningSickness — see #537, which moved the test there and
 // must not be undone by re-adding one here.
 //
+// The set is read off FRESH layers. The step-entry hook recomputes
+// before it gets here, but this is the read that went wrong when it
+// did not — cleanup's "until end of turn" sweep bumps the layer
+// version and the cursor recurses straight into this step, so a
+// Seedborn Muse whose "loses all abilities until end of turn" had
+// just ended still read as silenced and untapped nothing, and the
+// turn wrap's own bump (a "during your turn" static changes its
+// answer there) went unread the same way. The recompute stays here
+// too, next to the reads, so a caller that is not the hook gets it.
+//
 // Caller must hold g.mu in write mode.
 func (g *Game) performUntapStepLocked(seat int) {
 	if seat < 0 || seat >= len(g.Seats) || g.Seats[seat] == nil {
 		return
 	}
+	g.RecomputeLayersIfStaleLocked()
 	activePlayer := g.Seats[seat].ID
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {

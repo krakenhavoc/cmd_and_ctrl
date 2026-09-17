@@ -2295,8 +2295,8 @@ func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
 	if err := g.DrawCard(target.ID); err != ErrZoneEmpty {
 		t.Fatalf("expected ErrZoneEmpty, got %v", err)
 	}
-	if !target.LosesAtNextSBA {
-		t.Errorf("LosesAtNextSBA flag not set after empty-library draw")
+	if !target.AttemptedEmptyDraw {
+		t.Errorf("AttemptedEmptyDraw flag not set after empty-library draw")
 	}
 	g.WithWriteLock(func() { g.runStateChecksLocked() })
 	if !target.Eliminated {

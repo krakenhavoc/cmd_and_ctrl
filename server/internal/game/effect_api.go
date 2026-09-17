@@ -774,7 +774,7 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 // DrawNForEffect draws n cards for the given player, emitting one
 // EventDrawCard per card (drawCardLocked already emits). Returns
 // an error only on the first failure — partial draws are allowed
-// (ErrZoneEmpty on the Nth card flags LosesAtNextSBA for the loss
+// (ErrZoneEmpty on the Nth card sets AttemptedEmptyDraw for the loss
 // on the next SBA pass, which is already the drawCardLocked
 // behaviour).
 func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
@@ -839,13 +839,14 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 // game" (Pact of Negation and the rest of the Pact cycle), and of
 // every other card that says those words outright.
 //
-// Routed through LosesAtNextSBA rather than eliminating the player on
-// the spot, because CR 104.3 says a player who "loses the game" does
-// so as a state-based action (CR 704.5a-adjacent): the ability
-// finishes resolving first, and the loss lands at the next SBA check
-// alongside the empty-library and zero-life losses. That ordering is
-// observable — a replacement or a second effect in the same
-// resolution still happens.
+// Routed through the AttemptedEmptyDraw flag rather than eliminating
+// the player on the spot, so the ability finishes resolving first and
+// the loss lands at the next SBA check alongside the empty-library
+// and zero-life losses. That borrows the CR 704.5b flag for a loss
+// that is not a draw, and CR 104.3e actually makes an effect loss
+// immediate; ADR 0057 sub-PR 2 replaces this writer with
+// loseGameLocked, after which actuallyDrawCardLocked is the flag's
+// only writer.
 //
 // Caller must hold g.mu. Added in S28.
 func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
@@ -853,15 +854,14 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.LosesAtNextSBA = true
+	p.AttemptedEmptyDraw = true
 	return nil
 }
 
 // MillNForEffect moves n cards from the top of playerID's library
-// to their graveyard. Emits EventMill per card. An empty library
-// during the mill sets LosesAtNextSBA (CR 704.5b-equivalent read
-// from the top of an empty library) via the same path drawCardLocked
-// uses.
+// to their graveyard. Emits EventMill per card. A library holding
+// fewer than n mills what it has (CR 701.17b) and nobody loses for
+// it — see MillToZoneForEffect.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
 	return err
@@ -884,10 +884,23 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // `until` set, n <= 0 means "no limit but the library", so an
 // unbounded mill is expressible without inventing a sentinel.
 //
-// Running the library out mid-mill sets LosesAtNextSBA, the same
-// CR 704.5b-equivalent read-from-an-empty-library the draw path uses,
-// and stops rather than erroring: the player loses at the next SBA
-// check, not here.
+// Running the library out stops the run, with no error and NO loss.
+// CR 701.17b: a player instructed to mill more cards than their
+// library holds "mill[s] as many as possible", and only an attempt to
+// DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
+// The same holds for "exile the top N cards" and for an `until` run
+// that never finds its card — both simply end when the library does,
+// exactly as ExileTopFaceDownForEffect stops on an empty library.
+// (#767: this used to set the empty-draw flag, then named
+// LosesAtNextSBA, so Glimpse the Unthinkable on a nine-card library
+// eliminated its target.)
+//
+// Mill COSTS are the other half of CR 701.17b — "can't pay a cost
+// that includes milling a number of cards greater than the number of
+// cards in their library" — and they are not this function's
+// business: the engine has no mill cost component. The one catalog
+// card with a mill-a-card cost, Millikin, gates its activation on a
+// non-empty library itself; The Warring Triad declares the gap.
 //
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
@@ -950,13 +963,8 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 			return moved, nil
 		}
 	}
-	// Reading from the top of an empty library is the CR
-	// 704.5b-equivalent loss — recorded for the next SBA check rather
-	// than raised here. An unbounded `until` mill that never found
-	// its card has read the library dry by definition.
-	if want < n || (unbounded && until != nil) {
-		p.LosesAtNextSBA = true
-	}
+	// The library ran out (or the batch was the whole library): the
+	// run ends here. No loss — CR 701.17b, see above.
 	return moved, nil
 }
 
@@ -1030,7 +1038,7 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // card the rules say nobody can.
 //
 // Exiling off an empty library is not an error and is not a draw —
-// it moves nothing and does NOT set LosesAtNextSBA. Necropotence
+// it moves nothing and does NOT set AttemptedEmptyDraw. Necropotence
 // with an empty library charges the life and exiles nothing, which
 // is why its controller does not lose on the spot.
 //

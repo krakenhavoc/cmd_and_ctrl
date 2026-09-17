@@ -7,9 +7,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Counter target spell. Its controller mills three cards."
 //
 // Cancel with a mill stapled on. The spell's controller is read
-// before the counter moves it off the stack; the mill is bounded by
-// their library (b31MillAtMost), since milling out is not losing
-// the game (CR 704.5b) and the engine's mill would flag it as such.
+// before the counter moves it off the stack; a library holding fewer
+// than three mills what it has, and milling out is not losing the
+// game (CR 701.17b).
 // A target gone in response fizzles the whole spell — no mill, as
 // printed.
 //

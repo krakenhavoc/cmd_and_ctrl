@@ -171,7 +171,7 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	c, err := p.Library.PopTop()
 	if err != nil {
 		if err == ErrZoneEmpty {
-			p.LosesAtNextSBA = true
+			p.AttemptedEmptyDraw = true
 		}
 		return err
 	}
@@ -2280,7 +2280,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 		if p.Eliminated {
 			continue
 		}
-		if p.Life <= 0 || p.LosesAtNextSBA || p.IsDeadByCommanderDamage() {
+		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage() {
 			g.eliminatePlayerLocked(p)
 			fired = true
 			continue
@@ -2481,7 +2481,7 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 		return
 	}
 	p.Eliminated = true
-	p.LosesAtNextSBA = false
+	p.AttemptedEmptyDraw = false
 	g.cleanupStackForEliminatedLocked(p.ID)
 	g.advancePastEliminatedLocked()
 	g.EmitEvent(Event{
