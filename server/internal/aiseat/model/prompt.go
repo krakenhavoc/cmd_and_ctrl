@@ -115,7 +115,7 @@ func (d DeckProfile) staticBlocks() []Block {
 				b.WriteString(" — " + c.Type)
 			}
 			if c.Oracle != "" {
-				b.WriteString(": " + oneLine(c.Oracle))
+				b.WriteString(": " + OneLine(c.Oracle))
 			}
 			b.WriteByte('\n')
 		}
@@ -475,6 +475,10 @@ func nameOfInstance(v *protocol.GameView, id string) string {
 	return "something"
 }
 
-func oneLine(s string) string {
+// OneLine collapses newlines and runs of whitespace into single
+// spaces. Exported alongside Truncate, and for the same reason: a
+// model's reply printed into a log line must not bring its own line
+// breaks with it.
+func OneLine(s string) string {
 	return strings.Join(strings.Fields(strings.ReplaceAll(s, "\n", " ")), " ")
 }

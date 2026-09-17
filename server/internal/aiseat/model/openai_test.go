@@ -429,3 +429,43 @@ func TestNewOpenAIClientShorthandEndpoint(t *testing.T) {
 		t.Error("CMDCTRL_OPENAI_SEND_THINK=1 suppressed the think field")
 	}
 }
+
+// TestOpenAIUsageReportsThePrefixCacheHits covers the one number a
+// local endpoint reports that a hosted one does not: how much of the
+// prompt it served from its own KV cache instead of re-prefilling.
+//
+// It is NOT CacheReadTokens. That field is Anthropic's billed
+// cache-breakpoint read, and ADR 0033 §5's cost arithmetic rests on
+// it; folding a free local optimisation into it would corrupt the
+// only measurement that argument has. Hence a field of its own, and
+// CacheReadTokens still coming back zero here.
+func TestOpenAIUsageReportsThePrefixCacheHits(t *testing.T) {
+	c := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"index\": 0}"},"finish_reason":"stop"}],
+			"usage":{"prompt_tokens":6231,"completion_tokens":7,"prompt_tokens_details":{"cached_tokens":4096}}}`))
+	})
+	resp, err := c.Complete(context.Background(), Request{Model: "m", User: "u"})
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if resp.Usage.CachedPromptTokens != 4096 {
+		t.Errorf("CachedPromptTokens = %d, want 4096", resp.Usage.CachedPromptTokens)
+	}
+	if resp.Usage.InputTokens != 6231 || resp.Usage.OutputTokens != 7 {
+		t.Errorf("usage = %+v", resp.Usage)
+	}
+	if resp.Usage.CacheReadTokens != 0 || resp.Usage.CacheWriteTokens != 0 {
+		t.Errorf("this endpoint has no billed prompt cache to report: %+v", resp.Usage)
+	}
+	// A server that reports no details block must not invent one.
+	c2 := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"}}],"usage":{"prompt_tokens":10,"completion_tokens":1}}`))
+	})
+	resp2, err := c2.Complete(context.Background(), Request{Model: "m", User: "u"})
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if resp2.Usage.CachedPromptTokens != 0 {
+		t.Errorf("CachedPromptTokens = %d with no details block", resp2.Usage.CachedPromptTokens)
+	}
+}
