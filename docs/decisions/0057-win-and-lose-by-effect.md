@@ -278,12 +278,23 @@ for _, p := range g.Seats {
     }
 }
 for _, l := range losers { g.leaveGameLocked(l.p, l.cause) }
+moveOn := false
 if len(losers) > 0 || g.ActiveSeatLeftPending { // Decision 3's deferred departure
     g.ActiveSeatLeftPending = false
-    if !g.checkGameOverLocked() { g.advancePastEliminatedLocked() }
+    moveOn = !g.checkGameOverLocked()
     fired = true
 }
+// ... the permanent SBAs (704.5f-j, battles, sagas, legend rule) ...
+if moveOn { g.advancePastEliminatedLocked() } // last act of the pass
 ```
+
+- **The rotation is the pass's last act, not the loss loop's.** Ending
+  the active player's turn runs the cleanup sweep, which removes marked
+  damage and deathtouch marks, and the destruction SBAs of the same pass
+  read those (CR 704.3: one event). Rotating straight after the loss
+  loop let every creature an Earthquake-style spell had just killed
+  survive when the same spell killed its caster (#834 review; fixed in
+  that PR, pinned by `TestActiveSeatSBALossStillDestroysMarkedCreatures`).
 
 - **Every gate is read at the check**, against the battlefield as it is
   then. A player at 0 life whose Platinum Angel dies loses at the next

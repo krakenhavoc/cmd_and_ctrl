@@ -2279,6 +2279,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// loser leaves first and play moves on once, after the batch
 	// (#766): moving the turn on per player would begin the turn of a
 	// seat that is leaving in this same pass.
+	//
+	// "After the batch" means after the whole pass, not after this
+	// loop. Moving play on can end the turn, and ending the turn runs
+	// the cleanup sweep, which removes marked damage and deathtouch
+	// marks. The destruction SBAs below read exactly those, and they
+	// belong to the same event as the losses (CR 704.3): an active
+	// player whose own Earthquake kills them still kills every
+	// creature it dealt lethal damage to. So the game-over check runs
+	// here, as it always has, and the turn moves on as the pass's
+	// last act (see the end of this function).
 	left := false
 	for _, p := range g.Seats {
 		if p.Eliminated {
@@ -2304,9 +2314,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 			fired = true
 		}
 	}
-	if left {
-		g.settleDeparturesLocked()
-	}
+	moveOn := left && !g.endGameIfDecidedLocked()
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
@@ -2441,6 +2449,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 		fired = true
 	}
 
+	// The departures from the loss loop move play on last (#766), once
+	// every other state-based action of this pass has been performed
+	// on the board it applied to. That includes the legend rule: its
+	// prompt, if one was just queued, is part of this event and is
+	// queued before the turn ends, so it stays open into the next
+	// turn like any other prompt a departure leaves unanswered.
+	if moveOn {
+		g.advancePastEliminatedLocked()
+	}
+
 	return fired
 }
 
@@ -2514,11 +2532,27 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 // moves on (advancePastEliminatedLocked — the rest of a departed
 // active player's turn ends through the rotation seam, #766).
 //
-// A game that has ended keeps its cursor where it was. Ending the
-// last turn would sweep marked damage and pull attackers out of combat
-// on the board the game ended with, and begin a turn nobody takes.
+// Used where the departures are the whole event (Concede). The SBA
+// loss pass calls the two halves itself, because the rest of that
+// pass must be performed before the turn ends — see
+// stateBasedActionsLocked.
+//
 // Caller must hold g.mu.
 func (g *Game) settleDeparturesLocked() {
+	if g.endGameIfDecidedLocked() {
+		return
+	}
+	g.advancePastEliminatedLocked()
+}
+
+// endGameIfDecidedLocked ends the game when one player or none is
+// left, and reports whether it did.
+//
+// A game that has ended keeps its cursor where it was: its caller does
+// not move play on. Ending the last turn would sweep marked damage and
+// pull attackers out of combat on the board the game ended with, and
+// begin a turn nobody takes. Caller must hold g.mu.
+func (g *Game) endGameIfDecidedLocked() bool {
 	survivors := 0
 	for _, s := range g.Seats {
 		if !s.Eliminated {
@@ -2527,9 +2561,9 @@ func (g *Game) settleDeparturesLocked() {
 	}
 	if survivors <= 1 {
 		g.State = StateEnded
-		return
+		return true
 	}
-	g.advancePastEliminatedLocked()
+	return false
 }
 
 // cleanupStackForEliminatedLocked implements CR 800.4a — when a

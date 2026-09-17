@@ -42,6 +42,12 @@ package game
 // Idempotent: the cleanup hook runs it again after a discard pause
 // drains, and a player leaving during that pause runs it once more.
 //
+// Not safe in the middle of a state-based action pass: the lethal
+// damage and deathtouch SBAs (CR 704.5g/h) read the marks this clears.
+// A player who loses in an SBA pass leaves at once, but the turn does
+// not end until that pass's destruction SBAs have been performed
+// (stateBasedActionsLocked runs advancePastEliminatedLocked last).
+//
 // Must run BEFORE the cursor moves to the next turn: the turn-scoped
 // statics and impulse grants compare their stamp against the current
 // Turn.Number.
@@ -163,7 +169,8 @@ func (g *Game) onTurnBeganLocked() {
 
 // advancePastEliminatedLocked moves play on after a player has left
 // the game. Called once per batch of departures, and only when the
-// game goes on (settleDeparturesLocked).
+// game goes on: from settleDeparturesLocked (Concede), and as the
+// last act of a state-based action pass in which players lost.
 //
 // If the active seat is still in the game, the only work is priority:
 // a holder who has left hands it back to the active seat (priority
@@ -184,6 +191,14 @@ func (g *Game) onTurnBeganLocked() {
 // size is skipped too; the player it belonged to has left. The
 // departed player's permanents stay on the battlefield (CR 800.4a is
 // #769's).
+//
+// When the departure comes from an SBA pass, that pass has already
+// destroyed what it had to before this runs. Those deaths are counted
+// in the ended turn's TurnTally, which the new turn then resets, and
+// their dies triggers wait on PendingTriggers and go on the stack in
+// the next player's upkeep. That is part of the same simplification:
+// under CR 800.4j they would go on the stack in the turn that is still
+// running.
 //
 // See the file comment for why this never runs inside a resolution.
 // Caller must hold g.mu.

@@ -430,7 +430,10 @@ The callers:
   When the active seat has left, it runs `clearCombatLocked`, then
   `sweepTurnEndLocked`, then `beginNextTurnLocked`, then the step entry
   hooks. This fixes #766: the resets run, damage and "until end of turn"
-  effects end, and attackers leave combat.
+  effects end, and attackers leave combat. From an SBA pass it runs as
+  that pass's last act, after its destruction, sacrifice and legend-rule
+  SBAs, because the sweep would otherwise clear the damage those read
+  (ADR 0057 Decision 2).
 - **`PassTurn`** does the same `clearCombatLocked` and
   `sweepTurnEndLocked` before `beginNextTurnLocked`. The discard to
   hand size is skipped, as today. This is a sandbox verb, and the skip is

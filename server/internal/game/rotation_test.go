@@ -357,3 +357,133 @@ func TestNoTurnBeginsInsideAResolution(t *testing.T) {
 		t.Errorf("after the bookend: seat %d step %s priority %d (one new upkeep: %v), want seat 1's upkeep", g.Turn.ActiveSeat, g.Turn.Step, g.Turn.PriorityHolder, sawUpkeep)
 	}
 }
+
+// sbaLossWithMarkedBoard is the #834 review's probe: at a four-seat
+// table the active player (seat 0) is at 0 life in the same state
+// check where seat 1's 2/2 has lethal damage marked, seat 2's 5/5 has
+// been dealt damage by a deathtouch source, and seat 3's 3/3 has one
+// damage marked. That is the board an Earthquake that also kills its
+// caster leaves behind.
+type sbaLossWithMarkedBoard struct {
+	g                             *Game
+	lethal, deathtouched, bruised uuid.UUID
+}
+
+func newSBALossWithMarkedBoard(t *testing.T) sbaLossWithMarkedBoard {
+	t.Helper()
+	g := newFourPlayerActiveGame(t)
+	if g.Turn.ActiveSeat != 0 {
+		t.Fatalf("setup: active seat %d, want 0", g.Turn.ActiveSeat)
+	}
+	p := sbaLossWithMarkedBoard{
+		g:            g,
+		lethal:       pushKeywordCreature(t, g, g.Seats[1], 2, 2),
+		deathtouched: pushKeywordCreature(t, g, g.Seats[2], 5, 5),
+		bruised:      pushKeywordCreature(t, g, g.Seats[3], 3, 3),
+	}
+	g.WithWriteLock(func() {
+		findCard(g, p.lethal).DamageMarked = 2
+		dt := findCard(g, p.deathtouched)
+		dt.DamageMarked = 1
+		dt.MarkedLethalByDeathtouch = true
+		findCard(g, p.bruised).DamageMarked = 1
+		g.Seats[0].Life = 0
+	})
+	return p
+}
+
+func countEvents(g *Game, kind EventKind) int {
+	n := 0
+	for _, ev := range g.Events {
+		if ev.Kind == kind {
+			n++
+		}
+	}
+	return n
+}
+
+// TestActiveSeatSBALossStillDestroysMarkedCreatures: the loss and the
+// destruction SBAs are one event (CR 704.3), so the turn the loss ends
+// is not swept until the lethal-damage (CR 704.5g) and deathtouch (CR
+// 704.5h) SBAs of that pass have been performed. Before the fix the
+// rotation ran between them, cleared the marks, and both creatures
+// lived.
+func TestActiveSeatSBALossStillDestroysMarkedCreatures(t *testing.T) {
+	p := newSBALossWithMarkedBoard(t)
+	g := p.g
+	upkeepsBefore := countEvents(g, EventBeginUpkeep)
+
+	g.WithWriteLock(func() { g.runStateChecksLocked() })
+
+	if !g.Seats[0].Eliminated {
+		t.Fatal("the active player at 0 life should have lost")
+	}
+	if findCard(g, p.lethal) != nil {
+		t.Error("the 2/2 with 2 damage marked survived the pass that ended the turn (CR 704.5g)")
+	}
+	if findCard(g, p.deathtouched) != nil {
+		t.Error("the 5/5 dealt deathtouch damage survived the pass that ended the turn (CR 704.5h)")
+	}
+	// The turn did end: the survivor's damage is swept, and play moved
+	// on once, to seat 1's upkeep.
+	if c := findCard(g, p.bruised); c == nil || c.DamageMarked != 0 {
+		t.Errorf("the 3/3 should survive with its damage swept: %+v", c)
+	}
+	if g.State != StateActive {
+		t.Fatalf("three players remain: %s", g.State)
+	}
+	if g.Turn.ActiveSeat != 1 || g.Turn.Step != StepUpkeep || g.Turn.PriorityHolder != 1 {
+		t.Errorf("cursor: seat %d step %s priority %d, want seat 1's upkeep with priority", g.Turn.ActiveSeat, g.Turn.Step, g.Turn.PriorityHolder)
+	}
+	if got := countEvents(g, EventBeginUpkeep) - upkeepsBefore; got != 1 {
+		t.Errorf("%d upkeeps began, want exactly one", got)
+	}
+	// The deaths belong to the turn that ended: they are logged before
+	// the new upkeep, and the new turn's tally starts from zero.
+	lastDeath, upkeep := -1, -1
+	for i, ev := range g.Events {
+		switch {
+		case ev.Kind == EventLTB && ev.NewZone == ZoneGraveyard && (ev.CardID == p.lethal || ev.CardID == p.deathtouched):
+			lastDeath = i
+		case ev.Kind == EventBeginUpkeep:
+			upkeep = i
+		}
+	}
+	if lastDeath < 0 || lastDeath > upkeep {
+		t.Errorf("deaths at event %d, new upkeep at %d: the destruction must come before the turn ends", lastDeath, upkeep)
+	}
+	if g.TurnTally.CreaturesDied != 0 {
+		t.Errorf("the new turn's tally counted the ended turn's deaths: %d", g.TurnTally.CreaturesDied)
+	}
+}
+
+// TestSBALossQueuesTheLegendRuleBeforeTheTurnEnds: the legend rule is
+// performed in the same pass as the loss, so its prompt is queued on
+// the ended turn's board and stays open into the next turn; the turn
+// still moves on exactly once.
+func TestSBALossQueuesTheLegendRuleBeforeTheTurnEnds(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	owner := g.Seats[1].ID
+	a := pushLegendForTest(g, owner, "Teferi, Temporal Pilgrim", "Legendary Planeswalker — Teferi")
+	b := pushLegendForTest(g, owner, "Teferi, Temporal Pilgrim", "Legendary Planeswalker — Teferi")
+	upkeepsBefore := countEvents(g, EventBeginUpkeep)
+	g.WithWriteLock(func() {
+		g.Seats[0].Life = 0
+		g.runStateChecksLocked()
+	})
+	if !g.Seats[0].Eliminated {
+		t.Fatal("the active player at 0 life should have lost")
+	}
+	if legendPromptFor(g, owner) == nil {
+		t.Fatal("no legend-rule prompt was queued")
+	}
+	if !onBattlefieldByID(g, a) || !onBattlefieldByID(g, b) {
+		t.Error("a legend left before the prompt was answered")
+	}
+	if g.Turn.ActiveSeat != 1 || g.Turn.Step != StepUpkeep {
+		t.Errorf("cursor: seat %d step %s, want seat 1's upkeep", g.Turn.ActiveSeat, g.Turn.Step)
+	}
+	if got := countEvents(g, EventBeginUpkeep) - upkeepsBefore; got != 1 {
+		t.Errorf("%d upkeeps began, want exactly one", got)
+	}
+}
