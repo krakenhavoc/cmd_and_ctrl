@@ -569,6 +569,46 @@ func TestGlimpseMillsTen(t *testing.T) {
 	}
 }
 
+// #767: Glimpse on a five-card library mills the five and the target
+// stays in the game (CR 701.17b) — through the state checks at every
+// priority pass — until their own draw step draws from the empty
+// library (CR 704.5b).
+func TestGlimpseOnAShortLibraryLosesOnlyAtTheDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	target := g.Seats[1]
+	target.Library.Cards = target.Library.Cards[len(target.Library.Cards)-5:]
+
+	castCatalogSpell(t, g, "Glimpse the Unthinkable", "Sorcery",
+		"552f0163-a19d-4671-888f-044fc0354875",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if n := target.Library.Size(); n != 0 {
+		t.Fatalf("library holds %d, want the five milled", n)
+	}
+	if target.LosesAtNextSBA || target.Eliminated {
+		t.Fatal("milling out is not losing: the target survives the state checks")
+	}
+	for i := 0; i < 400 && !(g.Turn.ActiveSeat == 1 && g.Turn.Step == game.StepUpkeep); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if target.Eliminated {
+			t.Fatalf("eliminated at seat %d's %s, before the target's own draw", g.Turn.ActiveSeat, g.Turn.Step)
+		}
+	}
+	if g.Turn.ActiveSeat != 1 || g.Turn.Step != game.StepUpkeep {
+		t.Fatal("never reached the target's upkeep")
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if !target.Eliminated {
+		t.Error("the target's draw step draws from the empty library and loses (CR 704.5b)")
+	}
+}
+
 // TestMindRotQueuesDiscardChoice is #651 in one test: the discard is a
 // PendingChoice addressed to the TARGET (CR 701.8a — the discarding
 // player chooses), the table is gated until they answer (CR 608.2c —

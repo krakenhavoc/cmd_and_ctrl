@@ -151,22 +151,6 @@ func b31OpponentControlsNonlandPermanent(g *game.Game, controller uuid.UUID) boo
 	return false
 }
 
-// b31MillAtMost mills `n` cards from `player`'s library, or the whole
-// library when it holds fewer. A mill does not lose a player the
-// game — only a draw from an empty library does (CR 704.5b) — but
-// the engine's mill flags the loss when it runs a library out, so
-// the count is bounded here rather than there.
-func b31MillAtMost(ctx *Context, player uuid.UUID, n int) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil {
-		return nil
-	}
-	if size := p.Library.Size(); n > size {
-		n = size
-	}
-	return MillCards{Player: player, N: n}.Apply(ctx)
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b31LandYouControlEnteredTapped is Tiller Engine's condition — Amulet
@@ -268,29 +252,6 @@ func b31TapChosenOrUntapLand(entered uuid.UUID) func(g *game.Game, item *game.St
 // of Blossoming Tortoise's trigger share.
 const b31BlossomingTortoiseLabel = "Blossoming Tortoise — mill three, then return a land card tapped"
 
-// b31MillThreeThenReturnChosenLandTapped is Blossoming Tortoise's
-// trigger: mill three (bounded by the library), then return the land
-// chosen when the trigger went on the stack — if one was chosen and
-// it is still in the graveyard — to the battlefield, tapped. Teval's
-// body with the bounded mill; the return is ReturnFromGraveyard
-// followed by a tap, Lumra's declared gap.
-func b31MillThreeThenReturnChosenLandTapped(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := b31MillAtMost(ctx, item.Controller, 3); err != nil {
-		return err
-	}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		return TapTarget{Target: t.ID}.Apply(ctx)
-	}
-	return nil
-}
-
 // b31LifeBecomes sets `player`'s life total to `total` the way CR
 // 119.5 says to: the player gains or loses the difference, so a
 // lifegain or life-loss trigger sees the change. A total already
@@ -361,7 +322,8 @@ func b31UntapSelf(g *game.Game, item *game.StackItem) error {
 }
 
 // b31MillChosenPlayer is Nephalia Drownyard's activation: the player
-// chosen at announce mills `n` cards, bounded by their library.
+// chosen at announce mills `n` cards — the rest of their library when
+// it holds fewer (CR 701.17b).
 func b31MillChosenPlayer(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
@@ -369,7 +331,7 @@ func b31MillChosenPlayer(n int) func(g *game.Game, item *game.StackItem) error {
 			if t.Kind != game.TargetPlayer {
 				continue
 			}
-			return b31MillAtMost(ctx, t.ID, n)
+			return MillCards{Player: t.ID, N: n}.Apply(ctx)
 		}
 		return nil
 	}

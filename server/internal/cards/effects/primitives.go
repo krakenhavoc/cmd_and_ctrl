@@ -110,7 +110,8 @@ func (d DiscardCards) Apply(ctx *Context) error {
 }
 
 // MillCards mills the top N cards of `Player`'s library to their
-// graveyard. Empty library mid-mill sets LosesAtNextSBA.
+// graveyard. A library holding fewer mills what it has and nobody
+// loses for it (CR 701.17b) — only a draw from an empty library does.
 type MillCards struct {
 	Player uuid.UUID
 	N      int

@@ -825,10 +825,9 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 }
 
 // MillNForEffect moves n cards from the top of playerID's library
-// to their graveyard. Emits EventMill per card. An empty library
-// during the mill sets LosesAtNextSBA (CR 704.5b-equivalent read
-// from the top of an empty library) via the same path drawCardLocked
-// uses.
+// to their graveyard. Emits EventMill per card. A library holding
+// fewer than n mills what it has (CR 701.17b) and nobody loses for
+// it — see MillToZoneForEffect.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
 	return err
@@ -851,10 +850,22 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // `until` set, n <= 0 means "no limit but the library", so an
 // unbounded mill is expressible without inventing a sentinel.
 //
-// Running the library out mid-mill sets LosesAtNextSBA, the same
-// CR 704.5b-equivalent read-from-an-empty-library the draw path uses,
-// and stops rather than erroring: the player loses at the next SBA
-// check, not here.
+// Running the library out stops the run, with no error and NO loss.
+// CR 701.17b: a player instructed to mill more cards than their
+// library holds "mill[s] as many as possible", and only an attempt to
+// DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
+// The same holds for "exile the top N cards" and for an `until` run
+// that never finds its card — both simply end when the library does,
+// exactly as ExileTopFaceDownForEffect stops on an empty library.
+// (#767: this used to set LosesAtNextSBA, so Glimpse the Unthinkable
+// on a nine-card library eliminated its target.)
+//
+// Mill COSTS are the other half of CR 701.17b — "can't pay a cost
+// that includes milling a number of cards greater than the number of
+// cards in their library" — and they are not this function's
+// business: the engine has no mill cost component. The one catalog
+// card with a mill-a-card cost, Millikin, gates its activation on a
+// non-empty library itself; The Warring Triad declares the gap.
 //
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
@@ -917,13 +928,8 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 			return moved, nil
 		}
 	}
-	// Reading from the top of an empty library is the CR
-	// 704.5b-equivalent loss — recorded for the next SBA check rather
-	// than raised here. An unbounded `until` mill that never found
-	// its card has read the library dry by definition.
-	if want < n || (unbounded && until != nil) {
-		p.LosesAtNextSBA = true
-	}
+	// The library ran out (or the batch was the whole library): the
+	// run ends here. No loss — CR 701.17b, see above.
 	return moved, nil
 }
 

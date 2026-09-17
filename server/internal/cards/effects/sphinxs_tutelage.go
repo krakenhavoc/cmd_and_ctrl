@@ -16,9 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the chosen opponent mills two; if both cards are nonland and share
 // a colour (printed colours — Scryfall's stamped list, or the mana
 // cost for a fixture), they mill two more, and so on until a pair
-// fails the test or the library runs out. Each pass is bounded to
-// the library, since a mill never loses a player the game (CR
-// 704.5b). The loot is a CR 602 activation with a mana cost, and the
+// fails the test or the library runs out. A pass against a library
+// of fewer than two mills what is left, and a mill never loses a
+// player the game (CR 701.17b). The loot is a CR 602 activation with a mana cost, and the
 // drawn card fires the trigger again, as printed.
 //
 // No simplification.
