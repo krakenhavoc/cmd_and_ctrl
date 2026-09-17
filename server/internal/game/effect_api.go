@@ -2075,6 +2075,14 @@ func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int,
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)
 		}
+		// CR 506.3c / #859: a template that arrives already attacking
+		// (Adeline's "tapped and attacking Human") was PUT onto the
+		// battlefield attacking, not declared, so it announces no
+		// EventAttack — and the attack declaration's lock-in must not
+		// mistake its AttackingTarget for a staged declaration.
+		if tok.AttackingTarget != uuid.Nil {
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
+		}
 		g.Battlefield.PushTop(tok)
 		ids = append(ids, tok.InstanceID)
 		g.EmitEvent(Event{
@@ -2126,6 +2134,10 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 		tok.KnownBy = nil
 		if attacking {
 			tok.AttackingTarget = defender
+			// CR 506.3c, again: never declared, so the lock-in
+			// (attackers.go) skips it rather than announcing it at
+			// the next priority boundary.
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
 		}
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)

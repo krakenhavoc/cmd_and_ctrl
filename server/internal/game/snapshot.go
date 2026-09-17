@@ -200,6 +200,16 @@ type GameSnapshot struct {
 	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
 	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
 
+	// AnnouncedAttacks is the attack declaration's half of the same
+	// bookkeeping (#859, attackers.go): the creatures that have had
+	// their one EventAttack this combat, plus the permanents put onto
+	// the battlefield already attacking, which never get one
+	// (CR 506.3c). Empty outside combat, and a file written before it
+	// restores as empty — which reads as "nothing announced yet", so
+	// the next lock-in announces the declaration the battlefield
+	// already carries. No schema bump.
+	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -622,6 +632,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
 	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -1118,6 +1129,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
 	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
+	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)

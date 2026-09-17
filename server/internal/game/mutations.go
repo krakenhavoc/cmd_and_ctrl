@@ -2488,6 +2488,13 @@ func (g *Game) runStateChecksLocked() {
 	// the final assignment. No-op when nothing is staged, which is
 	// every call outside the declare-blockers step.
 	g.commitBlockDeclarationLocked()
+	// #859 / CR 508.2: the same rule one step earlier. Attackers are
+	// declared as one turn-based action and their triggers go on the
+	// stack when the active player next receives priority, so the
+	// staged declaration is announced here — once per attacker, off
+	// the defender it ends the declaration on. No-op when nothing is
+	// staged, which is every call outside the declare-attackers step.
+	g.commitAttackDeclarationLocked()
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
@@ -4471,20 +4478,22 @@ func (g *Game) PassPriority() error {
 	}
 	// Wrapped (or only the active seat is alive).
 	//
-	// #830 first: priority has passed all the way around, so the
-	// block declaration is complete (CR 509.1). Lock it in BEFORE the
-	// advance-or-resolve choice below, so its triggers reach the
-	// stack inside the declare-blockers step rather than a step late,
-	// after combat damage. If it put anything there, priority returns
-	// to the active player (CR 509.2a) and the table gets a window to
-	// respond before those triggers resolve — the step does not
-	// advance on this pass.
-	if g.blockDeclarationPendingLocked() {
+	// #830 and #859 first: priority has passed all the way around, so
+	// the combat declaration staged in this step is complete
+	// (CR 508.1 / CR 509.1). Lock it in BEFORE the advance-or-resolve
+	// choice below, so its triggers reach the stack inside the
+	// declaring step rather than a step late, after blockers or after
+	// combat damage. If it put anything there, priority returns to
+	// the active player (CR 508.2 / 509.2a) and the table gets a
+	// window to respond before those triggers resolve — the step does
+	// not advance on this pass.
+	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
 		g.runStateChecksLocked()
 		// A blocking choice counts as much as a stack item here: an
-		// optional block trigger (Grazilaxx) queues its yes/no rather
-		// than an item, and walking the cursor past an unanswered
-		// prompt is the thing #730 forbids.
+		// optional declaration trigger (Grazilaxx, Legion Loyalty's
+		// myriad) queues its yes/no rather than an item, and walking
+		// the cursor past an unanswered prompt is the thing #730
+		// forbids.
 		if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
 			g.Turn.PriorityHolder = g.Turn.ActiveSeat
 			return nil
@@ -4556,12 +4565,16 @@ func (g *Game) stackHasItemsLocked() bool {
 // NOT enforced — sandbox flexibility for casual play. Summoning
 // sickness and defender are enforced as of S18.
 //
-// S22: a creature's FIRST successful declaration emits EventAttack
-// (one per attacking creature — see events.go) and then runs the
-// state checks, so "whenever ~ attacks" triggers reach the stack
-// immediately, inside the declare-attackers step and ahead of
-// blockers. Re-declaring an already-attacking creature against a
-// different target still overwrites the target but emits nothing.
+// S22 / #859: the verb STAGES the attack and announces nothing.
+// CR 508.1 declares attackers as ONE turn-based action, so the
+// EventAttack behind "whenever ~ attacks" — still exactly one per
+// declared attacker (see events.go) — is emitted by
+// commitAttackDeclarationLocked when the declaration is locked in, at
+// the first priority boundary of the step. That is still inside
+// declare_attackers and still ahead of blockers; what changed is that
+// a creature re-pointed at a different defender before the lock-in
+// announces once, naming the defender it ends on, instead of the one
+// it was first declared against. See attackers.go.
 func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -4613,13 +4626,14 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			if !CanAttack(card) {
 				return ErrCantAttack
 			}
-			// S22: a creature is declared as an attacker once (CR
-			// 508.1). The sandbox additionally lets a player re-point
-			// an already-attacking creature at a different defender;
-			// that is a correction, not a second attack, so it must
-			// not fire attack triggers again.
-			firstDeclaration := card.AttackingTarget == uuid.Nil
-			controller := card.Controller
+			// #859: staging, not announcing. A creature is declared
+			// as an attacker once (CR 508.1), and the sandbox lets a
+			// player re-point an already-attacking creature at a
+			// different defender before the declaration is complete;
+			// that is one decision being revised, so the single
+			// EventAttack the creature is owed has to name the
+			// defender it ENDS on. Both halves are the lock-in's job
+			// — see commitAttackDeclarationLocked.
 			card.AttackingTarget = targetPlayerID
 			// CR 508.1f: declaring an attacker taps it, unless the
 			// attacker has vigilance (CR 702.20). Vigilance is the
@@ -4633,27 +4647,6 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 			// blocker — clearing the other field keeps the per-card
 			// combat state coherent.
 			card.BlockingTarget = uuid.Nil
-			if !firstDeclaration {
-				return nil
-			}
-			// S22: "whenever ~ attacks" triggers. One event per
-			// attacking creature; `card` must not be read past this
-			// point, because the state checks below can reallocate the
-			// battlefield slice out from under the pointer.
-			g.EmitEvent(Event{
-				Kind:   EventAttack,
-				Actor:  controller,
-				CardID: attackerID,
-				Target: targetPlayerID,
-			})
-			// CR 508.2 / 117.5: attackers are declared as a turn-based
-			// action, after which the active player receives priority —
-			// the boundary where SBAs run and harvested triggers go on
-			// the stack. Without this drain the trigger would sit in
-			// PendingTriggers until the next pass and land a step late,
-			// after blockers. Same reasoning as the MoveCardByID /
-			// CastSpell drains (ADR 0018 §3).
-			g.runStateChecksLocked()
 			return nil
 		}
 	}
@@ -4680,11 +4673,20 @@ type AttackDeclaration struct {
 // It is also closer to the rules than the loop is. CR 508.1 declares
 // attackers simultaneously and CR 508.2 gives the active player
 // priority afterwards, at which point every "whenever ~ attacks"
-// trigger goes on the stack together in APNAP order. Declaring one at
-// a time instead fires each trigger through its own state-check drain,
-// interleaving resolutions between declarations. Here every card is
-// mutated first, then every EventAttack is emitted, then a single
-// runStateChecksLocked drains the batch.
+// trigger goes on the stack together in APNAP order. Here every card
+// is staged first, then a single runStateChecksLocked locks the
+// declaration in — announcing every EventAttack in one batch and
+// draining the triggers together.
+//
+// #859: that lock-in is the same commitAttackDeclarationLocked the
+// per-creature verb goes through, so there is exactly ONE place an
+// attack declaration is announced, whichever verb staged it. The
+// contract here is unchanged — one event per declared creature, one
+// batch, one drain — and the per-creature verb now matches it
+// instead of announcing a click at a time. The only difference is
+// that the commit walks the battlefield, so the events come out in
+// battlefield order rather than submission order; that order is the
+// order same-controller triggers are offered in, and nothing else.
 //
 // Eligibility is STRICT and silent, unlike DeclareAttacker, which is
 // deliberately lax so the sandbox can force odd board states by hand.
@@ -4715,16 +4717,7 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 	// has to be judged on the granted keyword, not the printed one.
 	g.RecomputeLayersIfStaleLocked()
 
-	// attackEvent captures what EmitEvent needs by value. Card
-	// pointers must not survive the mutation loop: emitting events
-	// and running state checks can reallocate the battlefield slice.
-	type attackEvent struct {
-		attacker   uuid.UUID
-		controller uuid.UUID
-		target     uuid.UUID
-	}
 	declared := make([]uuid.UUID, 0, len(decls))
-	events := make([]attackEvent, 0, len(decls))
 
 	for _, d := range decls {
 		card := findBattlefieldCard(g, d.Attacker)
@@ -4759,25 +4752,14 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 		// Attacking and blocking are mutually exclusive per card.
 		card.BlockingTarget = uuid.Nil
 		declared = append(declared, d.Attacker)
-		events = append(events, attackEvent{
-			attacker:   d.Attacker,
-			controller: card.Controller,
-			target:     d.Target,
-		})
 	}
 	if len(declared) == 0 {
 		return nil, ErrNoLegalAttackers
 	}
-	for _, ev := range events {
-		g.EmitEvent(Event{
-			Kind:   EventAttack,
-			Actor:  ev.controller,
-			CardID: ev.attacker,
-			Target: ev.target,
-		})
-	}
-	// One drain for the whole declaration — see the CR 508.2 note in
-	// the doc comment.
+	// One lock-in and one drain for the whole declaration — see the
+	// CR 508.2 note in the doc comment. runStateChecksLocked's first
+	// act is commitAttackDeclarationLocked, which announces every
+	// creature staged above in one event batch.
 	g.runStateChecksLocked()
 	return declared, nil
 }
@@ -5344,9 +5326,10 @@ func (g *Game) clearCombatLocked() {
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
 	}
-	// #830: the block declaration's announcements describe the
-	// declaration being wiped here, so they go with it.
+	// #830 / #859: the combat declarations' announcements describe
+	// the declarations being wiped here, so they go with them.
 	g.clearBlockAnnouncementsLocked()
+	g.clearAttackAnnouncementsLocked()
 }
 
 // Concede marks the given player as eliminated. If exactly one

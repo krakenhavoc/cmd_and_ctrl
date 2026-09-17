@@ -8,10 +8,13 @@ import (
 
 // attack_event_test.go — S22: EventAttack, the event behind
 // "whenever ~ attacks" triggers. Covers the payload, the
-// once-per-creature firing rate, the step it fires in, the two
-// cases where it must NOT fire (a creature that stayed home, an
-// attacker re-pointed at a different defender), and the harvester
-// wiring that turns it into a stack item.
+// once-per-creature firing rate, the step it fires in, the case
+// where it must NOT fire (a creature that stayed home), and the
+// harvester wiring that turns it into a stack item.
+//
+// Since #859 the event is emitted by the declaration's LOCK-IN
+// rather than by each click, so every test here declares and then
+// locks in; attack_declaration_test.go covers the lock-in itself.
 
 // attackEvents returns every EventAttack in the log, in emit order.
 func attackEvents(g *Game) []Event {
@@ -44,6 +47,7 @@ func TestAttackEventCarriesAttackerControllerAndDefender(t *testing.T) {
 	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	lockInAttackDeclaration(t, g)
 
 	evs := attackEvents(g)
 	if len(evs) != 1 {
@@ -78,6 +82,7 @@ func TestAttackEventFiresOncePerAttackerAndNotForStayAtHomes(t *testing.T) {
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	lockInAttackDeclaration(t, g)
 
 	evs := attackEvents(g)
 	if len(evs) != 3 {
@@ -97,10 +102,11 @@ func TestAttackEventFiresOncePerAttackerAndNotForStayAtHomes(t *testing.T) {
 	}
 }
 
-// The event belongs to the declare-attackers step: it is emitted as
-// the creature is stamped, so a trigger lands ahead of blockers.
-// Walking the rest of combat adds nothing — end of combat clears
-// AttackingTarget without re-announcing anything.
+// The event belongs to the declare-attackers step: it is emitted at
+// the declaration's lock-in, which is the first priority boundary of
+// that step, so a trigger lands ahead of blockers. Walking the rest
+// of combat adds nothing — end of combat clears AttackingTarget
+// without re-announcing anything.
 func TestAttackEventFiresInTheDeclareAttackersStep(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
@@ -111,6 +117,7 @@ func TestAttackEventFiresInTheDeclareAttackersStep(t *testing.T) {
 	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	lockInAttackDeclaration(t, g)
 	if len(rec.steps) != 1 {
 		t.Fatalf("recorded %d attack events, want 1", len(rec.steps))
 	}
@@ -139,8 +146,9 @@ func TestAttackEventNotEmittedOutsideDeclareAttackers(t *testing.T) {
 }
 
 // The sandbox lets a player re-point an already-attacking creature
-// at a different defender. That is a correction, not a second
-// attack: the target moves, the event does not repeat.
+// at a different defender before the declaration is complete. That
+// is one decision being revised, not two attacks: ONE event, naming
+// the defender the creature ends on (#859).
 func TestRedeclaringAnAttackerRetargetsWithoutRefiring(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	attacker := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
@@ -151,13 +159,14 @@ func TestRedeclaringAnAttackerRetargetsWithoutRefiring(t *testing.T) {
 	if err := g.DeclareAttacker(attacker, g.Seats[2].ID); err != nil {
 		t.Fatalf("re-DeclareAttacker: %v", err)
 	}
+	lockInAttackDeclaration(t, g)
 
 	evs := attackEvents(g)
 	if len(evs) != 1 {
 		t.Fatalf("attack events = %d, want 1 (re-pointing is not a second attack)", len(evs))
 	}
-	if evs[0].Target != g.Seats[1].ID {
-		t.Errorf("event Target = %s, want the first defender %s", evs[0].Target, g.Seats[1].ID)
+	if evs[0].Target != g.Seats[2].ID {
+		t.Errorf("event Target = %s, want the FINAL defender %s", evs[0].Target, g.Seats[2].ID)
 	}
 	card := findCard(g, attacker)
 	if card == nil || card.AttackingTarget != g.Seats[2].ID {
@@ -166,9 +175,9 @@ func TestRedeclaringAnAttackerRetargetsWithoutRefiring(t *testing.T) {
 }
 
 // The dispatcher wiring: a catalog card watching EventAttack gets
-// Build called and the item drained onto the stack inside
-// DeclareAttacker, not a priority pass later. Landing late would put
-// an attack trigger after blockers.
+// Build called and the item drained onto the stack by the lock-in,
+// inside the declare-attackers step. Landing later would put an
+// attack trigger after blockers.
 func TestAttackTriggerReachesTheStackAtDeclarationTime(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -206,18 +215,20 @@ func TestAttackTriggerReachesTheStackAtDeclarationTime(t *testing.T) {
 	})
 
 	advanceIntoStep(t, g, StepDeclareAttackers)
-	// A different creature attacking must not fire the ability —
-	// AppliesTo keys on the source's own instance ID.
+	// The bystander attacks in the same declaration and must not fire
+	// the ability — AppliesTo keys on the source's own instance ID —
+	// so one declaration is worth exactly one Build call.
 	if err := g.DeclareAttacker(bystander, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker bystander: %v", err)
 	}
-	if buildCalls != 0 {
-		t.Fatalf("Build ran for another creature's attack (%d calls)", buildCalls)
-	}
-
 	if err := g.DeclareAttacker(cardID, g.Seats[1].ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	if buildCalls != 0 {
+		t.Fatalf("Build ran before the declaration was locked in (%d calls)", buildCalls)
+	}
+	// Through the production path: the priority wrap is the lock-in.
+	lockInAttacksByPriorityWrap(t, g)
 	if buildCalls != 1 {
 		t.Fatalf("Build calls = %d, want 1", buildCalls)
 	}

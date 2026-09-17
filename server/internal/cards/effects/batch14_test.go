@@ -368,6 +368,10 @@ func TestB14UtvaraHellkiteMakesADragonPerAttackingDragon(t *testing.T) {
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	n, dragon := b14Tokens(g, me.ID, "Dragon")
 	if n != 2 {

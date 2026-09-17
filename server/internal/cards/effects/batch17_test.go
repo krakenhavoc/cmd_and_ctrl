@@ -932,10 +932,17 @@ func TestB17FiremaneCommandoDrawsForWideAttacksAimedElsewhere(t *testing.T) {
 	// Next turn cycle: one of the two comes at you — no card for them.
 	advanceToMainOf(t, g, 1)
 	theirHand = opp.Hand.Size()
-	declareAttack(t, g, other.ID, theirs[0])
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(theirs[0], other.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err := g.DeclareAttacker(theirs[1], me.ID); err != nil {
 		t.Fatal(err)
 	}
+	// One declaration, two defenders — the lock-in harvests off the
+	// whole of it (#859), which is what "if none of those creatures
+	// attacked you" is asking about.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	if opp.Hand.Size() != theirHand {
 		t.Errorf("one of the attackers came at you: no draw, drew %d", opp.Hand.Size()-theirHand)

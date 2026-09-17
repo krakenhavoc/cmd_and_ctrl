@@ -519,6 +519,10 @@ func TestB04AdelineAttacksWithATappedHumanPerOpponent(t *testing.T) {
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 
 	if n := countBattlefieldNamed(g, me.ID, "Human"); n != 3 {
@@ -654,6 +658,10 @@ func TestB04BeastmasterAscensionSwitchesOnAtSeven(t *testing.T) {
 	if err := g.DeclareAttacker(bear, victim.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 

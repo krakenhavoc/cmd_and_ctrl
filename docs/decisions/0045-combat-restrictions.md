@@ -1283,3 +1283,140 @@ the rest of the attack triggers depend on; a re-pointed attacker's
 That is a stale FIELD on a trigger that is legitimately owed, not a
 trigger that should not exist, so it is a different fix and is not
 made here.
+
+---
+
+## Amendment (2026-09-17): the attack declaration is announced at its lock-in too (#859)
+
+Amends the 2026-09-17 block-declaration amendment's closing paragraph,
+which said the attack side was "unchanged" and left the stale defender
+to its own issue. That issue is
+[#859](https://github.com/krakenhavoc/cmd_and_ctrl/issues/859), and
+this is its answer. Decisions 19-21 stand exactly as written; this is
+their attack-side twin.
+
+### The bug
+
+The active player could re-point an attacker from one defender to
+another before the declaration was complete (the client's "Re-declare
+attacker", `contextMenu.logic.ts:727`). `DeclareAttacker` emitted
+`EventAttack` on the FIRST click and skipped re-emission on the
+re-point, so the one event the creature is owed kept naming the
+defender it had already left.
+
+The trigger itself was legitimately owed — the creature did attack
+(CR 508.1) — but everything downstream read the wrong player:
+
+- **Bodies**, which put the effect somewhere: Brimaz's Cat Soldier
+  entered attacking the wrong player, Hellrider pinged the wrong seat,
+  Parhelion II's Angels and General Kreat's Goblin landed on the
+  wrong defender.
+- **Conditions**, which decide whether the trigger exists at all:
+  Curse of Opulence paid its controller for an attack that left the
+  enchanted player and paid nothing for one that arrived on them;
+  Kazuul and Revenge of Ravens fired for a player nobody ended up
+  attacking; Guild Artisan's and Horizon Explorer's "attacked a
+  player" read the first classification, so a planeswalker → player
+  re-point (and the reverse) was judged on the wrong one.
+
+The second group is why a late, live read of the defender at trigger
+RESOLUTION — the shape #859 sketched — was not enough: by resolution
+the harvest has already happened, and a condition evaluated against
+the stale defender has produced the wrong SET of triggers, not merely
+a wrong field on the right ones.
+
+### Decision 22. `DeclareAttacker` stages; the lock-in announces
+
+CR 508.1 declares attackers as ONE turn-based action and CR 508.2
+gives the active player priority afterwards, which is where the
+triggers it produced go on the stack. `DeclareAttacker` therefore
+**stages** the attack on `Card.AttackingTarget` (and still taps it,
+CR 508.1f) and emits nothing. `commitAttackDeclarationLocked`
+(`server/internal/game/attackers.go`) is the single place an attack
+declaration is announced, and therefore the single place attack
+triggers are harvested from — through the ordinary kind-keyed
+harvester, with no second harvester, no per-card special case, and no
+change to the card constructors (`WheneverThisAttacks`,
+`ThisAttacked`, `attackDeclared`, …).
+
+It runs at the same three points Decision 19 named for blocks, and
+for the same reason:
+
+- `runStateChecksLocked`, the engine's "a player would receive
+  priority" boundary, where it sits immediately after
+  `commitBlockDeclarationLocked`; and
+- `AdvanceStep` and `PassPriority`'s wrap, which both call it when a
+  declaration is still staged, so the lock-in always happens INSIDE
+  `declare_attackers` and never a step late — still ahead of blockers,
+  which is the S22 contract that mattered.
+
+The bulk `DeclareAttackers` (#318) is now a pure staging loop followed
+by the same single `runStateChecksLocked`. Its observable behaviour is
+unchanged — one event per declared creature, one batch, one drain —
+but there is now exactly ONE place an attack declaration is announced,
+whichever verb staged it.
+
+**What the S22 contract actually promised.** "One `EventAttack` per
+declared attacker", not "one per click at click time". The lock-in
+keeps the first and drops the second, so Adeline still makes one batch
+of Humans for a three-creature attack
+(`TestAdelineStillMakesOneBatchOfHumansPerAttack`), and nothing that
+reads the event needed changing. Nothing on the client reads the
+per-click event either: attack arrows come from `attacking_target` on
+the card view (`CombatArrows.svelte`), the attack sound is played
+locally on the click (`Game.svelte:650`, `:681`), and
+`combatBeats.ts` reads the damage entries. **No client change.**
+
+**Alternative rejected: resolve the defender late** (#859's own
+suggestion — keep the click-time event and have one helper resolve the
+defender from the attacker's current `AttackingTarget` at trigger
+resolution, CR 508.4-style). It fixes the bodies and not the
+conditions, as above; it would have needed a second, defender-shaped
+read in every `AppliesTo` that gates on the defender, which is the
+per-card special-casing this engine avoids; and it leaves the public
+game log naming a defender the attacker never attacked unless the
+already-emitted record is rewritten in place.
+
+### Decision 23. `announcedAttacks` is presence, not a pairing
+
+`Game.announcedAttacks` (the creatures that have had their one
+`EventAttack` this combat) is keyed on PRESENCE rather than on the
+defender the event named, because CR 508.1 declares a creature as an
+attacker ONCE: an attacker that has been announced is never announced
+again this combat, however often it is re-pointed afterwards. That is
+the attack side's one real difference from `announcedBlocks`, which
+compares the pairing because `EventBlock` is per (blocker, attacker)
+pair.
+
+The same map is how a permanent PUT onto the battlefield attacking
+stays out of the declaration (CR 506.3c — Parhelion II's Angels,
+Adeline's Humans, Legion Loyalty's myriad copies): the two token entry
+points mark it as announced so the lock-in's battlefield scan does not
+mistake its `AttackingTarget` for a staged declaration and hand it an
+attack trigger it must not have.
+
+`announcedAttacks` is cleared by `clearCombatLocked` alongside the
+`AttackingTarget` wipe it describes, and is carried by `Clone` /
+`RestoreFrom` and the persisted snapshot, classified `carried` in
+`clone.go`, `snapshot.go` and `snapshot_drift_test.go` next to
+`announcedBlocks` — an undo across a re-point that kept it would
+swallow the re-done attack trigger, and one that dropped it would
+double-fire it.
+
+### What this fixes, and what it leaves
+
+Fixed: a re-pointed attacker announces once, naming the defender it
+ends on; a re-point back to where it started is still one declaration;
+a planeswalker → player re-point (and the reverse) is classified on
+the final target; the public game log's "attacks" line names the
+player that was actually attacked.
+
+Changed as a side effect, and closer to CR 508.2: the whole
+declaration's triggers are now harvested together, so several
+differing attack triggers from one controller reach the CR 603.3b
+ordering prompt as one group instead of one at a time — which is what
+the bulk `DeclareAttackers` already did. An attacker staged and then
+un-declared by `ClearCombat` before any priority boundary now
+announces nothing at all, which it should not have before either.
+
+Unchanged: everything about blocks, and the client.

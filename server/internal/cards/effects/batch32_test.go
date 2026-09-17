@@ -599,6 +599,10 @@ func TestB32QuestForRenewalCountsTapsAndUntapsDuringOtherPlayersUntapSteps(t *te
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	prompts := 0
 	for latestTriggerPrompt(g, me.ID) != nil {
 		prompts++

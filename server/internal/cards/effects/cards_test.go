@@ -135,6 +135,25 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 // unblocked combat does.
 func lockInBlocks(t *testing.T, g *game.Game) {
 	t.Helper()
+	lockInCombatDeclaration(t, g)
+}
+
+// lockInAttacks is lockInBlocks for the ATTACK declaration (#859,
+// CR 508.1 / 508.2): DeclareAttacker stages the attack and announces
+// nothing either, so a test that asserts on "whenever ~ attacks"
+// triggers has to reach the lock-in — the first priority boundary of
+// the declare-attackers step — the way play does.
+func lockInAttacks(t *testing.T, g *game.Game) {
+	t.Helper()
+	lockInCombatDeclaration(t, g)
+}
+
+// lockInCombatDeclaration is the loop both of the above are: priority
+// passes around the table until the wrap locks the step's staged
+// declaration in. One implementation because it is one boundary —
+// PassPriority commits whichever declaration is staged.
+func lockInCombatDeclaration(t *testing.T, g *game.Game) {
+	t.Helper()
 	step := g.Turn.Step
 	for i := 0; i < len(g.Seats)+1; i++ {
 		if err := g.PassPriority(); err != nil {
