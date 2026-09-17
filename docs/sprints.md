@@ -742,7 +742,7 @@ Gap analysis behind this sprint: `Card.Counters` exists today ([server/internal/
 
 - **Counter-placement replacement effects** (Doubling Season, Hardened Scales, Branching Evolution) — S17 [#67](https://github.com/krakenhavoc/cmd_and_ctrl/issues/67)
 - **Counter-generating triggered abilities** (e.g. "when this ETBs, put a +1/+1 counter on target") — auto-fire in S19 [#69](https://github.com/krakenhavoc/cmd_and_ctrl/issues/69); manual `announce_trigger` from S13.1 still works here
-- **Infect / wither damage as counter placement** — depends on combat keyword layer (S18 [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)); poison-counter SBA ships here but the _creature-inflicts-poison_ mechanic lives with other combat keywords
+- **Infect / wither damage as counter placement** — handed to the combat keyword layer (S18 [#68](https://github.com/krakenhavoc/cmd_and_ctrl/issues/68)), which closed without it (ADR 0014 never covered infect); now tracked with toxic in [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748). The poison-counter SBA ships here but the _creature-inflicts-poison_ mechanic does not
 - **Persist / undying counter-conditional triggers** — S19 (needs event log + trigger framework)
 - **Proliferate** — S14 effect primitive; ships alongside the effect catalog
 - **Counter animations beyond simple fade** — S09 polish work; not this sprint
