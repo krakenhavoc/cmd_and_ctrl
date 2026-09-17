@@ -212,4 +212,14 @@ func printSnapshot(s protocol.SnapshotPayload) {
 	}
 	fmt.Printf("  battlefield=%d stack=%d exile=%d\n",
 		s.Game.Battlefield.Count, s.Game.Stack.Count, s.Game.Exile.Count)
+	for _, choice := range s.Game.PendingChoices {
+		if choice.Kind == "coin_call" {
+			answers := "heads or tails"
+			if choice.AllowStop {
+				answers += " or stop"
+			}
+			fmt.Printf("  coin_call %s chooser=%s coins=%d: %s (resolve_choice with choice_id and call: %s)\n",
+				choice.ID, choice.Chooser, choice.Coins, choice.Reason, answers)
+		}
+	}
 }

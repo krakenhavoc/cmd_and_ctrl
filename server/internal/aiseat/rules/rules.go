@@ -48,6 +48,8 @@
 package rules
 
 import (
+	"encoding/json"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -79,6 +81,9 @@ const (
 	// RuleSameLand is a window whose only alternative to passing is
 	// playing one of several copies of the same land.
 	RuleSameLand = "same-land"
+	// RuleCoinCall absorbs a coin call with no stop decision. The call is
+	// derived from the choice UUID, never from game RNG.
+	RuleCoinCall = "coin-call"
 )
 
 // Verdict is Layer A's answer for one window.
@@ -97,12 +102,31 @@ type Verdict struct {
 // Absorbed reports whether the verdict resolved the window.
 func (v Verdict) Absorbed() bool { return v.Outcome == Take }
 
-// Resolve runs the filter. It allocates nothing and is a handful of
-// passes over the move list — call it on every window, including in
-// the heuristic tier, where it costs nothing and saves the scorer a
-// walk.
+// Resolve runs the filter with a few passes over the move list. Coin
+// choices decode their answer parameters; the common priority paths
+// allocate nothing.
 func Resolve(in aiseat.Input) Verdict {
 	moves := in.Moves
+	// A heads/tails call without an offered stop is mechanically arbitrary:
+	// each call has identical odds. Absorb it so a model tier does not spend a
+	// request on it. A stop window remains a real decision for Layer B/C.
+	for i := range in.View.PendingChoices {
+		ch := &in.View.PendingChoices[i]
+		if ch.Kind != "coin_call" || ch.AllowStop || ch.Chooser != in.Seat.String() {
+			continue
+		}
+		call := aiseat.CoinCall(ch.ID)
+		for j := range moves {
+			var answer struct {
+				ChoiceID string `json:"choice_id"`
+				Call     string `json:"call"`
+			}
+			if moves[j].Kind == legal.KindChoice && json.Unmarshal(moves[j].Params, &answer) == nil && answer.ChoiceID == ch.ID && answer.Call == call {
+				return Verdict{Outcome: Take, Index: j, Rule: RuleCoinCall, Reason: "coin call from choice id"}
+			}
+		}
+		return escalate(RuleNone)
+	}
 	switch {
 	case len(moves) == 0:
 		return escalate(RuleNoMoves)

@@ -189,6 +189,7 @@ func itemHasChosenTarget(item *StackItem) bool {
 func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) {
 	copyCard := src
 	copyCard.InstanceID = uuid.New()
+	g.noteCreatedSourceLocked(copyCard.InstanceID)
 	copyCard.Owner = controller
 	copyCard.Controller = controller
 	copyCard.KnownBy = nil

@@ -51,6 +51,8 @@ const (
 	rngStreamShuffle     = "shuffle"
 	rngStreamPick        = "pick"
 	rngStreamRandomOrder = "random_order"
+	rngStreamRoll        = "roll"
+	rngStreamFlip        = "flip"
 )
 
 // rngDomain separates this derivation from any other use of HMAC
@@ -89,10 +91,54 @@ func (g *Game) randForLocked(s rngStream) *rand.Rand {
 		g.rngCounters = make(map[string]uint64)
 	}
 	who, label := g.rngPlayerIdentityLocked(s.player)
-	name := s.kind + "/" + label + "/" + s.source.String()
+	source, sourceLabel := g.rngSourceIdentityLocked(s.source)
+	name := s.kind + "/" + label + "/" + sourceLabel
 	n := g.rngCounters[name]
 	g.rngCounters[name] = n + 1
-	return rand.New(rand.NewChaCha8(rngSeed(g.rngKey, s.kind, who, s.source, g.rngTurn, n)))
+	return rand.New(rand.NewChaCha8(rngSeed(g.rngKey, s.kind, who, uuid.UUID(source), g.rngTurn, n)))
+}
+
+// rngSourceIdentityLocked returns the source half of a stream identity.
+// uuid.Nil deliberately keeps its old representation, preserving existing
+// un-sourced stream counters and their known-answer values.
+func (g *Game) rngSourceIdentityLocked(id uuid.UUID) ([16]byte, string) {
+	if id == uuid.Nil {
+		return [16]byte{}, id.String()
+	}
+	if ordinal, ok := g.sourceOrdinals[id]; ok {
+		var b [16]byte
+		copy(b[:11], "cmdctrl-obj")
+		b[11] = byte(ordinal >> 32)
+		binary.BigEndian.PutUint32(b[12:], uint32(ordinal))
+		return b, "obj" + strconv.FormatUint(ordinal>>32, 10) + ":" + strconv.FormatUint(uint64(uint32(ordinal)), 10)
+	}
+	return [16]byte(id), id.String()
+}
+
+func (g *Game) setDeckSourceOrdinalLocked(id uuid.UUID, seat, index int) {
+	if id == uuid.Nil {
+		return
+	}
+	if g.sourceOrdinals == nil {
+		g.sourceOrdinals = make(map[uuid.UUID]uint64)
+	}
+	g.sourceOrdinals[id] = uint64(uint32(seat)<<16 | uint32(index))
+}
+
+// noteCreatedSourceLocked assigns class 1 at creation time. It is safe to
+// call more than once for the same object (for example, from an event path).
+func (g *Game) noteCreatedSourceLocked(id uuid.UUID) {
+	if id == uuid.Nil {
+		return
+	}
+	if g.sourceOrdinals == nil {
+		g.sourceOrdinals = make(map[uuid.UUID]uint64)
+	}
+	if _, ok := g.sourceOrdinals[id]; ok {
+		return
+	}
+	g.sourceOrdinalNext++
+	g.sourceOrdinals[id] = uint64(1)<<32 | g.sourceOrdinalNext
 }
 
 // rngTurnIndexLocked is the turn a stream's counters are scoped to.

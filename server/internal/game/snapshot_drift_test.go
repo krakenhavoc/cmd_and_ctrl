@@ -128,6 +128,8 @@ var gameFields = plan(
 	"rngKey", carried, "rngSnapshot.Key",
 	"rngCounters", carried, "rngSnapshot.Counters",
 	"rngTurn", carried, "rngSnapshot.Turn",
+	"sourceOrdinals", carried, "GameSnapshot.SourceOrdinals",
+	"sourceOrdinalNext", carried, "GameSnapshot.SourceOrdinalNext",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 
@@ -326,6 +328,10 @@ var pendingChoiceFields = plan(
 	"Count", carried, "",
 	"Source", carried, "",
 	"Reason", carried, "",
+	"CoinAllowStop", carried, "",
+	"CoinCount", carried, "",
+	"CoinMaxUsefulWins", carried, "",
+	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	// Added by the mana pipeline (#352/#356). A restricted mana token
 	// is game state that survives undo — clone.go deep-copies it at
@@ -378,6 +384,7 @@ var pendingChoiceFields = plan(
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 
 // TestSnapshotCoversEveryDomainField is the drift guard.

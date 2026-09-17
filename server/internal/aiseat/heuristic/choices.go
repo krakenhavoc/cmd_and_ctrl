@@ -38,6 +38,7 @@ const (
 	choiceConfirm             = "confirm"
 	choiceChooseCards         = "choose_cards"
 	choiceColor               = "choose_color"
+	choiceCoinCall            = "coin_call"
 )
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
@@ -203,6 +204,23 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return 1, "confirm: take the offer"
 		}
 		return 0.5, "confirm: decline"
+
+	case choiceCoinCall:
+		// Calls have no strategic content: the engine draws won/lost rather
+		// than a face, so heads and tails have identical odds even across an
+		// undo. Use the pending choice's crypto-random UUID bit, the same
+		// answer Layer A uses. Stop is strategic and wins only once the card
+		// declared a useful-win ceiling.
+		if cp.Call == "stop" {
+			if ch != nil && ch.AllowStop && ch.MaxUsefulWins > 0 && ch.Wins >= ch.MaxUsefulWins {
+				return 3, "coin: stop at useful wins"
+			}
+			return 0, "coin: keep flipping"
+		}
+		if ch != nil && cp.Call == aiseat.CoinCall(ch.ID) {
+			return 2, "coin: random call"
+		}
+		return 0, "coin: other call"
 
 	case choiceTriggerPrompt, choiceOptionalReplacement, choiceEntryPayLife, choicePayUnless:
 		// The enumerator only offers "pay" when the cost is payable,

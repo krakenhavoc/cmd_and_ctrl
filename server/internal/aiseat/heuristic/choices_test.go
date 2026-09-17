@@ -153,6 +153,31 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 	})
 }
 
+func TestCoinCallUsesChoiceIDAndStopsAtDeclaredCeiling(t *testing.T) {
+	const choiceID = "00000000-0000-4000-8000-000000000001" // tails
+	base := newView([]protocol.PlayerView{newSeat(0), newSeat(1)}, withChoice(protocol.PendingChoiceView{
+		ID: choiceID, Kind: "coin_call", Chooser: seatID(0).String(),
+	}))
+	callMoves := []legal.Move{
+		choiceMove(t, 0, choiceID, "call heads", map[string]any{"call": "heads"}),
+		choiceMove(t, 0, choiceID, "call tails", map[string]any{"call": "tails"}),
+	}
+	in := input(0, base, callMoves...)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "call tails" {
+		t.Fatalf("coin call = %q, want choice-ID tails", got)
+	}
+
+	stopView := base
+	stopView.PendingChoices[0].AllowStop = true
+	stopView.PendingChoices[0].MaxUsefulWins = 3
+	stopView.PendingChoices[0].Wins = 3
+	stop := choiceMove(t, 0, choiceID, "stop flipping", map[string]any{"call": "stop"})
+	in = input(0, stopView, append(callMoves, stop)...)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "stop flipping" {
+		t.Fatalf("coin ceiling = %q, want stop", got)
+	}
+}
+
 func TestCleanupDiscardPitchesTheWorstCard(t *testing.T) {
 	dragon := creature(cardID(1), 0, "Dragon", 6, 6)
 	mountain := land(cardID(2), 0)

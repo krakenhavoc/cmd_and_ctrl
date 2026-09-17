@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"hash/fnv"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -248,23 +247,6 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
 	return out
 }
 
-// b27PseudoRandomIndex picks an index in [0, n) from the game's own
-// state — the newest event's sequence number and a per-effect salt
-// — for "at random" clauses that only choose what to LOOK at (Urza's
-// Bauble). The engine's seeded RNG is not reachable from an effect,
-// and a fixed index would always show the most recently drawn card,
-// which is a different card from a random one. Deterministic for a
-// given log, so a clone and its original agree.
-func b27PseudoRandomIndex(g *game.Game, salt uuid.UUID, n int) int {
-	if n <= 1 {
-		return 0
-	}
-	h := fnv.New64a()
-	_, _ = h.Write(salt[:])
-	_, _ = h.Write([]byte(strconv.FormatUint(b25LastEventSeq(g), 10)))
-	return int(h.Sum64() % uint64(n))
-}
-
 // b27DamageDealtToAfter is the damage `target` actually took from
 // `source` in events logged after `after` — post-prevention, which
 // is what the event carries. Zero when nothing landed.
@@ -304,7 +286,7 @@ func b27DrawOne(g *game.Game, item *game.StackItem) error {
 }
 
 // b27LookAtRandomCardInHand marks `viewer` as a knower of one card
-// in `player`'s hand, chosen by b27PseudoRandomIndex. "Look at" is
+// in `player`'s hand, chosen by the engine's keyed random stream. "Look at" is
 // not "reveal": only the viewer learns the card. An empty hand shows
 // nothing.
 func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
@@ -312,8 +294,20 @@ func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
 	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 		return
 	}
-	idx := b27PseudoRandomIndex(ctx.Game, ctx.Source(), p.Hand.Size())
-	p.Hand.Cards[idx].AddKnower(viewer)
+	ids := make([]uuid.UUID, 0, p.Hand.Size())
+	for _, c := range p.Hand.Cards {
+		ids = append(ids, c.InstanceID)
+	}
+	pick := randomPick(ctx, ids, 1)
+	if len(pick) == 0 {
+		return
+	}
+	for i := range p.Hand.Cards {
+		if p.Hand.Cards[i].InstanceID == pick[0] {
+			p.Hand.Cards[i].AddKnower(viewer)
+			return
+		}
+	}
 }
 
 // b27DealDamageWithExcess is Hell to Pay's damage: `amount` from the

@@ -559,6 +559,21 @@ surface tiny.
    Makefile) so the library is small enough to find your card quickly.
    Cast it, verify the AUTO badge renders, verify the effect resolves.
 
+### Random effects (#744)
+
+Use `Game.RollDiceForEffect(RandomDraw{Player, Source}, sides, n)`,
+`FlipCoinsForEffect(draw, n)` for uncalled faces, and
+`ChooseAtRandomForEffect(draw, ids, k)` for selections. These consume
+keyed, persisted streams that undo rewinds; do not create a private RNG.
+For a won/lost flip, queue `FlipCoinForEffect(CoinFlipSpec{Flipper,
+Source, Coins, Question, Then})`. The player calls heads/tails through
+`coin_call`; `AllowStop`, `Wins` and `MaxUsefulWins` support chains and
+bot stop decisions. Continuations must capture immutable values and use
+the `*Game` they receive, so undo operates on the restored game.
+`WheneverYouRollDice` triggers once per instruction, including when
+another roll trigger is still pending. See ADR 0054 and the random card
+tests for compositions; clear any caveat made stale by the new mechanic.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional

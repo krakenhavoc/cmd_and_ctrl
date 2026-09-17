@@ -27,7 +27,7 @@
 // Plain functions over plain data, so all of that is unit-testable
 // without mounting a component.
 
-import type { RevealView } from "./protocol";
+import type { LogEvent, RevealView } from "./protocol";
 
 // REVEAL_TTL_MS is how long one reveal stays on the attention strip.
 //
@@ -44,6 +44,65 @@ export const REVEAL_TTL_MS = 9000;
 // toasts, so a resolution that reveals four times must not push the
 // rest of it off the board.
 export const REVEAL_CUE_LIMIT = 2;
+
+// Random outcomes share the attention strip with reveals, but have a
+// different payload: the server's `text` is the complete public line.
+// Keep the cap and ageing policy aligned with reveals so a burst of
+// rolls cannot crowd the board indefinitely.
+export const RANDOM_CUE_LIMIT = 2;
+export const RANDOM_CUE_TTL_MS = REVEAL_TTL_MS;
+
+export interface RandomCue {
+  log: LogEvent;
+  shownAt: number;
+}
+
+export interface RandomState {
+  seen: Set<number>;
+  cues: RandomCue[];
+}
+
+export function emptyRandomState(): RandomState {
+  return { seen: new Set(), cues: [] };
+}
+
+export function isRandomLog(log: LogEvent): boolean {
+  return log.kind === "roll" || log.kind === "flip";
+}
+
+// Reconnecting clients prime the current log window. Those outcomes
+// already happened before the client was watching, so they must not
+// appear as fresh announcements.
+export function primeRandomEvents(logs: readonly LogEvent[] | undefined): RandomState {
+  const seen = new Set<number>();
+  for (const log of logs ?? []) {
+    if (isRandomLog(log)) seen.add(log.seq);
+  }
+  return { seen, cues: [] };
+}
+
+export function trackRandomEvents(
+  prev: RandomState,
+  logs: readonly LogEvent[] | undefined,
+  now: number,
+): RandomState {
+  // The log window bounds memory. A shorter history after undo also
+  // forgets rewound batches, allowing their replay to cue again.
+  const current = logs === undefined ? undefined : new Set(logs.map((log) => log.seq));
+  const seen = new Set([...prev.seen].filter((seq) => current === undefined || current.has(seq)));
+  const newest = logs === undefined ? Infinity : Math.max(0, ...logs.map((log) => log.seq));
+  const cues = prev.cues.filter((c) => c.log.seq <= newest && now - c.shownAt < RANDOM_CUE_TTL_MS);
+  for (const log of logs ?? []) {
+    if (!isRandomLog(log) || seen.has(log.seq)) continue;
+    seen.add(log.seq);
+    cues.push({ log, shownAt: now });
+  }
+  return { seen, cues: cues.slice(-RANDOM_CUE_LIMIT) };
+}
+
+export function dismissRandomEvent(prev: RandomState, seq: number): RandomState {
+  return { seen: prev.seen, cues: prev.cues.filter((cue) => cue.log.seq !== seq) };
+}
 
 export interface RevealCue {
   reveal: RevealView;
