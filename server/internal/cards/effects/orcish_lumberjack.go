@@ -26,9 +26,8 @@ func init() {
 				Tap:            true,
 				SacrificeOther: b27SacrificeAForest(),
 			},
-			Produced:                "{R|G}{R|G}{R|G}",
-			Label:                   "{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}",
-			IgnoreCommanderIdentity: true,
+			Produced: "{R|G}{R|G}{R|G}",
+			Label:    "{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}",
 		}},
 	})
 }

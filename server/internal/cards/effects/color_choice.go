@@ -115,7 +115,7 @@ func CreatureYouControlOfChosenColor(target *game.Card, _ *game.Game, source *ga
 //
 // It narrows to nothing: every printed card in this family says "any
 // one color", with no commander-identity clause, so the ability that
-// uses it should set IgnoreCommanderIdentity.
+// uses it leaves NarrowToCommanderIdentity off.
 func ProducedOneColor(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) string {
 	return func(g *game.Game, controller, source uuid.UUID) string {
 		return OneColorOfAmount(n(g, controller, source))

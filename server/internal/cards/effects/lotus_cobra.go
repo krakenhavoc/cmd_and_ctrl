@@ -15,9 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the trigger RESOLVES — it uses the stack, unlike a mana ability —
 // and empties with the pool at the end of the step, so a land played
 // in the main phase pays for a spell in that main phase, as printed.
-// The printed text says "any color", so the pick opts out of the
-// commander-identity narrowing (AddMana.IgnoreCommanderIdentity) and
-// offers all five colours.
+// The printed text says "any color", so the pick offers all five
+// colours, commander identity first (AddMana.NarrowToCommanderIdentity
+// stays off).
 //
 // No simplification.
 func init() {
@@ -26,7 +26,7 @@ func init() {
 		Name:         "Lotus Cobra",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Lotus Cobra — add one mana of any color (landfall)", Do(AddMana{Produced: "{W|U|B|R|G}", IgnoreCommanderIdentity: true})),
+			Landfall("Lotus Cobra — add one mana of any color (landfall)", Do(AddMana{Produced: "{W|U|B|R|G}"})),
 		},
 	})
 }

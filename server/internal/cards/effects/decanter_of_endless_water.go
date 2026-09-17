@@ -30,15 +30,11 @@ package effects
 // # The mana ability
 //
 // "Add one mana of any color" as pipe syntax, one picker rather than
-// five menu entries. IgnoreCommanderIdentity is left FALSE to match
-// Birds of Paradise, the catalog's existing "{T}: Add one mana of any
-// color" — the engine narrows the pipe to the controller's commander
-// colour identity, which can only remove a colour the controller
-// could not spend on anything in their deck. (The flag exists for
-// City of Brass and the painlands, whose printed text names colours
-// for a reason and whose damage makes an off-identity pick
-// meaningful.) Two cards with identical printed text should not
-// disagree about this, and Birds came first.
+// five menu entries. Like Birds of Paradise, the catalog's existing
+// "{T}: Add one mana of any color", it offers all five colours with
+// the controller's commander identity listed first;
+// NarrowToCommanderIdentity is only for the cards that print "in your
+// commander's color identity".
 //
 // No simplifications.
 func init() {

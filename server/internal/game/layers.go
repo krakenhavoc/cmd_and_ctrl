@@ -699,6 +699,6 @@ func (g *Game) LayerRecomputeCountForTest() uint64 {
 // proxy replacement). Reads the commander's effective colors via
 // the layer engine, falling back to the printed-cost proxy when
 // effective is empty.
-func CommanderIdentityForTest(p *Player) []string {
-	return commanderIdentityFor(p)
+func CommanderIdentityForTest(g *Game, p *Player) []string {
+	return commanderIdentityFor(g, p)
 }

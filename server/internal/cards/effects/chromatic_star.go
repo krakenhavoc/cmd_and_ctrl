@@ -25,10 +25,9 @@ func init() {
 		Name:         "Chromatic Star",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Sacrifice: true, Mana: "{1}"},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{1}, {T}, Sacrifice: Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Sacrifice: true, Mana: "{1}"},
+			Produced: "{W|U|B|R|G}",
+			Label:    "{1}, {T}, Sacrifice: Add one mana of any color",
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Chromatic Star — draw a card", Do(DrawCards{N: 1})),

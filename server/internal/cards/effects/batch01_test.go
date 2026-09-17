@@ -189,7 +189,7 @@ func TestBatch01LandRowsProduceTheirPrintedColours(t *testing.T) {
 			if spec.ManaAbilities[0].Produced != "{C}" || spec.ManaAbilities[0].Rider != nil {
 				t.Errorf("%s: ability 0 must be the painless {C}", spec.Name)
 			}
-			if spec.ManaAbilities[1].Produced != want || spec.ManaAbilities[1].Rider == nil || !spec.ManaAbilities[1].IgnoreCommanderIdentity {
+			if spec.ManaAbilities[1].Produced != want || spec.ManaAbilities[1].Rider == nil || spec.ManaAbilities[1].NarrowToCommanderIdentity {
 				t.Errorf("%s: ability 1 must be %s with a damage rider and no identity narrowing", spec.Name, want)
 			}
 		}

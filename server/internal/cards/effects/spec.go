@@ -118,8 +118,9 @@ type Spec struct {
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
 	// Paradise's "{T}: Add one mana of any color", Arcane Signet's
-	// commander-identity-restricted variant. Mana abilities do NOT
-	// use the stack (CR 605.3); they resolve synchronously when the
+	// commander-identity-restricted variant
+	// (NarrowToCommanderIdentity). Mana abilities do NOT use the stack
+	// (CR 605.3); they resolve synchronously when the
 	// activate_mana_ability action fires. The Index a client sends in
 	// the action payload is the position in this slice.
 	//
@@ -537,20 +538,22 @@ type ManaAbility struct {
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *game.Game, controller, source uuid.UUID) error
 
-	// IgnoreCommanderIdentity keeps a pipe-syntax Produced string
-	// ("{U|R}", "{W|U|B|R|G}") at its printed width instead of
-	// letting the engine intersect it with the controller's
-	// commander colour identity.
+	// NarrowToCommanderIdentity intersects a pipe-syntax Produced
+	// string ("{W|U|B|R|G}") with the controller's commander colour
+	// identity before the colour pick is offered.
 	//
-	// Set it whenever the printed text does not actually say "in
-	// your commander's color identity" — City of Brass and Mana
-	// Confluence ("any color"), the painland and Talisman duals
-	// (two named colours). Leave it false for Command Tower,
-	// Arcane Signet, Commander's Sphere and Path of Ancestry, whose
-	// text is the reason the narrowing exists.
+	// Set it ONLY when the printed text says "any color in your
+	// commander's color identity" — Command Tower, Arcane Signet,
+	// Commander's Sphere, Path of Ancestry.
+	// TestNarrowToCommanderIdentityMatchesOracleText holds the
+	// catalog to exactly that. Every other pipe — Birds of Paradise,
+	// Treasure, City of Brass, the painland and guildgate duals —
+	// leaves it off and offers its printed width, with the
+	// commander's identity listed first (owner decision 2026-09-17).
 	//
-	// Added in the S22 mana-ability-rider pass.
-	IgnoreCommanderIdentity bool
+	// Replaced IgnoreCommanderIdentity (S22), its inverse, when the
+	// default flipped from narrowing to ordering.
+	NarrowToCommanderIdentity bool
 
 	// ProducedFunc computes Produced at activation time instead of
 	// declaring it. Two card families need it and they are the same

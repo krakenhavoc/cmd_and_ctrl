@@ -53,10 +53,9 @@ func b14ReplicatedRingToken() game.Card {
 		Name:     "Replicated Ring",
 		TypeLine: "Token Snow Artifact",
 		ManaAbilities: []game.ManaAbilityShape{{
-			TapCost:                 true,
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}: Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			TapCost:  true,
+			Produced: "{W|U|B|R|G}",
+			Label:    "{T}: Add one mana of any color",
 		}},
 	}
 }

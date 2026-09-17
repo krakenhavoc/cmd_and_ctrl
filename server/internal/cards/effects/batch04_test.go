@@ -132,7 +132,7 @@ func TestB04TalismanRowsHaveBothHalves(t *testing.T) {
 			continue
 		}
 		second := spec.ManaAbilities[1]
-		if second.Produced != want || second.Rider == nil || !second.IgnoreCommanderIdentity {
+		if second.Produced != want || second.Rider == nil || second.NarrowToCommanderIdentity {
 			t.Errorf("%s: ability 1 must be %s with a damage rider and no identity narrowing", spec.Name, want)
 		}
 	}

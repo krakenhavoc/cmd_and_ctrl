@@ -20,10 +20,9 @@ func init() {
 		Name:         "Sunbaked Canyon",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{R|W}",
-			Label:                   "{T}, Pay 1 life: Add {R} or {W}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{R|W}",
+			Label:    "{T}, Pay 1 life: Add {R} or {W}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this land: Draw a card.",

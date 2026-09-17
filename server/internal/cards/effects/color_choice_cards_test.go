@@ -491,8 +491,8 @@ func TestSanctumOfFruitfulHarvestAddsOneColorPerShrine(t *testing.T) {
 
 // "Any one color" / "any color" on an effect (not a mana ability) is
 // printed with no commander-identity clause, so a mono-green commander
-// does not narrow the pick.
-func TestEffectManaAnyColorIgnoresCommanderIdentity(t *testing.T) {
+// does not narrow the pick: all five colours, G listed first.
+func TestEffectManaAnyColorOffersAllFiveIdentityFirst(t *testing.T) {
 	t.Run("Sanctum of Fruitful Harvest", func(t *testing.T) {
 		g := newCatalogGame(t)
 		me := g.Seats[0]
@@ -503,8 +503,8 @@ func TestEffectManaAnyColorIgnoresCommanderIdentity(t *testing.T) {
 		}
 		passPriorityAroundTable(t, g)
 		pick := pendingOfKind(g, game.PendingChoiceMana)
-		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
-			t.Fatalf("pick = %+v, want all five colours", pick)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, monoGreenFirst) {
+			t.Fatalf("pick = %+v, want all five colours, G first", pick)
 		}
 	})
 	t.Run("Lotus Cobra", func(t *testing.T) {
@@ -515,8 +515,8 @@ func TestEffectManaAnyColorIgnoresCommanderIdentity(t *testing.T) {
 		playLandFromHand(t, g, "Forest", "")
 		passPriorityAroundTable(t, g)
 		pick := riderLatestManaPick(g, me.ID)
-		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
-			t.Fatalf("pick = %+v, want all five colours", pick)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, monoGreenFirst) {
+			t.Fatalf("pick = %+v, want all five colours, G first", pick)
 		}
 	})
 	t.Run("Deathrite Shaman", func(t *testing.T) {
@@ -532,8 +532,8 @@ func TestEffectManaAnyColorIgnoresCommanderIdentity(t *testing.T) {
 		}
 		passPriorityAroundTable(t, g)
 		pick := riderLatestManaPick(g, me.ID)
-		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, game.AllColors) {
-			t.Fatalf("pick = %+v, want all five colours", pick)
+		if pick == nil || !reflect.DeepEqual(pick.ColorOptions, monoGreenFirst) {
+			t.Fatalf("pick = %+v, want all five colours, G first", pick)
 		}
 	})
 }

@@ -27,10 +27,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:                    ManaAbilityCost{Tap: true},
-				Produced:                "{W|U|B|R|G}",
-				Label:                   "Add one mana of any color",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{W|U|B|R|G}",
+				Label:    "Add one mana of any color",
 			},
 		},
 	})
