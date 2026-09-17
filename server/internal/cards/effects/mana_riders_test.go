@@ -172,16 +172,17 @@ func TestPainlandDualIgnoresCommanderIdentity(t *testing.T) {
 	}
 }
 
-// Contrast case: an ability that did NOT opt out still narrows. This
-// is what keeps the opt-out honest — it proves the flag is doing the
-// work rather than the narrowing having quietly died.
-func TestCommanderIdentityStillNarrowsAbilitiesThatDidNotOptOut(t *testing.T) {
+// Contrast case: Command Tower prints "in your commander's color
+// identity" and still narrows. This is what keeps the painland test
+// honest — it proves NarrowToCommanderIdentity is doing the work
+// rather than the narrowing having quietly died.
+func TestCommandTowerStillNarrowsToCommanderIdentity(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	riderGiveCommander(g, me, "{W}")
-	land := seedPermanentWithOracle(g, me.ID, "Temple of Silence", "Land", templeOfSilenceOracle)
+	tower := seedPermanentWithOracle(g, me.ID, "Command Tower", "Land", "0895c9b7-ae7d-4bb3-af17-3b75deb50a25")
 
-	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
+	if err := g.ActivateManaAbility(me.ID, tower, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	pick := riderLatestManaPick(g, me.ID)
@@ -189,7 +190,7 @@ func TestCommanderIdentityStillNarrowsAbilitiesThatDidNotOptOut(t *testing.T) {
 		t.Fatal("no mana pick")
 	}
 	if len(pick.ColorOptions) != 1 || pick.ColorOptions[0] != "W" {
-		t.Errorf("Temple of Silence options %v under a mono-white commander, want just W", pick.ColorOptions)
+		t.Errorf("Command Tower options %v under a mono-white commander, want just W", pick.ColorOptions)
 	}
 }
 
@@ -531,7 +532,7 @@ func TestPainCyclesPutThePainlessAbilityFirst(t *testing.T) {
 		if spec.ManaAbilities[1].Rider == nil {
 			t.Errorf("%s: ability 1 must carry the damage rider", spec.Name)
 		}
-		if !spec.ManaAbilities[1].IgnoreCommanderIdentity {
+		if spec.ManaAbilities[1].NarrowToCommanderIdentity {
 			t.Errorf("%s: the dual names two printed colours and must not narrow to the commander's identity", spec.Name)
 		}
 	}

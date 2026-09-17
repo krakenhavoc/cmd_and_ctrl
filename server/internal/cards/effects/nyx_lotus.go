@@ -36,10 +36,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			ProducedFunc:            nyxLotusProduced,
-			Label:                   "Choose a color: add mana of that color equal to your devotion to it",
-			IgnoreCommanderIdentity: true,
+			Cost:         ManaAbilityCost{Tap: true},
+			ProducedFunc: nyxLotusProduced,
+			Label:        "Choose a color: add mana of that color equal to your devotion to it",
 		}},
 	})
 }

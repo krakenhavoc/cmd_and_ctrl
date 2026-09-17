@@ -84,19 +84,19 @@ func buildDef(spec Spec) *game.CardDef {
 		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
 		for i, a := range spec.ManaAbilities {
 			d.ManaAbilities[i] = game.ManaAbilityShape{
-				TapCost:                 a.Cost.Tap,
-				SacrificeCost:           a.Cost.Sacrifice,
-				SacrificeOther:          a.Cost.SacrificeOther,
-				LifeCost:                a.Cost.Life,
-				ManaCost:                a.Cost.Mana,
-				Produced:                a.Produced,
-				Label:                   a.Label,
-				Rider:                   a.Rider,
-				IgnoreCommanderIdentity: a.IgnoreCommanderIdentity,
-				Condition:               a.Condition,
-				ProducedFunc:            a.ProducedFunc,
-				Restrictions:            a.Restrictions,
-				RestrictionsFunc:        a.RestrictionsFunc,
+				TapCost:                   a.Cost.Tap,
+				SacrificeCost:             a.Cost.Sacrifice,
+				SacrificeOther:            a.Cost.SacrificeOther,
+				LifeCost:                  a.Cost.Life,
+				ManaCost:                  a.Cost.Mana,
+				Produced:                  a.Produced,
+				Label:                     a.Label,
+				Rider:                     a.Rider,
+				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
+				Condition:                 a.Condition,
+				ProducedFunc:              a.ProducedFunc,
+				Restrictions:              a.Restrictions,
+				RestrictionsFunc:          a.RestrictionsFunc,
 			}
 		}
 	}

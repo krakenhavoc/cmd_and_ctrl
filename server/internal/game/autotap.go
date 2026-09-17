@@ -214,26 +214,14 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if hasOneColorAmounts(slots) {
 			continue
 		}
-		// Arcane Signet's commander-identity narrowing happens
-		// at activation time in ActivateManaAbility; mirror it
-		// here so the auto-tapper's planning matches what the
-		// activation will actually produce. Birds of Paradise
-		// (no commander filter when identity is empty) keeps the
-		// raw 5-color set.
-		//
-		// S22: an ability that opted out of the narrowing
-		// (IgnoreCommanderIdentity) keeps its printed option set
-		// here too, and an intersection that comes back empty falls
-		// back to the raw set exactly as the activation path does.
-		if len(identity) > 0 && !picked.IgnoreCommanderIdentity {
-			for i, slot := range slots {
-				if len(slot.Options) <= 1 {
-					continue
-				}
-				if narrowed := intersectColors(slot.Options, identity); len(narrowed) > 0 {
-					slots[i].Options = narrowed
-				}
-			}
+		// Mirror the activation's option list (manaPickOptions) so
+		// the planner books exactly the colours the activation will
+		// offer: Birds of Paradise keeps all five with the commander's
+		// identity first, and only a NarrowToCommanderIdentity source
+		// (Command Tower, Arcane Signet) is intersected with the
+		// identity — with the same empty-intersection fallback.
+		for i, slot := range slots {
+			slots[i].Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
 		}
 		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots})
 	}
@@ -500,10 +488,10 @@ func tierForGeneric(s tapSource) int {
 }
 
 // intersectColors returns the elements of `a` that also appear in
-// `b`. Used for Arcane Signet's commander-identity narrowing —
-// the produced "{W|U|B|R|G}" gets intersected with the
-// controller's commander identity (e.g. {W,U,G} for a Bant deck)
-// so the auto-tapper knows what colors it can actually plan with.
+// `b`, in `a`'s order. Used by manaPickOptions: Arcane Signet's
+// commander-identity narrowing (the produced "{W|U|B|R|G}"
+// intersected with {W,U,G} for a Bant deck) and the identity-first
+// ordering every other multi-option slot gets.
 func intersectColors(a, b []string) []string {
 	if len(a) == 0 || len(b) == 0 {
 		return nil

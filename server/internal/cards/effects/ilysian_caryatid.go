@@ -36,8 +36,7 @@ func init() {
 				}
 				return "{W|U|B|R|G}"
 			},
-			Label:                   "Add one mana of any color (two of any one color with a 4-power creature)",
-			IgnoreCommanderIdentity: true,
+			Label: "Add one mana of any color (two of any one color with a 4-power creature)",
 		}},
 	})
 }

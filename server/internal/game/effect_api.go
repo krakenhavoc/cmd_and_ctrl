@@ -2591,8 +2591,8 @@ func addManaReason(slot ProducedManaEntry) string {
 // `produced` is the Scryfall brace grammar ParseProducedMana reads,
 // pipe syntax included: a single-colour slot goes straight into the
 // pool, a multi-option slot queues the same PendingChoiceMana pick a
-// Birds of Paradise activation does, narrowed to the controller's
-// commander identity exactly as Treasure and Phyrexian Altar are.
+// Birds of Paradise activation does, with the controller's commander
+// identity listed first (manaPickOptionsFor).
 // `source` is the card the mana is attributed to (the spell itself
 // for Dark Ritual); it rides on each ManaToken.
 //
@@ -2611,19 +2611,20 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 
 // AddManaOptions tunes AddManaWithOptionsForEffect.
 type AddManaOptions struct {
-	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
-	// width instead of intersecting it with the controller's commander
-	// colour identity: the effect-side twin of the mana ability's
-	// IgnoreCommanderIdentity. Set it whenever the printed text says
-	// "any color" or "any one color" with no commander-identity clause
-	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
-	// Added for #742.
-	IgnoreCommanderIdentity bool
+	// NarrowToCommanderIdentity intersects a multi-option pick with the
+	// controller's commander colour identity instead of offering the
+	// printed width identity-first: the effect-side twin of
+	// ManaAbilityShape.NarrowToCommanderIdentity. Set it only when the
+	// printed text says "any color in your commander's color
+	// identity"; no effect in the catalog does today. Replaced #742's
+	// IgnoreCommanderIdentity when the default flipped (owner decision
+	// 2026-09-17).
+	NarrowToCommanderIdentity bool
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
-// AddManaForEffect is this with the zero options, so the existing
-// callers keep the commander-identity narrowing they declared.
+// AddManaForEffect is this with the zero options: the printed option
+// set, commander identity first.
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
@@ -2645,10 +2646,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
-		colorOptions := options
-		if !opts.IgnoreCommanderIdentity {
-			colorOptions = filterPipeByCommanderIdentity(options, p)
-		}
+		colorOptions := manaPickOptionsFor(options, p, opts.NarrowToCommanderIdentity)
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,

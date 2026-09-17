@@ -1202,18 +1202,12 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
 		for _, slot := range slots {
-			options := slot.Options
-			if len(options) > 1 && len(identity) > 0 && !ab.IgnoreCommanderIdentity {
-				// Mirror ActivateManaAbility's narrowing, including
-				// its no-overlap fallback: an intersection that came
-				// back empty means the identity says nothing useful
-				// about this slot, and dropping the mana on the floor
-				// would silently short the plan the solver just
-				// validated against the raw option set.
-				if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
-					options = narrowed
-				}
-			}
+			// Mirror ActivateManaAbility's option list exactly —
+			// identity-first order, or the identity narrowing with its
+			// no-overlap fallback — so a generic-only slot defaults to
+			// an identity colour (pickColorForSlot's options[0]) and
+			// the executor never mints a colour the plan didn't have.
+			options := manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
 			color := pickColorForSlot(options, &pending)
 			if color == "" {
 				continue
@@ -3322,11 +3316,11 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // the tap cost can't be paid because the card is already tapped
 // (ErrAlreadyTapped), or the ability index is out of bounds
 // (ErrInvalidParam). Commander-identity filtering for Arcane Signet
-// happens inline: the engine intersects the pipe set with the
-// controller's commander's color identity before queuing the pick —
-// unless the ability set IgnoreCommanderIdentity, which City of Brass
-// and the painland duals do because their printed text names their
-// colours outright.
+// happens inline: a pipe set keeps its printed width with the
+// controller's commander's colour identity listed first, and only an
+// ability that set NarrowToCommanderIdentity (the four cards whose text
+// says "in your commander's color identity") is intersected with it —
+// see manaPickOptionsFor.
 //
 // S22 adds the last two pieces the painland / Talisman / Ancient Tomb
 // / Mana Confluence batch needed:
@@ -3597,20 +3591,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
-		// Multi-option slot — intersect with the controller's commander
-		// identity (Arcane Signet). When no commander exists or the
-		// identity is empty (placeholder commanders from the demo seed),
-		// fall through to the raw option set so Birds of Paradise still
-		// offers the full five colors.
-		//
-		// S22: an ability whose printed text does NOT mention the
-		// commander's identity opts out — City of Brass says "any
-		// color", a painland names two specific colors, and neither
-		// should shrink because of who's in the command zone.
-		filtered := options
-		if !ab.IgnoreCommanderIdentity {
-			filtered = filterPipeByCommanderIdentity(options, p)
-		}
+		// Multi-option slot — the printed option set, commander
+		// identity first (Birds of Paradise offers all five colours),
+		// or narrowed to the identity when the printed text says so
+		// (Command Tower, Arcane Signet: NarrowToCommanderIdentity).
+		// See manaPickOptionsFor.
+		filtered := manaPickOptionsFor(options, p, ab.NarrowToCommanderIdentity)
 		// Queue the pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
@@ -3820,41 +3806,90 @@ func producibleColors(abilities []ManaAbilityShape) map[string]bool {
 	return out
 }
 
-// filterPipeByCommanderIdentity narrows `options` to just the colors
-// in the active player's commander's color identity. Used by the
-// `"{W|U|B|R|G}"` → Arcane Signet path. If the player has no
-// commander (or the commander has no color identity), returns the
-// raw options unchanged — Birds of Paradise falls through this path
-// with the full 5-color set intact.
-func filterPipeByCommanderIdentity(options []string, p *Player) []string {
-	// Find the player's commander in the command zone. Since #276
-	// the colour identity really is on game.Card directly, copied
-	// at deck-import time from cards.Card.ColorIdentity — this
-	// comment described that code for several sprints before it
-	// existed, which is why the gap went unnoticed.
-	// For S15 we scan the command zone only — post-move commanders
-	// on the battlefield still carry identity, but CR 903.4 keys
-	// identity off the printed card, so either source would work.
-	identity := commanderIdentityFor(p)
-	if len(identity) == 0 {
+// manaPickOptionsFor is the colour list a multi-option mana slot
+// offers `p`: the one list ActivateManaAbility, AddManaForEffect and
+// the auto-tapper (planner and executor alike) all read, so the three
+// can never disagree about what a source produces.
+//
+// Owner decision (2026-09-17): "any color" offers ALL FIVE colours,
+// with the commander's colour identity listed first. So by default
+// the slot keeps its printed width and is only REORDERED — identity
+// colours first, the rest after, each group in printed order. Birds
+// of Paradise in a mono-green deck offers G, W, U, B, R; a Scrubland
+// in a mono-white deck offers W, B. The order is what makes the
+// client's first button, the legal enumerator's first answer (the
+// bot's tie-break) and the auto-tapper's default pick
+// (pickColorForSlot's options[0]) an identity colour, without taking
+// the others away.
+//
+// `narrow` is for the four cards whose printed text says "any color
+// in your commander's color identity" — Command Tower, Arcane Signet,
+// Commander's Sphere, Path of Ancestry (NarrowToCommanderIdentity).
+// Those intersect with the identity instead, falling back to the raw
+// set when the intersection is empty so the player is never handed an
+// empty picker.
+//
+// No identity (no commander, or a placeholder with no colours) leaves
+// the list as printed either way. Always returns a fresh slice when it
+// changes anything, so a caller may keep it on a PendingChoice.
+func manaPickOptionsFor(options []string, p *Player, narrow bool) []string {
+	return manaPickOptions(options, commanderIdentityFor(p), narrow)
+}
+
+// manaPickOptions is manaPickOptionsFor with the identity already in
+// hand — the auto-tapper computes it once per plan.
+func manaPickOptions(options, identity []string, narrow bool) []string {
+	if len(options) <= 1 || len(identity) == 0 {
 		return options
 	}
-	keep := make([]string, 0, len(options))
+	if narrow {
+		if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
+			return narrowed
+		}
+		return options
+	}
+	return identityFirst(options, identity)
+}
+
+// identityFirst returns `options` reordered so the colours in
+// `identity` come first. Stable within each group, so WUBRG printed
+// order survives inside both halves.
+func identityFirst(options, identity []string) []string {
+	in := intersectColors(options, identity)
+	if len(in) == 0 || len(in) == len(options) {
+		return options
+	}
+	out := make([]string, 0, len(options))
+	out = append(out, in...)
 	for _, o := range options {
-		for _, id := range identity {
-			if o == id {
-				keep = append(keep, o)
-				break
-			}
+		if !containsColor(in, o) {
+			out = append(out, o)
 		}
 	}
-	if len(keep) == 0 {
-		// No overlap — degenerate case; fall back to raw so the
-		// player isn't stuck with an empty picker. Logged via the
-		// effect-error event for visibility.
-		return options
+	return out
+}
+
+func containsColor(set []string, c string) bool {
+	for _, x := range set {
+		if x == c {
+			return true
+		}
 	}
-	return keep
+	return false
+}
+
+// filterPipeByCommanderIdentity narrows `options` to just the colors
+// in the player's commander's color identity — the
+// NarrowToCommanderIdentity half of manaPickOptionsFor, kept as its
+// own name for the #276 regression tests. If the player has no
+// commander (or the commander has no color identity), or nothing
+// overlaps, returns the raw options unchanged.
+//
+// Since #276 the colour identity really is on game.Card directly,
+// copied at deck-import time from cards.Card.ColorIdentity; see
+// commanderIdentityFor for the fallbacks.
+func filterPipeByCommanderIdentity(options []string, p *Player) []string {
+	return manaPickOptionsFor(options, p, true)
 }
 
 // commanderIdentityFor returns the player's commander color identity

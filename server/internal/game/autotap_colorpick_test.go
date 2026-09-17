@@ -34,6 +34,8 @@ func commandTowerHook(oracleID string) []ManaAbilityShape {
 			TapCost:  true,
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color in your commander's color identity",
+			// The printed clause, as the catalog declares it.
+			NarrowToCommanderIdentity: true,
 		}}
 	}
 	return nil

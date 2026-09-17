@@ -209,9 +209,11 @@ type PendingChoiceView struct {
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
-	// "C"). Absent for non-mana choices. Server-side filtered
-	// against commander identity before the wire leaves the engine.
-	// Added in S15 sub-PR 2.
+	// "C"). Absent for non-mana choices. Ordered server-side: the
+	// commander's colour identity first, then the rest; only a source
+	// whose printed text says "in your commander's color identity"
+	// (Command Tower, Arcane Signet) is narrowed to it. Render in the
+	// order given. Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
 	// ColorAmounts populates a "mana_pick" that adds more than one mana

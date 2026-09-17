@@ -296,10 +296,9 @@ func b08FilterLand(oracleID, name, a, b string) Spec {
 		ManaAbilities: []ManaAbility{
 			painlessColorless(),
 			{
-				Cost:                    ManaAbilityCost{Tap: true, Mana: "{" + a + "/" + b + "}"},
-				Produced:                "{" + a + "|" + b + "}{" + a + "|" + b + "}",
-				Label:                   "{" + a + "/" + b + "}, {T}: Add {" + a + "}{" + a + "}, {" + a + "}{" + b + "}, or {" + b + "}{" + b + "}",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true, Mana: "{" + a + "/" + b + "}"},
+				Produced: "{" + a + "|" + b + "}{" + a + "|" + b + "}",
+				Label:    "{" + a + "/" + b + "}, {T}: Add {" + a + "}{" + a + "}, {" + a + "}{" + b + "}, or {" + b + "}{" + b + "}",
 			},
 		},
 	}

@@ -579,10 +579,18 @@ multi-option slots use **pipe syntax** and queue a `mana_pick`
 PendingChoice for the controller to resolve:
 
 - `"{C}{C}"` — Sol Ring: two colorless slots.
-- `"{W|U|B|R|G}"` — Birds of Paradise: one any-color slot, picker.
-- `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
-  the engine narrows the pipe set against the controller's commander
-  identity at activation time.
+- `"{W|U|B|R|G}"` — Birds of Paradise: one any-color slot, picker. The
+  picker offers all five colours with the controller's commander
+  identity listed first (owner decision, 2026-09-17). Every pipe gets
+  that order; never narrow a card whose text just says "any color" or
+  names its colours.
+- `"{W|U|B|R|G}"` + `NarrowToCommanderIdentity: true` — Arcane Signet,
+  Command Tower, Commander's Sphere, Path of Ancestry: the engine
+  intersects the pipe set with the controller's commander identity at
+  activation time. Set the flag only when the printed text says "in your
+  commander's color identity"; `TestOnlyCommanderIdentityCardsNarrow`
+  and the dump-gated `TestNarrowToCommanderIdentityMatchesOracleText`
+  hold the catalog to that.
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.
@@ -1982,10 +1990,9 @@ pattern above: the prompt goes on `AsEnters`, the answer lands on
 ```go
 AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
 ManaAbilities: []ManaAbility{{
-    Cost:                    ManaAbilityCost{Tap: true},
-    ProducedFunc:            ProducedColorOrChosen("U"), // or ProducedChosenColor()
-    Label:                   "Add {U} or one mana of the chosen color",
-    IgnoreCommanderIdentity: true,
+    Cost:         ManaAbilityCost{Tap: true},
+    ProducedFunc: ProducedColorOrChosen("U"), // or ProducedChosenColor()
+    Label:        "Add {U} or one mana of the chosen color",
 }},
 Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
 ```
@@ -2011,11 +2018,11 @@ it with the produced-mana grammar's per-colour count:
 `OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
 `ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
 a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
-a spell or trigger too, through `AddManaForEffect`. That path narrows a
-pick to the commander's colour identity by default, so an effect whose
-printed text says "any color" or "any one color" passes
-`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
-`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+a spell or trigger too, through `AddManaForEffect`. That path offers the
+printed colours with the commander's identity listed first, like a mana
+ability; only printed "in your commander's color identity" text passes
+`game.AddManaOptions{NarrowToCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.NarrowToCommanderIdentity`),
 the effect-side twin of the mana ability's flag. The auto-tapper
 plans around such a source, so the player taps it by hand
 ([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).

@@ -50,8 +50,7 @@ func init() {
 			// The printed text says "any color that a land an
 			// opponent controls could produce" — it does not mention
 			// the commander's identity, so the derived option set
-			// must not be narrowed by it.
-			IgnoreCommanderIdentity: true,
+			// is not narrowed by it (NarrowToCommanderIdentity off).
 		}},
 	})
 }

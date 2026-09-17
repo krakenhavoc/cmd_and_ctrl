@@ -52,8 +52,9 @@ const (
 	PendingChoiceDiscardFromHand PendingChoiceKind = "discard_from_hand"
 
 	// PendingChoiceMana — the chooser picks one color from a fixed
-	// option set (Birds of Paradise's WUBRG, Arcane Signet's
-	// commander-identity subset). On resolve the picked color drops
+	// option set (Birds of Paradise's WUBRG with the commander's
+	// identity listed first, Arcane Signet's commander-identity
+	// subset). On resolve the picked color drops
 	// into the chooser's pool as one ManaToken sourced from the
 	// permanent that fired the ability. Added in S15 sub-PR 2.
 	PendingChoiceMana PendingChoiceKind = "mana_pick"
@@ -307,9 +308,10 @@ type PendingChoice struct {
 	// ColorOptions is the legal-picks list for PendingChoiceMana.
 	// Uppercase single-character entries (W/U/B/R/G/C). Unused for
 	// other choice kinds. Populated server-side so the client
-	// renders a color picker with exactly the right buttons
-	// (commander-identity-filtered for Arcane Signet, the full five
-	// for Birds of Paradise). Added in S15 sub-PR 2.
+	// renders a color picker with exactly the right buttons, in
+	// order (commander-identity-filtered for Arcane Signet, the full
+	// five for Birds of Paradise with the commander's identity listed
+	// first — see manaPickOptionsFor). Added in S15 sub-PR 2.
 	ColorOptions []string
 
 	// ManaRestrictions are the spend restrictions the token minted

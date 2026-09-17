@@ -49,10 +49,9 @@ func init() {
 				Produced: "{W|U|B|R|G}",
 				Label:    "Add one mana of any color (chosen-type creature spells only)",
 				// "Any color" flatly — the printed text does not
-				// mention the commander's identity, so the pipe must
-				// not be narrowed to it.
-				IgnoreCommanderIdentity: true,
-				RestrictionsFunc:        ChosenTypeManaRestrictions(),
+				// mention the commander's identity, so the pipe keeps
+				// all five (NarrowToCommanderIdentity stays off).
+				RestrictionsFunc: ChosenTypeManaRestrictions(),
 			},
 		},
 	})

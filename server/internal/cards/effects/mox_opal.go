@@ -19,9 +19,9 @@ package effects
 // whole ability, and it is what is modelled here.
 //
 // "One mana of any color" is a five-colour pipe, and the printed text
-// does not mention the commander's identity — so
-// IgnoreCommanderIdentity, exactly as City of Brass and Mana
-// Confluence set it.
+// does not mention the commander's identity — so it offers all five
+// (NarrowToCommanderIdentity off), exactly as City of Brass and Mana
+// Confluence do.
 //
 // No simplification.
 func init() {
@@ -30,11 +30,10 @@ func init() {
 		Name:         "Mox Opal",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color (metalcraft)",
-			Condition:               ControlsAtLeast(3, MatchArtifact),
-			IgnoreCommanderIdentity: true,
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{W|U|B|R|G}",
+			Label:     "Add one mana of any color (metalcraft)",
+			Condition: ControlsAtLeast(3, MatchArtifact),
 		}},
 	})
 }

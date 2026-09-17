@@ -200,7 +200,7 @@ func TestB18WoodedBastionFiltersHybridIntoTwoPicks(t *testing.T) {
 		t.Fatalf("want the painless {C} first, got %+v", spec.ManaAbilities)
 	}
 	filter := spec.ManaAbilities[1]
-	if filter.Cost.Mana != "{G/W}" || filter.Produced != "{G|W}{G|W}" || !filter.IgnoreCommanderIdentity {
+	if filter.Cost.Mana != "{G/W}" || filter.Produced != "{G|W}{G|W}" || filter.NarrowToCommanderIdentity {
 		t.Errorf("filter ability %+v, want {G/W} in and two {G|W} picks out", filter)
 	}
 	g := newCatalogGame(t)

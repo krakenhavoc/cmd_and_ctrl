@@ -104,3 +104,33 @@ func TestColorPayloadRoutesByKind(t *testing.T) {
 		t.Errorf("pool = %v, want three {G}", me.ManaPool)
 	}
 }
+
+// Owner decision (2026-09-17): an "any color" mana pick offers all
+// five colours with the commander's identity first, and the
+// enumerator keeps that order — so the first answer, which is every
+// policy's tie-break, is an identity colour.
+func TestAnyColorManaPickAnswersListIdentityFirst(t *testing.T) {
+	g := newTable(t)
+	me := g.Seats[0]
+	g.WithWriteLock(func() {
+		for i := range me.Command.Cards {
+			if me.Command.Cards[i].IsCommander {
+				me.Command.Cards[i].ColorIdentity = []string{"G"}
+			}
+		}
+		if err := g.AddManaForEffect(me.ID, uuid.New(), "{W|U|B|R|G}"); err != nil {
+			t.Fatalf("AddManaForEffect: %v", err)
+		}
+	})
+
+	moves := legal.EnumerateFor(g, me.ID)
+	got := make([]string, 0, len(moves))
+	for _, m := range moves {
+		got = append(got, m.Label[strings.LastIndex(m.Label, ": ")+2:])
+	}
+	want := []string{"add {G}", "add {W}", "add {U}", "add {B}", "add {R}"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("answers = %v, want %v", got, want)
+	}
+	dispatchAll(t, g, me.ID, moves)
+}
