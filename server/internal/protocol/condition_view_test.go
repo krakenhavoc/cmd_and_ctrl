@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects" // Temple of the False God
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -89,5 +90,44 @@ func TestConditionUnmetTracksTheCondition(t *testing.T) {
 	raw, _ = json.Marshal(conditionCardView(t, g, id))
 	if got := strings.Count(string(raw), `"condition_unmet":true`); got != 2 {
 		t.Errorf("condition_unmet on the wire %d times, want 2 (one activated, one mana): %s", got, raw)
+	}
+}
+
+// The same stamping on a real catalog entry, through the
+// CatalogManaAbilities hook rather than a card-carried shape: Temple of
+// the False God's {C}{C} is condition_unmet with four lands and clear
+// with five. A basic land's synthesized ability never carries it.
+func TestConditionUnmetOnTempleOfTheFalseGod(t *testing.T) {
+	const templeOfTheFalseGodOracle = "cfdd5dc6-593e-495a-8cfe-3a56b3c4c7df"
+	g := buildActiveGame(t)
+	me := g.Seats[0].ID
+	temple := game.NewCard("Temple of the False God", me)
+	temple.TypeLine = "Land"
+	temple.OracleID = templeOfTheFalseGodOracle
+	temple.Controller = me
+	g.Battlefield.PushTop(temple)
+	forest := func() uuid.UUID {
+		c := game.NewCard("Forest", me)
+		c.TypeLine = "Basic Land — Forest"
+		c.Controller = me
+		g.Battlefield.PushTop(c)
+		return c.InstanceID
+	}
+	var basic uuid.UUID
+	for range 3 {
+		basic = forest()
+	}
+
+	c := conditionCardView(t, g, temple.InstanceID)
+	if len(c.ManaAbilities) != 1 || !c.ManaAbilities[0].ConditionUnmet {
+		t.Fatalf("four lands: Temple mana abilities %+v, want one with condition_unmet", c.ManaAbilities)
+	}
+	if b := conditionCardView(t, g, basic); len(b.ManaAbilities) == 0 || b.ManaAbilities[0].ConditionUnmet {
+		t.Errorf("a Forest's mana ability must never carry condition_unmet: %+v", b.ManaAbilities)
+	}
+
+	forest()
+	if c := conditionCardView(t, g, temple.InstanceID); c.ManaAbilities[0].ConditionUnmet {
+		t.Error("five lands: the Temple's condition holds, so condition_unmet is absent")
 	}
 }

@@ -25,12 +25,17 @@ import (
 // Neither ability taps Goro-Goro, so neither cares about summoning
 // sickness.
 //
-// No simplification.
+// One declared simplification, weaker than printed: the engine removes
+// creatures from combat as the end of combat step BEGINS rather than
+// as it ends (CR 511.3, #785), so no creature is attacking during the
+// end of combat step and the Dragon ability can't be activated there.
+// The printed card allows it until the step ends. Lifts with #785.
 func init() {
 	Register(Spec{
 		OracleID:     "b80df711-af51-4f9a-9a3f-f7a4cddc9c2c",
 		Name:         "Goro-Goro, Disciple of Ryusei",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"The Dragon Spirit ability can't be activated during the end of combat step, because attacking creatures stop attacking as that step begins."},
 		Activated: []ActivatedAbility{
 			{
 				Label: "{R}: Creatures you control gain haste until end of turn.",

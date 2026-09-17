@@ -1072,7 +1072,12 @@ is read off `Game.TurnTally`, never by walking `g.Events`:
 `AttacksDeclared` and `CombatDamageToPlayers`; `g.TurnTally.CreaturesDied`
 is the table-wide count; `g.ResolvedThisTurn(source, label)` and
 `g.TriggeredThisTurn(source, label)` are the "once per turn" gates (an
-empty label sums the source's abilities). A filtered question the tally
+empty label sums the source's abilities);
+`g.EnteredWithSubtypeThisTurn(player, subtype)` counts permanents that
+entered under a player's control with a subtype, judged as they entered
+rather than as they are now (a changeling counts for every creature
+type; a type granted by another permanent's static at that moment is
+not seen, so a card reading it declares that weaker gap). A filtered question the tally
 does not carry ("you sacrificed a *Food* this turn") ranges over
 `g.EventsThisTurn()`, which is bounded at the real turn boundary — the
 old upkeep-bounded scans missed the untap step. A counter the tally

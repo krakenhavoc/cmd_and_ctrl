@@ -155,4 +155,27 @@ describe("the context menu", () => {
     expect(row?.disabled).toBe(true);
     expect(row?.hint).toBe(ACTIVATION_CONDITION_UNMET);
   });
+
+  it("shows the restriction, not the condition, on a mana row that is both", () => {
+    const temple: CardView = {
+      instance_id: "temple",
+      name: "Temple of the False God",
+      owner: "a",
+      controller: "a",
+      type_line: "Land",
+      restrictions: ["cant_activate_mana"],
+      mana_abilities: [
+        {
+          index: 0,
+          label: "Add {C}{C}",
+          produced: "{C}{C}",
+          tap_cost: true,
+          condition_unmet: true,
+        },
+      ],
+    };
+    const row = itemIn(buildMenuSections(view([temple]), temple, "a", false), "mana-0");
+    expect(row?.disabled).toBe(true);
+    expect(row?.hint).toBe("an effect stops its abilities");
+  });
 });

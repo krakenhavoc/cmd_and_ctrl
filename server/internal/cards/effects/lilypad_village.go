@@ -16,22 +16,26 @@ import (
 // Bloomburrow's blue creature-type land. The {U} carries the cast /
 // creature restriction tags and is a deliberate click, since the
 // auto-tapper leaves restricted abilities alone. The surveil's
-// activation condition (CR 602.1b, #743) reads this turn's entries:
-// an EventETB whose Actor — the player it entered under — is you, of
-// a card with one of the four subtypes. The card's types are read as
-// it is now, so a Bird card that entered and has since died still
-// counts, by its printed type line.
+// activation condition (CR 602.1b, #743) reads
+// Game.EnteredWithSubtypeThisTurn: the turn tally records each
+// permanent's subtypes as it enters, under the player it entered
+// under. So the question is answered about the creature as it
+// entered, not as it is now. A Soldier that entered and later became
+// every creature type (a Maskwood Nexus arriving afterwards) does not
+// open it, and a Rat token that entered and has since died still does.
 //
-// One declared simplification, weaker than printed: a TOKEN that
-// entered and has since left the battlefield has ceased to exist (CR
-// 704.5d), and nothing records what types it had, so it does not count.
-// The printed card would count it.
+// One declared simplification, weaker than printed: the tally reads a
+// permanent's printed types (with any copy effect it entered as) at
+// the moment of entry, before continuous effects are applied to it, so
+// a creature that had one of the four types only through a static
+// ability as it entered (a Soldier entering while you control Maskwood
+// Nexus) does not count. The printed card would count it.
 func init() {
 	Register(Spec{
 		OracleID:     "5bb06e6f-e3af-4caa-b66d-77248ad46b61",
 		Name:         "Lilypad Village",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A Bird, Frog, Otter, or Rat token that entered this turn and has already left the battlefield doesn't enable the surveil ability."},
+		Caveats:      []string{"A creature that was a Bird, Frog, Otter, or Rat only because of another effect (such as Maskwood Nexus) when it entered doesn't enable the surveil ability."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},
@@ -61,18 +65,9 @@ func init() {
 
 // lilypadVillageAnimalEntered is the Village's surveil condition.
 func lilypadVillageAnimalEntered(g *game.Game, controller, _ uuid.UUID) bool {
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventETB || ev.Actor != controller || ev.CardID == uuid.Nil {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(ev.CardID)
-		if !ok {
-			continue
-		}
-		for _, t := range []string{"Bird", "Frog", "Otter", "Rat"} {
-			if c.HasSubtype(t) {
-				return true
-			}
+	for _, t := range []string{"Bird", "Frog", "Otter", "Rat"} {
+		if g.EnteredWithSubtypeThisTurn(controller, t) > 0 {
+			return true
 		}
 	}
 	return false

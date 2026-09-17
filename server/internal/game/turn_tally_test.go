@@ -158,6 +158,70 @@ func TestTurnTallyResetsOnANewTurnAndBoundsEventsThisTurn(t *testing.T) {
 	}
 }
 
+// EnteredWithSubtypeThisTurn (#743) records each permanent's subtypes
+// as it enters, under the player it entered under. A changeling counts
+// for every creature type but not for a noncreature subtype it lacks;
+// leaving the battlefield, or changing afterwards, does not change the
+// answer.
+func TestTurnTallyEnteredSubtypes(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	frog := uuid.New()
+	shifter := uuid.New()
+	forest := uuid.New()
+	rat := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(Card{InstanceID: frog, Name: "Frog", TypeLine: "Creature — Frog", Power: 1, Toughness: 1, Owner: me, Controller: me})
+		g.Battlefield.PushTop(Card{InstanceID: shifter, Name: "Shifter", TypeLine: "Creature — Shapeshifter", Keywords: []string{KeywordChangeling}, Power: 1, Toughness: 1, Owner: me, Controller: me})
+		g.Battlefield.PushTop(Card{InstanceID: forest, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me, Controller: me})
+		g.Battlefield.PushTop(Card{InstanceID: rat, Name: "Rat", TypeLine: "Creature — Rat", Power: 1, Toughness: 1, Owner: opp, Controller: opp})
+	})
+	emit(g,
+		Event{Kind: EventETB, CardID: frog},
+		Event{Kind: EventETB, CardID: shifter},
+		Event{Kind: EventETB, CardID: forest},
+		Event{Kind: EventETB, CardID: rat},
+	)
+	// The Frog changes afterwards and then dies: still one Frog entered.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == frog {
+				g.Battlefield.Cards[i].TypeLine = "Creature — Soldier"
+			}
+		}
+		if err := g.SacrificePermanentForEffect(frog); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	for _, c := range []struct {
+		player  uuid.UUID
+		subtype string
+		want    int
+	}{
+		{me, "Frog", 2},         // the Frog and the changeling
+		{me, "frog", 2},         // case-insensitive
+		{me, "Shapeshifter", 1}, // counted once, not twice
+		{me, "Soldier", 1},      // only the changeling: the Frog entered as a Frog
+		{me, "Forest", 1},
+		{me, "Swamp", 0}, // a changeling has creature types, not land types
+		{me, "Rat", 1},   // the changeling; the opponent's Rat is not mine
+		{opp, "Rat", 1},
+		{opp, "Frog", 0},
+		{uuid.Nil, "Frog", 0},
+	} {
+		if got := g.EnteredWithSubtypeThisTurn(c.player, c.subtype); got != c.want {
+			t.Errorf("EnteredWithSubtypeThisTurn(%s, %q) = %d, want %d", c.player, c.subtype, got, c.want)
+		}
+	}
+
+	snap := g.Clone()
+	emit(g, Event{Kind: EventETB, CardID: rat})
+	if got := snap.EnteredWithSubtypeThisTurn(opp, "Rat"); got != 1 {
+		t.Errorf("the clone shares EnteredSubtypes with the live game: %d", got)
+	}
+}
+
 func TestTurnTallySurvivesClone(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	me := g.Seats[0].ID

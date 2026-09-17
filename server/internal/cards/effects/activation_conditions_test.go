@@ -759,6 +759,65 @@ func TestLilypadVillageSurveilsAfterAFrogEnters(t *testing.T) {
 	}
 }
 
+// The condition is about the creature as it entered (#743 review). A
+// Soldier that enters and only later becomes every creature type — a
+// Maskwood Nexus arriving afterwards — is a Frog now, but it did not
+// enter as one, so the surveil stays shut. An opponent's Rat entering
+// is not one that entered under your control.
+func TestLilypadVillageReadsTypesAsTheCreatureEntered(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	village := pushCatalogPermanent(g, me.ID, "Lilypad Village", "Land", acLilypadVillageOracle, false)
+	advanceToMain(t, g)
+	b06AddMana(me, "U")
+
+	var soldier uuid.UUID
+	g.WithWriteLock(func() {
+		ids, err := g.CreateTokensForEffect(me.ID, TokenCard("1/1 white Soldier"), 1, game.TokenEntryOptions{})
+		if err != nil || len(ids) != 1 {
+			t.Fatalf("create Soldier: %v %v", ids, err)
+		}
+		soldier = ids[0]
+		_ = g.CreateTokenForEffect(opp.ID, TokenCard("1/1 black Rat"), 1)
+	})
+	acRefused(t, g, me.ID, village, 0, game.ActivateAbilityParams{})
+
+	pushNexusFor(g, me.ID)
+	if !layeredCard(t, g, soldier).HasSubtype("Frog") {
+		t.Fatal("setup: the Soldier is not a Frog under Maskwood Nexus")
+	}
+	acRefused(t, g, me.ID, village, 0, game.ActivateAbilityParams{})
+}
+
+// A Rat token that entered and has already died still entered this
+// turn: the tally recorded its types as it came in, so the token
+// ceasing to exist (CR 704.5d) does not take the answer with it.
+func TestLilypadVillageCountsARatTokenThatHasSinceDied(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	village := pushCatalogPermanent(g, me.ID, "Lilypad Village", "Land", acLilypadVillageOracle, false)
+	advanceToMain(t, g)
+	b06AddMana(me, "U")
+
+	g.WithWriteLock(func() {
+		ids, err := g.CreateTokensForEffect(me.ID, TokenCard("1/1 black Rat"), 1, game.TokenEntryOptions{})
+		if err != nil || len(ids) != 1 {
+			t.Fatalf("create Rat: %v %v", ids, err)
+		}
+		if err := g.SacrificePermanentForEffect(ids[0]); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if len(battlefieldIDsNamed(g, "Rat")) != 0 {
+		t.Fatal("setup: the Rat token is still on the battlefield")
+	}
+	b16Activate(t, g, me.ID, village, 0, game.ActivateAbilityParams{})
+	if surveilChoiceFor(g, me.ID) == nil {
+		t.Error("after a Rat token entered and died: a surveil 2 prompt")
+	}
+}
+
 // The city's blessing, read live: ten permanents including the Arch.
 func TestArchOfOrazcaDrawsWithTheCitysBlessing(t *testing.T) {
 	g := newCatalogGame(t)
