@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
+**Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
 
 ## Context
 
@@ -150,6 +151,64 @@ and performs no observable mutation before the prompt queues. A
 partial state is impossible because the actual mutation
 (`actuallyDrawCardLocked`, `applyCounterLocked`, etc.) only runs
 after the replacement loop settles.
+
+### 5a. Amendment, 2026-09-17: when the 616 prompt has only one answer
+
+*Amendment, 2026-09-17, branch `fix/792-identical-replacements-no-prompt`.
+Closes [#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792) and
+records [#710](https://github.com/krakenhavoc/cmd_and_ctrl/issues/710),
+which shipped the first half of this and did not amend §5.*
+
+§5 says "when ≥2 replacements apply in the same iteration, the
+affected player picks the order", and the engine queued the prompt on
+that count alone. CR 616.1 gives the affected player a choice; it does
+not require asking a question whose answers are indistinguishable. Two
+exceptions now apply the gathered order inline instead, both in
+`applyReplacementsLocked`:
+
+1. **Every applicable effect is a pure cancel** (#710) — whichever is
+   put first cancels the event and ends the apply-loop.
+   `ReplacementEffect.PureCancel` is the card's declaration that its
+   `Replace` does nothing but `ev.Cancel()`. Two "skip your draw step"
+   enchantments under one controller.
+2. **Every applicable effect is the same declared effect** (#792) —
+   two Doubling Seasons, two Rhox Faithmenders, two Hardened Scales.
+   Same modification, applied N times, in any order.
+
+"The same declared effect" is `replacementIdentity` in
+`replacements.go`: the source's `CatalogAbilityKey`, the slot index
+into that entry's `Replacements` slice, and the controller of the
+object contributing it. It is the engine's existing catalog-
+replacement key with the OBJECT dropped — `ReplacementEffectID` says
+"the Season in battlefield slot 3", the identity says "Doubling
+Season's counter-doubling, controlled by Ian". The controller belongs
+in it because replacements read their own controller (Notion Thief
+writes `src.Controller` straight into the event), so two copies under
+different controllers are two different modifications. Built-in,
+turn-scoped and test replacements are registered per instance rather
+than declared on a catalog entry and have no identity, so they never
+collapse.
+
+Three deliberate limits:
+
+- **A mixed window still prompts with everything listed.** Two Seasons
+  and a Hardened Scales do not collapse to two entries: CR 616.1 lets
+  the affected player interleave, and Season → Scales → Season is 6
+  counters, which neither Season → Season → Scales (5) nor
+  Scales → Season → Season (8) can reach. Collapsing would remove a
+  legal outcome, which is worse than one extra prompt.
+- **An effect that asks its controller a question is never
+  collapsed** — a CR 614.10 "may", a shockland's pay-life, a copy
+  selector. Skipping the ordering prompt would skip its question too.
+  Shared by both exceptions as `asksItsOwnQuestion`.
+- **An effect whose `Replace` writes its own SOURCE into the event is
+  not covered.** "That damage is dealt to this creature instead" from
+  two copies of one card would share an identity and would not be
+  interchangeable. Nothing in the catalog does that today — the two
+  source-reading replacements that exist are additive, and Arwen is
+  legendary — and AGENTS.md §7 tells card authors to raise it rather
+  than ship it quietly. If one ever lands, the fix is a declared flag
+  in the `PureCancel` mould, not a per-card special case.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

@@ -764,6 +764,23 @@ func init() {
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
 
+**Two copies of your card will not prompt.** When every replacement
+applicable to one event is the *same* declared effect — same catalog
+entry, same slot in its `Replacements` slice, same controller — the
+engine applies them all inline instead of asking the affected player
+to order them, because every order is the same modification N times
+(two Doubling Seasons are ×4, two Rhox Faithmenders are ×4,
+[#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792)). A
+window with any *distinct* effect in it still prompts with everything
+listed. Nothing to declare — but it does mean one thing is now on you:
+**if your `Replace` writes its own source into the event** ("that
+damage is dealt to *this* creature instead", "put the counter on
+*this* creature instead"), two copies of your card are *not*
+interchangeable and collapsing them would be wrong. No catalog card
+does this yet; if yours is the first, say so on the PR rather than
+shipping it quietly — the fix is a declared flag in the `PureCancel`
+mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
+
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
