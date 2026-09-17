@@ -41,11 +41,10 @@ func b18SpringleafShapeshifterToken() game.Card {
 		Toughness: 1,
 		Keywords:  []string{game.KeywordChangeling},
 		ManaAbilities: []game.ManaAbilityShape{{
-			TapCost:                 true,
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}: Add one mana of any color (while you control Springleaf Parade)",
-			IgnoreCommanderIdentity: true,
-			Condition:               b18ControlsNamed("Springleaf Parade"),
+			TapCost:   true,
+			Produced:  "{W|U|B|R|G}",
+			Label:     "{T}: Add one mana of any color (while you control Springleaf Parade)",
+			Condition: b18ControlsNamed("Springleaf Parade"),
 		}},
 	}
 }
@@ -95,40 +94,6 @@ func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
 // the current turn's upkeep.
 func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
 	return g.TurnTallyFor(player).LifeLost
-}
-
-// b18AttackerAlreadyBlocked reports whether the attacker named by an
-// EventBlock had already been blocked earlier in this combat —
-// Grazilaxx's "becomes blocked" fires once per attacker, not once
-// per blocker (CR 509.1h), and the engine emits one EventBlock per
-// blocker. The walk runs back from the event to the attacker's own
-// EventAttack, which every attacker declared this combat has; a
-// second EventBlock with the same Target inside that window means
-// this one is not the first.
-func b18AttackerAlreadyBlocked(g *game.Game, block game.Event) bool {
-	seen := false
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if !seen {
-			if ev.Seq == block.Seq {
-				seen = true
-			}
-			continue
-		}
-		switch ev.Kind {
-		case game.EventBlock:
-			if ev.Target == block.Target {
-				return true
-			}
-		case game.EventAttack:
-			if ev.CardID == block.Target {
-				return false
-			}
-		case game.EventBeginUpkeep:
-			return false
-		}
-	}
-	return false
 }
 
 // --- board reads -------------------------------------------------

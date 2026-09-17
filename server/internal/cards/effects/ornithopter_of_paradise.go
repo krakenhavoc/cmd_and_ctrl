@@ -7,7 +7,7 @@ package effects
 //	 {T}: Add one mana of any color."
 //
 // Birds of Paradise as a colourless artifact: the same five-colour
-// pipe (narrowed to the commander's identity at activation, like
+// pipe (all five, the commander's identity listed first, like
 // the Birds and every Treasure), a 0/2 body, and a mana cost any
 // deck can pay. Flying is printed, so it rides PrintedKeywords and
 // the combat engine honours it.

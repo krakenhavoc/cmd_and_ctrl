@@ -146,8 +146,8 @@ type DiscardPrompt struct {
 // discard system. The live-zone re-check, the set-level Validate
 // hook, the bot enumerator case and the client's ChoicePromptModal
 // all come with it; what makes it a DISCARD is the continuation,
-// which moves the picks to the graveyard and emits one
-// EventDiscardCard per card before running Then.
+// which hands the picks to discardCardsLocked — the one discard path
+// (discard.go) — and lets it run Then once they have landed.
 //
 // Two things it deliberately does not do. It does not prompt for a
 // random discard (CR 701.8b — DiscardRandomForEffect stays a
@@ -200,7 +200,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
 	discarder := p.Player
-	then := p.Then
+	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -212,13 +212,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		Zone:       ZoneHand,
 		Validate:   p.Validate,
 		Then: func(g *Game, picked []uuid.UUID) error {
-			if err := g.discardPicksLocked(discarder, picked); err != nil {
-				return err
-			}
-			if then == nil {
-				return nil
-			}
-			return then(g)
+			return g.discardCardsLocked(discarder, picked, opts)
 		},
 	})
 }
@@ -245,42 +239,6 @@ func (g *Game) discardQuestionLocked(source uuid.UUID, n int, upTo bool) string 
 		}
 	}
 	return "Discard " + what
-}
-
-// discardPicksLocked moves the chosen cards from a player's hand to
-// their graveyard, emitting one EventDiscardCard per card — the event
-// every "whenever you discard a card" trigger and every madness /
-// graveyard payoff in the catalog watches.
-//
-// A pick that is no longer in the hand is skipped rather than
-// erroring: ResolveChooseCards re-checks the live zone before it
-// dequeues, so an answer that got here was legal when it arrived, and
-// a half-applied discard that abandoned its continuation would be the
-// worse failure.
-//
-// Caller must hold g.mu.
-func (g *Game) discardPicksLocked(playerID uuid.UUID, picks []uuid.UUID) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return nil
-	}
-	for _, id := range picks {
-		if !p.Hand.Contains(id) {
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
 }
 
 // DiscardChoiceForEffect is the plain "this player discards n cards"
@@ -791,10 +749,9 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 }
 
 // DiscardRandomForEffect discards n cards from playerID's hand,
-// chosen at random. Emits one EventDiscardCard per card and no
-// EventZoneMove. The move is a direct MoveCard, so the discard
-// bypasses the CR 614 window (#650). If the hand has fewer than n
-// cards, discards all of them.
+// chosen at random (CR 701.8b). Emits one EventDiscardCard per card
+// and no EventZoneMove, through the one discard path (discard.go).
+// If the hand has fewer than n cards, discards all of them.
 //
 // The cards are one pick on the discarding player's "pick" stream
 // (ADR 0054 Decision 5), so an undone random discard redoes with the
@@ -812,26 +769,8 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
-	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
-		if !p.Hand.Contains(cardID) {
-			// Nothing between two discards moves hand cards today;
-			// if something ever does, a card that already left is
-			// not discarded twice.
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, cardID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, cardID)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  cardID,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
+	picked := g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n)
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the
@@ -2499,6 +2438,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.InstanceID = newID
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped
+	card.NextUntapSkips = nil
 	card.Counters = nil
 	card.LostLastCounter = false
 	card.KnownBy = nil
@@ -2632,8 +2572,8 @@ func addManaReason(slot ProducedManaEntry) string {
 // `produced` is the Scryfall brace grammar ParseProducedMana reads,
 // pipe syntax included: a single-colour slot goes straight into the
 // pool, a multi-option slot queues the same PendingChoiceMana pick a
-// Birds of Paradise activation does, narrowed to the controller's
-// commander identity exactly as Treasure and Phyrexian Altar are.
+// Birds of Paradise activation does, with the controller's commander
+// identity listed first (manaPickOptionsFor).
 // `source` is the card the mana is attributed to (the spell itself
 // for Dark Ritual); it rides on each ManaToken.
 //
@@ -2652,19 +2592,20 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 
 // AddManaOptions tunes AddManaWithOptionsForEffect.
 type AddManaOptions struct {
-	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
-	// width instead of intersecting it with the controller's commander
-	// colour identity: the effect-side twin of the mana ability's
-	// IgnoreCommanderIdentity. Set it whenever the printed text says
-	// "any color" or "any one color" with no commander-identity clause
-	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
-	// Added for #742.
-	IgnoreCommanderIdentity bool
+	// NarrowToCommanderIdentity intersects a multi-option pick with the
+	// controller's commander colour identity instead of offering the
+	// printed width identity-first: the effect-side twin of
+	// ManaAbilityShape.NarrowToCommanderIdentity. Set it only when the
+	// printed text says "any color in your commander's color
+	// identity"; no effect in the catalog does today. Replaced #742's
+	// IgnoreCommanderIdentity when the default flipped (owner decision
+	// 2026-09-17).
+	NarrowToCommanderIdentity bool
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
-// AddManaForEffect is this with the zero options, so the existing
-// callers keep the commander-identity narrowing they declared.
+// AddManaForEffect is this with the zero options: the printed option
+// set, commander identity first.
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
@@ -2686,10 +2627,7 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
-		colorOptions := options
-		if !opts.IgnoreCommanderIdentity {
-			colorOptions = filterPipeByCommanderIdentity(options, p)
-		}
+		colorOptions := manaPickOptionsFor(g, options, p, opts.NarrowToCommanderIdentity)
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,

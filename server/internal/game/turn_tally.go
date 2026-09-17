@@ -20,7 +20,7 @@ import (
 // LoyaltyActivatedThisTurn); this is the rest of them, in one place.
 //
 // One built-in listener (turnTallyListener) bumps the counters from
-// the same events every other consumer reads, and onTurnAdvanceLocked
+// the same events every other consumer reads, and onTurnBeganLocked
 // resets the whole thing where the other three reset. Nothing at an
 // emit site changes. For the filtered long tail ("you sacrificed a
 // FOOD this turn") EventsThisTurn returns the bounded slice of this

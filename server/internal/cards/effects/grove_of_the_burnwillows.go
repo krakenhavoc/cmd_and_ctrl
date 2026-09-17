@@ -22,11 +22,10 @@ func init() {
 		ManaAbilities: []ManaAbility{
 			painlessColorless(),
 			{
-				Cost:                    ManaAbilityCost{Tap: true},
-				Produced:                "{R|G}",
-				Label:                   "Add {R} or {G}. Each opponent gains 1 life.",
-				Rider:                   b32EachOpponentGainsLifeRider(1),
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{R|G}",
+				Label:    "Add {R} or {G}. Each opponent gains 1 life.",
+				Rider:    b32EachOpponentGainsLifeRider(1),
 			},
 		},
 	})

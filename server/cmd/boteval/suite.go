@@ -420,18 +420,6 @@ func runSuiteRender(args []string) int {
 	return 0
 }
 
-// --- shared ----------------------------------------------------------
-
-func splitList(s string) []string {
-	var out []string
-	for _, part := range strings.Split(s, ",") {
-		if p := strings.TrimSpace(part); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
 func envDuration(name string) time.Duration {
 	d, err := time.ParseDuration(strings.TrimSpace(os.Getenv(name)))
 	if err != nil {

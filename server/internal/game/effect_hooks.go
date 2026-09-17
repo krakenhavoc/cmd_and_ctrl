@@ -277,19 +277,21 @@ type ManaAbilityShape struct {
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *Game, controller, source uuid.UUID) error
 
-	// IgnoreCommanderIdentity opts a multi-option ("pipe") produced
-	// string out of the commander-identity narrowing that
-	// ActivateManaAbility otherwise applies to every such slot.
+	// NarrowToCommanderIdentity intersects a multi-option ("pipe")
+	// produced string with the controller's commander's colour
+	// identity before the pick is offered.
 	//
-	// That narrowing exists for Arcane Signet and Command Tower,
-	// whose printed text really does say "in your commander's color
-	// identity". City of Brass and Mana Confluence say "any color"
-	// flatly, and the painland / Talisman duals name two specific
-	// colors — none of them should be narrowed. Setting this keeps
-	// the printed option set intact.
+	// Set it ONLY when the printed text says "any color in your
+	// commander's color identity": Command Tower, Arcane Signet,
+	// Commander's Sphere, Path of Ancestry. Every other multi-option
+	// source — Birds of Paradise, Treasure, City of Brass, the
+	// painlands and guildgates — keeps its printed option set, with
+	// the identity's colours listed first (owner decision 2026-09-17;
+	// see manaPickOptionsFor).
 	//
-	// Added in the S22 mana-ability-rider pass.
-	IgnoreCommanderIdentity bool
+	// Replaced IgnoreCommanderIdentity, its inverse, when the default
+	// flipped from narrowing to ordering.
+	NarrowToCommanderIdentity bool
 }
 
 // CatalogManaAbilities returns the registered mana abilities for

@@ -21,10 +21,9 @@ func init() {
 		Name:         "Patriar's Seal",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Untap target legendary creature you control.",

@@ -34,8 +34,8 @@ func init() {
 			Label:        "Add one mana of any color among legendary creatures and planeswalkers you control",
 			// The colours come from the board, not from the command
 			// zone — narrowing a derived set by commander identity
-			// would be a second, unprinted filter.
-			IgnoreCommanderIdentity: true,
+			// would be a second, unprinted filter, so
+			// NarrowToCommanderIdentity stays off.
 		}},
 	})
 }

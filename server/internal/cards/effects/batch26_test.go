@@ -138,7 +138,6 @@ func TestBatch26CardsAreRegistered(t *testing.T) {
 		"4b96c22a-0d5b-44fd-b326-5f3ffcc3917b", // Deadpool, Trading Card — text-box exchange
 		"8e62d05a-6efd-4764-bca8-97895e0cb613", // Caesar, Legion's Emperor — modal reflexive trigger
 		"2993dc7d-723d-4a9b-94bd-4bb02a9f7243", // Tishana's Tidebinder — abilities on the stack can't be targeted
-		"5ba73182-30a7-4bad-9cb6-c0feecc2db33", // Meekstone — the untap step has no per-permanent exception
 		"79e69a91-d580-47fb-be76-1e32c50d2fa0", // Great Divide Guide — a mana ability granted by a static
 		"8a29bd35-33ef-4317-9fe5-8aaff5d7d64d", // Tragic Arrogance — the caster picks among another player's permanents
 		"8d35cef8-a52d-45fb-8f5f-cccea26826d0", // Wyll's Reversal — a die roll and target redirection
@@ -810,14 +809,20 @@ func TestB26CybermanPatrolGivesArtifactCreaturesAfflictThree(t *testing.T) {
 	if err := g.DeclareBlocker(wall3, bear); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
+	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, patrol); n != 0 {
+		t.Fatalf("#830: a click stages the pairing and announces nothing, %d triggers", n)
+	}
+	lockInBlocks(t, g)
 	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, patrol); n != 1 {
 		t.Fatalf("the Myr double-blocked is one afflict, the Bear is not an artifact: %d triggers", n)
 	}
-	// A trigger harvested off a block declaration is drained onto the
-	// stack only when the step advances — after combat damage has been
-	// dealt on entry to the damage step (see the card comment). The
-	// unblocked Patrol connects for 2, then the afflict resolves for 3.
+	// #830: the lock-in happens inside the declare blockers step, so
+	// the afflict resolves there — before combat damage, as printed.
 	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Fatalf("afflict resolves in the declare blockers step: %d to %d", life, opp.Life)
+	}
+	advanceTo(t, g, game.StepCombatDamage)
 	// #730: the double-blocked Myr's CR 510.1c assignment prompt gates
 	// the table — combat no longer resolves around it.
 	if n := b26AnswerDamageAssignments(t, g); n != 1 {

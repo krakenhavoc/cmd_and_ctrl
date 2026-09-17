@@ -50,17 +50,29 @@ type massEffect struct {
 	// narrow optionally removes permanents the VERB cannot move even
 	// though the PREDICATE matched them — currently only
 	// indestructible, which stops a destroy (CR 702.12b) and stops
-	// nothing else. Applied before the move, so `swept` and the count
-	// describe the same set of cards and a "…destroyed this way"
-	// clause cannot pay out for a survivor. Optional; nil means the
-	// verb moves everything it matched.
+	// nothing else. Applied before the move, so an indestructible
+	// permanent is neither swept nor counted. A permanent the CR 614
+	// window saves LATER — indestructible granted mid-window, "it
+	// isn't destroyed instead" — is dropped by moveThen's landed list
+	// instead (#815). Optional; nil means the verb moves everything it
+	// matched.
 	narrow func(g *game.Game, ids []uuid.UUID) []uuid.UUID
 	// move performs the batched zone change and returns how many
-	// cards actually moved.
+	// cards actually moved. Set by a verb whose `then` is nil, or
+	// whose move cannot pause; moveThen is the alternative.
 	move func(g *game.Game, ids []uuid.UUID) int
+	// moveThen is move for a verb that owes its `then` a CONTINUATION
+	// rather than a return value, because a leg of the batch can pause
+	// on a player prompt and the number is not knowable until it is
+	// answered. It reports the cards that actually moved, not just how
+	// many, so `swept` can be narrowed to them (#815).
+	//
+	// Exactly one of move / moveThen is set.
+	moveThen func(g *game.Game, ids []uuid.UUID, then func(g *game.Game, moved []uuid.UUID) error) error
 	// then is the card's "…for each permanent destroyed this way"
-	// clause. Receives the pre-move copies of everything that was
-	// swept and the count that actually moved.
+	// clause. Receives the pre-move copies and the count that actually
+	// moved — of everything that was swept under `move`, and of
+	// exactly what LANDED under `moveThen`, which knows.
 	then func(ctx *Context, swept []game.Card, moved int) error
 }
 
@@ -72,23 +84,45 @@ func (m massEffect) apply(ctx *Context) error {
 	}
 	if m.narrow != nil {
 		ids = m.narrow(ctx.Game, ids)
-		keep := make(map[uuid.UUID]bool, len(ids))
-		for _, id := range ids {
-			keep[id] = true
-		}
-		kept := swept[:0:0]
-		for _, c := range swept {
-			if keep[c.InstanceID] {
-				kept = append(kept, c)
+		swept = keepCards(swept, ids)
+	}
+	if m.moveThen != nil {
+		// The context is rebuilt inside the continuation from the live
+		// *Game, the contract every continuation in the engine follows
+		// — an undo restores this game's fields in place, so a captured
+		// *Game would be the wrong one.
+		item := ctx.Item
+		return m.moveThen(ctx.Game, ids, func(g *game.Game, moved []uuid.UUID) error {
+			if m.then == nil {
+				return nil
 			}
-		}
-		swept = kept
+			// `swept` narrows to what actually moved, so the clause that
+			// reads the CARDS and the clause that reads the COUNT agree
+			// — a survivor must not be paid out for either way.
+			return m.then(NewContext(g, item), keepCards(swept, moved), len(moved))
+		})
 	}
 	moved := m.move(ctx.Game, ids)
 	if m.then == nil {
 		return nil
 	}
 	return m.then(ctx, swept, moved)
+}
+
+// keepCards narrows a swept set to the cards named in `keep`,
+// preserving the swept order.
+func keepCards(swept []game.Card, keep []uuid.UUID) []game.Card {
+	want := make(map[uuid.UUID]bool, len(keep))
+	for _, id := range keep {
+		want[id] = true
+	}
+	kept := swept[:0:0]
+	for _, c := range swept {
+		if want[c.InstanceID] {
+			kept = append(kept, c)
+		}
+	}
+	return kept
 }
 
 // MatchingBattlefield resolves a predicate against the battlefield
@@ -153,18 +187,36 @@ type DestroyAllMatching struct {
 	Match CardPredicate
 
 	// Then is the "for each permanent destroyed this way" clause.
-	// `swept` holds the pre-move copies, `destroyed` the count that
-	// actually left. Optional.
+	// `swept` holds the pre-move copies of the permanents that were
+	// actually DESTROYED and `destroyed` is how many of them there
+	// were, so the two always describe the same set. Optional.
+	//
+	// #815: it runs from a CONTINUATION, which means it may run an
+	// action later than the sweep — a commander caught in the wipe
+	// stops to answer CR 903.9, and the number is not knowable until
+	// they do. Write it as a clause that acts on what it is given, not
+	// as the next line of the card.
 	Then func(ctx *Context, swept []game.Card, destroyed int) error
 }
 
 func (d DestroyAllMatching) Apply(ctx *Context) error {
-	return massEffect{
+	m := massEffect{
 		match:  d.Match,
 		narrow: (*game.Game).DestructibleForEffect,
-		move:   func(g *game.Game, ids []uuid.UUID) int { return g.DestroyPermanentsForEffect(ids) },
 		then:   d.Then,
-	}.apply(ctx)
+	}
+	if d.Then == nil {
+		// Nothing is waiting on the count, so the sweep stays
+		// fire-and-forget: every leg is destroyed on this line, and a
+		// commander's CR 903.9 prompt lands its own card later without
+		// holding the rest of the board up.
+		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.DestroyPermanentsForEffect(ids) }
+	} else {
+		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
+			return g.DestroyPermanentsThenForEffect(ids, then)
+		}
+	}
+	return m.apply(ctx)
 }
 
 // ExileAllMatching is "exile all <predicate>" — Merciless Eviction,

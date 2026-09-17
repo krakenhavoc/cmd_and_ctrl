@@ -236,6 +236,7 @@ unused — they can be removed in a later cleanup PR.)
 - `boteval suite run [--dir DIR] [--policy heuristic|assisted|strong] [--max-think 20s] [--parallel N] [--out report.json] [--md]` — asks a policy every labelled position in `server/internal/aiseat/suite/testdata/positions/` and reports agreement overall and per tag, plus reject-hits, malformed replies, out-of-range indices and timeouts. Exits non-zero on a gated miss. The `heuristic` run is also an ordinary Go test and runs on every CI run.
 - `boteval suite harvest --from 'dir/*.decisions.jsonl' --to inbox/ [--escalated] [--disagree] [--fallback a,b] [--layer A,B,C] [--seat 0,1] [--tag block,attack] [--limit N] [--seed N]` — pulls candidate windows out of decision logs into an inbox of UNLABELLED positions. Deterministic under `--seed`.
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](docs/bot.md#position-suite).
+- `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](docs/bot.md#arena).
 - `cd server && go run ./cmd/gamecli -addr ws://localhost:8080/ws` — drive the demo game from a terminal; reads action JSON on stdin or via `-script path.json`
 - Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
@@ -269,6 +270,7 @@ unused — they can be removed in a later cleanup PR.)
 - Runs **in process** with the game server — no separate binary, no socket. One goroutine per bot seat, started by `Lobby.Start` and by the lobby's restore path. User-facing guide: [docs/bot.md](docs/bot.md); architecture: [ADR 0033](docs/decisions/0033-ai-bot-seat.md).
 - Endpoints: `GET /bot/options`, `POST /games/{id}/seats/bot`, `DELETE /games/{id}/seats/bot/{player_id}` — see [docs/lobby.md](docs/lobby.md).
 - Env vars: the bot seat reads only the model-transport variables listed above at runtime: `CMDCTRL_OPENAI_ENDPOINT` / `_API_KEY` / `_SEND_THINK`, `CMDCTRL_ANTHROPIC_API_KEY` / `_ENDPOINT` (and `ANTHROPIC_API_KEY`), and `CMDCTRL_BOT_MODEL` / `_FRONTIER_MODEL` / `_MAX_THINK`, plus the off-by-default `CMDCTRL_BOT_DECISION_LOG` / `_MODE`. They are parsed in `cmd/server/main.go` and `aiseat/model`. Everything else is per-seat request data or a compile-time default. Tier and deck come with the request. Pacing is `aiseat.Config`: `MinThink` 700ms, and `MaxThink` 2s, or 5s for `strong`, which `CMDCTRL_BOT_MAX_THINK` can widen for the model tiers.
+- **The arena lives OUTSIDE `aiseat/`**, at `server/internal/botarena/`, and that is not a style choice: `heuristic/imports_test.go` bans `internal/game` from every subpackage of `aiseat/` — including their `_test.go` files, over Imports, TestImports *and* XTestImports — because a **policy** holding authoritative state could read an opponent's hand. An arena has to hold the `*game.Game` and the `*ws.Room`, so it sits above the ban and hands each policy nothing but the filtered `aiseat.Input` a runner would. `botarena.BattleDeck` is the whole-game tests' deck moved here verbatim; the copy in `heuristic_game_test.go` stays where it is, because those tests may not import this package.
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them):
   - `AISEAT_GAME_TESTS=1` — the master gate. Without it every whole-game test in `internal/aiseat` skips. The nightly `bot-games` job runs `go test ./internal/aiseat/... -race -timeout 30m -skip TestFourRandomBotsPlayToAWinner`, then the random-table step, then the catalog soak (`.github/workflows/e2e-nightly.yml`).
   - `AISEAT_HEURISTIC_GAMES=N` / `AISEAT_H2H_GAMES=N` — widen the four-heuristic and heuristic-vs-random samples (defaults 3 and small, for CI). The nightly sets neither, so it plays 3 heuristic seeds. A 20-game nightly gate is [#685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/685).
@@ -586,10 +588,20 @@ multi-option slots use **pipe syntax** and queue a `mana_pick`
 PendingChoice for the controller to resolve:
 
 - `"{C}{C}"` — Sol Ring: two colorless slots.
-- `"{W|U|B|R|G}"` — Birds of Paradise: one any-color slot, picker.
-- `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
-  the engine narrows the pipe set against the controller's commander
-  identity at activation time.
+- `"{W|U|B|R|G}"` — Birds of Paradise: one any-color slot, picker. The
+  picker offers all five colours with the controller's commander
+  identity listed first (owner decision, 2026-09-17). Every pipe gets
+  that order; never narrow a card whose text just says "any color" or
+  names its colours. The identity is read from the player's
+  commander(s) in whatever zone they are in (CR 903.4a), not just the
+  command zone.
+- `"{W|U|B|R|G}"` + `NarrowToCommanderIdentity: true` — Arcane Signet,
+  Command Tower, Commander's Sphere, Path of Ancestry: the engine
+  intersects the pipe set with the controller's commander identity at
+  activation time. Set the flag only when the printed text says "in your
+  commander's color identity"; `TestOnlyCommanderIdentityCardsNarrow`
+  and the dump-gated `TestNarrowToCommanderIdentityMatchesOracleText`
+  hold the catalog to that.
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.
@@ -698,15 +710,26 @@ optional `Replacements []game.ReplacementEffect` field. Used today by
 Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
 Fog, Stone of Erech.
 
-**A discard can't be replaced yet.** All four places that discard move
-the card straight to the graveyard without going through the pipeline,
-and the event records no cause (effect, cost or turn-based action). So
-Library of Leng, Rest in Peace, madness and the Obstinate Baloth family
-have nothing to watch. Don't ship one of them with the replacement
-omitted; they wait on
-[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650), which
-in turn waits on
-[#651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/651). See
+**A discard goes through the exit primitive** (#853). Every discard
+site — the CR 514.1 cleanup discard, the effect-discard continuation,
+the revealed-hand leg, the random discard and the discard component of
+an additional cost — shares `discardCardsLocked` (`server/internal/game/discard.go`),
+which routes each card through `routeCardToZoneLocked` like every other
+exit. So the CR 614 window opens on a discard, a discarded commander
+gets the CR 903.9 offer, and a discard can PAUSE: `...ForEffect` returns
+with the card still in hand and the rest of the batch (and the prompt's
+`Then`) owed until the owner answers. The COST site is the exception —
+CR 601.2h pays a spell's costs as one indivisible step, so it sets
+`zoneRoute.MustSettleNow` and settles without asking, which means a
+commander pitched to a cost goes to the graveyard.
+
+**A discard still can't be replaced *as a discard*.** What the window
+sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
+(effect, cost or turn-based action), so the cause-sensitive family —
+Library of Leng, madness, the Obstinate Baloth shape — still has
+nothing to key on. Don't ship one of them with the replacement omitted;
+they wait on
+[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650). See
 [ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
 
 Unlike static abilities, replacements fire **before** the event
@@ -788,6 +811,18 @@ interchangeable and collapsing them would be wrong. No catalog card
 does this yet; if yours is the first, say so on the PR rather than
 shipping it quietly — the fix is a declared flag in the `PureCancel`
 mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
+
+**A `may` is always offered, however many effects share the window.**
+`Optional: true` (CR 614.10) queues a yes/no prompt for the effect's
+controller before `Replace` runs, and that is now true on the
+multi-effect paths too: an effect ordered alongside others by a CR 616
+prompt pauses for its own question when the chain reaches it
+([#847](https://github.com/krakenhavoc/cmd_and_ctrl/issues/847)), and
+a window nobody is left to order — or one that cannot pause at all,
+like a cost — skips it un-applied rather than firing it. So don't write
+a `Replace` that assumes it only ever runs after a "yes"; it never runs
+otherwise, but it may never run at all. See
+[ADR 0013 §5h](docs/decisions/0013-replacement-effects.md).
 
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
@@ -1097,6 +1132,18 @@ Triggered: []game.TriggeredAbility{{
 }},
 ```
 
+**Combat declarations (#830):** an attack declaration announces per
+creature as it is declared (`EventAttack`), but a BLOCK declaration
+announces once, at its **lock-in** — the first priority boundary of
+the declare-blockers step — so `EventBlock` (one per blocker/attacker
+pair: "whenever this creature blocks", "becomes blocked by a
+creature") and `EventBecomesBlocked` (one per blocked attacker, CR
+506.4: "becomes blocked", afflict) are harvested once from the FINAL
+assignment, and a blocker re-pointed mid-step never triggers the
+attacker it left. See
+[ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
+Decisions 19-21.
+
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:
 `g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
@@ -1375,14 +1422,52 @@ change and on a `.Life` / `.DamageMarked` read after a damage call, in
 the same function.
 
 **Destroy clears damage only when it lands (#708).** Marked damage is
-removed by `executeBattlefieldLeaveLocked`, the landed outcome of a
-battlefield exit — not by the destroy entry points. A destruction a
-replacement rewrote (regeneration, "exile it instead", indestructible)
-leaves `DamageMarked` exactly where it was: damage stays until the
-cleanup step (CR 514.2), and the replacement gets to read it. If you
-add a replacement that removes damage — regeneration is the one the
-rules name, CR 701.15a — it does that in its own `Replace`, not by
-leaning on the destroy path.
+removed by the landed outcome of a battlefield exit — not by the
+destroy entry points. A destruction a replacement rewrote
+(regeneration, "exile it instead", indestructible) leaves
+`DamageMarked` exactly where it was: damage stays until the cleanup
+step (CR 514.2), and the replacement gets to read it. If you add a
+replacement that removes damage — regeneration is the one the rules
+name, CR 701.15a — it does that in its own `Replace`, not by leaning on
+the destroy path.
+
+**"For each X destroyed this way" comes from a continuation too
+(#815).** A destruction can pause — a commander caught in a wipe stops
+to answer CR 903.9 — so the number is not knowable on the line after
+the sweep. `DestroyAllMatching`'s `Then` already receives it; what
+changed is that the clause now runs from the sweep's continuation
+(`g.DestroyPermanentsThenForEffect`), so it may run an action later,
+and its two arguments finally describe the same set: `swept` is the
+pre-move copies of the permanents that were actually DESTROYED and
+`destroyed` is how many of them there were. Write the clause as
+something that acts on what it is handed, not as the next line of the
+card. The fire-and-forget `g.DestroyPermanentsForEffect(ids)` keeps
+its `int` for a sweep nothing is waiting on; it cannot include a leg
+that paused, so never read it as "destroyed this way".
+
+What counts as destroyed is CR 701.7a — "move it from the battlefield
+to its owner's graveyard". A permanent the CR 614 window saved is not
+destroyed (it never left), and neither is one a replacement sent to
+exile, a hand or a library instead (it left, but not to a graveyard).
+A commander that takes CR 903.9's offer IS counted, which is the
+engine's one declared exception and lives in
+`destroyedThisWayLocked`. See
+[ADR 0013 §5i](docs/decisions/0013-replacement-effects.md).
+
+**And EVERY battlefield exit clears it, not just a destruction
+(#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup
+(`clearBattlefieldDamage`, permanent_damage.go), so a creature that is
+exiled, bounced, tucked, milled, sacrificed or moved by hand leaves its
+marked damage and its CR 702.2c deathtouch flag behind with everything
+else CR 400.7 strips — the card in the new zone is a new object, and a
+creature that comes back (replayed, reanimated, blinked) must not
+arrive already damaged. Last
+known information is unaffected: `snapshotLKILocked` runs while the
+permanent is still on the battlefield, one line before the move, so a
+dies-trigger reads the creature that died (the LKI `Characteristic` has
+never carried marked damage, and the `source` card a trigger is handed
+is the new object, which by CR 400.7 has none). Don't clear damage in a
+card's effect: if your card leaves the battlefield, it is already done.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
@@ -1756,10 +1841,26 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
-| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the batch while the first trigger is pending, on the stack or waiting on its prompt. Without it the card ships **stronger** than printed. A label computed per event (Breena) calls `g.TriggerInFlightForEffect(source, label)` directly |
+| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed. A label computed per event (Breena, Nature's Will) calls `g.TriggerInFlightForEffect(source, label)` directly; that helper is the per-event-key leftover, not the batch guard (#784) |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
+
+**What a batch is** (#829, CR 603.2c) — **a batch is every event the
+engine emits between two points where play moves on: a stack item
+beginning to resolve, and the turn cursor entering a new step.**
+Nothing else opens one. So one resolution is one batch (a Cyclonic
+Rift bouncing four creatures draws Dour Port-Mage one card), one
+turn-based action is one batch however many engine calls the sandbox
+splits it across (three `DeclareAttacker` clicks are one declaration
+and one Adeline trigger), and the NEXT resolution is a new batch
+however much of the last one is still on the stack (two Unsummons in
+one turn draw two cards). The batch id is stamped on `Event.Batch`
+and the guard is `oncePerBatchAllowsLocked`
+([event_batch.go](server/internal/game/event_batch.go)) — one
+counter, one guard, no per-card special cases. Known gap: two
+SANDBOX-MANUAL mutations in a row with nothing resolving in between
+share a batch.
 
 **The two rules that matter:**
 
@@ -1894,16 +1995,38 @@ goes here too — it is continuous, so it is read at the instant the
 step asks). `Untaps` picks the PERMANENTS, and is consulted only for
 ones that are actually tapped.
 
+The counterpart is `Spec.UntapStepRestrictions` (#751): self, attached
+and filtered predicates keep permanents tapped during their controller's
+own untap step. Read conditions after layers, especially power checks;
+do not model them as layer-6 restriction bits. They do not stop a spell
+from untapping a permanent or a Seedborn Muse permission on another
+player's step. The constructors live in
+[untap_restrictions.go](server/internal/cards/effects/untap_restrictions.go),
+beside the permission helpers.
+
+For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
+`Player == uuid.Nil` follows the permanent's controller; a player ID
+names that player's next untap step. Markers expire at that actual step,
+even on an untapped permanent, survive skipped steps, and disappear on
+zone changes. They are data on `Card`, not turn-scoped closures, so undo
+and persisted snapshots retain them. Exert's action/cost and choose-N
+untap effects such as Winter Orb remain separate work. See
+[ADR 0058](docs/decisions/0058-doesnt-untap.md).
+
 Two things to know when you touch the untap path at all:
 
 - **Every untap goes through one primitive**
   (`Game.untapPermanentLocked`, `server/internal/game/untap.go`) and
-  emits `EventUntapCard` — that is what makes Mesmeric Orb's
+  emits `EventUntapCard` when the permanent actually untaps — that is what
+  makes Mesmeric Orb's
   "whenever a permanent becomes untapped" writable, and it must stay
   the only way `Tapped` goes false for a permanent on the
   battlefield. `MoveCard`'s battlefield-exit cleanup is not an untap
   (the card is no longer a permanent) and deliberately keeps its own
-  write.
+  write. A stun counter replaces any attempted untap of a tapped
+  permanent with removal of one stun counter, including the sandbox
+  buttons. A restricted or marked permanent never attempts to untap
+  during the affected step, so it keeps its stun counters.
 - **Untapping and summoning sickness are different questions.** The
   untap step clears `SummonedThisTurn` for the ACTIVE seat's
   permanents (CR 302.6 is about whose turn it is); a Seedborn Muse
@@ -2001,10 +2124,9 @@ pattern above: the prompt goes on `AsEnters`, the answer lands on
 ```go
 AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
 ManaAbilities: []ManaAbility{{
-    Cost:                    ManaAbilityCost{Tap: true},
-    ProducedFunc:            ProducedColorOrChosen("U"), // or ProducedChosenColor()
-    Label:                   "Add {U} or one mana of the chosen color",
-    IgnoreCommanderIdentity: true,
+    Cost:         ManaAbilityCost{Tap: true},
+    ProducedFunc: ProducedColorOrChosen("U"), // or ProducedChosenColor()
+    Label:        "Add {U} or one mana of the chosen color",
 }},
 Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
 ```
@@ -2030,11 +2152,11 @@ it with the produced-mana grammar's per-colour count:
 `OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
 `ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
 a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
-a spell or trigger too, through `AddManaForEffect`. That path narrows a
-pick to the commander's colour identity by default, so an effect whose
-printed text says "any color" or "any one color" passes
-`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
-`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+a spell or trigger too, through `AddManaForEffect`. That path offers the
+printed colours with the commander's identity listed first, like a mana
+ability; only printed "in your commander's color identity" text passes
+`game.AddManaOptions{NarrowToCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.NarrowToCommanderIdentity`),
 the effect-side twin of the mana ability's flag. The auto-tapper
 plans around such a source, so the player taps it by hand
 ([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).

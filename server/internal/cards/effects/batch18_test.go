@@ -200,7 +200,7 @@ func TestB18WoodedBastionFiltersHybridIntoTwoPicks(t *testing.T) {
 		t.Fatalf("want the painless {C} first, got %+v", spec.ManaAbilities)
 	}
 	filter := spec.ManaAbilities[1]
-	if filter.Cost.Mana != "{G/W}" || filter.Produced != "{G|W}{G|W}" || !filter.IgnoreCommanderIdentity {
+	if filter.Cost.Mana != "{G/W}" || filter.Produced != "{G|W}{G|W}" || filter.NarrowToCommanderIdentity {
 		t.Errorf("filter ability %+v, want {G/W} in and two {G|W} picks out", filter)
 	}
 	g := newCatalogGame(t)
@@ -1103,14 +1103,15 @@ func TestB18GrazilaxxMayBounceABlockedAttackerAndDrawsOncePerCombat(t *testing.T
 	if err := g.DeclareBlocker(wall1, a); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
-	if n := b18TriggerPromptCount(g, me.ID); n != 1 {
-		t.Fatalf("one blocked attacker is one prompt, got %d", n)
+	if n := b18TriggerPromptCount(g, me.ID); n != 0 {
+		t.Fatalf("#830: a click stages the pairing and announces nothing, got %d prompts", n)
 	}
 	if err := g.DeclareBlocker(wall2, a); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
+	lockInBlocks(t, g)
 	if n := b18TriggerPromptCount(g, me.ID); n != 1 {
-		t.Fatalf("a second blocker on the same attacker is not a second 'becomes blocked', got %d prompts", n)
+		t.Fatalf("a double block is one 'becomes blocked' (CR 506.4), got %d prompts", n)
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)

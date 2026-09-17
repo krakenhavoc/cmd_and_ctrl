@@ -178,6 +178,28 @@ type GameSnapshot struct {
 	Events   []Event `json:"events,omitempty"`
 	EventSeq uint64  `json:"eventSeq"`
 
+	// EventBatch is the live Event.Batch counter and OncePerBatchFired
+	// the per-ability record of the batch each "whenever one or more …"
+	// ability last fired for (#829, event_batch.go). Both restore as
+	// zero / empty from a file written before them, which reads as
+	// "no batch has fired yet" — the safe direction: the first event
+	// after the restore opens a fresh batch and every OncePerBatch
+	// ability is free to fire for it. No schema bump.
+	EventBatch        uint64            `json:"eventBatch,omitempty"`
+	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
+
+	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
+	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// blocker has had its EventBlock announced against which
+	// attacker, and which attackers have had their one
+	// EventBecomesBlocked. Both are empty outside a combat with
+	// blockers declared, and a file written before them restores as
+	// empty — which reads as "nothing announced yet", so the next
+	// lock-in announces the declaration the battlefield already
+	// carries. No schema bump.
+	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -279,6 +301,7 @@ type cardSnapshot struct {
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
 	Tapped                   bool                `json:"tapped"`
+	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
 	BattleX                  float64             `json:"battleX"`
 	BattleY                  float64             `json:"battleY"`
 	Counters                 map[string]int      `json:"counters,omitempty"`
@@ -585,7 +608,11 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
+		EventBatch:        g.eventBatch,
 	}
+	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -757,6 +784,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -1062,6 +1090,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
+	g.eventBatch = s.EventBatch
+	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
+	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1211,6 +1243,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -1489,6 +1522,20 @@ func copyUUIDListMap(in map[uuid.UUID][]uuid.UUID) map[uuid.UUID][]uuid.UUID {
 	return out
 }
 
+// copyUUIDPairMap is copyBoolMap for a card-to-card map —
+// Game.announcedBlocks, blocker to the attacker its EventBlock named
+// (#830).
+func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uuid.UUID, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
 func copyBoolMap(in map[uuid.UUID]bool) map[uuid.UUID]bool {
 	if len(in) == 0 {
 		return nil
@@ -1505,6 +1552,19 @@ func copyStringIntMap(in map[string]int) map[string]int {
 		return nil
 	}
 	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// copyStringUint64Map is copyStringIntMap for Game.oncePerBatchFired,
+// whose values are batch ids (#829).
+func copyStringUint64Map(in map[string]uint64) map[string]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]uint64, len(in))
 	for k, v := range in {
 		out[k] = v
 	}

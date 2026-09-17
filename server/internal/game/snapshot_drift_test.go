@@ -107,6 +107,20 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #829 event batches. Carried for the same reason the per-turn
+	// tallies are, and carried TOGETHER: the counter names the batch
+	// the marks are recorded against, so a restore that kept one and
+	// not the other would either double-fire a "whenever one or more"
+	// trigger or swallow it.
+	"eventBatch", carried, "",
+	"oncePerBatchFired", carried, "",
+	// #830 block-declaration lock-in. Carried for the same reason and
+	// in the same pair-wise way: the map of announced pairings names
+	// what the "became blocked" marks were recorded for, so a restore
+	// that kept one and not the other would either re-announce an
+	// attacker that is already blocked or swallow a real block.
+	"announcedBlocks", carried, "",
+	"announcedBecameBlocked", carried, "",
 	"lastKnownBattlefield", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
@@ -154,6 +168,7 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",

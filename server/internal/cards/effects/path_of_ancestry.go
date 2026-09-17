@@ -39,6 +39,8 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color in your commander's color identity",
+			// The printed text asks for the narrowing (manaPickOptionsFor).
+			NarrowToCommanderIdentity: true,
 		}},
 	})
 }

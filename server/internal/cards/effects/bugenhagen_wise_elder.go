@@ -26,10 +26,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

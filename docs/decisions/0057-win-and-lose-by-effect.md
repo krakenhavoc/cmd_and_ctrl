@@ -278,12 +278,26 @@ for _, p := range g.Seats {
     }
 }
 for _, l := range losers { g.leaveGameLocked(l.p, l.cause) }
+moveOn := false
 if len(losers) > 0 || g.ActiveSeatLeftPending { // Decision 3's deferred departure
     g.ActiveSeatLeftPending = false
-    if !g.checkGameOverLocked() { g.advancePastEliminatedLocked() }
+    moveOn = !g.checkGameOverLocked()
     fired = true
 }
+// ... the permanent SBAs (704.5f-j, battles, sagas, legend rule) ...
+// Return moveOn to the settling loop. Accumulate it across repeated SBA
+// passes; rotate once they are quiet, before draining waiting triggers.
 ```
+
+- **The rotation waits for repeated SBA passes to settle.** Ending
+  the active player's turn runs the cleanup sweep, which removes marked
+  damage and deathtouch marks. The destruction SBAs read those marks,
+  including on later checks: a lord dying on one pass can make another
+  creature's damage lethal on the next. `runStateChecksLocked` therefore
+  repeats the checks before rotating, then checks the new turn's board
+  before draining the waiting triggers (#834 review; pinned by
+  `TestActiveSeatSBALossStillDestroysMarkedCreatures` and
+  `TestActiveSeatSBALossSettlesChainedLethalDamageBeforeCleanup`).
 
 - **Every gate is read at the check**, against the battlefield as it is
   then. A player at 0 life whose Platinum Angel dies loses at the next

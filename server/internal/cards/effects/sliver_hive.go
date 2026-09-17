@@ -33,10 +33,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:                    ManaAbilityCost{Tap: true},
-				Produced:                "{W|U|B|R|G}",
-				Label:                   "Add one mana of any color (Sliver spells only)",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{W|U|B|R|G}",
+				Label:    "Add one mana of any color (Sliver spells only)",
 				Restrictions: []string{
 					ManaRestrictCast,
 					ManaRestrictSubtype("Sliver"),

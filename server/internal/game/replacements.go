@@ -221,9 +221,10 @@ type ReplacementEvent struct {
 
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
-	// down in exile, this was a mill, this was a counterspell) that a
-	// paused move has to carry across the pause so the resume can
-	// finish it exactly as the mover asked. Set by
+	// down in exile, this was a mill, this was a counterspell, this
+	// was a discard) that a paused move has to carry across the pause
+	// so the resume can finish it exactly as the mover asked — plus,
+	// since #853, the rest of the effect that asked for it. Set by
 	// routeCardToZoneLocked and read by executeZoneRouteLocked; a
 	// non-nil value is what makes a RepEventMove resumable on the
 	// EXIT side, the way entryResumable does on the entry side.
@@ -309,12 +310,15 @@ type ReplacementEvent struct {
 	// returns, because the caller has no resume and no way to be
 	// rewound once it has.
 	//
-	// One thing sets it today: paying life as a cost (CR 118.3).
-	// CR 601.2h pays a spell's costs as one indivisible step of
-	// casting it and CR 601.2 rewinds the announcement if they cannot
-	// all be paid, so a CR 616 ordering prompt in the middle leaves a
-	// spell on the stack with its cost half paid. See
-	// payLifeAsCostLocked in life_tail.go for the full argument.
+	// Two things set it today, and they are the two halves of one cost
+	// line: paying life as a cost (CR 118.3, payLifeAsCostLocked in
+	// life_tail.go, which carries the full argument) and discarding a
+	// card as a cost (CR 701.8a, discard.go, which sets it through
+	// zoneRoute.MustSettleNow). CR 601.2h pays a spell's costs as one
+	// indivisible step of casting it and CR 601.2 rewinds the
+	// announcement if they cannot all be paid, so a CR 616 ordering
+	// prompt — or a CR 903.9 "may" — in the middle leaves a spell on
+	// the stack with its cost half paid.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
 	// and any CR 614.10 "may" on the event: the apply-loop applies the
@@ -691,8 +695,17 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// Nobody is left to answer the prompt: the gathered
 			// order stands (an eliminated player's prompt would
 			// block the table forever; S31 fuzzer finding).
+			//
+			// #847: through skipQuestionsLocked, exactly as the
+			// mustSettleNow branch below does. An effect that asks its
+			// own question cannot ride an order nobody chose either —
+			// firing a CR 614.10 "may" or a copy selector here would
+			// answer it blind, in the direction that favours it, on
+			// an event whose affected player is no longer at the
+			// table. Skipped un-applied is the weaker branch, which is
+			// the posture every other un-prompted path takes.
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				g.applyFirstGatheredLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			// #793: the event cannot pause — a life payment is a COST
@@ -745,33 +758,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no). A chooser who
-			// has left the game gets the "no" inline: the commander
-			// of an eliminated player going to the graveyard rather
-			// than the command zone changes nothing for anyone.
-			//
-			// #359: so does an event with nothing to resume it. This
-			// branch used to queue unconditionally while the
-			// EntryLifeCost branch below has checked entryResumable
-			// since #268, so an Optional self-replacement on a
-			// permanent entering by an unresumable route would pause
-			// with no way to finish — the card stranded in its old
-			// zone and the prompt answerable to no effect. Taking the
-			// un-applied branch is weaker than printed and never
-			// stranded, which is the posture #268 chose and #272
-			// reaffirmed. It is also what blocked the six reveal-
-			// lands ("as this enters, you may reveal a land from your
-			// hand") from shipping.
-			if !g.optionalReplacementResumableLocked(ev) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
+			// (yes) or marks applied and skips (no). The two cases
+			// that decline it inline instead — a chooser who has left
+			// the game, an event with nothing to resume it (#359) —
+			// live in the helper with the prompt, because
+			// ResolveReplacementOrder's chosen-order loop needs the
+			// same three answers and used to have none of them
+			// (#847). A queued prompt bails; a decline falls through
+			// to the next iteration.
+			if g.offerOptionalReplacementLocked(ev, chosen) {
+				return ev, errReplacementPending
 			}
-			if g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
-			}
-			g.queueOptionalReplacementPromptLocked(ev, chosen)
-			return ev, errReplacementPending
+			continue
 		}
 		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
@@ -920,10 +918,12 @@ func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activ
 // pay-life, a copy selector — marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
 //
-// Only an event that cannot pause (mustSettleNow) uses it: on every
-// other event the question is asked. Skipping is the weaker branch of
-// a "may" and the un-copied branch of a selector, which is what "never
-// stronger than printed" means here.
+// Two windows use it, and both are windows in which the question
+// could not be put to anybody anyway: an event that cannot pause
+// (mustSettleNow), and an ordering window whose affected player has
+// left the game (#847). Everywhere else the question is asked.
+// Skipping is the weaker branch of a "may" and the un-copied branch of
+// a selector, which is what "never stronger than printed" means here.
 //
 // Caller must hold g.mu, and must have allocated the once-per-event
 // map entry for ev.ID.

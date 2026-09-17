@@ -10,9 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 your graveyard.)"
 //
 // A two-colour mana dork that is also a self-mill engine. The mana
-// is a pipe ability over the two printed colours with the
-// commander-identity narrowing off (the text names the colours, not
-// the command zone); the mill is a CR 602 activated ability with a
+// is a pipe ability over the two printed colours, never narrowed to
+// the commander's identity (the text names the colours, not the
+// command zone); the mill is a CR 602 activated ability with a
 // tap cost, so it uses the stack and can be responded to. Both taps
 // are on a creature, so summoning sickness applies to each (CR
 // 302.6) — the engine enforces that for mana abilities and activated
@@ -25,10 +25,9 @@ func init() {
 		Name:         "Skull Prophet",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{B|G}",
-			Label:                   "Add {B} or {G}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{B|G}",
+			Label:    "Add {B} or {G}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Mill two cards.",

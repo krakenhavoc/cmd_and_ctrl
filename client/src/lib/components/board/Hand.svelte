@@ -159,12 +159,13 @@
     justify-content: center;
     min-height: 0;
     padding: 4px;
-    /* Default "peek" state: clip to the top ~55% of a card so the hand
-       takes up roughly half its full vertical footprint, exposing the
-       name, mana cost, art, and type line while hiding P/T + flavour /
-       rules text. Hover lifts the whole fan up and over the board
-       (see .hand:hover) to reveal full cards without pushing layout. */
-    max-height: calc(var(--card-h, 168px) * 0.55);
+    /* Default "peek" state: clip to the top 62% of a card so the hand
+       takes up well under its full vertical footprint while exposing
+       the name, mana cost, art, and type line and hiding P/T +
+       flavour / rules text. Hover lifts the whole fan up and over the
+       board (see .hand:hover) to reveal full cards without pushing
+       layout. PlayerPanel's .hand-zone reserves the same 62%. */
+    max-height: calc(var(--card-h, 168px) * 0.62);
     overflow: hidden;
     position: relative;
     z-index: 1;
@@ -173,12 +174,14 @@
       transform 220ms var(--ease);
   }
   /* Self hand expands on hover: overflow goes visible, the whole strip
-     translates upward so full cards poke over the battlefield, and z-
-     index jumps so nothing on the board occludes the revealed cards. */
+     translates upward by the hidden 38% so full cards poke over the
+     battlefield and the fan's bottom edge stays on the panel edge,
+     and z-index jumps so nothing on the board occludes the revealed
+     cards. */
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
-    transform: translateY(calc(var(--card-h, 168px) * -0.55));
+    transform: translateY(calc(var(--card-h, 168px) * -0.38));
     z-index: 20;
   }
   /* Opponent hands stay compact — they're face-down anyway and the
@@ -196,7 +199,7 @@
     margin-left: 0;
   }
   .hand.opponent .hand-slot {
-    margin-left: -42px;
+    margin-left: calc(var(--card-w, 80px) * -0.62);
   }
   .hand.opponent .hand-slot:first-child {
     margin-left: 0;
@@ -225,7 +228,7 @@
   }
   /* Opponent hand sizes are inherited from the parent
      .panel.opponent via --card-w/--card-h, so no explicit override
-     here. The fan offset stays smaller (see .hand.opponent .hand-slot
+     here. The fan offset stays tighter (see .hand.opponent .hand-slot
      above) because face-down stacks read better tightly packed than
      the self hand's wider fan. */
   .empty {

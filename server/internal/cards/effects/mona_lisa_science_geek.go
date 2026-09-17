@@ -32,8 +32,7 @@ func init() {
 				}
 				return c.CurrentPower()
 			}),
-			Label:                   "Add X mana of any one color, where X is Mona Lisa's power",
-			IgnoreCommanderIdentity: true,
+			Label: "Add X mana of any one color, where X is Mona Lisa's power",
 		}},
 	})
 }

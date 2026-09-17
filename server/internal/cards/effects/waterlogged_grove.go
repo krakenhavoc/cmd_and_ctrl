@@ -20,10 +20,9 @@ func init() {
 		Name:         "Waterlogged Grove",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{G|U}",
-			Label:                   "{T}, Pay 1 life: Add {G} or {U}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{G|U}",
+			Label:    "{T}, Pay 1 life: Add {G} or {U}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this land: Draw a card.",

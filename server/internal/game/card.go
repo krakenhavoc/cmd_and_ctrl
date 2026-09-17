@@ -428,6 +428,10 @@ type Card struct {
 	// Added in S27.
 	ProtectorPlayerID uuid.UUID
 
+	// NextUntapSkips records one-shot next-untap-step effects on this
+	// permanent. It is battlefield state, not a copiable value.
+	NextUntapSkips []UntapSkip
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since

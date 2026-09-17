@@ -406,10 +406,9 @@ func b36DesertDual(oracleID, name, a, b string) Spec {
 			},
 		}},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{" + a + "|" + b + "}",
-			Label:                   "Add {" + a + "} or {" + b + "}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{" + a + "|" + b + "}",
+			Label:    "Add {" + a + "} or {" + b + "}",
 		}},
 	}
 }

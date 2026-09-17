@@ -236,6 +236,19 @@ func (g *Game) cloneLocked() *Game {
 	// original did.
 	out.Events = g.Events[:len(g.Events):len(g.Events)]
 	out.eventSeq = g.eventSeq
+	// #829: the batch counter rewinds with the log, and the
+	// once-per-batch marks rewind with it. Carrying one without the
+	// other is the whole bug class: the counter alone would let an
+	// undone trigger fire twice for one batch, the marks alone would
+	// swallow the re-done one.
+	out.eventBatch = g.eventBatch
+	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	// #830: the block declaration's announcements rewind with the
+	// declaration. An undo across a re-point that kept them would
+	// swallow the re-done "becomes blocked"; dropping them would
+	// announce the same attacker twice.
+	out.announcedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	out.announcedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -360,6 +373,11 @@ func cloneCard(c Card) Card {
 		}
 	} else {
 		out.Counters = nil
+	}
+	if len(c.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	} else {
+		out.NextUntapSkips = nil
 	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
@@ -511,22 +529,23 @@ func cloneStackItem(s *StackItem) *StackItem {
 // deep-copies and RestoreFrom puts back, so a replayed answer skips
 // exactly the effects the first answer skipped (#808).
 //
-// The event's zoneRoute is shared: it is written once by the entry
-// point before the pipeline runs and only ever read afterwards. What
-// the resume DOES write is the event's scalar payload — the counter
+// What the resume writes is the event's scalar payload — the counter
 // delta, the life delta, Canceled — and the lifeTail POINTER, which a
 // continuation clears as it runs. Both live in the struct this copies,
 // so the snapshot keeps the values the prompt was queued with. #793.
 //
-// The damageTail is the exception, and it is why it gets a copy of its
-// own (#807). Its continuation is cleared THROUGH the pointer —
-// runDamageTailLocked nils `then` on the tail rather than the tail on
-// the event, because the rest of the tail (the CR 120.3 target kind,
-// the deathtouch / lifelink / commander snapshot) is what
-// applyResolvedDamageLocked is still reading when it runs. Sharing the
-// struct would let the live game's run consume the snapshot's
-// continuation, so undoing the answer to a CR 616 prompt and answering
-// it again would land the damage and skip the rest of the card.
+// The damageTail and the zoneRoute are the exceptions, and it is why
+// they each get a copy of their own (#807, #853). Their continuations
+// are cleared THROUGH the pointer — runDamageTailLocked and
+// runRouteTailLocked nil `then` on the tail rather than the tail on the
+// event, because the REST of what they carry (the CR 120.3 target
+// kind, the deathtouch / lifelink / commander snapshot; the
+// destination, the to-the-bottom instruction, the discard flag) is
+// what applyResolvedDamageLocked and executeZoneRouteLocked are still
+// reading when it runs. Sharing the struct would let the live game's
+// run consume the snapshot's continuation, so undoing the answer to a
+// CR 903.9 prompt and answering it again would move the card and skip
+// the rest of the discard.
 func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 	if f == nil {
 		return nil
@@ -543,6 +562,13 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.damageTail != nil {
 			t := *f.ev.damageTail
 			ev.damageTail = &t
+		}
+		if f.ev.zoneRoute != nil {
+			r := *f.ev.zoneRoute
+			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
+				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
+			}
+			ev.zoneRoute = &r
 		}
 		out.ev = &ev
 	}
@@ -618,6 +644,15 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
+	// #829: batch identity rewinds with the log it is stamped into,
+	// and the once-per-batch marks rewind with the counter — see
+	// cloneLocked.
+	g.eventBatch = src.eventBatch
+	g.oncePerBatchFired = src.oncePerBatchFired
+	// #830: see cloneLocked — the announcements rewind with the
+	// declaration they describe.
+	g.announcedBlocks = src.announcedBlocks
+	g.announcedBecameBlocked = src.announcedBecameBlocked
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

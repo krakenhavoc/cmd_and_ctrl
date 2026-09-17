@@ -24,7 +24,7 @@ package effects
 //
 // The fix is small and shared: a condition on ManaAbilityCost,
 // evaluated at activation time, plus the same filter hook
-// `commanderIdentityFor` already uses to narrow Arcane Signet's pipe
+// `commanderIdentityFor` already feeds for Arcane Signet's pipe
 // set. It would also unblock Mox Amber ("any colour among legendary
 // creatures and planeswalkers you control") and half of Chrome Mox.
 // Until then the restricted half is absent rather than free.

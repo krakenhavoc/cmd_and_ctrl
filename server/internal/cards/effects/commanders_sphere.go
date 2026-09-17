@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Commander.
 //
 // Both halves already had machinery: the identity-narrowed pipe is
-// Arcane Signet's (the engine filters "{W|U|B|R|G}" against the
-// controller's commander identity when the ability fires), and the
+// Arcane Signet's (NarrowToCommanderIdentity filters "{W|U|B|R|G}"
+// against the controller's commander identity when the ability fires), and the
 // cash-in is an ordinary CR 602 activated ability whose entire cost
 // is sacrificing the source. No mana, no tap — the Sphere can be
 // cracked with its mana ability already used, tapped, this turn, at
@@ -27,6 +27,8 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color in your commander's color identity",
+			// The printed text asks for the narrowing (manaPickOptionsFor).
+			NarrowToCommanderIdentity: true,
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice this artifact: Draw a card.",

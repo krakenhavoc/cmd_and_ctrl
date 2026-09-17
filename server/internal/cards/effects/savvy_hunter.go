@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // conditions is one TriggeredAbility watching two kinds (the Sun
 // Titan shape): the source's own attack declaration, or the source's
 // own block declaration — EventBlock names the blocker in CardID and
-// is emitted once per attacker it is declared against. The Food is
-// the shared template.
+// is emitted once per pair of the FINAL block declaration (#830), so
+// a blocker re-pointed mid-step still makes exactly one Food. The
+// Food is the shared template.
 //
 // "Sacrifice two Foods: Draw a card" is a sacrifice cost with a count
 // of two (#747, SacrificeN): the activator names exactly two Foods
