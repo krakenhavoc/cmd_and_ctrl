@@ -142,7 +142,8 @@ Scryfall dump falls into these shapes:
 | "whenever you roll one or more dice" | Vexing Puzzlebox, Barbarian Class level 2 |
 | won/lost flip | Mana Crypt, Krark, the Thumbless, Stitch in Time, Goblin Archaeologist, Frenetic Efreet, The Gold Saucer, Chaotic Strike, Mogg Assassin |
 | several flips | Yusri, Fortune's Flame (1-5 coins, each won or lost) |
-| flip until you lose | Fiery Gambit ("or choose to stop flipping"), Game of Chaos |
+| flip until you lose | Fiery Gambit ("or choose to stop flipping") |
+| flip again, decided each time by the last flip's winner | Game of Chaos (life stakes double each flip) |
 | heads/tails only (no call) | Ral Zarek's −7 ("for each coin that comes up heads") |
 | "whenever you win a coin flip" | Chance Encounter |
 | pick at random | Deadbridge Chant (graveyard), Exalted Flamer of Tzeentch (graveyard, filtered), Urza's Bauble (hand) |
@@ -170,10 +171,28 @@ func (g *Game) randForLocked(s rngStream) *rand.Rand
 `Game.rng` and `Game.rngState` are removed. Every one of the seven call sites in the
 table above moves to `randForLocked`. That includes cascade's fallback to the
 global source and the random discard's "index 0 when nil" branch. No
-file in `internal/game` imports `math/rand/v2` for drawing afterwards,
-except `rng.go` and `Zone.Shuffle`'s signature.
-`TestNoDirectRandomSource` (a grep-style test in the package) keeps it
-that way.
+file in `internal/game` calls into `math/rand/v2` afterwards, except
+`rng.go` and the body of `Zone.Shuffle` (see "No nil source" below).
+`TestNoDirectRandomSource` (a test in the package that parses its
+non-test files) keeps it that way.
+
+The seven existing sites use these streams. None of them has a source
+object, and "player" is the player whose library, hand or cards it is
+(sub-PR 1 keys that player by seat; see the
+[addendum](#addendum-2026-09-17-sub-pr-1-readings-pr-775)):
+
+| call site | stream `(kind, player, source)` |
+|---|---|
+| opening library shuffle (`game.go`) | `("shuffle", library owner, uuid.Nil)` |
+| `Mulligan` (`mutations.go`) | `("shuffle", library owner, uuid.Nil)` |
+| `ShuffleLibrary`, the sandbox shuffle (`mutations.go`) | `("shuffle", library owner, uuid.Nil)` |
+| `finishSearchLocked`, the shuffle after a search (`effect_api.go`) | `("shuffle", library owner, uuid.Nil)` |
+| `ShuffleLibraryForEffect` (`effect_api.go`) | `("shuffle", library owner, uuid.Nil)` |
+| `DiscardRandomForEffect` (`effect_api.go`) | `("pick", discarding player, uuid.Nil)`: one pick of n cards |
+| `bottomInRandomOrderLocked` (`cascade.go`), later #745's `PutOnBottomInRandomOrderForEffect` | `("random_order", player whose cards go to the bottom, uuid.Nil)` |
+
+All five shuffles share one stream per player. Each shuffle is one
+operation on it, so the counter tells them apart.
 
 Card code never sees a `*rand.Rand`. It calls the public `…ForEffect`
 methods in Decision 5.
@@ -182,8 +201,16 @@ methods in Decision 5.
 mints a crypto-random key the first time something draws. Draws stay
 random, rewindable and persistable in every game. The
 `math/rand/v2` global-source fallback goes away, and so does the
-random discard's silent "always the first card". `Zone.Shuffle(nil)`
-keeps its fallback for zone-level unit tests, but no game path passes nil.
+random discard's silent "always the first card".
+
+**The one exemption is `Zone.Shuffle`'s own nil branch.** `Zone.Shuffle(r *rand.Rand)`
+keeps its fallback to the global source when `r` is nil, for zone-level
+unit tests that shuffle a bare `Zone`. `TestNoDirectRandomSource` allows
+that one method body. It also fails on any call `Shuffle(nil)` in a
+non-test file of `internal/game`, so no game path can reach the
+fallback. Naming the `rand.Rand`, `rand.PCG` and `rand.Source` types in
+a signature is allowed, and nothing but `rng.go` may import
+`crypto/rand`.
 
 ## Decision 2 — Keyed streams: a secret key plus per-stream counters
 
@@ -205,6 +232,11 @@ rngTurn     int               // the Turn.Number rngCounters belong to
 3. Increment the counter, and return `rand.New(rand.NewChaCha8(seed))`.
    ChaCha8 is in `math/rand/v2` from Go 1.22, the module's floor.
 
+Sub-PR 1 builds "player" as the seat and "turn" as a per-turn index
+rather than `Turn.Number`. The
+[addendum](#addendum-2026-09-17-sub-pr-1-readings-pr-775) records why,
+and records how sub-PR 2 builds "source".
+
 **Why keyed streams rather than one copied PCG.** This implements the
 owner's goal for Decision 4, "undo can't be used to fish", and
 the Context shows that one copied stream doesn't reach it:
@@ -213,10 +245,19 @@ the Context shows that one copied stream doesn't reach it:
   roll comes from `("roll", you, Ogre, turn)`, and the Puzzlebox's rolls
   and your fetchland's shuffle come from other streams. After an undo,
   the Ogre rolls the same number whatever you did in between.
-- **Choosing a different line still gives a different result, as it
-  would in paper.** Casting a *different* discard spell uses a different
-  source, so it gets a different random card. To fish that way you need
-  a second card that does the same random thing, and you have to spend it.
+- **Choosing a different line can still give a different result, as it
+  would in paper.** Rolling for a *different* card (a second die-rolling
+  permanent or spell) uses a different source, so it gets a different
+  roll. To fish that way you need a second card that does the same
+  random thing, and you have to spend it.
+- **The exception is the random discard.** `DiscardRandomForEffect` has
+  no source parameter, so it draws from `("pick", player, uuid.Nil)`
+  (Decision 5), and every random discard by one player in one turn
+  shares that stream. If you undo Gamble and cast Burning Inquiry
+  instead, your discard is the same draw on the same stream: with the
+  same hand, the same card. This gives less room to fish than a
+  per-source stream, not more. It stays that way until a source is
+  added to the random discard, which is outside this ADR.
 - **Turn scoping limits what an undo teaches you.** After undoing a roll, the
   player knows what that source's stream will give next, *this turn*.
   At the next turn the key changes and that knowledge is gone.
@@ -224,8 +265,10 @@ the Context shows that one copied stream doesn't reach it:
   principle be recovered from enough outputs, and die rolls are public
   outputs. Each draw here is seeded by an HMAC of a secret key.
 - **Tests become persistable and rewindable.** `Start(r *rand.Rand)` and
-  `StartWithSource(pcg)` keep their signatures and derive the key by
-  reading 32 bytes from the source the caller passed. A seeded test
+  `StartWithSource(pcg)` keep their signatures and derive the key from
+  four `Uint64()` calls on the source the caller passed, written
+  little-endian into the 32 bytes. (`math/rand/v2`'s `*rand.Rand` has
+  no `Read`.) A seeded test
   stays deterministic, and there is no `"external"` source any more that
   can't be persisted or rewound. `SetRNGKeyForTest([32]byte)` follows
   the existing `…ForTest` pattern (`layers.go:685`) for tests that never
@@ -298,6 +341,21 @@ This applies to **every** random use, not only the new ones:
   opponent. Under rewind, that player's undo and redo reproduce the roll
   exactly, so the entry's owner can't use it to change your result. Fencing undo past a roll would remove
   it, and the owner chose rewind over that.
+- **A flip chain with "stop" lets undo turn a lost flip into a stop.**
+  Fiery Gambit, or Game of Chaos when its controller decides: the
+  flipper answers the call, sees the flip is lost, undoes the answer
+  (it is its own `Apply`, so its own undo entry), and answers "stop"
+  instead, which keeps the wins so far. The rewind doesn't prevent
+  this. Calling again reproduces the same loss, but "stop" is a
+  different answer, and in paper you must choose to stop *before* you
+  see the next flip. Drawing the won/lost bit when the prompt is queued
+  would not close it either, because the undone prompt would hold the
+  same bit. Only fencing undo past a flip would close it, and the owner
+  chose rewind over fencing. The cost is bounded like every other undo:
+  one peek per undo, within `UndoLimit`. With the default budget of 1,
+  a player can save at most one losing flip per turn. For example, a
+  Fiery Gambit with two wins whose third flip loses can become a stop at
+  two wins.
 - **"Undo the fetch to reshuffle" stops working.** It was never
   a feature, but players may have relied on it.
 - **The admin undo** (caller `uuid.Nil`, no budget) rewinds too. An
@@ -389,15 +447,53 @@ type CoinFlipResult struct {
 - **Wire.** `resolve_choice` gains `call: "heads" | "tails" | "stop"`,
   dispatched by kind next to the confirm case (`actions/actions.go:1242`).
   `PendingChoiceView` carries `kind: "coin_call"`, `reason`, and
-  `allow_stop` and `coins` when set.
-- **"Flip until you lose"** (Fiery Gambit, Game of Chaos) is a chain.
+  `allow_stop` and `coins` when set. It also carries `max_useful_wins`
+  and `wins` (the wins so far in the chain) when set, because the
+  heuristic reads only `protocol.GameView` and can't see `CoinFlipSpec`
+  (ADR 0033 §3; Decision 7).
+- **"Flip until you lose"** (Fiery Gambit) is a chain.
   `Then` queues the next `FlipCoinForEffect` while the flipper keeps
   winning. It uses the chained-choice mechanism, not a new subsystem.
   "Choose to stop" is the prompt's third answer, so each flip costs one
-  prompt, not a call plus a "continue?" confirm.
-- **Who decides whether to flip again (Game of Chaos).** Its "that player
-  decides whether to flip again" makes the *opponent* the next
-  `Flipper`. The chain handles that without new machinery.
+  prompt, not a call plus a "continue?" confirm. The **first** prompt
+  has `AllowStop: false`: the Scryfall rulings (2004-12-01) say "After
+  each flip, you choose whether to continue flipping", so the first
+  flip is not optional. They also say that if the target creature is
+  illegal on resolution, "you don't even flip a coin".
+- **Game of Chaos is not "flip until you lose".** Oracle text: "Flip a
+  coin. If you win the flip, you gain 1 life and target opponent loses
+  1 life, and you decide whether to flip again. If you lose the flip,
+  you lose 1 life and that opponent gains 1 life, and that player
+  decides whether to flip again. Double the life stakes with each flip."
+  Its one Scryfall ruling (2004-10-04) says only that doubling the stakes
+  "means to double the amount of life lost or gained" (1, 2, 4, …).
+  No ruling says who flips the next coin, so this ADR reads it from the
+  text and CR 705.2 ("Only the player who flips the coin wins or loses
+  the flip"). "If you win the flip" is only meaningful when "you", the
+  controller, flip. So **the controller is the `Flipper` of every flip,
+  and only the decision to flip again moves to the opponent**:
+  - After a won flip, the controller decides. The next flip's
+    `coin_call` goes to the controller with `AllowStop: true`, so that
+    flip costs one prompt, as for Fiery Gambit.
+  - After a lost flip, the target opponent decides. That player is not
+    the flipper, so the decision can't be the "stop" answer on the
+    controller's prompt. It is a `PendingChoiceConfirm` to the opponent
+    ("flip again?"). If they accept, a `coin_call` goes to the
+    controller with `AllowStop: false`. That flip costs two prompts.
+  - The first flip is not optional (`AllowStop: false`).
+
+  **For the card PR, check:** (1) look again for newer rulings or a
+  Gatherer ruling on who flips after a loss, and if one says the
+  opponent flips, change `Flipper` and invert which life change the
+  result applies; (2) the chain has no natural end, because state-based
+  actions aren't checked while the spell resolves (CR 704.3), so life
+  totals can go below 0 mid-chain. The stake must not overflow `int`,
+  and the bot hint must stop the chain (for example, stop once the
+  stake is at least the losing player's life), so that a bot controller
+  and a bot opponent can't flip forever; (3) the opponent's
+  "flip again?" confirm needs a bot preference of its own, because the
+  heuristic prefers the accept branch of a confirm
+  (`heuristic/choices.go:160`).
 
 **The result is drawn as won/lost, and the face follows from the call.**
 This is a technical choice, and it is what makes the two owner decisions
@@ -454,16 +550,36 @@ mirrors the types. The board also shows a reveal-strip cue for each roll or flip
   flipping" when `allow_stop` is set. Heads is the `AlwaysLegal` answer
   (#544). `ResolveCoinCall` never refuses a well-formed call, so every
   offered move is accepted (`dispatchAll`, #499).
+- **Where a bot's random call comes from.** Neither Layer A nor the
+  heuristic has a random source. `rules.Resolve` (`aiseat/rules/rules.go:104`)
+  is a pure function of `aiseat.Input` that allocates nothing, and the
+  heuristic scores are deterministic. So both take the call from **one
+  bit of the pending choice's `id`**: heads if the low bit of the UUID's
+  last byte is 0, tails otherwise. One shared helper in `aiseat`
+  computes it. The engine mints that `id` with `uuid.New()`
+  (`pending_choice.go`), which is a v4 UUID from crypto/rand, so the bit
+  is uniform. It is not drawn from the game's key, and it is decided
+  before the won/lost bit is drawn. A bot's call is therefore random
+  (owner decision 2) without adding state to either layer. The cost is
+  that the *face* shown for a bot's flip can differ between two runs of
+  a seeded test game, because the choice id is not seeded. The won/lost
+  result doesn't differ, because it never depends on the call
+  (Decision 6).
 - **Bots call at random (owner).** The heuristic (`aiseat/heuristic/choices.go`)
-  gains `choiceCoinCall` and scores the call answers from a per-policy
-  random source. "Stop" is taken once the chain has won
-  `CoinFlipSpec.MaxUsefulWins` flips (Fiery Gambit: 3, after which
-  another flip can only lose). Zero means the heuristic keeps flipping.
-  Layer A (`aiseat/rules/rules.go:104`) **absorbs** a coin-call window
-  with a random call, so a model tier never spends a call on a choice
-  that carries no information. The Layer-A/heuristic agreement test
-  treats any answer to a `coin_call` as agreement, because the two calls
-  are equivalent by construction (Decision 6).
+  gains `choiceCoinCall` and scores the call from the id bit above
+  highest. "Stop" is taken once `wins` in the view reaches
+  `max_useful_wins` (Fiery Gambit: 3, after which another flip can only
+  lose). Zero means the heuristic keeps flipping.
+  Layer A **absorbs** a `coin_call` window that doesn't offer "stop",
+  with the same id-bit call, so a model tier never spends a call on a
+  choice that carries no information. A window that offers "stop" is a
+  real decision, so Layer A escalates it. Because both layers compute
+  the call from the same bit, they agree on every window Layer A
+  absorbs, and the Layer-A/heuristic agreement test
+  (`TestLayerAAbsorbsMostWindowsAndAgreesWithTheHeuristic`) needs no
+  exemption.
+- **The random tier** (`NewRandomPolicy`) picks among the offered
+  answers uniformly, as it does for every window, "stop" included.
 - **Bots never draw from the game's key.** A bot's randomness is its
   own (`NewRandomPolicy`'s PCG, `aiseat/policy.go:95`). If a bot drew
   from game streams, its thinking would move the table's results.
@@ -534,6 +650,10 @@ knower clearing are all #745's, and none of them change here.
   next value for a turn, and "undo to reshuffle" is gone.
 - **An undone and changed coin call shows the other face with the same
   won/lost result** (Decision 6). A player only sees this if they undo.
+- **In a flip chain that allows "stop", undo can turn a lost flip into a
+  stop** (Decision 4): answer, see the loss, undo, answer "stop" and
+  keep the wins. This affects Fiery Gambit and Game of Chaos, and it is
+  limited to one peek per undo within the undo budget.
 - **One HMAC-SHA256 plus a ChaCha8 setup per random operation**:
   microseconds, and a game has a few dozen random operations per turn.
 - **Krark, the Thumbless prompts on every instant and sorcery its
@@ -599,6 +719,8 @@ knower clearing are all #745's, and none of them change here.
 **Sub-PR 2 — effect API, events, log.**
 - `RollDiceForEffect`, `FlipCoinsForEffect`, `ChooseAtRandomForEffect`,
   and `DiscardRandomForEffect` moved onto the pick.
+- The per-game object ordinal for the stream's source half, carried by
+  clone and snapshot ([addendum](#addendum-2026-09-17-sub-pr-1-readings-pr-775)).
 - `EventRollDie`, `EventFlipCoin`, `BatchSeq`, `LogRoll`, `LogFlip`,
   `docs/protocol.md`, `protocol.ts` types.
 - `cards/effects/dice.go` helpers. Delete `b27PseudoRandomIndex`,
@@ -656,7 +778,12 @@ Engine (`internal/game`):
     `LogFlip` collapse per batch and render text. A Vexing Puzzlebox-style
     `OncePerBatch` trigger fires once for a 3-die roll. A "whenever you
     win a coin flip" trigger fires only on won flips.
-12. **`TestNoDirectRandomSource`**: no `rand.` draw outside `rng.go`.
+12. **`TestNoDirectRandomSource`**: no non-test file in `internal/game`
+    calls into `math/rand` or `math/rand/v2` outside `rng.go`, except
+    inside the body of `Zone.Shuffle` (its nil fallback, kept for
+    zone-level unit tests; Decision 1). No non-test file calls
+    `Shuffle(nil)`. Only `rng.go` imports `crypto/rand`. Naming the
+    `rand.Rand`, `rand.PCG` and `rand.Source` types is allowed.
 
 Room (`internal/ws`):
 
@@ -668,9 +795,12 @@ Enumerator and bots:
 14. `legal`: a `coin_call` offers heads and tails (plus stop when allowed),
     exactly one answer is `AlwaysLegal`, and `dispatchAll` accepts every
     move (#499, #544).
-15. `aiseat`: the heuristic answers a `coin_call`. Layer A absorbs it,
-    and the agreement test passes with the exemption. The random tier
-    answers it.
+15. `aiseat`: the heuristic answers a `coin_call`, calling from the
+    choice id's bit and stopping at `max_useful_wins`. Layer A absorbs a
+    `coin_call` without "stop", makes the same call as the heuristic,
+    and escalates one with "stop". The agreement test passes with no
+    exemption. The random tier answers it. Over many minted ids, the
+    id-bit call comes out heads about half the time.
 16. **Catalog soak** (#601) with the first-wave cards added: no stalls on
     a coin call.
 
@@ -733,3 +863,84 @@ Answered 2026-09-17. The chosen option is marked **(chosen)**; the recommendatio
    cards that exercise `AllowStop` and a chain whose flipper changes. If
    they don't ship with the seam, that code ships untested by any real
    card, and its first real user finds the bugs.
+
+   *Note added 2026-09-17:* in Game of Chaos the player who **decides**
+   whether to flip again changes, but the flipper does not
+   ([Decision 6](#decision-6--a-wonlost-flip-prompts-for-a-call-owner)).
+
+## Addendum (2026-09-17): sub-PR 1 readings (PR #775)
+
+Sub-PR 1 ([PR #775](https://github.com/krakenhavoc/cmd_and_ctrl/pull/775),
+`feat/keyed-rng-744`) builds two parts of the Decision 2 stream key
+differently from how Decision 2 wrote them. Both follow Decision 2's
+and Decision 9's own goals. They are recorded here so this ADR matches
+the code.
+
+### The player half is the seat, not the player's UUID
+
+`AddPlayer` mints a random UUID for each player on every run. If the
+stream key used that UUID, a seeded test would shuffle differently on
+each run, which breaks "a seeded test stays deterministic" (Decision 2)
+and "its runs stay reproducible" (Decision 9). So a seated player is
+keyed by **seat index**. Seats can't change once a game starts, because
+`RemovePlayer` only works in the lobby. The `player[16]` bytes of the
+seed are `"cmdctrl-seat"` followed by the seat number as a big-endian
+`u32`. Byte 6 of that is `'l'` (`0x6c`), so it can never equal a v4
+UUID, which has `0x4_` there. (The code comment in PR #775's `rng.go`
+says `'r'`, which is byte 5; the property holds either way.) The counter map's label is `seat<N>`. A UUID that
+isn't seated, or `uuid.Nil`, is keyed by its own bytes.
+
+### Turn scoping uses a per-turn index: `Turn.Number*MaxPlayers + ActiveSeat`
+
+In this engine `Turn.Number` only goes up when play wraps back to seat 0
+(`turn.go` `advance`), so it counts **rounds**, not turns. If streams
+were scoped to it, what a player learned from an undo would stay valid
+through every other seat's turn in that round. Decision 2 says that
+knowledge is gone "at the next turn". So `rngTurn`, and the `turn[8]`
+bytes of the seed, hold `Turn.Number*MaxPlayers + Turn.ActiveSeat`,
+which changes on every turn. Before the first round it is
+`0..MaxPlayers-1`, and the opening shuffle runs at index 0.
+
+### Decided for sub-PR 2: the source half is a stable per-game ordinal
+
+**The problem.** Sub-PR 1 passes `uuid.Nil` as the source at every
+site. Sub-PR 2 is the first to pass a real source (Hoarding Ogre, Urza's
+Bauble). If the source half were the object's instance UUID, it would
+behave like the player UUID above. `NewCard` (`card.go`), token creation
+(`effect_api.go`) and spell copies (`spell_copy.go`) all mint IDs with
+`uuid.New()`. An object keeps its ID through zone changes, clone,
+`RestoreFrom` and snapshot restore, so rewind and restore would still
+work within one run. Across two runs of the same seeded test, though,
+every roll, flip and pick with a source would differ.
+
+**The decision.** The source half of the key is a **per-game object
+ordinal** that is the same on every run of the same game:
+
+- **A card from a deck** gets class 0 and the value `seat<<16 | i`,
+  where `i` is the card's index in the deck slice passed to `AddPlayer`.
+- **An object created during the game** (a token, a spell copy, a
+  sandbox card) gets class 1 and the value of a per-game creation
+  counter, incremented when the object is created.
+- **The ordinal is assigned when the object is created**, not when it
+  first draws. If it were assigned on first draw, the order of draws
+  would decide the ordinals, and "undo, roll for the Puzzlebox first,
+  then roll for the Ogre" would move the Ogre's stream, which is the
+  fishing Decision 2 closes.
+- **The map from instance ID to ordinal, and the creation counter**, are
+  engine state. Clone and snapshot carry them, and the drift test marks
+  them `carried`. Sub-PR 2 decides where they are stored (a map on
+  `Game` or a field on `Card`).
+- **The seed's `source[16]` bytes** are `"cmdctrl-obj"` (11 bytes; byte
+  6 is `'l'`, `0x6c`, so it can't equal a v4 UUID), then the class byte, then the
+  value as a big-endian `u32`. The counter label is `obj<class>:<value>`.
+- **`uuid.Nil` keeps its current bytes and label**, so the counters that
+  sub-PR 1 persists and its known-answer test stay valid. An ID with no
+  ordinal (a harness card added without `AddPlayer`) is keyed by its own
+  bytes, like an unseated player.
+
+**What it costs.** Creating tokens in a different order after an undo
+changes a later token's ordinal, and so its stream. That is choosing a
+different line with real game actions, like rolling for a different
+card (Decision 2). It never applies to cards from a deck. Sub-PR 2 adds
+a test that runs the same seeded game twice and gets the same
+`RollDiceForEffect` results for a sourced roll, next to Test plan item 2.
