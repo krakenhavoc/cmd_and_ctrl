@@ -1,7 +1,7 @@
 # ADR 0018 — Triggered abilities use the stack
 
 **Status:** Implemented · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
-**Addendum:** 2026-09-17 · **Proposed** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--proposed) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
+**Addendum:** 2026-09-17 · **Accepted** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
 
 ## Context
 
@@ -247,9 +247,9 @@ turn" reads `Noncreature == 1` for the spell that triggered it.
   response and does not re-pick; two dies triggers from one wrath
   stack APNAP.
 
-## Addendum (2026-09-17): trigger doubling (CR 603.2d) — Proposed
+## Addendum (2026-09-17): trigger doubling (CR 603.2d) — Accepted
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
 **Numbering:** an addendum to ADR 0018, not a new ADR. No new number, and the ADR range line in AGENTS.md §3 is unchanged.
 **Builds on:** this ADR (the harvester, `Build` / `Effect`, the APNAP drain, the `trigger_order` prompt),
 [ADR 0049](0049-card-engine-seam-review.md) D2 (`OncePerBatch`, #587) and D4 (`CardDef`, #622),
@@ -257,9 +257,12 @@ the reflexive-trigger seam (#636, `game/reflexive.go`), the delayed-trigger queu
 ([ADR 0026](0026-delayed-triggers.md), `game/delayed.go`), the simultaneous-exit batch
 (S23, `game/simultaneous.go`), [ADR 0041](0041-game-persistence.md) (snapshots) and
 [ADR 0055](0055-loop-breaker.md) (the loop breaker's per-key count).
-**Open questions for the owner:** three, listed at the
-[end of this addendum](#open-questions-for-the-owner). The technical decisions
-below do not depend on how they are answered.
+**Owner decisions:** three questions, answered 2026-09-17 and recorded at the
+[end of this addendum](#decided-2026-09-17). The decisions below apply them:
+extra instances are tagged on the stack overlay and on their prompt with no log
+line (question 1), the first wave includes Elesh Norn, Mother of Machines and
+Veyran, Voice of Duality with declared caveats (question 2), and each doubled
+optional trigger gets its own yes/no prompt (question 3).
 
 Line references are to `origin/develop` at `684f2786`.
 
@@ -643,9 +646,15 @@ DoubledByName string
 - **Undo.** An extra instance is on `PendingTriggers` or `StackMeta` or in a
   prompt frame, and those are already cloned. Undo restores it the way it
   restores any trigger.
-- **Wire.** Whether the field reaches the client is
-  [owner question 1](#open-questions-for-the-owner). The engine field exists
-  either way, because tests assert attribution and the server logs it.
+- **Wire (owner-decided, [question 1](#decided-2026-09-17)).** The field
+  reaches the client as two additive fields, `doubled_by` / `doubled_by_name`,
+  on `StackItemView` and on the `trigger_prompt` / `pick_target`
+  `PendingChoiceView`. The stack overlay entry and the prompt show a tag, for
+  example "Mulldrifter — draw two cards · additional (Panharmonicon)". There is
+  **no log line**: the public log records changes to the game's outcome and
+  turn structure, not per-object annotations, and it shows no triggers today.
+  There is no reveal-strip cue either. The engine field also serves tests,
+  which assert attribution, and the server log.
 
 **Linked abilities.** "The exiled card" of a doubled linked ability means every
 card any instance exiled. The catalog's shared record, `b27ExiledWith` (which
@@ -674,6 +683,14 @@ Every helper:
 - **refuses `FromSpell`** unless the option allows spells (Echoes of Eternity
   only);
 - **combines with `AnyOf`**, for Gandalf's "entering or leaving".
+
+**Every helper path ships with a real card** (owner policy, 2026-09-17). A
+helper or option is built in the PR that ships the first card using it, never
+ahead of one. In the first wave that is every row above except three pieces,
+which wait for their card: `DoublesLeaving`'s "leaving" variant and `AnyOf`
+(Gandalf the White), and `DoublesAbilitiesOf`'s spells option (Echoes of
+Eternity, waiting on #666). Until then `FromSpell` is refused by every helper
+without an option to turn it off.
 
 The event cases are pinned as follows:
 
@@ -712,8 +729,10 @@ Out of scope:
 - **Echoes of Eternity's "copy it" half**, which is #666 for a permanent spell.
 - **Delayed and reflexive triggers** (CR 603.2d) and the manual
   `AnnounceTrigger` button (Decision 2).
-- **Prompt batching for many identical optional instances**:
-  [owner question 3](#open-questions-for-the-owner).
+- **Prompt batching for many identical optional instances.** Owner-decided
+  ([question 3](#decided-2026-09-17)): each doubled optional instance gets its
+  own yes/no prompt. A grouped "how many of these N?" prompt is built only if
+  play shows the prompt count matters, and it would need its own design.
 
 No bot legal-move change: extra instances produce more prompts of kinds the
 enumerator and the heuristic already answer (`trigger_prompt`, `pick_target`,
@@ -727,8 +746,8 @@ enumerator and the heuristic already answer (`trigger_prompt`, `pick_target`,
   source-keyed doubler, and evoke's sacrifice.
 - **More prompts.** Every optional or targeted instance asks separately. With
   two Panharmonicons and a "you may" watcher, five tokens entering are fifteen
-  prompts. Owner question 3 decides whether that is acceptable for the first
-  release.
+  prompts. The owner accepted this for the first release (question 3); grouping
+  waits for evidence from play.
 - **The loop breaker trips sooner on big doubled turns.** ADR 0055 counts
   resolutions per `(source, label)` since the last decision, and threshold 25
   was "unreachable by accident". Nine creatures entering together under two
@@ -744,7 +763,7 @@ enumerator and the heuristic already answer (`trigger_prompt`, `pick_target`,
   path. The harvest callers move to `harvestMatchLocked`.
 - **Cloud, Midgar Mercenary loses its caveat** in sub-PR 2.
 - **`docs/engine-seams.md`**: the "Trigger doubling" row moves to Closed when
-  sub-PR 1 lands. The cards still waiting on a second seam (Elesh Norn's
+  sub-PR 2 lands (the seam and its first real cards reach develop together). The cards still waiting on a second seam (Elesh Norn's
   suppression, Echoes' copy, Gandalf's flash permission, Ancient Greenwarden,
   Traveling Chocobo's #765) move to that other seam's row.
 
@@ -792,29 +811,39 @@ enumerator and the heuristic already answer (`trigger_prompt`, `pick_target`,
 - `StackItem.DoubledBy` / `DoubledByName`, the frames, `cloneStackItem`,
   `stackItemSnapshot`.
 - Engine tests 1–14 below, with doublers stubbed through `CatalogTriggerDoublers`.
-- The benchmark re-run, and the engine-seams row moves to Closed.
+- The benchmark re-run.
+- **Merges only with sub-PR 2.** Sub-PR 2 is opened against this PR's branch,
+  and the two reach develop together, so no develop build carries the seam
+  without a real card using it (owner policy, 2026-09-17).
 - Checks: `go test ./internal/game/... ./internal/ws/... ./internal/aiseat/... ./internal/legal/...`,
   then `go test ./...` and `make lint`.
 
 **Sub-PR 2 — vocabulary and reference cards.**
 - `cards/effects/trigger_doubling.go` (Decision 6).
 - Panharmonicon, Teysa Karlov and Isshin, Two Heavens as One, each with the
-  rulings above as card tests. Cloud's caveat removed.
+  rulings above as card tests. Cloud's caveat removed. Panharmonicon's tests
+  include an evoked Mulldrifter, so the evoke-sacrifice path ships with a real
+  card.
 - The Saga chapter I reading checked (Decision 2) and the linked-state grep
   (Decision 5).
 - Census regenerated (`go test ./internal/cards/coverage -update`), and the
   clone-baseline gate passes.
+- The engine-seams row moves to Closed.
 
-**Sub-PR 3 — wire and client**, only if owner question 1 chooses (a) or (b).
+**Sub-PR 3 — wire and client** (owner question 1, option (a)).
 - `StackItemView.doubled_by` / `doubled_by_name`, and the same on the
   `trigger_prompt` / `pick_target` `PendingChoiceView`. Update
   `docs/protocol.md` and `client/src/lib/protocol.ts`.
-- The stack overlay and `ChoicePromptModal` show the tag. Option (b) also adds
-  a log kind.
+- The stack overlay and `ChoicePromptModal` show the tag
+  "· additional (Panharmonicon)" after the item's label. No log kind and no
+  reveal-strip cue.
 
-**Card PRs** — the rest of the first wave (owner question 2). Each card follows
-AGENTS.md: completeness declared, caveats weaker than printed and never
-stronger.
+**Card PRs** — the rest of the first wave (owner question 2, option (b)):
+Katara, Naban, Yarok, Annie Joins Up, Starfield Vocalist, Harmonic Prodigy,
+Roaming Throne, Felix Five-Boots and Wulfgar of Icewind Dale, plus Elesh Norn,
+Mother of Machines and Veyran, Voice of Duality with declared caveats (see
+[Cards](#cards)). Each card follows AGENTS.md: completeness declared, caveats
+weaker than printed and never stronger.
 
 ### Test plan
 
@@ -873,13 +902,18 @@ Cards (`internal/cards/effects`):
     attacking not doubled.
 18. **Cloud, Midgar Mercenary**: an attached Equipment's combat-damage trigger
     doubled while equipped, and not doubled once the Equipment is moved.
-19. **Catalog soak** (#601) with the first-wave cards added: no stalls on the
+19. **Elesh Norn, Mother of Machines**: an entry doubled for her controller's
+    watcher, and an opponent's entry watcher still triggers (the declared
+    caveat, pinned so the suppression seam changes it deliberately).
+20. **Veyran, Voice of Duality**: a magecraft trigger from casting an instant
+    doubled; the "copy" half is the declared caveat.
+21. **Catalog soak** (#601) with the first-wave cards added: no stalls on the
     extra prompts.
-20. **Clone-baseline gate**: no new duplicate bodies (the helpers exist so
+22. **Clone-baseline gate**: no new duplicate bodies (the helpers exist so
     that holds).
 
-Client (sub-PR 3, if any): the overlay tag and the prompt tag are checked by
-hand until #689, and any pure helper is unit-tested with vitest.
+Client (sub-PR 3): the overlay tag and the prompt tag are checked by hand
+until #689, and any pure helper (the tag text) is unit-tested with vitest.
 
 ### Cards
 
@@ -908,8 +942,8 @@ engine seam.
 
 | card | the other clause | waits on |
 |---|---|---|
-| Elesh Norn, Mother of Machines | "Permanents entering don't cause abilities of permanents your opponents control to trigger." | ability-suppression static (no issue yet), or ships with a caveat: owner question 2 |
-| Veyran, Voice of Duality | "cast **or copy**", both halves | a spell-copy event, or ships with a caveat: owner question 2 |
+| Elesh Norn, Mother of Machines | "Permanents entering don't cause abilities of permanents your opponents control to trigger." | ability-suppression static (no issue yet). **Ships in the first wave** with the suppression declared as a caveat (owner question 2) |
+| Veyran, Voice of Duality | "cast **or copy**", both halves | a spell-copy event. **Ships in the first wave** with the copy half declared as a caveat (owner question 2) |
 | Echoes of Eternity | "Whenever you cast a colorless spell, copy it." | #666 |
 | Gandalf the White | "You may cast legendary spells and artifact spells as though they had flash." | the per-player flash row |
 | Ancient Greenwarden | "You may play lands from your graveyard." | play from graveyard |
@@ -921,13 +955,16 @@ has Teysa's exact text. Its other ability ("{B/P}{B/P}, Exile three creature
 cards from your graveyard: Put an indestructible counter on Drivnod.") is not
 checked here, and the card goes to whichever batch issue owns it.
 
-### Open questions for the owner
+### Decided (2026-09-17)
+
+Answered by the owner on 2026-09-17. The options are kept, the chosen one is
+marked **(chosen)**, and the recommendation text is kept for the record.
 
 1. **How does a player see that a trigger is an extra instance?** Today the
    public log doesn't show triggers at all (`protocol/log.go` projects no
    `EventTrigger`). Players see a trigger as its stack-overlay entry and, when
    it asks something, its prompt.
-   - (a) A tag on the stack-overlay entry and on its prompt, for example
+   - (a) **(chosen)** A tag on the stack-overlay entry and on its prompt, for example
      "Mulldrifter — draw two cards · additional (Panharmonicon)". This needs
      two additive wire fields and no log kind.
    - (b) (a) plus a public log line per extra instance.
@@ -939,9 +976,13 @@ checked here, and the card goes to whichever batch issue owns it.
    shows no triggers at all, would stand out for the wrong reason. (c) makes
    Panharmonicon look like a bug.
 
+   **Decision: (a).** No log line, under the cross-ADR log rule (the log
+   records changes to the game's outcome and turn structure, not per-object
+   annotations), and no reveal-strip cue. Applied in Decision 5 and sub-PR 3.
+
 2. **Which cards ship in the first wave?**
    - (a) The twelve "doubler only" cards above, plus Cloud's caveat removal.
-   - (b) (a) plus Elesh Norn, Mother of Machines and Veyran, Voice of Duality,
+   - (b) **(chosen)** (a) plus Elesh Norn, Mother of Machines and Veyran, Voice of Duality,
      each with a declared caveat for the missing half. Both caveats are weaker
      than printed.
    - (c) The seam plus the three reference cards (Panharmonicon, Teysa,
@@ -953,10 +994,16 @@ checked here, and the card goes to whichever batch issue owns it.
    that a player who picks Norn for the hoser half doesn't get it until the
    suppression seam exists, and the caveat has to say so plainly.
 
+   **Decision: (b).** Elesh Norn and Veyran ship with their caveats declared
+   (tests 19 and 20 pin them). Under the owner's cross-cutting policy every
+   new seam path ships with at least one real card, so sub-PRs 1 and 2 reach
+   develop together and helpers without a first-wave card wait for it
+   (Decision 6).
+
 3. **Many identical optional instances: one prompt each, or grouped?** Two
    Panharmonicons and a "you may" watcher turn five tokens entering into
    fifteen yes/no prompts.
-   - (a) One prompt per instance, as the rules describe. This ships with
+   - (a) **(chosen)** One prompt per instance, as the rules describe. This ships with
      sub-PR 1 and needs no new prompt kind.
    - (b) Group untargeted identical optional instances (same source, same
      label, same event) into one "how many of these N?" prompt. This is a new
@@ -967,3 +1014,6 @@ checked here, and the card goes to whichever batch issue owns it.
    multiplies an existing cost without creating a new one. (b) is a real
    feature with its own ADR-sized questions (what happens when the instances
    differ in `NoLegalTarget`, and how bots answer a count).
+
+   **Decision: (a).** One yes/no prompt per doubled optional instance.
+   Grouping is considered only if play demands it.
