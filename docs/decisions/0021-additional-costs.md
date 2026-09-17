@@ -178,9 +178,10 @@ noted in `targeting.ts` at the declaration.
 
 ## Addendum (2026-09-17): sacrificing N permanents as an additional cost (#747)
 
-**Status:** Proposed · 2026-09-17 · tracked on
+**Status:** Accepted · 2026-09-17 · tracked on
 [#747](https://github.com/krakenhavoc/cmd_and_ctrl/issues/747). This
-status covers this section only. The design is in
+status covers this section only. The design, and the owner's and the
+lead's decisions on its open questions, are in
 [ADR 0020's #747 addendum](0020-activated-abilities.md#addendum-2026-09-17-sacrifice-costs-of-n-permanents-747)
 (§12–§17), because the validator, the enumerator helper and the client
 picker are shared by all three sacrifice cost sites. This section records
@@ -210,7 +211,10 @@ what that design means for a spell.
 - **The client** keeps threading `sacrificeIDs` through `targeting.ts`,
   which is already a `string[]`. `Board.svelte`'s cast-time
   `SacrificeCostModal` gets the same multi-select as the ability one, with
-  the count from `additional_cost.sacrifice_options.max`. No fourth
+  the count from `additional_cost.sacrifice_options.max`, and the same
+  "Choose for me" button (owner decision, ADR 0020 §16). The button fills
+  the first N entries of `additional_cost.sacrifice_options.cards`, which
+  the server sends in ADR 0020 §15's order, and never confirms. No fourth
   parallel payment is added, so the known debt above does not grow.
 - **Still out:** variable counts ("sacrifice any number of creatures",
   "sacrifice X"), and kicker-style *optional* sacrifices. Both change

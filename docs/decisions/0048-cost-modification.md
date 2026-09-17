@@ -331,12 +331,25 @@ structural reason rather than for time:
 
 ## Addendum (2026-09-17): a spell's own cost modifier, affinity, and targets in `CostQuery` (#746)
 
-**Status:** Proposed · 2026-09-17 · tracked on
+**Status:** Accepted · 2026-09-17 · tracked on
 [#746](https://github.com/krakenhavoc/cmd_and_ctrl/issues/746). This
-status covers this section only. §1–§10 are unchanged and stay accepted.
-The section narrows the "Modifiers from outside the battlefield" line
-under **Not covered** to the gaps listed in *Out of scope* below. Open
-questions for the owner are at the end.
+status covers this section only. §1–§10 are unchanged and stay accepted,
+except that §16 below widens §2's increase pass to coloured mana. The
+section narrows the "Modifiers from outside the battlefield" line under
+**Not covered** to the gaps listed in *Out of scope* below.
+**Decided by the lead on the owner's standing guidance (2026-09-17):**
+
+1. **The preview catches up in #696.** The engine and enumerator PRs ship
+   now. Self modifiers and a `face` parameter join #696's list. §15 adds
+   the cast's targets to that list, which follows from item 2.
+2. **The X picker prices at one target** and shows the printed surcharge
+   clause as a note (§15).
+3. **Coloured cost increases are in scope.** The increase pass adds
+   strive's coloured symbols (§16), and Call the Coppercoats ships with
+   Fireball (§17).
+
+The options considered are kept in [Decided questions](#decided-questions)
+at the end of the section.
 
 ### Context
 
@@ -381,7 +394,13 @@ Checked on develop at `bcac391`:
   it expands modes and targets (`legal/cast.go:140-165`), and only for
   hand and command-zone casts (`:147-150`).
 - **The preview prices the printed cost.** It prices without targets
-  and without a face, and has its own copy of the price logic (#696).
+  and without a face. It keeps its own copy of the printed-cost,
+  commander-tax and zone logic (`lobby/http.go:994-1010`, #696), but its
+  modifier pass is the shared `ApplyCostModifiers` (`:1017`), called with
+  `Card` set.
+- **Increases are generic only.** §2's increase pass is
+  `cost.Generic += n` (`cost_modifier.go:275`). Nothing can add a
+  coloured symbol.
 - **A shipped caveat.** Blasphemous Act says "The cost reduction is
   missing" (`cards/effects/blasphemous_act.go:29`).
 
@@ -416,8 +435,8 @@ makes a modifier apply to its own spell. Two new constructors:
 - `CostsMorePerTargetBeyondFirst(per string, label string)` is Fireball
   (`"{1}"`) and strive (`"{1}{W}"`). It reads targets (§13), and it adds
   `per` for each target beyond the first, and nothing for zero or one.
-  Its amount never goes negative, so an unpriced zero-target query cannot
-  trip §4's refusal.
+  `per` may hold coloured symbols (§16). Its amount never goes negative,
+  so an unpriced zero-target query cannot trip §4's refusal.
 
 `effects.Register` panics when `SelfCostModifiers` contains a
 `CostFloor`. No printed card sets a floor on its own cost, and an
@@ -428,7 +447,8 @@ untested kind should not be declarable.
 `activeCostModifiersLocked` takes the query and appends the cast card's
 self modifiers after the battlefield ones. §2's increase, reduction and
 floor passes, §3's generic-only floor and §4's refusal of a negative
-amount apply unchanged. Two consequences:
+amount apply unchanged, with the increase pass widened by §16. Two
+consequences:
 
 - **The order stays CR 601.2f's.** Every increase, from the battlefield
   and from the spell, is added before any reduction. Ghalta, Primal Hunger
@@ -518,25 +538,96 @@ Only hand and command-zone casts are enumerated (#673). A graveyard or
 exile cast of a self-modified spell is not offered to bots, like every
 other such cast.
 
-#### 15. The preview prices with the targets it is given
+#### 15. The preview catches up in #696, and the X picker prices at one target
 
-The auto-tap preview has no targets and no face on its query string, and
-it copies the price logic rather than calling it (`lobby/http.go:994-1027`,
-#696). The technical rule is that the preview prices through the same
-function as the cast, with whatever targets and face it is given, and
-with nil targets when it has none. What the X picker shows for a spell
-whose price depends on targets is a product choice, because the picker
-opens before targeting (ADR 0021 §3). How the preview work is sequenced
-against #696 is also the owner's. Both are in the open questions.
+The auto-tap preview has no targets and no face on its query string. It
+copies the printed-cost, commander-tax and zone logic rather than calling
+`effectiveCostLocked` (`lobby/http.go:994-1010`, #696). The technical rule
+is that the preview prices through the same function as the cast, with
+whatever targets and face it is given, and with nil targets when it has
+none.
 
-#### 16. Cards
+**Sequencing (lead decision, option (c)).** The engine and enumerator PRs
+ship without waiting for #696, and the preview's copy is not extended.
+The preview's modifier pass is already the shared `ApplyCostModifiers`
+with `Card` set (`http.go:1017`). Once §12 binds self modifiers inside
+`activeCostModifiersLocked`, the preview sees them with no change, for a
+single-faced card cast from the hand or the command zone. That covers
+every card in the engine PR. What stays wrong goes on #696's list, and
+is fixed there:
+
+- **a `face` parameter**, so an MDFC or split card's preview uses the
+  self modifiers of the face being cast, not the default face's;
+- **the cast's targets**, so a multi-target Fireball or strive cast, or a
+  target-reading reduction such as Not of This World, is previewed at
+  its real price;
+- the graveyard and exile zones and the alternative cost, which #696
+  already lists, now with self modifiers applied to them (CR 113.6d,
+  CR 118.9d).
+
+**The X picker (lead decision, option (a)).** `XCostModal.svelte` opens
+before targeting (ADR 0021 §3), so it cannot know the target count. It
+prices at one target and says so:
+
+- The preview it calls has no targets, so it prices at nil targets. For a
+  per-target surcharge that is exactly the one-target price, because
+  `CostsMorePerTargetBeyondFirst` adds nothing for zero or one target.
+  No change to the preview's pricing is needed.
+- The preview response gains `cost_notes []string`: the `Label` of each
+  of the card's own self modifiers that sets `ReadsTargets`, in
+  declaration order, from the cast branch only. It is empty for every
+  other card. The label is the printed clause ("This spell costs {1}
+  more to cast for each target beyond the first"). The response is
+  already per caller and per card, so no per-viewer stripping is needed.
+  Like the pricing, it reads the default face until #696 adds `face`.
+  Every target-priced card in §17 is single-faced.
+- The modal shows each note under the affordable/missing readout. The
+  readout's price is the one-target price, and the note tells the player
+  that more targets cost more.
+
+A `CastSpell` with more targets than the player can pay for is refused by
+the engine, as today.
+
+#### 16. Coloured cost increases (strive)
+
+Lead decision, option (a). Strive (CR 207.2c ability word) reads "This
+spell costs {1}{W} more to cast for each target beyond the first" (Call
+the Coppercoats), and every card in the cycle adds a coloured symbol per
+extra target. §2's increase pass adds only generic mana.
+
+- **`CostModifier.Unit ParsedCost`.** When it is set on a `CostIncrease`,
+  `Amount` counts units, and the increase pass adds `Amount` copies of
+  `Unit`: the generic part to `cost.Generic`, and one fresh
+  `ColorRequirement` per coloured symbol per unit to `cost.Required`. A
+  zero `Unit` (no generic, no coloured symbols) is today's behaviour:
+  `Amount` is generic mana. Every modifier in the catalog keeps working
+  unchanged.
+- **The constructor parses once.** `CostsMorePerTargetBeyondFirst` parses
+  `per` with `game.ParseCost` and panics if it fails, so a typo fails at
+  init and not at a cast. Fireball's `"{1}"` goes through the same field.
+- **`effects.Register` panics** on a `Unit` that has `{X}`, a Phyrexian
+  or hybrid symbol, or that sits on a `CostReduction` or `CostFloor`. No
+  printed increase needs any of these, and §3 keeps reductions generic
+  only.
+- **Order and floor are unchanged.** Coloured increases are added in the
+  increase pass, before any reduction (CR 601.2f). `reduceGeneric` never
+  touches a coloured requirement, so a Goblin Electromancer on a
+  two-target Call the Coppercoats removes generic mana only, and both
+  {W} symbols stay. `raiseToMinimum` (`cost_modifier.go:391`) already
+  counts coloured requirements toward mana value, so a Trinisphere sees
+  the added symbols.
+- **Nothing else changes.** The solver, the auto-tapper and convoke
+  already pay a `Required` list of any length. An alternative cost gets
+  the coloured surcharge too (CR 118.9d, §12).
+
+#### 17. Cards
 
 - **Blasphemous Act** drops its caveat.
 - **Engine PR:** Thought Monitor (`AffinityFor` artifacts), Myr Enforcer,
   Ghalta, Primal Hunger, Vanquish the Horde.
-- **Enumerator PR (§14):** Fireball. A target-priced card must not ship
-  before the enumerator can price it. Call the Coppercoats depends on open
-  question 3.
+- **Enumerator PR (§14):** Fireball and Call the Coppercoats. A
+  target-priced card must not ship before the enumerator can price it.
+  The rest of the strive cycle becomes catalog work.
 - Not of This World, Ancient Stone Idol, Voyage Home, Sapling Nursery,
   Mycosynth Golem and Thrumming Hivepool become catalog work. Earthquake
   Dragon and Metalwork Colossus also wait on #655.
@@ -544,7 +635,10 @@ against #696 is also the owner's. Both are in the open questions.
 ### Out of scope
 
 - **Coloured reductions**, such as "costs {W}{B} less" (CR 118.7c): §3
-  still holds.
+  still holds. Coloured *increases* are in (§16).
+- **A note for a battlefield modifier that reads targets** (Kopala,
+  Warden of Waves) in the X picker. §15's `cost_notes` lists the card's
+  own self modifiers only.
 - **Cost modifiers on activated abilities**: the separate "Cost
   modification for activated abilities" row in `docs/engine-seams.md`.
 - **Per-player, duration-scoped modifiers** (Will Kenrith): still
@@ -562,6 +656,15 @@ against #696 is also the owner's. Both are in the open questions.
   expands.
 - `CostQuery` gains a field that most modifiers never see. That is on
   purpose (§13).
+- `CostModifier` gains `Unit`, which every existing modifier leaves zero
+  (§16). Strive's cycle becomes catalog work.
+- **Until #696 lands, the auto-tap preview is wrong for some casts of a
+  self-modified spell:** a back face that has its own self modifiers, a
+  multi-target Fireball or strive cast, and a graveyard or exile cast.
+  The preview only matters after a strict-mana refusal. The cast, the
+  bots and the census are right from the engine PR on.
+- The X picker shows a one-target price and a note for Fireball-style
+  cards. It never shows an exact multi-target price before targeting.
 
 ### Alternatives considered
 
@@ -588,15 +691,24 @@ against #696 is also the owner's. Both are in the open questions.
    - `CostQuery.Targets`, `CostModifier.ReadsTargets` and the hiding in
      `amountFor`;
    - `effectiveCostLocked` passes the targets;
-   - the registration guard, `AffinityFor` and `CostsMorePerTargetBeyondFirst`;
-   - the §16 engine-PR cards, and the census regenerated.
+   - `CostModifier.Unit` and the coloured increase pass (§16);
+   - the registration guards, `AffinityFor` and `CostsMorePerTargetBeyondFirst`;
+   - the §17 engine-PR cards, and the census regenerated.
 
-   No card that reads targets is registered in this PR.
-2. **Enumerator PR.** `CastPriceReadsTargetsForEffect`, pricing per target
-   set, Fireball (and Call the Coppercoats, per open question 3), and
-   `docs/engine-seams.md`'s "A spell's own cost modifier" row moved to
-   Closed.
-3. **Preview**, as the owner decides in open question 1.
+   No card that reads targets is registered in this PR. The target and
+   coloured-increase paths are tested with fixture cards.
+2. **Enumerator PR.**
+   - `CastPriceReadsTargetsForEffect` and pricing per target set;
+   - `cost_notes` on the auto-tap preview response, documented in
+     `docs/protocol.md`;
+   - Fireball and Call the Coppercoats, and the census regenerated;
+   - `docs/engine-seams.md`'s "A spell's own cost modifier" row moved to
+     Closed.
+3. **Client PR.** `cost_notes` on `AutoTapPreview` in `api.ts`, the note
+   under `XCostModal`'s readout, and vitest cases.
+4. **Preview, in #696** (lead decision): the `face` parameter and the
+   cast's targets join #696's list, and the preview then prices self
+   modifiers through the shared cast-price entry point #696 builds.
 
 ### Test plan
 
@@ -621,6 +733,19 @@ against #696 is also the owner's. Both are in the open questions.
     {X}{2}{R}.
   - A modifier without `ReadsTargets` sees nil targets in both the engine
     and the enumerator.
+- **Coloured increases (§16).**
+  - Call the Coppercoats at one, two and three targets costs {2}{W},
+    {3}{W}{W} and {4}{W}{W}{W}.
+  - Under Goblin Electromancer, a two-target cast costs {2}{W}{W}: the
+    reduction spends generic mana only, and both {W} stay.
+  - Under Sphere of Resistance and Goblin Electromancer, a two-target
+    cast costs {3}{W}{W}: both increases land before the reduction.
+  - A pool with enough generic mana but one {W} short refuses the
+    two-target cast, and the auto-tapper taps a white source for the
+    added {W}.
+  - `Register` panics on a `Unit` with `{X}`, a hybrid or a Phyrexian
+    symbol, and on a `Unit` on a reduction or a floor.
+  - Every catalog modifier registers with a zero `Unit`.
 - **Refusal.** A self modifier returning a negative number refuses the
   cast (§4), and names the card.
 - **Enumerator parity.**
@@ -630,9 +755,22 @@ against #696 is also the owner's. Both are in the open questions.
     before.
   - Fireball offers the one-target set when only that one is affordable,
     even behind unaffordable larger sets.
+- **Preview.**
+  - Blasphemous Act in hand, with creatures on the battlefield, is
+    previewed at its reduced price, through the shared
+    `ApplyCostModifiers`.
+  - Fireball's preview at X = 3 prices {3}{R} and carries its
+    `cost_notes` clause. Lightning Bolt's preview carries no
+    `cost_notes`.
+- **Client.** `XCostModal` renders each `cost_notes` entry under the
+  readout, and renders nothing extra when the list is absent.
 - **Catalog soak** with the new cards.
 
-### Open questions for the owner
+### Decided questions
+
+Answered on 2026-09-17 by the lead, on the owner's standing guidance. The
+chosen option is marked **(chosen)**; the recommendation text is kept for
+the record.
 
 1. **How does the auto-tap preview catch up?** The preview's copy of the
    price logic will not see self modifiers. When a strict-mana cast of
@@ -643,36 +781,50 @@ against #696 is also the owner's. Both are in the open questions.
      point, so the preview is fixed once.
    - **(b)** Ship the engine and enumerator PRs now. Extend the preview's
      copy with self modifiers as a stopgap, and delete it when #696 lands.
-   - **(c)** Ship the engine and enumerator PRs now. Leave the preview
-     wrong for self-modified spells, add them to #696's list (with a
-     `face` parameter), and fix it there.
+   - **(c) (chosen)** Ship the engine and enumerator PRs now. Leave the
+     preview wrong for self-modified spells, add them to #696's list
+     (with a `face` parameter), and fix it there.
 
    **Recommendation: (c).** The cast, the bots and the census are right
    from day one. The preview only matters after a strict-mana refusal. And
    (b) grows the duplicate code #696 exists to remove.
+
+   **Checked when recording the decision:** the question overstates the
+   gap. The preview's modifier pass is already the shared
+   `ApplyCostModifiers` (`lobby/http.go:1017`), so a single-faced card
+   such as Blasphemous Act cast from hand is previewed at its reduced
+   price once the engine PR lands. What (c) leaves for #696 is the face,
+   the targets, and the non-hand zones and alternative costs #696 already
+   lists. Applied in §15, *Consequences* and the implementation plan.
 2. **What does the X picker show for a spell whose price depends on
    targets?** Fireball's X picker opens before targeting (ADR 0021 §3), so
    the per-target surcharge is not known yet.
-   - **(a)** Price at one target, and show the modifier's printed clause
-     under the readout ("costs {1} more for each target beyond the
-     first").
+   - **(a) (chosen)** Price at one target, and show the modifier's
+     printed clause under the readout ("costs {1} more for each target
+     beyond the first").
    - **(b)** For such cards, collect targets before X, so the readout is
      exact.
    - **(c)** Price at one target with no note.
 
    **Recommendation: (a).** It is honest and cheap, and it keeps one cast
    flow. (b) reorders the client flow for a handful of cards.
+
+   Applied in §15 (`cost_notes` on the preview response), the
+   implementation plan and the test plan.
 3. **Coloured cost increases (strive): in this work?** §2's
    `CostIncrease` adds generic mana only. Strive's "{1}{W} more for each
    target beyond the first" adds a coloured requirement. Call the
    Coppercoats is on #746's first list, and strive is an ability word
    (CR 207.2c) across a cycle of cards.
-   - **(a)** In. `CostsMorePerTargetBeyondFirst` takes a mana string, and
-     the increase pass adds its coloured symbols as `Required` entries.
-     Reductions stay generic-only (§3).
+   - **(a) (chosen)** In. `CostsMorePerTargetBeyondFirst` takes a mana
+     string, and the increase pass adds its coloured symbols as
+     `Required` entries. Reductions stay generic-only (§3).
    - **(b)** Out. Fireball ships, strive gets its own seam row, and Call
      the Coppercoats waits.
 
    **Recommendation: (a).** It is one field on the increase pass. The
    solver already pays coloured requirements, and a Sphere or Thalia test
    pins the order.
+
+   Applied in §16, §17, *Consequences*, the implementation plan and the
+   test plan.

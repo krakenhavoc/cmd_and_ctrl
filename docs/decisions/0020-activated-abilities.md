@@ -206,11 +206,16 @@ payload cannot name rides the move.
 
 ## Addendum (2026-09-17): activation conditions (#743)
 
-**Status:** Proposed · 2026-09-17 · tracked on
+**Status:** Accepted · 2026-09-17 · tracked on
 [#743](https://github.com/krakenhavoc/cmd_and_ctrl/issues/743). This
 status covers this section only. The decisions above and the #625
-addendum are unchanged and stay accepted. Open questions for the owner
-are at the end of the section.
+addendum are unchanged and stay accepted.
+**Decided by the owner (2026-09-17):** mana abilities get the same
+`condition_unmet` flag, on `ManaAbilityView`, in the same server and
+client PRs. Temple of the False God and Mox Opal grey out like a
+non-mana ability whose condition fails (§9). The options considered are
+kept in [Decided questions (#743)](#decided-questions-743) at the end
+of the section.
 
 ### Context
 
@@ -231,7 +236,8 @@ Checked on develop at `bcac391`:
   `SorcerySpeed` or a loyalty cost (`activated.go:384`). The enumerator
   does the same (`legal/abilities.go:56`).
 - `ActivatedAbilityView` has `sorcery_speed` and no condition field
-  (`protocol/view.go:1049`).
+  (`protocol/view.go:1049`). `ManaAbilityView` has no condition field
+  either (`view.go:1145`).
 
 Mana abilities already have this shape. `ManaAbilityShape.Condition
 func(g *Game, controller, source uuid.UUID) bool`
@@ -323,21 +329,33 @@ same arguments, right after the `speed` check at `:56`. This is what
 `manaMoves` already does at `:383`. The enumerator then never offers a
 bot an activation that the engine refuses (#544).
 
-#### 9. The view carries `condition_unmet`, evaluated for the controller
+#### 9. Both ability views carry `condition_unmet`, evaluated for the controller
 
-Add `ActivatedAbilityView.ConditionUnmet bool`
-(`json:"condition_unmet,omitempty"`). It is true when the ability has a
-condition and that condition is false right now. It is absent when there
-is no condition, or when the condition holds. The flag is negative
-because wire booleans use `omitempty`, which would drop a positive
-`condition_met: false` from the JSON.
+Add `ConditionUnmet bool` (`json:"condition_unmet,omitempty"`) to
+**`ActivatedAbilityView` and `ManaAbilityView`** (owner decision, see
+[Decided questions (#743)](#decided-questions-743)). It is true when
+the ability has a condition and that condition is false right now. It is
+absent when there is no condition, or when the condition holds. The flag
+is negative because wire booleans use `omitempty`, which would drop a
+positive `condition_met: false` from the JSON.
 
-It is evaluated once, in `viewOfActivatedAbilities`, with the permanent's
-controller as `controller`. That function already computes every
-sacrifice, crew and target option from the controller's side. The list is
-not stripped per viewer (`stampActivatedAbilities`, `view.go:1645`). One
-value is right for every viewer: the condition is about the controller,
-and only the controller can open the menu.
+It is evaluated once per ability, with the permanent's controller as
+`controller`:
+
+- **Non-mana abilities:** in `viewOfActivatedAbilities`. That function
+  already computes every sacrifice, crew and target option from the
+  controller's side.
+- **Mana abilities:** in `stampActivatedAbilities` (`view.go:1645`),
+  beside `stampManaSacrificeOptions` (`:1665`, `:1717`). That pass has
+  the game handle and the parsed controller. `viewOfManaAbilities`
+  (`:2969`) takes only the card and cannot evaluate a closure. The
+  closure is the `ManaAbilityShape.Condition` the activation, the
+  auto-tapper and the enumerator already call, so no second copy of the
+  rule is written.
+
+Neither list is stripped per viewer. One value is right for every
+viewer: the condition is about the controller, and only the controller
+can open the menu.
 
 Every viewer receives the flag, so **a condition must read only public
 information**. Counts of permanents, graveyard cards and cards in hand,
@@ -345,12 +363,24 @@ life totals, the turn and the step are all public. A future condition
 that needs hidden information, such as which cards are in a hand, must
 not be written as a `Condition` unless the flag is first stripped for
 other viewers. None of the 29 census cards needs hidden information.
+Neither does any shipped mana-ability condition: they read permanents
+controlled (Mox Opal, Temple of the False God, Shrine of the Forsaken
+Gods, the Shapeshifter tokens from Springleaf Parade), counters on the source
+(Gemstone Mine, Runaway Steam-Kin) and library size (Millikin).
 
 The client greys the row the way it greys `sorcery_speed`: one arm in
 `abilityBlocked` (`client/src/lib/contextMenu.logic.ts`) and one in
 `ManaAbilityMenu.svelte`, with the reason "activation condition not
-met". The row's label is already the full printed ability, including the
-instruction, so the reason does not repeat the clause.
+met". Both predicates already take mana and non-mana rows through one
+cost-shaped type (`AbilityCost`, `CostShaped`), so `condition_unmet` is
+added to that type once and the same arm greys both kinds of row.
+`protocol.ts` gets the field on `ActivatedAbilityView` and
+`ManaAbilityView`. The arm runs after the sorcery-speed and loyalty arms,
+so those rows keep their more specific reasons, and after the existing
+`cant_activate_mana` restriction check in `abilityItems`, which still
+wins for a mana row. The row's label is already the full printed
+ability, including the instruction, so the reason does not repeat the
+clause.
 
 Greying rather than hiding follows the `sorcery_speed` precedent from
 S31. The player can see that the permanent has the ability, and that it
@@ -420,9 +450,13 @@ only: a helper is added together with its first card, not before.
 - Each view build runs every declared condition once, on the snapshot
   path. At worst each run walks the battlefield. `ControlsAtLeast` already
   adds the same cost for mana abilities.
-- Mana and non-mana conditions share one error, one signature and one set
-  of helpers. A helper written for one kind of ability works for the
-  other.
+- Mana and non-mana conditions share one error, one signature, one set
+  of helpers and one wire flag. A helper written for one kind of ability
+  works for the other, and the menu greys both kinds of row the same way.
+- Temple of the False God, Mox Opal and the other shipped mana abilities
+  with a condition stop showing a clickable row that the server refuses.
+  Their conditions now also run on every view build, not only in the
+  activation, the auto-tapper and the enumerator.
 
 ### Alternatives considered
 
@@ -446,7 +480,8 @@ only: a helper is added together with its first card, not before.
    - the field on both structs, and the `buildDef` line;
    - the check in `ActivateCatalogAbility`, and the same check in the
      enumerator;
-   - the `condition_unmet` view field, documented in `docs/protocol.md`;
+   - the `condition_unmet` field on `ActivatedAbilityView` and
+     `ManaAbilityView`, documented in `docs/protocol.md` at both;
    - the §10 helpers the cards below need;
    - the cards: Sanctum of Eternity, Tectonic Edge, Weathered Wayfarer and
      Bonders' Enclave;
@@ -456,8 +491,9 @@ only: a helper is added together with its first card, not before.
    The server refuses a failed activation whether or not the client greys
    the row, so the cards can ship in this PR.
 2. **Client PR.**
-   - `condition_unmet` in `protocol.ts`;
-   - the greying arm in `abilityBlocked` and in `ManaAbilityMenu.svelte`;
+   - `condition_unmet` on both ability views in `protocol.ts`;
+   - the greying arm in `abilityBlocked` and in `ManaAbilityMenu.svelte`,
+     reached by mana and non-mana rows alike;
    - vitest cases.
 
 ### Test plan
@@ -489,34 +525,57 @@ only: a helper is added together with its first card, not before.
   once it holds.
 - **Protocol.** `condition_unmet` is present only while the condition
   fails, and never present on an ability with no condition.
+  - Non-mana: Tectonic Edge's ability with an opponent at three lands,
+    then at four.
+  - Mana: Temple of the False God's `mana_abilities[0]` with the
+    controller at four lands carries the flag, and at five it does not.
+    Mox Opal with two artifacts carries it, and with three it does not.
+  - A mana ability with no condition (a basic land) never carries it.
 - **Client.** `abilityBlocked` returns the condition reason for
-  `condition_unmet`. A sorcery-speed row keeps its own, more specific
-  reason.
+  `condition_unmet`, on a mana row and on a non-mana row. A
+  sorcery-speed row keeps its own, more specific reason. A mana row that
+  is both restricted (`cant_activate_mana`) and condition-failed shows
+  the restriction.
 - **Catalog soak.** `go test ./internal/aiseat -run TestCatalogSoak` with
   the new cards in the catalog shows no refused move.
 
-### Open questions for the owner
+### Decided questions (#743)
+
+Answered by the owner on 2026-09-17. The chosen option is marked
+**(chosen)**; the recommendation text is kept for the record.
 
 1. **Should mana abilities get the same flag?** `ManaAbilityView` has no
    condition field. So Temple of the False God with four lands, or Mox
    Opal with two artifacts, shows a clickable row that the server then
    refuses.
-   - **(a)** Add `condition_unmet` to `ManaAbilityView` in the same two
-     PRs, with the same closure and the same client arm.
+   - **(a) (chosen)** Add `condition_unmet` to `ManaAbilityView` in the
+     same two PRs, with the same closure and the same client arm.
    - **(b)** Leave mana abilities alone and track the gap separately.
 
    **Recommendation: (a).** It takes a few lines on each side. Without it,
    the same menu greys one kind of row whose condition fails and leaves the
    other clickable.
 
+   Applied in §9, *Consequences*, the implementation plan and the test
+   plan.
+
 ## Addendum (2026-09-17): sacrifice costs of N permanents (#747)
 
-**Status:** Proposed · 2026-09-17 · tracked on
+**Status:** Accepted · 2026-09-17 · tracked on
 [#747](https://github.com/krakenhavoc/cmd_and_ctrl/issues/747). This
 status covers this section only. It amends §2 and §3 above for every
 sacrifice cost site. [ADR 0021](0021-additional-costs.md) has a short
-matching addendum for the additional-cost site. Open questions for the
-owner are at the end of the section.
+matching addendum for the additional-cost site.
+**Decided by the owner (2026-09-17):** the picker is a multi-select that
+confirms at exactly N, plus a "Choose for me" button that fills the
+selection in the enumerator's §15 order (tokens first, lowest mana
+value, source last). The button never confirms (§16).
+**Decided by the lead on the owner's standing guidance (2026-09-17):**
+Transmutation Font's "with different names" is out of this work. The
+Font keeps its caveat, and a seam row covers set-level restrictions on a
+sacrifice cost (§17, *Out of scope*). The options considered are kept in
+[Decided questions (#747)](#decided-questions-747) at the end of the
+section.
 
 ### Context
 
@@ -688,10 +747,18 @@ offered (#544).
     `aiseat` (#687). #687 orders *targets* by threat, which is a different
     question.
 
+**The order is one shared helper in `game`.** The enumerator's three
+sites and the protocol views (§16) sort the same candidate list with the
+same function, for example `game.SacrificePaymentOrderForEffect(source,
+ids)`; the name is for the implementation to settle. It lives in `game`
+because `legal` and `protocol` both import `game`, and neither may own a
+rule the other copies. Every key it reads (token, mana value, instance
+ID, board position) is public.
+
 The mana move's label (`abilities.go`, `len(sacs) == 1`) becomes a
 comma-joined list of the sacrificed names.
 
-#### 16. Wire and client: the existing `min`/`max`, and a multi-select picker
+#### 16. Wire and client: the existing `min`/`max`, a multi-select picker, and "Choose for me"
 
 No new wire field. `sacrifice_options.min` and `sacrifice_options.max`
 carry N on `activated_abilities[i]`, `mana_abilities[i]` and
@@ -699,18 +766,39 @@ carry N on `activated_abilities[i]`, `mana_abilities[i]` and
 `activate_mana_ability` and `cast_spell`. `docs/protocol.md` documents
 both at the three places.
 
+**`sacrifice_options.cards` is sent in §15's order.** `sacrificeCostOptions`
+(`protocol/view.go:2883`) and the additional-cost stamp (`view.go:1482`)
+sort the controller's candidates with the shared helper before they go
+on the wire. The client has no token or mana-value field to sort by, and
+it must not derive the rule (#429). For N ≥ 2, the first N entries of
+the list are exactly the set the enumerator offers a bot for the same
+board. At N = 1 the enumerator still offers every candidate, and the
+list's order is the only change.
+`docs/protocol.md` documents the order at the three places.
+
 `SacrificeCostModal.svelte` takes the count from `options.max`. It
 becomes a multi-select that confirms only when exactly N permanents are
-chosen, and `onConfirm` takes `string[]`. At N = 1 it works as it does
-today. The menu's "nothing to sacrifice" check in `abilityBlocked`
-changes from "no options" to "fewer options than `min`". Its reason names
-the count, for example "needs 3 Foods (you have 2)".
+chosen, and `onConfirm` takes `string[]` (owner decision). At N = 1 it
+works as it does today.
+
+**"Choose for me"** (owner decision) is a button in the modal when
+N ≥ 2. It replaces the current selection with the first N entries of
+`sacrifice_options.cards`, in wire order. It does not confirm: the player
+can still change any pick, and Confirm and Enter stay the only ways to
+pay. It is disabled when there are fewer than N options, which the menu
+already prevents from opening. The client does no ordering of its own.
+
+The menu's "nothing to sacrifice" check in `abilityBlocked` changes from
+"no options" to "fewer options than `min`". Its reason names the count,
+for example "needs 3 Foods (you have 2)".
 
 #### 17. Cards
 
 - **Caveats removed:** Savvy Hunter, Samwise Gamgee, Sai, Master
   Thopterist, Magda, the Hoardmaster, and Magda, Brazen Outlaw.
-  Transmutation Font depends on open question 2.
+- **Transmutation Font keeps its caveat** (lead decision): its "three
+  artifact tokens with different names" is a restriction on the set,
+  which this addendum does not build (*Out of scope*).
 - **Added:** Priest of Forgotten Gods and Kuldotha Forgemaster. After
   that, the fixed-N census cards (Hedron Detonator, Whisper, Blood
   Liturgist, Teysa, Orzhov Scion, and the rest) go through the batch
@@ -725,9 +813,13 @@ the count, for example "needs 3 Foods (you have 2)".
 - **Effects that read what was sacrificed** ("the sacrificed creature's
   power"). These need last-known information on the stack item.
 - **Restrictions on the set as a whole**, such as "with different names"
-  (Transmutation Font). This could reuse a set-level `Validate` in the
-  style of #682, but the enumerator would then have to search for a
-  valid set rather than take the first N. See open question 2.
+  (Transmutation Font). Decided out (see
+  [Decided questions (#747)](#decided-questions-747)). It could reuse a
+  set-level `Validate` in the style of #682, but the enumerator would then
+  have to search for a valid set rather than take the first N, and "Choose
+  for me" could no longer take the first N entries. The cards PR adds a
+  "Set-level restriction on a sacrifice cost" row to
+  `docs/engine-seams.md`, with Transmutation Font as its first card.
 - **Ward's sacrifice cost** (`effects.WardCost.Sacrifice`) is a separate
   shape on a separate path.
 - The misattributed census cards stay out:
@@ -747,6 +839,11 @@ the count, for example "needs 3 Foods (you have 2)".
 - Bots with a sacrifice-N cost always offer the cheapest-looking payment.
   A policy cannot choose to sacrifice a better creature. That is the same
   trade crew made.
+- The order of `sacrifice_options.cards` becomes part of the wire
+  contract. A human's "Choose for me" and a bot's payment are the same
+  set on the same board, because both come from one helper.
+- Magda, Brazen Outlaw's "Sacrifice five Treasures" is one click and a
+  confirm, not five clicks and a confirm.
 
 ### Alternatives considered
 
@@ -767,18 +864,25 @@ the count, for example "needs 3 Foods (you have 2)".
    - the registration guard;
    - the validator reads N;
    - the batch at all three payment sites;
+   - the shared §15 order helper in `game`;
    - the enumerator at all three sites;
+   - `sacrifice_options.cards` sorted by the helper at all three views;
    - the `SacrificeN` and `SacrificeNCost` constructors;
-   - `docs/protocol.md`.
+   - `docs/protocol.md`, including the option order.
 
    The tests use fixture cards. No shipped card declares N ≥ 2 yet, so a
    human cannot hit an N-cost the client cannot pay.
-2. **Client PR.** The multi-select `SacrificeCostModal`, the count-aware
-   arm in `abilityBlocked`, and vitest cases.
-3. **Cards PR.** The five or six caveat removals, Priest of Forgotten Gods,
-   Kuldotha Forgemaster, the regenerated census, and
-   `docs/engine-seams.md`'s "Sacrifice cost of more than one permanent" row
-   moved to Closed.
+2. **Client PR.** The multi-select `SacrificeCostModal` with its
+   "Choose for me" button, used by the ability picker and `Board.svelte`'s
+   cast-time picker; the count-aware arm in `abilityBlocked`; and vitest
+   cases.
+3. **Cards PR.**
+   - the five caveat removals (Transmutation Font keeps its caveat);
+   - Priest of Forgotten Gods and Kuldotha Forgemaster;
+   - the regenerated census;
+   - `docs/engine-seams.md`: the "Sacrifice cost of more than one
+     permanent" row moves to Closed, and a new "Set-level restriction on
+     a sacrifice cost" row lists Transmutation Font.
 
 ### Test plan
 
@@ -805,31 +909,51 @@ the count, for example "needs 3 Foods (you have 2)".
   - Tokens are chosen before nontokens.
   - A targeted N = 2 ability still reaches its second target.
   - Every offered move is accepted by dispatch.
-- **Protocol.** `sacrifice_options.min` and `max` are N on all three
-  views.
-- **Client.** The modal cannot confirm below or above N. `abilityBlocked`
-  names the shortfall.
+- **Protocol.**
+  - `sacrifice_options.min` and `max` are N on all three views.
+  - `sacrifice_options.cards` is in §15's order on all three views: a
+    token before a nontoken, a lower mana value before a higher one, and
+    the source last when the clause admits it.
+  - **Parity:** for an N = 2 fixture on the same board, the first N
+    entries of the view's list equal the sacrifice set of the
+    enumerator's move, at each of the three sites.
+- **Client.**
+  - The modal cannot confirm below or above N. `abilityBlocked` names
+    the shortfall.
+  - "Choose for me" selects the first N options in wire order and
+    replaces an existing partial selection.
+  - "Choose for me" never calls `onConfirm`. After it, changing one pick
+    and confirming sends the changed set.
+  - The button is absent at N = 1.
 - **Catalog soak** with the cards PR applied.
 
-### Open questions for the owner
+### Decided questions (#747)
+
+Answered on 2026-09-17: question 1 by the owner, question 2 by the lead
+on the owner's standing guidance. The chosen option is marked
+**(chosen)**; the recommendation text is kept for the record.
 
 1. **Picker ergonomics for identical tokens.** Magda, Brazen Outlaw's
    "Sacrifice five Treasures" means five clicks and a confirm in a plain
    multi-select.
    - **(a)** A plain multi-select that confirms at exactly N.
-   - **(b)** (a), plus a "Choose N for me" button that fills the selection
-     in the enumerator's §15 order (tokens first, lowest mana value
-     first). The player can still change the picks before confirming.
+   - **(b) (chosen)** (a), plus a "Choose for me" button that fills the
+     selection in the enumerator's §15 order (tokens first, lowest mana
+     value, source last). The player can still change the picks before
+     confirming, and the button never confirms.
    - **(c)** When the pool has exactly N candidates, preselect all of
-     them.
+     them. Not chosen.
 
    **Recommendation: (b).** It is one button, it uses the order the bots
    already use, and it never confirms for the player. (c) fits in
    alongside it if wanted.
+
+   Applied in §15 (the shared order helper), §16 (the wire order and the
+   button), *Consequences*, the implementation plan and the test plan.
 2. **Transmutation Font's "three artifact tokens with different names":
    in this work or not?**
-   - **(a)** Out. The Font keeps its caveat, and "a set-level restriction
-     on a sacrifice cost" becomes its own seam row.
+   - **(a) (chosen)** Out. The Font keeps its caveat, and "a set-level
+     restriction on a sacrifice cost" becomes its own seam row.
    - **(b)** In. The clause gains a set-level validator (#682 style), and
      the enumerator searches for a valid set instead of taking the first
      N.
@@ -837,3 +961,5 @@ the count, for example "needs 3 Foods (you have 2)".
    **Recommendation: (a).** One card needs it. It turns §15's "take the
    first N" into a search, and the addendum stays a count and nothing
    else.
+
+   Applied in §17, *Out of scope* and the cards PR.
