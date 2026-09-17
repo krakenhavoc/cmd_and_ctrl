@@ -282,8 +282,13 @@ This applies to **every** random use, not only the new ones:
 - **A player can learn a future value.** A player who undoes a roll knows
   what that source will roll next this turn, and can decide not to
   trigger it again. That is information paper Magic never gives. It is
-  limited to one undo per turn by default (`UndoLimit`), to that stream,
-  and to that turn (Decision 2). Fencing undo past a roll would remove
+  limited to that stream and that turn (Decision 2), and to the undo
+  budget (`UndoLimit`, default 1). The budget is only a soft limit,
+  because `set_undo_limit` is a sandbox verb any seated player can send.
+- **The roll may sit in someone else's undo entry.** A roll made while
+  the stack resolves belongs to whoever passed last, often the
+  opponent. Under rewind, that player's undo and redo reproduce the roll
+  exactly, so the entry's owner can't use it to change your result. Fencing undo past a roll would remove
   it, and the owner chose rewind over that.
 - **"Undo the fetch to reshuffle" stops working.** It was never
   a feature, but players may have relied on it.
@@ -523,6 +528,10 @@ knower clearing are all #745's, and none of them change here.
   won/lost result** (Decision 6). A player only sees this if they undo.
 - **One HMAC-SHA256 plus a ChaCha8 setup per random operation**:
   microseconds, and a game has a few dozen random operations per turn.
+- **Krark, the Thumbless prompts on every instant and sorcery its
+  controller casts**, because each cast is a won/lost flip. That is the
+  price of the owner's prompt decision on the one in-scope card that flips
+  often. Open question 2's answer doesn't change it (one coin per trigger).
 - **A coin call blocks the table** like any pending choice, and while it
   is open no restore point is written (the continuation is censused as
   `ChoiceResumeFrames`, `chained_choice.go` header). The time it holds
