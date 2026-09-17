@@ -286,6 +286,12 @@ type PendingChoiceView struct {
 	// library".
 	LifeCost int `json:"life_cost,omitempty"`
 
+	// Coin-call answers and the public progress of a flip chain.
+	AllowStop     bool `json:"allow_stop,omitempty"`
+	Coins         int  `json:"coins,omitempty"`
+	MaxUsefulWins int  `json:"max_useful_wins,omitempty"`
+	Wins          int  `json:"wins,omitempty"`
+
 	// ChooseMin / ChooseMax populate the "choose_cards" kind: how few
 	// and how many of Options the chooser must pick. Both are sent —
 	// including a zero Min, which is why the client reads Max to tell
@@ -1903,6 +1909,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceConfirm — the chained-choice two-way prompt.
 		// Only the branch labels travel; everything else about the
 		// question is already in Reason.
+		if c.Kind == game.PendingChoiceCoinCall {
+			v.AllowStop = c.CoinAllowStop
+			v.Coins = c.CoinCount
+			v.MaxUsefulWins = c.CoinMaxUsefulWins
+			v.Wins = c.CoinWins
+		}
 		if c.Kind == game.PendingChoiceConfirm {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel

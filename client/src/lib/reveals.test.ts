@@ -3,14 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   REVEAL_CUE_LIMIT,
   REVEAL_TTL_MS,
+  RANDOM_CUE_LIMIT,
+  RANDOM_CUE_TTL_MS,
   dismissReveal,
+  emptyRandomState,
   emptyRevealState,
   hiddenRevealCount,
+  primeRandomEvents,
   primeRevealState,
   revealHeadline,
+  trackRandomEvents,
   trackReveals,
 } from "./reveals";
-import type { RevealView } from "./protocol";
+import type { LogEvent, RevealView } from "./protocol";
 
 function reveal(seq: number, extra: Partial<RevealView> = {}): RevealView {
   return {
@@ -20,6 +25,10 @@ function reveal(seq: number, extra: Partial<RevealView> = {}): RevealView {
     cards: [{ name: `Card ${seq}`, type_line: "Instant" }],
     ...extra,
   };
+}
+
+function randomLog(seq: number, kind: "roll" | "flip" = "flip"): LogEvent {
+  return { seq, kind, seat: 0, text: `${kind} result ${seq}` };
 }
 
 describe("trackReveals", () => {
@@ -71,6 +80,36 @@ describe("trackReveals", () => {
     trackReveals(first, [reveal(2)], 10);
     expect(first.cues).toHaveLength(before);
     expect(first.seen.has(2)).toBe(false);
+  });
+});
+
+describe("trackRandomEvents", () => {
+  it("drops undone outcomes and cues the replay again", () => {
+    let s = trackRandomEvents(emptyRandomState(), [randomLog(10)], 0);
+    s = trackRandomEvents(s, [], 100);
+    expect(s.cues).toHaveLength(0);
+    expect(s.seen.size).toBe(0);
+    s = trackRandomEvents(s, [randomLog(10)], 200);
+    expect(s.cues.map((c) => c.log.seq)).toEqual([10]);
+  });
+  it("cues each random batch once even when the log is replayed", () => {
+    let s = trackRandomEvents(emptyRandomState(), [randomLog(10)], 0);
+    s = trackRandomEvents(s, [randomLog(10), randomLog(11, "roll")], 100);
+    expect(s.cues.map((c) => c.log.seq)).toEqual([10, 11]);
+  });
+
+  it("primes reconnect history and ages cues independently", () => {
+    const primed = primeRandomEvents([randomLog(7)]);
+    expect(trackRandomEvents(primed, [randomLog(7)], 0).cues).toHaveLength(0);
+    let s = trackRandomEvents(emptyRandomState(), [randomLog(8)], 0);
+    s = trackRandomEvents(s, undefined, RANDOM_CUE_TTL_MS);
+    expect(s.cues).toHaveLength(0);
+  });
+
+  it("keeps only the newest random batches", () => {
+    const s = trackRandomEvents(emptyRandomState(), [randomLog(1), randomLog(2), randomLog(3)], 0);
+    expect(RANDOM_CUE_LIMIT).toBe(2);
+    expect(s.cues.map((c) => c.log.seq)).toEqual([2, 3]);
   });
 });
 

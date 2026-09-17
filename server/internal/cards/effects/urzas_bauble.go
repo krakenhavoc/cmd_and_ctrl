@@ -19,18 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the stack when that upkeep begins, so it can be responded to, and
 // it is controlled by the Bauble's controller (CR 603.7d).
 //
-// Sandbox simplification, declared: "at random" is a deterministic
-// pick keyed on the game log (b27PseudoRandomIndex) rather than a
-// draw from the engine's seeded RNG, which no effect can reach. The
-// activator cannot steer it — they do not know the hand's order —
-// and it never favours the most recently drawn card the way a fixed
-// index would.
+// The random pick uses the engine's keyed, persisted RNG stream, so undoing
+// and replaying the activation produces the same card without exposing the
+// stream state to the card effect.
 func init() {
 	Register(Spec{
 		OracleID:     "17dbbca3-ac1c-4d4e-9618-3e66ac3ccd24",
 		Name:         "Urza's Bauble",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The card you look at is picked by a fixed rule from the game's history rather than truly at random."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Sacrifice this artifact: Look at a card at random in target player's hand. You draw a card at the beginning of the next turn's upkeep.",
 			Cost:    Plus(TapCost(), SacrificeThis()),

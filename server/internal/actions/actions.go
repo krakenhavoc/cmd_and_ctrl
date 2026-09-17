@@ -1056,6 +1056,7 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		var p struct {
 			ChoiceID string   `json:"choice_id"`
+			Call     string   `json:"call"`
 			CardIDs  []string `json:"card_ids"`
 			// Color answers the two colour prompts: a PendingChoiceMana
 			// pick (one of "W"/"U"/"B"/"R"/"G"/"C") and a #742
@@ -1121,6 +1122,9 @@ func Dispatch(g *game.Game, a Action) error {
 		choiceID, err := uuid.Parse(p.ChoiceID)
 		if err != nil {
 			return fmt.Errorf("resolve_choice choice_id: %w", err)
+		}
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceCoinCall {
+			return g.ResolveCoinCall(choiceID, a.Player, p.Call)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to

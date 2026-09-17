@@ -353,6 +353,18 @@
   const confirmAccept = $derived(active?.accept_label || "Yes");
   const confirmDecline = $derived(active?.decline_label || "No");
 
+  // #744 coin_call — one heads/tails answer covers the number of coins
+  // in this instruction. A stop button is shown only for effects such
+  // as Fiery Gambit that explicitly allow ending a winning chain.
+  const isCoinCall = $derived(active?.kind === "coin_call");
+  const coinCount = $derived(active?.coins ?? 1);
+  const coinWins = $derived(active?.wins ?? 0);
+  const coinAllowStop = $derived(active?.allow_stop === true);
+
+  function answerCoin(call: "heads" | "tails" | "stop"): void {
+    answer({ call });
+  }
+
   // S21 sacrifice_choice branch — "each player sacrifices a creature
   // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
   // generic card grid and its {choice_id, card_ids} payload; only the
@@ -480,9 +492,23 @@
       isConfirm,
   );
   function handleKey(e: KeyboardEvent): void {
-    if (!open || !isYesNo) return;
+    if (!open) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (isCoinCall) {
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        answerCoin("heads");
+      } else if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        answerCoin("tails");
+      } else if (coinAllowStop && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        answerCoin("stop");
+      }
+      return;
+    }
+    if (!isYesNo) return;
     if (e.key === "y" || e.key === "Y") {
       e.preventDefault();
       answerOptional(true);
@@ -764,6 +790,30 @@
               <span class="color-name">{meta.label}</span>
             </button>
           {/each}
+        </div>
+      {:else if isCoinCall}
+        <h2 id="choice-title">
+          {active.reason || "Call the flip"}
+          <span class="prompt-src" aria-hidden="true">coin flip</span>
+        </h2>
+        <p class="prompt-hint">
+          Call heads or tails for {coinCount}
+          {coinCount === 1 ? "coin" : "coins"}.
+          {#if coinWins > 0}
+            You have won {coinWins} {coinWins === 1 ? "flip" : "flips"} so far.
+          {/if}
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count">
+            <span class="kbd">H</span> heads · <span class="kbd">T</span> tails
+            {#if coinAllowStop}
+              · <span class="kbd">S</span> stop{/if}
+          </span>
+          <button type="button" onclick={() => answerCoin("heads")}>Heads</button>
+          <button type="button" class="primary" onclick={() => answerCoin("tails")}>Tails</button>
+          {#if coinAllowStop}
+            <button type="button" class="ghost" onclick={() => answerCoin("stop")}>Stop</button>
+          {/if}
         </div>
       {:else if isCreatureTypePick}
         <h2 id="choice-title">

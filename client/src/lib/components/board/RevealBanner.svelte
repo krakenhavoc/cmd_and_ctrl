@@ -27,11 +27,16 @@
   import type { GameView, RevealView } from "../../protocol";
   import {
     dismissReveal,
+    dismissRandomEvent,
+    emptyRandomState,
     emptyRevealState,
     hiddenRevealCount,
+    primeRandomEvents,
     primeRevealState,
     revealHeadline,
+    trackRandomEvents,
     trackReveals,
+    type RandomState,
     type RevealState,
   } from "../../reveals";
   import Icon from "../Icon.svelte";
@@ -43,6 +48,8 @@
 
   let cueState = $state<RevealState>(emptyRevealState());
   let primed = false;
+  let randomState = $state<RandomState>(emptyRandomState());
+  let randomPrimed = false;
 
   // The fold reads cueState to produce the next one, so the read is
   // untracked: tracking it would make this effect depend on its own
@@ -63,14 +70,34 @@
     });
   });
 
+  // Roll and flip log entries are a stream rather than a window, but
+  // the public log is replayed on reconnect too. Prime that first
+  // frame, then admit each batch sequence once into the same strip.
+  $effect(() => {
+    if (!snap) return;
+    const logs = snap.log;
+    untrack(() => {
+      if (!randomPrimed) {
+        randomPrimed = true;
+        randomState = primeRandomEvents(logs);
+        return;
+      }
+      randomState = trackRandomEvents(randomState, logs, Date.now());
+    });
+  });
+
   // Cues age out on a timer of their own. A table can sit on one frame
   // for a long time while somebody thinks, and a banner that only
   // expires when the next snapshot arrives would still be up.
   $effect(() => {
     const t = setInterval(() => {
       untrack(() => {
-        if (cueState.cues.length === 0) return;
-        cueState = trackReveals(cueState, undefined, Date.now());
+        if (cueState.cues.length > 0) {
+          cueState = trackReveals(cueState, undefined, Date.now());
+        }
+        if (randomState.cues.length > 0) {
+          randomState = trackRandomEvents(randomState, undefined, Date.now());
+        }
       });
     }, 500);
     return () => clearInterval(t);
@@ -83,6 +110,10 @@
 
   function dismiss(r: RevealView) {
     cueState = dismissReveal(cueState, r.seq);
+  }
+
+  function dismissRandom(seq: number) {
+    randomState = dismissRandomEvent(randomState, seq);
   }
 </script>
 
@@ -122,6 +153,24 @@
     </span>
 
     <button type="button" class="ghost close" onclick={() => dismiss(r)} aria-label="dismiss">
+      <Icon name="x" size={12} />
+    </button>
+  </div>
+{/each}
+
+{#each randomState.cues as cue (cue.log.seq)}
+  <div class="reveal-line random-line" role="status" aria-live="polite">
+    <span class="label gold">
+      <Icon name="spark" size={12} />
+      {cue.log.kind === "roll" ? "rolled" : "flipped"}
+    </span>
+    <span class="text"><strong>{cue.log.text}</strong></span>
+    <button
+      type="button"
+      class="ghost close"
+      onclick={() => dismissRandom(cue.log.seq)}
+      aria-label="dismiss"
+    >
       <Icon name="x" size={12} />
     </button>
   </div>

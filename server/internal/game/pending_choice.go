@@ -264,6 +264,10 @@ const (
 	// cascade.go for why, and for the delayed cleanup that keeps the
 	// grant from outliving the offer.
 	PendingChoiceMayCast PendingChoiceKind = "may_cast"
+
+	// PendingChoiceCoinCall asks a flipper to call heads or tails for a
+	// won/lost flip. Stop is available only when CoinAllowStop is true.
+	PendingChoiceCoinCall PendingChoiceKind = "coin_call"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -303,6 +307,13 @@ type PendingChoice struct {
 	// ("Thoughtseize", "Vendilion Clique"). Kept on the server so
 	// the wire carries it; no localisation yet.
 	Reason string
+
+	// Coin-call prompt data. These are data (not the continuation), so the
+	// protocol can render the exact choices and bot hint.
+	CoinAllowStop     bool
+	CoinCount         int
+	CoinMaxUsefulWins int
+	CoinWins          int
 
 	// ColorOptions is the legal-picks list for PendingChoiceMana.
 	// Uppercase single-character entries (W/U/B/R/G/C). Unused for
@@ -517,7 +528,8 @@ type PendingChoice struct {
 	// confirmResume is the server-only continuation pair for a
 	// PendingChoiceConfirm: one closure per branch. Not serialised.
 	// See chained_choice.go.
-	confirmResume *confirmFrame
+	confirmResume  *confirmFrame
+	coinFlipResume *coinFlipFrame
 
 	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
 	// in the order the client should render them. Wire-serialised via

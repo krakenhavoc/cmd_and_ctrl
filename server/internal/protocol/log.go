@@ -130,6 +130,8 @@ const (
 	// and OldZone the zone they were revealed from. The entry never
 	// carries a card_id: see revealEntry.
 	LogReveal LogKind = "reveal"
+	LogRoll   LogKind = "roll"
+	LogFlip   LogKind = "flip"
 )
 
 // logRevealNamesMax bounds how many revealed card names one LogReveal
@@ -205,6 +207,12 @@ type LogEvent struct {
 	// anywhere is untagged, so the tag's presence alone says there are
 	// two beats to show. #187, ADR 0053 Decision 1.
 	CombatStep string `json:"combat_step,omitempty"`
+	// Random outcomes are public. One entry groups a whole instruction.
+	Sides   int      `json:"sides,omitempty"`
+	Results []int    `json:"results,omitempty"`
+	Faces   []string `json:"faces,omitempty"`
+	Call    string   `json:"call,omitempty"`
+	Wins    int      `json:"wins,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -232,6 +240,7 @@ type LogEvent struct {
 	revealSeq   uint64
 	revealIDs   []string
 	revealNames []string
+	batchSeq    uint64
 }
 
 // hiddenZone reports whether a zone's contents are hidden from the
@@ -261,6 +270,7 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 	// announcements, and a listener may emit between the per-card
 	// events of one.
 	revealAt := make(map[uint64]int)
+	randomAt := make(map[uint64]int)
 
 	for _, ev := range g.Events {
 		e, ok := projectEvent(ev, seatOf, &turn, &step, &sacrificed)
@@ -270,6 +280,17 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 		e.Turn = turn
 		if e.Kind == LogStep {
 			e.Step = step
+		}
+		if (e.Kind == LogRoll || e.Kind == LogFlip) && e.batchSeq != 0 {
+			if at, seen := randomAt[e.batchSeq]; seen {
+				if prev := ring.pushed(at); prev != nil {
+					prev.Results = append(prev.Results, e.Results...)
+					prev.Faces = append(prev.Faces, e.Faces...)
+					prev.Wins += e.Wins
+				}
+				continue
+			}
+			randomAt[e.batchSeq] = ring.total
 		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
 			if at, seen := revealAt[e.revealSeq]; seen {
@@ -334,6 +355,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	}
 
 	switch ev.Kind {
+	case game.EventRollDie, game.EventFlipCoin:
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.batchSeq = ev.BatchSeq
+		if ev.Kind == game.EventRollDie {
+			base.Kind = LogRoll
+			base.Sides = ev.Sides
+			base.Results = []int{ev.Amount}
+		} else {
+			base.Kind = LogFlip
+			base.Faces = []string{ev.Label}
+			base.Call = ev.Call
+			if ev.Won {
+				base.Wins = 1
+			}
+		}
+		return base, true
+
 	case game.EventStepBegan:
 		*turn = ev.Amount
 		*step = ev.Label
@@ -690,6 +728,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	}
 
 	switch e.Kind {
+	case LogRoll, LogFlip:
+		return renderRandomLogText(e, actor, card)
 	case LogStep:
 		return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
 	case LogCast:

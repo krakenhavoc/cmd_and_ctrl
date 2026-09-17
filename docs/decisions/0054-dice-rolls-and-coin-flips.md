@@ -966,3 +966,31 @@ different line with real game actions, like rolling for a different
 card (Decision 2). It never applies to cards from a deck. Sub-PR 2 adds
 a test that runs the same seeded game twice and gets the same
 `RollDiceForEffect` results for a sourced roll, next to Test plan item 2.
+
+
+## Implementation checkpoint (2026-09-17): effect APIs and first cards
+
+The #744 implementation supplies sub-PRs 2–4 together: random-effect
+APIs, public batch events/logs, source ordinals, coin-call continuations,
+legal enumeration, bot policy and client prompts/cues. Open coin
+continuations clone for undo but, like other closure-backed choices,
+make a durable snapshot non-restorable; the continuation census records
+that explicitly. Stable snapshots carry RNG counters and source ordinals.
+
+`WheneverYouRollDice` selects the first event of each `BatchSeq`, then
+sums that batch at trigger resolution. It deliberately does not use an
+in-flight `OncePerBatch` guard: a second dice instruction must trigger
+again even while the first ability is still waiting on the stack.
+
+Eight first cards exercise the seam: Ancient Copper Dragon, Ancient Gold
+Dragon, Hoarding Ogre, Reckless Endeavor, Vexing Puzzlebox, The Gold
+Saucer, Deadbridge Chant and Exalted Flamer of Tzeentch. Urza's Bauble
+also moves from its old approximation to the keyed random-pick API.
+
+This checkpoint does not close #744's additional card wave. Goblin
+Archaeologist and Fiery Gambit still need compositions and tests; Game
+of Chaos needs chained life-change/continuation ordering; Yusri needs a
+temporary free-cast permission; Clown Car needs its cast X retained for
+its ETB trigger; Ancient Silver Dragon needs a lasting hand-size grant.
+Wyll's Reversal also needs spell retargeting. None is declared fully
+automated by this change.

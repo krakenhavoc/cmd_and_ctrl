@@ -779,7 +779,7 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
-	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
+	for _, cardID := range g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n) {
 		if !p.Hand.Contains(cardID) {
 			// Nothing between two discards moves hand cards today;
 			// if something ever does, a card that already left is
@@ -2455,6 +2455,10 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		return uuid.Nil, err
 	}
 	newID := uuid.New()
+	// A blink gets a new instance ID but remains the same random source.
+	if ordinal, ok := g.sourceOrdinals[cardID]; ok {
+		g.sourceOrdinals[newID] = ordinal
+	}
 	card.InstanceID = newID
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped

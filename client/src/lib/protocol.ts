@@ -388,7 +388,12 @@ export type LogKind =
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
   // text names no card for anyone.
-  | "reveal";
+  | "reveal"
+  // S30 random effects: the server-rendered public outcome of a die
+  // roll or coin flip. The event text is already redacted and ready
+  // for both the log and the attention strip.
+  | "roll"
+  | "flip";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -433,6 +438,13 @@ export interface LogEvent {
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
+  // Random-effect details. These are optional so older log entries
+  // and future effect families remain wire-compatible.
+  sides?: number;
+  results?: number[];
+  faces?: string[];
+  call?: "heads" | "tails";
+  wins?: number;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
@@ -535,6 +547,9 @@ export interface PendingChoiceView {
     // than blue" is four). Answered with the same {choice_id, color}
     // payload a mana_pick uses; the server routes the two by kind.
     | "choose_color"
+    // S30 coin call: choose heads or tails for the pending flip. A
+    // stop answer is offered only when allow_stop is true.
+    | "coin_call"
     | string;
   chooser: string;
   from_player: string;
@@ -617,6 +632,12 @@ export interface PendingChoiceView {
   // choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // S30 coin call prompt metadata. `coins` is the number of coins
+  // covered by one call; wins tracks an ongoing chain.
+  allow_stop?: boolean;
+  coins?: number;
+  max_useful_wins?: number;
+  wins?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
