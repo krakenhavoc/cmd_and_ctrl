@@ -279,6 +279,28 @@ type Game struct {
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
 
+	// announcedBlocks and announcedBecameBlocked are what the block
+	// declaration has already announced this combat (#830).
+	// announcedBlocks maps blocker -> the attacker its EventBlock
+	// named; announcedBecameBlocked records the attackers that have
+	// had their one EventBecomesBlocked (CR 506.4).
+	//
+	// They exist because the declaration is announced at LOCK-IN and
+	// the sandbox lets the defender keep clicking afterwards: the
+	// commit emits events only for what has changed since, so a
+	// second blocker added to an already-blocked attacker announces
+	// its own block and no second "becomes blocked", and a blocker
+	// re-pointed after the lock-in does not re-announce the attacker
+	// it left. Both are cleared by clearCombatLocked, which is also
+	// what clears BlockingTarget — they are one combat's bookkeeping.
+	//
+	// Carried by Clone / RestoreFrom together for the reason
+	// eventBatch and oncePerBatchFired are: an undo that rewound the
+	// declaration but kept the announcements would swallow the
+	// re-done trigger, and the reverse would double-fire it.
+	announcedBlocks        map[uuid.UUID]uuid.UUID
+	announcedBecameBlocked map[uuid.UUID]bool
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -690,6 +712,18 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
+	}
+	// #830 / CR 509.2a: leaving a step completes whatever turn-based
+	// action was staged in it. A block declaration still staged here
+	// is locked in BEFORE the cursor moves, so its triggers are
+	// harvested inside the declare-blockers step and off the final
+	// assignment. Placed above the prompt gate on purpose: an
+	// optional block trigger (Grazilaxx's "you may return it") queues
+	// its yes/no here, and the gate then holds the cursor until it is
+	// answered rather than walking the table past it. No-op whenever
+	// nothing is staged.
+	if g.blockDeclarationPendingLocked() {
+		g.runStateChecksLocked()
 	}
 	// #730: an unanswered prompt gates the table. Checked before the
 	// cursor moves, so a choice queued by THIS advance's step-entry

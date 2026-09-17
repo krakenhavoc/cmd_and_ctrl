@@ -1105,6 +1105,18 @@ Triggered: []game.TriggeredAbility{{
 }},
 ```
 
+**Combat declarations (#830):** an attack declaration announces per
+creature as it is declared (`EventAttack`), but a BLOCK declaration
+announces once, at its **lock-in** — the first priority boundary of
+the declare-blockers step — so `EventBlock` (one per blocker/attacker
+pair: "whenever this creature blocks", "becomes blocked by a
+creature") and `EventBecomesBlocked` (one per blocked attacker, CR
+506.4: "becomes blocked", afflict) are harvested once from the FINAL
+assignment, and a blocker re-pointed mid-step never triggers the
+attacker it left. See
+[ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
+Decisions 19-21.
+
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:
 `g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,

@@ -408,14 +408,52 @@ const (
 	// Added in S31 sub-PR 0; opened to the harvester in #588.
 	EventStepBegan EventKind = "step_began"
 
-	// EventBlock — CardID was declared as a blocker. Actor is the
-	// blocking creature's controller, Target the attacker it is
-	// blocking. The other half of EventAttack, and emitted under the
-	// same rule: only on a creature's FIRST declaration against a
-	// given attacker, so re-pointing a blocker in the sandbox does
-	// not announce twice. Added in S31 sub-PR 0 for the public game
-	// log — no card in the catalog reads "becomes blocked by" yet.
+	// EventBlock — CardID blocks Target. Actor is the blocking
+	// creature's controller, Target the attacker it is blocking. One
+	// event per (blocker, attacker) pair of the FINAL block
+	// declaration: this is "whenever this creature blocks"
+	// (CR 509.3a) and "becomes blocked by a creature", and it is the
+	// public game log's block entry.
+	//
+	// Emitted from commitBlockDeclarationLocked — the lock-in, not
+	// the click (#830). CR 509.1 makes declaring blockers ONE
+	// turn-based action, so the sandbox's per-pair DeclareBlocker
+	// verb only stages the pairing; nothing is announced until the
+	// declaration is complete, which is the first priority boundary
+	// of the declare-blockers step. A blocker re-pointed from one
+	// attacker to another before that boundary therefore announces
+	// once, against the attacker it ends on, and the attacker it
+	// left is never announced as blocked at all.
+	//
+	// Added in S31 sub-PR 0 for the public game log; moved to the
+	// lock-in in #830.
 	EventBlock EventKind = "block"
+
+	// EventBecomesBlocked — the attacker named by Source / CardID /
+	// Target became a blocked creature (CR 509.1h). Actor is the
+	// defending player (the controller of its blockers).
+	//
+	// ONE event per blocked attacker, however many creatures block
+	// it: CR 506.4 says an attacking creature is blocked once, at the
+	// moment the declaration is complete, so a double block is one
+	// "whenever this creature becomes blocked" and one afflict
+	// trigger (CR 702.131). That is the whole reason this kind is
+	// separate from EventBlock, which is per BLOCKER — before #830
+	// each card that wanted the per-attacker reading deduplicated by
+	// walking the event log back to the attacker's EventAttack, and a
+	// block that was re-pointed away still counted in that walk.
+	//
+	// Source / CardID / Target are all the attacker, the way
+	// EventBattleDefeated names the battle three ways: Target so a
+	// predicate reads "the creature that became blocked" out of the
+	// same field EventBlock puts the attacker in, CardID so the
+	// generic card-shaped consumers find it, Source because the
+	// attacker is what the event is about.
+	//
+	// Emitted from commitBlockDeclarationLocked, in the same event
+	// batch as the EventBlock events of the same declaration, so a
+	// OncePerBatch ability sees one occurrence. Added in #830.
+	EventBecomesBlocked EventKind = "becomes_blocked"
 	// EventBattleDefeated — a battle's last defense counter came off
 	// (CR 310.12b). Source / Target / CardID = the battle, Actor = its
 	// controller.

@@ -810,14 +810,20 @@ func TestB26CybermanPatrolGivesArtifactCreaturesAfflictThree(t *testing.T) {
 	if err := g.DeclareBlocker(wall3, bear); err != nil {
 		t.Fatalf("DeclareBlocker: %v", err)
 	}
+	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, patrol); n != 0 {
+		t.Fatalf("#830: a click stages the pairing and announces nothing, %d triggers", n)
+	}
+	lockInBlocks(t, g)
 	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, patrol); n != 1 {
 		t.Fatalf("the Myr double-blocked is one afflict, the Bear is not an artifact: %d triggers", n)
 	}
-	// A trigger harvested off a block declaration is drained onto the
-	// stack only when the step advances — after combat damage has been
-	// dealt on entry to the damage step (see the card comment). The
-	// unblocked Patrol connects for 2, then the afflict resolves for 3.
+	// #830: the lock-in happens inside the declare blockers step, so
+	// the afflict resolves there — before combat damage, as printed.
 	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Fatalf("afflict resolves in the declare blockers step: %d to %d", life, opp.Life)
+	}
+	advanceTo(t, g, game.StepCombatDamage)
 	// #730: the double-blocked Myr's CR 510.1c assignment prompt gates
 	// the table — combat no longer resolves around it.
 	if n := b26AnswerDamageAssignments(t, g); n != 1 {
