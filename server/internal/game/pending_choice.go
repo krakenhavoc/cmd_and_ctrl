@@ -18,11 +18,15 @@ import (
 // discarder case: the caster is Chooser, the target is FromPlayer.
 //
 // The existing S13.4 DiscardPending map stays for cleanup-step
-// max-hand-size discards (those are simpler: chooser == owner,
-// and the cursor auto-resumes when the map drains). Effect-
-// driven choices that go through PendingChoices keep resolving
-// asynchronously — the spell routes to graveyard immediately,
-// the pick is made later by a resolve_choice action.
+// max-hand-size discards and NOTHING else (#651): that one is a
+// turn-based action (CR 514.1), chooser == owner, and the cursor
+// auto-resumes when the map drains. An EFFECT's discard is part of
+// the resolving effect (CR 608.2c) and goes through this queue like
+// every other deferred decision — QueueDiscardChoiceForEffect. Two
+// obligations, two mechanisms, no shared map. Effect-driven choices
+// keep resolving asynchronously — the spell routes to graveyard
+// immediately, the pick is made later by a resolve_choice action —
+// but the table does not move on while one is open (choice_gate.go).
 //
 // Introduced in S14 sub-PR 5 as infrastructure for Thoughtseize.
 
@@ -1225,12 +1229,35 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 	case RepEventDraw:
 		return g.actuallyDrawCardLocked(ev.DrawPlayer)
 	case RepEventLife:
-		p := g.playerByIDLocked(ev.LifePlayer)
-		if p == nil {
-			return ErrPlayerNotFound
+		// #482: a life change carries everything its resume needs on
+		// the event itself — the player, the settled delta and the
+		// source the log credits — so it is finished by exactly the
+		// code the unpaused path runs. This branch used to be its own
+		// copy of the tail, and it was already one field behind: it
+		// emitted EventChangeLife with no Source, so a life change
+		// that paused lost the card that caused it. See life_tail.go.
+		err := g.applyResolvedLifeChangeLocked(ev)
+		if errors.Is(err, ErrPlayerNotFound) {
+			// The player left between the prompt and the answer. The
+			// life change simply does not happen — but the choice is
+			// already dequeued, so returning the error here would
+			// fail the action AND take the prompt away with nothing
+			// to show for it. Log it and move on.
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "life change dropped: its player is no longer in the game",
+			})
+			return nil
 		}
-		p.ChangeLife(ev.LifeDelta)
-		g.EmitEvent(Event{Kind: EventChangeLife, Target: ev.LifePlayer, Amount: ev.LifeDelta})
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the tail deliberately skips
+		// happens here — a life change that put somebody at 0 is a
+		// CR 704.5a loss, and the unpaused paths get their sweep from
+		// the resolution bookend they run inside.
+		g.runStateChecksLocked()
 		return nil
 	case RepEventDamage:
 		// #694: a damage event that came through any entry point

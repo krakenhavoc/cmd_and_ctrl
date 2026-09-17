@@ -660,19 +660,28 @@ func TestB09SyphonMindDrawsOnePerOpponentWhoDiscards(t *testing.T) {
 	castCatalogSpell(t, g, "Syphon Mind", "Sorcery", b09SyphonMindOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	// Two opponents hold cards, so two draws (the cast itself is
-	// hand-neutral: castCatalogSpell adds the card it then casts).
-	if got := me.Hand.Size(); got != before+2 {
-		t.Errorf("hand %d → %d, want +2", before, got)
+	// #651: the draw is "a card for each card discarded THIS WAY", so
+	// it rides each prompt's continuation — nothing is drawn until an
+	// opponent has actually pitched. Two opponents hold cards, so two
+	// draws once both have answered (the cast itself is hand-neutral:
+	// castCatalogSpell adds the card it then casts).
+	if got := me.Hand.Size(); got != before {
+		t.Errorf("the draw waits for a discard: hand %d → %d", before, got)
 	}
-	if g.DiscardPending[a.ID] != 1 || g.DiscardPending[b.ID] != 1 {
-		t.Errorf("each opponent with a hand owes one discard: %v", g.DiscardPending)
+	if discardOwed(g, a.ID) != 1 || discardOwed(g, b.ID) != 1 {
+		t.Errorf("each opponent with a hand owes one discard: %d and %d",
+			discardOwed(g, a.ID), discardOwed(g, b.ID))
 	}
-	if _, owes := g.DiscardPending[c.ID]; owes {
+	if discardOwed(g, c.ID) != 0 {
 		t.Error("an opponent with no hand was asked to discard")
 	}
-	if _, owes := g.DiscardPending[me.ID]; owes {
+	if discardOwed(g, me.ID) != 0 {
 		t.Error("the caster was asked to discard")
+	}
+	discardFromHand(t, g, a.ID)
+	discardFromHand(t, g, b.ID)
+	if got := me.Hand.Size(); got != before+2 {
+		t.Errorf("hand %d → %d, want +2", before, got)
 	}
 }
 
@@ -850,8 +859,8 @@ func b09AssertArchonResolved(t *testing.T, g *game.Game, me, victim *game.Player
 	if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != theirBear {
 		t.Errorf("sacrifice offered %v, want just the victim's own creature %v", c.SacrificeOptions, theirBear)
 	}
-	if g.DiscardPending[victim.ID] != 1 {
-		t.Errorf("the victim owes one discard: %v", g.DiscardPending)
+	if got := discardOwed(g, victim.ID); got != 1 {
+		t.Errorf("the victim owes %d discards, want 1", got)
 	}
 }
 

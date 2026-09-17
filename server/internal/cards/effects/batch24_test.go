@@ -191,8 +191,8 @@ func TestB24AgnaQelaEntersTappedWithoutABasicAndLoots(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("drew %d, want 1 before the discard", got-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("then discards a card: owed %d", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("then discards a card: owed %d", discardOwed(g, me.ID))
 	}
 	if !b20Tapped(t, g, second) {
 		t.Error("the loot has a tap cost")
@@ -584,13 +584,10 @@ func TestB24BurglarRatMakesOpponentsDiscardAndMegrimPunishes(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	b12Push(g, me.ID, "Megrim", "Enchantment", b24MegrimOracle, 0, 0)
-	for _, p := range g.Seats {
-		delete(g.DiscardPending, p.ID)
-	}
 	castAndResolveCreature(t, g, "Burglar Rat", "Creature — Rat", b24BurglarRatOracle)
 	passPriorityAroundTable(t, g)
 	for i, p := range g.Seats {
-		owed := g.DiscardPending[p.ID]
+		owed := discardOwed(g, p.ID)
 		if i == 0 && owed != 0 {
 			t.Errorf("you owe nothing, got %d", owed)
 		}
@@ -599,16 +596,21 @@ func TestB24BurglarRatMakesOpponentsDiscardAndMegrimPunishes(t *testing.T) {
 		}
 	}
 	life := opp.Life
-	pick := opp.Hand.Cards[0].InstanceID
-	if err := g.DiscardSelection(opp.ID, []uuid.UUID{pick}); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
+	answerDiscard(t, g, opp.ID, opp.Hand.Cards[0].InstanceID)
+	// Every opponent was asked; the table is gated until all three
+	// have answered, so Megrim's trigger cannot reach the stack until
+	// then (#651).
+	for _, p := range g.Seats[2:] {
+		discardFromHand(t, g, p.ID)
 	}
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-2 {
 		t.Errorf("Megrim deals 2 to the discarding opponent: %d → %d", life, opp.Life)
 	}
-	// Your own discard is not an opponent's.
-	g.DiscardPending[me.ID] = 1
+	// Your own discard is not an opponent's — and the cleanup-step
+	// hand-size discard is still DiscardSelection's, which is now the
+	// only thing that map carries (#651).
+	g.DiscardPending = map[uuid.UUID]int{me.ID: 1}
 	mine := me.Hand.Cards[0].InstanceID
 	myLife := me.Life
 	if err := g.DiscardSelection(me.ID, []uuid.UUID{mine}); err != nil {

@@ -160,6 +160,10 @@ func TestMaelstromNexusGrantsCascadeToTheFirstSpellOnly(t *testing.T) {
 		t.Fatalf("first spell: cascade offers = %d, want 1", got)
 	}
 	answerAllMayCast(t, g, me.ID, false)
+	// #730: the cascade offer gated the table while it was open, so
+	// the spell that made it is still on the stack until it is
+	// answered — and the second cast is sorcery speed.
+	passPriorityAroundTable(t, g)
 
 	castWithCost(t, g, "Second Spell", "Sorcery", "{3}{G}", "")
 	passPriorityAroundTable(t, g)

@@ -764,6 +764,23 @@ func init() {
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
 
+**Two copies of your card will not prompt.** When every replacement
+applicable to one event is the *same* declared effect — same catalog
+entry, same slot in its `Replacements` slice, same controller — the
+engine applies them all inline instead of asking the affected player
+to order them, because every order is the same modification N times
+(two Doubling Seasons are ×4, two Rhox Faithmenders are ×4,
+[#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792)). A
+window with any *distinct* effect in it still prompts with everything
+listed. Nothing to declare — but it does mean one thing is now on you:
+**if your `Replace` writes its own source into the event** ("that
+damage is dealt to *this* creature instead", "put the counter on
+*this* creature instead"), two copies of your card are *not*
+interchangeable and collapsing them would be wrong. No catalog card
+does this yet; if yours is the first, say so on the PR rather than
+shipping it quietly — the fix is a declared flag in the `PureCancel`
+mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
+
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
@@ -1462,6 +1479,47 @@ on the stack when the step begins, so every player gets a response
 window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
+
+**A reflexive trigger (CR 603.12, #636):** "<do something>. **When
+you do**, <do something else>" — Ziatora's fling, an Overlook land's
+fetch, Invasion of Tarkir's damage. The second sentence is a trigger
+created by the first one *while it resolves*, and it is
+`ReflexiveTrigger`, applied from inside the parent's `Effect` once the
+condition actually held:
+
+```go
+ReflexiveTrigger{
+    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Targets: TargetAny(),          // chosen when the trigger goes on the stack
+    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
+Both go through the harvester's own dispatch
+(`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
+prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
+prints one, and a place on `PendingTriggers` — exactly as a harvested
+trigger does, because by the time it is on the stack it is one.
+
+Two rules, and both are why cards used to get this wrong by folding
+the follow-up into the parent's effect:
+
+- **It uses the stack, above the parent.** The table gets a response
+  window between the two halves. Folding is the mistake ADR 0018
+  retired for ordinary triggers.
+- **Its targets are chosen when it goes on the stack**, not when the
+  parent was announced — after the reveal, the sacrifice, the mill.
+  A clause hung on the parent instead makes the controller pick
+  before making the choice the trigger is about, which is what every
+  folded card declared as a caveat.
+
+"When you do" is conditional on the doing, and the `if` is the card's:
+apply the trigger only on the branch where the thing happened. The
+"you may" of "you MAY sacrifice a creature. When you do, …" belongs to
+the *parent* — set `Optional` only when the reflexive sentence itself
+says it.
 
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the

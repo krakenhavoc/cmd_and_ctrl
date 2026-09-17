@@ -235,8 +235,8 @@ func TestB17RefuteCountersASpellAndLoots(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("drew %d, want 1", me.Hand.Size()-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 }
 

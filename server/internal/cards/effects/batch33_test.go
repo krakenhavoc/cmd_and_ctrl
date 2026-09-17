@@ -218,7 +218,7 @@ func TestB33FlowOfKnowledgeDrawsPerIslandThenAsksForTwoDiscards(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+3 {
 		t.Errorf("three Islands you control (one nonbasic): hand %d → %d, want +3", hand, got)
 	}
-	if got := g.DiscardPending[me.ID]; got != 2 {
+	if got := discardOwed(g, me.ID); got != 2 {
 		t.Errorf("then discard two — %d discards pending", got)
 	}
 }

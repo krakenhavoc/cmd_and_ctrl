@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the second main phase are both fully funded. That half is exact
 // here.
 //
-// TWO SIMPLIFICATIONS, both strictly weaker than printed:
+// ONE SIMPLIFICATION, strictly weaker than printed:
 //
 //   - PROTECTION FROM BLACK AND FROM GREEN is not granted.
 //     Protection is a parameterised keyword and CR 702.16b tests the
@@ -25,21 +25,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     Omitting it loses the Sword its evasion and its removal
 //     protection against two colours, which makes the card worse,
 //     not better.
-//   - THE DISCARD IS RANDOM. Printed, the damaged player chooses.
-//     The engine's discard surface is DiscardRandomForEffect and
-//     there is no "opponent chooses" prompt yet; random is the
-//     established stand-in across the catalog. Random is not
-//     uniformly weaker in theory, but it is the house convention and
-//     changing it is a discard-prompt problem, not a Sword problem.
 //
-// Deferred until protection (CR 702.16, #662) and an opponent-chooses
-// discard prompt land.
+// The discard used to be random with a caveat saying so, because the
+// engine's only discard surface here was DiscardRandomForEffect.
+// #651 made an effect's discard a real prompt addressed to the
+// discarding player, so the damaged player now chooses their own card
+// as printed (CR 701.8a) and that caveat is gone. The untap is not
+// behind a "then" — it happens as the trigger resolves, while the
+// discard prompt is still open — which is the printed card: the lands
+// come back whether or not the opponent has decided yet.
+//
+// Deferred until protection lands (CR 702.16, #662).
 func init() {
 	Register(Spec{
 		OracleID:     "d0901053-6de0-46d0-9ee3-8d40510236c1",
 		Name:         "Sword of Feast and Famine",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Protection from black and from green isn't granted.", "The damaged player discards at random instead of choosing a card."},
+		Caveats:      []string{"Protection from black and from green isn't granted."},
 		Static:       []game.StaticAbility{PumpAttached(2, 2)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
@@ -51,9 +53,11 @@ func init() {
 				return game.NewTriggeredItem(source, "Sword of Feast and Famine — discard, untap your lands",
 					func(g *game.Game, item *game.StackItem) error {
 						ctx := NewContext(g, item)
-						if err := (DiscardCards{Player: damaged, N: 1}.Apply(ctx)); err != nil {
-							return err
-						}
+						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+							Player: damaged,
+							Source: item.SourceCardID,
+							N:      1,
+						})
 						return untapAllLandsControlledBy(g, item.Controller, ctx)
 					})
 			},
