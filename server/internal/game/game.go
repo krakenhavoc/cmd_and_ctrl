@@ -10,11 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// rngSource is the minimal interface that zone.Shuffle needs from a
-// randomness source. *math/rand/v2.Rand satisfies it; nil means
-// "use the package-global source".
-type rngSource = rand.Rand
-
 // MinPlayers and MaxPlayers bound a legal game. Commander allows up to
 // 10 players per the MTG comprehensive rules, but cmd_and_ctrl is
 // scoped to 4-player games per PLAN.md §1, and that bound gates the
@@ -292,35 +287,29 @@ type Game struct {
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
 
-	// rng is captured from Start so that subsequent mutations that
-	// shuffle (Mulligan, ShuffleLibrary) use the same source of
-	// randomness as the initial library shuffle. nil means "use the
-	// global math/rand/v2 source". Tests pass a deterministic
-	// *rand.Rand here to get reproducible snapshots.
-	rng *rngSource
-
-	// rngState is the marshalable source backing rng, when the
-	// engine minted it itself. Start(nil) — the only shape
-	// production uses — seeds a *rand.PCG from crypto/rand and
-	// keeps it here alongside the *rand.Rand that wraps it.
+	// The game's randomness: a secret key plus per-stream draw
+	// counters for the current turn (ADR 0054 Decision 2). Every
+	// random draw goes through randForLocked in rng.go, which derives
+	// a fresh generator from these three; nothing holds a *rand.Rand.
 	//
-	// This exists solely so the game's randomness can be
-	// PERSISTED. math/rand/v2's *rand.Rand exposes no accessor for
-	// its Source, so a game that only held `rng` could not have its
-	// position in the random stream written to disk and resumed:
-	// a restored game would shuffle from a different stream than
-	// the one the players were in. *rand.PCG implements
-	// encoding.BinaryMarshaler, so holding the source separately
-	// makes the stream snapshot-able. See snapshot.go.
+	// rngKey is minted at Start (from crypto/rand, or read from the
+	// caller's seeded source) and never changes. The zero key means
+	// "not minted yet"; the first draw mints one. It is PERSISTED in
+	// the engine snapshot and must never reach a GameView: anyone
+	// holding it could predict every future draw.
 	//
-	// nil when a caller supplied its own *rand.Rand (tests do, for
-	// determinism) — that source's state is unreachable and the
-	// snapshot records it as unpersistable rather than silently
-	// reseeding. Also nil before Start.
+	// rngCounters counts the draws each stream has taken this turn,
+	// and rngTurn is the turn index they belong to
+	// (rngTurnIndexLocked). Clone and
+	// RestoreFrom carry all three, so undo REWINDS randomness: the
+	// same action after an undo gets the same draw (ADR 0054
+	// Decision 4).
 	//
-	// Not concurrency-safe on its own; every read goes through a
-	// path already holding g.mu in write mode.
-	rngState *rand.PCG
+	// Not concurrency-safe on their own; every read and write goes
+	// through a path already holding g.mu in write mode.
+	rngKey      [32]byte
+	rngCounters map[string]uint64
+	rngTurn     int
 
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change
@@ -528,67 +517,46 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 
 // Start transitions the game from lobby to active, initialises the
 // turn cursor at seat 0 / turn 1 / untap step, and shuffles each
-// player's library using the supplied RNG. The RNG is retained on
-// the game and reused by subsequent shuffles (Mulligan,
-// ShuffleLibrary) so that tests starting with a deterministic seed
-// stay deterministic through all shuffles in the game — not just the
-// initial one.
+// player's library.
 //
-// Pass nil to have the engine mint its own crypto-seeded source.
-// That is what production does, and unlike the process-global source
-// it used to fall back to, an engine-owned source can be written to
-// a snapshot and resumed after a restart (see Game.rngState).
+// The RNG argument no longer IS the game's source; it seeds the
+// game's secret key (ADR 0054 Decision 2). A caller-supplied source
+// gives a key read from it, so a test that starts from a seeded
+// *rand.Rand draws the same shuffles on every run — and, unlike
+// before, that game is persistable and rewindable like any other.
+//
+// Pass nil to have the engine mint its key from crypto/rand. That is
+// what production does. Start(nil) keeps a key that is already set
+// (SetRNGKeyForTest), so a test can fix the key before starting.
 //
 // Returns ErrNotEnoughPlayers if fewer than MinPlayers are seated,
 // and ErrGameAlreadyStarted if the game is not in lobby.
 func (g *Game) Start(r *rand.Rand) error {
-	// A caller-supplied source wins (tests seed deterministically).
-	// Otherwise mint one the engine owns: a crypto-seeded *rand.PCG
-	// wrapped in a *rand.Rand. Production always lands here.
-	//
-	// Before persistence this branch left g.rng nil and every
-	// shuffle drew from math/rand/v2's process-global source. That
-	// was unpredictable, but it was also unrecordable — a restart
-	// could not resume the stream, it could only start a new one.
-	// Owning the source makes the stream a piece of game state like
-	// any other: it round-trips through a snapshot, so a deploy
-	// resumes the library order the players were actually headed
-	// for. The seed is minted from crypto/rand and never leaves the
-	// server, so it stays unguessable.
 	if r == nil {
-		src := newCryptoSeededPCG()
-		return g.start(rand.New(src), src)
+		return g.start(nil)
 	}
-	// A *rand.Rand the caller built themselves: math/rand/v2 offers
-	// no way to read its Source back out, so the stream position
-	// cannot be snapshotted. The game runs fine; CaptureSnapshot
-	// records it as unpersistable rather than silently reseeding on
-	// restore. Use StartWithSource to get determinism AND
-	// persistence.
-	return g.start(r, nil)
+	key := rngKeyFrom(r)
+	return g.start(&key)
 }
 
-// StartWithSource is Start on a caller-supplied PCG source.
+// StartWithSource is Start on a caller-supplied PCG source. It used
+// to exist because only a PCG's position could be persisted; with a
+// keyed RNG every source is equivalent, and it is kept so callers do
+// not change. The key is read from the source exactly as Start reads
+// it from a *rand.Rand.
 //
-// It exists because the two things a caller might want from Start's
-// RNG argument — a reproducible stream, and a stream that survives a
-// restart — are only compatible if the caller hands over the SOURCE
-// rather than a *rand.Rand wrapping it. math/rand/v2's Rand keeps its
-// Source private, so Start(rand.New(pcg)) throws away the only handle
-// that could have been marshalled.
-//
-// Pass nil to get the same crypto-seeded source Start(nil) mints.
+// Pass nil to get the same crypto-minted key Start(nil) mints.
 func (g *Game) StartWithSource(src *rand.PCG) error {
 	if src == nil {
-		src = newCryptoSeededPCG()
+		return g.start(nil)
 	}
-	return g.start(rand.New(src), src)
+	key := rngKeyFrom(src)
+	return g.start(&key)
 }
 
-// start is the shared body. rng is the source every shuffle in the
-// game will draw from; state is its marshalable form, or nil when the
-// caller owns a source we cannot read back.
-func (g *Game) start(r *rand.Rand, state *rand.PCG) error {
+// start is the shared body. key is the game's RNG key, or nil to keep
+// a key already set and otherwise mint one.
+func (g *Game) start(key *[32]byte) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -599,8 +567,14 @@ func (g *Game) start(r *rand.Rand, state *rand.PCG) error {
 		return ErrNotEnoughPlayers
 	}
 
-	g.rng = r
-	g.rngState = state
+	switch {
+	case key != nil:
+		g.rngKey = *key
+		g.rngCounters = nil
+	case g.rngKey == ([32]byte{}):
+		g.rngKey = mintRNGKey()
+		g.rngCounters = nil
+	}
 	if g.UndoLimit <= 0 {
 		g.UndoLimit = DefaultUndoLimit
 	}
@@ -612,10 +586,10 @@ func (g *Game) start(r *rand.Rand, state *rand.PCG) error {
 	}
 	for _, p := range g.Seats {
 		p.UndosRemaining = g.UndoLimit
-		// g.rng, not r: when the caller passed nil we minted our own
-		// source above, and the opening shuffle must draw from the
-		// same stream every later shuffle will.
-		p.Library.Shuffle(g.rng)
+		// The opening shuffle is the pre-game turn index's first draw
+		// on this seat's shuffle stream (the cursor is set to turn 1
+		// below).
+		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// Deal an opening hand of 7. If the library is too short to
 		// satisfy 7 (a malformed deck), stop early — the partial hand
 		// is still valid and tests can use small decks.
