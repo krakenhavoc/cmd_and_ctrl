@@ -429,6 +429,160 @@ which is how the position corpus gets harvested.
 
 ---
 
+## Measuring the bot
+
+Nothing in the product measures play strength, and nothing can: a
+table is one game, and one game of Commander tells you almost nothing
+about a policy. The measurement lives in a separate local binary,
+`boteval` (`make -C server build-boteval`), because the runs that
+matter need a model endpoint, a Scryfall dump and minutes of wall
+clock, none of which CI has.
+
+### Arena
+
+`boteval arena` plays N headless bot-vs-bot games and prints the
+report block [ADR 0052](decisions/0052-bot-decision-harness-and-eval.md)
+asks every bot PR to carry.
+
+```
+boteval arena --seats assisted,heuristic,heuristic,heuristic \
+              --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+              --games 10 --seed 1 --rotate \
+              --model qwen3:14b --endpoint http://192.168.1.18:11434/v1 \
+              --max-think 20s --dump ../data/scryfall/default-cards.json \
+              --out ./arena-out --decision-log
+```
+
+There is no server, no websocket and no client: the arena builds a
+`game.Game`, wraps it in the same `ws.Room` the server uses, and
+starts one ordinary `aiseat.Runner` per chair. Every seat sees exactly
+the filtered `aiseat.Input` it would see at a real table.
+
+| Flag | What it does |
+|---|---|
+| `--seats` | one tier per chair, comma-separated. 2–4 chairs. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump. |
+| `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
+| `--games`, `--seed` | game *i* uses `seed+i`, so a run is exactly reproducible and two policies can be compared on the same deals. |
+| `--rotate` | moves each contestant one chair along per game (contestant *k* sits at position `(k+i) mod n`). **Use it.** Turn order in Commander is worth real percentage points; without rotation you are measuring the chair. |
+| `--turn-budget`, `--wall`, `--stall` | when to stop a game that will not end (default 60 turns, 30 minutes, `3×max-think+15s` with no committed move). |
+| `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
+| `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
+| `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
+| `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
+| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block. Defaults to production's value. `0` turns it off, which is faster and declares systematically fewer blocks than a real table — see below. |
+| `--md`, `--json` | what to print. Markdown by default. |
+
+Env fallbacks match the server's: `CMDCTRL_OPENAI_ENDPOINT`,
+`CMDCTRL_OPENAI_API_KEY`, `CMDCTRL_BOT_MODEL`,
+`CMDCTRL_BOT_FRONTIER_MODEL`, `CMDCTRL_BOT_MAX_THINK`,
+`CMDCTRL_SCRYFALL_DUMP`.
+
+**A model tier with no endpoint is refused, not downgraded.** An
+`assisted` seat with no client plays Layer A + B and still calls
+itself `assisted`, so the run would report a heuristic's win rate
+under a model's name. That is the one misconfiguration that corrupts
+the measurement instead of breaking it, so the arena will not start.
+
+**A stall is reported, not fatal.** A table that stops committing
+moves still played twenty turns of real decisions, and the dump of
+every seat's legal moves at the moment it froze is the evidence that
+says why. The game is marked `stalled`, counted, and the run
+continues.
+
+**`games.jsonl` is operator-only, for the same reason the decision log
+is.** A stall dump enumerates every seat's legal moves, and a cast
+move is enumerated from that seat's hand — so the file names cards in
+hands the reader was never entitled to see. It is written `0600`
+inside a `0700` run directory, and it is exactly the file someone
+would reach for when reporting a stall. Quote the structural head of a
+dump (step, pending kinds, per-seat life and move counts) in a bug
+report; do not attach the file. `summary.md` and `summary.json` carry
+no dump and are safe to paste.
+
+**Turn order only cancels over a whole number of rotations.**
+`--rotate` seats contestant *k* in chair `(k+i) mod n` for game *i*,
+which balances turn order exactly when `--games` is a multiple of the
+seat count. It is not, the arena prints a warning naming the
+imbalance and does **not** silently change `--games` — and the run's
+chair histogram goes into the report either way, so a finished run is
+auditable on the point. Turn order in Commander is worth real
+percentage points, the same order as the differences being measured,
+so prefer 12 games over 10 on a four-seat table.
+
+**`--block-grace` is a fidelity knob, not a speed knob.** Without it
+an attacking bot re-steps the moment it commits, and the step can end
+before a slower seat has declared a block; combat is where policy
+differences actually show, so a run with it off understates every
+difference. It defaults to production's value and should stay there
+for any number that goes into an ADR.
+
+#### Wall clock
+
+| Table | Per game |
+|---|---|
+| 2 heuristic seats, synthetic deck | ~0.2 s |
+| 4 heuristic seats, curated decks | ~3.5 s |
+| 4 random seats | seconds |
+| 1 assisted seat (local 14B, 20s think) | 5–15 minutes |
+| 4 assisted seats on one GPU | they serialise; budget 4× |
+
+A ten-game baseline with one `assisted` seat is an hour or two, so
+`games.jsonl` is written **as each game ends** and Ctrl-C stops
+between games rather than killing the run.
+
+#### Reading the report
+
+`summary.md` is the block that gets pasted into a PR; `summary.json`
+is the same numbers for a tool; `games.jsonl` has one full result per
+game.
+
+- **Play** — seat-games, decided seat-games, wins, win %, a Wilson
+  95% interval, and the **null rate** (1/seats). The interval and the
+  null are the whole point: "assisted won 30% of a four-seat table" is
+  not a result, because the null is 25% and ten games cannot tell them
+  apart. The `beats null` column is `yes` only when the entire
+  interval clears the null. Expect it to say `no` for a long time.
+
+  **Win % is over *decided* seat-games**, not all of them. The null is
+  P(win | somebody won) — on a four-seat table exactly one chair takes
+  a decided game, so the four rates sum to 1 — and counting undecided
+  games in the denominator would scale every policy down while leaving
+  the null where it is. On a run where 40% of games hit the turn
+  budget, every policy's ceiling would be 0.60 and a policy winning
+  45% of the games that ended would report 27% and `beats null: no`.
+  `seat-games`, `draws` and `stalled seat-games` stay in the table so
+  the undecided share is visible rather than buried.
+
+  One more caveat the footnote repeats: two chairs of the same policy
+  contribute two seat-games to one game and at most one of them can
+  win, so those trials are negatively correlated. The interval treats
+  them as independent, which makes it **conservative** — it will not
+  manufacture a `beats null` — but `seat-games` is not a count of
+  independent trials.
+- **Funnel** — windows by layer, escalations, model calls, timeouts,
+  fallback reasons, tokens, median prompt size. A model tier whose
+  every window fell back to Layer B has the heuristic's win rate and a
+  completely different explanation; this is where that shows up.
+- **Latency** — decision p50/p99/p999/max and model-call p50/p99/max
+  per policy. Read the tail, not the median: a seat whose p999 is nine
+  seconds hangs the table twice a game and its mean says nothing about
+  it.
+- **Games** — one line each, so a stall or a runaway game is findable.
+
+With `--decision-log` on, the header line also carries the writer's
+own tally. The writer is asynchronous and **drops rather than blocks a
+bot seat**, so a run can end with a corpus that has holes in it; the
+report says `nothing dropped`, or names the cause (`queue` — the seats
+outran the writer, `cap` — the 256 MiB per-game limit, `error`). A
+position suite harvested from a run with drops is missing windows.
+
+Record the model id and quantisation with every run (`--note` puts a
+line in the report); the build's git revision is stamped
+automatically.
+
+---
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than
