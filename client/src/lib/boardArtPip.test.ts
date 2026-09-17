@@ -1,16 +1,18 @@
 // Is the board card's failed-art pip (#33) visible on a tapped card in
-// a battlefield row, and on an attachment drawn behind its host?
+// a battlefield row, on a land in a pile, and on an attachment drawn
+// behind its host?
 //
 // A tapped Card turns 90° clockwise, and the turn makes the tile its
 // own stacking context, so the pip's z-index counts only inside it: a
 // later tile that overlaps the pip paints over it. The land strip
-// overlaps tapped lands by 35% of a width, a tapped tile in an
-// ordinary row overhangs its neighbours, and a host covers all but a
-// sliver of the Auras and Equipment tucked behind it. Where the pip
-// sits is CSS in Card.svelte and BattlefieldRow.svelte, the overlaps
-// are CSS in BattlefieldRow.svelte, and the client has no DOM to lay
-// either out in — so this reads the numbers out of those files and
-// does the geometry. It was measured against Chromium's hit-testing
+// overlaps tapped piles by 35% of a width and stacks same-name lands
+// 4px apart, a tapped tile in an ordinary row overhangs its
+// neighbours, and a host covers all but a sliver of the Auras and
+// Equipment tucked behind it. Where the pip sits is CSS in Card.svelte
+// and BattlefieldRow.svelte, the overlaps are CSS in
+// BattlefieldRow.svelte, and the client has no DOM to lay either out
+// in — so this reads the numbers out of those files and does the
+// geometry. It was measured against Chromium's hit-testing
 // (elementFromPoint at the pip) and agrees: 22px, the old tapped
 // position, is covered on every tapped land but the rightmost, and the
 // old attachment position, 22px down the left edge, under a tapped
@@ -62,21 +64,25 @@ const PIP_LEFT = px(decl(block(cardSvelte, ".card"), "--art-error-left"), 0, 0);
 const tappedTop = decl(block(cardSvelte, ".card.tapped"), "--art-error-top");
 const ROW_PAD_LEFT = px(decl(block(rowSvelte, ".row"), "padding").split(/\s+/)[1], 0, 0);
 
-// The strip's margin-left rules, in source order, with a matcher and
-// specificity each, so the cascade is resolved the way a browser does.
+// --- the strip ----------------------------------------------------------
+//
+// In the strip every land is inside a .pile: one pile per name among
+// the untapped lands, one pile per tapped land. The between-pile
+// margin-left rules, in source order, with a matcher and specificity
+// each, so the cascade is resolved the way a browser does.
 interface Item {
   tapped: boolean;
   first: boolean;
   prevTapped: boolean;
 }
-const STRIP_ITEM = '.row.strip .row-cards > [role="listitem"]';
-const stripRules = [...rowSvelte.matchAll(/\n {2}(\.row\.strip \.row-cards > [^{]+?) \{([^}]*)\}/g)]
-  .filter(([, , body]) => /margin-left:/.test(body))
+const STRIP_PILE = ".row.strip .pile";
+const stripRules = [...rowSvelte.matchAll(/\n {2}(\.row\.strip \.pile[^{]*?) \{([^}]*)\}/g)]
+  .filter(([, selector, body]) => /margin-left:/.test(body) && !/\[role=/.test(selector))
   .map(([, selector, body]) => {
-    const tail = selector.slice(STRIP_ITEM.length);
+    const tail = selector.slice(STRIP_PILE.length);
     const matches = (it: Item): boolean => {
-      if (tail.startsWith(':not(.tapped) + [role="listitem"]')) {
-        const own = tail.slice(':not(.tapped) + [role="listitem"]'.length);
+      if (tail.startsWith(":not(.tapped) + .pile")) {
+        const own = tail.slice(":not(.tapped) + .pile".length);
         return !it.first && !it.prevTapped && ownMatches(own, it);
       }
       return ownMatches(tail, it);
@@ -108,29 +114,82 @@ function stripMargin(it: Item, w: number, h: number): number {
   return px(best!.marginLeft, w, h);
 }
 
-// pipsInRow lays out a row of tiles and returns, for each, the pip's
-// horizontal extent and the part of the row it may occupy unhidden:
-// right of the row's clip edge and left of the next tile, which paints
-// over it. Later tiles never reach further left than the next one, and
-// every tile spans the band a tapped pip sits in, so horizontal is
-// enough.
-function pipsInRow(tapped: boolean[], w: number, h: number, strip: boolean) {
-  const out: { pip: [number, number]; room: [number, number] }[] = [];
+// Inside a pile: the rest-state step between copies, and the step
+// once the pile is hovered and spread.
+const WITHIN = '.row.strip .pile > [role="listitem"] + [role="listitem"]';
+const WITHIN_HOVER = '.row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"]';
+const withinRest = (w: number, h: number) =>
+  w + px(decl(block(rowSvelte, WITHIN), "margin-left"), w, h);
+const withinHover = (w: number, h: number) =>
+  w + px(decl(block(rowSvelte, WITHIN_HOVER), "margin-left"), w, h);
+
+// A pile of `n` same-name lands (n is 1 for a tapped land), and the
+// pip of each tile in it with the room it has: right of the row's
+// clip edge and left of whatever paints over it next. At rest the top
+// copy (the last in the DOM) is what must be readable; every copy
+// under it is checked spread out, which is what hovering the pile
+// does and the only state in which those copies can be clicked.
+interface Pile {
+  tapped: boolean;
+  n: number;
+}
+type Check = { pip: [number, number]; room: [number, number]; state: "rest" | "spread" };
+
+function pipsInStrip(piles: Pile[], w: number, h: number): Check[] {
+  const out: Check[] = [];
+  let x = 0;
+  const top = px(tappedTop, w, h, h);
+  const pipOf = (left: number, tapped: boolean): [number, number] =>
+    tapped
+      ? [left + w / 2 - (top + PIP - h / 2), left + w / 2 - (top - h / 2)]
+      : [left + PIP_LEFT, left + PIP_LEFT + PIP];
+  const visualLeft = (left: number, tapped: boolean) => (tapped ? left + w / 2 - h / 2 : left);
+  piles.forEach((p, i) => {
+    const margin = stripMargin(
+      { tapped: p.tapped, first: i === 0, prevTapped: piles[i - 1]?.tapped ?? false },
+      w,
+      h,
+    );
+    const restWidth = w + withinRest(w, h) * (p.n - 1);
+    x += margin;
+    const pileLeft = x;
+    // The top copy at rest, with the next pile's left edge as its room.
+    const next = piles[i + 1];
+    const nextMargin = next
+      ? stripMargin({ tapped: next.tapped, first: false, prevTapped: p.tapped }, w, h)
+      : Infinity;
+    const nextLeft = next ? visualLeft(pileLeft + restWidth + nextMargin, next.tapped) : Infinity;
+    const topLeft = pileLeft + withinRest(w, h) * (p.n - 1);
+    out.push({ pip: pipOf(topLeft, p.tapped), room: [-ROW_PAD_LEFT, nextLeft], state: "rest" });
+    // Every copy under it, spread: each one's room ends at the copy
+    // after it.
+    for (let k = 0; k + 1 < p.n; k++) {
+      const left = pileLeft + withinHover(w, h) * k;
+      out.push({
+        pip: pipOf(left, p.tapped),
+        room: [-ROW_PAD_LEFT, left + withinHover(w, h)],
+        state: "spread",
+      });
+    }
+    x = pileLeft + restWidth;
+  });
+  return out;
+}
+
+// pipsInRow lays out an ordinary (non-strip) row of tiles, 8px apart,
+// and returns each pip's extent and room.
+function pipsInRow(tapped: boolean[], w: number, h: number): Check[] {
+  const out: Check[] = [];
   const visualLeft: number[] = [];
   let x = 0;
+  const top = px(tappedTop, w, h, h);
   tapped.forEach((t, i) => {
-    const margin = strip
-      ? stripMargin({ tapped: t, first: i === 0, prevTapped: tapped[i - 1] ?? false }, w, h)
-      : 0;
-    x += i === 0 ? margin : w + (strip ? 0 : 8) + margin;
+    x += i === 0 ? 0 : w + 8;
     visualLeft.push(t ? x + w / 2 - h / 2 : x);
-    // Turning (dx, dy) from the tile's centre 90° clockwise gives
-    // (-dy, dx): the pip's distance down the tile runs right to left.
-    const top = px(tappedTop, w, h, h);
     const pip: [number, number] = t
       ? [x + w / 2 - (top + PIP - h / 2), x + w / 2 - (top - h / 2)]
       : [x + PIP_LEFT, x + PIP_LEFT + PIP];
-    out.push({ pip, room: [-ROW_PAD_LEFT, Infinity] });
+    out.push({ pip, room: [-ROW_PAD_LEFT, Infinity], state: "rest" });
   });
   out.forEach((o, i) => {
     if (i + 1 < visualLeft.length) o.room[1] = visualLeft[i + 1];
@@ -138,36 +197,65 @@ function pipsInRow(tapped: boolean[], w: number, h: number, strip: boolean) {
   return out;
 }
 
-// Self lands (--card-w-sm / --card-h-sm) and the two opponent sizes.
+// The land sizes: the floors of the self, opponent and across-table
+// ramps (--card-h-sm), and the ceiling of the self ramp. The ramps
+// scale between them and the fixed parts of the geometry — the pip,
+// the 4px pile step — only get more room as the tiles grow.
 const STRIP_SIZES: [number, number][] = [
   [88, 123],
   [64, 90],
   [48, 67],
+  [111, 156],
 ];
 const ROW_SIZES: [number, number][] = [
   [120, 168],
   [88, 123],
   [64, 90],
+  [150, 210],
 ];
-const LAYOUTS = [
+const ROW_LAYOUTS = [
   [true, true, true],
   [false, false, true, true],
   [true, true, true, true, true, true, true],
   [false, false, false],
 ];
+const u = (n: number): Pile => ({ tapped: false, n });
+const T = (): Pile => ({ tapped: true, n: 1 });
+const STRIP_LAYOUTS: Pile[][] = [
+  [T(), T(), T()],
+  [u(1), u(1), T(), T()],
+  [T(), T(), T(), T(), T(), T(), T()],
+  [u(1), u(1), u(1)],
+  [u(4)],
+  [u(4), u(2), T(), T()],
+  [u(3), u(1), u(2)],
+  [u(2), T()],
+];
+
+function assertVisible(checks: Check[]) {
+  checks.forEach(({ pip, room, state }, i) => {
+    expect(pip[0], `tile ${i} (${state}) pip clipped`).toBeGreaterThanOrEqual(room[0]);
+    expect(pip[1], `tile ${i} (${state}) pip covered by the next tile`).toBeLessThanOrEqual(
+      room[1],
+    );
+  });
+}
 
 describe("failed-art pip on the battlefield", () => {
-  for (const strip of [true, false]) {
-    for (const [w, h] of strip ? STRIP_SIZES : ROW_SIZES) {
-      for (const layout of LAYOUTS) {
-        const tiles = layout.map((t) => (t ? "T" : "u")).join("");
-        it(`is uncovered and unclipped: ${strip ? "strip" : "row"} ${w}x${h} ${tiles}`, () => {
-          pipsInRow(layout, w, h, strip).forEach(({ pip, room }, i) => {
-            expect(pip[0], `tile ${i} pip clipped`).toBeGreaterThanOrEqual(room[0]);
-            expect(pip[1], `tile ${i} pip covered by the next tile`).toBeLessThanOrEqual(room[1]);
-          });
-        });
-      }
+  for (const [w, h] of ROW_SIZES) {
+    for (const layout of ROW_LAYOUTS) {
+      const tiles = layout.map((t) => (t ? "T" : "u")).join("");
+      it(`is uncovered and unclipped: row ${w}x${h} ${tiles}`, () => {
+        assertVisible(pipsInRow(layout, w, h));
+      });
+    }
+  }
+  for (const [w, h] of STRIP_SIZES) {
+    for (const layout of STRIP_LAYOUTS) {
+      const tiles = layout.map((p) => (p.tapped ? "T" : `u${p.n}`)).join(" ");
+      it(`is uncovered and unclipped: strip ${w}x${h} ${tiles}`, () => {
+        assertVisible(pipsInStrip(layout, w, h));
+      });
     }
   }
 });

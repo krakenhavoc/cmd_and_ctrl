@@ -335,13 +335,17 @@
       {sorcerySpeedBlocked}
     />
   </div>
+  <!-- The back row: land piles first, then the other permanents,
+       both shrink-wrapped and centred as one group so the row grows
+       out from the middle like the creature row above it. -->
   <div class="grid-middle">
     <BattlefieldRow
-      label="enchant / artifact"
+      label="lands"
       {attachmentsByHost}
       {curseTargets}
-      cards={buckets.right}
+      cards={buckets.land}
       compact
+      strip
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
@@ -350,12 +354,11 @@
       {sorcerySpeedBlocked}
     />
     <BattlefieldRow
-      label="lands"
+      label="enchant / artifact"
       {attachmentsByHost}
       {curseTargets}
-      cards={buckets.land}
+      cards={buckets.right}
       compact
-      strip
       {viewerID}
       {selectedCombatCardID}
       onCardClick={handleCardClick}
@@ -418,19 +421,34 @@
 <style>
   .panel {
     /* Sept 2026 redesign: zones on the left, a player rail on the
-       right. Creatures on top at full size; the middle band splits
-       artifacts/enchantments and the land strip, both one size down;
-       the bottom row is the hand plus (self only) the phase widget.
+       right. Creatures on top at full size; the middle band is the
+       land piles and the other permanents, one size down; the
+       bottom row is the hand plus (self only) the phase widget.
        Top-row opponents set `flipped`, which reverses the row order
        instead of rotating the panel.
+
+       Card size is a function of the PANEL'S HEIGHT, not a constant
+       (board ratios, Sept 2026): the panel is a size container and
+       every card height is a share of it, clamped so a short panel
+       never drops below the fixed sizes the redesign shipped with
+       (120×168 / 88×123 / 64×90) and a tall one stops at 240px. The
+       share is the panel's budget solved for the creature card: the
+       creature row (1×), the back row (0.74×) and the hand's peek
+       (0.62× self, 0.55× opponents) plus ~72px of row padding and
+       gaps must fit, so cre ≤ 0.42·H − 30 (0.43·H − 31 with the
+       tighter peek). The card-size setting scales the share, so
+       "large" can outgrow a 900px-tall window — the rows scroll
+       rather than clip, as they did with the fixed 1.25× sizes. The
+       5:7 card aspect is kept by deriving the width.
 
        --card-w / --card-h cascade into every nested Card; the
        compact rows override them with --card-w-sm / --card-h-sm.
        --thumb-w / --thumb-h size the pile thumbnails in the rail. */
-    --card-w: calc(120px * var(--card-scale, 1));
-    --card-h: calc(168px * var(--card-scale, 1));
-    --card-w-sm: calc(88px * var(--card-scale, 1));
-    --card-h-sm: calc(123px * var(--card-scale, 1));
+    container-type: size;
+    --card-h: clamp(168px, calc((42cqh - 30px) * var(--card-scale, 1)), 240px);
+    --card-w: calc(var(--card-h) * 5 / 7);
+    --card-h-sm: clamp(123px, calc(var(--card-h) * 0.74), 178px);
+    --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
     --thumb-w: calc(40px * var(--card-scale, 1));
     --thumb-h: calc(56px * var(--card-scale, 1));
     --avatar-size-base: 84px;
@@ -463,10 +481,8 @@
     /* Upright opponent (the "next" seat) gets the medium scale — it
        has the tall row to itself. Scales by --card-scale-opponent
        (settings) with a gentler curve than self. */
-    --card-w: calc(88px * var(--card-scale-opponent, 1));
-    --card-h: calc(123px * var(--card-scale-opponent, 1));
-    --card-w-sm: calc(64px * var(--card-scale-opponent, 1));
-    --card-h-sm: calc(90px * var(--card-scale-opponent, 1));
+    --card-h: clamp(123px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), 200px);
+    --card-h-sm: clamp(90px, calc(var(--card-h) * 0.74), 148px);
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
     --avatar-size-base: 72px;
@@ -476,10 +492,8 @@
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. */
-    --card-w: calc(64px * var(--card-scale-opponent, 1));
-    --card-h: calc(90px * var(--card-scale-opponent, 1));
-    --card-w-sm: calc(48px * var(--card-scale-opponent, 1));
-    --card-h-sm: calc(67px * var(--card-scale-opponent, 1));
+    --card-h: clamp(90px, calc((43cqh - 31px) * var(--card-scale-opponent, 1)), 168px);
+    --card-h-sm: clamp(67px, calc(var(--card-h) * 0.74), 124px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
     --avatar-size-base: 60px;
@@ -494,13 +508,35 @@
     min-height: 0;
     min-width: 0;
   }
+  /* A flipped panel's creature row is its LAST row, and it must sit
+     at the bottom of its area — against the middle of the table,
+     facing the viewer's own creatures — not float up under the
+     lands. The area keeps the leftover height; the row is pushed to
+     its far edge. */
+  .flipped .grid-creatures {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .flipped .grid-creatures > :global(.row) {
+    flex: 0 1 auto;
+  }
   .grid-middle {
     grid-area: middle;
     min-height: 0;
     min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    gap: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  /* Each back-row zone takes the width of its cards, no more, so the
+     two read as one centred group. An empty zone keeps enough width
+     to show its label. */
+  .grid-middle > :global(.row) {
+    flex: 0 1 auto;
+    min-width: 160px;
+    max-width: 100%;
   }
   .grid-bottom {
     grid-area: bottom;
@@ -524,6 +560,12 @@
     height: calc(var(--card-h, 168px) * 0.55);
     overflow: visible;
     position: relative;
+  }
+  /* The viewer's own hand shows 62% of each card at rest (name, cost,
+     art and the type line); opponents' face-down fans keep the
+     tighter 55%. Hand.svelte's peek and lift use the same share. */
+  .panel.self .hand-zone {
+    height: calc(var(--card-h, 168px) * 0.62);
   }
   .flipped .hand-zone {
     align-self: flex-start;
