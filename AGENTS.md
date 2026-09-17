@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0058 doesn't-untap restrictions) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0059 turn machinery) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
