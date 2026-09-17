@@ -888,6 +888,16 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// TargetCostNotes are the printed clauses of this card's own cost
+	// modifiers whose price depends on its targets — Fireball's "This
+	// spell costs {1} more to cast for each target beyond the first",
+	// strive — for a card in the viewer's own hand / command zone /
+	// castable graveyard. The X picker opens before targeting and its
+	// readout is priced at one target, so it shows these clauses
+	// under the readout instead of a surcharge it cannot know yet
+	// (ADR 0048 addendum, open question 2). Absent for nearly every
+	// card. Added for #746.
+	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
 	// already implied by the surface: the graveyard, today. Hand and
@@ -1532,6 +1542,9 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if tc := game.TapPermanentsCostFor(c.oracleID); !tc.Empty() {
 					c.TapCost = viewOfTapCost(g, caster, c, tc)
 				}
+				// #746: the printed clauses of a per-target price, for
+				// the X picker's note.
+				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
@@ -2526,6 +2539,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// #746: a quoted cost clause names the card like its mana cost.
+	out.TargetCostNotes = nil
 	// S29: "castable from where it sits" is only ever set on cards
 	// whose text grants an extra cast zone, so it partitions the
 	// card the same weak way `unimplemented` does. Cleared with the
@@ -2616,6 +2631,11 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
+			// #746: stamped for the owner's X picker with the other
+			// cast clauses, so it goes with them. Printed text, so
+			// nothing leaks; this keeps the field's documented scope
+			// ("the viewer's own hand") true.
+			c.TargetCostNotes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

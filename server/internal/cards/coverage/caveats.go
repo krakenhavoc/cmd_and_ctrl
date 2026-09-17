@@ -258,6 +258,25 @@ var mechanics = []Mechanic{
 		Adopt:      `Static: []game.StaticAbility{LoseAllAbilities()} — see effects/attachments.go`,
 	},
 	{
+		// #746: "this spell costs {1} less to cast", affinity, strive.
+		// Blasphemous Act shipped for months with "The cost reduction
+		// is missing"; the day a card's own cost modifier is declared,
+		// that sentence is false. Phrases stay about the SPELL'S OWN
+		// cost — "discount" is left out on purpose, because Blossoming
+		// Tortoise's caveat is about ability costs, which this slot
+		// does not touch.
+		Name:    "a spell's own cost modifier",
+		Phrases: []string{"cost reduction", "affinity", "strive", "undaunted"},
+		Implements: func(s effects.Spec) bool {
+			// Through the engine's own reader, so a broken
+			// CardDef wiring goes quiet here too (see altCost).
+			return len(game.SelfCostModifiersFor(game.Card{OracleID: s.OracleID})) > 0
+		},
+		Evidence:   "game.SelfCostModifiersFor returns the spec's self cost modifiers",
+		Confidence: Exact,
+		Adopt:      `SelfCostModifiers: []game.CostModifier{CostsLessEach(…) / AffinityFor(…) / CostsMorePerTargetBeyondFirst(…)} — see effects/self_cost_modifier.go`,
+	},
+	{
 		// The heuristic one, and the reason Confidence exists.
 		//
 		// Surveil is not in the engine at the time of writing: there

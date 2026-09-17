@@ -1,6 +1,7 @@
 # ADR 0048 — Cost modification and the free-spell family
 
 **Status:** accepted (S28)
+**Amended:** 2026-09-17 · PR #776 — §15's `cost_notes` ship on the snapshot as `CardView.target_cost_notes` (see the amendment under §15)
 **Extends:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the cost
 computation engine), [ADR 0021](0021-additional-costs.md) and
 [ADR 0025](0025-alternative-costs.md) (the two cost slots that came
@@ -588,6 +589,21 @@ prices at one target and says so:
 A `CastSpell` with more targets than the player can pay for is refused by
 the engine, as today.
 
+*Amended 2026-09-17 at implementation (#746, PR #776): where the notes
+travel.* The clauses ship on the snapshot as `CardView.target_cost_notes`,
+not as `cost_notes` on the preview response. The X picker already holds
+the card view it opened from, so it reads the clauses there and needs no
+second request, and the clauses are printed text, the same for every
+caller. The pricing decision above is unchanged: the preview still prices
+at nil targets, which is the one-target price. The field is stamped with
+the other cast clauses (`legal_targets`, `modes`, `alternative_costs`,
+`tap_cost`) on cards in each seat's hand, command zone and castable
+graveyard. It is cleared with them for a card the viewer does not know,
+and for an opponent's revealed hand card. The notes still list only the card's own
+target-reading self modifiers, in declaration order. Test-plan and
+implementation-plan references to `cost_notes` on the preview read as
+this field.
+
 #### 16. Coloured cost increases (strive)
 
 Lead decision, option (a). Strive (CR 207.2c ability word) reads "This
@@ -761,7 +777,9 @@ extra target. §2's increase pass adds only generic mana.
     `ApplyCostModifiers`.
   - Fireball's preview at X = 3 prices {3}{R} and carries its
     `cost_notes` clause. Lightning Bolt's preview carries no
-    `cost_notes`.
+    `cost_notes`. (As built, see §15's amendment: the clause is on the
+    owner's `CardView.target_cost_notes`, absent for Lightning Bolt and
+    for an opponent's view of a revealed Fireball.)
 - **Client.** `XCostModal` renders each `cost_notes` entry under the
   readout, and renders nothing extra when the list is absent.
 - **Catalog soak** with the new cards.
