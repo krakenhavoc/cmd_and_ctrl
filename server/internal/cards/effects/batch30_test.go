@@ -999,8 +999,10 @@ func TestB30SavvyHunterMakesFoodOnAttackAndOnBlock(t *testing.T) {
 	if got := b30TokensNamed(g, me.ID, "Food"); got != 2 {
 		t.Errorf("blocking makes another: %d", got)
 	}
-	if spec, _ := Lookup(b30SavvyHunterOracle); len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the two-Food draw is a declared gap, not a one-Food draw")
+	// #747: the two-Food draw ships at its printed count; its engine
+	// test is in sacrifice_n_cards_test.go.
+	if spec, _ := Lookup(b30SavvyHunterOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the two-Food draw ships whole")
 	}
 }
 

@@ -392,9 +392,11 @@ func TestB11MagdaPaysForADwarfTappedOutsideCombat(t *testing.T) {
 	if n := countBattlefieldNamed(g, me.ID, "Treasure"); n != 1 {
 		t.Errorf("a Dwarf tapped outside combat made %d Treasures, want 1", n)
 	}
+	// #747: the five-Treasure tutor ships at its printed count; its
+	// engine test is in sacrifice_n_cards_test.go.
 	spec, _ := Lookup(b11MagdaOracle)
-	if len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the five-Treasure tutor is a declared omission, not a half-built ability")
+	if len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the five-Treasure tutor ships whole")
 	}
 }
 

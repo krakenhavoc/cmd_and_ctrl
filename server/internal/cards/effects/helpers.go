@@ -296,3 +296,31 @@ func targetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) er
 	}
 	return nil
 }
+
+// returnFirstLegalGraveyardTarget returns the first still-legal card
+// target of a single-target "return target … card from your graveyard
+// to <zone>" ability to `dest`, under its owner's control. A target
+// that left the graveyard in response is skipped (CR 608.2b). The two
+// named forms below are what a card's Effect slot takes.
+func returnFirstLegalGraveyardTarget(g *game.Game, item *game.StackItem, dest game.ZoneKind) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return ReturnFromGraveyard{Target: t.ID, Dest: dest}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
+// returnFirstLegalGraveyardTargetToHand is "return target … card from
+// your graveyard to your hand" — Codex Shredder, Samwise Gamgee.
+func returnFirstLegalGraveyardTargetToHand(g *game.Game, item *game.StackItem) error {
+	return returnFirstLegalGraveyardTarget(g, item, game.ZoneHand)
+}
+
+// returnFirstLegalGraveyardTargetToBattlefield is "return target …
+// card from your graveyard to the battlefield" — Cauldron of Essence,
+// Whisper, Blood Liturgist.
+func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
+	return returnFirstLegalGraveyardTarget(g, item, game.ZoneBattlefield)
+}

@@ -779,9 +779,11 @@ export interface AdditionalCostView {
   discard_cards?: number;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
-  // The picked ID rides cast_spell as `sacrifice_ids`.
+  // The picked IDs ride cast_spell as `sacrifice_ids`.
   // Present-and-empty means the cost is unpayable, so the spell is
-  // uncastable.
+  // uncastable. #747: min / max are the clause's count ("sacrifice
+  // two creatures" is 2 / 2) and the cards come in payment order —
+  // see sacrificeCost.ts.
   sacrifice_options?: LegalTargetsView;
   // S23: a "pay X life" clause (Toxic Deluge). The X prompt has to
   // open for this card even though its printed mana cost has no {X},
@@ -906,9 +908,12 @@ export interface ActivatedAbilityView {
   // #329 / #334.
   loyalty_cost?: number;
   // A "Sacrifice a creature"-style cost: the clause, and the
-  // permanents the controller can pay it with right now.
+  // permanents the controller can pay it with right now. #747: min /
+  // max are the clause's count ("Sacrifice two artifacts" is 2 / 2;
+  // always equal) and the cards come in payment order — tokens first,
+  // then lower mana value, then the source. See sacrificeCost.ts.
   sacrifice_label?: string;
-  sacrifice_options?: { players?: string[]; cards?: string[] };
+  sacrifice_options?: LegalTargetsView;
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -1233,7 +1238,9 @@ export interface ManaAbilityView {
   // the identically-named fields on ActivatedAbilityView: the label
   // is the clause for the modal banner, and sacrifice_options lists
   // the legal choices already filtered to the controller
-  // (CR 701.21a). Absent means the cost needs no extra choice.
+  // (CR 701.21a). Absent means the cost needs no extra choice. #747:
+  // min / max are the count and the cards come in payment order, as
+  // on ActivatedAbilityView.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
   // S22: a "Pay N life" component of the activation cost — Mana

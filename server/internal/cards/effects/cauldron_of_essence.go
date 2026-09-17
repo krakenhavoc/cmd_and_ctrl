@@ -41,15 +41,7 @@ func init() {
 			Cost:         Plus(ManaCost("{1}{B}{G}"), TapCost(), SacrificeACreature()),
 			Targets:      TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
 			SorcerySpeed: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:       returnFirstLegalGraveyardTargetToBattlefield,
 		}},
 	})
 }

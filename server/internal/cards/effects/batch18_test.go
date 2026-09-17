@@ -1165,8 +1165,10 @@ func TestB18MagdaMakesATappedTreasureOncePerTurnPerCrime(t *testing.T) {
 	if b16CountNamed(g, "Treasure") != 2 {
 		t.Error("a new turn, a new Treasure")
 	}
-	if spec, _ := Lookup(b18MagdaTheHoardmasterOrcl); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 0 {
-		t.Error("the Scorpion Dragon gap must be declared, and no activated ability ships")
+	// #747: the Scorpion Dragon ability ships at its printed count;
+	// its engine test is in sacrifice_n_cards_test.go.
+	if spec, _ := Lookup(b18MagdaTheHoardmasterOrcl); spec.Completeness != CompletenessFull || len(spec.Activated) != 1 {
+		t.Error("the Scorpion Dragon ability ships whole")
 	}
 }
 

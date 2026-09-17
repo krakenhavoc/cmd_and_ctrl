@@ -32,6 +32,30 @@ func SacrificeAPermanent() game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec("a permanent")}
 }
 
+// SacrificeN is "Sacrifice N <permanents>" — "Sacrifice two
+// artifacts" (Sai, Master Thopterist) is
+//
+//	SacrificeN(2, "two artifacts", Artifact())
+//
+// and "Sacrifice three Foods" (Samwise Gamgee) is
+// SacrificeN(3, "three Foods", HasSubtype("Food")). The label is the
+// clause as printed, without the verb; the client shows it in the
+// picker.
+//
+// The count lives on the clause (Min == Max == n, #747), not in a
+// separate field, so Plus cannot drop it. The activator names exactly
+// n distinct permanents they control, and all of them leave as one
+// simultaneous exit. "Sacrifice two OTHER creatures" adds a predicate
+// that excludes the source (Priest of Forgotten Gods). A mana ability
+// takes SacrificeN(...).SacrificeOther, the way it takes
+// SacrificeACreature().SacrificeOther.
+//
+// Variable counts ("Sacrifice X Treasures", "one or more") have no
+// shape: Register refuses a clause whose Min and Max differ.
+func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
+}
+
 // ManaCost is a printed mana component, "{1}{B}". An {X} in the
 // string is a real variable cost — the activator announces a value
 // for it at CR 602.2b and the effect reads it back with ctx.X() —

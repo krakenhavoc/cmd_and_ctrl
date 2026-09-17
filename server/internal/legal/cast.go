@@ -199,7 +199,9 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					pool = append(pool, id)
 				}
 			}
-			sacrificeSets = combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+			// #747: N from the clause, one payment per cast for N ≥ 2,
+			// nothing offered when the caster controls fewer than N.
+			sacrificeSets = e.sacrificePayments(pool, addCost.Sacrifice, uuid.Nil)
 			if len(sacrificeSets) == 0 {
 				return
 			}

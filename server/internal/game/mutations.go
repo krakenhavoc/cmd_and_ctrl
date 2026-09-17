@@ -3481,10 +3481,10 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// without the stack, so the sacrifices and the mana are one
 	// atomic step.
 	if len(sacrifices) > 0 {
-		for _, id := range sacrifices {
-			if err := g.sacrificePermanentLocked(id); err != nil {
-				return err
-			}
+		// One payment, one simultaneous exit (#747): a Blood Artist
+		// paid in alongside another creature sees both deaths.
+		if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+			return err
 		}
 		// A sacrificed source leaves `card` dangling. Nothing below
 		// touches it (the produced-mana path reads `ab`).

@@ -613,9 +613,11 @@ func TestB22SamwiseGamgeeMakesFoodForNontokenCreatures(t *testing.T) {
 	if countBattlefieldNamed(g, me.ID, "Food") != 1 {
 		t.Errorf("tokens, opponents' creatures and artifacts do not make Food, got %d", countBattlefieldNamed(g, me.ID, "Food"))
 	}
+	// #747: the three-Food ability ships at its printed count; its
+	// engine test is in sacrifice_n_cards_test.go.
 	spec, _ := Lookup(b22SamwiseGamgeeOracle)
-	if len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the three-Food ability is a declared gap, not a one-Food ability")
+	if len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the three-Food ability ships whole")
 	}
 }
 

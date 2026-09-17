@@ -3,6 +3,7 @@ package legal
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -145,7 +146,7 @@ func (e *enumerator) activatedMoves() {
 			sacrificeSets := [][]uuid.UUID{nil}
 			if ab.Cost.SacrificeOther != nil {
 				pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf, ab.Cost.SacrificeOther)
-				sacrificeSets = combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
 				if len(sacrificeSets) == 0 {
 					continue
 				}
@@ -302,6 +303,36 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 	return pool
 }
 
+// sacrificePayments turns a sacrifice clause's candidate pool into the
+// payments the enumerator offers, one per move (#747, ADR 0020
+// addendum §15). `sourceID` is the ability's source, or uuid.Nil for a
+// spell's additional cost.
+//
+//   - N = 1: every candidate is its own payment, in board order, up to
+//     MaxExpansionPerSource — unchanged from before #747.
+//   - N ≥ 2: ONE payment, the first N of
+//     game.SacrificePaymentOrderForEffect (tokens first, then lower
+//     mana value, then the source last, then board order). The sets
+//     differ only in which permanents are lost, and the target and
+//     sacrifice loops share one budget: ten Treasures choose five is
+//     252 sets, which would spend the whole budget on the first target
+//     and never reach the second (#544). crewPayment answers the same
+//     kind of choice with one answer.
+//
+// Nil when the pool has fewer than N candidates, so the ability or
+// spell is not offered at all (#544).
+func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	n := game.SacrificeCostCount(spec)
+	if n <= 1 {
+		return combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+	}
+	if len(pool) < n {
+		return nil
+	}
+	ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
+	return [][]uuid.UUID{ordered[:n]}
+}
+
 // crewPayment picks a set of untapped creatures the seat controls
 // whose total effective power reaches `crew` (CR 702.122a), or nil
 // when no such set exists.
@@ -407,7 +438,7 @@ func (e *enumerator) manaMoves() {
 			sacrificeSets := [][]uuid.UUID{nil}
 			if ab.SacrificeOther != nil {
 				pool := e.sacrificePool(source.InstanceID, ab.SacrificeCost, ab.SacrificeOther)
-				sacrificeSets = combinations(pool, 1, 1, e.opts.MaxExpansionPerSource)
+				sacrificeSets = e.sacrificePayments(pool, ab.SacrificeOther, source.InstanceID)
 				if len(sacrificeSets) == 0 {
 					continue
 				}
@@ -417,8 +448,12 @@ func (e *enumerator) manaMoves() {
 				if ab.Label == "" {
 					label = source.Name + ": add " + ab.Produced
 				}
-				if len(sacs) == 1 {
-					label += " (sacrificing " + cardName(g, sacs[0]) + ")"
+				if len(sacs) > 0 {
+					names := make([]string, len(sacs))
+					for i, id := range sacs {
+						names[i] = cardName(g, id)
+					}
+					label += " (sacrificing " + strings.Join(names, ", ") + ")"
 				}
 				e.add(Move{
 					Type:   TypeActivateManaAbility,

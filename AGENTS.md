@@ -591,6 +591,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | `{T}` | `ManaAbilityCost{Tap: true}` | Sol Ring |
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
+| Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
 
 `SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
 activated abilities use — build it with the `SacrificeACreature()` /
@@ -1768,7 +1769,12 @@ Check it before triaging a skip as "needs machinery", and append a
 batch's skips to it in the batch PR (Discussion #559 item 6).
 
 - **Activated abilities whose cost has no component** — `AbilityCost`
-  carries tap-this, sacrifice-this, sacrifice-another, mana, life,
+  carries tap-this, sacrifice-this, sacrifice-another (since #747
+  **N of them**: `SacrificeN(2, "two artifacts", Artifact())` for an
+  ability, `SacrificeNCost(2, "two creatures", Creature())` for an
+  additional cost to cast; a fixed count only, `Register` refuses
+  "sacrifice X" and "one or more", and a restriction on the set
+  ("with different names") has no shape either), mana, life,
   and since S27 **loyalty** (`LoyaltyCost(n)`, [ADR 0032](docs/decisions/0032-planeswalkers.md) §8)
   and **crew** (`CrewCost(n)`), and since #625 **counter removal**
   (`RemoveCountersFromThis(kind, n)` for "from this",

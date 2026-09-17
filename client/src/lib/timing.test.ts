@@ -333,6 +333,14 @@ describe("canCastFromHand — denial reasons", () => {
     expect(canCastFromHand(rites, s, "p0").reason).toBe("Nothing to sacrifice");
   });
 
+  it("additional cost: fewer permanents than a sacrifice-N clause needs (#747)", () => {
+    const rites = card("Two-Creature Rites", "Sorcery", {
+      additional_cost: { sacrifice_options: { cards: ["c1"], min: 2, max: 2 } },
+    });
+    const s = snap({ moves: [passMove] });
+    expect(canCastFromHand(rites, s, "p0").reason).toBe("Needs 2 permanents to sacrifice");
+  });
+
   it("additional cost: no card to discard", () => {
     const c = card("Thrill", "Sorcery", { additional_cost: { discard_cards: 1 } });
     const s = snap({ moves: [passMove] });

@@ -19,9 +19,14 @@ package effects
 // Sandbox simplification, declared (the Magda posture: one whole
 // ability omitted): the tutor is not implemented. "Sacrifice three
 // artifact tokens with different names" is a three-permanent
-// sacrifice cost with a distinctness clause, and an ability cost
-// pays exactly one permanent — a cost with no shape leaves the
-// ability out rather than shipping a cheaper one. The Font is still
+// sacrifice cost with a distinctness clause. Since #747 a cost can
+// sacrifice three (SacrificeN), but "with different names" is a
+// restriction on the SET, which no per-permanent predicate can say,
+// and #747 left set-level restrictions out of scope (decided
+// 2026-09-17; the "Set-level restriction on a sacrifice cost" row in
+// docs/engine-seams.md). Shipping the tutor for any three artifact
+// tokens would be stronger than printed (#259), so the ability stays
+// out rather than shipping a cheaper one. The Font is still
 // recognisably itself: a colourless Blood / Clue / Food engine.
 // Weaker than printed, never stronger.
 func init() {

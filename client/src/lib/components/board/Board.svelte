@@ -73,6 +73,7 @@
     type TargetRef,
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { orderSacrificeOptions, sacrificeCount } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
@@ -279,20 +280,21 @@
   let sacrificePromptCard = $state<CardView | null>(null);
   let sacrificePromptChoices: CastChoices = {};
 
+  // #747: in the server's payment order, not board order, so the
+  // picker's "Choose for me" takes the top of the list.
   const castSacrificeOptions = $derived.by(() => {
     const card = sacrificePromptCard;
     if (!card) return [];
-    const ids = new Set(sacrificeCostOptions(card) ?? []);
-    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+    return orderSacrificeOptions(view.battlefield.cards, sacrificeCostOptions(card));
   });
 
-  function confirmSacrificeCost(instanceID: string): void {
+  function confirmSacrificeCost(instanceIDs: string[]): void {
     const card = sacrificePromptCard;
     const choices = sacrificePromptChoices;
     sacrificePromptCard = null;
     sacrificePromptChoices = {};
     if (!card) return;
-    afterCastCosts(card, { ...choices, sacrificeIDs: [instanceID] });
+    afterCastCosts(card, { ...choices, sacrificeIDs: instanceIDs });
   }
 
   // S22: convoke / waterbend — "you may tap your own untapped
@@ -625,8 +627,7 @@
   const sacrificeOptions = $derived.by(() => {
     const p = sacrificePrompt;
     if (!p) return [];
-    const ids = new Set(p.ability.sacrifice_options?.cards ?? []);
-    return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
+    return orderSacrificeOptions(view.battlefield.cards, p.ability.sacrifice_options?.cards);
   });
 
   // S27: a Vehicle's crew cost. Its own prompt rather than a reuse of
@@ -755,7 +756,7 @@
     sendAction("activate_mana_ability", params, card.controller);
   }
 
-  function confirmSacrifice(instanceID: string): void {
+  function confirmSacrifice(instanceIDs: string[]): void {
     const p = sacrificePrompt;
     sacrificePrompt = null;
     if (!p) return;
@@ -765,13 +766,13 @@
         {
           card_id: p.card.instance_id,
           ability_index: p.ability.index,
-          sacrifice_ids: [instanceID],
+          sacrifice_ids: instanceIDs,
         },
         viewerID ?? undefined,
       );
       return;
     }
-    askCounterCost(p.card, p.ability, [instanceID], []);
+    askCounterCost(p.card, p.ability, instanceIDs, []);
   }
 
   // continueActivation is the post-cost half: enter targeting for an
@@ -1006,6 +1007,7 @@
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
     options={sacrificeOptions}
+    count={sacrificeCount(sacrificePrompt?.ability.sacrifice_options)}
     onConfirm={confirmSacrifice}
     onCancel={() => (sacrificePrompt = null)}
   />
@@ -1059,6 +1061,7 @@
     source={sacrificePromptCard}
     label={sacrificePromptCard?.additional_cost?.label ?? "a permanent"}
     options={castSacrificeOptions}
+    count={sacrificeCount(sacrificePromptCard?.additional_cost?.sacrifice_options)}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;
