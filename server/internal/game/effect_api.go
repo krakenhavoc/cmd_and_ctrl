@@ -2029,6 +2029,7 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	card.EnteredBattlefieldAt = 0
 	card.SummonedThisTurn = false
 	card.NamedTribe = ""
+	card.ChosenColor = ""
 	card.effective = nil
 	g.Battlefield.PushTop(card)
 	g.markCardKnownInZoneLocked(g.Battlefield, newID)
@@ -2223,6 +2224,16 @@ func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEn
 	return moved.InstanceID, nil
 }
 
+// addManaReason is the prompt header for an effect's mana pick: the
+// ordinary "one mana of any color", or the "N mana of any one color"
+// form (#742) when the slot adds more than one.
+func addManaReason(slot ProducedManaEntry) string {
+	if slot.OneColorAmounts() {
+		return "Add mana of any one color"
+	}
+	return "Add one mana of any color"
+}
+
 // AddManaForEffect adds the mana a SPELL or a non-mana ability
 // produces to playerID's pool — Dark Ritual's "Add {B}{B}{B}", Mana
 // Drain's delayed "add an amount of {C}", Jeska's Will. Every other
@@ -2273,8 +2284,9 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 			FromPlayer:   playerID,
 			Count:        1,
 			Source:       source,
-			Reason:       "Add one mana of any color",
+			Reason:       addManaReason(slot),
 			ColorOptions: filterPipeByCommanderIdentity(options, p),
+			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})
 	}
 	return nil

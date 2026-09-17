@@ -37,6 +37,7 @@ const (
 	choiceEntryPayLife        = "entry_pay_life"
 	choiceConfirm             = "confirm"
 	choiceChooseCards         = "choose_cards"
+	choiceColor               = "choose_color"
 )
 
 // decideChoice takes the highest-valued answer. Ties go to the lowest
@@ -98,6 +99,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceMana:
 		need := colorSymbols(st.seatHand())
 		return 1 + 0.1*float64(need[cp.Color]), "add {" + cp.Color + "}"
+
+	case choiceColor:
+		// #742 "choose a color": the colour the bot's hand asks for
+		// most. A tie keeps the enumerator's order, which already
+		// ranks by the colours the bot has on the battlefield — so an
+		// empty hand still names the board's main colour for a
+		// Coldsteel Heart rather than white by default.
+		need := colorSymbols(st.seatHand())
+		return 1 + 0.1*float64(need[cp.Color]), "choose " + cp.Color
 
 	case choicePickTarget:
 		targets := cp.Targets

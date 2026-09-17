@@ -186,6 +186,22 @@
   // color}` (card_ids absent).
   const isManaPick = $derived(active?.kind === "mana_pick");
   const colorOptions = $derived<string[]>(active?.color_options ?? []);
+  // #742: "N mana of any one color" (Gilded Lotus) is one pick that
+  // adds several tokens of the picked colour; the amount can differ
+  // per colour (Nyx Lotus's devotion). A colour missing from the map
+  // adds one.
+  const colorAmounts = $derived<Record<string, number>>(active?.color_amounts ?? {});
+  const hasColorAmounts = $derived(Object.keys(colorAmounts).length > 0);
+  function amountFor(color: string): number {
+    return colorAmounts[color] ?? 1;
+  }
+
+  // #742 choose_color branch — "choose a color" (CR 105.4), either as
+  // a permanent enters (Coldsteel Heart; the answer is remembered) or
+  // while a spell resolves (Wash Out). Same buttons and the same
+  // `{choice_id, color}` answer as a mana pick; the server routes the
+  // two by kind.
+  const isColorChoice = $derived(active?.kind === "choose_color");
 
   const COLOR_META: Record<string, { label: string; fill: string }> = {
     W: { label: "White", fill: "#f4ead5" },
@@ -699,7 +715,38 @@
           {active.reason || "Pick a color"}
           <span class="prompt-src" aria-hidden="true">mana ability</span>
         </h2>
-        <p class="prompt-hint">Choose a color to add to your mana pool.</p>
+        <p class="prompt-hint">
+          {#if hasColorAmounts}
+            Choose one color. All of this mana is added in that color.
+          {:else}
+            Choose a color to add to your mana pool.
+          {/if}
+        </p>
+        <div class="color-row">
+          {#each colorOptions as color (color)}
+            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
+            {@const n = amountFor(color)}
+            <button
+              type="button"
+              class="color-pick"
+              style:--fill={meta.fill}
+              title={meta.label}
+              aria-label={n > 1 ? `add ${n} ${meta.label} mana` : `add ${meta.label} mana`}
+              onclick={() => pickColor(color)}
+            >
+              <span class="color-letter">{n > 1 ? `${n}×${color}` : color}</span>
+              <span class="color-name">{meta.label}</span>
+            </button>
+          {/each}
+        </div>
+      {:else if isColorChoice}
+        <h2 id="choice-title">
+          {active.reason || "Choose a color"}
+          <span class="prompt-src" aria-hidden="true">choose a color · CR 105.4</span>
+        </h2>
+        <p class="prompt-hint">
+          A permanent that asks as it enters remembers the color until it leaves the battlefield.
+        </p>
         <div class="color-row">
           {#each colorOptions as color (color)}
             {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
@@ -708,7 +755,7 @@
               class="color-pick"
               style:--fill={meta.fill}
               title={meta.label}
-              aria-label={`add ${meta.label} mana`}
+              aria-label={`choose ${meta.label}`}
               onclick={() => pickColor(color)}
             >
               <span class="color-letter">{color}</span>
