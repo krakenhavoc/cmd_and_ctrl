@@ -512,12 +512,16 @@ func TestB26HeapedHarvestFetchesOnEntryAndOnSacrifice(t *testing.T) {
 	if c == nil || len(c.SearchCards) != 1 {
 		t.Fatalf("the sacrifice search offers the remaining basic: %+v", c)
 	}
-	if me.Life != life+3 {
-		t.Errorf("life %d → %d, want +3", life, me.Life)
-	}
 	answerSearchFailToFind(t, g, me.ID)
 	if g.Battlefield.Contains(lib[1]) {
 		t.Error("a declined search fetches nothing")
+	}
+	// #730: the search trigger sits ABOVE the ability's life gain and
+	// the table does not move past an unanswered prompt, so the 3 life
+	// arrives only once the search has been answered.
+	passPriorityAroundTable(t, g)
+	if me.Life != life+3 {
+		t.Errorf("life %d → %d, want +3", life, me.Life)
 	}
 }
 
@@ -749,6 +753,42 @@ func TestB26ChampionOfThePerishedGrowsWithZombies(t *testing.T) {
 	}
 }
 
+// b26AnswerDamageAssignments answers every open CR 510.1c assignment
+// prompt by putting the attacker's whole power on its first declared
+// blocker, and returns how many it answered. Since #730 an unanswered
+// prompt gates the table, so a test that double-blocks and then passes
+// priority has to drain these.
+func b26AnswerDamageAssignments(t *testing.T, g *game.Game) int {
+	t.Helper()
+	n := 0
+	for i := 0; i < 16; i++ {
+		var c *game.PendingChoice
+		for _, p := range g.PendingChoices {
+			if p != nil && p.Kind == game.PendingChoiceDamageAssignment && p.DamageAssignment != nil {
+				c = p
+				break
+			}
+		}
+		if c == nil {
+			return n
+		}
+		entries := make([]game.DamageAssignmentEntry, 0, len(c.DamageAssignment.BlockerIDs))
+		for j, b := range c.DamageAssignment.BlockerIDs {
+			amount := 0
+			if j == 0 {
+				amount = c.DamageAssignment.AttackerPower
+			}
+			entries = append(entries, game.DamageAssignmentEntry{BlockerID: b, Amount: amount})
+		}
+		if err := g.ResolveDamageAssignment(c.ID, c.Chooser, entries, 0); err != nil {
+			t.Fatalf("ResolveDamageAssignment: %v", err)
+		}
+		n++
+	}
+	t.Fatal("damage-assignment prompts did not drain")
+	return n
+}
+
 func TestB26CybermanPatrolGivesArtifactCreaturesAfflictThree(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -777,6 +817,12 @@ func TestB26CybermanPatrolGivesArtifactCreaturesAfflictThree(t *testing.T) {
 	// stack only when the step advances — after combat damage has been
 	// dealt on entry to the damage step (see the card comment). The
 	// unblocked Patrol connects for 2, then the afflict resolves for 3.
+	passPriorityAroundTable(t, g)
+	// #730: the double-blocked Myr's CR 510.1c assignment prompt gates
+	// the table — combat no longer resolves around it.
+	if n := b26AnswerDamageAssignments(t, g); n != 1 {
+		t.Fatalf("answered %d damage assignments, want 1", n)
+	}
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-2-3 {
 		t.Errorf("2 combat damage and 3 afflict: %d → %d", life, opp.Life)

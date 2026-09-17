@@ -97,6 +97,38 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 			t.Fatalf("chose %q", got)
 		}
 	})
+
+	// #742: Nyx Lotus offers four {G} or one {U}. A hand full of blue
+	// symbols must not talk the bot into the smaller pick; with equal
+	// amounts the hand's need still decides.
+	t.Run("mana_pick takes the larger amount", func(t *testing.T) {
+		blue := spell(cardID(40), 0, "Blue Spell", "{U}{U}{U}")
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(blue)), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "mana_pick", Chooser: seatID(0).String(), Reason: "Nyx Lotus",
+				ColorOptions: []string{"U", "G"}, ColorAmounts: map[string]int{"U": 1, "G": 4},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "add {U}", map[string]any{"color": "U"}),
+			choiceMove(t, 0, choiceID, "add {G}{G}{G}{G}", map[string]any{"color": "G"}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "add {G}{G}{G}{G}" {
+			t.Fatalf("chose %q", got)
+		}
+
+		plain := newView([]protocol.PlayerView{newSeat(0, withHand(blue)), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "mana_pick", Chooser: seatID(0).String(), Reason: "Birds",
+				ColorOptions: []string{"G", "U"},
+			}))
+		in = input(0, plain,
+			choiceMove(t, 0, choiceID, "add {G}", map[string]any{"color": "G"}),
+			choiceMove(t, 0, choiceID, "add {U}", map[string]any{"color": "U"}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "add {U}" {
+			t.Fatalf("equal amounts: chose %q, want the colour the hand needs", got)
+		}
+	})
 }
 
 func TestCleanupDiscardPitchesTheWorstCard(t *testing.T) {

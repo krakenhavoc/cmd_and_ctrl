@@ -65,6 +65,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue Tentacle":                             {Name: "Tentacle", TypeLine: "Token Creature — Tentacle", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Thopter artifact with flying":         {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue and black Faerie with flying":         {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U", "B"}, Keywords: []string{"flying"}},
+	"1/1 blue and black Faerie Rogue with flying":   {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Colors: []string{"U", "B"}, Keywords: []string{"flying"}},
 	"1/1 blue and red Insect with flying and haste": {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"flying", "haste"}},
 	"1/1 colorless Ally":                            {Name: "Ally", TypeLine: "Token Creature — Ally", Power: 1, Toughness: 1},
 	"1/1 colorless Faerie Rogue with flying":        {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Keywords: []string{"flying"}},

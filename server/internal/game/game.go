@@ -201,10 +201,14 @@ type Game struct {
 	// cleanup auto-advance is blocked while this map is non-empty so
 	// the cursor pauses for player input. Added in S13.4.
 	//
-	// It is not cleanup-only: DiscardChoiceForEffect (Mind Rot,
-	// looting) adds to it too. That is a bug (#651). Outside cleanup
-	// nothing waits on the map, and entering cleanup resets it, so an
-	// effect discard still owed is lost.
+	// It IS cleanup-only (#651). Until then DiscardChoiceForEffect
+	// (Mind Rot, looting) wrote here too, and the two obligations do
+	// not have the same shape: nothing outside cleanup waits on this
+	// map, and populateDiscardPendingLocked RESETS it on cleanup
+	// entry, which erased any effect discard still owed. An effect's
+	// discard is part of the resolving effect (CR 608.2c) and is now
+	// a PendingChoice; this map is the CR 514.1 turn-based action and
+	// nothing else.
 	DiscardPending map[uuid.UUID]int
 
 	// Promises is the directed per-pair "I owe you" promise-token count
@@ -669,6 +673,13 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
+	}
+	// #730: an unanswered prompt gates the table. Checked before the
+	// cursor moves, so a choice queued by THIS advance's step-entry
+	// hooks (a CR 616 ordering pause, say) is not mistaken for one
+	// the table walked past. See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return g.Turn, choicePendingErrorLocked(c)
 	}
 	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()

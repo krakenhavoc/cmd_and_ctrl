@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cards of any kind — so the spell always asks for two. That is the
 // weaker half of the printed choice and never the stronger one: a
 // player with an artifact in hand may still discard it, and one
-// more card besides. It becomes whole the day the discard prompt
-// takes a validate clause, the way the search prompt does.
+// more card besides. #651 gave the discard prompt the set-level
+// Validate hook the search prompt has (DiscardPrompt.Validate), so
+// the branch is now expressible; offering it is card work this
+// engine fix deliberately left alone.
 func init() {
 	Register(Spec{
 		OracleID:     "939e6f71-185e-41f2-9d54-72cce06f1dce",
@@ -26,11 +28,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You always discard two cards — discarding a single artifact card instead isn't offered."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.DiscardChoiceForEffect(item.Controller, 2)
-			return nil
+			return b16DrawThenDiscard(ctx.Game, item, 3, 2)
 		},
 	})
 }

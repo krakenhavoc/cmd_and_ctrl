@@ -341,10 +341,11 @@ func TestInvasionOfInnistradBecomesDelugeOfTheDead(t *testing.T) {
 	}
 }
 
-// TestInvasionOfTarkirRevealsDragonsThenDamages walks the reveal
-// prompt: the ETB trigger's target is chosen at announce, only the
-// Dragon cards in hand are offered, and the damage is the number
-// revealed plus two.
+// TestInvasionOfTarkirRevealsDragonsThenDamages walks the printed
+// order (#636): only the Dragon cards in hand are offered, the
+// reflexive "when you do" then goes on the stack and picks its target
+// THERE (CR 603.3d) rather than when the entry trigger was announced,
+// and it deals the number revealed plus two.
 func TestInvasionOfTarkirRevealsDragonsThenDamages(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
@@ -373,8 +374,9 @@ func TestInvasionOfTarkirRevealsDragonsThenDamages(t *testing.T) {
 		t.Fatalf("move battle to battlefield: %v", err)
 	}
 	answerProtectorPrompt(t, g, owner.ID, protector.ID)
-	answerPickTargetPlayer(t, g, protector.ID)
 	before := protector.Life
+	// The entry trigger has no target clause of its own, so it
+	// resolves on its own and asks what to reveal.
 	passPriorityAroundTable(t, g)
 
 	choice := pendingChooseCards(t, g, owner.ID)
@@ -387,10 +389,52 @@ func TestInvasionOfTarkirRevealsDragonsThenDamages(t *testing.T) {
 	if err := g.ResolveChooseCards(choice.ID, owner.ID, choice.ChooseCards); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
+	// CR 603.3d: the reflexive trigger's target is chosen NOW, after
+	// the reveal, knowing X.
+	answerPickTargetPlayer(t, g, protector.ID)
+	// And it is its own stack item: the damage has not happened yet,
+	// so the table has a window to respond to it.
+	if triggerOnStack(g, id) == nil {
+		t.Error(`"when you do" should be a second trigger on the stack`)
+	}
+	if protector.Life != before {
+		t.Errorf("damage landed inside the entry trigger's resolution: life %d → %d", before, protector.Life)
+	}
 	passPriorityAroundTable(t, g)
 
 	if got := before - protector.Life; got != 4 {
 		t.Errorf("damage = %d, want 2 revealed plus 2", got)
+	}
+}
+
+// TestInvasionOfTarkirRevealingNothingStillDamages is the "(X can be
+// 0.)" parenthesis: an empty reveal still satisfies "when you do", so
+// the reflexive trigger happens with X = 0 and the damage floor is 2.
+func TestInvasionOfTarkirRevealingNothingStillDamages(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	owner := g.Seats[seat]
+	protector := g.Seats[(seat+1)%len(g.Seats)]
+
+	row := siegeRow(invasionOfTarkirOracleID, "Invasion of Tarkir", "Defiant Thundermaw",
+		"{1}{R}", "5", "Creature — Dragon", "4", "4")
+	id := importToHand(row, owner)
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneHand, Owner: owner.ID},
+		game.ZoneRef{Kind: game.ZoneBattlefield}, id,
+	); err != nil {
+		t.Fatalf("move battle to battlefield: %v", err)
+	}
+	answerProtectorPrompt(t, g, owner.ID, protector.ID)
+	before := protector.Life
+	// No Dragons in hand: no reveal prompt at all, straight to the
+	// reflexive trigger's target.
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, protector.ID)
+	passPriorityAroundTable(t, g)
+
+	if got := before - protector.Life; got != 2 {
+		t.Errorf("damage = %d, want the X=0 floor of 2", got)
 	}
 }
 

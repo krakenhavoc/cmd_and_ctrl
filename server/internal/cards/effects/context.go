@@ -133,6 +133,31 @@ func (c *Context) Targets() []game.TargetRef {
 	return c.Item.Targets
 }
 
+// Payload is what the effect that CREATED this item told it — only a
+// CR 603.12 reflexive trigger has one (see reflexive.go), and it is
+// empty for everything else. Unlike Targets it is never re-checked
+// against the board: it is a record of what happened, so an effect
+// that cares whether the card is still there asks.
+func (c *Context) Payload() []game.TargetRef {
+	if c.Item == nil {
+		return nil
+	}
+	return c.Item.Payload
+}
+
+// PayloadCards is Payload narrowed to its card refs, in the order the
+// creating effect listed them. The common read: "the creatures that
+// were tapped this way", "the cards revealed this way".
+func (c *Context) PayloadCards() []uuid.UUID {
+	var out []uuid.UUID
+	for _, ref := range c.Payload() {
+		if ref.Kind == game.TargetCard {
+			out = append(out, ref.ID)
+		}
+	}
+	return out
+}
+
 // PlayerByID is a read-through to the live game. Returns nil if
 // the player is not seated / has left.
 func (c *Context) PlayerByID(id uuid.UUID) *game.Player {

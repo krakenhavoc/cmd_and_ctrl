@@ -139,12 +139,24 @@ func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 // lootOne draws a card then queues the discard choice — "draw a
 // card, then discard a card" in the printed order, so the drawn card
 // is a legal discard exactly as it is in paper.
+//
+// The ORDER is the whole helper (#651). DrawCards resolves
+// synchronously and QueueDiscardChoiceForEffect only queues a prompt,
+// so the draw has to be the statement above: the prompt is built from
+// the post-draw hand, and nothing after it may assume the cards are
+// already in the graveyard. A card that reads the other way round
+// ("discard a card, then ...") puts its second half in
+// DiscardPrompt.Then instead.
 func lootOne(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
 		return err
 	}
-	g.DiscardChoiceForEffect(item.Controller, n)
+	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Controller,
+		Source: item.SourceCardID,
+		N:      n,
+	})
 	return nil
 }
 

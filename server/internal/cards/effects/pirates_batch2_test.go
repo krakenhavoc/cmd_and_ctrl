@@ -380,8 +380,8 @@ func TestPullFromTomorrowDrawsXThenQueuesADiscard(t *testing.T) {
 	if drawn := before - active.Library.Size(); drawn != 3 {
 		t.Errorf("drew %d, want X=3", drawn)
 	}
-	if g.DiscardPending[active.ID] != 1 {
-		t.Errorf("a discard of 1 should be pending, got %d", g.DiscardPending[active.ID])
+	if discardOwed(g, active.ID) != 1 {
+		t.Errorf("a discard of 1 should be pending, got %d", discardOwed(g, active.ID))
 	}
 }
 
@@ -413,8 +413,8 @@ func TestFranticSearchLootsAndUntapsThreeLands(t *testing.T) {
 	if untapped != 3 {
 		t.Errorf("untapped %d lands, want exactly 3 (up to three)", untapped)
 	}
-	if g.DiscardPending[active.ID] != 2 {
-		t.Errorf("loot should queue a 2-card discard, got %d", g.DiscardPending[active.ID])
+	if discardOwed(g, active.ID) != 2 {
+		t.Errorf("loot should queue a 2-card discard, got %d", discardOwed(g, active.ID))
 	}
 }
 

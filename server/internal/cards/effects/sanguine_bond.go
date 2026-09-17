@@ -12,8 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (combat lifelink, the damage-assignment resume and
 // ChangePlayerLifeForEffect all emit it) — and captures the amount
 // by value in Build, so a life total that changes again before the
-// trigger resolves does not change the drain. Life LOSS, not damage:
-// ChangePlayerLifeForEffect, so no prevention or doubling applies.
+// trigger resolves does not change the drain. The drain is life LOSS,
+// not damage, so damage prevention and damage doublers never see it —
+// but since #482 it does run the CR 614 life window, so a life-loss
+// replacement (Bloodletter of Aclazotz) would.
 //
 // With Exquisite Blood on the same side of the table the two
 // triggers feed each other until the targeted opponent is dead; each

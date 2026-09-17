@@ -145,6 +145,10 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaRestrictions) > 0 {
 				cloned.ManaRestrictions = append([]string(nil), c.ManaRestrictions...)
 			}
+			// #742: the per-colour amounts of a one-pick-N-mana
+			// choice. A map, so it needs its own copy for the same
+			// reason the slices do.
+			cloned.ManaAmounts = copyManaAmounts(c.ManaAmounts)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -425,6 +429,13 @@ func cloneStackItem(s *StackItem) *StackItem {
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
+	}
+	// A reflexive trigger's payload (#636): its own backing array for
+	// the same reason Targets gets one — an undo that shared it would
+	// let the restored game mutate the live one.
+	if len(s.Payload) > 0 {
+		out.Payload = make([]TargetRef, len(s.Payload))
+		copy(out.Payload, s.Payload)
 	}
 	if len(s.Modes) > 0 {
 		out.Modes = make([]int, len(s.Modes))

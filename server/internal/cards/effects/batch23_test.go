@@ -599,6 +599,9 @@ func TestB23DiscipleOfTheVaultDrainsPerArtifactDeath(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, treasure, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("crack the Treasure: %v", err)
 	}
+	// #730: the colour pick gates the table. Answer it so the death
+	// trigger the sacrifice also queued can be passed around.
+	riderAnswerManaPicks(t, g, me.ID, "B")
 	if !b19HasTriggerPromptFor(g, me.ID) {
 		t.Fatal("a Treasure sacrificed for mana is an artifact put into a graveyard")
 	}
