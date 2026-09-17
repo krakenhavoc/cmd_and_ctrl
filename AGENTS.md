@@ -1480,6 +1480,28 @@ engine's one declared exception and lives in
 `destroyedThisWayLocked`. See
 [ADR 0013 §5i](docs/decisions/0013-replacement-effects.md).
 
+**"For each X exiled / returned this way" is a continuation too, and
+"this way" means ARRIVED (#866).** `ExileAllMatching`, `BounceAllMatching`
+and `ReturnAllToHand` behave exactly like `DestroyAllMatching`: give one
+a `Then` and it runs from the sweep's continuation
+(`g.ExileCardsThenForEffect` / `g.BounceCardsToHandThenForEffect`) with
+the cards that actually reached the destination. CR 400.7 decides that
+— a commander that took CR 903.9's offer went to the command zone, not
+to exile or a hand, so it is not in the list. (Destroy is the one verb
+that DOES count the command zone, and §5i says why.) The fire-and-forget
+`g.ExileCardsForEffect(ids)` / `g.BounceCardsToHandForEffect(ids)` keep
+their `int` for a sweep nothing is waiting on. See
+[ADR 0013 §5k](docs/decisions/0013-replacement-effects.md).
+
+**A `Then` clause runs even when the prompt is never answered (#865).**
+A paused exit whose prompt is taken away — its chooser conceded, or the
+card left by another route while the question was open — reaches the
+same continuation through `abandonZoneRouteLocked`, with nothing moved
+and the leg counted as nothing. So write the clause to handle an empty
+list; it will always run exactly once, and "the batch stalled" is not
+one of the things that can happen to it. See
+[ADR 0013 §5j](docs/decisions/0013-replacement-effects.md).
+
 **And EVERY battlefield exit clears it, not just a destruction
 (#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup
 (`clearBattlefieldDamage`, permanent_damage.go), so a creature that is

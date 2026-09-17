@@ -28,7 +28,11 @@ import (
 //
 //  3. THE COUNT. "For each creature destroyed this way" (Fumigate,
 //     Deadly Tempest, Bane of Progress) needs to know how many
-//     actually left, which a fire-and-forget loop never had.
+//     actually left, which a fire-and-forget loop never had. #866
+//     extended that to exile and bounce: a verb with a `Then` runs it
+//     from the sweep's continuation and is handed what LANDED, so
+//     "for each card exiled this way" cannot be paid for a commander
+//     that went to the command zone instead (CR 400.7).
 //
 // The predicate is the whole vocabulary. "Destroy all creatures" is
 // Match: Creature(); "destroy all creatures you don't control" is
@@ -64,8 +68,12 @@ type massEffect struct {
 	// moveThen is move for a verb that owes its `then` a CONTINUATION
 	// rather than a return value, because a leg of the batch can pause
 	// on a player prompt and the number is not knowable until it is
-	// answered. It reports the cards that actually moved, not just how
-	// many, so `swept` can be narrowed to them (#815).
+	// answered. It reports the cards that actually LANDED, not just how
+	// many, so `swept` can be narrowed to them (#815, #866).
+	//
+	// Every verb whose `then` is set uses this form; the fire-and-
+	// forget `move` is what a verb with nothing waiting on the count
+	// keeps.
 	//
 	// Exactly one of move / moveThen is set.
 	moveThen func(g *game.Game, ids []uuid.UUID, then func(g *game.Game, moved []uuid.UUID) error) error
@@ -232,15 +240,35 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 // one that doesn't.
 type ExileAllMatching struct {
 	Match CardPredicate
-	Then  func(ctx *Context, swept []game.Card, exiled int) error
+
+	// Then is the "for each card exiled this way" clause. `swept` holds
+	// the pre-move copies of the cards that actually reached EXILE and
+	// `exiled` is how many of them there were, so the two always
+	// describe the same set. Optional.
+	//
+	// #866: it runs from a CONTINUATION, exactly as
+	// DestroyAllMatching's does — a commander caught in the sweep stops
+	// to answer CR 903.9, and the number is not knowable until it does.
+	// A commander that TAKES the offer is not in it: it went to the
+	// command zone, not to exile, and CR 400.7 says the object that
+	// arrived is the one that was exiled this way.
+	Then func(ctx *Context, swept []game.Card, exiled int) error
 }
 
 func (e ExileAllMatching) Apply(ctx *Context) error {
-	return massEffect{
-		match: e.Match,
-		move:  func(g *game.Game, ids []uuid.UUID) int { return g.ExileCardsForEffect(ids) },
-		then:  e.Then,
-	}.apply(ctx)
+	m := massEffect{match: e.Match, then: e.Then}
+	if e.Then == nil {
+		// Nothing is waiting on the count, so the sweep stays
+		// fire-and-forget: every leg is exiled on this line, and a
+		// commander's CR 903.9 prompt lands its own card later without
+		// holding the rest of the board up.
+		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.ExileCardsForEffect(ids) }
+	} else {
+		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
+			return g.ExileCardsThenForEffect(ids, then)
+		}
+	}
+	return m.apply(ctx)
 }
 
 // BounceAllMatching is "return all <predicate> to their owners'
@@ -253,15 +281,23 @@ func (e ExileAllMatching) Apply(ctx *Context) error {
 // than Wrath of God does.
 type BounceAllMatching struct {
 	Match CardPredicate
-	Then  func(ctx *Context, swept []game.Card, bounced int) error
+
+	// Then is the "for each permanent returned this way" clause, with
+	// the same continuation shape and the same CR 400.7 reading as
+	// ExileAllMatching's. Optional.
+	Then func(ctx *Context, swept []game.Card, bounced int) error
 }
 
 func (b BounceAllMatching) Apply(ctx *Context) error {
-	return massEffect{
-		match: b.Match,
-		move:  func(g *game.Game, ids []uuid.UUID) int { return g.BounceCardsToHandForEffect(ids) },
-		then:  b.Then,
-	}.apply(ctx)
+	m := massEffect{match: b.Match, then: b.Then}
+	if b.Then == nil {
+		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.BounceCardsToHandForEffect(ids) }
+	} else {
+		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
+			return g.BounceCardsToHandThenForEffect(ids, then)
+		}
+	}
+	return m.apply(ctx)
 }
 
 // ReturnAllToHand is BounceAllMatching's explicit-set sibling: return
@@ -278,15 +314,23 @@ type ReturnAllToHand struct {
 	// processed. IDs that are not on the battlefield are skipped.
 	Cards []uuid.UUID
 
+	// Then is the "for each permanent returned this way" clause, run
+	// from the bounce's continuation for the reason
+	// BounceAllMatching.Then is (#866). Optional.
 	Then func(ctx *Context, bounced int) error
 }
 
 func (r ReturnAllToHand) Apply(ctx *Context) error {
-	bounced := ctx.Game.BounceCardsToHandForEffect(r.Cards)
 	if r.Then == nil {
+		ctx.Game.BounceCardsToHandForEffect(r.Cards)
 		return nil
 	}
-	return r.Then(ctx, bounced)
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains.
+	item := ctx.Item
+	return ctx.Game.BounceCardsToHandThenForEffect(r.Cards, func(g *game.Game, bounced []uuid.UUID) error {
+		return r.Then(NewContext(g, item), len(bounced))
+	})
 }
 
 // --- helpers the mass cards share --------------------------------

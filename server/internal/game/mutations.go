@@ -2676,9 +2676,11 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 // finishDroppedReplacementLocked settles a paused replacement event
 // whose prompt was dropped because its chooser left the game.
 //
-// Before #808 the frame was simply discarded. For most event kinds
-// that is still all there is to do, and the only cleanup owed is the
-// event's CR 614.5 once-per-event entry, which nothing will clear now.
+// Before #808 the frame was simply discarded. For an event kind that
+// carries no continuation that is still all there is to do, and the
+// only cleanup owed is the event's CR 614.5 once-per-event entry,
+// which nothing will clear now.
+//
 // A LIFE or DAMAGE event is different: it carries its caller's
 // continuation (lifeTail / damageTail.then), and "each opponent loses 3
 // life, you gain life equal to the life lost this way" is sequenced
@@ -2686,6 +2688,13 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 // silently dropped every later opponent's loss and the caster's gain.
 // Every terminal outcome of those events has to reach the tail; this is
 // the one leaving the game adds.
+//
+// #865: so does a MOVE, for the same reason and with the same
+// consequence — a multi-card discard and a sequenced wipe both carry
+// the rest of the batch on zoneRoute.then. That one is
+// abandonZoneRouteLocked (zone_route.go), the exit's terminal outcome
+// for a prompt taken away rather than answered, shared with the two
+// prune paths.
 //
 // Two cases, split on whose event it was:
 //
@@ -2710,14 +2719,19 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 // prompt from g.PendingChoices.
 func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacementResumeFrame) {
 	ev := frame.ev
-	if ev.Kind != RepEventLife && ev.Kind != RepEventDamage {
-		g.clearReplacementEventLocked(ev.ID)
-		return
-	}
 	logErr := func(what string, err error) {
 		if err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: what + ": " + err.Error()})
 		}
+	}
+	if ev.Kind != RepEventLife && ev.Kind != RepEventDamage {
+		// #865: an EXIT carries its caller's continuation too, and a
+		// discard or a wipe sequenced through it stalls when the frame
+		// is discarded. abandonZoneRouteLocked is that event kind's
+		// terminal outcome, and clears the CR 614.5 entry for every
+		// other kind on its way past.
+		logErr("route continuation failed", g.abandonZoneRouteLocked(frame))
+		return
 	}
 	runTail := func(amount int) {
 		if ev.Kind == RepEventLife {

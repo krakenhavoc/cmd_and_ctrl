@@ -18,6 +18,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "may" honoured so they can decline the whole thing, and the lands
 // enter tapped through the search's own tapped clause.
 //
+// "That many" is the number of creatures that actually reached EXILE
+// (#866). An attacking commander whose owner takes CR 903.9's offer
+// went to the command zone rather than to exile, so it buys no land —
+// and because that offer is a prompt, the search now waits for the
+// answer rather than running with the commander counted on the
+// strength of the question having been asked.
+//
 // No simplification.
 func init() {
 	Register(Spec{
