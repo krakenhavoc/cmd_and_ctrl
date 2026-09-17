@@ -914,15 +914,22 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"shroud"` | Shroud (CR 702.18) — #353, targeting gate |
 | `"indestructible"` | Indestructible (CR 702.12) — S25, destruction path |
 | `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
+| `"plainswalk"`, `"islandwalk"`, `"swampwalk"`, `"mountainwalk"`, `"forestwalk"` | Landwalk (CR 702.14) — #705, block legality |
+| `"nonbasic landwalk"` | Nonbasic landwalk (CR 702.14c) — #705, block legality |
 
-The last four are not combat keywords, but they ride the same
-`PrintedKeywords` slot and the same `HasKeyword` reader. Their
+Hexproof, shroud, indestructible and changeling are not combat
+keywords, but they ride the same `PrintedKeywords` slot and the same
+`HasKeyword` reader. Their
 consumers are `CanBeTargetedBy` (hexproof, shroud),
 `DestroyPermanentForEffect` + the damage-driven creature SBAs
 (indestructible — see `server/internal/game/indestructible.go` for
 what it deliberately does *not* stop) and `HasAllCreatureTypes` in
 `creature_types.go` (changeling — see "Adding a creature-type card"
-below).
+below). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
+(`game/block_legality.go`, `game/landwalk.go`) against the defending
+player's lands, by effective characteristics on both sides; the rarer
+variants (snow swampwalk, legendary landwalk, desertwalk) join the
+table with their first card.
 
 The table is closed on purpose: **a keyword joins it in the same
 change that teaches the engine to honour it.** Declaring a token the
@@ -944,12 +951,11 @@ Angel, both Swords and Animar do.
 **Layer-granted keywords still use `Spec.Static`.** Lord of Atlantis
 grants `"islandwalk"` to *other* Merfolk via a Layer 6
 `StaticAbility` (`TribalKeywordGrant` in `tribal.go`) — that pattern
-stays. The grant itself is a known exception to the closed table:
-islandwalk is not a canonical token and nothing enforces it until
-landwalk lands (#705), which the card declares in `Caveats`. Grant an
-enforced keyword the same way: Stromkirk Captain grants
-`"first strike"` to the other Vampires you control with the same
-builder. `PrintedKeywords` is only for the card's own printed
+stays, and since #705 the grant is enforced like any other keyword.
+Stromkirk Captain grants `"first strike"` to the other Vampires you
+control with the same builder, and Trailblazer's Boots grants
+`"nonbasic landwalk"` to its equipped creature with
+`GrantToAttached`. `PrintedKeywords` is only for the card's own printed
 keywords.
 
 **Tests** — assert `Effective().Abilities` contains the keyword
@@ -990,7 +996,8 @@ The activation pair is split because Faith's Fetters says "unless
 they're mana abilities" and Arrest does not.
 
 **The engine reads them; you do not.** Declarations go through
-`game.AttackerEligible` and `game.CanBlock`, activations through
+`game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
+`Game.BlockPairRefusalLocked`, which also says why), activations through
 `game.CanActivateAbilities` / `CanActivateManaAbilities`, and
 `internal/legal` calls the same functions — that shared predicate is
 the whole reason a bot is never offered a move the engine refuses

@@ -202,40 +202,44 @@ func TestHasSummoningSicknessIsCreaturesOnly(t *testing.T) {
 	}
 }
 
+// TestCanBlock is the pre-#705 CanBlock(attacker, blocker) table, run
+// through its replacement. Every answer is unchanged (ADR 0045
+// addendum test plan item 1: pair function parity), and each refusal
+// now names its reason.
 func TestCanBlock(t *testing.T) {
+	g := newActiveGame(t)
 	flier := cardWithAbilities("flying")
 	vanilla := cardWithAbilities()
 	reach := cardWithAbilities("reach")
 	doubleFlying := cardWithAbilities("flying")
 
-	// Flier can be blocked by flier or reach, not by vanilla.
-	if !CanBlock(flier, doubleFlying) {
-		t.Error("flying should be able to block flying")
-	}
-	if !CanBlock(flier, reach) {
-		t.Error("reach should be able to block flying")
-	}
-	if CanBlock(flier, vanilla) {
-		t.Error("vanilla should NOT be able to block flying")
-	}
-
-	// Non-flier can be blocked by anything.
-	if !CanBlock(vanilla, vanilla) {
-		t.Error("vanilla should block vanilla")
-	}
-	if !CanBlock(vanilla, flier) {
-		t.Error("flier should block vanilla")
-	}
-	if !CanBlock(vanilla, reach) {
-		t.Error("reach should block vanilla")
-	}
-
-	// Nil guards.
-	if CanBlock(nil, vanilla) {
-		t.Error("nil attacker must return false")
-	}
-	if CanBlock(flier, nil) {
-		t.Error("nil blocker must return false")
+	for _, tc := range []struct {
+		name              string
+		attacker, blocker *Card
+		want              BlockReason
+	}{
+		// Flier can be blocked by flier or reach, not by vanilla.
+		{"flying blocks flying", flier, doubleFlying, ""},
+		{"reach blocks flying", flier, reach, ""},
+		{"vanilla can't block flying", flier, vanilla, BlockReasonFlying},
+		// Non-flier can be blocked by anything.
+		{"vanilla blocks vanilla", vanilla, vanilla, ""},
+		{"flier blocks vanilla", vanilla, flier, ""},
+		{"reach blocks vanilla", vanilla, reach, ""},
+		// Nil guards.
+		{"nil attacker", nil, vanilla, BlockReasonCantBeBlocked},
+		{"nil blocker", flier, nil, BlockReasonCantBlock},
+	} {
+		r := g.BlockPairRefusalLocked(tc.attacker, tc.blocker)
+		if r.Reason != tc.want {
+			t.Errorf("%s: reason = %q, want %q", tc.name, r.Reason, tc.want)
+		}
+		if got, want := g.CanBlockLocked(tc.attacker, tc.blocker), tc.want == ""; got != want {
+			t.Errorf("%s: CanBlockLocked = %v, want %v", tc.name, got, want)
+		}
+		if (r == BlockOK) != r.Legal() {
+			t.Errorf("%s: BlockOK and Legal() disagree for %+v", tc.name, r)
+		}
 	}
 }
 

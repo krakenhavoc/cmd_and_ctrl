@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -143,7 +144,7 @@ func TestCantBlockIsRefusedAtDeclaration(t *testing.T) {
 	}
 	advanceIntoStep(t, g, StepDeclareBlockers)
 
-	if err := g.DeclareBlocker(feeder, attacker); err != ErrIllegalBlock {
+	if err := g.DeclareBlocker(feeder, attacker); !errors.Is(err, ErrIllegalBlock) {
 		t.Errorf("DeclareBlocker with a can't-block creature = %v, want ErrIllegalBlock", err)
 	}
 	if err := g.DeclareBlocker(wall, attacker); err != nil {
@@ -172,7 +173,7 @@ func TestCantBeBlockedIsRefusedAtDeclaration(t *testing.T) {
 	}
 	advanceIntoStep(t, g, StepDeclareBlockers)
 
-	if err := g.DeclareBlocker(wall, cloaked); err != ErrIllegalBlock {
+	if err := g.DeclareBlocker(wall, cloaked); !errors.Is(err, ErrIllegalBlock) {
 		t.Errorf("blocking an unblockable attacker = %v, want ErrIllegalBlock", err)
 	}
 	if err := g.DeclareBlocker(wall, plain); err != nil {

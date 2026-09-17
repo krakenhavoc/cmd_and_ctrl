@@ -4353,9 +4353,10 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 // creature.
 //
 // Returns ErrWrongStep outside the declare_blockers step,
-// ErrNotACreature for a non-creature blocker, and ErrCardNotFound
-// when either card is missing from the battlefield. Idempotent on
-// the same pair.
+// ErrNotACreature for a non-creature blocker, ErrCardNotFound
+// when either card is missing from the battlefield, and a
+// *BlockRefusedError (which wraps ErrIllegalBlock) for a pair
+// BlockPairRefusalLocked refuses. Idempotent on the same pair.
 //
 // The attacker need not currently have AttackingTarget set — the
 // sandbox accepts pre-emptive blocker declarations.
@@ -4369,8 +4370,9 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 		return ErrWrongStep
 	}
 	// Layers must be fresh so HasKeyword reads the current effective
-	// characteristic (flying granted by an anthem this turn has to
-	// be visible to CanBlock below).
+	// characteristic (flying granted by an anthem this turn, or a
+	// land Urborg made a Swamp, has to be visible to
+	// BlockPairRefusalLocked below).
 	g.RecomputeLayersIfStaleLocked()
 	// Verify the attacker exists on the battlefield. Without this the
 	// blocker would silently point at a non-existent attacker ID.
@@ -4390,13 +4392,14 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 			if !blocker.IsCreature() {
 				return ErrNotACreature
 			}
-			// CR 509.1b: evasion keywords (flying, menace, fear,
-			// shadow, …) restrict which creatures can be declared
-			// as blockers. CanBlock is the single helper that
-			// consolidates all current S18 evasion rules; future
-			// keywords (protection, #662) land there.
-			if !CanBlock(attacker, blocker) {
-				return ErrIllegalBlock
+			// CR 509.1b: restrictions and evasion keywords (flying,
+			// landwalk) restrict which creatures can be declared as
+			// blockers. BlockPairRefusalLocked is the single pair
+			// check the enumerator and the #328 signal also read;
+			// protection (#662) and block rules (#750) land there.
+			// Menace is a block COUNT and is not checked here.
+			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
+				return g.blockRefusedErrorLocked(attacker, blocker, r)
 			}
 			// S31 sub-PR 0: announce the declaration for the public
 			// game log, but only when the pairing is NEW. The sandbox
