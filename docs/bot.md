@@ -9,7 +9,10 @@ line and one undo entry, the same as yours.
 This page is the player-facing guide: how to add one, what the tiers
 and decks are, and what a bot will and will not do. The architecture,
 and the reasoning behind every decision below, is in
-[ADR 0033 — AI bot seat](decisions/0033-ai-bot-seat.md). The HTTP
+[ADR 0033 — AI bot seat](decisions/0033-ai-bot-seat.md); the eval loop
+and decision harness that measure and tune the model tiers — decision
+logs, the position suite and the bot-vs-bot arena — are in
+[ADR 0052](decisions/0052-bot-decision-harness-and-eval.md). The HTTP
 surface is specified in [docs/lobby.md](lobby.md); the chat and view
 fields are in [docs/protocol.md](protocol.md).
 
