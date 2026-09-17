@@ -71,14 +71,37 @@ func (g *Game) newHarvestPassLocked(ev Event) harvestPass {
 		}
 		return p
 	}
-	needsCardSubject := ev.Kind == EventETB || ev.Kind == EventTokenCreated || ev.Kind == EventAttack || ev.Kind == EventCast || (ev.Kind == EventZoneMove && ev.NewZone == ZoneBattlefield)
+	entering := ev.Kind == EventETB || ev.Kind == EventTokenCreated || (ev.Kind == EventZoneMove && ev.NewZone == ZoneBattlefield)
+	needsCardSubject := entering || ev.Kind == EventAttack || ev.Kind == EventCast
 	if needsCardSubject && ev.CardID != uuid.Nil {
+		if entering && g.hasTriggerDoublerLocked() {
+			// Entry invalidates the layer cache before the harvester runs.
+			// Capture the entering permanent with continuous effects applied:
+			// Mycosynth Lattice makes even a Forest enter as an artifact.
+			// Exit events above keep their pre-move characteristics instead.
+			g.RecomputeLayersIfStaleLocked()
+		}
 		if c := g.findCardByIDLocked(ev.CardID); c != nil {
 			p.subject, p.subjectLKI, p.hasSubject = c.InstanceID, c.Effective(), true
 			return p
 		}
 	}
 	return p
+}
+
+// Only materialize entry characteristics when a catalog doubler can use them.
+// Read the printed slot even for a currently silenced permanent: entry can
+// change continuous effects, so the stale cache cannot decide ability removal.
+func (g *Game) hasTriggerDoublerLocked() bool {
+	if g.Battlefield == nil || CatalogTriggerDoublers == nil {
+		return false
+	}
+	for _, c := range g.Battlefield.Cards {
+		if key := CatalogKey(c); key != "" && len(CatalogTriggerDoublers(key)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func isBattlefieldExitEvent(ev Event) bool {

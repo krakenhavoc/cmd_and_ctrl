@@ -8,6 +8,22 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+func TestPanharmoniconUsesEnteringTypesUnderMycosynthLattice(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Panharmonicon", "Artifact", "76678885-3674-443d-b9a2-2a460cf6aac0", false)
+	pushCatalogPermanent(g, me.ID, "Mycosynth Lattice", "Artifact", "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805", false)
+	pushCatalogPermanent(g, me.ID, "Ruin Crab", "Creature — Crab", "8afc00d4-a1c6-4329-af2c-a7f58a0c33e7", false)
+	before := opp.Library.Size()
+	// Use the ordinary land-play path. Lattice makes the Forest enter as
+	// an artifact, so Panharmonicon doubles the Crab's landfall trigger.
+	castCatalogSpell(t, g, "Forest", "Basic Land — Forest", "", nil)
+	passPriorityAroundTable(t, g)
+	if got := before - opp.Library.Size(); got != 6 {
+		t.Fatalf("artifact landfall milled %d cards, want 6", got)
+	}
+}
+
 // A linked return sees the cards exiled by BOTH independently targeted
 // instances. A per-source single-card slot would lose the first one.
 func TestDoubledAngelOfSerenityReturnsEveryLinkedCard(t *testing.T) {
