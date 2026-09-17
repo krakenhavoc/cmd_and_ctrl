@@ -327,10 +327,17 @@ func couldBlock(st *state, defender string, atk, blk *protocol.CardView) bool {
 	if hasKeyword(atk, "horsemanship") && !hasKeyword(blk, "horsemanship") {
 		return false
 	}
-	if hasKeyword(atk, "skulk") && blk.Power > atk.Power {
+	if hasKeyword(atk, "skulk") && powerForComparison(blk) > powerForComparison(atk) {
 		return false
 	}
 	return true
+}
+
+func powerForComparison(c *protocol.CardView) int {
+	if c.NegativePower < 0 {
+		return c.NegativePower
+	}
+	return c.Power
 }
 
 // hasRestriction reads the server-projected restriction set. Restrictions

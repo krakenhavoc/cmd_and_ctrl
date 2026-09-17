@@ -172,7 +172,7 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	if HasKeyword(attacker, "horsemanship") && !HasKeyword(blocker, "horsemanship") {
 		return BlockRefusal{Reason: BlockReasonHorsemanship, Source: attacker.InstanceID}
 	}
-	if HasKeyword(attacker, "skulk") && blocker.CurrentPower() > attacker.CurrentPower() {
+	if HasKeyword(attacker, "skulk") && blocker.PowerForComparison() > attacker.PowerForComparison() {
 		return BlockRefusal{Reason: BlockReasonSkulk, Source: attacker.InstanceID}
 	}
 

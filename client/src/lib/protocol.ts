@@ -1092,6 +1092,9 @@ export interface CardView {
   // Effective colors (W/U/B/R/G), including layer-5 changes. Omitted
   // means colorless; clients must never infer colors from mana_cost.
   colors?: string[];
+  // Signed power when below zero, for comparisons such as skulk.
+  // Otherwise use power, which retains its combat-damage zero clamp.
+  negative_power?: number;
   // Parsed printed creature stats. Omitted (zero) for non-creatures
   // and for cards with non-numeric printed stats. S08.
   power?: number;

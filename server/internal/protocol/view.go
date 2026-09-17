@@ -709,11 +709,14 @@ type CardView struct {
 	// creature rows; ResolveCombatDamage uses CurrentPower (base +
 	// counter modifiers) on the server side. Both omitempty for
 	// non-creatures. Added in S08.
-	Power       int            `json:"power,omitempty"`
-	Toughness   int            `json:"toughness,omitempty"`
-	Tapped      bool           `json:"tapped,omitempty"`
-	Counters    map[string]int `json:"counters,omitempty"`
-	IsCommander bool           `json:"is_commander,omitempty"`
+	Power int `json:"power,omitempty"`
+	// NegativePower preserves signed power for comparisons such as skulk.
+	// Present only below zero; Power retains its combat-damage zero clamp.
+	NegativePower int            `json:"negative_power,omitempty"`
+	Toughness     int            `json:"toughness,omitempty"`
+	Tapped        bool           `json:"tapped,omitempty"`
+	Counters      map[string]int `json:"counters,omitempty"`
+	IsCommander   bool           `json:"is_commander,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -2572,6 +2575,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Colors = nil
 	out.ScryfallID = ""
 	out.Power = 0
+	out.NegativePower = 0
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
@@ -2724,11 +2728,12 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:       c.CurrentPower(),
-		Toughness:   c.CurrentToughness(),
-		Tapped:      c.Tapped,
-		Counters:    counters,
-		IsCommander: c.IsCommander,
+		Power:         c.CurrentPower(),
+		NegativePower: min(0, c.PowerForComparison()),
+		Toughness:     c.CurrentToughness(),
+		Tapped:        c.Tapped,
+		Counters:      counters,
+		IsCommander:   c.IsCommander,
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

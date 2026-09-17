@@ -8,6 +8,19 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+func TestCardViewPreservesNegativePowerForComparisons(t *testing.T) {
+	for _, power := range []int{-2, 0, 2} {
+		c := game.Card{InstanceID: uuid.New(), Power: power + 1, Toughness: 4, Counters: map[string]int{"-1/-1": 1}}
+		view := viewOfCard(c)
+		if view.Power != max(0, power) || view.NegativePower != min(0, power) {
+			t.Errorf("signed power %d projected as power=%d negative_power=%d", power, view.Power, view.NegativePower)
+		}
+		if got := redactCardForViewer(view, false).NegativePower; got != 0 {
+			t.Errorf("unknown card leaked negative_power=%d", got)
+		}
+	}
+}
+
 func TestCardViewColorsFollowLayersIncludingBecomingColorless(t *testing.T) {
 	g := buildActiveGame(t)
 	owner := g.Seats[0].ID

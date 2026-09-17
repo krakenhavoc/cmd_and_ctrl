@@ -45,6 +45,9 @@ func TestEvasionKeywordsBlockPairTable(t *testing.T) {
 		{"horsemanship matches horsemanship", evasionFixture("Horse", 2, nil, false, "horsemanship"), evasionFixture("Horse", 2, nil, false, "horsemanship"), "", false},
 		{"skulk refuses greater power", evasionFixture("Skulk", 2, nil, false, "skulk"), evasionFixture("Big", 3, nil, false), BlockReasonSkulk, false},
 		{"skulk allows equal power", evasionFixture("Skulk", 2, nil, false, "skulk"), evasionFixture("Equal", 2, nil, false), "", false},
+		{"skulk refuses zero power against negative power", evasionFixture("Skulk", -1, nil, false, "skulk"), evasionFixture("Zero", 0, nil, false), BlockReasonSkulk, false},
+		{"skulk refuses greater negative power", evasionFixture("Skulk", -2, nil, false, "skulk"), evasionFixture("Negative", -1, nil, false), BlockReasonSkulk, false},
+		{"skulk allows equal negative power", evasionFixture("Skulk", -1, nil, false, "skulk"), evasionFixture("Equal", -1, nil, false), "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := g.BlockPairRefusalLocked(tc.attacker, tc.blocker)
@@ -72,6 +75,22 @@ func TestEvasionKeywordsAreCanonical(t *testing.T) {
 		if got, ok := CanonicalKeyword(" " + keyword + " "); !ok || got != keyword {
 			t.Errorf("CanonicalKeyword(%q) = (%q, %v)", keyword, got, ok)
 		}
+	}
+}
+
+func TestSkulkComparesNegativePowerIncludingCounters(t *testing.T) {
+	g := newActiveGame(t)
+	attacker := evasionFixture("Skulk", 1, nil, false, "skulk")
+	attacker.Counters = map[string]int{"-1/-1": 3, "+1/+1": 1}
+	blocker := evasionFixture("Zero", 0, nil, false)
+	if got := attacker.PowerForComparison(); got != -1 {
+		t.Fatalf("power with counters = %d, want -1", got)
+	}
+	if got := attacker.CurrentPower(); got != 0 {
+		t.Fatalf("combat damage power = %d, want 0", got)
+	}
+	if got := g.BlockPairRefusalLocked(attacker, blocker).Reason; got != BlockReasonSkulk {
+		t.Fatalf("negative-power skulk refusal = %q, want skulk", got)
 	}
 }
 

@@ -605,13 +605,20 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 // Effective() reflects the new state. Combat damage and the SBA
 // loop both do this at their top.
 func (c Card) CurrentPower() int {
+	p := c.PowerForComparison()
+	if p < 0 {
+		return 0
+	}
+	return p
+}
+
+// PowerForComparison includes layers and counters without clamping negative
+// values. Skulk compares actual power; CurrentPower clamps damage to zero.
+func (c Card) PowerForComparison() int {
 	p := c.Effective().Power
 	if c.Counters != nil {
 		p += c.Counters["+1/+1"]
 		p -= c.Counters["-1/-1"]
-	}
-	if p < 0 {
-		return 0
 	}
 	return p
 }

@@ -111,6 +111,24 @@ func TestCouldBlockEvasion(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "skulk rejects zero power against negative power",
+			atk:  &protocol.CardView{TypeLine: "Creature", Abilities: []string{"skulk"}, NegativePower: -1},
+			blk:  card(nil, nil, "Creature", 0),
+			want: false,
+		},
+		{
+			name: "skulk rejects greater negative power",
+			atk:  &protocol.CardView{TypeLine: "Creature", Abilities: []string{"skulk"}, NegativePower: -2},
+			blk:  &protocol.CardView{TypeLine: "Creature", NegativePower: -1},
+			want: false,
+		},
+		{
+			name: "skulk allows equal negative power",
+			atk:  &protocol.CardView{TypeLine: "Creature", Abilities: []string{"skulk"}, NegativePower: -1},
+			blk:  &protocol.CardView{TypeLine: "Creature", NegativePower: -1},
+			want: true,
+		},
+		{
 			name: "cant block is a restriction rather than an ability string",
 			atk:  card(nil, nil, "Creature", 2),
 			blk:  &protocol.CardView{TypeLine: "Creature", Power: 2, Restrictions: []string{"cant_block"}},
