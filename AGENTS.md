@@ -1280,6 +1280,45 @@ Two other things the engine handles so a card never has to:
   queues no prompt, and `Then` still runs — the instruction after
   "then" isn't conditional on there having been cards to look at.
 
+**Life changes: "that much life" comes from a continuation, never from
+a read-back (#793).** A life change runs the CR 614 window (#482), so
+it can pause on a CR 616 ordering prompt exactly the way damage can
+(`life_tail.go` is `damage_tail.go`'s sibling; both land a settled event
+in one place that the paused path and the unpaused path share). Reading
+`p.Life` on the line after changing it therefore reads a total that has
+not moved yet, and the card silently drains for nothing. Same lesson as
+`Scry`'s `Then`, same shape:
+
+```go
+// "Target opponent loses X life. You gain life equal to the life lost this way."
+g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
+    return g.ChangePlayerLifeForEffect(src, me, -applied)  // applied is negative
+})
+
+// "EACH opponent loses X life. You gain life equal to the life lost this way."
+g.LoseLifeEachThenForEffect(src, ctx.Opponents(), x, func(g *game.Game, lost int) error {
+    return g.ChangePlayerLifeForEffect(src, me, lost)      // lost is positive
+})
+```
+
+`applied` is the post-replacement amount, and it is `0` when the change
+was replaced away ("your life total can't change") or the player has
+left — the continuation is told either way, so a batch never stalls on a
+leg that moved nothing. The batch form is built on the single one; don't
+write your own loop that waits. A card that only says "gain 3" keeps
+using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing. There
+is a lint: `life_continuation_guard_test.go` fails on a `.Life` read
+after a life change in the same function.
+
+**Paying life is a cost, and a cost may not pause.** Use
+`g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
+shockland, an activation cost, "pay 2 life. If you do, draw". CR 119.4
+makes the payment a life loss, so the window still runs and a life-loss
+replacement still sees it; what the cost path adds is that it settles in
+one step, because CR 601.2h pays a spell's costs as one indivisible step
+and a half-paid cost cannot be rewound. See
+[ADR 0013 §5b](docs/decisions/0013-replacement-effects.md).
+
 The answer is `{bottom, top_order}` with `top_order` **top-first**, and
 every looked-at card must appear in exactly one list: scry moves all of
 them, so an answer that omits one is a client bug, not shorthand for

@@ -1,6 +1,10 @@
 package game
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // life_tail.go is damage_tail.go's sibling for the other half of
 // CR 118: what still has to happen once the CR 614 replacement
@@ -32,15 +36,21 @@ import "errors"
 // CR 616 resume in applyResolvedReplacementEventLocked calls that same
 // function instead of carrying its own copy of the tail.
 //
-// WHY THERE IS NO lifeTail STRUCT. damageTail exists because a settled
-// damage event still has to choose between a player and a permanent,
-// and still owes deathtouch, lifelink and the CR 903.10a commander
-// tally — all snapshotted off a source that may be in a graveyard by
-// the time a paused event resumes. A life change owes none of that:
-// LifePlayer, LifeDelta and Source are the whole of the tail, and the
-// ReplacementEvent already carries all three. Carrying them there is
-// what makes the resume faithful — Source is the difference between
-// the log reading "Rhox Faithmender: +6" and reading a bare "+6".
+// WHAT THE lifeTail STRUCT IS FOR, AND WHAT IT IS NOT. damageTail
+// carries what the ENGINE still owes a settled damage event: which side
+// of the CR 120.3 split the target is on, and the deathtouch, lifelink
+// and CR 903.10a commander state snapshotted off a source that may be
+// in a graveyard by the time a paused event resumes. A life change owes
+// none of that — LifePlayer, LifeDelta and Source are the whole of the
+// engine's half, and the ReplacementEvent already carries all three,
+// which is what makes the resume faithful (Source is the difference
+// between the log reading "Rhox Faithmender: +6" and a bare "+6").
+//
+// What lifeTail carries instead is what the event owes its CALLER: the
+// rest of the effect that asked for the change, run with the amount
+// that actually moved. #793, and the struct's own comment below has the
+// argument. Until #482 there was nothing to carry, because a life
+// change could not pause and a caller could just read the total back.
 //
 // WHAT THIS TAIL DELIBERATELY DOES NOT DO.
 //
@@ -88,7 +98,12 @@ func (g *Game) changeLifeThroughReplacementsLocked(ev *ReplacementEvent) (paused
 		// CR 614.10 with a null replacement — "your life total can't
 		// change". No mutation, and no EventChangeLife for a "whenever
 		// you gain life" trigger to see, because nothing happened.
-		return false, nil
+		//
+		// The continuation still runs, with zero: "you gain life equal
+		// to the life lost this way" gains nothing when the loss was
+		// replaced away, and a drain adding up several players' losses
+		// would otherwise wait forever for this one.
+		return false, g.runLifeTailLocked(ev, 0)
 	}
 	return false, g.applyResolvedLifeChangeLocked(out)
 }
@@ -123,5 +138,125 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		Target: ev.LifePlayer,
 		Amount: ev.LifeDelta,
 	})
-	return nil
+	// #793: the rest of the effect, with the amount that actually
+	// moved. Runs after the event so a continuation that reads the log
+	// — or queues its own life change — sees this one already recorded,
+	// and before the caller's state-based sweep, because the loss and
+	// the gain of a drain are both part of one resolution.
+	return g.runLifeTailLocked(ev, ev.LifeDelta)
+}
+
+// lifeTail is the life half's answer to damageTail: what a life change
+// still owes once the CR 614 window has settled the amount. Where the
+// damage tail carries what the ENGINE owes the event (which side of the
+// CR 120.3 split, deathtouch, lifelink, the CR 903.10a tally), the life
+// tail carries what the event owes its CALLER — the rest of the effect
+// that asked for the change.
+//
+// #793: every life change has run the CR 614 window since #482, which
+// means every life change can PAUSE on a CR 616 ordering prompt. A
+// caller that reads the life total back on the next line to find out
+// how much actually moved — "each opponent loses X life, you gain life
+// equal to the life lost this way" (Exsanguinate, Debt to the
+// Deathless, Gray Merchant, Kokusho) — reads it before the prompt is
+// answered and sees nothing. The continuation is the fix, and it is the
+// shape the search, scry and confirm prompts already use: the frame
+// carries the rest of the effect and the engine runs it at the one
+// place the change lands.
+//
+// Unexported engine plumbing. The catalog never builds one; it hands a
+// `then` to ChangePlayerLifeThenForEffect or LoseLifeEachThenForEffect
+// and the entry point fills this in before the pipeline runs, for the
+// same reason damageTail goes on first: a CR 616 prompt returns without
+// landing anything, and the resume has nothing else to go on.
+type lifeTail struct {
+	// then runs once the change has settled, with the amount that
+	// ACTUALLY moved: the post-replacement delta, signed the way the
+	// event is (negative for a loss), and zero for a change that was
+	// replaced away (CR 614.10) or whose player has left the game.
+	//
+	// It takes the live *Game rather than capturing one, on the same
+	// undo-safety contract confirmFrame and StackItem.Effect follow —
+	// an undo restores this game's fields in place, so a *Game argument
+	// is always the right game and a captured *Player would not be. It
+	// runs with g.mu held, so it may start the next life change or
+	// queue the next prompt itself.
+	then func(g *Game, applied int) error
+}
+
+// runLifeTailLocked runs a settled life event's continuation exactly
+// once, with the amount that actually moved. The tail is cleared before
+// it runs, so a continuation that re-enters the pipeline on the same
+// event value cannot run itself twice.
+//
+// Every TERMINAL outcome of a life event goes through here — landed,
+// replaced away, player gone — because a caller adding up "the life
+// lost this way" has to be told even when the answer is zero, or it
+// waits forever. A pause is not a terminal outcome: the resume reaches
+// this function later, through applyResolvedLifeChangeLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
+	if ev == nil || ev.lifeTail == nil || ev.lifeTail.then == nil {
+		return nil
+	}
+	then := ev.lifeTail.then
+	ev.lifeTail = nil
+	return then(g, applied)
+}
+
+// payLifeAsCostLocked pays `amount` life as a COST (CR 118.3) rather
+// than as the effect of a spell or ability.
+//
+// WHAT THE RULES SAY, precisely, because #793 guessed the other way.
+// CR 119.4: "If a player pays life, the amount of life paid is
+// subtracted from their life total. In other words, paying an amount of
+// life is the same as losing that much life." Paying life IS losing
+// life, so the CR 614 window runs on it exactly as it runs on a drain:
+// a life-loss replacement (Bloodletter of Aclazotz) sees a Thoughtseize
+// being paid for, and "your life total can't change" stops it. What a
+// payment is NOT is life GAIN, so Rhox Faithmender and Alhammarret's
+// Archive never touch it — their AppliesTo tests LifeDelta > 0 — which
+// is the half #793 was actually worried about. Routing costs around the
+// window would have been a rules change, not a fix.
+//
+// WHAT A COST MAY NOT DO IS PAUSE. CR 601.2h pays a spell's costs as
+// one indivisible step of casting it, and CR 601.2 rewinds the whole
+// announcement if they cannot all be paid; CR 602.2b says the same for
+// an activated ability. A CR 616 ordering prompt in the middle of that
+// leaves a spell on the stack with its cost half paid, a table waiting
+// on a prompt, and nothing left that a rewind could take back. So the
+// payment sets mustSettleNow and the pipeline settles it without
+// asking: an ordering window applies in the order it was gathered (the
+// same escape an eliminated chooser has taken since the S31 fuzzer
+// finding), and an effect that would ask its own question is skipped
+// un-applied, which is the weaker-never-stronger posture
+// optionalReplacementResumableLocked already takes for an entry that
+// cannot resume.
+//
+// Returns ErrInvalidParam when the payment cannot be made: CR 119.4
+// allows it only from a life total at least as large as the payment.
+// Every caller validates that before it starts paying anything, so this
+// is the backstop rather than the check.
+//
+// Caller must hold g.mu.
+func (g *Game) payLifeAsCostLocked(source, playerID uuid.UUID, amount int) error {
+	if amount <= 0 {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.Life < amount {
+		return ErrInvalidParam
+	}
+	_, err := g.changeLifeThroughReplacementsLocked(&ReplacementEvent{
+		Kind:          RepEventLife,
+		Source:        source,
+		LifePlayer:    playerID,
+		LifeDelta:     -amount,
+		mustSettleNow: true,
+	})
+	return err
 }

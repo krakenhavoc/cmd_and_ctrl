@@ -499,8 +499,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
 		}
 	}
+	// #793: the cost path — CR 602.2b activates an ability in one
+	// indivisible step, so the payment runs the CR 614 window
+	// (CR 119.4) but never stops to ask a CR 616 ordering question.
 	if ab.Cost.Life > 0 {
-		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.Cost.Life); err != nil {
+		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
 			return err
 		}
 	}

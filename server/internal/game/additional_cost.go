@@ -158,8 +158,15 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	// Life first: it is the component with no choice attached, and
 	// paying it before the sacrifices keeps the event order matching
 	// the way the clauses are read aloud.
+	//
+	// #793: through the COST path. Paying life is losing life
+	// (CR 119.4), so the CR 614 window still runs and a life-loss
+	// replacement still sees it — but it settles without a prompt,
+	// because CR 601.2h pays a spell's costs as one indivisible step
+	// and a paused ordering prompt here would leave the spell on the
+	// stack half paid for.
 	if payLife > 0 {
-		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -payLife); err != nil {
+		if err := g.PayLifeForEffect(uuid.Nil, playerID, payLife); err != nil {
 			return err
 		}
 	}

@@ -3482,8 +3482,14 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
 	// every component was validated above.
+	//
+	// #793: the cost path. A mana ability resolves immediately and
+	// without the stack (CR 605.3b), so Mana Confluence's life cannot
+	// be left waiting on a CR 616 prompt with the mana already in the
+	// pool. The CR 614 window still runs — paying life is losing life
+	// (CR 119.4) — it just settles in one step.
 	if ab.LifeCost > 0 {
-		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.LifeCost); err != nil {
+		if err := g.PayLifeForEffect(cardID, playerID, ab.LifeCost); err != nil {
 			return err
 		}
 		needStateChecks = true
