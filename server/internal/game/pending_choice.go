@@ -731,10 +731,9 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 //   - every pick is in the expected source zone (for
 //     discard_from_hand, entry.FromPlayer's hand)
 //
-// On success, applies the kind-specific side effect (for
-// discard_from_hand: move each pick to FromPlayer's graveyard,
-// emit EventDiscardCard per pick), dequeues the entry, and
-// returns nil.
+// On success, dequeues the entry and applies the kind-specific side
+// effect (for discard_from_hand: hand the picks to discardCardsLocked,
+// the one discard path — see discard.go).
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
@@ -780,24 +779,18 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 				return ErrCardNotFound
 			}
 		}
-		for _, id := range picks {
-			if _, err := MoveCard(from.Hand, from.Graveyard, id); err != nil {
-				return err
-			}
-			g.markCardKnownInZoneLocked(from.Graveyard, id)
-			g.EmitEvent(Event{
-				Kind:    EventDiscardCard,
-				Actor:   from.ID,
-				CardID:  id,
-				OldZone: ZoneHand,
-				NewZone: ZoneGraveyard,
-			})
-		}
+		// Dequeued BEFORE the discard rather than after it: the
+		// discard runs through the one discard path (discard.go),
+		// which can queue prompts of its own and drop stale ones, and
+		// an index into g.PendingChoices does not survive that.
+		g.dequeueChoiceLocked(idx)
+		return g.discardCardsLocked(from.ID, picks, discardOptions{
+			cause:  discardCauseEffect,
+			source: choice.Source,
+		})
 	default:
 		return ErrInvalidParam
 	}
-	g.dequeueChoiceLocked(idx)
-	return nil
 }
 
 // ResolveManaChoice processes a resolve_choice action for a

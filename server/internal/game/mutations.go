@@ -3165,31 +3165,27 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 			return ErrCardNotFound
 		}
 	}
-	for _, id := range cardIDs {
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	delete(g.DiscardPending, playerID)
-	if len(g.DiscardPending) == 0 {
-		g.DiscardPending = nil
-	}
-	// Resume the cleanup auto-advance if the pending map is now
-	// empty. Re-fires runStepEntryHooksLocked which rechecks
-	// DiscardPending; with the map empty, the auto-advance branch
-	// runs and the cursor walks on to the next seat's Untap.
-	if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
-		g.runStepEntryHooksLocked()
-	}
-	return nil
+	// The discard itself is the one discard path (discard.go); the
+	// hand-size bookkeeping is this site's own and runs once the whole
+	// batch has landed.
+	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
+		cause: discardCauseCleanup,
+		then: func(g *Game) error {
+			delete(g.DiscardPending, playerID)
+			if len(g.DiscardPending) == 0 {
+				g.DiscardPending = nil
+			}
+			// Resume the cleanup auto-advance if the pending map is
+			// now empty. Re-fires runStepEntryHooksLocked which
+			// rechecks DiscardPending; with the map empty, the
+			// auto-advance branch runs and the cursor walks on to the
+			// next seat's Untap.
+			if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
+				g.runStepEntryHooksLocked()
+			}
+			return nil
+		},
+	})
 }
 
 // SetMaxHandSize updates the named player's per-player hand-size
