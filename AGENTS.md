@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0053 combat damage beats) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0054 dice rolls and coin flips) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -583,6 +583,9 @@ PendingChoice for the controller to resolve:
 - `"{W|U|B|R|G}"` + `commanderIdentityFor` filter — Arcane Signet:
   the engine narrows the pipe set against the controller's commander
   identity at activation time.
+- `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
+  tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
+  choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -760,6 +763,23 @@ func init() {
 - Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+
+**Two copies of your card will not prompt.** When every replacement
+applicable to one event is the *same* declared effect — same catalog
+entry, same slot in its `Replacements` slice, same controller — the
+engine applies them all inline instead of asking the affected player
+to order them, because every order is the same modification N times
+(two Doubling Seasons are ×4, two Rhox Faithmenders are ×4,
+[#792](https://github.com/krakenhavoc/cmd_and_ctrl/issues/792)). A
+window with any *distinct* effect in it still prompts with everything
+listed. Nothing to declare — but it does mean one thing is now on you:
+**if your `Replace` writes its own source into the event** ("that
+damage is dealt to *this* creature instead", "put the counter on
+*this* creature instead"), two copies of your card are *not*
+interchangeable and collapsing them would be wrong. No catalog card
+does this yet; if yours is the first, say so on the PR rather than
+shipping it quietly — the fix is a declared flag in the `PureCancel`
+mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
 
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
@@ -1299,6 +1319,41 @@ always keeps "choose nothing". With `Min` above zero, don't queue a
 prompt that no set can satisfy: nothing could answer it, and the
 enumerator logs it rather than inventing an answer.
 
+**"Put [it / a card from among them] onto the battlefield" off a
+library (#745):** a reveal or a look followed by a put is not a search,
+so never reach for `SearchLibrary` with a predicate (it emits
+`EventSearchLibrary` and shuffles). Say the first half with the right
+visibility, then hand the cards to `PutFromLibraryOntoBattlefield`
+(`put_from_library.go`):
+
+```go
+looked := g.LookAtTopOfLibraryForEffect(controller, 8)   // "look at": only the looker knows
+// revealed := g.RevealTopOfLibraryForEffect(...)         // "reveal": every seat knows
+return PutFromLibraryOntoBattlefield{
+    Cards: looked, Match: OfCreatureType("Dragon"),
+    Max: 1, Optional: true,                 // "you may put a"; Max 0 is "any number"; All for "put all"
+    Then: PutRestOnBottomInRandomOrder,     // or PutRestIntoGraveyard, or your own
+}.Apply(ctx)
+```
+
+The prompt is asynchronous, so "the rest" goes in `Then` — it is the
+only place that knows which cards were not chosen. Several picks enter
+as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
+so don't loop the single-card move over them. The whole-sentence
+shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
+`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
+bottom in a random order" anywhere else is
+`g.PutOnBottomInRandomOrderForEffect`, which draws from the game's keyed
+RNG (`random_order` stream, ADR 0054) — never `math/rand` — and repositions cards already in the
+library without a zone change.
+
+A token can end up in a library (Chaos Warp tucks one, and the engine
+has no CR 704.5d sweep). It is not a card (CR 108.2) and can't change
+zones again (CR 111.8), so the move refuses it and the helpers never
+offer or stop on one. If your card moves a revealed card anywhere else
+("otherwise put it into your hand"), skip a token with `IsToken`, as
+Coiling Oracle and Risen Reef do.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 
@@ -1459,6 +1514,47 @@ on the stack when the step begins, so every player gets a response
 window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
+
+**A reflexive trigger (CR 603.12, #636):** "<do something>. **When
+you do**, <do something else>" — Ziatora's fling, an Overlook land's
+fetch, Invasion of Tarkir's damage. The second sentence is a trigger
+created by the first one *while it resolves*, and it is
+`ReflexiveTrigger`, applied from inside the parent's `Effect` once the
+condition actually held:
+
+```go
+ReflexiveTrigger{
+    Label:   "Ziatora, the Incinerator — damage equal to the sacrificed creature's power",
+    Targets: TargetAny(),          // chosen when the trigger goes on the stack
+    Cards:   []uuid.UUID{killed},  // the payload; read back with ctx.PayloadCards()
+    Effect:  b29ZiatoraFling,      // a package-level func, NOT a closure
+}.Apply(ctx)
+```
+
+`WhenYouDo(label, effect)` is the plain mandatory, untargeted case.
+Both go through the harvester's own dispatch
+(`Game.QueueReflexiveTriggerForEffect`), so the trigger gets a target
+prompt, the CR 603.3d drop when nothing is legal, a "you may" if it
+prints one, and a place on `PendingTriggers` — exactly as a harvested
+trigger does, because by the time it is on the stack it is one.
+
+Two rules, and both are why cards used to get this wrong by folding
+the follow-up into the parent's effect:
+
+- **It uses the stack, above the parent.** The table gets a response
+  window between the two halves. Folding is the mistake ADR 0018
+  retired for ordinary triggers.
+- **Its targets are chosen when it goes on the stack**, not when the
+  parent was announced — after the reveal, the sacrifice, the mill.
+  A clause hung on the parent instead makes the controller pick
+  before making the choice the trigger is about, which is what every
+  folded card declared as a caveat.
+
+"When you do" is conditional on the doing, and the `if` is the card's:
+apply the trigger only on the branch where the thing happened. The
+"you may" of "you MAY sacrifice a creature. When you do, …" belongs to
+the *parent* — set `Optional` only when the reflexive sentence itself
+says it.
 
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
@@ -1726,6 +1822,60 @@ at all. `OfCreatureType("Goblin")` is the targeting predicate.
 a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
+
+### Adding a choose-a-color card (#742)
+
+"Choose a color" (CR 105.4) is one prompt kind, `choose_color`, in two
+forms, and the builders live in
+[color_choice.go](server/internal/cards/effects/color_choice.go).
+
+**Stored** ("As this enters, choose a color") copies the creature-type
+pattern above: the prompt goes on `AsEnters`, the answer lands on
+`Card.ChosenColor`, and the card's other abilities read it back.
+
+```go
+AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
+ManaAbilities: []ManaAbility{{
+    Cost:                    ManaAbilityCost{Tap: true},
+    ProducedFunc:            ProducedColorOrChosen("U"), // or ProducedChosenColor()
+    Label:                   "Add {U} or one mana of the chosen color",
+    IgnoreCommanderIdentity: true,
+}},
+Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
+```
+
+Until the controller answers, the colour is empty, and every reader
+must treat that as the weaker outcome: no mana, no anthem. Never read
+an empty colour as "any colour". "A color other than blue" is just a
+shorter option list, and colorless is never a colour.
+
+**At resolution** ("Choose a color. …" inside a spell or ability) stores
+nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the
+answer to a continuation that runs the rest of the effect (Wash Out,
+Oona). The continuation receives the live `*Game`; rebuild the context
+with `NewContext(g, item)` inside it. "Each player chooses a color" is a
+chain: each answer's continuation asks the next player in APNAP order
+(Selective Obliteration). Thread the answers through the chain as values
+rather than mutating one shared map, so an undo cannot leak an answer
+from an undone branch.
+
+**"N mana of any one color"** is ONE pick minting N tokens, never N
+pipe slots, which would let the player take N different colours. Write
+it with the produced-mana grammar's per-colour count:
+`OneColorOfAmount(3)` is `"{W3|U3|B3|R3|G3}"` (Gilded Lotus),
+`ProducedOneColor(fn)` computes N at activation (Mona Lisa's power), and
+a per-colour amount is `"{G4|U1}"` (Nyx Lotus's devotion). It works from
+a spell or trigger too, through `AddManaForEffect`. That path narrows a
+pick to the commander's colour identity by default, so an effect whose
+printed text says "any color" or "any one color" passes
+`game.AddManaOptions{IgnoreCommanderIdentity: true}` to
+`AddManaWithOptionsForEffect` (or sets `AddMana.IgnoreCommanderIdentity`),
+the effect-side twin of the mana ability's flag. The auto-tapper
+plans around such a source, so the player taps it by hand
+([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
+
+**Tests**: `pushChosenColorPermanent` and `answerColor` in
+[color_choice_cards_test.go](server/internal/cards/effects/color_choice_cards_test.go).
 
 ### Shared vocabulary, and the clone gate
 

@@ -202,6 +202,18 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if err != nil || len(slots) == 0 {
 			continue
 		}
+		// #742: "N mana of any one color" (Gilded Lotus, Nyx Lotus) is
+		// not a source the planner can model. Its model is one slot,
+		// one mana, one colour choice per slot — and a Gilded Lotus
+		// planned as three any-colour slots could be booked for {W},
+		// {U} and {B} at once, a plan the one-colour activation can
+		// never honour. Skipping it is the weaker direction, exactly
+		// like the restricted-output exclusion in autoTapAbilityFor:
+		// the player activates it by hand (one prompt, N tokens) and
+		// the cast spends the floated mana.
+		if hasOneColorAmounts(slots) {
+			continue
+		}
 		// Arcane Signet's commander-identity narrowing happens
 		// at activation time in ActivateManaAbility; mirror it
 		// here so the auto-tapper's planning matches what the
@@ -507,4 +519,16 @@ func intersectColors(a, b []string) []string {
 		}
 	}
 	return out
+}
+
+// hasOneColorAmounts reports whether any slot is a "N mana of any one
+// color" pick (#742). See gatherTapSources for why the planner skips
+// such a source.
+func hasOneColorAmounts(slots []ProducedManaEntry) bool {
+	for _, slot := range slots {
+		if slot.OneColorAmounts() {
+			return true
+		}
+	}
+	return false
 }

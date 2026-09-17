@@ -384,8 +384,8 @@ func TestB16RelicOfSauronMakesTwoPicksAndLoots(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+2 {
 		t.Errorf("drew %d, want 2", got-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 	if !b16Tapped(t, g, relic) {
 		t.Error("the Relic taps for the loot")
@@ -469,8 +469,8 @@ func TestB16CollectorsVaultLootsAndMakesATreasure(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("drew %d, want 1", got-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 	if b16CountNamed(g, "Treasure") != 1 {
 		t.Error("a Treasure is created")

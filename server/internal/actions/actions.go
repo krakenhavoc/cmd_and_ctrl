@@ -1057,11 +1057,13 @@ func Dispatch(g *game.Game, a Action) error {
 		var p struct {
 			ChoiceID string   `json:"choice_id"`
 			CardIDs  []string `json:"card_ids"`
-			// Color populates a PendingChoiceMana pick — one of
-			// "W"/"U"/"B"/"R"/"G"/"C". Absent for discard_from_hand
-			// picks. The dispatcher routes by the presence of this
-			// field rather than round-tripping the PendingChoice to
-			// check its Kind (saves a lock acquisition).
+			// Color answers the two colour prompts: a PendingChoiceMana
+			// pick (one of "W"/"U"/"B"/"R"/"G"/"C") and a #742
+			// PendingChoiceColor ("choose a color", W/U/B/R/G). The
+			// two share the field so the client's colour buttons
+			// answer both, and are routed by the choice's KIND — the
+			// presence of `color` alone no longer says which resolver
+			// it belongs to.
 			Color string `json:"color"`
 			// Order populates an S17 PendingChoiceReplacementOrder
 			// pick — the client returns the effect IDs in the
@@ -1121,6 +1123,13 @@ func Dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("resolve_choice choice_id: %w", err)
 		}
 		if p.Color != "" {
+			// #742: route by kind. A "choose a color" answer sent to
+			// ResolveManaChoice would be refused (wrong kind), and a
+			// mana pick sent to ResolveColorChoice likewise — so the
+			// lookup is what makes the shared field safe.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceColor {
+				return g.ResolveColorChoice(choiceID, a.Player, p.Color)
+			}
 			return g.ResolveManaChoice(choiceID, a.Player, p.Color)
 		}
 		if p.CreatureType != "" {

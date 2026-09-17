@@ -32,12 +32,14 @@
   });
   const open = $derived(owedCount > 0);
 
-  // S14: the same DiscardPending map carries cleanup-step max-
-  // hand overflow AND mid-game effect-driven discards (Mind Rot,
-  // future effect cards). Tell them apart by looking at the turn
-  // step. Cleanup → cleanup copy; any other step → "effect
-  // resolving" copy. The behaviour is identical (pick N, submit)
-  // either way.
+  // #651: discard_pending is the CLEANUP hand-size discard and
+  // nothing else now. An effect's discard (Mind Rot, a loot) is a
+  // real pending choice and arrives through ChoicePromptModal like
+  // every other hand pick, so this modal no longer has to guess
+  // which obligation it is showing. The step check stays as the
+  // copy switch — the map is only ever written at cleanup entry, so
+  // it reads "cleanup" in practice, and a non-cleanup entry would
+  // still render something sane rather than the wrong sentence.
   const isCleanupContext = $derived(snap.turn.step === "cleanup");
 
   // viewerSeat is the seated PlayerView for the viewer. Used to

@@ -87,6 +87,20 @@ func passBothForTest(g *Game) {
 	_ = g.PassPriority()
 }
 
+// renameBattlefieldForTest gives a battlefield card a distinct name.
+// pushLoyaltyWalker mints every walker as the same legendary card, so
+// two of them under one controller are a legend-rule prompt — and
+// since #730 an unanswered prompt gates the table. A test that wants
+// two live walkers gives them the different names two real walkers
+// have.
+func renameBattlefieldForTest(g *Game, id uuid.UUID, name string) {
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == id {
+			g.Battlefield.Cards[i].Name = name
+		}
+	}
+}
+
 // The headline: the named planeswalker loses one loyalty counter at
 // announce, the ability goes on the stack, and it resolves.
 func TestCounterCostRemovesFromTheNamedPlaneswalker(t *testing.T) {
@@ -96,6 +110,7 @@ func TestCounterCostRemovesFromTheNamedPlaneswalker(t *testing.T) {
 	src := pushCounterCostSource(g, me, heartShapedCost(), nil)
 	a := pushLoyaltyWalker(g, me, 4, 1)
 	b := pushLoyaltyWalker(g, me, 3, 1)
+	renameBattlefieldForTest(g, a, "Other Test Planeswalker")
 
 	if err := g.ActivateCatalogAbility(me.ID, src, 0, ActivateAbilityParams{CounterSourceIDs: []uuid.UUID{b}}); err != nil {
 		t.Fatalf("activate: %v", err)

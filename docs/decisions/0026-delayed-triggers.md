@@ -169,6 +169,38 @@ left.
   beginning of the next end step, sacrifice it" (token makers),
   "until your next turn" cleanups.
 
+## Amendment, 2026-09-17: the reflexive sibling is NOT this slot (#636)
+
+The Context above says "every 'when you do, ...' reflexive trigger"
+wants the delayed-trigger slot. It does not, and #636 builds the other
+thing instead — `Game.QueueReflexiveTriggerForEffect` plus
+`effects.ReflexiveTrigger`, in `reflexive.go` beside this file's
+`delayed.go`.
+
+The two look alike from a card file (both are created by a resolving
+effect, both outlive the source, both go on the stack) and differ in
+the one place that decides the design: **when the condition is met.**
+A delayed trigger's condition is a future step, so it has to sit in a
+queue on the `Game` until that step arrives, which is why
+`DelayedTriggers` exists and why it is snapshotted. A CR 603.12
+reflexive trigger's condition was met by the resolution that created
+it — that is what "when you DO" means — so it goes on
+`PendingTriggers` immediately and reaches the stack at the next
+priority boundary, above its parent. Putting it in the delayed queue
+would have needed a step it does not have, and would have skipped the
+CR 603.3d target pick, which is the half of the rule the folded cards
+were actually getting wrong.
+
+What it does inherit from §3 and §4, unchanged: it uses the stack
+(same `PendingTriggers` → `StackMeta` path, same response window), and
+its payload rides on the item rather than in the closure — on
+`StackItem.Payload` rather than on `Targets`, because a reflexive
+trigger's `Targets` is its own target clause and is rewritten when the
+pick comes in. Everything else is the S19/S20 harvester's dispatch,
+reused rather than re-implemented: one `dispatchTriggerLocked`, so
+there is one place the CR 603.3d drop, the CR 608.2b re-check and the
+APNAP drain can be got right.
+
 ## What this deliberately does not do
 
 - **No extra steps.** Y'shtola's "there is an additional end step

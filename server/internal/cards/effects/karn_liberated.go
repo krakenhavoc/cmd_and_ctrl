@@ -63,7 +63,11 @@ func init() {
 						if t.Kind != game.TargetPlayer {
 							continue
 						}
-						g.DiscardChoiceForEffect(t.ID, 1)
+						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+							Player: t.ID,
+							Source: item.SourceCardID,
+							N:      1,
+						})
 					}
 					return nil
 				},

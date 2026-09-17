@@ -98,8 +98,7 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		// Ran the library out without finding anything. Everything
 		// exiled goes back to the bottom; the deck is reordered but
 		// not lost.
-		g.bottomInRandomOrderLocked(p, pile)
-		return nil
+		return g.PutOnBottomInRandomOrderForEffect(controller, pile)
 	}
 	hitName := "the exiled card"
 	if c, ok := g.cardInZoneLocked(g.Exile, hit); ok {
@@ -114,14 +113,12 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		func(g *Game) error {
 			g.grantFreeCastLocked(controller, hit)
 			g.scheduleCascadeBottomLocked(controller, source, hit, hitName)
-			g.bottomInRandomOrderLocked(p, pile)
-			return nil
+			return g.PutOnBottomInRandomOrderForEffect(controller, pile)
 		},
 		func(g *Game) error {
 			// Declined: the hit joins the rest of the pile and the
 			// whole lot goes to the bottom in a random order.
-			g.bottomInRandomOrderLocked(p, append(pile, hit))
-			return nil
+			return g.PutOnBottomInRandomOrderForEffect(controller, append(pile, hit))
 		})
 }
 
@@ -213,56 +210,13 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 			if !ok || !c.ExilePlay.Active(controller, g.Turn.Number) || c.ExilePlay.CostOverride != "{0}" {
 				return nil
 			}
-			owner := g.playerByIDLocked(c.Owner)
-			if owner == nil {
-				return nil
-			}
-			// Not MoveCard: that pushes to the TOP, and cascade puts
-			// what it did not cast on the BOTTOM. Same hand-rolled
-			// remove-then-PushBottom bottomInRandomOrderLocked does,
-			// and for the same reason.
-			g.bottomInRandomOrderLocked(owner, []uuid.UUID{cardID})
-			return nil
+			// The shared random bottom (random_bottom.go) with a pile
+			// of one: it routes through the exit path, so the card
+			// goes to its OWNER's library and a commander's owner is
+			// asked about the command zone.
+			return g.PutOnBottomInRandomOrderForEffect(controller, []uuid.UUID{cardID})
 		},
 	})
-}
-
-// bottomInRandomOrderLocked moves every card in `ids` from exile to
-// the bottom of `p`'s library in a random order (CR 702.85a).
-//
-// The order is one draw on p's "random_order" stream (rng.go, ADR
-// 0054 Decision 8), so an undone cascade bottoms the cards in the same
-// order when it is redone, and a restored game continues the stream.
-//
-// Cards are stripped of their knower set on the way in: they were
-// face up in exile, and a library is a hidden zone. Leaving KnownBy
-// populated would hand every seat permanent knowledge of a handful of
-// library cards and their positions.
-//
-// Caller must hold g.mu.
-func (g *Game) bottomInRandomOrderLocked(p *Player, ids []uuid.UUID) {
-	if p == nil || p.Library == nil || g.Exile == nil || len(ids) == 0 {
-		return
-	}
-	order := append([]uuid.UUID(nil), ids...)
-	swap := func(i, j int) { order[i], order[j] = order[j], order[i] }
-	g.randForLocked(rngStream{kind: rngStreamRandomOrder, player: p.ID}).Shuffle(len(order), swap)
-	for _, id := range order {
-		c, err := g.Exile.Remove(id)
-		if err != nil {
-			continue
-		}
-		c.ExilePlay = ExilePlayPermission{}
-		c.KnownBy = nil
-		p.Library.PushBottom(c)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   p.ID,
-			CardID:  id,
-			OldZone: ZoneExile,
-			NewZone: ZoneLibrary,
-		})
-	}
 }
 
 // cardInZoneLocked returns a copy of a card in the given zone.

@@ -364,6 +364,15 @@ type Card struct {
 	// chooses again (CR 614.12 fires on each entry). Added in S26.
 	NamedTribe string
 
+	// ChosenColor is the colour chosen for this permanent by an "as
+	// this enters, choose a color" instruction (CR 105.4) — Coldsteel
+	// Heart, Heraldic Banner, the Thriving lands. One uppercase letter
+	// (W/U/B/R/G), or empty when none has been chosen. Same lifecycle
+	// as NamedTribe: per instance, carried by the snapshot, cleared
+	// when the permanent leaves the battlefield. Added for #742; see
+	// color_choice.go.
+	ChosenColor string
+
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent
@@ -711,6 +720,20 @@ func (c Card) IsPermanent() bool {
 		c.IsPlaneswalker() ||
 		c.IsBattle()
 }
+
+// IsToken reports whether the object is a token (CR 111). Token type
+// lines are stamped "Token Creature — Goblin" by the catalog's token
+// templates and "Token" is not a card type, so the printed line is
+// the test — the one effects.IsToken has always made, now here so the
+// engine can make it too.
+//
+// A token is not a card (CR 108.2), and a token that has left the
+// battlefield can't move to another zone or come back onto the
+// battlefield (CR 111.8). The engine has no CR 704.5d sweep, so a
+// token tucked into a library (Chaos Warp) is still sitting there as
+// an object; a move that promises "a permanent card" out of a hidden
+// zone refuses it with this.
+func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 
 // HasCardType reports whether the card's effective card types
 // include `lowerType`, which MUST be lowercase (every caller in

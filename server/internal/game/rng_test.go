@@ -473,10 +473,74 @@ func TestRewindCascadeRandomBottom(t *testing.T) {
 	}
 	rewinds(t, g, func() []string {
 		p := g.Seats[0]
-		g.WithWriteLock(func() { g.bottomInRandomOrderLocked(p, ids) })
-		names := libraryNames(p)
-		return names[len(names)-len(ids):]
+		g.WithWriteLock(func() {
+			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ids); err != nil {
+				t.Fatalf("PutOnBottomInRandomOrderForEffect: %v", err)
+			}
+		})
+		// The bottom of a zone is Cards[0] (Zone.PushBottom).
+		return libraryNames(p)[:len(ids)]
 	})
+}
+
+// TestRewindPutOnBottomInRandomOrder: #745's public random-order
+// bottom draws on the actor's "random_order" stream (ADR 0054
+// Decision 8). Undo-then-redo bottoms the same cards in the same
+// order, for a reorder within the library (no zone change) as well as
+// a move from exile, and a draw on another stream in between (a
+// shuffle of the other seat's library, a random discard) does not move
+// it: the fishing the keyed streams exist to close.
+func TestRewindPutOnBottomInRandomOrder(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	var ids []uuid.UUID
+	g.WithWriteLock(func() {
+		// Five cards off the top stay in the library (a reorder);
+		// five more go to exile first (a zone change).
+		for i := 0; i < 5; i++ {
+			ids = append(ids, p.Library.Cards[len(p.Library.Cards)-1-i].InstanceID)
+		}
+		for i := 0; i < 5; i++ {
+			id := p.Library.Cards[len(p.Library.Cards)-6].InstanceID
+			if _, err := MoveCard(p.Library, g.Exile, id); err != nil {
+				t.Fatalf("MoveCard: %v", err)
+			}
+			ids = append(ids, id)
+		}
+	})
+	bottom := func() []string {
+		// Re-read the seat: RestoreFrom replaces the Player values, so
+		// a pointer taken before a restore reads a stale library.
+		p := g.Seats[0]
+		g.WithWriteLock(func() {
+			if err := g.PutOnBottomInRandomOrderForEffect(p.ID, ids); err != nil {
+				t.Fatalf("PutOnBottomInRandomOrderForEffect: %v", err)
+			}
+		})
+		// The bottom of a zone is Cards[0] (Zone.PushBottom).
+		return libraryNames(p)[:len(ids)]
+	}
+	rewinds(t, g, bottom)
+
+	pre := g.Clone()
+	first := bottom()
+	// Not vacuous: the next draw on the same stream orders the same
+	// ten cards differently.
+	if again := bottom(); reflect.DeepEqual(first, again) {
+		t.Fatalf("two draws on the random_order stream gave the same order %v; the test cannot see the stream", first)
+	}
+	g.WithWriteLock(func() { g.RestoreFrom(pre) })
+	if err := g.ShuffleLibrary(g.Seats[1].ID); err != nil {
+		t.Fatalf("ShuffleLibrary: %v", err)
+	}
+	g.WithWriteLock(func() {
+		if err := g.DiscardRandomForEffect(g.Seats[0].ID, 1); err != nil {
+			t.Fatalf("DiscardRandomForEffect: %v", err)
+		}
+	})
+	if second := bottom(); !reflect.DeepEqual(first, second) {
+		t.Errorf("a draw on another stream moved the random-order bottom:\nfirst:  %v\nsecond: %v", first, second)
+	}
 }
 
 // TestDiscardRandomDoesNotAlwaysTakeTheFirstCard pins the removal of
