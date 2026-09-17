@@ -2,8 +2,10 @@ package botarena_test
 
 import (
 	"context"
+	"errors"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -132,7 +134,8 @@ func TestSummaryMarkdown(t *testing.T) {
 			},
 			Games: 2, Seed: 7, Rotate: true, TurnBudget: 60,
 			MaxThink: 20 * time.Second, Routine: "qwen3:14b", Endpoint: "http://box:11434/v1",
-			Note: "q4_k_m",
+			Note:   "q4_k_m",
+			Chairs: botarena.ChairCounts(2, 2, true),
 		},
 		Started: time.Date(2026, 9, 17, 12, 0, 0, 0, time.UTC),
 		Elapsed: 90 * time.Second,
@@ -141,8 +144,8 @@ func TestSummaryMarkdown(t *testing.T) {
 			{Seed: 8, Turns: 19, State: game.StateEnded, Winner: "heuristic", Elapsed: 45 * time.Second},
 		},
 		PerPolicy: map[string]*botarena.PolicyTotals{
-			"assisted":  {Policy: "assisted", Games: 2, Wins: 1, Losses: 1, WinRate: 0.5, CILow: 0.095, CIHigh: 0.905, Null: 0.5},
-			"heuristic": {Policy: "heuristic", Games: 2, Wins: 1, Losses: 1, WinRate: 0.5, CILow: 0.095, CIHigh: 0.905, Null: 0.5},
+			"assisted":  {Policy: "assisted", Games: 2, Decided: 2, Wins: 1, Losses: 1, WinRate: 0.5, CILow: 0.095, CIHigh: 0.905, Null: 0.5},
+			"heuristic": {Policy: "heuristic", Games: 2, Decided: 2, Wins: 1, Losses: 1, WinRate: 0.5, CILow: 0.095, CIHigh: 0.905, Null: 0.5},
 		},
 	}
 	md := sum.Markdown()
@@ -155,7 +158,20 @@ func TestSummaryMarkdown(t *testing.T) {
 		"### Funnel",
 		"### Latency",
 		"### Games",
-		"| assisted | 2 | 1 | 50.0% | 9.5%–90.5% |",
+		"### Seating",
+		// seat-games, decided, wins, win% of decided, interval.
+		"| assisted | 2 | 2 | 1 | 50.0% | 9.5%–90.5% |",
+		// The two denominators are named in the header rather than
+		// left for the reader to infer.
+		"| policy | seat-games | decided | wins | win% of decided |",
+		// Stalled is per seat-game in this table and per game in the
+		// header line above it; one page, two meanings, so the column
+		// says which.
+		"stalled seat-games",
+		// And the footnote that says what the denominator is and why
+		// the interval is conservative.
+		"DECIDED seat-games",
+		"negatively correlated",
 	} {
 		if !strings.Contains(md, want) {
 			t.Errorf("Markdown() is missing %q:\n%s", want, md)
@@ -454,4 +470,281 @@ func TestArenaPlaysAMixedTableWithRotation(t *testing.T) {
 		t.Errorf("spec 0 sat in %d distinct chairs over 2 games, want 2", len(seen))
 	}
 	t.Log("\n" + sum.Markdown())
+}
+
+// --- seating balance (S3) ---------------------------------------------
+
+// Rotation balances turn order only over a whole number of rotations.
+// The default --games 10 on four seats is not one, and a bias of that
+// size is the same order as the difference an arena run is trying to
+// resolve — so the run has to say so out loud.
+func TestChairBalanceWarning(t *testing.T) {
+	cases := []struct {
+		seats, games int
+		rotate, warn bool
+	}{
+		{4, 10, true, true},   // the default run: 3, 2, 2, 3 first chairs
+		{4, 12, true, false},  // a whole number of rotations
+		{4, 8, true, false},   //
+		{4, 10, false, false}, // no rotation, no rotation bias to warn about
+		{2, 3, true, true},
+		{2, 4, true, false},
+		{3, 10, true, true},
+	}
+	for _, c := range cases {
+		got := botarena.ChairBalanceWarning(c.seats, c.games, c.rotate)
+		if (got != "") != c.warn {
+			t.Errorf("ChairBalanceWarning(%d, %d, %v) = %q, want warning=%v", c.seats, c.games, c.rotate, got, c.warn)
+		}
+		if c.warn && !strings.Contains(got, "rotation") {
+			t.Errorf("the warning should name the problem, got %q", got)
+		}
+	}
+}
+
+// The histogram is the audit trail: a finished run has to show where
+// everybody actually sat, not assert that rotation took care of it.
+func TestChairCounts(t *testing.T) {
+	got := botarena.ChairCounts(4, 10, true)
+	if len(got) != 4 {
+		t.Fatalf("ChairCounts gave %d rows, want 4", len(got))
+	}
+	first := []int{}
+	for _, row := range got {
+		total := 0
+		for _, n := range row {
+			total += n
+		}
+		if total != 10 {
+			t.Errorf("a contestant sat in %d of 10 games: %v", total, row)
+		}
+		first = append(first, row[0])
+	}
+	// 10 games over 4 chairs: two contestants take chair 0 three
+	// times and two take it twice. That IS the residual bias.
+	threes, twos := 0, 0
+	for _, n := range first {
+		switch n {
+		case 3:
+			threes++
+		case 2:
+			twos++
+		default:
+			t.Errorf("chair 0 counts are %v, want threes and twos", first)
+		}
+	}
+	if threes != 2 || twos != 2 {
+		t.Errorf("chair 0 counts are %v, want two 3s and two 2s", first)
+	}
+
+	// A whole number of rotations is perfectly balanced.
+	for _, row := range botarena.ChairCounts(4, 12, true) {
+		for pos, n := range row {
+			if n != 3 {
+				t.Errorf("12 games over 4 seats: chair %d got %d games, want 3 (%v)", pos, n, row)
+			}
+		}
+	}
+	// No rotation seats everybody where they were configured.
+	for k, row := range botarena.ChairCounts(3, 6, false) {
+		if row[k] != 6 {
+			t.Errorf("no rotation: contestant %d sat in its own chair %d of 6 games (%v)", k, row[k], row)
+		}
+	}
+}
+
+// --- the win-rate denominator (S2) ------------------------------------
+
+// The win rate is over DECIDED seat-games, because the null rate it is
+// compared against is P(win | somebody won). Counting draws in the
+// denominator scales every policy down by the decided fraction and
+// leaves the null where it is, so a policy beating chance by twenty
+// points reports as beating nothing.
+func TestBeatsUsesTheDecidedDenominator(t *testing.T) {
+	// 20 seat-games at a four-seat table, 8 of them undecided (the
+	// turn budget), 6 wins from the 12 that ended: 50% of decided,
+	// double the 25% null, and every one of the twelve says so.
+	lo, hi := botarena.Wilson(6, 12, botarena.DefaultZ)
+	decided := botarena.PolicyTotals{
+		Policy: "assisted", Games: 20, Decided: 12, Wins: 6, Losses: 6, Draws: 8,
+		WinRate: 0.5, CILow: lo, CIHigh: hi, Null: 0.25,
+	}
+	if !decided.Beats() {
+		t.Errorf("6 wins of 12 decided at a 25%% null should beat the null: CI %.3f–%.3f", lo, hi)
+	}
+	// The same run read on the old denominator: 6/20 = 30%, whose
+	// interval straddles 25%. That is the reading this guards against.
+	oldLo, _ := botarena.Wilson(6, 20, botarena.DefaultZ)
+	if oldLo > 0.25 {
+		t.Fatal("the fixture no longer demonstrates the bug: 6/20 clears the null too")
+	}
+	// Nothing decided is no evidence, whatever the seat-game count.
+	none := botarena.PolicyTotals{Policy: "heuristic", Games: 20, Draws: 20, CILow: 0, CIHigh: 1, Null: 0.25}
+	if none.Beats() {
+		t.Error("a run that decided nothing must not beat the null")
+	}
+}
+
+// --- whole-game supervision (fast: these games are cut short) ----------
+
+// A game that runs out of wall clock is a STALL: it is reported, it is
+// tallied, and its dump says so. The undecided seat-games land in
+// Draws and leave the win rate's denominator empty — no wins from no
+// decided games is the whole [0, 1] range, not a confident zero.
+func TestWallClockExhaustionIsAStall(t *testing.T) {
+	cfg := botarena.Config{
+		Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
+		Games: 1,
+		Seed:  303,
+		// One nanosecond: the deadline is already gone when the
+		// supervision loop takes its first look, so this costs a deal
+		// and a shuffle rather than a game.
+		Wall: time.Nanosecond,
+	}
+	var got []botarena.GameResult
+	sum, err := botarena.Run(context.Background(), cfg, func(r botarena.GameResult) { got = append(got, r) })
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("sink saw %d games, want 1", len(got))
+	}
+	res := got[0]
+	if !res.Stalled {
+		t.Error("a game that exhausted its wall clock should be marked stalled")
+	}
+	if res.Aborted {
+		t.Error("the run was not cancelled; the game must not be marked aborted")
+	}
+	if !strings.Contains(res.StallDump, "wall clock") {
+		t.Errorf("the dump should name the cause, got %q", res.StallDump)
+	}
+	if sum.Stalls() != 1 {
+		t.Errorf("the summary counts %d stalled games, want 1", sum.Stalls())
+	}
+	tot := sum.PerPolicy["heuristic"]
+	if tot == nil {
+		t.Fatalf("no totals for the heuristic; have %v", sum.Policies())
+	}
+	if tot.Games != 2 || tot.Draws != 2 || tot.Decided != 0 {
+		t.Errorf("seat-games=%d draws=%d decided=%d, want 2, 2, 0", tot.Games, tot.Draws, tot.Decided)
+	}
+	// Stalled is counted per SEAT-game here, and the report's column
+	// header says so; Summary.Stalls() counts games.
+	if tot.Stalled != 2 {
+		t.Errorf("the policy's stalled seat-games = %d, want 2 (both chairs of one stalled game)", tot.Stalled)
+	}
+	if tot.WinRate != 0 || tot.CIHigh != 1 || tot.CILow != 0 {
+		t.Errorf("no decided games is no evidence: rate=%v CI=[%v, %v], want 0 and the whole range", tot.WinRate, tot.CILow, tot.CIHigh)
+	}
+	if tot.Beats() {
+		t.Error("a policy that decided nothing must not beat the null")
+	}
+}
+
+// A Ctrl-C mid-game is an interruption, not a stall and not a result.
+// The partial game must not be labelled "wall clock exhausted" and
+// must not be folded into anybody's tallies — a fraction of a game in
+// the numerator of a win rate is worse than a missing game.
+func TestParentCancellationIsNotAStall(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		cancel()
+	}()
+	cfg := botarena.Config{
+		Seats:      []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
+		Games:      4,
+		Seed:       404,
+		TurnBudget: 60,
+		Wall:       5 * time.Minute,
+	}
+	sum, err := botarena.Run(ctx, cfg, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run returned %v, want a cancellation", err)
+	}
+	// Whatever the cancel interrupted, nothing in this run stalled:
+	// the wall was five minutes and the stall threshold fifteen
+	// seconds.
+	for _, g := range sum.Games {
+		if g.Stalled {
+			t.Errorf("game seed %d is reported as stalled; a cancelled game is not a stalled one", g.Seed)
+		}
+	}
+	// Every recorded game contributed exactly its seats, and the
+	// interrupted one contributed nothing.
+	seatGames := 0
+	for _, tot := range sum.PerPolicy {
+		seatGames += tot.Games
+	}
+	if want := 2 * len(sum.Games); seatGames != want {
+		t.Errorf("%d seat-games tallied over %d completed games, want %d — a partial game was counted",
+			seatGames, len(sum.Games), want)
+	}
+	if sum.Elapsed == 0 {
+		t.Error("a cancelled run still has to report how long it ran")
+	}
+	if sum.PerPolicy == nil {
+		t.Error("a cancelled run still has to report the tallies it has")
+	}
+}
+
+// A game that cannot be STARTED is an error — and the games that were
+// already played are still evidence. Returning the empty tally map the
+// run started with would print a report with empty tables over a
+// games.jsonl full of real games.
+func TestRunErrorKeepsTheGamesItPlayed(t *testing.T) {
+	dir := t.TempDir()
+	logDir := filepath.Join(dir, "decisions")
+	dl, err := decisionlog.New(decisionlog.Options{Dir: logDir})
+	if err != nil {
+		t.Fatalf("decisionlog.New: %v", err)
+	}
+	cfg := botarena.Config{
+		Seats:       []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
+		Games:       3,
+		Seed:        505,
+		Wall:        time.Nanosecond, // as above: a deal, not a game
+		DecisionLog: dl,
+	}
+	played := 0
+	sum, runErr := botarena.Run(context.Background(), cfg, func(r botarena.GameResult) {
+		played++
+		if played == 1 {
+			// Take the decision log's directory away, so the SECOND
+			// game cannot be started. A regular file in its place
+			// fails for root too, which is who the container's tests
+			// run as.
+			if err := os.RemoveAll(logDir); err != nil {
+				t.Errorf("RemoveAll: %v", err)
+			}
+			if err := os.WriteFile(logDir, []byte("not a directory"), 0o600); err != nil {
+				t.Errorf("WriteFile: %v", err)
+			}
+		}
+	})
+	if runErr == nil {
+		t.Fatal("a game that could not be started was not reported as an error")
+	}
+	if played != 1 {
+		t.Fatalf("%d games reached the sink, want 1", played)
+	}
+	if sum.Elapsed == 0 {
+		t.Error("the summary has no elapsed time; the report would say `elapsed 0s` over real games")
+	}
+	tot := sum.PerPolicy["heuristic"]
+	if tot == nil {
+		t.Fatalf("the tallies of the game that DID play were thrown away; have %v", sum.Policies())
+	}
+	if tot.Games != 2 {
+		t.Errorf("heuristic has %d seat-games, want 2 (both chairs of the one game that played)", tot.Games)
+	}
+	if len(sum.Games) != 1 {
+		t.Errorf("the summary lists %d games, want 1", len(sum.Games))
+	}
+	// And the report renders rather than printing empty tables.
+	if md := sum.Markdown(); !strings.Contains(md, "| heuristic |") {
+		t.Errorf("the report has no row for the games that played:\n%s", md)
+	}
 }

@@ -126,16 +126,38 @@ func medianInt(v []int) int {
 // four-seat game is two games of evidence about the heuristic, and
 // Wins+Losses+Draws == Games.
 type PolicyTotals struct {
-	Policy  string `json:"policy"`
-	Games   int    `json:"games"`
-	Wins    int    `json:"wins"`
-	Losses  int    `json:"losses"`
-	Draws   int    `json:"draws"`
-	Stalled int    `json:"stalled"`
-	// WinRate is Wins/Games; CILow and CIHigh are its Wilson 95%
-	// interval; Null is what a seat would win by chance at this table
-	// size (1/seats). A WinRate whose interval straddles Null is a
-	// measurement that has not yet said anything.
+	Policy string `json:"policy"`
+	Games  int    `json:"games"`
+	// Decided is the seat-games that produced a single survivor:
+	// Wins+Losses, which is Games minus Draws. It is the win rate's
+	// denominator — see WinRate.
+	Decided int `json:"decided"`
+	Wins    int `json:"wins"`
+	Losses  int `json:"losses"`
+	// Draws are the seat-games nobody won: the turn budget ran out,
+	// the wall clock did, the table stalled, or several seats were
+	// still alive at the end.
+	Draws int `json:"draws"`
+	// Stalled counts SEAT-games in stalled games, not games — two
+	// heuristic seats in one stalled four-seat game is 2 here and 1
+	// in Summary.Stalls(). The report's column says so.
+	Stalled int `json:"stalled"`
+	// WinRate is Wins/DECIDED, not Wins/Games, and CILow/CIHigh are
+	// its Wilson 95% interval on the same denominator. Null is what a
+	// seat wins by chance at this table size (1/seats).
+	//
+	// The denominator is the whole point. Null is P(win | somebody
+	// won): on a four-seat table exactly one of the four chairs takes
+	// a decided game, so the four rates sum to 1 and 1/seats is the
+	// no-skill rate. Undecided games produce no winner at all, so
+	// counting them in the denominator scales every policy's rate
+	// down by the decided fraction while leaving Null where it is. On
+	// a run where 40% of games hit the turn budget, every policy's
+	// ceiling would be 0.60, a policy winning 45% of the games that
+	// ended would report 27%, and `beats null` would say no about a
+	// policy that is beating chance by 20 points. Games, Draws and
+	// Stalled stay in the table so the undecided share is visible
+	// rather than hidden in a denominator.
 	WinRate float64 `json:"win_rate"`
 	CILow   float64 `json:"ci_low"`
 	CIHigh  float64 `json:"ci_high"`
@@ -154,7 +176,12 @@ type PolicyTotals struct {
 // Beats reports whether the whole interval is above the null rate —
 // the only honest way to say "this policy is stronger than chance"
 // from a handful of games.
-func (t PolicyTotals) Beats() bool { return t.Games > 0 && t.CILow > t.Null }
+//
+// Decided, not Games: the interval is on decided seat-games and Null
+// is P(win | somebody won), so those are the two numbers on the same
+// scale. A run in which nothing was decided has no evidence and
+// beats nothing.
+func (t PolicyTotals) Beats() bool { return t.Decided > 0 && t.CILow > t.Null }
 
 // GameDigest is one line about one game, for the summary. The full
 // GameResult goes to games.jsonl; this is what fits in a table.
@@ -200,6 +227,15 @@ type ConfigSummary struct {
 	// Note is free-form: the model's quantisation, what was being
 	// tested, whatever the next reader will wish had been recorded.
 	Note string `json:"note,omitempty"`
+	// Chairs is the seating this run produced: Chairs[k][p] is how
+	// many games contestant k spent in chair p. Recorded because
+	// rotation balances turn order only over a whole number of
+	// rotations, and a run nobody can audit on that point is a run
+	// whose headline number carries an unknown turn-order bias.
+	Chairs [][]int `json:"chair_histogram,omitempty"`
+	// ChairWarning is ChairBalanceWarning's verdict on this run, empty
+	// when the seating is balanced.
+	ChairWarning string `json:"chair_warning,omitempty"`
 }
 
 func describeConfig(cfg Config) ConfigSummary {
@@ -208,6 +244,8 @@ func describeConfig(cfg Config) ConfigSummary {
 		Rotate: cfg.Rotate, TurnBudget: cfg.TurnBudget, Wall: cfg.Wall, Stall: cfg.Stall,
 		MaxThink: cfg.MaxThink, Routine: cfg.Models.Routine, Frontier: frontierOf(cfg),
 		HasIndex: cfg.Index != nil, ReplayDir: cfg.ReplayDir, Revision: revision(), Note: cfg.Note,
+		Chairs:       ChairCounts(len(cfg.Seats), cfg.Games, cfg.Rotate),
+		ChairWarning: ChairBalanceWarning(len(cfg.Seats), cfg.Games, cfg.Rotate),
 	}
 	if cfg.DecisionLog != nil {
 		c.DecisionLog = cfg.DecisionLog.Dir()
@@ -384,10 +422,14 @@ func (a *accumulator) totals(seats int) map[string]*PolicyTotals {
 	}
 	for k, p := range a.per {
 		t := p.totals
-		if t.Games > 0 {
-			t.WinRate = float64(t.Wins) / float64(t.Games)
+		// Decided rather than counted: it is Games minus the
+		// undecided ones by construction, so it cannot drift from the
+		// three counters above it.
+		t.Decided = t.Wins + t.Losses
+		if t.Decided > 0 {
+			t.WinRate = float64(t.Wins) / float64(t.Decided)
 		}
-		t.CILow, t.CIHigh = Wilson(t.Wins, t.Games, DefaultZ)
+		t.CILow, t.CIHigh = Wilson(t.Wins, t.Decided, DefaultZ)
 		t.Null = null
 		t.Turns = turnPercentiles(p.turns)
 		t.Decision = aiseat.PercentilesOf(p.decision)
@@ -491,7 +533,13 @@ func (s Summary) Markdown() string {
 			c.DecisionLog, s.DecisionLog.Records, droppedLine(s.DecisionLog))
 	}
 	if c.ReplayDir != "" {
-		fmt.Fprintf(&b, "- **replays**: `%s`\n", c.ReplayDir)
+		// Named in full because ws.Room uses this one root for three
+		// artifacts, and an operator sizing a disk from "replays"
+		// alone is out by the authoritative-state dump.
+		fmt.Fprintf(&b, "- **replays**: `%s` — `replays/*.jsonl`, plus `games/*.json` (the full authoritative state, rewritten on every committed move) and `restore/*.json` while a game is live\n", c.ReplayDir)
+	}
+	if c.ChairWarning != "" {
+		fmt.Fprintf(&b, "- **WARNING**: %s\n", c.ChairWarning)
 	}
 	if c.Note != "" {
 		fmt.Fprintf(&b, "- **note**: %s\n", c.Note)
@@ -500,14 +548,15 @@ func (s Summary) Markdown() string {
 	names := s.Policies()
 
 	b.WriteString("\n### Play\n\n")
-	b.WriteString("| policy | seat-games | wins | win% | 95% CI | null | draws | stalls | turns p50 | beats null |\n")
-	b.WriteString("|---|---:|---:|---:|---|---:|---:|---:|---:|:--:|\n")
+	b.WriteString("| policy | seat-games | decided | wins | win% of decided | 95% CI of decided | null | draws | stalled seat-games | turns p50 | beats null |\n")
+	b.WriteString("|---|---:|---:|---:|---:|---|---:|---:|---:|---:|:--:|\n")
 	for _, n := range names {
 		t := s.PerPolicy[n]
-		fmt.Fprintf(&b, "| %s | %d | %d | %s | %s–%s | %s | %d | %d | %d | %s |\n",
-			n, t.Games, t.Wins, pct(t.WinRate), pct(t.CILow), pct(t.CIHigh), pct(t.Null),
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %s | %s–%s | %s | %d | %d | %d | %s |\n",
+			n, t.Games, t.Decided, t.Wins, pct(t.WinRate), pct(t.CILow), pct(t.CIHigh), pct(t.Null),
 			t.Draws, t.Stalled, t.Turns.P50, yesNo(t.Beats()))
 	}
+	b.WriteString(playFootnote)
 
 	b.WriteString("\n### Funnel\n\n")
 	b.WriteString("| policy | windows | A | B | C | escalated | calls | timeouts | fallbacks | in tok | out tok | prompt B p50 |\n")
@@ -536,6 +585,27 @@ func (s Summary) Markdown() string {
 			dur(t.ModelCall.P50), dur(t.ModelCall.P99), dur(t.ModelCall.Max))
 	}
 
+	if len(c.Chairs) > 0 {
+		b.WriteString("\n### Seating\n\n")
+		b.WriteString("| contestant |")
+		for i := range c.Chairs {
+			fmt.Fprintf(&b, " chair %d |", i+1)
+		}
+		b.WriteString("\n|---|")
+		for range c.Chairs {
+			b.WriteString("---:|")
+		}
+		b.WriteString("\n")
+		for k, row := range c.Chairs {
+			fmt.Fprintf(&b, "| %d %s |", k, contestant(c.Seats, k))
+			for _, n := range row {
+				fmt.Fprintf(&b, " %d |", n)
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("\nChair 1 is the first turn. Rotation balances these columns only over a whole number of rotations; anything else leaves a turn-order bias in the Play table above.\n")
+	}
+
 	b.WriteString("\n### Games\n\n")
 	b.WriteString("| seed | turns | state | winner | wall | stalled |\n")
 	b.WriteString("|---:|---:|---|---|---:|:--:|\n")
@@ -544,6 +614,18 @@ func (s Summary) Markdown() string {
 			g.Seed, g.Turns, g.State, orDash(g.Winner), g.Elapsed.Round(time.Millisecond), yesNo(g.Stalled))
 	}
 	return b.String()
+}
+
+// playFootnote is under the Play table on every run, because both
+// halves of it are ways to misread the numbers directly above.
+const playFootnote = "\n*Win % and its interval are over DECIDED seat-games — the ones that produced a single survivor — which is the scale the null rate (1/seats) is on. `seat-games` counts every seat of every game; `decided` drops the draws: turn budget, wall clock, stalls, and multi-survivor ends. Two chairs of the same policy contribute two seat-games to one game and at most one of them can win, so those trials are negatively correlated; the interval treats them as independent, which makes it CONSERVATIVE (it will not manufacture a `beats null`) but means `seat-games` must not be read as a count of independent trials.*\n"
+
+// contestant names the spec sitting in a seating row, for the report.
+func contestant(seats []SeatSpec, k int) string {
+	if k < 0 || k >= len(seats) {
+		return ""
+	}
+	return seats[k].Label()
 }
 
 // layer reads a layer's share from whichever counter has it.

@@ -469,7 +469,8 @@ the filtered `aiseat.Input` it would see at a real table.
 | `--max-think`, `--model`, `--frontier-model`, `--endpoint` | the model tiers' deadline and transport. With an endpoint set and no `--max-think`, the deadline defaults to **20s**, the same local default `cmd/server` applies and for the same reason. |
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
-| `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB. |
+| `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
+| `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block. Defaults to production's value. `0` turns it off, which is faster and declares systematically fewer blocks than a real table — see below. |
 | `--md`, `--json` | what to print. Markdown by default. |
 
 Env fallbacks match the server's: `CMDCTRL_OPENAI_ENDPOINT`,
@@ -488,6 +489,33 @@ moves still played twenty turns of real decisions, and the dump of
 every seat's legal moves at the moment it froze is the evidence that
 says why. The game is marked `stalled`, counted, and the run
 continues.
+
+**`games.jsonl` is operator-only, for the same reason the decision log
+is.** A stall dump enumerates every seat's legal moves, and a cast
+move is enumerated from that seat's hand — so the file names cards in
+hands the reader was never entitled to see. It is written `0600`
+inside a `0700` run directory, and it is exactly the file someone
+would reach for when reporting a stall. Quote the structural head of a
+dump (step, pending kinds, per-seat life and move counts) in a bug
+report; do not attach the file. `summary.md` and `summary.json` carry
+no dump and are safe to paste.
+
+**Turn order only cancels over a whole number of rotations.**
+`--rotate` seats contestant *k* in chair `(k+i) mod n` for game *i*,
+which balances turn order exactly when `--games` is a multiple of the
+seat count. It is not, the arena prints a warning naming the
+imbalance and does **not** silently change `--games` — and the run's
+chair histogram goes into the report either way, so a finished run is
+auditable on the point. Turn order in Commander is worth real
+percentage points, the same order as the differences being measured,
+so prefer 12 games over 10 on a four-seat table.
+
+**`--block-grace` is a fidelity knob, not a speed knob.** Without it
+an attacking bot re-steps the moment it commits, and the step can end
+before a slower seat has declared a block; combat is where policy
+differences actually show, so a run with it off understates every
+difference. It defaults to production's value and should stay there
+for any number that goes into an ADR.
 
 #### Wall clock
 
@@ -509,12 +537,29 @@ between games rather than killing the run.
 is the same numbers for a tool; `games.jsonl` has one full result per
 game.
 
-- **Play** — seat-games, wins, win %, a Wilson 95% interval, and the
-  **null rate** (1/seats). The interval and the null are the whole
-  point: "assisted won 30% of a four-seat table" is not a result,
-  because the null is 25% and ten games cannot tell them apart. The
-  `beats null` column is `yes` only when the entire interval clears
-  the null. Expect it to say `no` for a long time.
+- **Play** — seat-games, decided seat-games, wins, win %, a Wilson
+  95% interval, and the **null rate** (1/seats). The interval and the
+  null are the whole point: "assisted won 30% of a four-seat table" is
+  not a result, because the null is 25% and ten games cannot tell them
+  apart. The `beats null` column is `yes` only when the entire
+  interval clears the null. Expect it to say `no` for a long time.
+
+  **Win % is over *decided* seat-games**, not all of them. The null is
+  P(win | somebody won) — on a four-seat table exactly one chair takes
+  a decided game, so the four rates sum to 1 — and counting undecided
+  games in the denominator would scale every policy down while leaving
+  the null where it is. On a run where 40% of games hit the turn
+  budget, every policy's ceiling would be 0.60 and a policy winning
+  45% of the games that ended would report 27% and `beats null: no`.
+  `seat-games`, `draws` and `stalled seat-games` stay in the table so
+  the undecided share is visible rather than buried.
+
+  One more caveat the footnote repeats: two chairs of the same policy
+  contribute two seat-games to one game and at most one of them can
+  win, so those trials are negatively correlated. The interval treats
+  them as independent, which makes it **conservative** — it will not
+  manufacture a `beats null` — but `seat-games` is not a count of
+  independent trials.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -8,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 )
 
@@ -244,5 +248,100 @@ func TestArenaFlagsConfig(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "endpoint") {
 		t.Errorf("the refusal should say what to do, got %v", err)
+	}
+}
+
+// A run that stopped early measured less than it was asked to, and an
+// operator scripting these must not read exit 0 off it. A Ctrl-C is
+// the operator's own choice and is not a failure.
+func TestArenaExit(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"a complete run", nil, 0},
+		{"a Ctrl-C between games", context.Canceled, 0},
+		{"a wrapped Ctrl-C", fmt.Errorf("botarena: %w", context.Canceled), 0},
+		{"a game that could not be started", errors.New("botarena: add player: deck is empty"), 1},
+		{"a deadline the caller set", context.DeadlineExceeded, 1},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := arenaExit(c.err); got != c.want {
+				t.Errorf("arenaExit(%v) = %d, want %d", c.err, got, c.want)
+			}
+		})
+	}
+}
+
+// The run directory and games.jsonl carry the same class of
+// aggregated hidden information the decision log does: a stalled
+// game's dump enumerates every seat's legal moves, cast moves
+// included, so it names castable cards in all four hands. ADR 0052's
+// modes, for ADR 0052's reason.
+func TestArenaArtifactsArePrivate(t *testing.T) {
+	root := t.TempDir()
+	dir, err := createArenaRunDir(root, time.Date(2026, time.September, 17, 18, 19, 4, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o700 {
+		t.Errorf("run directory %s is %#o, want 0700", dir, perm)
+	}
+	f, err := createGamesJSONL(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := fi.Mode().Perm(); perm != 0o600 {
+		t.Errorf("games.jsonl is %#o, want 0600", perm)
+	}
+	if got := filepath.Base(f.Name()); got != "games.jsonl" {
+		t.Errorf("wrote %q, want games.jsonl", got)
+	}
+}
+
+// Arena seats get production's block grace, because with MinThink at
+// 0 an attacker without it re-steps on its own commit and races the
+// defenders — every combat resolving with fewer blocks than the same
+// policies would declare at a real table. An operator who would
+// rather have the wall clock back can turn it off, and "off" has to
+// survive the arena's zero-means-production default.
+func TestParseArenaFlagsBlockGrace(t *testing.T) {
+	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := aiseat.DefaultConfig().BlockGrace
+	if a.blockGrace != want {
+		t.Errorf("--block-grace defaults to %s, want production's %s", a.blockGrace, want)
+	}
+	if got := a.config(nil, nil, nil, "", nil).Runner.BlockGrace; got != want {
+		t.Errorf("the config carries %s, want %s", got, want)
+	}
+
+	off, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--block-grace", "0"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := off.config(nil, nil, nil, "", nil).Runner.BlockGrace; got >= 0 {
+		t.Errorf("--block-grace 0 must reach the arena as an explicit off (a negative duration), got %s", got)
+	}
+
+	custom, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--block-grace", "1500ms"}, io.Discard)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := custom.config(nil, nil, nil, "", nil).Runner.BlockGrace; got != 1500*time.Millisecond {
+		t.Errorf("--block-grace 1500ms reached the arena as %s", got)
 	}
 }

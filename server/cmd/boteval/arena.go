@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
@@ -39,9 +40,17 @@ import (
 //	games.jsonl    one full GameResult per line, WRITTEN AS EACH GAME
 //	               ENDS (a ten-game model run is an hour; a harness
 //	               that writes nothing until the end is one a Ctrl-C
-//	               destroys)
+//	               destroys). OPERATOR-ONLY: a stalled game carries a
+//	               dump of every seat's legal moves, so the file names
+//	               castable cards in all four hands.
 //	decisions/     per-game decision logs, when --decision-log is on
-//	replays/       per-game replay JSONL, when --replays is on
+//	replays/       per-game replay JSONL, when --replays is on — and
+//	               games/ and restore/ beside it, which ws.Room writes
+//	               off the same root
+//
+// The run directory is 0700 and games.jsonl is 0600, the modes ADR
+// 0052 gives the decision log, because they hold the same class of
+// aggregated hidden information.
 
 // localDefaultMaxThink mirrors cmd/server/main.go. A self-hosted
 // model cannot answer a Commander window in the tier's 2s default, so
@@ -55,27 +64,30 @@ const localDefaultMaxThink = 20 * time.Second
 // fallbacks, the local think default, deck/seat arity) are testable
 // without a model endpoint or a 600 MiB dump.
 type arenaFlags struct {
-	seats     []tiers.Tier
-	decks     []string
-	names     []string
-	games     int
-	seed      uint64
-	rotate    bool
-	turns     int
-	wall      time.Duration
-	stall     time.Duration
-	maxThink  time.Duration
-	modelID   string
-	frontier  string
-	endpoint  string
-	out       string
-	decLog    bool
-	decMode   string
-	replays   bool
-	dump      string
-	note      string
-	printMD   bool
-	printJSON bool
+	seats    []tiers.Tier
+	decks    []string
+	names    []string
+	games    int
+	seed     uint64
+	rotate   bool
+	turns    int
+	wall     time.Duration
+	stall    time.Duration
+	maxThink time.Duration
+	// blockGrace is the declare-blockers hold. 0 or less is OFF; see
+	// config, where it has to be spelled negative for the arena.
+	blockGrace time.Duration
+	modelID    string
+	frontier   string
+	endpoint   string
+	out        string
+	decLog     bool
+	decMode    string
+	replays    bool
+	dump       string
+	note       string
+	printMD    bool
+	printJSON  bool
 
 	// needsModel and needsIndex are conclusions parse drew, kept so
 	// the caller does not re-derive them.
@@ -105,7 +117,8 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	out2 := fs.String("out", "", "directory for the run's artifacts; empty prints the report and writes nothing")
 	decLog := fs.Bool("decision-log", false, "write a per-game decision log under <out>/decisions (operator-only: see docs/bot.md)")
 	decMode := fs.String("decision-log-mode", "", "escalated (default) | all | model")
-	replays := fs.Bool("replays", false, "write a per-game replay JSONL under <out>/replays (~320 MiB per four-seat game)")
+	replays := fs.Bool("replays", false, "write per-game replays under <out>: replays/<id>.jsonl (~320 MiB per four-seat game) plus games/<id>.json, a full authoritative-state marshal rewritten on every committed move, and restore/<id>.json while a game is live")
+	blockGrace := fs.Duration("block-grace", aiseat.DefaultConfig().BlockGrace, "how long an attacking bot holds its pass in declare-blockers while a defender still has a legal block; 0 or less turns it off, which is faster but declares systematically fewer blocks than a real table")
 	dump := fs.String("dump", "", "Scryfall bulk dump, needed by curated decks (default: $CMDCTRL_SCRYFALL_DUMP)")
 	note := fs.String("note", "", "free-form note recorded in the report (model quantisation, what is being tested)")
 	printMD := fs.Bool("md", false, "print the Markdown report to stdout (the default when neither --md nor --json is given)")
@@ -116,7 +129,8 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 
 	a := &arenaFlags{
 		games: *games, seed: *seed, rotate: *rotate, turns: *turns, wall: *wall,
-		stall: *stall, maxThink: *maxThink, out: *out2, decLog: *decLog, decMode: *decMode,
+		stall: *stall, maxThink: *maxThink, blockGrace: *blockGrace, out: *out2,
+		decLog: *decLog, decMode: *decMode,
 		replays: *replays, note: *note, printMD: *printMD, printJSON: *printJSON,
 	}
 	var err error
@@ -269,6 +283,14 @@ func (a *arenaFlags) config(idx *cards.Index, client model.Client, dl *decisionl
 		Models:      tiers.Models{Routine: a.modelID, Frontier: a.frontier},
 		DecisionLog: dl, Log: log,
 	}
+	// botarena.Config.Runner's zero BlockGrace means "production's
+	// 4s", so an operator asking for none has to be spelled with a
+	// negative duration — otherwise `--block-grace 0` would turn
+	// itself back on.
+	cfg.Runner.BlockGrace = a.blockGrace
+	if a.blockGrace <= 0 {
+		cfg.Runner.BlockGrace = -1
+	}
 	if a.replays && runDir != "" {
 		cfg.ReplayDir = runDir
 	}
@@ -297,11 +319,21 @@ func runArena(args []string) int {
 	// would produce a heuristic's win rate under a model's name.
 	var client model.Client
 	if a.needsModel {
-		c, _ := buildClient(a.endpoint)
-		if c == nil {
+		// The second return is the chat-completions URL the transport
+		// resolved, not an error — it is reported rather than dropped
+		// so that "no endpoint is configured" is never printed at an
+		// operator who did set one, and so a typo'd endpoint shows up
+		// here rather than as a per-window warning an hour in.
+		c, url := buildClient(a.endpoint)
+		if c == nil || url == "" {
+			if a.endpoint != "" {
+				fmt.Fprintf(os.Stderr, "boteval arena: --endpoint %q did not resolve to a chat-completions URL\n", a.endpoint)
+				return 2
+			}
 			fmt.Fprintf(os.Stderr, "boteval arena: a model tier was asked for but no endpoint is configured: pass --endpoint or set %s\n", model.EnvOpenAIEndpoint)
 			return 2
 		}
+		say(progress, "model endpoint: %s\n", url)
 		if a.modelID == "" {
 			fmt.Fprintln(os.Stderr, "boteval arena: a model tier was asked for but no model id is configured: pass --model or set CMDCTRL_BOT_MODEL")
 			return 2
@@ -357,15 +389,22 @@ func runArena(args []string) int {
 
 	var jsonl *os.File
 	if runDir != "" {
-		if jsonl, err = os.Create(filepath.Join(runDir, "games.jsonl")); err != nil {
+		if jsonl, err = createGamesJSONL(runDir); err != nil {
 			fmt.Fprintf(os.Stderr, "boteval arena: %v\n", err)
 			return 1
 		}
 		defer func() { _ = jsonl.Close() }()
+		say(progress, "games.jsonl IS OPERATOR-ONLY: a stalled game's entry dumps every seat's legal moves, so the file names castable cards in every hand at the table; never attach it to a bug report.\n")
 	}
 
 	say(progress, "arena: %d games, seats [%s], seed %d, rotation %s\n",
 		a.games, strings.Join(tierNames(a.seats), ", "), a.seed, onOff(a.rotate))
+	// The operator's --games is never changed for them; the run says
+	// what the seating will actually be, and the report keeps the
+	// histogram.
+	if w := botarena.ChairBalanceWarning(len(a.seats), a.games, a.rotate); w != "" {
+		say(progress, "WARNING: %s\n", w)
+	}
 
 	enc := (*json.Encoder)(nil)
 	if jsonl != nil {
@@ -390,11 +429,9 @@ func runArena(args []string) int {
 			_ = jsonl.Sync()
 		}
 	})
-	if runErr != nil && !errors.Is(runErr, context.Canceled) {
+	exit := arenaExit(runErr)
+	if exit != 0 {
 		fmt.Fprintf(os.Stderr, "boteval arena: %v\n", runErr)
-		if played == 0 {
-			return 1
-		}
 	}
 
 	md := sum.Markdown()
@@ -424,7 +461,36 @@ func runArena(args []string) int {
 	if runDir != "" {
 		say(progress, "\nartifacts: %s\n", runDir)
 	}
-	return 0
+	return exit
+}
+
+// arenaExit is the process's answer to "did this run do what it was
+// asked to".
+//
+// A Ctrl-C is the operator's own decision and is not a failure: the
+// run stops between games and the summary describes what it played.
+// Anything else is, EVEN WHEN games were played — a run whose sixth
+// game could not be started measured six-tenths of what was asked
+// for, and a script that reads exit 0 off it will file the report as
+// if it were whole. The summary is still written either way: the
+// games that played are the evidence.
+func arenaExit(runErr error) int {
+	if runErr == nil || errors.Is(runErr, context.Canceled) {
+		return 0
+	}
+	return 1
+}
+
+// createGamesJSONL opens the run's games.jsonl at 0600.
+//
+// A stalled game's GameResult carries a StallDump that enumerates
+// every seat's legal moves, and the cast moves are enumerated from
+// each hand — so the file names castable cards in all four hands.
+// That is the same aggregated-hidden-information class ADR 0052
+// protects the decision log with, and this is the file an operator
+// would reach for when reporting a stall.
+func createGamesJSONL(dir string) (*os.File, error) {
+	return os.OpenFile(filepath.Join(dir, "games.jsonl"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 }
 
 func createArenaRunDir(root string, started time.Time) (string, error) {
@@ -438,7 +504,11 @@ func createArenaRunDir(root string, started time.Time) (string, error) {
 			name = fmt.Sprintf("%s-%d", base, n)
 		}
 		dir := filepath.Join(root, name)
-		if err := os.Mkdir(dir, 0o755); err == nil {
+		// 0700: the run directory holds games.jsonl (stall dumps that
+		// name every seat's hand), and with --decision-log or
+		// --replays it holds whole-table state as well. Same mode ADR
+		// 0052 gives the decision log, for the same reason.
+		if err := os.Mkdir(dir, 0o700); err == nil {
 			return dir, nil
 		} else if !errors.Is(err, os.ErrExist) {
 			return "", err

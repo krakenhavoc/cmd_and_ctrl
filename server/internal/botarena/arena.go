@@ -35,10 +35,12 @@ package botarena
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -123,6 +125,20 @@ type Config struct {
 	// 0 (nobody is watching, so there is no reason to hold a decision
 	// back) and Narrate off (there is no chat to narrate to). MaxThink
 	// is filled per seat from the tier when left at zero.
+	//
+	// BlockGrace is the ONE field where zero does not mean the arena
+	// default: it is filled with PRODUCTION's 4s. It is how long an
+	// attacking runner holds its pass during declare-blockers while
+	// some defender still has a legal block, and aiseat's own
+	// withDefaults does not fill it. With MinThink at 0 and no grace
+	// the attacker re-steps on its own commit and races the
+	// defenders, so every combat resolves with systematically fewer
+	// blocks than the same policies would declare at a real table —
+	// and combat is where policies differ, so the bias lands squarely
+	// on the one number this harness exists to produce. A NEGATIVE
+	// duration turns the hold off (aiseat treats <= 0 as off), which
+	// is the only way to buy back the wall clock it costs;
+	// `boteval arena --block-grace 0` spells exactly that.
 	Runner aiseat.Config
 	// DecisionLog, when set, gets one log file per game.
 	DecisionLog *decisionlog.Logger
@@ -152,6 +168,11 @@ func (c Config) withDefaults() Config {
 	}
 	if c.Stall <= 0 {
 		c.Stall = 3*c.MaxThink + defaultStallBase
+	}
+	if c.Runner.BlockGrace == 0 {
+		// See Config.Runner. Zero is production's 4s, negative is
+		// off; aiseat.Config.withDefaults fills neither.
+		c.Runner.BlockGrace = aiseat.DefaultConfig().BlockGrace
 	}
 	if c.Log == nil {
 		c.Log = slog.New(slog.NewTextHandler(discard{}, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -218,6 +239,60 @@ func Order(n, game int, rotate bool) []int {
 	return out
 }
 
+// ChairCounts is the seating a run will actually produce:
+// ChairCounts(n, games, rotate)[k][p] is how many of the games spec k
+// spends in chair p.
+//
+// It is recorded with every run because rotation only balances over a
+// run whose length is a multiple of the table size, and the residual
+// is a turn-order bias of the same order as the effect being
+// measured. A finished run has to be auditable on that point rather
+// than trusted.
+func ChairCounts(n, games int, rotate bool) [][]int {
+	if n <= 0 || games <= 0 {
+		return nil
+	}
+	out := make([][]int, n)
+	for k := range out {
+		out[k] = make([]int, n)
+	}
+	for i := 0; i < games; i++ {
+		for pos, k := range Order(n, i, rotate) {
+			out[k][pos]++
+		}
+	}
+	return out
+}
+
+// ChairBalanceWarning names the turn-order bias a rotated run cannot
+// cancel, or "" when there is none.
+//
+// Rotation moves each contestant one chair along per game, so it
+// balances exactly when the run length is a whole number of
+// rotations. The default `--games 10` on a four-seat table is not:
+// two contestants get three first-chair games and two get two. Turn
+// order in Commander is worth real percentage points, which is the
+// same order as the difference an arena run is trying to resolve.
+//
+// It is a WARNING and not a correction on purpose. Quietly rounding
+// the operator's --games up to 12 would spend three unasked-for hours
+// of GPU time; quietly rounding it down to 8 would throw two games of
+// evidence away. Saying so, and putting the chair histogram in the
+// report, leaves the choice where it belongs.
+func ChairBalanceWarning(n, games int, rotate bool) string {
+	if !rotate || n <= 1 || games <= 0 || games%n == 0 {
+		return ""
+	}
+	extra := games % n
+	low := games / n
+	lower, upper := games-extra, games-extra+n
+	if lower == 0 {
+		lower, upper = upper, upper+n
+	}
+	return fmt.Sprintf("rotation cannot balance turn order: %d games over %d seats is not a whole number of rotations, so %d of the %d contestants sit in each chair %d times and the other %d sit there %d times. Turn order in Commander is worth real percentage points — the same order as the difference being measured. Play %d or %d games for a balanced run; the chair histogram is in the report either way.",
+		games, n, extra, n, low+1, n-extra, low, lower, upper)
+}
+
 // SeatResult is one spec's game: where it sat, whether it survived,
 // and everything its runner and its funnel counted.
 type SeatResult struct {
@@ -271,6 +346,14 @@ type GameResult struct {
 	// evidence that says why it stalled.
 	Stalled   bool   `json:"stalled,omitempty"`
 	StallDump string `json:"stall_dump,omitempty"`
+	// Aborted is true when the RUN's context was cancelled while this
+	// game was still being played — a Ctrl-C, not a stall and not a
+	// result. The game stopped wherever the cancel found it, so its
+	// tallies are a fraction of a game; Run DROPS such a result
+	// rather than folding it into every policy's win rate. Never
+	// confuse it with Stalled: a stall is evidence about the engine,
+	// this is an interruption of the measurement.
+	Aborted bool `json:"aborted,omitempty"`
 	// DecisionLog and Replay are where this game's artifacts landed.
 	DecisionLog string `json:"decision_log,omitempty"`
 	Replay      string `json:"replay,omitempty"`
@@ -388,7 +471,12 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		gameLog, res.DecisionLog = gl, gl.Path()
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, cfg.Wall)
+	// The wall deadline gets its OWN cause, so that watchTable can
+	// tell "my own deadline fired" from "the operator pressed
+	// Ctrl-C". Both are ctx.Err() != nil, and reporting the second as
+	// the first writes a stall dump claiming a cause that did not
+	// happen — into the file an operator files stall reports from.
+	ctx, cancel := context.WithTimeoutCause(ctx, cfg.Wall, errWallClock)
 	defer cancel()
 
 	started := time.Now()
@@ -417,7 +505,12 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		if gameLog != nil {
 			obs = append(obs, gameLog)
 		}
-		if cfg.Runner.Observer != nil {
+		// Guarded the way gameLog is, and for the same reason: a
+		// caller that left a nil *decisionlog.GameLog (or any other
+		// nil pointer) in the interface slot hands us a non-nil
+		// interface holding a nil pointer, and Observe on it panics
+		// on the runner's own goroutine, mid-game.
+		if !isNilObserver(cfg.Runner.Observer) {
 			obs = append(obs, cfg.Runner.Observer)
 		}
 		rc.Observer = obs
@@ -473,6 +566,22 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	}
 	res.Seats = seats
 	return res, nil
+}
+
+// isNilObserver reports whether an observer slot is empty — nil, or a
+// non-nil interface holding a nil pointer. The second is the trap:
+// `var gl *decisionlog.GameLog; cfg.Runner.Observer = gl` compares
+// != nil and panics on first use.
+func isNilObserver(o aiseat.DecisionObserver) bool {
+	if o == nil {
+		return true
+	}
+	switch rv := reflect.ValueOf(o); rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer, reflect.Interface:
+		return rv.IsNil()
+	default:
+		return false
+	}
 }
 
 // seatInstruments are the per-seat measurement handles Play keeps
@@ -547,10 +656,28 @@ func checkOrder(order []int, n int) error {
 	return nil
 }
 
+// errWallClock is the cause this game's own wall deadline cancels
+// with. It is what tells a cancelled game apart from an exhausted
+// one — see watchTable.
+var errWallClock = errors.New("botarena: per-game wall clock exhausted")
+
+// watchInterval is how often the supervision loop looks at the table.
+//
+// It used to be 2ms. Every pass takes the game's read lock (Snapshot)
+// and the room's mutex (Seq) — the same mutex ws.Room.apply holds
+// across a Game clone and a dump write — so 500 Hz is ~900k lock
+// acquisitions over a 30-minute budget, contending with precisely the
+// decision latency this harness reports, and burning a core per game
+// to do it. The stall threshold is 3×MaxThink+15s, so polling at
+// 100ms costs the stall detector nothing measurable.
+const watchInterval = 100 * time.Millisecond
+
 // watchTable is the supervision loop: it stops the game at the turn
-// budget, the wall clock or a stall, and fills the stall evidence in.
+// budget, the wall clock or a stall, and fills the evidence in.
 func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, res *GameResult) {
 	lastSeq, lastMove := room.Seq(), time.Now()
+	tick := time.NewTicker(watchInterval)
+	defer tick.Stop()
 	for {
 		snap := g.Snapshot()
 		if snap.State != game.StateActive || snap.Turn.Number > cfg.TurnBudget {
@@ -564,11 +691,22 @@ func watchTable(ctx context.Context, room *ws.Room, g *game.Game, cfg Config, re
 			return
 		}
 		if ctx.Err() != nil {
-			res.Stalled = true
-			res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, snap.Turn.Number)
+			if errors.Is(context.Cause(ctx), errWallClock) {
+				res.Stalled = true
+				res.StallDump = fmt.Sprintf("wall clock (%s) exhausted at turn %d", cfg.Wall, snap.Turn.Number)
+				return
+			}
+			// The RUN was cancelled — a Ctrl-C, or a caller's own
+			// deadline. This game neither stalled nor finished: it is
+			// a fragment, and the only honest thing to say about it
+			// is that it was interrupted.
+			res.Aborted = true
 			return
 		}
-		time.Sleep(2 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+		case <-tick.C:
+		}
 	}
 }
 
@@ -656,7 +794,26 @@ func Run(ctx context.Context, cfg Config, sink func(GameResult)) (Summary, error
 		}
 		res, err := Play(ctx, cfg, cfg.Seed+uint64(i), Order(len(cfg.Seats), i, cfg.Rotate))
 		if err != nil {
+			// Finalised exactly like the cancellation path above. The
+			// games that DID play can be hours of evidence, and
+			// returning a Summary whose PerPolicy is the empty map it
+			// started as would print a report with empty Play, Funnel
+			// and Latency tables and `elapsed 0s` over a games.jsonl
+			// full of real games.
+			sum.Elapsed = time.Since(started)
+			sum.PerPolicy = acc.totals(len(cfg.Seats))
 			return sum, err
+		}
+		if res.Aborted {
+			// Cancelled mid-game: a fraction of a game, not a result.
+			// Dropped rather than tallied — a half-played game folded
+			// into every policy's win rate is worse than no game.
+			sum.Elapsed = time.Since(started)
+			sum.PerPolicy = acc.totals(len(cfg.Seats))
+			if cerr := ctx.Err(); cerr != nil {
+				return sum, cerr
+			}
+			return sum, context.Canceled
 		}
 		if sink != nil {
 			sink(res)
