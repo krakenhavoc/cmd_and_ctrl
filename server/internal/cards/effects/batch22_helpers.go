@@ -29,15 +29,6 @@ import (
 
 // --- predicates --------------------------------------------------
 
-// b22SpellManaValueGE is "target spell with mana value N or greater"
-// — Disdainful Stroke. Read on the stack (CR 202.3e), so a Hydra cast
-// for X=5 is a legal target and one cast for X=1 is not.
-func b22SpellManaValueGE(n int) CardPredicate {
-	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
-		return manaValueOnStack(c, g.StackItemForEffect(c.InstanceID)) >= n
-	}
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b22FirstSpellOnAnOpponentsTurn is Wavebreak Hippocamp's condition:

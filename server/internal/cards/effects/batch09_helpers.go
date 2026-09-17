@@ -16,7 +16,8 @@ import (
 // N lands" is untapUpToLands, the reveal-and-tutor body is
 // b06TutorToHand, "this permanent enters" is b06SelfETB, the Castle
 // condition is b06EntersTappedUnlessLandType, and the mana value of
-// a spell on the stack is manaValueOnStack.
+// any card that might be a spell on the stack is
+// game.(*Game).ManaValueForEffect.
 
 // b09OpponentCastInstantOrSorcery is Arasta of the Endless Web's
 // condition: an OPPONENT of the source's controller cast an instant
@@ -57,7 +58,8 @@ func b09SpellCastByYouWithManaValueAtLeast(ev game.Event, source *game.Card, g *
 	if !ok {
 		return false
 	}
-	return manaValueOnStack(spell, g.StackItemForEffect(ev.CardID)) >= n
+	mv, ok := g.ManaValueForEffect(spell)
+	return ok && mv >= n
 }
 
 // b09IsEquipmentCard is the SearchLibrary predicate for "an Equipment

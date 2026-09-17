@@ -18,7 +18,8 @@ import (
 // opponent controls died" is b18OpponentsCreatureDied, "you cast a
 // creature / noncreature spell" is creatureSpellCastByYou /
 // b10NoncreatureSpellCastByYou, "an opponent cast a spell" is
-// b15OpponentCastSpell with manaValueOnStack for its mana value,
+// b15OpponentCastSpell with game.(*Game).ManaValueForEffect for its
+// mana value,
 // "a creature entered under your control" is enteredUnderYourControl,
 // the combat-damage-to-a-player read is combatDamageToPlayerBy with
 // OncePerBatch as the "one or more" dedup, the
