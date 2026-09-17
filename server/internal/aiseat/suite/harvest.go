@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
@@ -126,7 +127,7 @@ func keep(rec decisionlog.Record, f HarvestFilter) bool {
 	if f.Disagree && !disagreed(rec) {
 		return false
 	}
-	if len(f.Fallbacks) > 0 && !matchesAny(f.Fallbacks, rec.Trace.Fallback, rec.Final.RunnerFallback) {
+	if len(f.Fallbacks) > 0 && !matchesFallback(rec, f.Fallbacks) {
 		return false
 	}
 	if len(f.Layers) > 0 && !matchesAny(f.Layers, rec.Trace.Layer) {
@@ -159,6 +160,13 @@ func keep(rec decisionlog.Record, f HarvestFilter) bool {
 		}
 	}
 	return true
+}
+
+func matchesFallback(rec decisionlog.Record, want []string) bool {
+	if matchesAny(want, rec.Trace.Fallback, rec.Final.RunnerFallback) {
+		return true
+	}
+	return rec.Trace.TimedOut && matchesAny(want, aiseat.FallbackTimeout)
 }
 
 // disagreed reports whether the model and the heuristic wanted

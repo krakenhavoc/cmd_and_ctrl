@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/suite"
 )
 
 // suite_test.go pins the three subcommands' flag surface. It is the
@@ -25,6 +27,9 @@ func TestParseSuiteRunDefaults(t *testing.T) {
 	}
 	if o.Parallel != 1 {
 		t.Errorf("--parallel default %d, want 1 (a single-GPU endpoint is slower with more in flight, not faster)", o.Parallel)
+	}
+	if o.MaxThink != suite.DefaultMaxThink {
+		t.Errorf("--max-think default %v, want suite default %v", o.MaxThink, suite.DefaultMaxThink)
 	}
 	if o.MD {
 		t.Error("--md defaults on")

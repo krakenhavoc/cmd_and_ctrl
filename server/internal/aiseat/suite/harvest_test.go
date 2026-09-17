@@ -192,6 +192,15 @@ func TestHarvestFiltersAndSampling(t *testing.T) {
 	})
 }
 
+func TestHarvestTimeoutFilterIncludesModelTimeouts(t *testing.T) {
+	rec := record(0, 1, model.LayerB, 0, nil, harvestMoves(), false)
+	rec.Trace.Fallback = model.FallbackError
+	rec.Trace.TimedOut = true
+	if !keep(rec, HarvestFilter{Fallbacks: []string{aiseat.FallbackTimeout}}) {
+		t.Fatal("timeout filter discarded a model timeout carried by Trace.TimedOut")
+	}
+}
+
 // TestHarvestSkipsCompactRecords: escalated mode writes most windows
 // without a view, and a position without a view cannot be rendered,
 // replayed or labelled.

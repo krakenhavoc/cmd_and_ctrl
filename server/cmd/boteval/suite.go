@@ -115,6 +115,9 @@ func parseSuiteRun(args []string) (suiteRunOpts, error) {
 	if o.MaxThink <= 0 {
 		o.MaxThink = envDuration("CMDCTRL_BOT_MAX_THINK")
 	}
+	if o.MaxThink <= 0 {
+		o.MaxThink = suite.DefaultMaxThink
+	}
 	return o, nil
 }
 

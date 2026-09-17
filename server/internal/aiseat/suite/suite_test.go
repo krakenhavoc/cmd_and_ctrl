@@ -209,6 +209,20 @@ func TestDeclineIsGradedAgainstTheLabel(t *testing.T) {
 	}
 }
 
+func TestDeclineOnlyPositionIsLabelled(t *testing.T) {
+	p := Position{
+		ID: "decline-only", V: PositionVersion, Input: twoMoveInput(),
+		Expected: Expected{DeclineOK: true},
+	}
+	if err := p.prepare(); err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	rep := Run(context.Background(), []Position{p}, declinePolicy{}, RunOptions{})
+	if rep.Labelled != 1 || rep.Agree != 1 || rep.Results[0].Outcome != OutcomeAgree {
+		t.Fatalf("decline-only label was not graded: %+v", rep)
+	}
+}
+
 // TestMatchersNameMovesRatherThanIndices covers the four matcher
 // forms, including the params subset — the one that distinguishes two
 // moves sharing a label.

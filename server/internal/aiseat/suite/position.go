@@ -236,10 +236,10 @@ func subsetOf(want, got map[string]any) bool {
 // Expected is the label: which moves are right, which are
 // specifically wrong, and whether declining is defensible.
 //
-// An EMPTY Accept means the position has not been labelled yet — a
-// harvested position straight out of the inbox. Run reports those as
-// OutcomeSkipped and never counts them as agreement, because a suite
-// that scores its own unlabelled positions is measuring nothing.
+// An EMPTY Accept with DeclineOK false means the position has not been
+// labelled yet — a harvested position straight out of the inbox. A
+// decline-only label uses DeclineOK true with an empty Accept. Run
+// reports only genuinely unlabelled positions as OutcomeSkipped.
 type Expected struct {
 	Accept    []Matcher `json:"accept"`
 	Reject    []Matcher `json:"reject,omitempty"`
@@ -280,7 +280,7 @@ func (p Position) Accept() []int { return append([]int(nil), p.accept...) }
 func (p Position) Reject() []int { return append([]int(nil), p.reject...) }
 
 // Labelled reports whether anybody has answered this position yet.
-func (p Position) Labelled() bool { return len(p.Expected.Accept) > 0 }
+func (p Position) Labelled() bool { return len(p.Expected.Accept) > 0 || p.Expected.DeclineOK }
 
 // Gates reports whether a miss by the named policy fails the build.
 func (p Position) Gates(policy string) bool {

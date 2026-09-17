@@ -312,6 +312,9 @@ func decide(ctx context.Context, p Position, policy aiseat.Policy, tracer aiseat
 	case tr.Fallback == model.FallbackError || tr.Fallback == model.FallbackPolicyError:
 		res.Outcome = OutcomeError
 		return res
+	case tr.Fallback == model.FallbackNoBudget:
+		res.Outcome = OutcomeError
+		return res
 	}
 
 	switch {
