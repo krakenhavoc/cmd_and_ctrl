@@ -2736,6 +2736,12 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 			kept = append(kept, c)
 			continue
 		}
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  c.Chooser,
+			Source: c.Source,
+			Label:  string(c.Kind),
+		})
 		if c.replacementResume != nil && c.replacementResume.ev != nil {
 			dropped = append(dropped, c.replacementResume)
 		}

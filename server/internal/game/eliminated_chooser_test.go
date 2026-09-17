@@ -230,6 +230,22 @@ func TestSweepEliminatedChoicesDropsChoiceForNewlyEliminatedChooser(t *testing.T
 	} else if err != nil {
 		t.Errorf("PassPriority after the sweep: unexpected error %v", err)
 	}
+	var dropped *Event
+	for i := range g.Events {
+		if g.Events[i].Kind == EventPendingChoiceDropped && g.Events[i].Actor == chooser.ID {
+			dropped = &g.Events[i]
+			break
+		}
+	}
+	if dropped == nil {
+		t.Fatalf("sweep emitted no EventPendingChoiceDropped")
+	}
+	if dropped.Source != uuid.Nil {
+		t.Errorf("dropped event Source = %s, want nil", dropped.Source)
+	}
+	if dropped.Label != string(PendingChoiceTriggerPrompt) {
+		t.Errorf("dropped event Label = %q, want %q", dropped.Label, PendingChoiceTriggerPrompt)
+	}
 
 	// Idempotent: running it again over an already-clean queue must
 	// not panic or misbehave.
