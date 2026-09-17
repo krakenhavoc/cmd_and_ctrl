@@ -259,20 +259,17 @@ func TestIzzetCharmDrawTwoDiscardTwo(t *testing.T) {
 		t.Errorf("graveyard %d -> %d, want +1 (the Charm only)",
 			gyBefore, me.Graveyard.Size())
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Fatalf("DiscardPending[me]: got %d, want 2 — the controller "+
-			"should be choosing, not discarding at random",
-			g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Fatalf("the mode owes a 2-card discard prompt: got %d — the "+
+			"controller should be choosing, not discarding at random",
+			discardOwed(g, me.ID))
 	}
 
 	// The controller names their two discards.
-	picks := []uuid.UUID{
+	answerDiscard(t, g, me.ID,
 		me.Hand.Cards[0].InstanceID,
 		me.Hand.Cards[1].InstanceID,
-	}
-	if err := g.DiscardSelection(me.ID, picks); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
-	}
+	)
 	if me.Hand.Size() != handBefore {
 		t.Errorf("post-selection hand %d, want %d", me.Hand.Size(), handBefore)
 	}

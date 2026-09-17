@@ -146,17 +146,15 @@ func castFromGraveyard(g *game.Game, p *game.Player, id uuid.UUID, key string, p
 }
 
 // discardLoot answers Faithless Looting's "then discard two cards"
-// with the named cards. The loot leaves the discard owed in
-// Game.DiscardPending, and cleanup would forget it, so it is paid
-// straight away.
+// with the named cards. Since #651 the loot leaves a real prompt
+// behind and the table is gated until it is answered, so the script
+// cannot walk on without paying it.
 func discardLoot(t *testing.T, g *game.Game, p *game.Player, ids ...uuid.UUID) {
 	t.Helper()
-	if got := g.DiscardPending[p.ID]; got != len(ids) {
+	if got := discardOwed(g, p.ID); got != len(ids) {
 		t.Fatalf("discards owed after the loot = %d, want %d", got, len(ids))
 	}
-	if err := g.DiscardSelection(p.ID, ids); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
-	}
+	answerDiscard(t, g, p.ID, ids...)
 }
 
 // otherGraveyardCards returns up to n cards in p's graveyard that are

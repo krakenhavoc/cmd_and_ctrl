@@ -144,8 +144,8 @@ func TestLilianaPlusOneMakesEveryPlayerDiscard(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	for _, p := range g.Seats {
-		if g.DiscardPending[p.ID] != 1 {
-			t.Errorf("seat %s owes %d discards, want 1", p.Name, g.DiscardPending[p.ID])
+		if discardOwed(g, p.ID) != 1 {
+			t.Errorf("seat %s owes %d discards, want 1", p.Name, discardOwed(g, p.ID))
 		}
 	}
 }
@@ -410,10 +410,10 @@ func TestKarnPlusFourMakesTheTargetDiscard(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	if g.DiscardPending[them.ID] != 1 {
-		t.Errorf("the target owes %d discards, want 1", g.DiscardPending[them.ID])
+	if discardOwed(g, them.ID) != 1 {
+		t.Errorf("the target owes %d discards, want 1", discardOwed(g, them.ID))
 	}
-	if g.DiscardPending[owner.ID] != 0 {
+	if discardOwed(g, owner.ID) != 0 {
 		t.Error("Karn's controller was asked to discard")
 	}
 }

@@ -22,37 +22,26 @@ import (
 // (server/internal/game/battle.go), not card-effect data.
 //
 // "(X can be 0.)" is the load-bearing parenthesis: revealing nothing
-// still satisfies "when you do", so the damage is never skipped and
-// its floor is 2. That is why the target is a real, mandatory target
-// clause on the ETB trigger rather than something conditional.
+// still satisfies "when you do", so the reflexive trigger is created
+// either way and the damage's floor is 2. That is why the target
+// clause is mandatory rather than conditional.
 //
-// TWO SANDBOX SIMPLIFICATIONS, both weaker than printed, both
-// declared.
+// TWO STACK ITEMS, as printed (#636). "When you do" is a CR 603.12
+// reflexive trigger: the entry trigger resolves, the controller
+// reveals what they like, and only then does the damage go on the
+// stack — with its target chosen at that point (CR 603.3d), knowing
+// X, and with a window for the table to respond to it on its own.
+// (riveteers_overlook.go and the b08 land family print the same
+// shape.)
 //
-//  1. The reveal and the damage happen in ONE resolution instead of
-//     two. Printed, "when you do" is a reflexive trigger: it goes on
-//     the stack above the ETB trigger after the reveal, and its
-//     target is chosen then, knowing X. Here the target is chosen as
-//     the ETB trigger goes on the stack, before the player has
-//     decided what to reveal, and nobody gets priority between the
-//     reveal and the damage. Choosing a target with less information
-//     is strictly worse for the caster, and losing the priority
-//     window means an opponent cannot respond to the reflexive half
-//     — which they also cannot benefit from, since the only thing
-//     they could do with it is save the target they already knew
-//     about. The engine has no reflexive-trigger constructor; the
-//     nearest shape is Ziatora's two-ability gate on a resolving
-//     ability's label, which is a heavier mechanism than this card
-//     earns. (riveteers_overlook.go and the b08 land family made the
-//     same fold for the same reason.)
-//
-//  2. The reveal is a CHOICE from the Dragon cards in hand rather
-//     than from the whole hand. Printed you may reveal any number of
-//     Dragon cards, so the legal picks are identical — what is lost
-//     is the bluff of revealing nothing while holding Dragons, which
-//     the prompt still permits (Min 0), and the ability to reveal a
-//     card that is a Dragon only because of a type-changing effect
-//     the prompt's candidate scan reads through HasSubtype anyway.
+// ONE SANDBOX SIMPLIFICATION, declared: the reveal is a CHOICE from
+// the Dragon cards in hand rather than from the whole hand. Printed
+// you may reveal any number of Dragon cards, so the legal picks are
+// identical — what is lost is the bluff of revealing nothing while
+// holding Dragons, which the prompt still permits (Min 0), and the
+// ability to reveal a card that is a Dragon only because of a
+// type-changing effect the prompt's candidate scan reads through
+// HasSubtype anyway.
 func init() {
 	Register(Spec{
 		OracleID:     invasionOfTarkirOracleID,
@@ -60,30 +49,13 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			SiegeTransformedCastCaveat,
-			"You pick the target before you choose which Dragons to reveal, and nobody gets to respond in between — the two halves happen as one.",
 		},
 		Battle: &BattleSpec{
 			Defense: 5,
 			Subtype: BattleSubtypeSiege,
 		},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return ev.CardID == source.InstanceID
-				},
-				// "any OTHER target" is enforced at RESOLUTION rather
-				// than in the clause, which is Screaming Nemesis's
-				// posture (b35TargetAnyOther): a target spec is built
-				// once per card and cannot name the instance it hangs
-				// off. A Siege chosen as its own target is skipped
-				// rather than damaged.
-				Targets: tarkirAnyOtherTarget(),
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, "Invasion of Tarkir — reveal Dragons, then X+2 damage",
-						invasionOfTarkirReveal)
-				},
-			},
+			WhenThisEnters("Invasion of Tarkir — reveal any number of Dragon cards", invasionOfTarkirReveal),
 			DefeatedTrigger("Invasion of Tarkir — defeated: exile it, then cast Defiant Thundermaw", SiegeDefeated()),
 		},
 	})
@@ -94,6 +66,12 @@ func init() {
 const invasionOfTarkirOracleID = "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
 
 // tarkirAnyOtherTarget is TargetAny with the card's own label.
+//
+// "any OTHER target" is enforced at RESOLUTION rather than in the
+// clause, which is Screaming Nemesis's posture (b35TargetAnyOther): a
+// target spec is built once per card and cannot name the instance it
+// hangs off. A Siege chosen as its own target is skipped rather than
+// damaged.
 func tarkirAnyOtherTarget() *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any other target"
@@ -101,26 +79,26 @@ func tarkirAnyOtherTarget() *game.TargetSpec {
 }
 
 // invasionOfTarkirReveal is the ETB trigger's body: offer the Dragon
-// cards in the controller's hand, reveal what they pick, then deal
-// that many plus two.
+// cards in the controller's hand, reveal what they pick, then create
+// the reflexive trigger that deals the damage.
 //
 // Package-level rather than a closure so it captures nothing — the
 // prompt's continuation outlives this call, and a closure over a
 // *Card would be a pointer into a zone slice that reallocates.
 //
 // A controller with no Dragon cards in hand skips the prompt and goes
-// straight to the two damage. QueueChooseCardsForEffect deliberately
-// does not short-circuit an empty candidate set (its doc says why),
-// so the skip has to happen here — and it is safe precisely because
-// the continuation is a named function both paths call rather than a
-// body one of them would have to duplicate.
+// straight to the trigger with X = 0. QueueChooseCardsForEffect
+// deliberately does not short-circuit an empty candidate set (its doc
+// says why), so the skip has to happen here — and it is safe
+// precisely because the continuation is a named function both paths
+// call rather than a body one of them would have to duplicate.
 //
 // Caller holds g.mu (this runs from a resolving trigger).
 func invasionOfTarkirReveal(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	dragons := dragonCardsInHand(g, controller)
 	if len(dragons) == 0 {
-		return invasionOfTarkirDamage(g, item, nil)
+		return invasionOfTarkirQueueDamage(g, item, nil)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  controller,
@@ -132,17 +110,22 @@ func invasionOfTarkirReveal(g *game.Game, item *game.StackItem) error {
 		Max:  0,
 		Zone: game.ZoneHand,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return invasionOfTarkirDamage(g, item, picked)
+			return invasionOfTarkirQueueDamage(g, item, picked)
 		},
 	})
 	return nil
 }
 
-// invasionOfTarkirDamage reveals the picks and deals len(picked)+2 to
-// the chosen target.
+// invasionOfTarkirQueueDamage reveals the picks and puts the printed
+// "when you do" on the stack, carrying the revealed cards as its
+// payload — X is their count, and it is fixed here even though the
+// damage happens later.
+//
+// It runs unconditionally, including for an empty reveal: "(X can be
+// 0.)" is the card saying so in as many words.
 //
 // Caller holds g.mu.
-func invasionOfTarkirDamage(g *game.Game, item *game.StackItem, revealed []uuid.UUID) error {
+func invasionOfTarkirQueueDamage(g *game.Game, item *game.StackItem, revealed []uuid.UUID) error {
 	ctx := NewContext(g, item)
 	if len(revealed) > 0 {
 		if err := (RevealCards{
@@ -153,6 +136,21 @@ func invasionOfTarkirDamage(g *game.Game, item *game.StackItem, revealed []uuid.
 			return err
 		}
 	}
+	return ReflexiveTrigger{
+		Label:   "Invasion of Tarkir — X plus 2 damage to any other target",
+		Targets: tarkirAnyOtherTarget(),
+		Cards:   revealed,
+		Effect:  invasionOfTarkirDamage,
+	}.Apply(ctx)
+}
+
+// invasionOfTarkirDamage is the reflexive half: X plus 2 to the
+// target chosen when this trigger went on the stack, where X is the
+// number of cards its payload records as revealed.
+//
+// Caller holds g.mu.
+func invasionOfTarkirDamage(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
 	if len(item.Targets) == 0 {
 		return nil
 	}
@@ -168,7 +166,7 @@ func invasionOfTarkirDamage(g *game.Game, item *game.StackItem, revealed []uuid.
 	return DealDamage{
 		Source: item.SourceCardID,
 		Target: t.ID,
-		Amount: len(revealed) + 2,
+		Amount: len(ctx.PayloadCards()) + 2,
 	}.Apply(ctx)
 }
 

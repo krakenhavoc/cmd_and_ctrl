@@ -235,7 +235,11 @@ func b24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
 func eachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
-		g.DiscardChoiceForEffect(opp, 1)
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player: opp,
+			Source: item.SourceCardID,
+			N:      1,
+		})
 	}
 	return nil
 }

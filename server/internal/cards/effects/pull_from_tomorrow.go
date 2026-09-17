@@ -18,7 +18,11 @@ func init() {
 			if err := (DrawCards{Player: item.Controller, N: ctx.X()}).Apply(ctx); err != nil {
 				return err
 			}
-			ctx.Game.DiscardChoiceForEffect(item.Controller, 1)
+			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+				Player: item.Controller,
+				Source: item.SourceCardID,
+				N:      1,
+			})
 			return nil
 		},
 	})

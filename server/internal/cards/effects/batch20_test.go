@@ -217,8 +217,8 @@ func TestB20DesolateLighthouseTapsForColorlessOrLoots(t *testing.T) {
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("drew %d, want 1 before the discard", got-hand)
 	}
-	if g.DiscardPending[me.ID] != 1 {
-		t.Errorf("discard owed = %d, want 1", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 1 {
+		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
 	if !b20Tapped(t, g, lighthouse) {
 		t.Error("the loot has a tap cost")

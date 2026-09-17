@@ -232,6 +232,66 @@ Future effects wanting "chooser != discarder" or pick-from-
 zone-X semantics can reuse `PendingChoices` by minting a new
 `PendingChoiceKind` + dispatch case. No per-card plumbing.
 
+**Amendment (2026-09-17, #651): an effect's discard is a pending
+choice; `DiscardPending` is cleanup-only.**
+
+"Both additive" was wrong, and the paragraph above described
+behaviour the code did not have. The two obligations do not have
+the same shape, and sharing a map cost the engine both of them:
+
+- **Nothing waited.** `DiscardPending` is not a `PendingChoice`, so
+  the turn-structure verbs never looked at it. A Mind Rot or a loot
+  could be passed straight through: spells resolved and steps
+  advanced while the discard was still owed. It is part of the
+  resolving effect (CR 608.2c) and must finish inside it.
+- **Cleanup erased it.** `populateDiscardPendingLocked` sets
+  `g.DiscardPending = nil` on cleanup entry and then writes only the
+  active player's hand-size count, so an effect discard still owed
+  was silently dropped.
+
+`QueueDiscardChoiceForEffect(DiscardPrompt{...})`
+(`server/internal/game/effect_api.go`) now queues a
+`PendingChoiceChooseCards` addressed to the **discarding** player over
+their own hand, with `Zone: ZoneHand` — the pick Sylvan Library and
+`PutFromHandOntoBattlefield` already use. Not a third discard system
+and not a new kind: the live-zone re-check, the set-level `Validate`
+hook, the `internal/legal` enumerator case and the client's
+`ChoicePromptModal` all came with it. What makes it a *discard* is the
+continuation, which moves the picks to the graveyard and emits one
+`EventDiscardCard` per card before running `DiscardPrompt.Then`. The
+prompt then blocks `advance_step` / `pass_priority` / `pass_turn`
+through #730's gate (ADR 0018 §6 amendment) with no extra machinery.
+`DiscardChoiceForEffect(player, n)` survives as a thin wrapper for the
+plain case, which is most of the catalog.
+
+Three rules the shape settles:
+
+- **Order.** A loot ("draw a card, then discard a card") draws in the
+  statement above the prompt, so the prompt is built from the
+  post-draw hand and a card just drawn is a legal pitch. A rummage
+  ("discard a card, then draw") puts its second half in `Then`, which
+  runs once the cards are in the graveyard — the Scry contract, for
+  the same reason. Syphon Mind is the catalog's one rummage and the
+  reason its declared caveat is gone.
+- **Empty hand queues nothing**, and `Then` still runs: CR 701.8a
+  discards as many as you can, and "discard your hand, *then* draw
+  three" draws three from an empty hand. A prompt with no candidates
+  and a floor of one is one nobody can answer (#544).
+- **Random is not a choice.** `DiscardRandomForEffect` (CR 701.8b)
+  and "discard your hand" stay synchronous moves with no prompt.
+
+`DiscardPending` keeps only what CR 514.1 uses it for: the active
+player's cleanup-step hand-size discard, drained by
+`discard_selection`, rendered by `DiscardPromptModal`, enumerated by
+`legal.cleanupDiscardMoves` — whose "Discard to hand size" label is
+true again now that a Mind Rot never lands in that map.
+
+The cost, paid knowingly: an effect discard carries a continuation, so
+`GameSnapshot.Restorable()` is false while one is open, exactly as it
+already was for a scry, a search or an optional trigger. The
+alternative — a serialisable discard nothing waits for — is the bug
+this amendment closes.
+
 ### 11. Sticky reveal preserved through view filtering
 
 S13.5's `KnownBy` set on `Card` is sticky — once revealed to

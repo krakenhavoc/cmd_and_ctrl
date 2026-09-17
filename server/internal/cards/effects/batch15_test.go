@@ -643,12 +643,14 @@ func TestB15TheLocustGodSwarmsLootsAndComesBack(t *testing.T) {
 		t.Fatalf("loot: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if me.Hand.Size() != hand+1 || g.DiscardPending[me.ID] != 1 {
-		t.Errorf("draw first, then owe a discard: hand %d → %d, pending %d", hand, me.Hand.Size(), g.DiscardPending[me.ID])
+	if me.Hand.Size() != hand+1 || discardOwed(g, me.ID) != 1 {
+		t.Errorf("draw first, then owe a discard: hand %d → %d, pending %d", hand, me.Hand.Size(), discardOwed(g, me.ID))
 	}
-	if err := g.DiscardSelection(me.ID, []uuid.UUID{me.Hand.Cards[0].InstanceID}); err != nil {
-		t.Fatalf("DiscardSelection: %v", err)
-	}
+	// The looted draw's trigger waits behind the discard prompt — the
+	// table does not move on while one is open (#651) — so it reaches
+	// the stack only once the discard is paid.
+	answerDiscard(t, g, me.ID, me.Hand.Cards[0].InstanceID)
+	passPriorityAroundTable(t, g)
 	if n := len(battlefieldIDsNamed(g, "Insect")); n != 3 {
 		t.Errorf("the looted draw is a draw: %d Insects, want 3", n)
 	}

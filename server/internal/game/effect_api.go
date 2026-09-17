@@ -78,47 +78,221 @@ func (g *Game) RevealHandForEffect(playerID uuid.UUID) {
 	}
 }
 
-// DiscardChoiceForEffect queues a "chooser-picked" discard into the
-// existing DiscardPending map. Unlike DiscardRandomForEffect (which
-// discards randomly at resolution time), this path waits for the
-// target to send a discard_selection action with their chosen IDs.
-// The card auto-resolves (goes to graveyard) while the choice is
-// pending — the pending entry outlives the spell.
+// DiscardPrompt is the queue-side description of an effect discard —
+// "target player discards two cards", "draw a card, then discard a
+// card", "each opponent discards a card." A struct rather than
+// positional arguments because everything except Player and N is
+// optional in different combinations.
+type DiscardPrompt struct {
+	// Player is the discarding player, who is also the CHOOSER: per
+	// CR 701.8a the player discarding picks the cards, unless the
+	// effect says "at random" (DiscardRandomForEffect) or names them.
+	// Thoughtseize, where a DIFFERENT player picks, is the other
+	// system — QueueDiscardFromRevealedHand, see ADR 0010 §10.
+	Player uuid.UUID
+	// Source is the card asking. Empty is legal (test harnesses); it
+	// is what names the prompt when Question is empty.
+	Source uuid.UUID
+	// N is the printed count.
+	N int
+	// UpTo makes N a ceiling rather than an exact count ("discard up
+	// to two cards"), which is the difference between a floor of N
+	// and a floor of zero on the underlying pick.
+	UpTo bool
+	// Question is the prompt's header. Empty composes one from the
+	// source card's name, so an ordinary "discard a card" caller
+	// stays a one-liner.
+	Question string
+	// Validate is the set-level legality hook, the same one
+	// ChooseCardsPrompt documents: "discard two cards unless you
+	// discard a creature card" is a rule about the SET that no count
+	// can express. It runs before the prompt is dequeued AND inside
+	// the bot enumerator, so an answer `legal` offers is an answer
+	// the resolver accepts (#544, #624).
+	Validate func(picked []Card) bool
+	// Then is everything the card prints after "then" — the rest of
+	// the effect, which must not run until the cards are actually in
+	// the graveyard. A rummage ("discard a card, then draw a card")
+	// is the case that forces it; a loot ("draw a card, then discard
+	// a card") draws before it asks and leaves this nil.
+	//
+	// It also runs, immediately and in the resolving effect's own
+	// frame, when the discard asks for nothing because the hand is
+	// empty: CR 701.8a discards as many as you can, and the
+	// instruction after "then" is not conditional on there having
+	// been cards to pitch. Same contract Scry's Then has for an
+	// empty library.
+	Then func(g *Game) error
+}
+
+// QueueDiscardChoiceForEffect queues a discard the discarding player
+// chooses, and returns the prompt's ID (uuid.Nil when it queued
+// nothing).
 //
-// Cap n to the player's current hand size per CR 609.3 (an effect
-// does as much as it can, so "discard N" discards the whole hand
-// when it holds fewer). No-op if the player isn't seated or is
-// eliminated.
+// #651: this used to bump Game.DiscardPending, the cleanup step's
+// hand-size map, and that was wrong twice over. Nothing waited for
+// the discard — DiscardPending is not a PendingChoice, so priority
+// and the step cursor walked straight past a Mind Rot that was still
+// owed — and entering cleanup calls populateDiscardPendingLocked,
+// which RESETS that map, so an owed effect discard was erased. An
+// effect's discard is part of the resolving effect (CR 608.2c), so it
+// is a real prompt now: #791's gate refuses advance_step /
+// pass_priority / pass_turn while it is open, for free, and
+// DiscardPending is back to being only what CR 514.1 uses it for.
 //
-// Known bug (#651): nothing waits for this discard. PassPriority
-// doesn't read DiscardPending, so play goes on while the discard is
-// owed, and entering cleanup resets the map to the active player's
-// hand-size count (populateDiscardPendingLocked), which drops an
-// effect discard still owed. The two do NOT merge into one modal.
-// The discard also bypasses the CR 614 window and records no cause
-// (#650).
+// The prompt is a PendingChoiceChooseCards over the player's own hand
+// with Zone: ZoneHand — the same pick Sylvan Library and
+// PutFromHandOntoBattlefield already use — rather than a third
+// discard system. The live-zone re-check, the set-level Validate
+// hook, the bot enumerator case and the client's ChoicePromptModal
+// all come with it; what makes it a DISCARD is the continuation,
+// which moves the picks to the graveyard and emits one
+// EventDiscardCard per card before running Then.
 //
-// Used by Mind Rot et al; the UI is S13.4's DiscardPromptModal
-// which already watches DiscardPending for the viewer. Added in
-// S14 sub-PR 5+.
-func (g *Game) DiscardChoiceForEffect(playerID uuid.UUID, n int) {
+// Two things it deliberately does not do. It does not prompt for a
+// random discard (CR 701.8b — DiscardRandomForEffect stays a
+// synchronous move) and it does not prompt for "discard your hand,"
+// where there is nothing to choose. And it queues NOTHING for an
+// empty hand: CR 701.8a discards as many as you can, and a prompt
+// with no candidates and a floor of one is a prompt nobody can
+// answer, holding the whole table (#544).
+//
+// Caller must hold g.mu.
+func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
+	// A prompt addressed to a seat that has left the game can never
+	// be answered. Unlike the empty-hand case, Then does NOT run:
+	// "each other player discards a card, then you draw a card for
+	// each card discarded this way" draws nothing for a player who is
+	// no longer there.
+	if p.Player == uuid.Nil || g.chooserGoneLocked(p.Player) {
+		return uuid.Nil
+	}
+	player := g.playerByIDLocked(p.Player)
+	n := p.N
+	if n > player.Hand.Size() {
+		// CR 701.8a — you discard as many as you can.
+		n = player.Hand.Size()
+	}
 	if n <= 0 {
-		return
+		// Nothing to pitch, but "then draw three" still happens.
+		if p.Then != nil {
+			if err := p.Then(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    p.Player,
+					Source:   p.Source,
+					ErrorMsg: err.Error(),
+				})
+			}
+		}
+		return uuid.Nil
 	}
+	hand := make([]uuid.UUID, 0, player.Hand.Size())
+	for _, c := range player.Hand.Cards {
+		hand = append(hand, c.InstanceID)
+	}
+	lo := n
+	if p.UpTo {
+		lo = 0
+	}
+	question := p.Question
+	if question == "" {
+		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
+	}
+	discarder := p.Player
+	then := p.Then
+	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		Chooser:    p.Player,
+		FromPlayer: p.Player,
+		Source:     p.Source,
+		Question:   question,
+		Cards:      hand,
+		Min:        lo,
+		Max:        n,
+		Zone:       ZoneHand,
+		Validate:   p.Validate,
+		Then: func(g *Game, picked []uuid.UUID) error {
+			if err := g.discardPicksLocked(discarder, picked); err != nil {
+				return err
+			}
+			if then == nil {
+				return nil
+			}
+			return then(g)
+		},
+	})
+}
+
+// discardQuestionLocked composes a prompt header for a discard that
+// did not supply one: the source card's name plus the printed count,
+// so the client modal and the bot's move label both read the way the
+// card does. Caller must hold g.mu.
+func (g *Game) discardQuestionLocked(source uuid.UUID, n int, upTo bool) string {
+	var what string
+	switch {
+	case upTo && n == 1:
+		what = "up to one card"
+	case upTo:
+		what = "up to " + strconv.Itoa(n) + " cards"
+	case n == 1:
+		what = "a card"
+	default:
+		what = strconv.Itoa(n) + " cards"
+	}
+	if source != uuid.Nil {
+		if card, ok := g.LookupCardForEffect(source); ok && card.Name != "" {
+			return card.Name + " — discard " + what
+		}
+	}
+	return "Discard " + what
+}
+
+// discardPicksLocked moves the chosen cards from a player's hand to
+// their graveyard, emitting one EventDiscardCard per card — the event
+// every "whenever you discard a card" trigger and every madness /
+// graveyard payoff in the catalog watches.
+//
+// A pick that is no longer in the hand is skipped rather than
+// erroring: ResolveChooseCards re-checks the live zone before it
+// dequeues, so an answer that got here was legal when it arrived, and
+// a half-applied discard that abandoned its continuation would be the
+// worse failure.
+//
+// Caller must hold g.mu.
+func (g *Game) discardPicksLocked(playerID uuid.UUID, picks []uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Eliminated {
-		return
+	if p == nil {
+		return nil
 	}
-	if n > p.Hand.Size() {
-		n = p.Hand.Size()
+	for _, id := range picks {
+		if !p.Hand.Contains(id) {
+			continue
+		}
+		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
+			return err
+		}
+		g.markCardKnownInZoneLocked(p.Graveyard, id)
+		g.EmitEvent(Event{
+			Kind:    EventDiscardCard,
+			Actor:   playerID,
+			CardID:  id,
+			OldZone: ZoneHand,
+			NewZone: ZoneGraveyard,
+		})
 	}
-	if n == 0 {
-		return
-	}
-	if g.DiscardPending == nil {
-		g.DiscardPending = make(map[uuid.UUID]int)
-	}
-	g.DiscardPending[playerID] += n
+	return nil
+}
+
+// DiscardChoiceForEffect is the plain "this player discards n cards"
+// form of QueueDiscardChoiceForEffect, kept because it is the call
+// every card in the catalog made before #651 and the one most of them
+// still want. A card that needs the source's name on the prompt, an
+// "up to", a set-level rule or an instruction after "then" uses the
+// struct form.
+//
+// Caller must hold g.mu.
+func (g *Game) DiscardChoiceForEffect(playerID uuid.UUID, n int) {
+	g.QueueDiscardChoiceForEffect(DiscardPrompt{Player: playerID, N: n})
 }
 
 // FindCardZoneForEffect returns the zone a card currently lives in,
