@@ -614,11 +614,18 @@ func reduceGeneric(cost ParsedCost, n int) ParsedCost {
 // X counts toward the total at the announced value (CR 202.3e), so
 // a {X}{U} spell announced with X=2 already costs three and
 // Trinisphere adds nothing.
+//
+// The floor is measured against the TOTAL COST (CR 601.2f), not the
+// mana value, and the two differ on a monocoloured hybrid symbol: the
+// player announces which half of a {2/W} they will pay (CR 601.2b),
+// and the engine's payment path always pays the coloured half, so a
+// {2/W} costs one mana here while it is worth two to the mana value
+// (CR 202.3f). See totalManaWithX.
 func raiseToMinimum(cost ParsedCost, min, xValue int) ParsedCost {
 	if min <= 0 {
 		return cost
 	}
-	total := cost.ManaValueWithX(xValue)
+	total := cost.totalManaWithX(xValue)
 	if total >= min {
 		return cost
 	}
@@ -627,17 +634,49 @@ func raiseToMinimum(cost ParsedCost, min, xValue int) ParsedCost {
 	return out
 }
 
-// ManaValue is the cost's converted mana cost with {X} counted as
-// zero (CR 202.3e — X is zero everywhere except on the stack).
+// ManaValue is the cost's mana value (CR 202.3) with {X} counted as
+// zero (CR 202.3e — X is zero everywhere except on the stack). It is
+// the one place the engine turns a parsed cost into a mana value;
+// every card-side read goes through it, via Card.ManaValue,
+// Card.ParsedManaValue or Card.ManaValueWithX.
+//
+// Symbol by symbol:
+//
+//   - {N} contributes N; {X} contributes 0 (CR 202.3e).
+//   - {W} {U} {B} {R} {G} {C} and snow {S} contribute 1 each.
+//   - A two-colour hybrid {W/U}, and a colourless hybrid {C/W},
+//     contribute 1: the largest component is one mana (CR 202.3f).
+//   - A monocoloured hybrid {2/W} contributes 2, its larger component
+//     (CR 202.3f — "{2/B}{2/B}{2/B} is 6").
+//   - Phyrexian {W/P} contributes 1 (CR 202.3g).
+//
+// This is the mana VALUE, not what the cast charges — for that see
+// totalManaWithX, which counts a {2/W} as the one coloured mana the
+// payment path actually takes.
 func (c ParsedCost) ManaValue() int {
-	return c.Generic + len(c.Required)
+	mv := c.Generic
+	for _, r := range c.Required {
+		mv += r.ManaValue()
+	}
+	return mv
 }
 
 // ManaValueWithX is ManaValue with {X} counted at the announced
 // value, which is what it is worth while the spell is on the stack
-// and while its total cost is being determined.
+// (CR 202.3e).
 func (c ParsedCost) ManaValueWithX(x int) int {
 	return c.ManaValue() + c.XSlots*x
+}
+
+// totalManaWithX is the amount of mana the engine charges for the
+// cost with {X} at the announced value: generic, plus X, plus one per
+// Required slot. It deliberately counts a monocoloured hybrid {2/W}
+// as ONE — the payment path pays every hybrid with its coloured half
+// (see ColorRequirement), which is the nonhybrid equivalent the
+// engine announces on the caster's behalf (CR 601.2b). A cost-setting
+// effect (Trinisphere) measures this, not the mana value.
+func (c ParsedCost) totalManaWithX(x int) int {
+	return c.Generic + c.XSlots*x + len(c.Required)
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost
@@ -648,9 +687,31 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // and the commander tax all change what a spell COSTS and none of
 // them change its mana value (CR 202.3).
 func (c Card) ManaValue() int {
+	mv, _ := c.ParsedManaValue()
+	return mv
+}
+
+// ParsedManaValue is ManaValue that also reports whether the printed
+// cost could be read. A predicate that must not match a card whose
+// cost the engine cannot price ("target creature with mana value 3 or
+// less" against a joined split-card cost) reads ok rather than
+// treating the unreadable cost as zero, which would make every such
+// card pass a ceiling it might not meet.
+func (c Card) ParsedManaValue() (mv int, ok bool) {
+	cost, err := ParseCost(c.ManaCost)
+	if err != nil {
+		return 0, false
+	}
+	return cost.ManaValue(), true
+}
+
+// ManaValueWithX is the card's mana value as a spell on the stack,
+// with {X} counted at x, the value chosen for it (CR 202.3e). Zero
+// when the cost can't be read, like ManaValue.
+func (c Card) ManaValueWithX(x int) int {
 	cost, err := ParseCost(c.ManaCost)
 	if err != nil {
 		return 0
 	}
-	return cost.ManaValue()
+	return cost.ManaValueWithX(x)
 }

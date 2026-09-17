@@ -187,9 +187,11 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 // IsToken reports whether a card is a token. Token type lines are
 // stamped "Token Creature — Spirit" by the templates in tokens.go;
 // "Token" isn't one of the supertypes ParseTypeLine knows, so a
-// substring check on the printed line is the reliable test.
+// substring check on the printed line is the reliable test. The check
+// itself is game.Card.IsToken, so the engine and the catalog can never
+// disagree about what a token is.
 func IsToken(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, "token")
+	return c.IsToken()
 }
 
 // --- S22: attack triggers ----------------------------------------

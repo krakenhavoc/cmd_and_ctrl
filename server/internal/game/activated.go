@@ -557,6 +557,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
+	// #628: activating an ability is a player decision, so it
+	// restarts the CR 726 loop run. The announce emits EventTrigger
+	// rather than an event of its own — the same kind a triggered
+	// ability announces with — so the notch is here rather than in
+	// turnTallyListener, which cannot tell the two apart.
+	g.notePlayerDecisionLocked()
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,

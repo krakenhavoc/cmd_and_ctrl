@@ -35,7 +35,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			cost := manaValueOf(card)
+			cost := card.ManaValue()
 			if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
 				return err
 			}

@@ -445,6 +445,16 @@ const (
 	// what it was once a shuffle has taken the knowledge away again.
 	// Added in S22.
 	EventRevealCards EventKind = "reveal_cards"
+
+	// EventLoopSuspected — the CR 726 loop breaker fired: the
+	// ability named by Source + Label has resolved Amount times this
+	// turn with no player decision in between, and automatic passing
+	// is now suspended for every seat. Actor is the ability's
+	// controller — the player CR 726 would have name how many more
+	// iterations to run. Emitted once per run, when Game.LoopNotice
+	// is raised; the flag, not the event, is what the client reads.
+	// Added for #628 (ADR 0055).
+	EventLoopSuspected EventKind = "loop_suspected"
 )
 
 // Event is a single entry in the per-game event log. Tagged union

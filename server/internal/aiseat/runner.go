@@ -295,6 +295,21 @@ func (r *Runner) step(ctx context.Context) bool {
 			}
 		}
 		mv := moves[idx]
+		// #628, CR 726: the engine has flagged a trigger loop, so
+		// automatic passing is suspended for the whole table. A bot's
+		// pass is as automatic as a browser's autopass toggle, so the
+		// seat holds instead of feeding the loop another iteration.
+		// The runner is edge-triggered on room commits, so holding
+		// here costs nothing: nothing commits until somebody makes a
+		// real decision, and the game state carries the notice saying
+		// which ability and how many times. A non-pass move is still
+		// played — and playing one clears the notice like any other
+		// decision, which is how a bot-only table gets moving again
+		// when it has something else to do.
+		if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
+			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 726)")
+			return true
+		}
 		r.pace(ctx, started)
 		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {
 			r.holdForBlockers(ctx)

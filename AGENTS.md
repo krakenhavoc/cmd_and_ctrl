@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0053 combat damage beats) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0055 CR 726 loop breaker) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -1319,6 +1319,41 @@ always keeps "choose nothing". With `Min` above zero, don't queue a
 prompt that no set can satisfy: nothing could answer it, and the
 enumerator logs it rather than inventing an answer.
 
+**"Put [it / a card from among them] onto the battlefield" off a
+library (#745):** a reveal or a look followed by a put is not a search,
+so never reach for `SearchLibrary` with a predicate (it emits
+`EventSearchLibrary` and shuffles). Say the first half with the right
+visibility, then hand the cards to `PutFromLibraryOntoBattlefield`
+(`put_from_library.go`):
+
+```go
+looked := g.LookAtTopOfLibraryForEffect(controller, 8)   // "look at": only the looker knows
+// revealed := g.RevealTopOfLibraryForEffect(...)         // "reveal": every seat knows
+return PutFromLibraryOntoBattlefield{
+    Cards: looked, Match: OfCreatureType("Dragon"),
+    Max: 1, Optional: true,                 // "you may put a"; Max 0 is "any number"; All for "put all"
+    Then: PutRestOnBottomInRandomOrder,     // or PutRestIntoGraveyard, or your own
+}.Apply(ctx)
+```
+
+The prompt is asynchronous, so "the rest" goes in `Then` — it is the
+only place that knows which cards were not chosen. Several picks enter
+as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
+so don't loop the single-card move over them. The whole-sentence
+shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
+`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
+bottom in a random order" anywhere else is
+`g.PutOnBottomInRandomOrderForEffect`, which draws from the game's
+seeded RNG — never `math/rand` — and repositions cards already in the
+library without a zone change.
+
+A token can end up in a library (Chaos Warp tucks one, and the engine
+has no CR 704.5d sweep). It is not a card (CR 108.2) and can't change
+zones again (CR 111.8), so the move refuses it and the helpers never
+offer or stop on one. If your card moves a revealed card anywhere else
+("otherwise put it into your hand"), skip a token with `IsToken`, as
+Coiling Oracle and Risen Reef do.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 
@@ -1663,6 +1698,50 @@ optional triggers, `answerLatestTriggerPrompt` then
 `passPriorityAroundTable` again. Upkeep triggers: `advanceToUpkeepOf`
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
+
+### The CR 726 loop breaker (#628)
+
+Two permanents that trigger each other loop forever. The server never
+blocks — one bounded unit of work per pass — but with autopass on for
+every seat the table spins `pass → resolve → broadcast → pass` until
+somebody finds the toggle. So the engine counts, and when the same
+ability has resolved 25 times in one turn with **no player decision in
+between** it raises `Game.LoopNotice` and one `EventLoopSuspected`.
+
+What the notice does is suspend **automatic** passing — the client's
+autopass `$effect` and the bot runner both hold — and nothing else.
+Priority still rotates, `pass_priority` is still accepted, the trigger
+is still on the stack. A human clicks "next" to step the loop on, or
+casts something to end it. See
+[ADR 0055](docs/decisions/0055-loop-breaker.md).
+
+Three things to know if you touch priority, prompts or the tally:
+
+- **Detection is one function**, `loopSuspectedLocked`
+  (`server/internal/game/loop_breaker.go`), over `TurnTally.LoopRun` —
+  `Resolved` restarted at each decision, keyed by
+  `TallyKey(source, label)` like everything else in the tally. It
+  counts ONE ability of ONE permanent in ONE turn, which is why four
+  upkeep triggers from four players never approach it. The threshold is
+  `DefaultLoopThreshold`; `Game.LoopThreshold` overrides it per game for
+  tests. Do not add a second count.
+- **A decision is anything but a pass**, and
+  `notePlayerDecisionLocked` is the only thing that clears the run.
+  Cast / attack / block notch through `turnTallyListener`; an
+  activation notches in `ActivateCatalogAbility` (its announce emits
+  `EventTrigger`, indistinguishable from a triggered one); an answered
+  prompt notches in `dequeueChoiceLocked`. **A prompt the engine
+  withdraws calls `dropChoiceLocked` instead** — the prune paths must
+  not count as somebody deciding something, or a loop that queues and
+  prunes a prompt each iteration never trips.
+- **A bare `pass_priority` is not a decision**, on purpose: if it were,
+  the first manual "next" would clear the notice and four autopassing
+  clients would spin the loop straight back up.
+
+The CR 726 shortcut prompt ("resolve it K more times and stop?") and
+CR 726.4's draw are not built. A new `PendingChoiceKind` would need a
+case in `internal/legal/choices.go` first — see the choice-gate note
+above and #618.
 
 ### Untapping in another player's untap step (#74)
 

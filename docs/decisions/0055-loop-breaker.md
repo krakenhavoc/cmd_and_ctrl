@@ -1,0 +1,166 @@
+# ADR 0055 — CR 726 loop breaker: the engine detects trigger loops by tally and suspends autopass
+
+**Status:** Accepted · 2026-09-17 · Post-S30 — Rolling deck-driven catalog growth
+**Issue:** [#628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/628)
+**Related:** [ADR 0009](0009-smart-priority-autopass.md) (autopass lives in the
+client), [ADR 0018](0018-triggers-on-the-stack.md) (triggers use the stack),
+[ADR 0033](0033-ai-bot-seat.md) (bot seats)
+
+## Context
+
+Replacement loops are capped — `ErrReplacementIterationExceeded`. Trigger
+loops were not.
+
+A triggered ability goes on the stack and resolves once every player has
+passed priority in succession, so the server does one bounded unit of work
+per pass and never blocks. Two "whenever a creature enters, create a token"
+permanents therefore do not hang the server: they loop at exactly the speed
+the table passes priority. With autopass on for every seat that speed is the
+network, and the loop becomes a tight
+`pass → resolve → broadcast → autopass → pass` spin. The game never ends,
+the event log grows without limit (the sibling issue, #629), and the only
+way out is for somebody to find the autopass toggle mid-flight.
+
+The paper answer is CR 726: players take a shortcut. The loop's controller
+says how many more times it happens and the table skips there, and a
+mandatory loop nobody can stop is a draw (CR 726.4). Both halves need a
+player to *say* something. So the engine's job is not to stop the game — it
+is to hand priority back to the humans with the loop's trigger still on the
+stack, and say why.
+
+## Decisions
+
+### 1. Detection is one function over the tally the engine already keeps
+
+`TurnTally.Resolved` (#586) already counts every stack item that resolved
+this turn, keyed by `TallyKey(source, label)` — one printed ability of one
+permanent. `TurnTally.LoopRun` is the same count restarted at every player
+decision, bumped in the same `turnTallyListener` case, and
+`loopSuspectedLocked(key)` is the whole rule:
+
+```go
+func (g *Game) loopSuspectedLocked(key string) bool {
+	return g.TurnTally.LoopRun[key] >= g.loopThresholdLocked()
+}
+```
+
+One place, one function, no per-card special cases, and no second copy of a
+count the engine was already keeping. The alternative considered and
+rejected in the issue — a hard cap on stack size or on triggers per turn —
+would break real, finite storm and aristocrats turns long before it stopped
+any loop.
+
+**Why the key and not a total.** The count is per `(source, label)` in one
+turn. Four upkeep triggers from four players are four different keys and
+each sits at 1. The false positive this design has to avoid is "an ordinary
+busy turn looks like a loop", and keying by ability is what makes that
+structurally impossible rather than merely unlikely.
+
+**Why a consecutive run and not the raw total.** A loop between two
+permanents alternates, so "consecutive resolutions with nothing in between"
+would never exceed one. `LoopRun` counts resolutions of each key since the
+last decision, whatever else resolved in between.
+
+### 2. The threshold is 25, a named constant, overridable per game
+
+`DefaultLoopThreshold = 25`, the issue's number. `Game.LoopThreshold`
+overrides it, so a test can trip the breaker in three resolutions without
+every other test in the tree sharing the setting. A field on `Game` rather
+than a package global for exactly that reason: parallel tests, one process.
+
+25 is chosen to be unreachable by accident rather than to be tight. A loop
+gets there in seconds; the longest real turn does not put one ability on the
+stack twenty-five times without its controller casting or activating
+something.
+
+### 3. A "decision" is anything but a pass — and a bare pass is not one
+
+`notePlayerDecisionLocked` restarts every run and clears the notice. It is
+notched from four places, chosen so that each one is the only place that
+fact is knowable:
+
+| Decision | Where it notches |
+| --- | --- |
+| Cast a spell | `turnTallyListener`, on `EventCast` |
+| Declare an attacker / blocker | `turnTallyListener`, on `EventAttack` / `EventBlock` |
+| Activate an ability | `ActivateCatalogAbility` — the announce emits `EventTrigger`, the same kind a *triggered* ability announces with, so the listener cannot tell them apart |
+| Answer a prompt | `dequeueChoiceLocked`, the tail of every `Resolve*` path |
+
+The engine's own prune paths (a sacrifice prompt whose card has left, a
+stale zone-change prompt) call the new `dropChoiceLocked` instead: a prompt
+the engine withdrew is not a decision anybody made, and counting it as one
+would let a loop that queues and prunes a prompt each iteration run forever.
+
+**`pass_priority` is deliberately not a decision.** If it were, the first
+manual "next" click would clear the notice and four autopassing clients
+would spin the loop straight back up. Leaving the notice standing lets the
+table step the loop through by hand for as long as it likes, getting
+priority back every iteration — which is the CR 726 conversation happening
+at human speed.
+
+### 4. The effect is suspending automatic passing, not stopping the game
+
+`Game.LoopNotice` (source, label, controller, count) plus one
+`EventLoopSuspected` breadcrumb, emitted once per run. The engine does not
+refuse a pass, does not halt the stack, and does not change whose priority
+it is. Everything that changes is who passes *automatically*:
+
+- **Clients**: `GameView.loop_notice` rides the wire, `autopassSuspended()`
+  reads it, and the autopass `$effect` in `Game.svelte` returns early —
+  above the toggle, so the toggle cannot out-vote it. The toggle renders as
+  `autopass ⏸` with a banner under it naming the ability and the count.
+  Suspended, not switched off: the player's intent is untouched.
+- **Bot seats**: the runner skips a `KindPass` move while
+  `game.AutoPassSuspended()`. A bot with a real (non-pass) move still plays
+  it, and playing one clears the notice like any other decision.
+
+### 5. Bots count as automatic, and a bot-only table stops
+
+This is the one place where the simple rule has a visible cost, so it is
+stated plainly: on a table of four bots with a real loop, every seat holds
+and the room's commit sequence stops. The table is *stopped*, with the
+notice in the game state naming the ability and the count, rather than
+spinning until someone kills the process.
+
+The alternative — a bot answers a CR 726 shortcut prompt with a fixed K and
+then stops — needs the shortcut prompt (§6) and a `PendingChoiceKind` case
+in `internal/legal`, and it buys a bot-only table a few more iterations of a
+loop that has no ending. Stopping is the honest answer and it is the one a
+human at the table gets too.
+
+### 6. The CR 726 shortcut prompt is deferred
+
+"This loop has resolved N times. Resolve it K more times and stop?" — and
+CR 726.4's draw — are not in this change. A new `PendingChoiceKind` needs a
+case in `internal/legal/choices.go` or bot seats owing the prompt get an
+empty move list (the #499 / #618 class, flagged on #628 by the S31 audit),
+plus a client modal, plus a bot answer. The breaker is useful without it:
+the loop stops running on its own, priority comes back, and a player can
+break it or concede. The prompt is a follow-up.
+
+## Consequences
+
+### Good
+
+- A trigger loop now stops itself after 25 iterations instead of running
+  until a person finds the autopass toggle, on every kind of table —
+  browsers, bots, and mixed.
+- Nothing about it is per-card. Any future pair of permanents that loops is
+  covered the day it is added to the catalog.
+- The detection reuses `TurnTally`, so it costs one map bump per resolution
+  and no new scan of the event log.
+
+### Tradeoffs
+
+- The notice names the ability that tripped *first*. In a two-permanent loop
+  the other half is equally to blame; naming both would mean a second notice
+  and a second breadcrumb per resolution for no extra information.
+- A loop that manages a player decision every iteration (a cast, an answered
+  prompt) is not detected. That is deliberate — those are not the runaway
+  this exists to stop, and they are not driven by autopass.
+- A bot-only table that hits a real loop stops rather than finishing, and
+  the whole-game bot tests define "stalled" as "the commit sequence stopped
+  moving". No catalog pair loops today and 25 resolutions of one ability in
+  one turn does not happen in those games, so nothing goes red — but if a
+  looping pair is ever added, those tests are where it will surface, which
+  is the right place for it to.
