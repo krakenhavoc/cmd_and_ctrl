@@ -9,9 +9,12 @@ import "github.com/google/uuid"
 // mutation cannot affect the receiver.
 //
 // Cloned state intentionally drops the rwmutex (a fresh receiver
-// owns its own) but preserves the captured rng pointer — so
-// re-applying a chain of actions on the clone uses the same
-// random source the original did, which is what tests expect.
+// owns its own) and COPIES the randomness: the RNG key and the
+// per-stream draw counters (rng.go). Undo therefore REWINDS the
+// random stream — restoring a clone and re-applying the same action
+// draws exactly what the undone action drew, so undo cannot be used
+// to reshuffle, re-roll or re-pick (ADR 0054 Decision 4, which
+// reversed the old "undo does not rewind" contract).
 
 // Clone returns a deep copy of the game suitable for stashing on the
 // undo stack and later replacing the live receiver via *g = *clone.
@@ -39,15 +42,22 @@ func (g *Game) cloneLocked() *Game {
 		UndoLimit:         g.UndoLimit,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
-		// Both halves of the randomness are shared, not copied, on
-		// exactly the contract the file header describes: a clone
-		// re-applying actions must draw from the source the original
-		// would have. Undo therefore does NOT rewind the random
-		// stream, which is deliberate and long-standing. Snapshot
-		// restore is the opposite — it captures the stream position
-		// and resumes from it. See snapshot.go.
-		rng:      g.rng,
-		rngState: g.rngState,
+		// #628: both halves of the CR 726 breaker. The threshold is
+		// configuration and copies by value; the notice is a per-turn
+		// fact an undo must be able to rewind past, so it gets its own
+		// pointer rather than sharing the live one.
+		LoopThreshold: g.LoopThreshold,
+		LoopNotice:    cloneLoopNotice(g.LoopNotice),
+		// The randomness is copied, not shared: the key by value
+		// (an array) and the counters deeply, because randForLocked
+		// increments the live map in place. The clone therefore
+		// remembers how many draws each stream had taken, and
+		// RestoreFrom puts that back — undo rewinds randomness, the
+		// same way a snapshot restore resumes it (ADR 0054
+		// Decisions 3-4).
+		rngKey:      g.rngKey,
+		rngCounters: cloneRNGCounters(g.rngCounters),
+		rngTurn:     g.rngTurn,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -175,6 +185,21 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			// #793: the replacement resume frame holds the in-flight
+			// ReplacementEvent, and answering the prompt MUTATES it —
+			// Doubling Season doubles CounterDelta in place, Rhox
+			// Faithmender doubles LifeDelta, and a life change's
+			// continuation is consumed as it runs. Sharing that event
+			// with the undo snapshot makes an UNDONE answer
+			// unrepeatable: the replay doubles an already-doubled
+			// value and finds the continuation gone. Giving the
+			// snapshot its own copy is what makes "undo the answer,
+			// answer again" land where answering once would.
+			//
+			// The gathered `applicable` list stays shared, like every
+			// other server-only frame on a PendingChoice: a resume
+			// reads it and never writes it.
+			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -450,6 +475,40 @@ func cloneStackItem(s *StackItem) *StackItem {
 	return out
 }
 
+// cloneReplacementResume gives an undo snapshot its own copy of the
+// in-flight ReplacementEvent a paused CR 614 pipeline is sitting on.
+//
+// Only the EVENT is copied. The gathered `applicable` list is shared:
+// a resume reads it to decide what to fire and never writes it, and its
+// entries point at battlefield cards that the snapshot has its own
+// copies of anyway — the same shallow sharing every other server-only
+// resume frame on a PendingChoice already has.
+//
+// The event's own pointer fields (zoneRoute, damageTail, lifeTail) are
+// shared for the same reason: each is written once by the entry point
+// before the pipeline runs and only ever read afterwards. What the
+// resume DOES write is the event's scalar payload — the counter delta,
+// the life delta, Canceled — and the lifeTail POINTER, which a
+// continuation clears as it runs. Both live in the struct this copies,
+// so the snapshot keeps the values the prompt was queued with. #793.
+func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	if f.ev != nil {
+		ev := *f.ev
+		if len(f.ev.EntersWithCounters) > 0 {
+			ev.EntersWithCounters = make(map[string]int, len(f.ev.EntersWithCounters))
+			for k, v := range f.ev.EntersWithCounters {
+				ev.EntersWithCounters[k] = v
+			}
+		}
+		out.ev = &ev
+	}
+	return &out
+}
+
 func cloneVote(v *Vote) *Vote {
 	out := &Vote{
 		ID:        v.ID,
@@ -525,8 +584,12 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
-	g.rng = src.rng
-	g.rngState = src.rngState
+	// The randomness rewinds with everything else: the key, the
+	// per-stream draw counters and the turn they belong to (ADR 0054
+	// Decision 4). Adopted like the other fields — src is consumed.
+	g.rngKey = src.rngKey
+	g.rngCounters = src.rngCounters
+	g.rngTurn = src.rngTurn
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot

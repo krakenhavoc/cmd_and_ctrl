@@ -210,6 +210,98 @@ Three deliberate limits:
   than ship it quietly. If one ever lands, the fix is a declared flag
   in the `PureCancel` mould, not a per-card special case.
 
+### 5b. Amendment, 2026-09-17: what a paused life change owes its caller, and why a cost never pauses
+
+*Amendment, 2026-09-17, branch `fix/793-life-change-continuation`.
+Closes [#793](https://github.com/krakenhavoc/cmd_and_ctrl/issues/793),
+which [#482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/482)
+(PR #790) created by routing every life change through this pipeline.*
+
+§5 says the affected player picks the order and the event lands from the
+resume. Everything in §5 is still true; what it did not say is what
+happens to the code that ASKED for the event while it is waiting.
+
+Before #482, a life change could not pause, so a caller could change a
+life total and read it back on the next line to find out how much
+actually moved. "Each opponent loses X life. You gain life equal to the
+life lost this way" — Exsanguinate, Debt to the Deathless, Gray Merchant
+of Asphodel, Kokusho — is that shape, and after #482 it reads a total
+that has not moved yet and gains nothing. Two decisions:
+
+**1. A life change carries its continuation, the way a damage event
+carries its tail.** `ReplacementEvent.lifeTail` holds `then(g, applied)`
+and `runLifeTailLocked` is the one place it runs, reached from every
+TERMINAL outcome of a life event: landed (`applyResolvedLifeChangeLocked`,
+the same function the CR 616 resume calls), replaced away under
+CR 614.10, or its player gone. `applied` is the post-replacement delta,
+signed the way the event is, and `0` for the two non-outcomes — the
+caller is told either way, because a batch waiting on several players
+must not stall on the one that moved nothing.
+
+The public surface is `ChangePlayerLifeThenForEffect` for one player and
+`LoseLifeEachThenForEffect` for "each opponent", the second built on the
+first so there is one implementation of waiting rather than one per
+card. The batch drains players IN SEQUENCE, each from the previous
+one's continuation: that is what keeps the running total a value carried
+forward rather than a shared accumulator, which is what makes an undo
+across the prompt replay identically. The observable cost is that a
+paused first opponent delays the rest of the drain until the prompt is
+answered; the losses are simultaneous in the rules and sequential in
+this engine either way, and doing them all on the far side of the prompt
+is the closer of the two.
+
+`Then` takes the live `*Game`, the contract every other continuation
+frame in the engine follows. Nothing new is snapshotted: the tail rides
+the `ReplacementEvent` on the existing `replacementResume` frame, which
+`ContinuationCensus.ChoiceResumeFrames` already counts and `Snapshot`
+already refuses to call a restore point.
+
+One thing DID have to change for undo. `Clone` shallow-copied the
+`PendingChoice`, so the undo snapshot shared the in-flight
+`ReplacementEvent` with the live game — and answering a prompt mutates
+that event in place. Undoing the answer and answering again therefore
+doubled an already-doubled delta and found the continuation consumed.
+`cloneReplacementResume` now gives the snapshot its own copy of the
+event (the gathered `applicable` list stays shared; a resume only reads
+it). That was a latent bug for counters and damage too, not just life.
+
+**2. Paying life is a life LOSS, but a cost never pauses.**
+CR 119.4: "If a player pays life, the amount of life paid is subtracted
+from their life total. In other words, paying an amount of life is the
+same as losing that much life." So the window runs on a payment and a
+life-loss replacement sees it; the issue's proposal to route costs
+around the pipeline as "not a life-change effect" would have been a
+rules change. What a payment is *not* is life GAIN, so Rhox Faithmender
+and Alhammarret's Archive never touch it — which is the half the issue
+was actually worried about, and it needs no special case at all.
+
+What the payment cannot do is stop to ask a question. CR 601.2h pays a
+spell's costs as one indivisible step of casting it and CR 601.2 rewinds
+the announcement if they cannot all be paid; CR 602.2b says the same for
+an activated ability, and CR 605.3b resolves a mana ability immediately
+and without the stack. A CR 616 ordering prompt in the middle of any of
+those leaves a half-paid cost that no rewind can take back. So
+`PayLifeForEffect` sets `ReplacementEvent.mustSettleNow` and the
+apply-loop settles without prompting:
+
+- an ordering window applies in the order it was gathered — the escape
+  §5a already uses for a pure-cancel set, for identical effects, and for
+  an eliminated chooser;
+- anything that would ask its own question (`asksItsOwnQuestion`: a
+  CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
+  un-applied, the weaker-never-stronger posture
+  `optionalReplacementResumableLocked` takes for an entry with nothing
+  to resume it.
+
+The affected player gives up their CR 616 ordering choice on a cost
+payment. That is a real, declared simplification: arbitrary but
+deterministic, reachable only with two DIFFERENT life-loss replacements
+on one table, and the alternative is a spell stuck on the stack.
+
+`mustSettleNow` is deliberately a property of the EVENT rather than of
+life: any future entry point with no resume and no rewind can set it,
+and the two branches that honour it are three lines each.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

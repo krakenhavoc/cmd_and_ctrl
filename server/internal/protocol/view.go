@@ -146,6 +146,42 @@ type GameView struct {
 	// reveal_frame.go for why that is the design rather than an
 	// omission. Added in S22.
 	Reveals []RevealView `json:"reveals,omitempty"`
+	// LoopNotice is the CR 726 loop breaker's flag: set when the
+	// engine has seen the same triggered ability resolve
+	// game.DefaultLoopThreshold times this turn with no player
+	// decision in between, nil otherwise. Its presence is the
+	// instruction to every client on the table: stop passing
+	// AUTOMATICALLY. Priority still rotates, every pass_priority the
+	// server is handed still works, and the loop's trigger is still
+	// on the stack — the point is only that a person has to ask for
+	// the next iteration. Public, like the stack it describes: a loop
+	// is something the whole table can see running. Added for #628
+	// (ADR 0055).
+	LoopNotice *LoopNoticeView `json:"loop_notice,omitempty"`
+}
+
+// LoopNoticeView is the wire shape of game.LoopNotice. Label is the
+// repeating ability's stack label, which by catalog convention reads
+// "<card> — <what happens>", so a client has the whole banner line
+// without resolving Source against the board.
+type LoopNoticeView struct {
+	Source     string `json:"source,omitempty"`
+	Label      string `json:"label"`
+	Controller string `json:"controller,omitempty"`
+	Count      int    `json:"count"`
+}
+
+// viewOfLoopNotice projects the engine's loop notice, or nil.
+func viewOfLoopNotice(n *game.LoopNotice) *LoopNoticeView {
+	if n == nil {
+		return nil
+	}
+	return &LoopNoticeView{
+		Source:     uuidStringOrEmpty(n.Source),
+		Label:      n.Label,
+		Controller: uuidStringOrEmpty(n.Controller),
+		Count:      n.Count,
+	}
 }
 
 // LegalMoveView is one entry of the viewer's legal-move list. It is
@@ -315,8 +351,11 @@ type AdditionalCostView struct {
 	DiscardCards int `json:"discard_cards,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
-	// caster's own board (CR 701.21a). The picked instance ID rides
-	// back on cast_spell's sacrifice_ids. Absent when the cost has
+	// caster's own board (CR 701.21a). Its min / max are how many
+	// the clause sacrifices ("sacrifice two creatures" is 2 / 2,
+	// #747), and its cards come in payment order — see
+	// sacrificeCostOptions. The picked instance IDs ride back on
+	// cast_spell's sacrifice_ids. Absent when the cost has
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
@@ -852,6 +891,16 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// TargetCostNotes are the printed clauses of this card's own cost
+	// modifiers whose price depends on its targets — Fireball's "This
+	// spell costs {1} more to cast for each target beyond the first",
+	// strive — for a card in the viewer's own hand / command zone /
+	// castable graveyard. The X picker opens before targeting and its
+	// readout is priced at one target, so it shows these clauses
+	// under the readout instead of a surcharge it cannot know yet
+	// (ADR 0048 addendum, open question 2). Absent for nearly every
+	// card. Added for #746.
+	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
 	// already implied by the surface: the graveyard, today. Hand and
@@ -1074,7 +1123,9 @@ type ActivatedAbilityView struct {
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
-	// no sacrifice component.
+	// no sacrifice component. SacrificeOptions' min / max are the
+	// count ("Sacrifice two artifacts" ships 2 / 2, #747) and its
+	// cards come in payment order — see sacrificeCostOptions.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// CrewCost is the crew number of a Vehicle's crew ability
@@ -1342,6 +1393,7 @@ func ViewOfGame(g *game.Game) GameView {
 			SplitSecondActive: g.SplitSecondActive,
 			DiscardPending:    viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:    viewOfPendingChoices(g),
+			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
@@ -1500,11 +1552,9 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						// LegalTargetsForEffect: an additional
 						// sacrifice cost doesn't target, so the
 						// hexproof / shroud gate must not narrow the
-						// list the client offers.
-						opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, ac.Sacrifice), ac.Sacrifice)
-						opts.Cards = filterToController(g, opts.Cards, caster)
-						opts.Players = nil
-						c.AdditionalCost.SacrificeOptions = opts
+						// list the client offers. The same list,
+						// count and order the abilities ship (#747).
+						c.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
 					}
 				}
 				// S22: convoke / waterbend. Stamped before the target
@@ -1514,6 +1564,9 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				if tc := game.TapPermanentsCostFor(c.oracleID); !tc.Empty() {
 					c.TapCost = viewOfTapCost(g, caster, c, tc)
 				}
+				// #746: the printed clauses of a per-target price, for
+				// the X picker's note.
+				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
@@ -1763,7 +1816,7 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			continue
 		}
 		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther)
+		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
 	}
 }
 
@@ -2381,6 +2434,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// that filterPendingChoices has to drop and redactLogForViewer
 		// has to reason about does not exist on this type.
 		Reveals: v.Reveals,
+		// #628: public, and identical for every seat — see the field
+		// comment. Nothing in it names a card in a hidden zone.
+		LoopNotice: v.LoopNotice,
 	}
 }
 
@@ -2522,6 +2578,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// #746: a quoted cost clause names the card like its mana cost.
+	out.TargetCostNotes = nil
 	// S29: "castable from where it sits" is only ever set on cards
 	// whose text grants an extra cast zone, so it partitions the
 	// card the same weak way `unimplemented` does. Cleared with the
@@ -2612,6 +2670,11 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
+			// #746: stamped for the owner's X picker with the other
+			// cast clauses, so it goes with them. Printed text, so
+			// nothing leaks; this keeps the field's documented scope
+			// ("the viewer's own hand") true.
+			c.TargetCostNotes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}
@@ -2844,7 +2907,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther)
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -2940,10 +3003,33 @@ func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) 
 // way (activated.go). A sacrifice cost can only be paid with
 // permanents you control (CR 701.21a), and the spec walk doesn't know
 // that, so this filters to the controller. Caller must hold g.mu.
-func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
-	out := abilityClauseView(g.SpecCandidatesForEffect(controller, spec), spec)
-	out.Cards = filterToController(g, out.Cards, controller)
-	out.Players = nil
+//
+// #747: Min / Max are the clause's count (game.SacrificeCostCount) —
+// "Sacrifice three Foods" ships 3 / 3 — and the cards come in
+// game.SacrificePaymentOrderForEffect's order (tokens first, then
+// lower mana value, then the source last, then board order), which is
+// the order the legal enumerator takes its payment from. The client's
+// "Choose for me" button takes the first N of this list, so it picks
+// what a bot would. `sourceID` is the ability's source (uuid.Nil for a
+// spell's additional cost); `selfToo` drops the source from the list
+// when the cost also sacrifices it, because the engine refuses paying
+// one permanent twice.
+func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
+	lt := g.SpecCandidatesForEffect(controller, spec)
+	var ids []uuid.UUID
+	for _, id := range lt.Cards {
+		if selfToo && id == sourceID {
+			continue
+		}
+		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
+			ids = append(ids, id)
+		}
+	}
+	n := game.SacrificeCostCount(spec)
+	out := &LegalTargetsView{Min: n, Max: n}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
 	return out
 }
 

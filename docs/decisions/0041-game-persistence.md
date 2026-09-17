@@ -9,6 +9,12 @@ never redials, and there is no seq-based resync; the session dies with
 the process, and the "re-authenticate through your invite link"
 recovery does not exist for a started game. Every decision in this ADR
 stands; 0044 builds the return path they assumed was already there.
+**Amended by:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) Decision 3
+(#744) — Decision 3 below no longer describes the code. The RNG is a
+32-byte secret key plus per-turn stream counters, not a PCG position;
+the snapshot writes `rngKind: "keyed"`, a caller-supplied `*rand.Rand`
+seeds the key and is persistable like any other game, and
+`"pcg"` / `"external"` files restore with a fresh key.
 
 ## Context
 

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
 import {
+  autopassSuspended,
   hasAnyLegalResponse,
   hasDeclaredAttackers,
+  loopNoticeText,
   owesBlockDecision,
   _resetCacheForTests,
 } from "./priority";
@@ -347,5 +349,47 @@ describe("hasDeclaredAttackers", () => {
   it("is false for a null snapshot or viewer", () => {
     expect(hasDeclaredAttackers(null, "p0")).toBe(false);
     expect(hasDeclaredAttackers(snap({ step: "declare_attackers" }), null)).toBe(false);
+  });
+});
+
+// #628 (CR 726) — the loop breaker's client half. The autopass gate
+// and the banner both read these two, so they are the only thing
+// between a server that has spotted a loop and a browser that would
+// otherwise keep feeding it.
+describe("autopassSuspended", () => {
+  it("is false on a quiet table", () => {
+    expect(autopassSuspended(snap())).toBe(false);
+  });
+
+  it("is true whenever the server ships a loop notice", () => {
+    const s = snap();
+    s.loop_notice = { label: "Mirror Engine — create a Spark", count: 25 };
+    expect(autopassSuspended(s)).toBe(true);
+  });
+
+  it("is false for a missing snapshot rather than throwing", () => {
+    expect(autopassSuspended(null)).toBe(false);
+    expect(autopassSuspended(undefined)).toBe(false);
+  });
+});
+
+describe("loopNoticeText", () => {
+  it("is empty when nothing is suspected", () => {
+    expect(loopNoticeText(snap())).toBe("");
+    expect(loopNoticeText(null)).toBe("");
+  });
+
+  it("reads the label straight through, since it already names card and ability", () => {
+    const s = snap();
+    s.loop_notice = { label: "Mirror Engine — create a Spark", count: 25 };
+    expect(loopNoticeText(s)).toBe(
+      "Mirror Engine — create a Spark has resolved 25 times this turn.",
+    );
+  });
+
+  it("still says something useful when the ability has no label", () => {
+    const s = snap();
+    s.loop_notice = { label: "", count: 40 };
+    expect(loopNoticeText(s)).toBe("An ability has resolved 40 times this turn.");
   });
 });

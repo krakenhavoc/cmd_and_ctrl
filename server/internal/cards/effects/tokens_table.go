@@ -49,6 +49,7 @@ var tokenTable = map[string]game.Card{
 	"0/0 white Spirit Cleric":                       {Name: "Spirit Cleric", TypeLine: "Token Creature — Spirit Cleric", Power: 0, Toughness: 0, Colors: []string{"W"}},
 	"0/1 black Wizard":                              {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	"0/1 colorless Plant":                           {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1},
+	"0/1 green Egg with defender":                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
@@ -139,6 +140,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 colorless Beast":                           {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4},
 	"4/4 green Bear":                                {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 green Phyrexian Beast":                     {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"4/4 red Scorpion Dragon with flying and haste": {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
 	"4/4 white Angel with flying":                   {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying and vigilance":     {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance"}},
 	"5/3 green Elemental":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 3, Colors: []string{"G"}},
@@ -146,4 +148,8 @@ var tokenTable = map[string]game.Card{
 	"5/5 red and green Elemental":                   {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"R", "G"}},
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},
+
+	// A key longer than every row above: kept in its own block so gofmt
+	// does not re-align the whole table (and every open PR's rows) for it.
+	"6/12 colorless Construct artifact with trample": {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 6, Toughness: 12, Keywords: []string{"trample"}},
 }

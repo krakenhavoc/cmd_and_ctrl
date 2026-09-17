@@ -40,12 +40,16 @@ type AbilityCost struct {
 	// SacrificeSelf sacrifices the source as part of the cost.
 	SacrificeSelf bool
 
-	// SacrificeOther sacrifices one other permanent the activator
+	// SacrificeOther sacrifices other permanents the activator
 	// controls, chosen at announce and matched against this spec
-	// ("Sacrifice a creature"). The activator names it in
+	// ("Sacrifice a creature"). The activator names them in
 	// ActivateAbilityParams.SacrificeIDs. The source itself is a
 	// legal choice when the spec admits it — Carrion Feeder can eat
 	// itself, as in paper.
+	//
+	// The spec's Min == Max is how many (#747): "Sacrifice two
+	// artifacts" is a clause with a count of 2, built by
+	// effects.SacrificeN. Every one-permanent constructor stamps 1.
 	SacrificeOther *TargetSpec
 
 	// Mana is a printed cost string ("{1}{B}") paid from the pool
@@ -303,10 +307,9 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 // catalog activated ability.
 type ActivateAbilityParams struct {
 	// SacrificeIDs names the permanents paid to a SacrificeOther
-	// cost, in the order the activator picked them. Exactly one
-	// today (no catalog card sacrifices two), but a slice so the
-	// wire shape survives contact with Altar of Dementia-style
-	// costs.
+	// cost: exactly the clause's count (SacrificeCostCount), each
+	// once. Their order does not matter — the permanents leave as
+	// one simultaneous exit (#747).
 	SacrificeIDs []uuid.UUID
 
 	// CrewIDs names the creatures tapped to pay a Crew cost, in the
@@ -540,8 +543,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
 		}
 	}
+	// #793: the cost path — CR 602.2b activates an ability in one
+	// indivisible step, so the payment runs the CR 614 window
+	// (CR 119.4) but never stops to ask a CR 616 ordering question.
 	if ab.Cost.Life > 0 {
-		if err := g.ChangePlayerLifeForEffect(cardID, playerID, -ab.Cost.Life); err != nil {
+		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
 			return err
 		}
 	}
@@ -568,10 +574,9 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
-	for _, id := range sacrifices {
-		if err := g.sacrificePermanentLocked(id); err != nil {
-			return err
-		}
+	// One payment is one simultaneous exit (#747, CR 603.10a).
+	if err := g.payCostSacrificesLocked(sacrifices); err != nil {
+		return err
 	}
 	source = nil
 
@@ -598,6 +603,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
+	// #628: activating an ability is a player decision, so it
+	// restarts the CR 726 loop run. The announce emits EventTrigger
+	// rather than an event of its own — the same kind a triggered
+	// ability announces with — so the notch is here rather than in
+	// turnTallyListener, which cannot tell the two apart.
+	g.notePlayerDecisionLocked()
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,
@@ -689,6 +700,15 @@ func (g *Game) validateCrewCostLocked(playerID uuid.UUID, cost AbilityCost, chos
 // validateSacrificeCostLocked resolves the SacrificeSelf /
 // SacrificeOther components into the concrete list of permanents to
 // sacrifice, without moving anything. Caller must hold g.mu.
+//
+// #747 (ADR 0020 addendum §13): the clause's count is the spec's
+// Min == Max — "Sacrifice two artifacts" is a clause with Max 2 — and
+// the payment must name exactly that many permanents, each once, each
+// on the battlefield under the payer's control (CR 701.21a) and each
+// matching the clause. None may be the source when SacrificeSelf pays
+// the source too. Any failure refuses the whole payment with nothing
+// moved; all three cost sites (an activated ability, a mana ability,
+// an additional cost to cast) share this one check.
 func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
@@ -700,33 +720,40 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		}
 		return out, nil
 	}
-	if len(chosen) != 1 {
+	if len(chosen) != SacrificeCostCount(cost.SacrificeOther) {
 		return nil, ErrInvalidParam
 	}
-	id := chosen[0]
-	c := findBattlefieldCard(g, id)
-	if c == nil {
-		return nil, ErrCardNotFound
-	}
-	// CR 701.21a — you can only sacrifice what you control.
-	if c.Controller != playerID {
-		return nil, ErrCardCallerMismatch
-	}
-	// specMatchLocked, not targetLegalLocked: sacrificing a permanent
-	// to pay a cost does not target it (CR 601.2h), so the CR 702
-	// keyword gate must not apply — Carrion Feeder can still eat your
-	// own hexproof creature.
-	if !g.specMatchLocked(playerID, cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
-		return nil, ErrIllegalTarget
-	}
-	// Paying the same permanent twice (self-sacrifice plus the same
-	// card as the "other") isn't a legal cost payment.
-	for _, already := range out {
-		if already == id {
+	seen := make(map[uuid.UUID]bool, len(chosen))
+	for _, id := range chosen {
+		// One permanent pays one sacrifice. Naming it twice would let
+		// a single Food pay "Sacrifice two Foods".
+		if seen[id] {
+			return nil, ErrInvalidParam
+		}
+		seen[id] = true
+		c := findBattlefieldCard(g, id)
+		if c == nil {
+			return nil, ErrCardNotFound
+		}
+		// CR 701.21a — you can only sacrifice what you control.
+		if c.Controller != playerID {
+			return nil, ErrCardCallerMismatch
+		}
+		// specMatchLocked, not targetLegalLocked: sacrificing a
+		// permanent to pay a cost does not target it (CR 601.2h), so
+		// the CR 702 keyword gate must not apply — Carrion Feeder can
+		// still eat your own hexproof creature.
+		if !g.specMatchLocked(playerID, cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
+			return nil, ErrIllegalTarget
+		}
+		// Paying the same permanent twice (self-sacrifice plus the
+		// same card as one of the "other" picks) isn't a legal cost
+		// payment.
+		if cost.SacrificeSelf && id == sourceID {
 			return nil, ErrInvalidParam
 		}
 	}
-	return append(out, id), nil
+	return append(out, chosen...), nil
 }
 
 // payAbilityManaCostLocked charges an activated ability's mana

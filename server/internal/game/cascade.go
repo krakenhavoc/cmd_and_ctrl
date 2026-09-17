@@ -1,8 +1,6 @@
 package game
 
 import (
-	"math/rand/v2"
-
 	"github.com/google/uuid"
 )
 
@@ -24,10 +22,10 @@ import (
 //     firing while its own spell is still on the stack.
 //
 //  2. **Reproducible randomness.** "In a random order" has to come
-//     out the same on replay, so the shuffle draws from g.rng — the
-//     same source Start, Mulligan and ShuffleLibrary use, seeded from
-//     a persisted *rand.PCG. Reaching for math/rand directly would
-//     desynchronise every snapshot after the cascade.
+//     out the same after an undo or a restore, so the order draws from
+//     the game's keyed RNG (rng.go, ADR 0054) on the owner's
+//     "random_order" stream. Reaching for math/rand directly would
+//     make it neither rewindable nor persistable.
 //
 //  3. **A yes/no during a resolution.** "You MAY cast it" is a
 //     decision taken while the trigger is resolving, which is the
@@ -100,8 +98,7 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		// Ran the library out without finding anything. Everything
 		// exiled goes back to the bottom; the deck is reordered but
 		// not lost.
-		g.bottomInRandomOrderLocked(p, pile)
-		return nil
+		return g.PutOnBottomInRandomOrderForEffect(controller, pile)
 	}
 	hitName := "the exiled card"
 	if c, ok := g.cardInZoneLocked(g.Exile, hit); ok {
@@ -116,14 +113,12 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		func(g *Game) error {
 			g.grantFreeCastLocked(controller, hit)
 			g.scheduleCascadeBottomLocked(controller, source, hit, hitName)
-			g.bottomInRandomOrderLocked(p, pile)
-			return nil
+			return g.PutOnBottomInRandomOrderForEffect(controller, pile)
 		},
 		func(g *Game) error {
 			// Declined: the hit joins the rest of the pile and the
 			// whole lot goes to the bottom in a random order.
-			g.bottomInRandomOrderLocked(p, append(pile, hit))
-			return nil
+			return g.PutOnBottomInRandomOrderForEffect(controller, append(pile, hit))
 		})
 }
 
@@ -215,62 +210,13 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 			if !ok || !c.ExilePlay.Active(controller, g.Turn.Number) || c.ExilePlay.CostOverride != "{0}" {
 				return nil
 			}
-			owner := g.playerByIDLocked(c.Owner)
-			if owner == nil {
-				return nil
-			}
-			// Not MoveCard: that pushes to the TOP, and cascade puts
-			// what it did not cast on the BOTTOM. Same hand-rolled
-			// remove-then-PushBottom bottomInRandomOrderLocked does,
-			// and for the same reason.
-			g.bottomInRandomOrderLocked(owner, []uuid.UUID{cardID})
-			return nil
+			// The shared random bottom (random_bottom.go) with a pile
+			// of one: it routes through the exit path, so the card
+			// goes to its OWNER's library and a commander's owner is
+			// asked about the command zone.
+			return g.PutOnBottomInRandomOrderForEffect(controller, []uuid.UUID{cardID})
 		},
 	})
-}
-
-// bottomInRandomOrderLocked moves every card in `ids` from exile to
-// the bottom of `p`'s library in a random order (CR 702.85a).
-//
-// Randomness draws from g.rng, the game's own seeded source, so a
-// replayed game bottoms them in the same order the live one did. A
-// nil rng falls back to math/rand/v2's global source, matching
-// Zone.Shuffle's contract for the same reason (tests that never call
-// Start).
-//
-// Cards are stripped of their knower set on the way in: they were
-// face up in exile, and a library is a hidden zone. Leaving KnownBy
-// populated would hand every seat permanent knowledge of a handful of
-// library cards and their positions.
-//
-// Caller must hold g.mu.
-func (g *Game) bottomInRandomOrderLocked(p *Player, ids []uuid.UUID) {
-	if p == nil || p.Library == nil || g.Exile == nil || len(ids) == 0 {
-		return
-	}
-	order := append([]uuid.UUID(nil), ids...)
-	swap := func(i, j int) { order[i], order[j] = order[j], order[i] }
-	if g.rng != nil {
-		g.rng.Shuffle(len(order), swap)
-	} else {
-		rand.Shuffle(len(order), swap)
-	}
-	for _, id := range order {
-		c, err := g.Exile.Remove(id)
-		if err != nil {
-			continue
-		}
-		c.ExilePlay = ExilePlayPermission{}
-		c.KnownBy = nil
-		p.Library.PushBottom(c)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   p.ID,
-			CardID:  id,
-			OldZone: ZoneExile,
-			NewZone: ZoneLibrary,
-		})
-	}
 }
 
 // cardInZoneLocked returns a copy of a card in the given zone.

@@ -405,9 +405,18 @@ func (st *state) cardValue(cfg Config, c *protocol.CardView) float64 {
 	}
 }
 
-// manaValue parses a Scryfall mana-cost string into a converted
-// cost. Generic digits add their value, {X} adds x, and every other
-// symbol — coloured, hybrid, phyrexian, snow — counts as one.
+// manaValue parses a Scryfall mana-cost string into a mana value
+// (CR 202.3). Generic digits add their value, {X} adds x, a
+// monocoloured hybrid {2/W} adds its larger component, 2 (CR 202.3f),
+// and every other symbol — coloured, two-colour hybrid, Phyrexian,
+// snow — counts as one.
+//
+// This is a second copy of game.ParsedCost.ManaValue, and it has to
+// be: a policy package may not import internal/game (ADR 0033 §3,
+// imports_test.go), and the engine's parser rejects the joined
+// "{1}{R} // {1}{U}" split-card cost this loop reads as the sum of
+// its halves. TestManaValueMatchesTheRules pins it to the same table
+// the engine's test uses; keep the two in step.
 func manaValue(cost string, x int) int {
 	total := 0
 	for {
@@ -429,6 +438,15 @@ func manaValue(cost string, x int) int {
 		default:
 			if n, err := strconv.Atoi(sym); err == nil {
 				total += n
+			} else if l, _, ok := strings.Cut(sym, "/"); ok {
+				// Hybrid: the larger component (CR 202.3f). Only a
+				// monocoloured {2/W} has a numeric half; {W/U},
+				// {C/W} and Phyrexian {W/P} are all one.
+				if n, err := strconv.Atoi(l); err == nil && n > 1 {
+					total += n
+				} else {
+					total++
+				}
 			} else {
 				total++
 			}

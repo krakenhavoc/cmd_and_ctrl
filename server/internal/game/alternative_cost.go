@@ -456,8 +456,12 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	if alt == nil {
 		return nil
 	}
+	// #793: the cost path. Snuff Out's "pay 4 life" is a cost, so it
+	// runs the CR 614 window (CR 119.4 — paying life is losing life)
+	// but settles without a CR 616 prompt: a free spell whose payment
+	// paused would be on the stack with nothing paid for it.
 	if alt.Life > 0 {
-		if err := g.ChangePlayerLifeForEffect(uuid.Nil, playerID, -alt.Life); err != nil {
+		if err := g.PayLifeForEffect(uuid.Nil, playerID, alt.Life); err != nil {
 			return err
 		}
 	}

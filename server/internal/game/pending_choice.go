@@ -875,9 +875,30 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	return nil
 }
 
-// dequeueChoiceLocked drops the choice at index idx, preserving
-// slice order for the rest. Caller must hold g.mu.
+// dequeueChoiceLocked drops the choice at index idx because its
+// chooser ANSWERED it, preserving slice order for the rest. Every
+// Resolve* path ends here.
+//
+// #628: answering a prompt is a player decision, so it restarts the
+// CR 726 loop run. The engine's own prune paths call
+// dropChoiceLocked instead — a choice the engine withdrew is not a
+// decision anybody made, and counting it as one would let a loop
+// that queues and prunes a prompt each iteration run forever.
+//
+// Caller must hold g.mu.
 func (g *Game) dequeueChoiceLocked(idx int) {
+	if idx < 0 || idx >= len(g.PendingChoices) {
+		return
+	}
+	g.notePlayerDecisionLocked()
+	g.dropChoiceLocked(idx)
+}
+
+// dropChoiceLocked removes the choice at index idx without recording
+// a player decision: the engine withdrawing a prompt nobody answered
+// (a sacrifice choice whose card has left, a stale zone-change
+// prompt). Caller must hold g.mu.
+func (g *Game) dropChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
@@ -1247,7 +1268,10 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 				Kind:     EventEffectError,
 				ErrorMsg: "life change dropped: its player is no longer in the game",
 			})
-			return nil
+			// #793: the rest of the effect still runs, with zero. A
+			// drain whose second opponent conceded during the prompt
+			// gains what the first one lost, not nothing.
+			return g.runLifeTailLocked(ev, 0)
 		}
 		if err != nil {
 			return err
@@ -1382,7 +1406,18 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if out != nil && !out.Canceled {
 		return g.applyResolvedReplacementEventLocked(out)
 	}
-	if ev == nil || ev.Kind != RepEventStepTransition {
+	if ev == nil {
+		return nil
+	}
+	// #793: a cancelled LIFE change is still an answer to whoever
+	// asked for it. "You gain life equal to the life lost this way"
+	// gains nothing when the loss was replaced away — but a drain
+	// adding up several players' losses has to be told so, or it waits
+	// on this one forever.
+	if ev.Kind == RepEventLife {
+		return g.runLifeTailLocked(ev, 0)
+	}
+	if ev.Kind != RepEventStepTransition {
 		return nil
 	}
 	return g.applyResolvedReplacementEventLocked(ev)
@@ -2364,7 +2399,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 			}
 		}
 		if len(live) == 0 {
-			g.dequeueChoiceLocked(i)
+			g.dropChoiceLocked(i)
 			continue
 		}
 		c.SacrificeOptions = live
@@ -2446,7 +2481,7 @@ func (g *Game) pruneStaleZoneChangeChoicesLocked() {
 			continue
 		}
 		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
-		g.dequeueChoiceLocked(i)
+		g.dropChoiceLocked(i)
 	}
 }
 

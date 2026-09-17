@@ -158,7 +158,11 @@ func sylvanLibrarySettle(g *game.Game, source, controller uuid.UUID, remaining [
 			if p := g.PlayerByIDForEffect(controller); p == nil || p.Life < sylvanLibraryLifeCost {
 				return putBack(g)
 			}
-			if err := g.ChangePlayerLifeForEffect(source, controller, -sylvanLibraryLifeCost); err != nil {
+			// A cost (CR 118.3), so the cost path: the CR 614 window
+			// runs on it (CR 119.4) but settles in one step, which
+			// keeps the per-card chain moving rather than stranding
+			// the rest of it behind a CR 616 prompt (#793).
+			if err := g.PayLifeForEffect(source, controller, sylvanLibraryLifeCost); err != nil {
 				return err
 			}
 			// Keeping the card is the whole of the "pay" branch — it

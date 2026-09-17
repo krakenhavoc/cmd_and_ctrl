@@ -25,21 +25,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // same ability (b11TriggeredThisTurn). The Treasure enters tapped
 // through the shared tapped template.
 //
-// DECLARED SIMPLIFICATION: the Scorpion Dragon ability is not
-// implemented. "Sacrifice three Treasures" is a cost the engine
-// cannot express — AbilityCost.SacrificeOther sacrifices exactly ONE
-// permanent, and three activations of a one-Treasure cost is not the
-// printed card. Shipping it for one Treasure would be three times
-// stronger than printed, the #259 direction; Magda makes Treasures
-// and stops there until a multi-permanent sacrifice cost lands.
+// "Sacrifice three Treasures: Create a 4/4 red Scorpion Dragon" is a
+// sacrifice cost with a count of three (#747, SacrificeN) on a
+// sorcery-speed ability. Until #747 it was omitted, because a cost
+// could sacrifice only one permanent.
+//
+// No simplification.
 const b18MagdaTreasureLabel = "Magda, the Hoardmaster — create a tapped Treasure"
 
 func init() {
 	Register(Spec{
 		OracleID:     "7fd2beb8-f823-4723-beec-e59b62127490",
 		Name:         "Magda, the Hoardmaster",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Sacrificing three Treasures for a 4/4 Scorpion Dragon isn't implemented — only the Treasure-per-crime trigger works."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b18CommittedCrime(ev, source, g) &&
@@ -49,5 +47,11 @@ func init() {
 				N:        1,
 			})),
 		},
+		Activated: []ActivatedAbility{{
+			Label:        "Sacrifice three Treasures: Create a 4/4 red Scorpion Dragon creature token with flying and haste. Activate only as a sorcery.",
+			Cost:         SacrificeN(3, "three Treasures", isTreasure),
+			SorcerySpeed: true,
+			Effect:       Do(CreateToken{Template: TokenCard("4/4 red Scorpion Dragon with flying and haste"), N: 1}),
+		}},
 	})
 }

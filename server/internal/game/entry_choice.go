@@ -205,7 +205,14 @@ func (g *Game) ResolveEntryPayLife(choiceID, chooserID uuid.UUID, pay bool) erro
 			if chosen.source != nil {
 				source = chosen.source.InstanceID
 			}
-			if err := g.ChangePlayerLifeForEffect(source, chooserID, -cost); err != nil {
+			// #793: the cost path. A shockland's "you may pay 2 life"
+			// is a cost paid inside a replacement's own resume, so a
+			// CR 616 prompt on it would nest one paused pipeline
+			// inside another — the permanent entering untapped on the
+			// strength of a payment still waiting to be ordered. It
+			// settles in one step instead (CR 119.4 still applies the
+			// life-loss replacements; see payLifeAsCostLocked).
+			if err := g.PayLifeForEffect(source, chooserID, cost); err != nil {
 				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 			} else {
 				paid = true

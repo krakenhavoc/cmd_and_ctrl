@@ -56,11 +56,8 @@ package game
 // stated in full and enforced by a predicate instead of a comment.
 
 import (
-	crand "crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"sort"
 	"time"
 
@@ -159,7 +156,16 @@ type GameSnapshot struct {
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
-	DiscardPending           map[uuid.UUID]int         `json:"discardPending,omitempty"`
+
+	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// Both carried: a restore that dropped the notice would resume a
+	// table into a live loop with automatic passing back on, and one
+	// that dropped the threshold would silently re-default a game a
+	// test had configured.
+	LoopNotice    *LoopNotice `json:"loopNotice,omitempty"`
+	LoopThreshold int         `json:"loopThreshold,omitempty"`
+
+	DiscardPending map[uuid.UUID]int `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
 	// STRUCT (PromiseKey), and a JSON object key must be a string.
@@ -406,32 +412,48 @@ type promiseSnapshot struct {
 	Count int       `json:"count"`
 }
 
-// rngSnapshot carries the game's position in its random stream.
+// rngSnapshot carries the game's randomness (ADR 0054 Decision 3).
 //
-// Why this is not just a seed: a game that has already shuffled N
-// times is N draws into the stream. Restoring from the seed alone
-// would re-deal the same numbers the game has already consumed. What
-// has to persist is the source's CURRENT state, which is what
-// *rand.PCG.MarshalBinary gives us.
+// Why this is not just a seed: a game that has already shuffled is
+// some draws into each stream. Restoring from the key alone would
+// re-deal the draws the game has already consumed this turn. What has
+// to persist is the key AND how far each stream has got, which is the
+// counter map.
 //
-// Kind discriminates three cases:
+// Kind discriminates:
 //
-//	"pcg"      — engine-minted source; State holds its exact position
-//	             and the restored game continues the same stream.
-//	"external" — a caller supplied its own *rand.Rand (tests do).
-//	             math/rand/v2 exposes no way to read a Rand's Source
-//	             back out, so the position is unreachable. Recorded
-//	             honestly and counted in the census rather than
-//	             silently reseeded — a silent reseed is how you get a
-//	             restore that quietly re-deals a library.
-//	"none"     — no source yet (game not started).
+//	"keyed"    — the only kind this binary writes once a key exists.
+//	             Key is the 32-byte secret key, Counters the draws each
+//	             stream has taken on turn index Turn. The restored game
+//	             continues every stream exactly.
+//	"pcg"      — written by binaries before ADR 0054: State held a
+//	             *rand.PCG position. Restores with a fresh key.
+//	"external" — written before ADR 0054 for a caller-supplied
+//	             *rand.Rand whose position was unreadable. Restores
+//	             with a fresh key.
+//	"none"     — no key yet (game not started, nothing drawn).
+//
+// A fresh key for the two old kinds loses nothing a player could
+// notice: library orders live in the zones, so a new key changes only
+// FUTURE draws. No SnapshotSchemaVersion bump: an older binary reading
+// "keyed" hits restoreRNG's default branch and degrades to its global
+// source until the next deploy, which beats abandoning every live game
+// on a rollback (ADR 0041 Decision 5).
+//
+// The key never leaves the server: it is in this engine snapshot, on
+// the server's disk, and never in a GameView, a replay line or a
+// crash dump.
 type rngSnapshot struct {
-	Kind  string `json:"kind"`
-	State []byte `json:"state,omitempty"`
+	Kind     string            `json:"kind"`
+	State    []byte            `json:"state,omitempty"`
+	Key      []byte            `json:"key,omitempty"`
+	Counters map[string]uint64 `json:"counters,omitempty"`
+	Turn     int               `json:"turn,omitempty"`
 }
 
 const (
 	rngKindNone     = "none"
+	rngKindKeyed    = "keyed"
 	rngKindPCG      = "pcg"
 	rngKindExternal = "external"
 )
@@ -475,8 +497,11 @@ type ContinuationCensus struct {
 	// oracle ID to re-derive from — true tokens.
 	IntrinsicAbilityCards int `json:"intrinsicAbilityCards,omitempty"`
 
-	// UnpersistableRNG marks a game whose random source belongs to
-	// the caller and cannot be read back out.
+	// UnpersistableRNG marked a game whose random source belonged to
+	// the caller and could not be read back out. Since ADR 0054 every
+	// game's randomness is a persistable key, so this binary never sets
+	// it; the field stays so a census written by an older binary still
+	// decodes (and still reads as not restorable).
 	UnpersistableRNG bool `json:"unpersistableRng,omitempty"`
 
 	// Labels names the blockers for an operator. Capped so a
@@ -607,6 +632,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
+	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
+	s.LoopThreshold = g.LoopThreshold
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -663,32 +690,32 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// both are process-lifetime singletons installed by NewGame, so
 	// the new binary rebuilds them itself. See restoreGame.
 
-	s.RNG = snapshotRNG(g, cen)
+	s.RNG = snapshotRNG(g)
 	s.LayerVersion = g.layerVersion.Load()
 	s.LastResolvedVersion = g.lastResolvedVersion.Load()
 	return s
 }
 
-func snapshotRNG(g *Game, cen *ContinuationCensus) rngSnapshot {
-	switch {
-	case g.rngState != nil:
-		b, err := g.rngState.MarshalBinary()
-		if err != nil {
-			// *rand.PCG.MarshalBinary does not fail in practice; if
-			// it ever does, refuse to claim we captured the stream.
-			cen.UnpersistableRNG = true
-			cen.note("rng: PCG marshal failed: %v", err)
-			return rngSnapshot{Kind: rngKindExternal}
-		}
-		return rngSnapshot{Kind: rngKindPCG, State: b}
-	case g.rng != nil:
-		// Caller-supplied source. Its position is unreachable.
-		cen.UnpersistableRNG = true
-		cen.note("rng: caller-supplied source, stream position unreadable")
-		return rngSnapshot{Kind: rngKindExternal}
-	default:
+func snapshotRNG(g *Game) rngSnapshot {
+	if g.rngKey == ([32]byte{}) {
 		return rngSnapshot{Kind: rngKindNone}
 	}
+	return rngSnapshot{
+		Kind:     rngKindKeyed,
+		Key:      append([]byte(nil), g.rngKey[:]...),
+		Counters: snapshotRNGCounters(g.rngCounters),
+		Turn:     g.rngTurn,
+	}
+}
+
+// snapshotRNGCounters copies the counters, writing an empty map as
+// nil so a capture -> JSON -> restore -> capture round trip is exact
+// (the JSON field is omitempty).
+func snapshotRNGCounters(m map[string]uint64) map[string]uint64 {
+	if len(m) == 0 {
+		return nil
+	}
+	return cloneRNGCounters(m)
 }
 
 func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
@@ -1068,6 +1095,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
+	g.LoopThreshold = s.LoopThreshold
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)
@@ -1116,52 +1145,33 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 func restoreRNG(g *Game, s rngSnapshot) {
 	switch s.Kind {
-	case rngKindPCG:
-		pcg := &rand.PCG{}
-		if err := pcg.UnmarshalBinary(s.State); err != nil {
-			// A corrupt stream is not a reason to hand the table a
-			// game that cannot shuffle. Mint a fresh source: the
-			// restored game is still fair, it just does not continue
-			// the exact stream. The census already told the operator
-			// this file was a restore point, so this path means the
-			// bytes were damaged, not that the design was wrong.
-			pcg = newCryptoSeededPCG()
+	case rngKindKeyed:
+		if len(s.Key) == 32 {
+			var key [32]byte
+			copy(key[:], s.Key)
+			if key != ([32]byte{}) {
+				g.rngKey = key
+				g.rngCounters = cloneRNGCounters(s.Counters)
+				g.rngTurn = s.Turn
+				return
+			}
 		}
-		g.rngState = pcg
-		g.rng = rand.New(pcg)
-	case rngKindExternal:
-		// The original source is unreachable. Give the restored game
-		// a real, unpredictable source rather than leaving it nil —
-		// a nil rng silently falls back to the process-global source,
-		// which works but is the thing we moved away from.
-		g.rngState = newCryptoSeededPCG()
-		g.rng = rand.New(g.rngState)
+		// A damaged key is not a reason to hand the table a game
+		// that cannot shuffle. Mint a fresh one: the restored game
+		// is still fair, it just does not continue the exact
+		// streams.
+		g.rngKey = mintRNGKey()
+		g.rngCounters = nil
+	case rngKindPCG, rngKindExternal:
+		// A file from before keyed streams. Its PCG position (or the
+		// lack of one) cannot seed the keyed derivation, and nothing
+		// already decided depends on it: library orders are stored
+		// in the zones. A fresh key changes only future draws.
+		g.rngKey = mintRNGKey()
+		g.rngCounters = nil
 	default:
-		// Game never started; Start will mint one.
+		// Nothing drawn yet; Start (or the first draw) mints the key.
 	}
-}
-
-// newCryptoSeededPCG mints a *rand.PCG seeded from crypto/rand.
-//
-// PCG rather than the default global source because PCG implements
-// encoding.BinaryMarshaler — it can be written to a snapshot and
-// resumed. Seeded from crypto/rand so the stream is unguessable to a
-// player who knows the game ID or the wall clock; the seed never
-// leaves the server.
-func newCryptoSeededPCG() *rand.PCG {
-	var b [16]byte
-	if _, err := crand.Read(b[:]); err != nil {
-		// crypto/rand.Read does not fail on any platform we run on
-		// (and panics internally on most). Fall back to a clock seed
-		// rather than returning a zero-seeded — i.e. identical for
-		// every game — source.
-		now := uint64(time.Now().UnixNano())
-		return rand.NewPCG(now, now^0x9e3779b97f4a7c15)
-	}
-	return rand.NewPCG(
-		binary.LittleEndian.Uint64(b[0:8]),
-		binary.LittleEndian.Uint64(b[8:16]),
-	)
 }
 
 func restoreZone(z *zoneSnapshot, fallback ZoneKind) *Zone {

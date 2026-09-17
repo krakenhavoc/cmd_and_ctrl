@@ -236,7 +236,7 @@ func b13PowerGreaterThan(n int) CardPredicate {
 func b13ManaValueAtMostControllersGraveyard() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		controller := c.Controller
-		mv := manaValueOf(c)
+		mv := c.ManaValue()
 		if item := g.StackItemForEffect(c.InstanceID); item != nil {
 			controller = item.Controller
 			mv = manaValueOnStack(c, item)

@@ -242,6 +242,16 @@ func b11SacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
 // activated ability. Snapshots the set first so a creature made by a
 // counter-placement trigger mid-loop does not receive one.
 func b11PutCounterOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
+	return b11PutCountersOnEachCreatureYouControl(g, item, 1)
+}
+
+// b11PutCountersOnEachCreatureYouControl puts n +1/+1 counters on
+// each creature the item's controller controls, as ONE placement per
+// creature. "Put two +1/+1 counters on each creature" is one counter
+// event of two, so a counter replacement (Hardened Scales, CR 614)
+// applies to it once and a "one or more counters" watcher sees one
+// placement, where two calls of the N=1 form would apply both twice.
+func b11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -253,7 +263,7 @@ func b11PutCounterOnEachCreatureYouControl(g *game.Game, item *game.StackItem) e
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
 			return err
 		}
 	}

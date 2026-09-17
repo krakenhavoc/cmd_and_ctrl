@@ -36,6 +36,7 @@
 // canPassPriority (no callers at all, in or out of production).
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
+import { sacrificeCount } from "./sacrificeCost";
 
 // Legality is a predicate result: legal=true means "the action
 // would succeed if dispatched right now"; legal=false carries a
@@ -241,9 +242,15 @@ export function canCastFromHand(
   // the options to permanents this caster controls, so an empty list
   // is exactly "nothing to sacrifice" — Village Rites with an empty
   // board is uncastable, not a failed click.
+  // #747: "sacrifice two creatures" with one creature is the same
+  // verdict, and the reason says how many.
   const sacrificeOptions = card.additional_cost?.sacrifice_options;
-  if (sacrificeOptions && (sacrificeOptions.cards?.length ?? 0) === 0) {
-    return deny("Nothing to sacrifice");
+  if (sacrificeOptions) {
+    const have = sacrificeOptions.cards?.length ?? 0;
+    const need = sacrificeCount(sacrificeOptions);
+    if (have < need) {
+      return deny(need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice");
+    }
   }
 
   // Nothing card-specific to say. The seat holds priority and the

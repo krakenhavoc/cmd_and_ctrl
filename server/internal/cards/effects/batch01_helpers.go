@@ -38,17 +38,14 @@ func isTreasure(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 // manaValueOnStack is CR 202.3e: the mana value of a spell ON THE
 // STACK, where {X} is the value chosen for it rather than zero. Mana
 // Drain reads this off the countered spell; every off-stack read in
-// the catalog (Reanimate, Feed the Swarm) keeps using manaValueOf.
+// the catalog (Reanimate, Feed the Swarm) uses game.Card.ManaValue.
+// A nil item (the spell has left the stack) reads X as zero.
 func manaValueOnStack(c game.Card, item *game.StackItem) int {
-	cost, err := game.ParseCost(c.ManaCost)
-	if err != nil {
-		return 0
-	}
-	mv := cost.Generic + len(cost.Required)
+	x := 0
 	if item != nil && item.XValue > 0 {
-		mv += cost.XSlots * item.XValue
+		x = item.XValue
 	}
-	return mv
+	return c.ManaValueWithX(x)
 }
 
 // eachOpponentLosesLife is "each opponent loses N life" — life loss,

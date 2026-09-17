@@ -83,7 +83,7 @@ func darkConfidantFlip(g *game.Game, item *game.StackItem) error {
 	flipped := revealed[0]
 	life := 0
 	if c, ok := g.LookupCardForEffect(flipped); ok {
-		life = manaValueOf(c)
+		life = c.ManaValue()
 	}
 	if err := (BounceToHand{Target: flipped}).Apply(ctx); err != nil {
 		return err

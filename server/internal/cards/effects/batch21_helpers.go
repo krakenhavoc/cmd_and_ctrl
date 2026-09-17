@@ -161,18 +161,31 @@ func b21TargetAnyNonDragon() *game.TargetSpec {
 
 // --- effect bodies -----------------------------------------------
 
-// b21DrainEachOpponentAndGainTheTotal is Kokusho's "each opponent
-// loses N life. You gain life equal to the life lost this way" —
-// Gray Merchant's shape at a fixed N. Life loss, not damage, and the
-// gain is N per live opponent rather than N once: three opponents at
-// five is fifteen.
+// b21DrainEachOpponentAndGainTheTotal is "each opponent loses N life.
+// You gain life equal to the life lost this way" — Kokusho at a fixed
+// 5, Gray Merchant at your devotion to black, Exsanguinate at X, Debt
+// to the Deathless at 2X. Life loss, not damage, so no prevention
+// shield and no damage doubler sees it.
+//
+// "LIFE LOST THIS WAY" IS NOT N × OPPONENTS. It is what each opponent
+// really lost, which is the same number only while nothing is replacing
+// anybody's life loss. #793: the gain therefore rides
+// LoseLifeEachThenForEffect's continuation, which reports the true
+// total once every opponent's own CR 614 window has settled — including
+// the ones that paused on a CR 616 ordering prompt, where reading the
+// life totals back on the next line saw nothing at all and gained zero.
 func b21DrainEachOpponentAndGainTheTotal(g *game.Game, item *game.StackItem, n int) error {
-	ctx := NewContext(g, item)
-	opponents := ctx.Opponents()
-	if err := eachOpponentLosesLife(g, item, n); err != nil {
-		return err
+	if n <= 0 {
+		return nil
 	}
-	return GainLife{Player: item.Controller, Amount: n * len(opponents)}.Apply(ctx)
+	ctx := NewContext(g, item)
+	controller, source := item.Controller, ctx.Source()
+	return g.LoseLifeEachThenForEffect(source, ctx.Opponents(), n, func(g *game.Game, totalLost int) error {
+		if totalLost <= 0 {
+			return nil
+		}
+		return g.ChangePlayerLifeForEffect(source, controller, totalLost)
+	})
 }
 
 // b21DamageEachOpponentAndTheirCreaturesAndWalkers is End the

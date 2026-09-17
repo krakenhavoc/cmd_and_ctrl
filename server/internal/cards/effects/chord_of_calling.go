@@ -26,7 +26,7 @@ func init() {
 			x := ctx.X()
 			return SearchLibrary{
 				Player:    ctx.Controller(),
-				Predicate: func(c game.Card) bool { return c.IsCreature() && manaValueOf(c) <= x },
+				Predicate: func(c game.Card) bool { return c.IsCreature() && c.ManaValue() <= x },
 				Dest:      game.ZoneBattlefield,
 				Limit:     1,
 				Shuffle:   true,

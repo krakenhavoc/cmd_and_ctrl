@@ -55,14 +55,17 @@ import (
 //
 // "Each opponent loses X life" is LIFE LOSS, not damage — no
 // prevention, no doubler, no lifelink sees it, and there is no source
-// creature dealing it. eachOpponentLosesLife is the shared body.
+// creature dealing it.
 //
-// "You gain life equal to the life lost THIS WAY" is the total
-// across all opponents, not X — three opponents at six devotion gain
-// eighteen, not six. It is computed as X × (live opponents) rather
-// than by summing actual life deltas, which differs only for a player
-// whose life total cannot change; that case has no card in the
-// catalog today.
+// "You gain life equal to the life lost THIS WAY" is the total across
+// all opponents, not X — three opponents at six devotion gain eighteen,
+// not six. It used to be computed as X × (live opponents), which is the
+// same number only while nothing is replacing anybody's life loss;
+// since #793 it is the real total, reported by the drain body's
+// continuation once every opponent's CR 614 window has settled.
+// b21DrainEachOpponentAndGainTheTotal is that shared body — this card,
+// Kokusho, Exsanguinate and Debt to the Deathless are one sentence at
+// four different N.
 //
 // No simplifications.
 func init() {
@@ -72,19 +75,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gray Merchant of Asphodel — drain for your devotion to black", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				x := devotionTo(g, item.Controller, "B")
-				if x <= 0 {
-					return nil
-				}
-				opponents := ctx.Opponents()
-				if err := eachOpponentLosesLife(g, item, x); err != nil {
-					return err
-				}
-				return GainLife{
-					Player: item.Controller,
-					Amount: x * len(opponents),
-				}.Apply(ctx)
+				return b21DrainEachOpponentAndGainTheTotal(g, item, devotionTo(g, item.Controller, "B"))
 			}),
 		},
 	})
