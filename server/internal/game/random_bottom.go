@@ -1,8 +1,6 @@
 package game
 
 import (
-	"math/rand/v2"
-
 	"github.com/google/uuid"
 )
 
@@ -23,14 +21,15 @@ import (
 // # Randomness
 //
 // The order is one Fisher–Yates shuffle of `ids` as given (a repeated
-// ID dropped), drawn from
-// g.rng — the game's own seeded source, the one Start, Mulligan and
-// every library shuffle use — so a replayed game bottoms the same
-// cards in the same order the live one did. A nil rng (a test game
-// that never called Start) falls back to math/rand/v2's global source,
-// Zone.Shuffle's contract. The shuffle runs before any card is looked
-// up, so how much it draws from the source depends only on the list
-// and never on where the cards are.
+// ID dropped), one draw on the actor's "random_order" stream of the
+// game's keyed RNG (rng.go, ADR 0054 Decision 8). An undone effect
+// bottoms the same cards in the same order when it is redone, a
+// restored game continues the stream, and a draw on any other stream
+// in between (a shuffle, a random discard) does not change it. There
+// is no fallback source: a game that never called Start mints its key
+// on the first draw. The shuffle runs before any card is looked up, so
+// how much it draws from the stream depends only on the list and never
+// on where the cards are.
 //
 // # Where each card comes from
 //
@@ -75,11 +74,7 @@ func (g *Game) PutOnBottomInRandomOrderForEffect(actor uuid.UUID, ids []uuid.UUI
 		}
 	}
 	swap := func(i, j int) { order[i], order[j] = order[j], order[i] }
-	if g.rng != nil {
-		g.rng.Shuffle(len(order), swap)
-	} else {
-		rand.Shuffle(len(order), swap)
-	}
+	g.randForLocked(rngStream{kind: rngStreamRandomOrder, player: actor}).Shuffle(len(order), swap)
 	var firstErr error
 	for _, id := range order {
 		src := g.findCardZoneLocked(id)

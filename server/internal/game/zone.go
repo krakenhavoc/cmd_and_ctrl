@@ -140,9 +140,13 @@ func (z *Zone) Contains(id uuid.UUID) bool {
 }
 
 // Shuffle reorders the zone's cards in place using the supplied source
-// of randomness. Pass nil to use crypto-quality randomness by default.
-// Used primarily for shuffling libraries at game start and after tutor
-// effects.
+// of randomness. Used for shuffling libraries at game start and after
+// tutor effects.
+//
+// Every game path passes a generator from Game.randForLocked (rng.go),
+// so the shuffle is rewindable and persistable (ADR 0054). The nil
+// fallback to math/rand/v2's global source is kept only for zone-level
+// unit tests; TestNoDirectRandomSource fails if a game path passes nil.
 func (z *Zone) Shuffle(r *rand.Rand) {
 	if r == nil {
 		// math/rand/v2's zero-arg Shuffle uses a concurrency-safe

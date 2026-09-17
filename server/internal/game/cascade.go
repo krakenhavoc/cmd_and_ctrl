@@ -22,10 +22,10 @@ import (
 //     firing while its own spell is still on the stack.
 //
 //  2. **Reproducible randomness.** "In a random order" has to come
-//     out the same on replay, so the shuffle draws from g.rng — the
-//     same source Start, Mulligan and ShuffleLibrary use, seeded from
-//     a persisted *rand.PCG. Reaching for math/rand directly would
-//     desynchronise every snapshot after the cascade.
+//     out the same after an undo or a restore, so the order draws from
+//     the game's keyed RNG (rng.go, ADR 0054) on the owner's
+//     "random_order" stream. Reaching for math/rand directly would
+//     make it neither rewindable nor persistable.
 //
 //  3. **A yes/no during a resolution.** "You MAY cast it" is a
 //     decision taken while the trigger is resolving, which is the
