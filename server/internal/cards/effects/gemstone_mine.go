@@ -39,12 +39,11 @@ func init() {
 			b10EntersWithCounters("mining", 3, "Gemstone Mine: enters with three mining counters"),
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}, Remove a mining counter: Add one mana of any color. With no mining counters left, sacrifice this land.",
-			IgnoreCommanderIdentity: true,
-			Condition:               b31HasMiningCounter,
-			Rider:                   b31RemoveMiningCounterOrSacrifice,
+			Cost:      ManaAbilityCost{Tap: true},
+			Produced:  "{W|U|B|R|G}",
+			Label:     "{T}, Remove a mining counter: Add one mana of any color. With no mining counters left, sacrifice this land.",
+			Condition: b31HasMiningCounter,
+			Rider:     b31RemoveMiningCounterOrSacrifice,
 		}},
 	})
 }

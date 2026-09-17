@@ -54,9 +54,9 @@ func init() {
 				Produced: "{W|U|B|R|G}",
 				Label:    "Add one mana of any color (legendary spells only)",
 				// "one mana of any color" with no mention of the
-				// commander's identity — the restriction is the
-				// narrowing, not the command zone.
-				IgnoreCommanderIdentity: true,
+				// commander's identity, so all five colours are
+				// offered (NarrowToCommanderIdentity stays off) — the
+				// spend restriction is the only limit.
 				Restrictions: []string{
 					ManaRestrictCast,
 					ManaRestrictSupertype("Legendary"),

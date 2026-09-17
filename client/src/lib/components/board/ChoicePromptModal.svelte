@@ -27,6 +27,7 @@
     type ChoiceSubmission,
     type ServerErrorLike,
   } from "../../choiceRejection";
+  import { colorButtons } from "../../manaPick";
 
   interface Props {
     snap: GameView;
@@ -181,20 +182,18 @@
   const optionCards = $derived<CardView[]>(active?.options ?? []);
 
   // S15 mana_pick branch — a color-pick choice from Arcane Signet /
-  // Birds of Paradise. `active.color_options` is the server-filtered
-  // legal button list. Submits via resolve_choice with `{choice_id,
+  // Birds of Paradise. `active.color_options` is the server's legal
+  // button list, already ordered commander identity first; it renders
+  // in that order. Submits via resolve_choice with `{choice_id,
   // color}` (card_ids absent).
   const isManaPick = $derived(active?.kind === "mana_pick");
-  const colorOptions = $derived<string[]>(active?.color_options ?? []);
   // #742: "N mana of any one color" (Gilded Lotus) is one pick that
   // adds several tokens of the picked colour; the amount can differ
   // per colour (Nyx Lotus's devotion). A colour missing from the map
-  // adds one.
+  // adds one. colorButtons keeps the server's order.
   const colorAmounts = $derived<Record<string, number>>(active?.color_amounts ?? {});
   const hasColorAmounts = $derived(Object.keys(colorAmounts).length > 0);
-  function amountFor(color: string): number {
-    return colorAmounts[color] ?? 1;
-  }
+  const buttons = $derived(colorButtons(active?.color_options, colorAmounts));
 
   // #742 choose_color branch — "choose a color" (CR 105.4), either as
   // a permanent enters (Coldsteel Heart; the answer is remembered) or
@@ -202,15 +201,6 @@
   // `{choice_id, color}` answer as a mana pick; the server routes the
   // two by kind.
   const isColorChoice = $derived(active?.kind === "choose_color");
-
-  const COLOR_META: Record<string, { label: string; fill: string }> = {
-    W: { label: "White", fill: "#f4ead5" },
-    U: { label: "Blue", fill: "#aad4ff" },
-    B: { label: "Black", fill: "#2b2b3d" },
-    R: { label: "Red", fill: "#ff9a85" },
-    G: { label: "Green", fill: "#92c493" },
-    C: { label: "Colorless", fill: "#c6cfdd" },
-  };
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
@@ -749,19 +739,17 @@
           {/if}
         </p>
         <div class="color-row">
-          {#each colorOptions as color (color)}
-            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
-            {@const n = amountFor(color)}
+          {#each buttons as b (b.color)}
             <button
               type="button"
               class="color-pick"
-              style:--fill={meta.fill}
-              title={meta.label}
-              aria-label={n > 1 ? `add ${n} ${meta.label} mana` : `add ${meta.label} mana`}
-              onclick={() => pickColor(color)}
+              style:--fill={b.fill}
+              title={b.label}
+              aria-label={b.amount > 1 ? `add ${b.amount} ${b.label} mana` : `add ${b.label} mana`}
+              onclick={() => pickColor(b.color)}
             >
-              <span class="color-letter">{n > 1 ? `${n}×${color}` : color}</span>
-              <span class="color-name">{meta.label}</span>
+              <span class="color-letter">{b.amount > 1 ? `${b.amount}×${b.color}` : b.color}</span>
+              <span class="color-name">{b.label}</span>
             </button>
           {/each}
         </div>
@@ -776,18 +764,17 @@
              say which. -->
         <p class="prompt-hint">Pick exactly one color. The card's text says how it is used.</p>
         <div class="color-row">
-          {#each colorOptions as color (color)}
-            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
+          {#each buttons as b (b.color)}
             <button
               type="button"
               class="color-pick"
-              style:--fill={meta.fill}
-              title={meta.label}
-              aria-label={`choose ${meta.label}`}
-              onclick={() => pickColor(color)}
+              style:--fill={b.fill}
+              title={b.label}
+              aria-label={`choose ${b.label}`}
+              onclick={() => pickColor(b.color)}
             >
-              <span class="color-letter">{color}</span>
-              <span class="color-name">{meta.label}</span>
+              <span class="color-letter">{b.color}</span>
+              <span class="color-name">{b.label}</span>
             </button>
           {/each}
         </div>

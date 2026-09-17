@@ -49,9 +49,8 @@ func init() {
 				Tap:            true,
 				SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food")),
 			},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}, Sacrifice a Food: Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Produced: "{W|U|B|R|G}",
+			Label:    "{T}, Sacrifice a Food: Add one mana of any color",
 		}},
 	})
 }

@@ -129,6 +129,28 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 			t.Fatalf("equal amounts: chose %q, want the colour the hand needs", got)
 		}
 	})
+
+	// Owner decision (2026-09-17): an "any color" pick lists all five
+	// colours with the commander's identity first. With nothing in hand
+	// asking for a colour, the bot keeps the first — an identity
+	// colour — rather than wandering off it.
+	t.Run("mana_pick with no hand need takes the identity colour listed first", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "mana_pick", Chooser: seatID(0).String(), Reason: "Birds of Paradise",
+				ColorOptions: []string{"G", "W", "U", "B", "R"},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "add {G}", map[string]any{"color": "G"}),
+			choiceMove(t, 0, choiceID, "add {W}", map[string]any{"color": "W"}),
+			choiceMove(t, 0, choiceID, "add {U}", map[string]any{"color": "U"}),
+			choiceMove(t, 0, choiceID, "add {B}", map[string]any{"color": "B"}),
+			choiceMove(t, 0, choiceID, "add {R}", map[string]any{"color": "R"}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "add {G}" {
+			t.Fatalf("chose %q, want the identity colour listed first", got)
+		}
+	})
 }
 
 func TestCoinCallUsesChoiceIDAndStopsAtDeclaredCeiling(t *testing.T) {

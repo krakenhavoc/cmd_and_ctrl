@@ -11,10 +11,9 @@ func init() {
 		Name:         "The Gold Saucer",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{C}",
-			Label:                   "{T}: Add {C}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{C}",
+			Label:    "{T}: Add {C}",
 		}},
 		Activated: []ActivatedAbility{
 			{

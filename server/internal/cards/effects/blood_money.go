@@ -16,15 +16,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // leaves indestructible creatures out of `swept` (#446 / #470), so a
 // survivor pays nothing.
 //
-// The Then clause pays for `destroyed` minus the tokens. It cannot
-// walk `swept` and count what left the battlefield: a commander in
-// the wipe was destroyed, but CR 903.9 queues its owner's
-// command-zone prompt and the card stays on the battlefield until
-// they answer, which is after this clause runs. `destroyed` already
-// counts that commander, since CR 903.9 replaces the zone change and
-// not the destruction (Fumigate's note). A token can never be a
-// commander, so a token that is off the battlefield is exactly a
-// token destroyed this way, and it is the part to take back out.
+// The Then clause pays for `destroyed` minus the tokens. `swept` is
+// the pre-move copies of exactly the creatures that were destroyed
+// this way (#815), so the subtraction is the whole of the "nontoken"
+// clause — a creature the CR 614 window saved or sent somewhere other
+// than a graveyard is in neither number.
+//
+// A commander in the wipe WAS destroyed and is counted, since CR 903.9
+// replaces the zone change and not the destruction (Fumigate's note).
+// Its owner is asked first, so the Treasures are made when they
+// answer rather than on this line. This clause used to walk `swept`
+// looking for cards still on the battlefield, because it ran while
+// that prompt was still open and could not tell a commander waiting
+// on CR 903.9 from a creature that never left.
 func init() {
 	Register(Spec{
 		OracleID:     "75f5d372-4ff9-430c-8302-72472439e0d2",
@@ -36,7 +40,7 @@ func init() {
 				Then: func(ctx *Context, swept []game.Card, destroyed int) error {
 					paid := destroyed
 					for _, c := range swept {
-						if IsToken(c) && !ctx.Game.Battlefield.Contains(c.InstanceID) {
+						if IsToken(c) {
 							paid--
 						}
 					}

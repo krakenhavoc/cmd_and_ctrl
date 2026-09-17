@@ -23,10 +23,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Food count cannot simply read the board after the sweep. A
 // commander of yours with power 3 or more is destroyed, but CR 903.9
 // queues its owner's command-zone prompt and the card stays on the
-// battlefield until they answer, which is after the Foods are made.
-// So the Then clause leaves out every swept card that is still on
-// the battlefield: it was destroyed and is not a creature you
-// control any more, whichever zone its owner picks.
+// battlefield until they answer. So the Then clause leaves out every
+// card in `swept`: those are the creatures that were destroyed this
+// way, and none of them is a creature you control any more, whichever
+// zone their owners picked.
+//
+// #815: the Foods are made from the destruction's continuation, so
+// they are created when that last answer arrives rather than while
+// the prompt is open — and `swept` holds only what was really
+// destroyed, so a creature the window saved mid-sweep is still one of
+// yours and still pays a Food.
 func init() {
 	Register(Spec{
 		OracleID:     "a94c191d-a938-458e-bc1b-2f44fd8873a3",

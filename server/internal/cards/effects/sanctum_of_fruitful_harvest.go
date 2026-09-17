@@ -9,10 +9,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A triggered ability that adds mana (not a mana ability — it has no
 // cost and uses the stack), so the mana goes in through
-// AddManaWithOptionsForEffect, the Dark Ritual path, as #742's one
+// AddManaForEffect, the Dark Ritual path, as #742's one
 // pick of X tokens. The printed text says "any one color" with no
-// commander-identity clause, so the pick opts out of the identity
-// narrowing and offers all five colours. X is counted when the trigger
+// commander-identity clause, so the pick offers all five colours,
+// commander identity first. X is counted when the trigger
 // resolves, so a Shrine that left in response is not counted. The
 // Sanctum is a Shrine itself. The mana empties from the pool at the
 // end of the main phase like any other (CR 106.4).
@@ -31,8 +31,7 @@ func init() {
 						shrines++
 					}
 				}
-				return g.AddManaWithOptionsForEffect(item.Controller, item.SourceCardID, OneColorOfAmount(shrines),
-					game.AddManaOptions{IgnoreCommanderIdentity: true})
+				return g.AddManaForEffect(item.Controller, item.SourceCardID, OneColorOfAmount(shrines))
 			}),
 		},
 	})

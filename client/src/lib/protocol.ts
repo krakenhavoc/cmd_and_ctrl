@@ -60,7 +60,16 @@ export interface ErrorPayload {
 // BlockRefusalReason mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
 // shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason = "cant_block" | "cant_be_blocked" | "flying" | "landwalk";
+export type BlockRefusalReason =
+  | "cant_block"
+  | "cant_be_blocked"
+  | "flying"
+  | "landwalk"
+  | "fear"
+  | "intimidate"
+  | "shadow"
+  | "horsemanship"
+  | "skulk";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -572,9 +581,12 @@ export interface PendingChoiceView {
   options?: CardView[];
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
-  // character values ("W", "U", "B", "R", "G", "C"). Server-filtered
-  // against commander identity for Arcane Signet; full 5-color for
-  // Birds of Paradise.
+  // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
+  // side with the chooser's commander colour identity first; render in
+  // the order sent. Full 5-color for Birds of Paradise ("G" first in a
+  // mono-green deck); narrowed to the identity only for Arcane Signet
+  // and the other cards whose text says "in your commander's color
+  // identity".
   color_options?: string[];
   // #742: on a "mana_pick" that adds more than one mana of the picked
   // colour ("{T}: Add three mana of any one color") — colour letter to
@@ -1085,6 +1097,11 @@ export interface CardFaceView {
   image?: string;
 }
 
+export interface NoUntapView {
+  static?: boolean;
+  next?: string[];
+}
+
 export interface CardView {
   instance_id: string;
   /**
@@ -1101,11 +1118,20 @@ export interface CardView {
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
   type_line?: string;
+  // Effective colors (W/U/B/R/G), including layer-5 changes. Omitted
+  // means colorless; clients must never infer colors from mana_cost.
+  colors?: string[];
+  // Signed power when below zero, for comparisons such as skulk.
+  // Otherwise use power, which retains its combat-damage zero clamp.
+  negative_power?: number;
   // Parsed printed creature stats. Omitted (zero) for non-creatures
   // and for cards with non-numeric printed stats. S08.
   power?: number;
   toughness?: number;
   tapped?: boolean;
+  // Untap-step restriction / one-shot marker state. `static` is omitted
+  // for face-down cards; `next` contains player IDs and is public state.
+  no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,

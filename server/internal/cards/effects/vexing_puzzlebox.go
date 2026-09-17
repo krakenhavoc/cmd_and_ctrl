@@ -21,7 +21,7 @@ func init() {
 		})},
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{Tap: true}, Produced: "{W|U|B|R|G}",
-			Label: "Add one mana of any color. Roll a d20.", IgnoreCommanderIdentity: true,
+			Label: "Add one mana of any color. Roll a d20.",
 			Rider: func(g *game.Game, controller, source uuid.UUID) error {
 				_, err := g.RollDiceForEffect(game.RandomDraw{Player: controller, Source: source}, 20, 1)
 				return err

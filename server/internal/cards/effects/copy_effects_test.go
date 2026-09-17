@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -257,6 +258,52 @@ func TestSakashimaKeepsItsOwnNameAndStaysLegendary(t *testing.T) {
 	}
 	if !hasCopySupertype(got, "Legendary") {
 		t.Errorf("type line = %q, want it legendary in addition", got.TypeLine)
+	}
+}
+
+func TestSakashimaCommanderCopyKeepsCommandTowerBlue(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	target := seedCopyableCreature(g, active.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	cmdr := game.NewCommander("Sakashima the Impostor", active.ID)
+	cmdr.OracleID = oracleSakashima
+	cmdr.TypeLine = "Legendary Creature — Human Rogue"
+	cmdr.ManaCost = "{2}{U}{U}"
+	cmdr.ColorIdentity = []string{"U"}
+	cmdr.Power, cmdr.Toughness = 3, 1
+	active.Command.PushTop(cmdr)
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := 0; i < 4; i++ {
+		active.ManaPool.AddMana(game.ManaToken{Color: "U"})
+	}
+	if err := g.CastSpell(active.ID, cmdr.InstanceID, game.CastSpellParams{FromZone: "command", Strict: true}); err != nil {
+		t.Fatalf("cast commander: %v", err)
+	}
+	resolveWithCopyChoice(t, g, target)
+	if got := copyBattlefieldCard(t, g, cmdr.InstanceID); !got.IsCopy() || got.CurrentPower() != 2 {
+		t.Fatal("Sakashima did not enter as a copy of the green creature")
+	}
+	tower := pushCatalogPermanent(g, active.ID, "Command Tower", "Land", "0895c9b7-ae7d-4bb3-af17-3b75deb50a25", false)
+	blueCost, err := game.ParseCost("{U}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan, ok := g.AutoTapForCost(active.ID, blueCost, 0); !ok || !reflect.DeepEqual(plan, []uuid.UUID{tower}) {
+		t.Errorf("auto-tap for blue = %v, %v; want Command Tower", plan, ok)
+	}
+	if err := g.ActivateManaAbility(active.ID, tower, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	pick := riderLatestManaPick(g, active.ID)
+	if pick == nil || !reflect.DeepEqual(pick.ColorOptions, []string{"U"}) {
+		t.Fatalf("Command Tower options with copied commander = %+v, want [U]", pick)
+	}
+	if err := g.ResolveManaChoice(pick.ID, active.ID, "U"); err != nil {
+		t.Fatal(err)
 	}
 }
 

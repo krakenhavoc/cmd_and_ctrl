@@ -43,10 +43,9 @@ func init() {
 			"The up-to-two creatures that survive the last ability are picked when it's activated rather than on resolution, so opponents can respond to the choice, and a creature with hexproof or shroud can't be picked.",
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{B|R}",
-			Label:                   "{T}, Pay 1 life: Add {B} or {R}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{B|R}",
+			Label:    "{T}, Pay 1 life: Add {B} or {R}",
 		}},
 		Activated: []ActivatedAbility{
 			{

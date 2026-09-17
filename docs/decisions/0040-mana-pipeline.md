@@ -235,12 +235,14 @@ snapshot. Three rules keep the rest of the pipeline unchanged:
   common case, and a zero count drops its option.
 - `ResolveManaChoice` and `AddManaForEffect` mint the picked colour's
   amount; an ordinary pick has no entry and mints one.
-- `AddManaForEffect` still narrows a pick to the commander's colour
-  identity by default. `AddManaWithOptionsForEffect` with
-  `AddManaOptions{IgnoreCommanderIdentity: true}` (and the `AddMana`
+- ~~`AddManaForEffect` still narrows a pick to the commander's colour
+  identity by default.~~ *Superseded 2026-09-17, see the addendum
+  below:* `AddManaForEffect` offers the printed colours with the
+  commander's identity listed first, and
+  `AddManaOptions{NarrowToCommanderIdentity: true}` (and the `AddMana`
   primitive's field of the same name) is the effect-side twin of the
-  mana ability's opt-out, for printed "any color" text: Sanctum of
-  Fruitful Harvest, Lotus Cobra, Deathrite Shaman.
+  mana ability's narrowing flag, for printed "in your commander's color
+  identity" text. No effect in the catalog sets it.
 - **The auto-tapper plans around a one-colour-N-mana source.** Its model
   is one slot, one mana, one colour choice per slot, and a Gilded Lotus
   planned as three any-colour slots could be booked for `{W}`, `{U}` and
@@ -249,3 +251,74 @@ snapshot. Three rules keep the rest of the pipeline unchanged:
   hand (one prompt) and the cast spends the floated mana. Planning such
   a source inline, choosing the colour that pays the most of the
   remaining requirements, is possible later if it turns out to matter.
+
+## Addendum — 2026-09-17: "any color" offers all five, identity first
+
+**Owner decision.** A mana source whose printed text says "any color" or
+"any one color" offers **all five colours**, with the controller's
+commander colour identity listed first. Nothing is narrowed away. Before
+this, the engine narrowed every multi-option ("pipe") slot to the
+commander's identity by default, and a card had to opt out with
+`IgnoreCommanderIdentity`. Birds of Paradise, Treasure, Lotus Petal and
+the other "any color" sources that had not opted out showed a mono-green
+deck a single `{G}` button, which is narrower than the printed card.
+
+- **Default: order, don't narrow.** `game.manaPickOptionsFor` is the one
+  list that `ActivateManaAbility`, `AddManaForEffect` and the auto-tapper
+  (both the planner and the executor) read. It keeps the printed option
+  set and moves the identity's colours to the front, keeping printed
+  order within each group. Under a Golgari commander, Birds offers
+  `B, G, W, U, R`, and a Scrubland offers `B, W`. With no identity (the
+  player owns no commander, or a placeholder with no colours), the
+  printed order is left alone.
+- **The identity is read wherever the commander is.**
+  `commanderIdentityFor` finds every card the player owns with
+  `IsCommander` in the command zone, on the stack, on the battlefield, in
+  the graveyard, in exile, in hand or in the library, and returns the
+  union of their identities (partners combine). CR 903.4a fixes colour
+  identity before the game begins, so casting the commander does not
+  change it. Before this, only the command zone was read, so once the
+  commander was cast the ordering fell back to printed WUBRG and the four
+  narrowing cards offered all five colours.
+- **`NarrowToCommanderIdentity` replaces `IgnoreCommanderIdentity`** as
+  its inverse, on `ManaAbilityShape`, `effects.ManaAbility`,
+  `AddManaOptions` and `effects.AddMana`. Only Command Tower, Arcane
+  Signet, Commander's Sphere and Path of Ancestry set it, because their
+  text says "any color in your commander's color identity". The
+  intersection keeps its no-overlap fallback to the raw set. With no
+  identity at all it also returns the raw set, which is stronger than
+  CR 903.4f (a colourless or missing commander means these cards add
+  nothing). That behaviour predates this addendum and is tracked in
+  #844.
+  `TestOnlyCommanderIdentityCardsNarrow` pins the list, and the
+  dump-gated `TestNarrowToCommanderIdentityMatchesOracleText` checks that
+  a catalog card narrows exactly when its oracle text has the clause.
+- **Why the order does the work.** The client renders `color_options` in
+  the order sent, so the identity colours are the first buttons.
+  `legal.EnumerateFor` lists the answers in that order, and every bot
+  policy breaks ties on the lowest index. The heuristic still prefers the
+  colour its hand needs, then falls back to the first (identity) colour.
+  The auto-tapper's `pickColorForSlot` falls back to `options[0]` for a
+  slot that only pays generic mana, so a generic cost is paid in an
+  identity colour. A coloured requirement outside the identity, such as
+  a stolen card's `{W}`, is now payable from Birds, as printed.
+- **Auto-tap source order changes under an identity.** Birds, Treasure
+  and the Signet-style rocks used to narrow to one option under a
+  mono-colour commander, so they scored like a basic
+  (`restrictivenessScore` 1, `tierForGeneric` 2). They now keep five
+  options (score 5, tier 1), exactly as in a game without a commander.
+  For a generic cost the solver taps them before basics and keeps the
+  basics for coloured pips. A plan that pays an off-identity pip from
+  Birds beside a basic still materialises correctly: the restrictive
+  basic is booked first, and `TestAutoTapBirdsPaysOffIdentityPipBesideABasic`
+  covers it.
+- **Two- and three-colour lands** (guildgates, shocks, temples,
+  tri-lands, original duals) offer every printed colour, identity first.
+  In a legal deck this changes nothing: CR 903.5c keeps an off-identity
+  land out of the deck, so the identity already covers the land's
+  colours and the old intersection was a no-op. Only a land whose
+  colours fall outside its controller's identity (a stolen land, or a
+  deck that breaks CR 903.5c) now offers its full printed set instead
+  of a narrowed one.
+- **No wire change.** `color_options` keeps its shape. Only its order,
+  and the width it has for the formerly narrowed cards, change.

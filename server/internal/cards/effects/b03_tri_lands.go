@@ -11,9 +11,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every one a three-colour Commander deck's most-played nonbasic
 // after the shocks. One table: an unconditional enters-tapped
 // self-replacement (the Temple cycle's) and a three-option pipe. The
-// pipe narrows to the controller's commander identity at activation
-// like every other pipe in the catalog; a three-colour land in a
-// three-colour deck is never narrowed.
+// pipe offers all three printed colours, the controller's commander
+// identity listed first, like every other pipe in the catalog.
 //
 // No simplification.
 func init() {

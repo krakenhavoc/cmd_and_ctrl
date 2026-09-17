@@ -30,10 +30,9 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The activated ability always doubles the counters on a target permanent — the option to double the counters you have isn't offered."},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
 			Label:        "{4}, {T}: Double the number of each kind of counter on target permanent.",

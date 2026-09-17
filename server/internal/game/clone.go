@@ -380,6 +380,11 @@ func cloneCard(c Card) Card {
 	} else {
 		out.Counters = nil
 	}
+	if len(c.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	} else {
+		out.NextUntapSkips = nil
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -566,6 +571,9 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
+			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
+				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
+			}
 			ev.zoneRoute = &r
 		}
 		out.ev = &ev

@@ -22,10 +22,9 @@ func init() {
 		Name:         "Fiery Islet",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{U|R}",
-			Label:                   "{T}, Pay 1 life: Add {U} or {R}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{U|R}",
+			Label:    "{T}, Pay 1 life: Add {U} or {R}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this land: Draw a card.",

@@ -4,6 +4,8 @@
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
 **Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
 **Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
+**Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
+**Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
 
 ## Context
 
@@ -658,6 +660,198 @@ card" is not, so Library of Leng and madness still wait on #650 and
 §10a still stands. No catalog replacement fires on a discard today
 except the built-in: every `RepEventMove` watcher in the catalog gates
 on `OldZone == ZoneBattlefield` or `NewZone == ZoneBattlefield`.
+
+### 5h. Amendment, 2026-09-17: a "may" inside a chosen order is still a question
+
+*Amendment, 2026-09-17, branch `fix/815-847-replacement-outcomes`.
+Closes [#847](https://github.com/krakenhavoc/cmd_and_ctrl/issues/847),
+noticed by the #802/#801 agent in PR #845 and not fixed there.*
+
+§5a's third limit says an effect that asks its controller a question is
+never collapsed, "because skipping the ordering prompt would skip its
+question too". That was true of the two paths §5a was about. It was not
+true of the two paths that apply several effects once the prompt has
+been answered or ruled out, and both of them answered a CR 614.10 "may"
+on its controller's behalf, in the direction that favours it.
+
+**1. The chosen-order loop asks.** `ResolveReplacementOrder` fires the
+whole submitted order in one pass (§5, "one prompt = one ordering
+decision"), and it already refused to fire a copy selector or a
+shockland's pay-life blind — each queues its own prompt and bails, and
+the effects later in the order are left unapplied for the apply-loop
+re-entry to pick up. `Optional` had no such branch, so a "may" that
+shared a window with any other effect simply happened. Now it takes the
+identical branch, through `offerOptionalReplacementLocked` — the same
+helper the single-effect path in `applyReplacementsLocked` now uses, so
+there is one place that knows when the question is asked and when it is
+declined inline (chooser gone, or an entry with nothing to resume it —
+§5b's "weaker, never stronger", #359).
+
+The resume is the existing one: `ResolveOptionalReplacement` fires or
+skips, then re-enters the apply-loop, which re-gathers. No second
+resume and no new frame — the effects after the "may" in the chosen
+order are unapplied, so the gather finds them exactly as it finds the
+ones after a copy selector. The cost of that, shared with the two older
+branches, is that an order of THREE or more whose middle effect pauses
+offers the remaining two as a fresh ordering prompt rather than
+remembering the tail of the first answer. CR 616.1 re-chooses after
+every applied effect anyway, so re-asking is the rules-faithful
+direction; it is recorded here because "one prompt, one ordering
+decision" is the thing it bends.
+
+**2. The eliminated-chooser fallback drops the question.**
+§5b gave `mustSettleNow` a fallback that applies the gathered order
+through `skipQuestionsLocked` — anything that would ask its own
+question is skipped un-applied rather than fired. The gone-chooser
+fallback beside it (§5, the S31 fuzzer finding) passed the gathered
+list straight to `applyFirstGatheredLocked`, so the same "may" that a
+cost would have skipped was fired when the affected player had left the
+table. It routes through `skipQuestionsLocked` too now. The two
+fallbacks are the same sentence: an order nobody chose cannot carry an
+effect whose answer nobody gave.
+
+A "may" whose own controller is still seated is declined here even
+though they could have answered it, because the event they would be
+answering about belongs to a player who is gone (CR 800.4a) and the
+engine has no way to sequence one question inside an order it is
+applying un-prompted. Weaker than printed, never stronger — the posture
+every other un-prompted path in this ADR takes.
+
+Nothing new is snapshotted: the "may" pauses on the same
+`PendingChoiceOptionalReplacement` and the same `replacementResume`
+frame it has used since S17, which `ContinuationCensus.ChoiceResumeFrames`
+already counts and `cloneReplacementResume` already copies. The undo
+contract from §5b/§5e carries over unchanged — rewinding into the
+prompt and answering again lands the same event, because the ordering
+answer's applied-effect marks live in `Game.replacementsAppliedThisEvent`,
+which `Clone` deep-copies.
+
+### 5i. Amendment, 2026-09-17: "destroyed this way" counts what was destroyed
+
+*Amendment, 2026-09-17, branch `fix/815-847-replacement-outcomes`.
+Closes [#815](https://github.com/krakenhavoc/cmd_and_ctrl/issues/815),
+noticed by the #708/#807 agent in PR #813 and not fixed there.*
+
+§5d moved the marked-damage clear onto the landed outcome of a
+destruction. This is the same move for the destruction's NUMBER.
+
+`destroyPermanentsLocked` counted a leg as destroyed whenever
+`routeBattlefieldCardToOwnerGraveyardLocked` returned no error, and
+that call returns no error for three things that are not a
+destruction: one the CR 614 window cancelled outright (indestructible
+granted mid-window, "it isn't destroyed instead"), one a replacement
+sent somewhere other than a graveyard, and one that has merely PAUSED
+on the CR 903.9 prompt and has not happened yet. Every card that reads
+"for each creature destroyed this way" — Fumigate, Deadly Tempest,
+Bane of Progress, Blood Money, The Battle of Bywater — was paid for
+permanents that were still standing.
+
+**1. The rule is CR 701.7a, read off the landed outcome.** "To destroy
+a permanent, move it from the battlefield to its owner's graveyard."
+So `destroyedThisWayLocked` asks where the permanent actually ended up:
+
+| Where it landed | Destroyed? |
+| --- | --- |
+| a graveyard | yes |
+| the command zone | yes — CR 903.9, see below |
+| exile, hand, library (a replacement rewrote the destination) | no |
+| still on the battlefield (the window cancelled it) | no |
+
+The exile row is the judgement, and it is the one the issue left open.
+A permanent that an "exile it instead" replacement removed really did
+leave the battlefield, and it is tempting to call that destroyed
+because the destruction is what moved it. CR 701.7a names the
+graveyard, so the engine does not: it was never put into one, so it
+was not destroyed. The consequence is deliberate and small —
+Fumigate gains nothing for it, Deadly Tempest charges nobody for it,
+and a "whenever a creature dies" trigger never saw it either, because
+it did not die.
+
+The command-zone row is a **declared carry-over**, not something
+CR 701.7a compels: by the letter of the same sentence a commander put
+into the command zone was not put into a graveyard either. The engine
+has counted it since S23 on the stated grounds that "CR 903.9 replaces
+the zone change, not the destruction" (simultaneous.go's header), the
+catalog's notes say so on the cards, and changing it would quietly
+change every wrath payoff's number for commanders. It stays, in ONE
+place — `destroyedThisWayLocked` — which is where to change it if it
+ever flips.
+
+The outcome is read off the LIVE BOARD in the continuation rather than
+off the settled event, because that is the reading that is still true
+after an undo rewinds into an open CR 903.9 prompt and the answer is
+replayed. A captured event pointer is the snapshot's problem (§5b);
+the board is not.
+
+**2. It is a continuation, because any leg can pause.** Same idiom,
+same names as §5b and §5c: `DestroyPermanentsThenForEffect(ids,
+then(destroyed []uuid.UUID))` beside the fire-and-forget
+`DestroyPermanentsForEffect(ids) int`. The legs are destroyed IN
+SEQUENCE, each from the previous one's continuation, with the landed
+list carried forward BY VALUE — the property that makes an undo across
+the prompt replay identically, for the reason
+`LoseLifeEachThenForEffect` gives.
+
+The continuation rides `zoneRoute.then`, the frame #856 added for the
+discard batch, so there is one continuation idiom on the exit side and
+not two. The destroy / sacrifice / SBA route still performs its own
+move (§5f says why folding it into `routeCardToZoneLocked` is a change
+of its own), so the route it now carries is flagged
+`ViaBattlefieldLeave` and exists only to hold `then`:
+`routeBattlefieldExitThenLocked` puts it on the event and
+`finishBattlefieldLeaveLocked` runs it from the one place both the
+unpaused path and the CR 903.9 resume land in.
+
+**3. The pause does not break the simultaneity batch.** Sequencing a
+batch through a prompt would normally close the batch on the way out
+and re-open it — or not — on the far side, which is exactly what
+simultaneous.go exists to prevent: the copies are taken BEFORE the
+first move, and a batch re-taken afterwards has lost the creatures
+that already left. So the copies are taken once and carried forward in
+the continuation with the landed list (`simultaneousExitSnapshotLocked`
+/ `publishSimultaneousExitLocked`), and every leg re-publishes the same
+ones. A Blood Artist still sees the whole board die with it, on either
+side of a commander's prompt.
+
+**4. What can now pause that could not before.** A `DestroyAllMatching`
+with a `Then` clause — and only one with a `Then`; the fire-and-forget
+sweeps are untouched. Five cards: Fumigate, Deadly Tempest, Bane of
+Progress, Blood Money, The Battle of Bywater. When a commander is
+caught in one of those wipes, the rest of the sweep AND the "for each"
+clause now happen when its owner answers CR 903.9, an action later,
+instead of happening immediately with the commander counted on the
+strength of the prompt having been queued. The observable cost is the
+one the drain (§5b), the damage batch (§5c) and the discard batch
+(§5g) already pay, and it buys the only thing that can report a true
+number.
+
+`Then` also receives the swept CARDS narrowed to the ones that were
+destroyed, so the clause that reads the cards (Deadly Tempest's
+per-controller tally, The Battle of Bywater's "creatures you control")
+and the clause that reads the count can no longer disagree. That was
+already the stated intent of the indestructible filter in mass.go; it
+is now true of the permanents the window takes away mid-sweep too.
+
+**5. The fire-and-forget count and the SBA flag.**
+`DestroyPermanentsForEffect` keeps its `int` and it now means the same
+thing — how many of the legs that SETTLED landed as destructions —
+which is every leg unless one paused. A card that reads the number
+must use the `Then` form; that is what its doc comment says and what
+AGENTS.md §7 says. The state-based-action sweep never wanted a
+destruction count: its question is "did this pass do anything", and it
+now answers that from the `doomed` set it collected rather than from a
+number that deliberately excludes a cancelled destruction the sweep
+still has to look at again.
+
+**Not fixed here**, and listed so the next reader does not assume it
+was: `ExileCardsForEffect` and `BounceCardsToHandForEffect`
+(simultaneous.go) count a paused or cancelled leg exactly the way the
+destroy sweep used to, and a paused exit whose prompt is DROPPED —
+its chooser left the game (`finishDroppedReplacementLocked`,
+mutations.go) or it went stale (`dropStaleReplacementResumeLocked`,
+pending_choice.go) — never runs its route's continuation, so a
+sequenced batch behind it stalls. That hole is #853's as much as this
+one's; both are filed separately.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

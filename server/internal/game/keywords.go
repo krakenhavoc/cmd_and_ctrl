@@ -91,6 +91,11 @@ var canonicalKeywords = map[string]bool{
 	"mountainwalk":      true,
 	"forestwalk":        true,
 	"nonbasic landwalk": true,
+	"fear":              true,
+	"intimidate":        true,
+	"shadow":            true,
+	"horsemanship":      true,
+	"skulk":             true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -185,8 +190,9 @@ func CanonicalKeyword(s string) (string, bool) {
 // combat-keyword card" for the table): "flying", "reach",
 // "first strike", "double strike", "deathtouch", "lifelink",
 // "trample", "vigilance", "menace", "defender", "haste", "flash",
-// "hexproof", "shroud", "indestructible", "changeling", and the
-// landwalk tokens ("islandwalk", "nonbasic landwalk", …).
+// "hexproof", "shroud", "indestructible", "changeling", fear,
+// intimidate, shadow, horsemanship, skulk, and the landwalk tokens
+// ("islandwalk", "nonbasic landwalk", …).
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other

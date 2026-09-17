@@ -9,9 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Grixis's four-mana rock. The mana ability is Graven Cairns' shape
 // without the filter cost — two pipe slots over the three named
-// colours, each answered by its own colour pick, and
-// IgnoreCommanderIdentity because the printed text names the
-// colours rather than the commander's identity. The loot is an
+// colours, each answered by its own colour pick, never narrowed
+// because the printed text names the colours rather than the
+// commander's identity. The loot is an
 // ordinary activated ability: the draws land first so a drawn card
 // is a legal discard, and the discard is the controller's choice.
 //
@@ -22,10 +22,9 @@ func init() {
 		Name:         "Relic of Sauron",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{U|B|R}{U|B|R}",
-			Label:                   "Add two mana in any combination of {U}, {B}, and/or {R}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{U|B|R}{U|B|R}",
+			Label:    "Add two mana in any combination of {U}, {B}, and/or {R}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{3}, {T}: Draw two cards, then discard a card.",
