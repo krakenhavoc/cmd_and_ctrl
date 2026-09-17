@@ -292,13 +292,15 @@ var (
 	// Added in S24.
 	ErrCantActivate = errors.New("game: an effect prevents activating this permanent's abilities")
 
-	// ErrIllegalBlock is returned by DeclareBlocker when evasion
-	// keywords on the attacker (flying, menace, fear, shadow, etc.)
-	// or a CR 509.1b restriction on either card ("~ can't block", "~
-	// can't be blocked") rule out the proposed blocker. The CanBlock
-	// helper is the single source of truth. Post-S18 fix for the
-	// missing gate at the DeclareBlocker call site; restrictions
-	// joined it in S24.
+	// ErrIllegalBlock is what DeclareBlocker's refusal wraps when an
+	// evasion keyword on the attacker (flying, landwalk) or a CR
+	// 509.1b restriction on either card ("~ can't block", "~ can't
+	// be blocked") rules out the proposed blocker. The error actually
+	// returned is a *BlockRefusedError carrying the reason; test with
+	// errors.Is. Game.BlockPairRefusalLocked is the single source of
+	// truth (ADR 0045 addendum). Post-S18 fix for the missing gate at
+	// the DeclareBlocker call site; restrictions joined it in S24,
+	// landwalk and the reason in #705.
 	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
 
 	// ErrNoLegalAttackers is returned by DeclareAttackers when every

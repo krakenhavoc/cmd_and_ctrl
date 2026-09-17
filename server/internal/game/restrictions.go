@@ -43,7 +43,8 @@ import "github.com/google/uuid"
 //
 // CantBeBlocked lives on the attacker because that is the permanent
 // the effect is attached to, but it is consumed on the defender's
-// side of the table — CanBlock is the one predicate that sees both
+// side of the table — Game.BlockPairRefusalLocked is the one
+// predicate that sees both
 // cards, so that is where it is read.
 //
 // The activation pair is two bits rather than one because Faith's
@@ -73,14 +74,15 @@ import "github.com/google/uuid"
 //     the batch a count rule needs. The count limit belongs beside
 //     BlockerCountValid as a set-shaped predicate, with this file's
 //     per-permanent bits left alone.
-//   - Goad's "can't attack you or a planeswalker you control" and
-//     landwalk's "can't be blocked as long as defending player
-//     controls an Island" are CONDITIONAL on the other side of the
-//     pairing. Neither is a property of one permanent, so neither is
-//     a bit: goad's home is canAttackTargetLocked, which already
-//     takes (attacker's controller, target), and landwalk's is
-//     CanBlock — once CanBlock can see the game, which today it
-//     cannot.
+//   - Goad's "can't attack you or a planeswalker you control" is
+//     CONDITIONAL on the other side of the pairing. It is not a
+//     property of one permanent, so it is not a bit: its home is
+//     canAttackTargetLocked, which already takes (attacker's
+//     controller, target). Landwalk's "can't be blocked as long as
+//     defending player controls an Island" is the same shape on the
+//     block side, and since #705 it lives where ADR 0045's addendum
+//     put it: a keyword read by Game.BlockPairRefusalLocked, which
+//     sees the defending player's lands (landwalk.go).
 //
 // # When restrictions are checked
 //
@@ -170,7 +172,8 @@ func (r Restriction) Names() []string {
 // defensive nil checks.
 //
 // Reads the EFFECTIVE characteristic, so the caller must have
-// recomputed layers (every declaration path already does — CanBlock
+// recomputed layers (every declaration path already does —
+// BlockPairRefusalLocked
 // has the same requirement for keywords).
 func RestrictionsOn(c *Card) Restriction {
 	if c == nil {

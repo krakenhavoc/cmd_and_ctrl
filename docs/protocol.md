@@ -148,10 +148,11 @@ Any server-side failure in processing a client frame.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana` — see below. |
+| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana`, and #705 adds `illegal_block` — see below. |
 | `payload.message` | string | yes | Human-readable message safe to display to the user. |
 | `payload.missing` | string[] | no | Present only when `code == "insufficient_mana"` (S15). List of mana symbols the caller's pool could not cover, in the order they appear in the printed cost (e.g. `["{R}", "{1}"]`). Client renders these verbatim into the override toast. |
-| `payload.card_id` | string (UUID) | no | Present only when `code == "insufficient_mana"` (S15). Instance ID of the card whose cast was rejected. Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. |
+| `payload.card_id` | string (UUID) | no | Present when `code == "insufficient_mana"` (S15): instance ID of the card whose cast was rejected. Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. Also present when `code == "illegal_block"` (#705): instance ID of the refused blocker. |
+| `payload.reason` | string | no | Present only when `code == "illegal_block"` (#705). The stable snake_case token naming why the block was refused — see below. |
 
 `id` matches the originating client frame's `id` when possible; otherwise
 empty string.
@@ -172,6 +173,30 @@ them and offers two buttons:
    `GET /games/:id/auto-tap-preview?card=<id>`, render the plan in
    `AutoTapPreviewModal`, and on confirm re-fire the cast with
    `auto_tap: true` (atomic server-side tap-and-cast, see below).
+
+#### `illegal_block` (#705)
+
+Emitted when a `declare_blocker` names a pair the engine's block-legality
+check refuses (CR 509.1b; [ADR 0045](decisions/0045-combat-restrictions.md)
+addendum, Decision 8). Nothing is stored, logged or announced. `message` is a
+player-facing sentence the server builds and addresses to the caller, so the
+client shows it verbatim and never re-derives the rule — for example
+`"Cold-Eyed Selkie has islandwalk, and you control an Island (Island)."` (a
+player other than the defending player reads the defender's name instead of
+"you"). `card_id` is the blocker; `reason` is one of:
+
+| `reason` | Refused because |
+|---|---|
+| `cant_block` | a "can't block" restriction is on the blocker (Pacifism, Carrion Feeder) |
+| `cant_be_blocked` | a "can't be blocked" restriction is on the attacker (Whispersilk Cloak, Rogue's Passage) |
+| `flying` | the attacker has flying and the blocker has neither flying nor reach (CR 702.9b) |
+| `landwalk` | the attacker has a landwalk ability (`islandwalk`, …, `nonbasic landwalk`) and the defending player controls a land it names (CR 702.14c) |
+
+The tokens are stable once shipped. The addendum reserves more
+(`too_few_blockers`, `too_many_blockers`, `cant_be_blocked_except_by`,
+`not_defending`, `tapped`, `protection`, …); each is added to this table in
+the change that first sends it. Menace (a block count) is not refused here
+yet.
 
 ### `action` (client → server) — added in S03
 

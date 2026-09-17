@@ -23,7 +23,7 @@ package game
 // the cursor advance, an SBA pass and a player action (Concede,
 // PassTurn), which are all action boundaries. Nothing in a resolution
 // eliminates a player directly: a loss during a resolution sets a flag
-// (Player.LosesAtNextSBA, or life at 0) that the next SBA pass reads,
+// (Player.AttemptedEmptyDraw, or life at 0) that the next SBA pass reads,
 // and that pass is the resolution bookend's or a later prompt
 // answer's. ADR 0057's effect losses keep the same shape
 // (Game.ActiveSeatLeftPending, consumed by the SBA loss pass); a new

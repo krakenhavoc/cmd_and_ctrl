@@ -242,7 +242,7 @@ func enrich(t *testing.T, g *Game) {
 			{Color: "C"},
 		}
 		p1.Eliminated = false
-		p1.LosesAtNextSBA = true
+		p1.AttemptedEmptyDraw = true
 		p1.DisplayName = "Player Two"
 		p1.DiscordID = "1234567890"
 		p1.DiscordAvatarHash = "abcdef"

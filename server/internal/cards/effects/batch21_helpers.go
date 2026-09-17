@@ -227,9 +227,10 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // is the one thing worth announcing.
 //
 // With no basic land in the library every card is milled and the
-// empty library flags the loss at the next state check, exactly as a
-// mill of the whole library does — which is the combo the card is
-// famous for. That case reveals the whole library, as printed.
+// library is left empty — which is the combo the card is famous for.
+// Nobody loses for the mill (CR 701.17b); the loss comes at the
+// player's next draw (CR 704.5b), unless the combo wins first. That
+// case reveals the whole library, as printed.
 func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {

@@ -344,19 +344,17 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 
 // b27ExileTopUntilTotalManaValue is Tasha's Hideous Laughter for one
 // player: exile cards from the top of their library until the exiled
-// cards' total mana value reaches `threshold`. Bounded by the
-// library's size rather than left unbounded, because the unbounded
-// mill path flags a player whose library runs out as losing — a
-// draw's rule, not an exile's — and the printed card just stops.
+// cards' total mana value reaches `threshold`. An unbounded run (N
+// left 0 with an Until): a library that totals less than the
+// threshold is exiled whole and the run just stops — running out is
+// not a draw, so nobody loses for it (CR 701.17b, CR 704.5b).
 func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil || p.Library.Size() == 0 {
+	if ctx.PlayerByID(player) == nil {
 		return nil
 	}
 	total := 0
 	return MillToZone{
 		Player: player,
-		N:      p.Library.Size(),
 		To:     game.ZoneExile,
 		Until: func(c game.Card) bool {
 			total += c.ManaValue()

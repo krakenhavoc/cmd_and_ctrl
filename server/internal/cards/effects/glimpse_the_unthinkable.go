@@ -4,7 +4,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Glimpse the Unthinkable — "Target player mills ten cards." Fixed
 // count (no "until you hit a land" surveillance clause to model).
-// Triggers LosesAtNextSBA if the target runs out of library.
+// A target with fewer than ten cards mills the rest and stays in the
+// game (CR 701.17b); they lose only when they next draw from the
+// empty library (CR 704.5b).
 func init() {
 	Register(Spec{
 		OracleID:     "552f0163-a19d-4671-888f-044fc0354875",

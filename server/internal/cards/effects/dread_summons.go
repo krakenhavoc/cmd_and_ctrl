@@ -10,7 +10,7 @@ package effects
 // The mill-the-table Zombie maker. X is read off the announced
 // value; every live player — the caster first, then the opponents
 // in seat order — mills X, or the rest of their library when it
-// holds fewer (a mill never loses a player the game, CR 704.5b), and
+// holds fewer (a mill never loses a player the game, CR 701.17b), and
 // the milled batch is read back so the creature cards among it are
 // counted at the moment they land. The Zombies are all created
 // after all the mills, as the printed "for each" reads, tapped and

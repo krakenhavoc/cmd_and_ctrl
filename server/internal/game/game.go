@@ -378,6 +378,12 @@ type Game struct {
 	// for ev.ID at their outermost frame so CR 616 prompt pauses
 	// don't lose the entry mid-event. See replacements.go.
 	// Added in S17 sub-PR 2.
+	//
+	// So between actions it holds an entry only for an event paused
+	// on a prompt, and that entry is part of the prompt's state:
+	// Clone deep-copies it and RestoreFrom puts it back, or an undo
+	// into the open prompt would replay the answer without the marks
+	// and fire an already-applied effect twice (#808).
 	replacementsAppliedThisEvent map[ReplacementEventID]map[ReplacementEffectID]bool
 
 	// nextReplacementEventID mints the per-event keys stored in
@@ -798,6 +804,17 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// The step entry reads the layered board before anything else:
+	// the skip-step replacement window below, the untap step's set
+	// (CatalogAbilityKey on an UntapStepPermission source, the
+	// layer-2 Controller) and every trigger the step announcement
+	// harvests. The previous step can leave the cache stale with no
+	// priority boundary in between — cleanup's "until end of turn"
+	// sweep and the turn wrap both bump the layer version and then
+	// recurse straight into the next seat's untap and upkeep, and the
+	// untap step's own untaps bump it again on the way into upkeep.
+	// Fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -852,6 +869,9 @@ func (g *Game) runStepEntryHooksLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) finishStepEntryLocked(canceled bool) {
+	// Also reached from a CR 616 prompt's resume, which is not a path
+	// through runStepEntryHooksLocked's recompute.
+	g.RecomputeLayersIfStaleLocked()
 	if canceled {
 		// Step canceled — advance past and recurse so the
 		// cursor hits the next step's entry hook.

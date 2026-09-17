@@ -66,8 +66,8 @@ func (g GainLife) Apply(ctx *Context) error {
 }
 
 // DrawCards draws N cards for `Player`. Non-positive N is a no-op.
-// Drawing from an empty library flags the player as LosesAtNextSBA
-// via the standard drawCardLocked path.
+// Drawing from an empty library sets the player's AttemptedEmptyDraw
+// via the standard drawCardLocked path (CR 704.5b).
 type DrawCards struct {
 	Player uuid.UUID
 	N      int
@@ -110,7 +110,8 @@ func (d DiscardCards) Apply(ctx *Context) error {
 }
 
 // MillCards mills the top N cards of `Player`'s library to their
-// graveyard. Empty library mid-mill sets LosesAtNextSBA.
+// graveyard. A library holding fewer mills what it has and nobody
+// loses for it (CR 701.17b) — only a draw from an empty library does.
 type MillCards struct {
 	Player uuid.UUID
 	N      int

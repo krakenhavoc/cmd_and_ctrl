@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -117,10 +118,19 @@ func (g *Game) changeLifeThroughReplacementsLocked(ev *ReplacementEvent) (paused
 // The caller is responsible for state-based actions — see the file
 // comment.
 //
-// Returns ErrPlayerNotFound when the player is no longer seated. The
-// entry points surface that; the resume treats it as "the player left,
-// the life change simply does not happen" rather than failing an
-// action whose prompt is already dequeued.
+// Returns ErrPlayerNotFound when the player is not seated and
+// ErrPlayerEliminated when they have left the game (CR 800.4a) — both
+// "the player is gone", and both still a TERMINAL outcome, so the
+// caller's continuation runs with zero before the error comes back,
+// exactly as applyResolvedDamageLocked does for a vanished target. The
+// entry points surface the error; the resume treats it as "the life
+// change simply does not happen" rather than failing an action whose
+// prompt is already dequeued.
+//
+// #808: an eliminated seat is never removed from g.Seats, so the
+// nil check alone let a player who conceded between a CR 616 prompt
+// and its answer lose life — and a drain then gained its caster life
+// from somebody no longer in the game.
 //
 // Caller must hold g.mu.
 func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
@@ -128,8 +138,18 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		return nil
 	}
 	p := g.playerByIDLocked(ev.LifePlayer)
-	if p == nil {
-		return ErrPlayerNotFound
+	if p == nil || p.Eliminated {
+		gone := ErrPlayerNotFound
+		if p != nil {
+			gone = ErrPlayerEliminated
+		}
+		if tailErr := g.runLifeTailLocked(ev, 0); tailErr != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "life continuation failed: " + tailErr.Error(),
+			})
+		}
+		return gone
 	}
 	p.ChangeLife(ev.LifeDelta)
 	g.EmitEvent(Event{
@@ -209,10 +229,9 @@ func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
 // than as the effect of a spell or ability.
 //
 // WHAT THE RULES SAY, precisely, because #793 guessed the other way.
-// CR 119.4: "If a player pays life, the amount of life paid is
-// subtracted from their life total. In other words, paying an amount of
-// life is the same as losing that much life." Paying life IS losing
-// life, so the CR 614 window runs on it exactly as it runs on a drain:
+// CR 119.4: "If a player pays life, the payment is subtracted from
+// their life total; in other words, the player loses that much life."
+// Paying life IS losing life, so the CR 614 window runs on it exactly as it runs on a drain:
 // a life-loss replacement (Bloodletter of Aclazotz) sees a Thoughtseize
 // being paid for, and "your life total can't change" stops it. What a
 // payment is NOT is life GAIN, so Rhox Faithmender and Alhammarret's
@@ -234,10 +253,25 @@ func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
 // optionalReplacementResumableLocked already takes for an entry that
 // cannot resume.
 //
+// A PAYMENT THE WINDOW CANCELS IS NOT PAID. CR 119.8: "if an effect
+// says that a player can't lose life, ... a cost that involves having
+// that player pay life can't be paid", and CR 614.17b: "If an event
+// can't happen, a player can't choose to pay a cost that includes that
+// event." A null replacement on the payment ("your life total can't
+// change") therefore refuses the cost with ErrInvalidParam rather than
+// handing the player whatever the cost bought for nothing (#808). No
+// life moved, so there is nothing to put back. A replacement that
+// merely CHANGES the amount (a doubler, a "lose 1 less") is still a
+// payment: the replaced event is what was paid.
+//
 // Returns ErrInvalidParam when the payment cannot be made: CR 119.4
-// allows it only from a life total at least as large as the payment.
-// Every caller validates that before it starts paying anything, so this
-// is the backstop rather than the check.
+// allows it only from a life total at least as large as the payment,
+// and CR 119.8 not at all while the player's life can't be lost. Every
+// caller validates the first before it starts paying anything, so this
+// is the backstop rather than the check. Nothing in the catalog makes
+// a player unable to lose life today, so the second has no up-front
+// check to back up yet; a card that adds one should add that check to
+// the cost validators it reaches.
 //
 // Caller must hold g.mu.
 func (g *Game) payLifeAsCostLocked(source, playerID uuid.UUID, amount int) error {
@@ -251,12 +285,18 @@ func (g *Game) payLifeAsCostLocked(source, playerID uuid.UUID, amount int) error
 	if p.Life < amount {
 		return ErrInvalidParam
 	}
-	_, err := g.changeLifeThroughReplacementsLocked(&ReplacementEvent{
+	ev := &ReplacementEvent{
 		Kind:          RepEventLife,
 		Source:        source,
 		LifePlayer:    playerID,
 		LifeDelta:     -amount,
 		mustSettleNow: true,
-	})
-	return err
+	}
+	if _, err := g.changeLifeThroughReplacementsLocked(ev); err != nil {
+		return err
+	}
+	if ev.Canceled {
+		return fmt.Errorf("%w: a life payment that cannot be made cannot be paid (CR 119.8)", ErrInvalidParam)
+	}
+	return nil
 }
