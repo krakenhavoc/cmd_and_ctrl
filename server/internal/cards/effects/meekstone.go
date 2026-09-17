@@ -11,6 +11,6 @@ func init() {
 		OracleID:              "5ba73182-30a7-4bad-9cb6-c0feecc2db33",
 		Name:                  "Meekstone",
 		Completeness:          CompletenessFull,
-		UntapStepRestrictions: []game.UntapStepRestriction{doesntUntapDuringTheirControllersUntapSteps(PowerGE(3))},
+		UntapStepRestrictions: []game.UntapStepRestriction{doesntUntapDuringTheirControllersUntapSteps(And(Creature(), PowerGE(3)))},
 	})
 }

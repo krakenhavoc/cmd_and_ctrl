@@ -164,6 +164,20 @@ func TestBasaltAndGrimMonolithActivatedUntaps(t *testing.T) {
 }
 
 func TestMeekstoneUsesEffectivePowerAndBackToBasicsFiltersBasics(t *testing.T) {
+	t.Run("Meekstone leaves an uncrewed Vehicle alone", func(t *testing.T) {
+		g := newCatalogGame(t)
+		owner := g.Seats[0]
+		pushPermanentForTest(g, g.Seats[1].ID, "Meekstone", "5ba73182-30a7-4bad-9cb6-c0feecc2db33", "Artifact")
+		vehicle := uuid.New()
+		g.Battlefield.PushTop(game.Card{InstanceID: vehicle, Name: "Uncrewed Vehicle", TypeLine: "Artifact — Vehicle", Power: 4, Toughness: 4,
+			Owner: owner.ID, Controller: owner.ID, Tapped: true})
+
+		advanceToUpkeepOf(t, g, 0)
+		if untapStaticTapped(t, g, vehicle) {
+			t.Error("Meekstone kept an uncrewed Vehicle tapped because of its printed power")
+		}
+	})
+
 	t.Run("Meekstone sees a plus-one counter", func(t *testing.T) {
 		g := newCatalogGame(t)
 		owner := g.Seats[0]
