@@ -465,7 +465,22 @@ const (
 // Seq is a monotonic per-Game counter stamped at emit time. First
 // event has Seq == 1; zero is the un-stamped sentinel.
 type Event struct {
-	Seq  uint64    `json:"seq"`
+	Seq uint64 `json:"seq"`
+
+	// Batch names the EVENT BATCH this event belongs to: the run of
+	// events the engine emitted as one occurrence, which is what
+	// "whenever ONE OR MORE …" counts (CR 603.2c). Two events with
+	// the same Batch happened at the same time as far as the rules
+	// are concerned; two with different Batch values are two separate
+	// occurrences, however close together they were and whatever is
+	// still on the stack from the first.
+	//
+	// Stamped at emit time from Game.eventBatch, which advances at
+	// exactly one boundary — see beginEventBatchLocked in
+	// event_batch.go. Zero is the un-stamped sentinel, as with Seq.
+	// Added for #829.
+	Batch uint64 `json:"batch,omitempty"`
+
 	Kind EventKind `json:"kind"`
 
 	// Actor is the player responsible for the event (caster,
@@ -643,6 +658,11 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 func (g *Game) EmitEvent(ev Event) {
 	g.eventSeq++
 	ev.Seq = g.eventSeq
+	// #829: every event carries the batch that was open when it was
+	// emitted. Stamped here rather than derived later so the log, an
+	// undo and every consumer see the same grouping the trigger
+	// harvester saw.
+	ev.Batch = g.currentEventBatchLocked()
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

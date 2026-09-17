@@ -259,6 +259,26 @@ type Game struct {
 	// the sequence rather than restarting at 1.
 	eventSeq uint64
 
+	// eventBatch is the monotonic counter stamped into Event.Batch on
+	// each EmitEvent: the identity of the run of events the engine is
+	// emitting as ONE occurrence (CR 603.2c). It advances at exactly
+	// one boundary — beginEventBatchLocked, called when a stack item
+	// begins to resolve and when the turn cursor enters a new step.
+	// See event_batch.go (#829).
+	//
+	// oncePerBatchFired records, per TallyKey(source, ability key),
+	// the batch a OncePerBatch ability last fired for. That is the
+	// whole of the "whenever one or more …" guard: an ability whose
+	// key is already recorded against the live batch declines, and
+	// anything else fires.
+	//
+	// Both survive Clone / RestoreFrom together, for the reason
+	// TurnTally does: an undo that rewound the counter but kept the
+	// marks (or the reverse) would either double-fire a trigger or
+	// swallow one.
+	eventBatch        uint64
+	oncePerBatchFired map[string]uint64
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -703,6 +723,11 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
 // every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
+	// #829: entering a step is one of the two points where play moves
+	// on, so the events this step emits are a new occurrence — first
+	// strike damage and regular damage are two batches, as in paper.
+	// See event_batch.go.
+	g.beginEventBatchLocked()
 	if g.Turn.Step == StepCleanup {
 		g.beginNextTurnLocked()
 		return

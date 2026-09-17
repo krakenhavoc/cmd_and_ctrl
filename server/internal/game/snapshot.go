@@ -178,6 +178,16 @@ type GameSnapshot struct {
 	Events   []Event `json:"events,omitempty"`
 	EventSeq uint64  `json:"eventSeq"`
 
+	// EventBatch is the live Event.Batch counter and OncePerBatchFired
+	// the per-ability record of the batch each "whenever one or more …"
+	// ability last fired for (#829, event_batch.go). Both restore as
+	// zero / empty from a file written before them, which reads as
+	// "no batch has fired yet" — the safe direction: the first event
+	// after the restore opens a fresh batch and every OncePerBatch
+	// ability is free to fire for it. No schema bump.
+	EventBatch        uint64            `json:"eventBatch,omitempty"`
+	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -585,7 +595,9 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
+		EventBatch:        g.eventBatch,
 	}
+	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -1062,6 +1074,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
+	g.eventBatch = s.EventBatch
+	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1505,6 +1519,19 @@ func copyStringIntMap(in map[string]int) map[string]int {
 		return nil
 	}
 	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// copyStringUint64Map is copyStringIntMap for Game.oncePerBatchFired,
+// whose values are batch ids (#829).
+func copyStringUint64Map(in map[string]uint64) map[string]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]uint64, len(in))
 	for k, v := range in {
 		out[k] = v
 	}

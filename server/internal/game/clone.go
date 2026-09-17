@@ -236,6 +236,13 @@ func (g *Game) cloneLocked() *Game {
 	// original did.
 	out.Events = g.Events[:len(g.Events):len(g.Events)]
 	out.eventSeq = g.eventSeq
+	// #829: the batch counter rewinds with the log, and the
+	// once-per-batch marks rewind with it. Carrying one without the
+	// other is the whole bug class: the counter alone would let an
+	// undone trigger fire twice for one batch, the marks alone would
+	// swallow the re-done one.
+	out.eventBatch = g.eventBatch
+	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -618,6 +625,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
+	// #829: batch identity rewinds with the log it is stamped into,
+	// and the once-per-batch marks rewind with the counter — see
+	// cloneLocked.
+	g.eventBatch = src.eventBatch
+	g.oncePerBatchFired = src.oncePerBatchFired
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

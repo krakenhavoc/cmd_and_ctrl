@@ -17,12 +17,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // simplest way to fire it.
 //
 // "One or more": the engine emits one LTB event per creature, so a
-// mass bounce would fire once per creature; the second is declined
-// while the first trigger is queued or on the stack — the b04-style
-// dedup, narrowed to this ability's label so the Port-Mage's
-// activated item is never mistaken for it. Without the dedup a
-// Cyclonic Rift on the controller's own board would draw a hand,
-// which is the #259 direction.
+// mass bounce would fire once per creature; the later events of the
+// SAME event batch are declined — the b04-style dedup, narrowed to
+// this ability's label so the Port-Mage's activated item is never
+// mistaken for it. Without the dedup a Cyclonic Rift on the
+// controller's own board would draw a hand, which is the #259
+// direction. A separate, LATER batch triggers again, whatever is
+// still on the stack from the last one: bounce, then bounce again in
+// response, and the Port-Mage draws twice (#829, CR 603.2c).
 //
 // The bounce is the printed target clause: another creature the
 // controller controls. "Another" is Noxious Gearhulk's shape — a
