@@ -1,6 +1,6 @@
 # ADR 0059 — Turn machinery: extra turns, extra phases and steps, and one turn identity
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753). The owner's answers to the open questions are recorded in [Decided (2026-09-17)](#decided-2026-09-17).
 **Numbering:** 0052 is reserved for the emblems ADR
 ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)), and
 0056-0058 are being drafted in parallel for
@@ -29,6 +29,17 @@ Sub-PR 1 builds the single rotation seam that both issues ask for.
 - [#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755)
   ("until your next turn"). #755 builds its durations on the per-seat
   turn count and the turn-began hook defined here ([Decision 1](#decision-1--turn-identity-seq-round-and-turnsbegun)).
+  #755 is expected to fold in the other "this turn" registries as well:
+  `TurnScopedStatics`, [ADR 0057](0057-win-and-lose-by-effect.md)'s
+  `TurnScopedGameEndGates` and [ADR 0045](0045-combat-restrictions.md)'s
+  addendum `TurnScopedBlockRules`. Until it does, all three are swept by
+  `sweepTurnEndLocked` ([Decision 6](#decision-6--one-rotation-seam)).
+- [ADR 0057](0057-win-and-lose-by-effect.md) (#749, effect wins and
+  losses). An effect loss by the active player during a resolution
+  (Final Fortune, Last Chance, the Pact cycle) must not run this ADR's
+  rotation inside the resolving callback. ADR 0057 Decision 3 defers it
+  to the next SBA pass, and [Decision 6](#decision-6--one-rotation-seam)
+  here states the same constraint.
 - [#751](https://github.com/krakenhavoc/cmd_and_ctrl/issues/751)
   ("next untap step" marker). Nothing in this ADR is needed for it, but
   the marker must be consumed by an untap step, not by a turn change
@@ -217,6 +228,7 @@ type Player struct {
 | `ExilePlayPermission.UntilTurn`, `NotBeforeTurn`, `Active(player, turn)`, the cleanup sweep, `cascade.go`, `batch17/32_helpers.go` | renamed `UntilSeq`, `NotBeforeSeq`; `Active(player, seq)`; stamped from `Turn.Seq` |
 | warp's floor (`alternative_cost.go:627`) | `Seq + 1`. CR 702.185a says "after the current turn has ended", which is the next turn of any seat, not the next round |
 | `ScopedStatic.ExpiresAfterTurn` | renamed `ExpiresAfterSeq`, stamped and swept on `Seq`. #755 replaces it with a duration |
+| [ADR 0057](0057-win-and-lose-by-effect.md)'s `ScopedGameEndGate.Seq`, if ADR 0057's sub-PR 3 lands first | already named `Seq`, stamped from `Turn.Number` until this sub-PR; re-stamped from `Turn.Seq` here. #755 replaces it with a duration |
 | `DelayedTrigger.CreatedTurn` | renamed `CreatedSeq` (wire `created_seq`) |
 | RNG index (`rng.go:110`) | `Turn.Seq` ([Decision 9](#decision-9--rng-turn-scoping-uses-seq)) |
 | `EventStepBegan.Amount` | `Seq`. A new `Event.Round int` (omitempty) carries the round for display |
@@ -226,7 +238,7 @@ type Player struct {
 | Starting Town | "it's your turn and your `TurnsBegun` ≤ 3". This also fixes the bug below. The caveat is removed |
 | "until the end of your next turn" grant (`batch19_helpers.go:121`, `batch20_helpers.go:222`) | keeps its re-stamp trigger; the backstop becomes `Seq + 2*MaxPlayers`. If other players' extra turns push the controller's next turn past it, the grant lapses early: weaker, never stronger. #755's duration replaces both halves |
 | comments (`turn_scoped_statics.go:93-99`, `batch25_helpers.go:78`, `batch33_helpers.go:93`, `teferi_time_raveler.go:51`, the `Turn` doc) | rewritten |
-| display (`TurnView.number`, `PhaseDisplay`, replay, bug report, model prompt, gamecli, persist log) | per [owner question 1](#open-questions-for-the-owner) |
+| display (`TurnView.number`, `PhaseDisplay`, replay, bug report, model prompt, gamecli, persist log) | `Round`, unchanged ([decided](#decided-2026-09-17), question 1): "Turn N" is the round, and an extra turn shows the same number with an "Extra turn" mark from `Turn.Extra` |
 
 `game.TurnsBegunFor(player uuid.UUID) int` and
 `game.IsExtraTurn() bool` are the card-side accessors.
@@ -379,6 +391,10 @@ func (g *Game) TakeExtraTurnsForEffect(player, source uuid.UUID, n int) []int
 // moved out of the StepCleanup case unchanged: damage and deathtouch
 // marks, ClearTurnScopedReplacementsLocked,
 // ClearExpiredTurnScopedStaticsLocked, clearExpiredExilePlayLocked.
+// Every later "this turn" registry sweeps here too:
+// ClearExpiredTurnScopedGameEndGatesLocked (ADR 0057 Decision 4) and
+// the TurnScopedBlockRules sweep (ADR 0045 addendum), whichever of them
+// has landed.
 func (g *Game) sweepTurnEndLocked()
 
 // beginNextTurnLocked picks the next turn, stamps the cursor and runs
@@ -405,7 +421,7 @@ func (g *Game) beginNextTurnLocked()
    resets (Decision 7), then `EventTurnBegan` (`Actor`, `Amount = Seq`,
    `Label = "extra"` for an extra turn).
 
-The three callers:
+The callers:
 
 - **`advanceCursorLocked`** pops `TurnPlan`, or calls
   `beginNextTurnLocked` when it is empty. The eliminated-seat loop
@@ -419,14 +435,35 @@ The three callers:
   `sweepTurnEndLocked` before `beginNextTurnLocked`. The discard to
   hand size is skipped, as today. This is a sandbox verb, and the skip is
   stated in its doc comment.
+- **An effect loss by the active player during a resolution**
+  ([ADR 0057](0057-win-and-lose-by-effect.md) Decision 3: Final Fortune
+  and Last Chance's end-step trigger, the Pact cycle's decline). This is
+  the fourth way to reach the seam, and it must **not** call
+  `advancePastEliminatedLocked` itself. Beginning the next turn runs the
+  untap step, the per-turn resets, step entry hooks and upkeep triggers,
+  and none of that may run inside a callback that is still resolving.
+  `effects.LoseTheGame` leaves the game at once (stack and prompt
+  cleanup), returns `game.ErrStopResolution` when the loser controls the
+  resolving object, and sets `Game.ActiveSeatLeftPending`. The next SBA
+  loss pass (the resolution bookend's sweep, or a later prompt answer's)
+  consumes the flag: it runs ADR 0057's `checkGameOverLocked()` and, if
+  the game goes on, `advancePastEliminatedLocked` as above.
+
+**The constraint, for every caller.** `beginNextTurnLocked` and the step
+entry hooks never run inside a resolving callback, a replacement's
+`Apply`, or a prompt continuation that is still part of a resolution.
+They run from the cursor advance, from an SBA pass, or from a player
+action (`Concede`, `PassTurn`). A new caller that can be reached
+mid-resolution defers the same way ADR 0057 does.
 
 **CR 800.4j** (the departed player's turn continues without an active
-player) is [owner question 4](#open-questions-for-the-owner). The
-recommended reading ends that turn at once through the seam, as a
-declared simplification. The rest of that turn does not happen, so
-"at the beginning of the end step" triggers and delayed triggers
-scheduled for it wait for the next player's turn. The departed player's
-objects are #769's problem, not this ADR's.
+player): **decided** ([question 4](#decided-2026-09-17), option (a)).
+The turn ends at once through the seam, as a declared simplification
+of CR 800.4j. The rest of that turn does not happen, so "at the
+beginning of the end step" triggers and delayed triggers scheduled for
+it wait for the next player's turn. When the departure is an effect loss
+during a resolution, "at once" means at the next SBA pass (above). The
+departed player's objects are #769's problem, not this ADR's.
 
 ## Decision 7 — Per-turn state across an extra turn
 
@@ -490,11 +527,15 @@ type DelayedTrigger struct {
 - Final Fortune / Last Chance: `At: StepEnd, OnExtraTurn: ref`. The
   trigger is dropped when that extra turn is dropped or ends without
   reaching its end step, which is the ruling ("If you end up skipping the
-  extra turn … you do not lose the game").
+  extra turn … you do not lose the game"). When it resolves, it calls
+  ADR 0057's `effects.LoseTheGame` and returns its error. The loser is
+  the trigger's controller, so that is `game.ErrStopResolution`, and the
+  rotation waits for the resolution bookend's SBA pass (Decision 6).
 - Moraug and World at War ("at the beginning of that combat"):
   `At: StepBeginCombat, OnSeq: g.Turn.Seq, OnPhaseID: id` using the id
   returned by `AddPhasesForEffect`. The trigger is dropped at the next
-  turn change.
+  turn change. The `OnPhaseID` binding ships with the first of those two
+  cards (see [Card first wave](#card-first-wave)).
 - `fireDelayedTriggersLocked` (`delayed.go:170`) checks the binding
   beside `ControllerTurnOnly`. `beginNextTurnLocked` sweeps bindings
   that can no longer match.
@@ -567,6 +608,12 @@ index 0.
     of round `r`). Old `NotBeforeTurn = r`: `0` if `r <= Round`, otherwise
     `r*MaxPlayers` (the start of round `r`). `CreatedTurn = r` becomes
     `r*MaxPlayers`.
+  - [ADR 0057](0057-win-and-lose-by-effect.md)'s turn-scoped gates, if
+    that ADR's sub-PR 3 lands first. An entry's `Seq` was stamped from
+    `Turn.Number`. A stamp equal to the current `Round` is from this
+    turn (earlier turns' entries were swept at their cleanup), so it
+    becomes this turn's `Seq` and still ends at this turn's cleanup. An
+    older stamp is dropped.
   - `TurnScopedStatics` hold closures and are already in the census
     (`snapshot.go:487-489`), so no restorable snapshot has any.
 - **Test:** the committed fixture `testdata/snapshot_pre683.json` still
@@ -585,9 +632,8 @@ index 0.
 | `upcoming` (omitempty) | `[{step, phase_id}]`, the rest of `TurnPlan`. Public: the turn structure is public information |
 | `extra_turns` (omitempty) | seat indices of queued extra turns, next first |
 
-`number` keeps its current meaning (the round) unless owner question 1
-changes what is displayed. `CardView.exile_play.not_before_turn` becomes
-`not_before_seq`, and `DelayedTriggerView.created_turn` becomes
+`number` keeps its current meaning, the round (decided, question 1).
+`CardView.exile_play.not_before_turn` becomes `not_before_seq`, and `DelayedTriggerView.created_turn` becomes
 `created_seq`. A tab left open across the deploy sees no floor, offers a
 cast the server refuses, and is fixed by reloading.
 `LogEvent.turn` carries `Seq`, and `LogStep` entries gain `round`.
@@ -606,8 +652,20 @@ Client changes that are not presentation choices:
 - The autopass safety belt (`Game.svelte:233-241`) keys on entering the
   viewer's own `precombat_main`, which every turn, extra or not, has once.
 
-How the turn bar, log and phase strip **show** extra turns and phases is
-[owner question 2](#open-questions-for-the-owner).
+**How the board shows it** ([decided](#decided-2026-09-17), questions 1
+and 2):
+
+- **"Turn N" is the round**, as today. An extra turn shows the same
+  number with an **"Extra turn"** mark on the turn bar, from
+  `TurnView.extra`.
+- **The phase strip** labels a repeated phase "Combat 2" / "Main 3" from
+  `phase_ordinal` and renders added phases from `upcoming`. Queued extra
+  turns show as "Next: Alice (extra)" from `extra_turns`.
+- **Log lines** for each added turn and each added phase
+  (`EventExtraTurnAdded`, `EventPhasesAdded`). These change the turn's
+  structure, which the owner's log rule covers. Per-object annotations
+  are not logged.
+- **No reveal-strip cue** when an extra turn or phase is created.
 
 ## Decision 12 — The second combat damage step (#717) is a plan entry
 
@@ -638,9 +696,10 @@ ADR's sub-PR 1 builds on it.
   heuristic already attacks whenever it is in declare attackers, so an
   added combat is used without changes. Activating Aggravated Assault
   again is left to its normal scoring.
-- **Model prompt** (`aiseat/model/prompt.go:146`): the turn line says
-  "(extra turn)" and "combat 2" when they apply, so a model tier does not
-  misread an added combat as a repeat of the first.
+- **Model prompt** (`aiseat/model/prompt.go:146`): the turn line keeps
+  the round as "Turn N" (question 1) and says "(extra turn)" and
+  "combat 2" when they apply, so a model tier does not misread an added
+  combat as a repeat of the first.
 - **Catalog soak** (`aiseat/catalog_soak_test.go:336`): the turn budget
   stays on `Round`, plus a second cap of
   `Seq <= turnBudget * seats * 2`. A runaway extra-turn or extra-combat
@@ -649,8 +708,9 @@ ADR's sub-PR 1 builds on it.
 
 ## Decision 14 — Out of scope, stated
 
-- **CR 800.4j in full** (owner question 4), and the departed player's
-  objects (#769).
+- **CR 800.4j in full.** The owner chose the declared simplification
+  (Decision 6, question 4): the departed active player's turn ends at
+  once. The departed player's objects are #769.
 - **Controlling another player's turn** (CR 723: Mindslaver, Emrakul,
   the Promised End).
 - **"Skip your next turn"** and skipping steps of an extra turn (Savor
@@ -694,6 +754,14 @@ ADR's sub-PR 1 builds on it.
   `b16PlayerAttackedWithAtLeast` (`batch16_helpers.go:195-197`) each
   either gain a caveat or move their dedup to a per-combat key
   (`PhaseID`) in the card follow-up.
+- **An active player who leaves ends their turn at once** (declared
+  simplification of CR 800.4j). At a table of three or more, other
+  players' "at the beginning of each end step" triggers skip that one
+  turn. An effect loss during a resolution moves the turn on at the
+  resolution bookend, not inside the resolution.
+- **Nothing a player sees about turn numbers changes** in a game without
+  extra turns. An extra turn carries the round's number and an "Extra
+  turn" mark.
 - **`docs/engine-seams.md`**: the "Extra turns primitive" and "Extra
   combat and main phases" rows (`:97`, `:112`) move to Closed when
   sub-PR 2 lands.
@@ -736,9 +804,12 @@ cards, no added phases.**
 - `Turn.Seq`, the `Number` → `Round` rename, `OrderSeat`, `Extra`,
   `ExtraRef`; `Player.TurnsBegun`; `IsNewTurn` on `Seq`.
 - Every reader in Decision 2, and the unit renames of the stamped fields.
-- `sweepTurnEndLocked`, `beginNextTurnLocked`, `onTurnBeganLocked`;
+- `sweepTurnEndLocked` (naming ADR 0057's and ADR 0045's turn-scoped
+  sweeps if they have landed), `beginNextTurnLocked`, `onTurnBeganLocked`;
   `advancePastEliminatedLocked` and `PassTurn` through the seam;
-  `EventTurnBegan`.
+  `EventTurnBegan`. If ADR 0057's sub-PR 2 has landed, its
+  `ActiveSeatLeftPending` consumer goes through the same seam, and a
+  test pins that no turn begins inside a resolution.
 - Summoning sickness and the undo refresh move to the turn-began hook.
 - The RNG index on `Seq`, and the re-pinned seeded tests listed in the PR.
 - Snapshot fields, restoring pre-change snapshots, drift test rows.
@@ -750,10 +821,12 @@ cards, no added phases.**
 **Sub-PR 2 — the plan, extra phases and steps, extra turns.**
 - `TurnPlan`, `PlannedStep`, `NextPhaseID`, ordinals; `advanceCursorLocked`
   pops the plan.
-- `AddPhasesForEffect`, `AddStepAfterCurrentForEffect`,
+- `AddPhasesForEffect` (anchors `AnchorThisPhase` and
+  `AnchorThisMainPhase`), `AddStepAfterCurrentForEffect`,
   `TakeExtraTurnsForEffect`, `ExtraTurns`; `EventPhasesAdded`,
   `EventExtraTurnAdded`, and their log lines.
-- Bound delayed triggers; `TurnTally.Attacks` and its accessors.
+- Delayed triggers bound to an extra turn (`OnExtraTurn`);
+  `TurnTally.Attacks` and its accessors.
 - `TurnView.extra`, `phase_id`, `phase_ordinal`, `upcoming`,
   `extra_turns`; `combatBeats.ts` grouping.
 - Card-side helpers: `ExtraCombatAfterThisPhase`, `ExtraCombatAndMainAfterThisMain`,
@@ -762,12 +835,19 @@ cards, no added phases.**
 **Sub-PR 3 — bots and soak.** Heuristic, model prompt, enumerator
 agreement tests, soak caps, and the first-wave cards added to the soak pool.
 
-**Sub-PR 4 — client presentation**, per owner question 2.
+**Sub-PR 4 — client presentation** (questions 1 and 2, Decision 11):
+the "Extra turn" mark beside the round, "Combat 2" / "Main 3" labels,
+added phases from `upcoming`, "Next: Alice (extra)". No reveal-strip
+cue.
 
-**Card PRs** — the first wave (owner question 3), the caveat re-checks
-above, and removing Time Stretch from the batch 28 skip list
-(`batch28_test.go:170`). Each card follows AGENTS.md: completeness
-declared, caveats weaker than printed and never stronger.
+**Card PRs** — the first wave, option (b) (question 3; the list is in
+[Card first wave](#card-first-wave)), the caveat re-checks above, and
+removing Time Stretch from the batch 28 skip list
+(`batch28_test.go:170`). The engine parts that only World at War or
+Moraug use (`AnchorNthMainPhase` and the `OnPhaseID` binding) ship in
+the first of those card PRs, not in sub-PR 2, so every seam path lands
+with a real card. Each card follows AGENTS.md: completeness declared,
+caveats weaker than printed and never stronger.
 
 Sub-PR 1 can merge on its own and is useful without the rest (#766, the
 three live bugs below). Sub-PRs 2-4 depend on it in order.
@@ -790,6 +870,14 @@ Engine (`internal/game`):
 4. **CR 800.4k.** A queued extra turn for a player who concedes is
    dropped. A delayed trigger bound to it is dropped (Final Fortune's
    loss never happens).
+
+   **Effect loss in the active player's own extra turn.** Three seats,
+   Final Fortune's end-step trigger resolves: `LoseTheGame` returns
+   `ErrStopResolution`, the player is eliminated at once, no step entry
+   hook or upkeep trigger runs before the resolution returns, and the
+   bookend's SBA pass rotates once to the next normal seat after
+   `OrderSeat`. The same holds for a Pact declined in its controller's
+   upkeep.
 5. **#766 (all four of its tests).** Four-seat concede in combat damage:
    caches empty at the next seat's upkeep, no `DamageMarked`, no stale
    `AttackingTarget` / `BlockingTarget`, the next player takes no damage
@@ -802,7 +890,8 @@ Engine (`internal/game`):
    phase run newest first. Relentless Assault in precombat main gives
    main, combat, main (postcombat), combat, main (postcombat), ending.
    Resolving outside a main phase adds nothing.
-8. **World at War anchors.** Two copies cast in the precombat main both
+8. **World at War anchors** (in World at War's card PR). Two copies
+   cast in the precombat main both
    insert after the second main phase, and the pair created by the second
    copy comes first (the ruling's "before the newest combat phase"). A
    copy cast in the third main phase adds nothing.
@@ -810,9 +899,10 @@ Engine (`internal/game`):
    happen once. `AtYourPostcombatMain` fires in every added main phase.
 10. **Ordinals.** `IsFirstCombatPhase` is true only in the first combat.
     Karlach's "first combat" trigger does not re-add a third combat.
-11. **Bound delayed trigger.** "At the beginning of that combat" fires in
-    the added combat and not in a later one. Final Fortune's end-step loss
-    fires in the extra turn's end step, not the current one.
+11. **Bound delayed trigger.** Final Fortune's end-step loss fires in the
+    extra turn's end step, not the current one. With World at War's card
+    PR: "at the beginning of that combat" fires in the added combat and
+    not in a later one.
 12. **Summoning sickness.** Under Stasis, a creature that entered on its
     controller's previous turn can attack. With an added beginning
     phase, a creature cast this turn stays sick.
@@ -851,15 +941,17 @@ Client (vitest):
 
 ## Card first wave
 
-Oracle text checked against the Scryfall dump on 2026-09-17. Each card
-PR still checks for gaps outside this seam.
+Decided: option (b) of [question 3](#decided-2026-09-17). Oracle text
+checked against the Scryfall dump on 2026-09-17. Each card PR still
+checks for gaps outside this seam, and a card found to be blocked
+elsewhere drops out rather than shipping stronger than printed.
 
 **Extra turns**
 - **Time Warp** {3}{U}{U}: "Target player takes an extra turn after this one."
 - **Time Stretch** {8}{U}{U}: "Target player takes two extra turns after this one." (remove from `batch28_test.go:170`)
 - **Temporal Manipulation** {3}{U}{U} and **Capture of Jingzhou** {3}{U}{U}: "Take an extra turn after this one."
 - **Magistrate's Scepter** {3}: "{4}, {T}: Put a charge counter on this artifact. / {T}, Remove three charge counters from this artifact: Take an extra turn after this one."
-- **Final Fortune** {R}{R} (instant) and **Last Chance** {R}{R} (sorcery): "Take an extra turn after this one. At the beginning of that turn's end step, you lose the game." (`LoseTheGameForEffect`, `effect_api.go:818`, exists)
+- **Final Fortune** {R}{R} (instant) and **Last Chance** {R}{R} (sorcery): "Take an extra turn after this one. At the beginning of that turn's end step, you lose the game." The loss uses [ADR 0057](0057-win-and-lose-by-effect.md)'s `effects.LoseTheGame`, which returns `game.ErrStopResolution` (the loser controls the trigger) and defers the rotation to the next SBA pass. These two cards wait for ADR 0057's sub-PR 2; before it, `LoseTheGameForEffect` (`effect_api.go:818`) defers the whole loss to the SBA flag, which ADR 0057 shows is the wrong timing.
 
 **Extra combats**
 - **Relentless Assault** {2}{R}{R}: "Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase."
@@ -874,10 +966,10 @@ PR still checks for gaps outside this seam.
 Firemane Commando; Breena, the Demagogue; `b16PlayerAttackedWithAtLeast`;
 Starting Town (sub-PR 1).
 
-**Owner question 3's option (b) adds:**
+**Option (b) adds (chosen):**
 - **Y'shtola Rhul** (caveat removal): "… Then if it's the first end step of the turn, there is an additional end step after this step."
 - **Sphinx of the Second Sun** {6}{U}{U}: "Flying / At the beginning of each of your postcombat main phases, there is an additional beginning phase after this phase."
-- **World at War** {3}{R}{R}: "After the second main phase this turn, there's an additional combat phase followed by an additional main phase. At the beginning of that combat, untap all creatures that attacked this turn. / Rebound" (only if rebound exists; otherwise it waits)
+- **World at War** {3}{R}{R}: "After the second main phase this turn, there's an additional combat phase followed by an additional main phase. At the beginning of that combat, untap all creatures that attacked this turn. / Rebound". **Drops out if rebound isn't supported** (owner). On `develop` at the time of this decision it isn't: the engine has no rebound keyword or cast-from-exile trigger, only a `"rebound"` counter in a zone test (`zone_test.go:178`). World at War ships when rebound does, and it brings `AnchorNthMainPhase` and the `OnPhaseID` binding with it (or Moraug brings the binding first).
 
 Not in any option: Medomai the Ageless ("can't attack during extra
 turns" is easy with `Turn.Extra`, but it is not an audit-ready card),
@@ -911,56 +1003,81 @@ Each can ship in sub-PR 1 or on its own. None is filed yet.
    ended". With a flash enabler, a warped card exiled on seat 1's turn
    can't be cast until seat 0's next turn. Weaker than printed.
 
-## Open questions for the owner
+## Decided (2026-09-17)
+
+The owner answered questions 1, 3 and 4 on 2026-09-17. Question 2
+follows from those answers and the owner's cross-cutting display policy
+for these seams, given the same day. The options are kept as they were
+proposed. The chosen one is marked.
 
 1. **What number does the table see as "Turn N"?**
    - (a) The round, as today (`T3` for every seat's third turn). An extra
-     turn shows the same number with an "extra turn" mark.
+     turn shows the same number with an "extra turn" mark. **Chosen.**
    - (b) The game's turn count (every turn, extra turns included; a
      four-player game reaches `T12` in round 3).
    - (c) Both: `R3 · T11`.
 
-   **Recommendation: (a).** Commander tables count "turn 3" as everyone's
-   third turn, and nothing a player sees changes in games without extra
-   turns. `seq` is still on the wire for tools and the bug report.
+   **Decision: (a)**, as recommended. "Turn N" shows the round, with an
+   "Extra turn" mark on an extra turn. Commander tables count "turn 3" as
+   everyone's third turn, and nothing a player sees changes in games
+   without extra turns. `seq` is still on the wire for tools and the bug
+   report. Applied in Decisions 2, 11 and 13.
 
 2. **How does the board show extra turns and extra phases?**
    - (a) Minimal: an "Extra turn" badge on the turn bar, the phase strip
      labels a repeated phase "Combat 2" / "Main 3" and renders added
      phases from `upcoming`, and queued extra turns show as "Next: Alice
-     (extra)". Log lines for each added turn or phase.
+     (extra)". Log lines for each added turn or phase. **Chosen.**
    - (b) (a) plus a cue on the reveal strip (`RevealBanner`) when an
      extra turn or phase is created.
    - (c) Log lines only, with the turn bar unchanged.
 
-   **Recommendation: (a).** Players need to know an extra combat is
-   coming before they pass priority out of main phase, so the turn bar has
-   to show the plan. A strip cue adds little on top of that, because the
-   spell that did it is already on the stack.
+   **Decision: (a).** This follows from the owner's answers rather than a
+   separate one: question 1's "Extra turn" mark rules out (c), the policy
+   "no reveal-strip cues for these events" rules out (b), and the log
+   rule ("log changes to the game's outcome and turn structure, not
+   per-object annotations") keeps (a)'s log lines for added turns and
+   phases. Players need to know an extra combat is coming before they
+   pass priority out of main phase, so the turn bar has to show the plan.
+   Applied in Decision 11 and sub-PR 4.
 
 3. **Which cards ship in the first wave?**
    - (a) The seven extra-turn cards and seven extra-combat cards above,
      plus the caveat re-checks.
    - (b) (a) plus Y'shtola Rhul, Sphinx of the Second Sun and World at
      War, which exercise an added step, an added beginning phase and an
-     "Nth main phase" anchor with a bound trigger.
+     "Nth main phase" anchor with a bound trigger. **Chosen.**
    - (c) The seam only, with cards left to the batch issues.
 
-   **Recommendation: (b).** Without these three cards, the step insertion,
-   the beginning-phase expansion and the phase-bound delayed trigger ship
+   **Decision: (b)**, as recommended, and World at War drops out if
+   rebound isn't supported. Without these cards, the step insertion, the
+   beginning-phase expansion and the phase-bound delayed trigger ship
    with no real card using them, like the `AllowStop` argument in ADR
-   0054. World at War drops out if rebound is not supported.
+   0054. The owner's cross-cutting policy makes that a rule: every new
+   seam path ships with at least one real card, even with a declared
+   weaker caveat. Rebound isn't supported on `develop` today, so
+   `AnchorNthMainPhase` and the `OnPhaseID` binding move out of sub-PR 2
+   and ship with World at War (or Moraug) instead. See
+   [Card first wave](#card-first-wave) and the PR split.
 
 4. **When the active player leaves mid-turn (CR 800.4j), what happens
    to the rest of their turn?**
    - (a) It ends at once: combat is cleared, the cleanup sweep runs, and
      the next player's turn begins. Declared as a simplification. #766's
-     bug is fixed either way.
+     bug is fixed either way. **Chosen.**
    - (b) It plays out with no active player. Priority goes to the next
      player in turn order, and the remaining steps and the end step
      (with its triggers) still happen.
 
-   **Recommendation: (a).** (b) touches every rule keyed on the active
+   **Decision: (a)**, as recommended: the rest of the turn ends at once
+   through the rotation seam, a declared simplification of CR 800.4j.
+   The departures this covers are a concede, an SBA loss, and an effect
+   loss during a resolution (Final Fortune and Last Chance's end-step
+   trigger, the Pact cycle's decline, via
+   [ADR 0057](0057-win-and-lose-by-effect.md)'s `effects.LoseTheGame`).
+   For the last, "at once" is the next SBA pass, because the rotation
+   never begins a turn inside a resolving callback (Decision 6, ADR 0057
+   Decision 3). (b) touches every rule keyed on the active
    player (priority start, "your turn" checks, the end-step triggers of
    other players' cards). It only matters at tables of three or more,
    and only in the rest of one turn. The visible difference is that other
