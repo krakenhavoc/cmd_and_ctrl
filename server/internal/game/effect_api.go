@@ -378,8 +378,20 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // `then` takes the live *Game rather than capturing one, on the same
 // undo-safety contract every other continuation frame follows.
 func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: a player who has left the game neither gains
+		// nor loses life, and there is no event for a replacement to
+		// see. Not an error — an effect reaching for a seat that
+		// conceded mid-resolution has done nothing wrong — but still a
+		// terminal outcome, so the continuation is told zero.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// The event is built before the pipeline runs and carries
 	// everything the tail needs — the continuation included — because a
@@ -416,8 +428,9 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 // continuation: that is what makes the running total a plain value
 // carried forward instead of a shared accumulator, which is what makes
 // an undo across the prompt land where a clean run would. A player who
-// has left the game is skipped, exactly as a fire-and-forget loop over
-// them would skip them.
+// has left the game — never seated, or eliminated (CR 800.4a), which
+// is the case that actually happens because an eliminated seat stays
+// in g.Seats — is skipped and adds nothing to the total (#808).
 //
 // The sequencing is observable only when a loss pauses: with two
 // different life replacements on the first opponent, the second
@@ -438,7 +451,7 @@ func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, 
 func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
 	for len(players) > 0 {
 		next, rest := players[0], players[1:]
-		if g.playerByIDLocked(next) == nil {
+		if p := g.playerByIDLocked(next); p == nil || p.Eliminated {
 			players = rest
 			continue
 		}
@@ -473,8 +486,10 @@ func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amo
 // and what the affected player gives up for it are in
 // payLifeAsCostLocked (life_tail.go) and ADR 0013 §5b.
 //
-// Returns ErrInvalidParam when the payment cannot be made from the
-// payer's life total (CR 119.4). Callers validate before they start
+// Returns ErrInvalidParam when the payment cannot be made: from the
+// payer's life total (CR 119.4), or at all because the window cancelled
+// it — a player who can't lose life can't pay life (CR 119.8,
+// CR 614.17b; #808). Callers validate the first before they start
 // paying; this is the backstop.
 func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 	return g.payLifeAsCostLocked(source, playerID, amount)
@@ -538,8 +553,10 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // damage event or queue the next prompt itself.
 //
 // Returns ErrPlayerNotFound without running `then` when the target is
-// not seated at all, exactly as ChangePlayerLifeThenForEffect does. The
-// batch form skips absent targets rather than failing on them.
+// not seated at all, exactly as ChangePlayerLifeThenForEffect does. A
+// seated player who has been eliminated is not an error: nothing is
+// dealt and `then` runs with zero (CR 800.4a, #808). The batch form
+// skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
@@ -552,8 +569,18 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 		}
 		return nil
 	}
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: no damage reaches a player who has left the
+		// game. A terminal outcome with nothing dealt, like the
+		// zero-damage case above.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// S22: route through the CR 614 replacement pipeline, the way
 	// combat damage to a player already did. Before this, damage
@@ -722,7 +749,13 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 		step := func(g *Game, dealt int) error {
 			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
 		}
-		if g.playerByIDLocked(next) != nil {
+		if p := g.playerByIDLocked(next); p != nil {
+			if p.Eliminated {
+				// #808, CR 800.4a: a player who has left the game is
+				// skipped, not dealt zero through a pipeline run.
+				targets = rest
+				continue
+			}
 			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
 		}
 		if findBattlefieldCard(g, next) != nil {

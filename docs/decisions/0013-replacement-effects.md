@@ -265,11 +265,18 @@ doubled an already-doubled delta and found the continuation consumed.
 event (the gathered `applicable` list stays shared; a resume only reads
 it). That was a latent bug for counters and damage too, not just life.
 
+*Corrected by §5e (#808):* the event was not the only thing the answer
+consumed. An effect that applied on its own BEFORE the prompt was queued
+is marked only in `Game.replacementsAppliedThisEvent`, which `Clone` did
+not copy and the answer deletes when the event settles, so undoing into
+the open prompt and answering again fired that effect a second time.
+The map is now part of the undo snapshot, and "undo across the prompt
+replays the same way" holds for that case too.
+
 **2. Paying life is a life LOSS, but a cost never pauses.**
-CR 119.4: "If a player pays life, the amount of life paid is subtracted
-from their life total. In other words, paying an amount of life is the
-same as losing that much life." So the window runs on a payment and a
-life-loss replacement sees it; the issue's proposal to route costs
+CR 119.4: "If a player pays life, the payment is subtracted from their
+life total; in other words, the player loses that much life." So the
+window runs on a payment and a life-loss replacement sees it; the issue's proposal to route costs
 around the pipeline as "not a life-change effect" would have been a
 rules change. What a payment is *not* is life GAIN, so Rhox Faithmender
 and Alhammarret's Archive never touch it — which is the half the issue
@@ -286,7 +293,8 @@ apply-loop settles without prompting:
 
 - an ordering window applies in the order it was gathered — the escape
   §5a already uses for a pure-cancel set, for identical effects, and for
-  an eliminated chooser;
+  an eliminated chooser — one effect at a time, re-gathering after each
+  (CR 616.1f; §5e);
 - anything that would ask its own question (`asksItsOwnQuestion`: a
   CR 614.10 "may", a shockland's pay-life, a copy selector) is skipped
   un-applied, the weaker-never-stronger posture
@@ -297,6 +305,16 @@ The affected player gives up their CR 616 ordering choice on a cost
 payment. That is a real, declared simplification: arbitrary but
 deterministic, reachable only with two DIFFERENT life-loss replacements
 on one table, and the alternative is a spell stuck on the stack.
+
+**A payment the window cancels is refused, not free** (§5e, #808).
+CR 119.8: if a player can't lose life, "a cost that involves having that
+player pay life can't be paid", and CR 614.17b: "If an event can't
+happen, a player can't choose to pay a cost that includes that event."
+The engine models "your life total can't change" as a null replacement,
+so `PayLifeForEffect` returns `ErrInvalidParam` when the window cancels
+the payment. A replacement that only changes the amount is still a
+payment. This amendment originally said nothing about the cancelled
+case and the code paid the cost for nothing.
 
 `mustSettleNow` is deliberately a property of the EVENT rather than of
 life: any future entry point with no resume and no rewind can set it,
@@ -420,6 +438,67 @@ remains is a replacement that cancels a destruction outright without
 regenerating, which no rules text describes and no catalog card
 registers; `runStateChecksLocked`'s 32-pass bound is the backstop, and
 there is a test that says so.
+
+### 5e. Amendment, 2026-09-17: a player leaving mid-event, and CR 616.1f
+
+*Amendment, 2026-09-17, branch `fix/808-life-continuation-leave`.
+Closes [#808](https://github.com/krakenhavoc/cmd_and_ctrl/issues/808),
+the post-merge review of #806 (§5b).*
+
+§5b says the continuation runs on every TERMINAL outcome of a life
+event, and §5c says the same for damage. Leaving the game was a terminal
+outcome neither had:
+
+**1. A dropped prompt finishes its event.** `cleanupStackForEliminatedLocked`
+drops every prompt the departed player owed (the S31 fuzzer fix), and
+that used to discard the `replacementResume` frame with it. The drain
+batches run each leg from the previous leg's continuation, so dropping
+the first opponent's frame dropped every later opponent's loss and the
+caster's gain. `finishDroppedReplacementLocked` now settles a dropped
+life or damage event:
+
+- when the departed player is the one the event happens to (the CR 616
+  chooser always is), nothing lands — CR 800.4a takes them out of the
+  game — and the continuation runs with zero;
+- when they only owned a CR 614.10 "may" on somebody else's event, the
+  pipeline resumes and the existing gone-chooser escapes decide for them
+  (the "may" is declined), and the event lands with its continuation.
+
+Other event kinds are unchanged apart from clearing their once-per-event
+entry, which nothing would clear otherwise.
+
+**2. An eliminated player is gone** (CR 800.4a). An eliminated seat stays
+in `g.Seats`, so the `playerByIDLocked == nil` checks never fired for a
+player who had conceded. The drain and damage batches skip eliminated
+players, the single `...ThenForEffect` entry points treat one as a no-op
+with a zero continuation, and the landing functions
+(`applyResolvedLifeChangeLocked`, `applyResolvedDamageToPlayerLocked`)
+return `ErrPlayerEliminated` after running the continuation with zero,
+which the CR 616 resume logs and moves past.
+
+**3. CR 616.1f re-checks after each applied effect.** "Once the chosen
+effect has been applied, this process is repeated (taking into account
+only replacement or prevention effects that would now be applicable)."
+Every path that applied several effects without a prompt — pure
+cancels, identical effects, an eliminated chooser, a cost — applied the
+whole gathered list back to back, so an effect the first one had switched
+off still fired. Those paths now apply the first gathered effect and go
+round the apply-loop again (`applyFirstGatheredLocked`). The CR 616
+ordering answer keeps "one prompt, one ordering decision" but checks each
+chosen effect still applies (`stillAppliesLocked`) before firing it; an
+effect that no longer does is left unmarked for the re-entered loop.
+
+**4. Undo into an open prompt replays exactly.** See the correction
+under §5b: `Game.replacementsAppliedThisEvent` is deep-copied by `Clone`
+and restored by `RestoreFrom`. It stays out of the persisted snapshot —
+between actions it is non-empty only while a replacement prompt is open,
+and `Snapshot` already refuses to call that a restore point.
+
+**5. The iteration cap on a resume.** Every unpaused entry point lets an
+event through as-is when the apply-loop hits its cap; the two resumes
+(`ResolveReplacementOrder`, `ResolveOptionalReplacement`) returned the
+error instead, dropping the event and its continuation on a prompt that
+was already dequeued. They now tolerate it the same way.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

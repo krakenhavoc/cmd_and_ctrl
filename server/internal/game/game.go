@@ -378,6 +378,12 @@ type Game struct {
 	// for ev.ID at their outermost frame so CR 616 prompt pauses
 	// don't lose the entry mid-event. See replacements.go.
 	// Added in S17 sub-PR 2.
+	//
+	// So between actions it holds an entry only for an event paused
+	// on a prompt, and that entry is part of the prompt's state:
+	// Clone deep-copies it and RestoreFrom puts it back, or an undo
+	// into the open prompt would replay the answer without the marks
+	// and fire an already-applied effect twice (#808).
 	replacementsAppliedThisEvent map[ReplacementEventID]map[ReplacementEffectID]bool
 
 	// nextReplacementEventID mints the per-event keys stored in

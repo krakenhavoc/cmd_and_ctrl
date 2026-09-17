@@ -1333,7 +1333,8 @@ g.LoseLifeEachThenForEffect(src, ctx.Opponents(), x, func(g *game.Game, lost int
 
 `applied` is the post-replacement amount, and it is `0` when the change
 was replaced away ("your life total can't change") or the player has
-left — the continuation is told either way, so a batch never stalls on a
+left — conceded or eliminated, including while the change was waiting on
+their CR 616 prompt (#808) — the continuation is told either way, so a batch never stalls on a
 leg that moved nothing. The batch form is built on the single one; don't
 write your own loop that waits. A card that only says "gain 3" keeps
 using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing.
@@ -1375,8 +1376,12 @@ shockland, an activation cost, "pay 2 life. If you do, draw". CR 119.4
 makes the payment a life loss, so the window still runs and a life-loss
 replacement still sees it; what the cost path adds is that it settles in
 one step, because CR 601.2h pays a spell's costs as one indivisible step
-and a half-paid cost cannot be rewound. See
-[ADR 0013 §5b](docs/decisions/0013-replacement-effects.md).
+and a half-paid cost cannot be rewound. A payment the window CANCELS
+("your life total can't change") is not paid for free: CR 119.8 and
+CR 614.17b say that cost can't be paid, so `PayLifeForEffect` returns
+`ErrInvalidParam`. If you write a card that stops a player losing life,
+also make the cost validators it reaches refuse the payment up front.
+See [ADR 0013 §5b and §5e](docs/decisions/0013-replacement-effects.md).
 
 The answer is `{bottom, top_order}` with `top_order` **top-first**, and
 every looked-at card must appear in exactly one list: scry moves all of
