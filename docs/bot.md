@@ -429,6 +429,86 @@ which is how the position corpus gets harvested.
 
 ---
 
+## Measuring the bot
+
+### Position suite
+
+A **position** is one frozen decision window with a human's answer
+attached: the seat's own `GameView`, the exact list of legal moves it
+was offered, and a label saying which of those moves are right, which
+are specifically wrong, and why. They live one JSON file per position
+under `server/internal/aiseat/suite/testdata/positions/`.
+
+The answer is stored as **matchers, never as an index** — a move's
+label, a regexp over it, a `legal.Kind`, or an action type plus a
+subset of its params. The index is derived when the file loads. That
+is the detail the whole suite rests on: a stored index stays correct
+only until the enumerator's ordering changes, at which point every
+position would silently start grading a different move while still
+reporting a number. A matcher either still matches or it does not, and
+one that matches nothing **fails to load**, naming the position.
+
+Each position also carries `gate`: the policy names for which a miss
+**fails `go test`**. `aiseat/suite`'s own test runs the `heuristic`
+tier over the whole suite on **every CI run** — it is pure computation
+over frozen JSON, so it costs milliseconds and needs no endpoint — and
+a gated position is a pinned invariant ("do not chump-block at 40
+life") or a pinned bug that can never come back quietly. Model tiers
+run through the `boteval` binary, because they need a server to talk
+to.
+
+**Harvest, label, run.** Build the binary with
+`make -C server build-boteval` and run these from `server/`:
+
+```bash
+# 1. play some games with the decision log on (any whole-game test works)
+AISEAT_GAME_TESTS=1 AISEAT_DECISION_LOG=/tmp/dl \
+  go test ./internal/aiseat -run TestFourHeuristicBotsPlayToAWinner
+
+# 2. pull the interesting windows into an inbox of UNLABELLED positions
+./bin/boteval suite harvest --from /tmp/dl --to /tmp/inbox --escalated
+./bin/boteval suite harvest --from /tmp/dl --to /tmp/inbox --disagree --limit 20 --seed 1
+
+# 3. look at one the way the model would, and decide what the right move is
+./bin/boteval suite render --pos /tmp/inbox/<id>.json
+
+# 4. fill in expected.accept / expected.reject, move it into the suite, run it
+./bin/boteval suite run --policy heuristic --md
+./bin/boteval suite run --policy assisted --max-think 20s --out report.json
+```
+
+`harvest` filters by escalation, heuristic/model disagreement, fallback
+cause, layer, seat and tag, and samples deterministically under
+`--seed` when `--limit` cuts, so the same logs always produce the same
+inbox. Every harvested position arrives with `expected` empty; an
+unlabelled position is reported as `skipped` and is never counted as
+agreement.
+
+`render` prints the exact system blocks and user delta the model would
+be shown, then the move list with its real indices and `<- accept`,
+`<- reject`, `<- heuristic` and `<- model@capture` markers. It rebuilds
+the prompt from the frozen input rather than replaying a recorded one,
+which is what lets it render a position harvested from a game no model
+ever played in.
+
+`run` reports agreement overall and per tag, plus reject-hits and the
+funnel's own failure counts — malformed replies, out-of-range indices,
+timeouts. Those are read off the funnel's classification rather than
+recomputed, so a window where the model produced nothing usable is
+counted as a model failure even though the heuristic underneath
+answered it correctly. Counting that as agreement is exactly how a
+broken endpoint would hide. `run` exits non-zero when a gated position
+misses.
+
+**Labelling rules of thumb.** Label only windows where the right move
+is unambiguous to a competent player — make the land drop, block when
+the alternative is lethal, do not chump-block at 40 life, never target
+yourself with a burn spell. Write the one-line `note` that explains the
+label; a position nobody can review is a position nobody will trust.
+Gate a policy only once you have run the suite and seen it pass.
+
+---
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than
