@@ -194,6 +194,16 @@ seat receives.
 `Decision.Index` — not `Decision.Move` — is deliberate. A policy
 cannot return a move that was not offered.
 
+> **Correction, 2026-09-17.** `Input.Oracle` and `Input.Log` above
+> never shipped. `aiseat.Input` is `{View, Seat, Moves}`. The public
+> game log decision 4 argues for did land, but on the view, as
+> `GameView.Log` — a policy reads it there and nothing has to hand it
+> a second copy. Oracle text reaches a policy the other way round,
+> through `model.Config.Oracle` injected by `tiers.Options` at seat
+> time, which keeps the lookup off the interface every policy has to
+> satisfy and out of the type gate's way. Neither field is coming
+> back. See [ADR 0052 decision 6](0052-bot-decision-harness-and-eval.md).
+
 ### 4. A public game log is a prerequisite, not a nice-to-have
 
 **There is no player-facing, per-event, semantic game log.** Three
