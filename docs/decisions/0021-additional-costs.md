@@ -175,3 +175,47 @@ three parallel announce-time payments threaded side by side through
 `begin` / `beginForMode` / `continueCast`. A fourth should bundle
 them into one `CastChoices` object rather than adding a parameter;
 noted in `targeting.ts` at the declaration.
+
+## Addendum (2026-09-17): sacrificing N permanents as an additional cost (#747)
+
+**Status:** Accepted · 2026-09-17 · tracked on
+[#747](https://github.com/krakenhavoc/cmd_and_ctrl/issues/747). This
+status covers this section only. The design, and the owner's and the
+lead's decisions on its open questions, are in
+[ADR 0020's #747 addendum](0020-activated-abilities.md#addendum-2026-09-17-sacrifice-costs-of-n-permanents-747)
+(§12–§17), because the validator, the enumerator helper and the client
+picker are shared by all three sacrifice cost sites. This section records
+what that design means for a spell.
+
+- **The clause carries the count.** "As an additional cost to cast this
+  spell, sacrifice two creatures" is
+  `AdditionalCost{Sacrifice: sacrificeSpec(label, preds...).WithCount(2, 2)}`,
+  built by `SacrificeNCost(2, "creatures", Creature())`.
+  `SacrificeCost(label, preds...)` still builds the count-1 clause, and
+  Village Rites, Altar's Reap and Deadly Dispute do not change.
+- **§2 above still holds.** `validateAdditionalCostLocked` validates
+  `sacrifice_ids` at announce, through the shared
+  `validateSacrificeCostLocked`, which now requires exactly N distinct
+  permanents. `payAdditionalCostLocked` pays them only after the spell is
+  on the stack. A wrong count refuses the cast, and the card stays in its
+  zone. The spell still needs no check against being named, because it is
+  on the stack and the clause matches only permanents on the battlefield.
+- **The N permanents are sacrificed as one simultaneous exit** (ADR 0020
+  §14), inside `payAdditionalCostLocked`. A Blood Artist sacrificed with
+  another creature to pay for a spell drains for both, whatever order the
+  IDs arrive in. The drains still go on the stack above the spell, as the
+  amendment above requires.
+- **The enumerator's cast site** (`legal/cast.go:202`) takes N from the
+  clause, offers no cast when the caster controls fewer than N matching
+  permanents, and offers one payment per cast for N ≥ 2 (ADR 0020 §15).
+- **The client** keeps threading `sacrificeIDs` through `targeting.ts`,
+  which is already a `string[]`. `Board.svelte`'s cast-time
+  `SacrificeCostModal` gets the same multi-select as the ability one, with
+  the count from `additional_cost.sacrifice_options.max`, and the same
+  "Choose for me" button (owner decision, ADR 0020 §16). The button fills
+  the first N entries of `additional_cost.sacrifice_options.cards`, which
+  the server sends in ADR 0020 §15's order, and never confirms. No fourth
+  parallel payment is added, so the known debt above does not grow.
+- **Still out:** variable counts ("sacrifice any number of creatures",
+  "sacrifice X"), and kicker-style *optional* sacrifices. Both change
+  what the caster announces, not only how many permanents they pick.

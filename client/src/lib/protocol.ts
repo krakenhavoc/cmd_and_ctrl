@@ -509,6 +509,13 @@ export interface PendingChoiceView {
     // ONLY — the candidates are usually cards in a hand, and their
     // number is as private as their faces.
     | "choose_cards"
+    // #742: "choose a color" (CR 105.4) — as a permanent enters
+    // (Coldsteel Heart, the Thriving lands; the answer is remembered on
+    // the permanent) or while a spell resolves (Wash Out). color_options
+    // carries the legal colours, a subset of W/U/B/R/G ("a color other
+    // than blue" is four). Answered with the same {choice_id, color}
+    // payload a mana_pick uses; the server routes the two by kind.
+    | "choose_color"
     | string;
   chooser: string;
   from_player: string;
@@ -522,6 +529,11 @@ export interface PendingChoiceView {
   // against commander identity for Arcane Signet; full 5-color for
   // Birds of Paradise.
   color_options?: string[];
+  // #742: on a "mana_pick" that adds more than one mana of the picked
+  // colour ("{T}: Add three mana of any one color") — colour letter to
+  // amount. A colour missing from the map adds one; absent on ordinary
+  // picks. Also, choose_color reuses color_options above.
+  color_amounts?: Record<string, number>;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it

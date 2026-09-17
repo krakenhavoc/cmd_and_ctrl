@@ -1218,18 +1218,26 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			if color == "" {
 				continue
 			}
-			// Restrictions ride here too. autoTapAbilityFor already
-			// refuses restricted abilities, so this is belt-and-
-			// braces — but "the auto-tapper is the one path that
-			// mints unrestricted copies of restricted mana" is
-			// precisely the bug #259 warns about, and one line is
-			// cheaper than trusting a filter two files away.
-			p.ManaPool.AddMana(ManaToken{
-				Color:        color,
-				Source:       cardID,
-				Restrictions: restrictionsFor(g, ab, p.ID, cardID),
-			})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+			// #742: a one-colour-N-mana slot adds all N of the picked
+			// colour. The planner never selects such a source
+			// (gatherTapSources skips it), so this is only reached if
+			// that changes — and then it must still mint the amount
+			// the printed card does, not one.
+			for k := 0; k < slot.AmountFor(color); k++ {
+				// Restrictions ride here too. autoTapAbilityFor
+				// already refuses restricted abilities, so this is
+				// belt-and-braces — but "the auto-tapper is the one
+				// path that mints unrestricted copies of restricted
+				// mana" is precisely the bug #259 warns about, and one
+				// line is cheaper than trusting a filter two files
+				// away.
+				p.ManaPool.AddMana(ManaToken{
+					Color:        color,
+					Source:       cardID,
+					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
+				})
+				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+			}
 		}
 	}
 }
@@ -3578,6 +3586,8 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Reason:           ab.Label,
 			ColorOptions:     filtered,
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
+			// #742: "N mana of any one color" — one pick, N tokens.
+			ManaAmounts: copyManaAmounts(slot.Amounts),
 		})
 	}
 	// --- rider --------------------------------------------------
