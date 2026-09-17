@@ -715,3 +715,45 @@ func (c Card) ManaValueWithX(x int) int {
 	}
 	return cost.ManaValueWithX(x)
 }
+
+// ManaValueForEffect is the card's mana value where it is right now.
+// It is the read to use for any card that might be a spell on the
+// stack: a counterspell's "target spell with mana value N", a "whenever
+// you cast a spell with mana value N or greater" trigger, the limit a
+// cascade records. CR 202.3e: on the stack, {X} counts as the value
+// chosen for it (a copy has the X of the spell it copies, CR 707.10).
+// Everywhere else, {X} is zero, so for a card in any other zone this
+// gives the same answer as Card.ParsedManaValue.
+//
+// ok is false when the printed cost can't be read, like
+// Card.ParsedManaValue. A predicate should reject such a card rather
+// than treat it as mana value zero.
+//
+// "On the stack" means the card is in the stack zone AND has a spell
+// entry in StackMeta. The entry holds the announced X. A card that
+// has left the stack keeps its InstanceID, but its entry is dropped
+// when it leaves, so X no longer counts. Safe on a nil game, which
+// reads X as zero.
+//
+// Caller must hold g.mu, like every other *ForEffect read.
+func (g *Game) ManaValueForEffect(c Card) (mv int, ok bool) {
+	cost, err := ParseCost(c.ManaCost)
+	if err != nil {
+		return 0, false
+	}
+	return cost.ManaValueWithX(g.announcedXOnStackLocked(c.InstanceID)), true
+}
+
+// announcedXOnStackLocked is the X chosen for the spell `id` while it
+// is on the stack, and zero for anything that isn't a spell on the
+// stack (CR 202.3e).
+func (g *Game) announcedXOnStackLocked(id uuid.UUID) int {
+	if g == nil || g.Stack == nil || g.StackMeta == nil {
+		return 0
+	}
+	item := g.StackMeta[id]
+	if item == nil || item.XValue <= 0 || !g.Stack.Contains(id) {
+		return 0
+	}
+	return item.XValue
+}
