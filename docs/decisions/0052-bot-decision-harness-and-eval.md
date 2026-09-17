@@ -749,9 +749,17 @@ against the suite, as the data says.
   and it is the reason that decision is in this ADR rather than
   deferred: raising the budget without shipping the lever to lower it
   would be a regression for anyone who does not want to wait.
-- **Decision logs are large.** 15–20 MiB per game in the default
-  `escalated` mode, ~80 MiB in `all`, on a VPS that also holds replays
-  and snapshots. They are off by default, capped per game, and nothing
+- **Decision logs are large — larger than this ADR first estimated.**
+  Measured in PR 1 (#842): a four-player board view is most of a
+  record, so one window costs 38–59 KiB and a four-seat game writes
+  **114–236 MiB** in the default `escalated` mode, not the 15–20 MiB
+  guessed at here. `escalated` also only compacts windows that Layer A
+  absorbed, so it saves nothing for a policy that does not run Layer A
+  (the bare `heuristic.New()` the whole-game tests seat, as opposed to
+  the `heuristic` *tier*, which is `rules.Filter` over it). The 256 MiB
+  per-game cap is therefore a real limit rather than a theoretical one:
+  a long four-seat game can reach it, and past it records are dropped
+  and counted with one WARN. They remain off by default, and nothing
   rotates them — the operator who turns them on is responsible for
   cleaning up, and `docs/bot.md` says so.
 - **The Ollama host needs configuring, and the server cannot do it.**

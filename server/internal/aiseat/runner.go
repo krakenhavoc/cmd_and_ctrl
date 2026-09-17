@@ -2,6 +2,7 @@ package aiseat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"sync"
@@ -65,6 +66,20 @@ type Config struct {
 	// Improvisation announcements are NOT gated by this. They are
 	// mandatory disclosure, not narration — see improvise.go.
 	Narrate bool
+	// Observer receives one DecisionEvent per decision window, after
+	// the dispatcher's answer is known. Nil (the default) costs
+	// nothing: no event is built.
+	//
+	// It is called inline on the runner's goroutine, so an observer
+	// that blocks delays a bot seat. One observer is normally shared
+	// by every seat at a table — aiseat/decisionlog's per-game log is
+	// exactly that — so it must be safe from several goroutines.
+	//
+	// The improvise path is deliberately NOT observed: an
+	// improvisation is a bundle the policy asked for instead of a
+	// move, there is no index and no move list entry, and
+	// improvise.go already announces it to the table.
+	Observer DecisionObserver
 }
 
 const (
@@ -98,23 +113,31 @@ func (c Config) withDefaults() Config {
 }
 
 // Stats are the runner's counters, readable while it runs.
+//
+// The JSON tags are here because these numbers leave the process: the
+// eval harness reports them per policy, and a report nobody can
+// machine-read is a report that gets retyped.
 type Stats struct {
-	Decisions int64 // Policy.Decide calls that returned a move
-	Applied   int64 // moves the dispatcher accepted
-	Rejected  int64 // moves the dispatcher refused
-	Fallbacks int64 // decisions replaced by the fallback move
-	Passes    int64 // pass_priority moves applied
+	Decisions int64 `json:"decisions"` // Policy.Decide calls that returned a move
+	Applied   int64 `json:"applied"`   // moves the dispatcher accepted
+	Rejected  int64 `json:"rejected"`  // moves the dispatcher refused
+	Fallbacks int64 `json:"fallbacks"` // decisions replaced by the fallback move
+	Passes    int64 `json:"passes"`    // pass_priority moves applied
 	// Improvisations are announced sandbox bundles the room accepted;
 	// ImprovRefused are the ones this runner would not apply (failed
 	// validation, or the bundle rolled back). Both are worth watching:
 	// a bot improvising constantly means a deck outrunning the
 	// catalog, and refusals mean a policy asking for things it may
 	// not have. S31 sub-PR 8.
-	Improvisations int64
-	ImprovRefused  int64
+	Improvisations int64 `json:"improvisations"`
+	ImprovRefused  int64 `json:"improv_refused"`
 	// Rejections are the most recent rejected moves (up to 32), so a
 	// test or an operator can tell a step race from an enumerator bug.
-	Rejections []Rejection
+	Rejections []Rejection `json:"rejections,omitempty"`
+	// Latency is the distribution of whole-decision durations over
+	// the most recent 1024 windows — #505's "latency percentiles",
+	// which until now were unreachable from outside the runner.
+	Latency Percentiles `json:"latency"`
 }
 
 // Rejection is one move the dispatcher refused.
@@ -122,6 +145,21 @@ type Rejection struct {
 	Type  string
 	Label string
 	Err   error
+}
+
+// MarshalJSON renders Err as a string. An `error` marshals to `{}` by
+// default, which turns the single most useful field of a rejection —
+// why the engine said no — into two braces.
+func (r Rejection) MarshalJSON() ([]byte, error) {
+	out := struct {
+		Type  string `json:"type"`
+		Label string `json:"label,omitempty"`
+		Err   string `json:"err,omitempty"`
+	}{Type: r.Type, Label: r.Label}
+	if r.Err != nil {
+		out.Err = r.Err.Error()
+	}
+	return json.Marshal(out)
 }
 
 // Runner drives one bot seat. Start it with Start; it exits when ctx
@@ -138,6 +176,9 @@ type Runner struct {
 	improvisations, improvRefused                   atomic.Int64
 	rejMu                                           sync.Mutex
 	rejections                                      []Rejection
+	latMu                                           sync.Mutex
+	latencies                                       []time.Duration
+	latNext                                         int
 	done                                            chan struct{}
 }
 
@@ -192,6 +233,7 @@ func (r *Runner) Stats() Stats {
 		Improvisations: r.improvisations.Load(),
 		ImprovRefused:  r.improvRefused.Load(),
 		Rejections:     rej,
+		Latency:        PercentilesOf(r.latencySnapshot()),
 	}
 }
 
@@ -260,13 +302,15 @@ func (r *Runner) step(ctx context.Context) bool {
 		if r.improvise(ctx, in, started) {
 			continue
 		}
-		idx, reason := r.decide(ctx, in)
+		out := r.decide(ctx, in)
+		idx, reason := out.index, out.reason
 		if idx == Decline {
 			// The policy wants nothing from this window and does not
 			// hold priority (decide turns a decline into a pass when
 			// one is on offer), so nothing is waiting on us. Sleep
 			// until the next commit.
 			r.log.Debug("bot declines", "reason", reason)
+			r.observe(in, out, nil, 0, false, nil)
 			return true
 		}
 		if rejects >= r.cfg.MaxConsecutiveRejects {
@@ -286,13 +330,16 @@ func (r *Runner) step(ctx context.Context) bool {
 			switch pi, si := PassIndex(moves), SafeIndex(moves); {
 			case pi >= 0:
 				idx, reason = pi, "forced pass after repeated rejections"
+				out.fallback = FallbackForcedPass
 			case si >= 0:
 				idx, reason = si, "forced always-legal answer after repeated rejections"
+				out.fallback = FallbackForcedAlwaysLegal
 				r.log.Warn("bot forced onto the always-legal answer",
 					"move", moves[si].Label, "rejects", rejects)
 			default:
 				return true
 			}
+			out.index, out.reason = idx, reason
 		}
 		mv := moves[idx]
 		// #628, CR 726: the engine has flagged a trigger loop, so
@@ -308,6 +355,7 @@ func (r *Runner) step(ctx context.Context) bool {
 		// when it has something else to do.
 		if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
 			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 726)")
+			r.observe(in, out, &mv, 0, false, nil)
 			return true
 		}
 		r.pace(ctx, started)
@@ -330,10 +378,12 @@ func (r *Runner) step(ctx context.Context) bool {
 			rejects++
 			r.recordRejection(mv, err)
 			r.log.Warn("bot move rejected", "move", mv.Label, "type", mv.Type, "err", err)
+			r.observe(in, out, &mv, 0, false, err)
 			continue
 		}
 		rejects = 0
 		r.applied.Add(1)
+		r.observe(in, out, &mv, seq, true, nil)
 		if mv.Kind == legal.KindPass {
 			r.passes.Add(1)
 		} else {
@@ -347,35 +397,129 @@ func (r *Runner) step(ctx context.Context) bool {
 	return true
 }
 
+// outcome is what one call to decide produced: the index the runner
+// will dispatch, and everything an observer needs to say why.
+//
+// It is a struct rather than the old (int, string) pair because the
+// pair could not distinguish "the policy chose the pass" from "the
+// policy timed out and the runner took the pass", and those are
+// opposite facts about a bot seat. The reason string said so in
+// English, which is not a thing a report can count.
+type outcome struct {
+	// index is the move to dispatch, or Decline.
+	index int
+	// reason is the free text that reaches the log and the table.
+	reason string
+	// fallback is the runner's own fallback cause, empty when the
+	// policy's answer was taken as given.
+	fallback string
+	// decision and err are exactly what the policy returned.
+	decision Decision
+	err      error
+	// traced says whether trace came from the policy.
+	traced bool
+	trace  Trace
+	// latency is the whole Decide call, deadline included.
+	latency time.Duration
+}
+
 // decide runs the policy under the MaxThink deadline and maps any
 // failure — error, timeout, out-of-range index — to the fallback
-// move. Returns the chosen index and a reason for the log.
-func (r *Runner) decide(ctx context.Context, in Input) (int, string) {
+// move.
+func (r *Runner) decide(ctx context.Context, in Input) outcome {
 	dctx, cancel := context.WithTimeout(ctx, r.cfg.MaxThink)
 	defer cancel()
-	d, err := r.policy.Decide(dctx, in)
+
+	started := time.Now()
+	var (
+		d   Decision
+		tr  Trace
+		err error
+	)
+	traced := false
+	// A Tracer answers the window AND shows its working. Nothing else
+	// changes: DecideTraced returns what Decide would have, so this
+	// is the same decision with the prompt, the reply and the
+	// heuristic's ranking attached.
+	if t, ok := r.policy.(Tracer); ok && r.cfg.Observer != nil {
+		d, tr, err = t.DecideTraced(dctx, in)
+		traced = true
+	} else {
+		d, err = r.policy.Decide(dctx, in)
+		tr = Trace{HeuristicIndex: Decline}
+		if _, isRandom := r.policy.(*RandomPolicy); isRandom {
+			tr.Layer = TraceLayerRandom
+		}
+	}
+	out := outcome{decision: d, err: err, traced: traced, trace: tr, latency: time.Since(started)}
+	r.observeLatency(out.latency)
+
 	switch {
 	case err != nil:
 		r.log.Warn("policy failed; falling back", "err", err)
+		out.fallback = FallbackPolicyError
+		// A deadline miss is a different operational problem from a
+		// policy that threw, and on a self-hosted model it is the
+		// likely one. Both fall back the same way; only the label
+		// differs, and the label is what a report counts.
+		if errors.Is(err, context.DeadlineExceeded) {
+			out.fallback = FallbackTimeout
+		}
 	case d.Index == Decline:
 		// A decline from a seat that holds priority would stall the
 		// table, so it becomes the pass it was standing in for.
 		r.decisions.Add(1)
 		if pi := PassIndex(in.Moves); pi >= 0 {
-			return pi, "decline → pass"
+			out.index, out.reason, out.fallback = pi, "decline → pass", FallbackDeclinePass
+			return out
 		}
-		return Decline, d.Reason
+		out.index, out.reason = Decline, d.Reason
+		return out
 	case d.Index < 0 || d.Index >= len(in.Moves):
 		r.log.Warn("policy returned an out-of-range move; falling back", "index", d.Index, "moves", len(in.Moves))
+		out.fallback = FallbackOutOfRange
 	default:
 		r.decisions.Add(1)
-		return d.Index, d.Reason
+		out.index, out.reason = d.Index, d.Reason
+		return out
 	}
 	r.fallbacks.Add(1)
 	if pi := PassIndex(in.Moves); pi >= 0 {
-		return pi, "fallback: pass"
+		out.index, out.reason = pi, "fallback: pass"
+		return out
 	}
-	return 0, "fallback: first legal move"
+	out.index, out.reason = 0, "fallback: first legal move"
+	return out
+}
+
+// observe emits one DecisionEvent. mv is the move that was
+// dispatched, nil when none was.
+func (r *Runner) observe(in Input, out outcome, mv *legal.Move, seq uint64, applied bool, rejectErr error) {
+	obs := r.cfg.Observer
+	if obs == nil {
+		return
+	}
+	ev := DecisionEvent{
+		Game:        r.room.Game.ID,
+		Seat:        r.seat,
+		Policy:      r.policy.Name(),
+		Seq:         seq,
+		Input:       in,
+		Traced:      out.traced,
+		Trace:       out.trace,
+		Decision:    out.decision,
+		DecisionErr: out.err,
+		Fallback:    out.fallback,
+		Index:       out.index,
+		Reason:      out.reason,
+		Latency:     out.latency,
+		Applied:     applied,
+		RejectErr:   rejectErr,
+	}
+	if mv != nil {
+		ev.Label = mv.Label
+	}
+	obs.Observe(ev)
 }
 
 // pace holds the runner so the decision takes at least MinThink of

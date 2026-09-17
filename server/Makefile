@@ -1,7 +1,8 @@
-.PHONY: all build build-bot run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: all build build-bot build-boteval run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
+BOTEVAL_BINARY := bin/boteval
 PKGS := ./...
 
 # Default target never mutates the working tree: it verifies formatting,
@@ -20,6 +21,15 @@ build:
 build-bot:
 	mkdir -p bin
 	go build -o $(BOT_BINARY) ./cmd/bot
+
+# S31 bot evaluation harness (#837). Not a deployed binary: a local
+# tool for the runs that need a model endpoint, a Scryfall dump or
+# minutes of wall clock, none of which CI has. `boteval probe` is the
+# one that matters today — it says whether the local endpoint is
+# truncating the prompt or thinking instead of answering.
+build-boteval:
+	mkdir -p bin
+	go build -o $(BOTEVAL_BINARY) ./cmd/boteval
 
 run: build
 	./$(BINARY)

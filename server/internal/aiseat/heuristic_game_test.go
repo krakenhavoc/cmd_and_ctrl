@@ -164,9 +164,24 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	defer cancel()
 
 	started := time.Now()
+	// AISEAT_DECISION_LOG turns the per-game decision log on for
+	// whole-game tests: the cheapest way to get a real, replayable
+	// corpus of windows out of the harness that already plays the
+	// games. Unset (the default, and CI) costs nothing — the runner
+	// builds no event without an observer.
+	cfg := aiseat.Config{}
+	if gl := openTestDecisionLog(t, g.ID); gl != nil {
+		cfg.Observer = gl
+		defer func() {
+			if err := gl.Close(); err != nil {
+				t.Errorf("close decision log: %v", err)
+			}
+			t.Logf("decision log: %+v", gl.Stats())
+		}()
+	}
 	runners := make([]*aiseat.Runner, 0, len(policies))
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], aiseat.Config{}, nil, testLogger()))
+		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
 	}
 
 	lastSeq, lastMove := room.Seq(), time.Now()

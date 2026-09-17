@@ -155,3 +155,36 @@ func (f *Filter) ShouldConcede(in aiseat.Input) bool {
 	c, ok := f.Inner.(aiseat.Conceder)
 	return ok && c.ShouldConcede(in)
 }
+
+// Compile-time assertion: the filter is a Tracer.
+var _ aiseat.Tracer = (*Filter)(nil)
+
+// DecideTraced is Decide with the verdict shown: Layer A's own answer
+// when it absorbed the window, and otherwise whatever the inner
+// policy has to say about it.
+//
+// It is a SEPARATE path from Decide rather than a wrapper around it,
+// because both run Resolve and both tick the meter: calling one from
+// the other would double-count every window the absorption rate is
+// computed from, and that rate is ADR 0033 §5's acceptance number.
+// The runner calls one or the other, never both.
+func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
+	v := Resolve(in)
+	f.Meter.Observe(v)
+	if v.Absorbed() {
+		// HeuristicIndex stays Decline: nobody asked Layer B, and
+		// recording 0 here would read as "the heuristic wanted the
+		// first move", which is a different and false claim.
+		return aiseat.Decision{Index: v.Index, Reason: v.Reason},
+			aiseat.Trace{Layer: "A", Rule: v.Rule, HeuristicIndex: aiseat.Decline}, nil
+	}
+	if t, ok := f.Inner.(aiseat.Tracer); ok {
+		return t.DecideTraced(ctx, in)
+	}
+	d, err := f.Inner.Decide(ctx, in)
+	tr := aiseat.Trace{Layer: "B", HeuristicIndex: d.Index}
+	if err != nil {
+		tr.HeuristicIndex = aiseat.Decline
+	}
+	return d, tr, err
+}
