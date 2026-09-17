@@ -25,10 +25,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Declared as a caveat because an empty-library or hellbent corner
 // exists where a player would genuinely decline.
 //
-// The discard is random rather than chosen, which is the standing
-// DiscardCards simplification across the catalog (a hand picker is
-// not in the engine) and is strictly weaker than the printed "discard
-// a card", where you choose.
+// The discard used to be random, with a caveat saying so, because the
+// catalog had no prompt for a chosen discard that anything waited on.
+// #651 gave it one, so the controller picks their own pitch as
+// printed (CR 701.8a), from the hand the two cards have already been
+// drawn into.
 func init() {
 	Register(Spec{
 		OracleID:     "d6b2c998-a226-426c-a40d-6e6007041bfe",
@@ -36,7 +37,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The optional draw is always taken — you aren't asked, and the linked discard follows.",
-			"The discarded card is chosen at random instead of by you.",
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -46,7 +46,12 @@ func init() {
 				if err := (DrawCards{Player: item.Controller, N: 2}.Apply(ctx)); err != nil {
 					return err
 				}
-				return DiscardCards{Player: item.Controller, N: 1}.Apply(ctx)
+				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+					Player: item.Controller,
+					Source: item.SourceCardID,
+					N:      1,
+				})
+				return nil
 			}),
 		},
 		Activated: []ActivatedAbility{

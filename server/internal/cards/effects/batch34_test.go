@@ -760,14 +760,21 @@ func TestB34KioraLootsOnEntryAndMakesTheScionAtThreshold(t *testing.T) {
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("drew %d, want 2", me.Hand.Size()-hand)
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Errorf("owes %d discards, want 2", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Errorf("owes %d discards, want 2", discardOwed(g, me.ID))
 	}
-	delete(g.DiscardPending, me.ID)
+	discardFromHand(t, g, me.ID)
+	passPriorityAroundTable(t, g)
 	// Six cards in the graveyard: no threshold, no prompt. Kiora
-	// attacks on the next turn, once the sickness has worn off.
-	for i := 0; i < 6; i++ {
+	// attacks on the next turn, once the sickness has worn off. The
+	// two cards just discarded are already there, so top up to six
+	// rather than adding six (#651 — the loot's discard is really
+	// paid now, where it used to be dropped on the floor).
+	for me.Graveyard.Size() < 6 {
 		pushGraveyardCardForTest(me, "Filler")
+	}
+	if got := me.Graveyard.Size(); got != 6 {
+		t.Fatalf("graveyard = %d, want exactly 6 for the no-threshold half", got)
 	}
 	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)

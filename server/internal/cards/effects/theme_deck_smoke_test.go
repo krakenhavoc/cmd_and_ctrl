@@ -320,20 +320,24 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 		t.Fatalf("a Vehicle crewed the turn after it entered could not attack (CR 302.6): %v", err)
 	}
 	// "Whenever this Vehicle attacks ... you may draw a card. If you
-	// do, discard a card." The draw is immediate; the discard is an
-	// obligation the controller discharges by hand (S13.4's
-	// DiscardPending pause), so what the trigger leaves behind is one
-	// extra card and one card owed.
+	// do, discard a card." The draw is immediate; the discard is a
+	// prompt the controller answers, and since #651 the table waits
+	// for it — so what the trigger leaves behind is one extra card and
+	// one card owed, and combat cannot walk on until it is paid.
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := len(me.Hand.Cards); got != beforeHand+1 {
 		t.Errorf("hand size after the Copter's loot = %d, want %d (the draw half)", got, beforeHand+1)
 	}
-	if got := g.DiscardPending[me.ID]; got != 1 {
+	if got := discardOwed(g, me.ID); got != 1 {
 		t.Errorf("discards owed after the Copter's loot = %d, want 1", got)
 	}
 	if got := len(me.Graveyard.Cards); got != beforeYard {
 		t.Errorf("graveyard grew to %d before the owed discard was made", got)
+	}
+	discardFromHand(t, g, me.ID)
+	if got := len(me.Graveyard.Cards); got != beforeYard+1 {
+		t.Errorf("graveyard = %d after the discard, want %d", got, beforeYard+1)
 	}
 
 	advanceToStepOf(t, g, themeSeat, game.StepCombatDamage)

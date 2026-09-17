@@ -84,11 +84,15 @@ func (d DrawCards) Apply(ctx *Context) error {
 	return ctx.Game.DrawNForEffect(player, d.N)
 }
 
-// DiscardCards removes N cards from `Player`'s hand. Sandbox
-// simplification: random selection regardless of whether the real
-// card says "at random" vs. "the player chooses" — the target-
-// picker UI lands in S22. Cards land in the graveyard known to
-// every seated player (public-zone rule).
+// DiscardCards removes N cards from `Player`'s hand AT RANDOM
+// (CR 701.8b). Cards land in the graveyard known to every seated
+// player (public-zone rule).
+//
+// It is for cards that print "at random" — Burning Inquiry — and for
+// nothing else (#651). A discard the player CHOOSES is
+// game.QueueDiscardChoiceForEffect, which opens a real prompt over
+// their hand and holds the table until it is answered; using this
+// primitive for one is a different card, not a simplification of it.
 type DiscardCards struct {
 	Player uuid.UUID
 	N      int
