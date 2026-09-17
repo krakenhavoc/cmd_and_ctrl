@@ -70,10 +70,39 @@ type ReplacementEventID uint64
 // InstanceID, index into the card's Replacements slice).
 type ReplacementEffectID uint64
 
-// builtinReplacementIDBase is the offset subtracted from a built-in's
-// engine-assigned ID. Built-ins' IDs live in the top uint64 half so
-// they never collide with catalog-assigned IDs.
-const builtinReplacementIDBase ReplacementEffectID = 1 << 62
+// The ReplacementEffectID space, low to high. Each registry the
+// gather pass walks gets a disjoint range, so an ID names both the
+// registry it came from and the entry within it. The catalog's range
+// is the bottom one and is the only one with two coordinates packed
+// into it — see encodeCatalogReplacementID.
+//
+//	1                     .. selfReplacementIDBase  catalog (battlefield card × slot)
+//	selfReplacementIDBase .. turnScopedIDBase       a card replacing its own entry, by slot
+//	turnScopedIDBase      .. testReplacementIDBase  turn-scoped (Fog), by index
+//	testReplacementIDBase .. builtinReplacementIDBase  test-injected, by index
+//	builtinReplacementIDBase ..                     built-ins (commander zone), by index
+//
+// They were three `const` declarations inside the two functions that
+// read them, declared twice over; #801 moved them here so the scheme
+// is written down once.
+const (
+	selfReplacementIDBase    ReplacementEffectID = 1 << 45
+	turnScopedIDBase         ReplacementEffectID = 1 << 50
+	testReplacementIDBase    ReplacementEffectID = 1 << 55
+	builtinReplacementIDBase ReplacementEffectID = 1 << 62
+)
+
+// MaxCatalogReplacementSlots is the number of Replacements one
+// catalog entry may declare. It is the stride of the catalog ID
+// encoding (see encodeCatalogReplacementID), so a card that declared
+// more would mint IDs belonging to the next card along and silently
+// replace the wrong permanent's effect in a CR 616 prompt.
+//
+// effects.Register rejects a Spec over the budget at boot, the way it
+// rejects every other unrepresentable declaration. No printed card is
+// anywhere near it: the fullest entry in the catalog today (Uncivil
+// Unrest) declares two.
+const MaxCatalogReplacementSlots = 256
 
 // ReplacementEvent is the mutable pre-event value passed through
 // the replacement pipeline. Tagged-union shape (discriminated by
@@ -461,13 +490,14 @@ type activeReplacement struct {
 // contributing it.
 //
 // It is the engine's existing key for a catalog replacement with the
-// object dropped. `ReplacementEffectID` is minted as
-// `battlefieldIndex*256 + slot`, so it says "the Doubling Season in
-// slot 3 of the battlefield"; this says "Doubling Season's counter-
-// doubling replacement, controlled by Ian" — the same for every copy
-// on the board. That is the whole point: two Rhox Faithmenders are
-// two objects contributing ONE effect, and #792 is about not asking
-// which of two identical modifications happened first.
+// object dropped. `ReplacementEffectID` packs the battlefield index
+// and the slot (encodeCatalogReplacementID), so it says "the Doubling
+// Season in slot 3 of the battlefield"; this says "Doubling Season's
+// counter-doubling replacement, controlled by Ian" — the same for
+// every copy on the board. That is the whole point: two Rhox
+// Faithmenders are two objects contributing ONE effect, and #792 is
+// about not asking which of two identical modifications happened
+// first.
 //
 // The zero value means "no stable identity, never interchangeable
 // with anything". Built-in, turn-scoped and test replacements take
@@ -506,6 +536,57 @@ type replacementIdentity struct {
 // is "unidentified", which never matches anything — including
 // another zero value.
 func (r replacementIdentity) known() bool { return r.card != "" }
+
+// encodeCatalogReplacementID mints the per-instance ID for slot
+// `slot` of the catalog card at battlefield index `cardIdx`: the two
+// coordinates packed into one ReplacementEffectID with
+// MaxCatalogReplacementSlots as the stride, offset by one so no live
+// ID is zero (the zero value means "no ID").
+//
+// ok is false for anything the scheme cannot represent — a negative
+// index, a slot past the budget, or a card index far enough along the
+// battlefield to run into the self-replacement range above. A Spec
+// over the budget is refused by effects.Register at boot, so a false
+// here means a test stub or a battlefield nobody could reach; the
+// gather pass skips the entry rather than mint an ID that names a
+// different card's effect.
+//
+// decodeCatalogReplacementID is the exact inverse. The pair is the
+// only place the packing is written (#801) — it used to be a literal
+// in the gather pass and a second, hand-rolled literal in
+// ReplacementOptionMetaForEffect, two sites that had to change
+// together and no check that they did.
+func encodeCatalogReplacementID(cardIdx, slot int) (ReplacementEffectID, bool) {
+	if cardIdx < 0 || slot < 0 || slot >= MaxCatalogReplacementSlots {
+		return 0, false
+	}
+	id := ReplacementEffectID(cardIdx)*MaxCatalogReplacementSlots + ReplacementEffectID(slot) + 1
+	if id >= selfReplacementIDBase || id < 1 {
+		return 0, false
+	}
+	return id, true
+}
+
+// decodeCatalogReplacementID unpacks a catalog ReplacementEffectID
+// back into the battlefield index and slot it was minted from.
+//
+// ok is false for an ID outside the catalog range — zero, or one
+// belonging to a self-replacement, a turn-scoped effect, a test
+// injection or a built-in. Callers that handle those ranges check
+// them first; this is the defensive floor for a stale or malformed ID
+// off the wire, which decodes to nothing rather than to whatever card
+// happens to sit at that battlefield index.
+//
+// The returned cardIdx is NOT bounds-checked against the battlefield:
+// the ID space is far larger than any battlefield, so only the caller
+// holding the slice can say whether the index is live.
+func decodeCatalogReplacementID(id ReplacementEffectID) (cardIdx, slot int, ok bool) {
+	if id < 1 || id >= selfReplacementIDBase {
+		return 0, 0, false
+	}
+	raw := id - 1
+	return int(raw / MaxCatalogReplacementSlots), int(raw % MaxCatalogReplacementSlots), true
+}
 
 // errReplacementPending is a sentinel returned by
 // applyReplacementsLocked when a CR 616 order-choose prompt was
@@ -967,9 +1048,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 
 	// Catalog — walk battlefield cards, look up each card's
 	// replacements via CatalogReplacements, gather applicable ones.
-	// IDs are minted as (battlefieldIndex * 256 + replacementIndex)
-	// — small enough that catalog IDs never collide with the
-	// built-in base range.
+	// IDs are minted by encodeCatalogReplacementID, which packs the
+	// battlefield index and the slot into the bottom of the ID space.
 	if CatalogReplacements != nil {
 		for cardIdx := range g.Battlefield.Cards {
 			card := &g.Battlefield.Cards[cardIdx]
@@ -982,7 +1062,14 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				continue
 			}
 			for repIdx := range reps {
-				id := ReplacementEffectID(cardIdx*256 + repIdx + 1)
+				id, ok := encodeCatalogReplacementID(cardIdx, repIdx)
+				if !ok {
+					// Unrepresentable — a slot past the budget, which
+					// effects.Register refuses at boot. Skipping is
+					// the only safe answer: a minted-anyway ID would
+					// name another card's effect.
+					continue
+				}
 				if applied[id] {
 					continue
 				}
@@ -1018,11 +1105,17 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// battlefield, so a permanent already in play can never match here
 	// as well as in the walk above and apply the same effect twice.
 	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
-		const selfReplacementIDBase ReplacementEffectID = 1 << 45
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
 			key := CatalogKey(entering)
 			reps := CatalogReplacements(key)
 			for repIdx := range reps {
+				if repIdx >= MaxCatalogReplacementSlots {
+					// The same budget the packed catalog IDs are
+					// bounded by, for the same reason: slot
+					// MaxCatalogReplacementSlots would be the first
+					// turn-scoped effect's ID.
+					break
+				}
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
 				if applied[id] {
 					continue
@@ -1053,7 +1146,6 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// RegisterTurnScopedReplacement. Live until StepCleanup clears
 	// the slice. IDs in a dedicated range between catalog space
 	// and test space.
-	const turnScopedIDBase ReplacementEffectID = 1 << 50
 	for i := range g.TurnScopedReplacements {
 		id := turnScopedIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -1071,7 +1163,6 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 
 	// Test replacements. IDs live in a dedicated range above the
 	// catalog + turn-scoped spaces and below the built-in base.
-	const testReplacementIDBase ReplacementEffectID = 1 << 55
 	for i := range g.testReplacements {
 		id := testReplacementIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -1125,8 +1216,6 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	const testReplacementIDBase ReplacementEffectID = 1 << 55
-	const turnScopedIDBase ReplacementEffectID = 1 << 50
 	// Test replacements.
 	if id >= testReplacementIDBase {
 		i := int(id - testReplacementIDBase)
@@ -1143,19 +1232,24 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	// Catalog. ID = cardIdx*256 + repIdx + 1, so decode accordingly.
+	// Catalog — the packed (battlefield index, slot) range, unpacked
+	// by the same pair the gather pass mints with.
 	if CatalogReplacements == nil {
 		return "", uuid.UUID{}
 	}
-	raw := int(id) - 1
-	cardIdx := raw / 256
-	repIdx := raw % 256
-	if cardIdx < 0 || cardIdx >= len(g.Battlefield.Cards) {
+	cardIdx, repIdx, ok := decodeCatalogReplacementID(id)
+	if !ok {
+		// Below the catalog range (zero) or in the self-replacement
+		// range, which names a card that is not on the battlefield
+		// and so has no slot to look up here.
+		return "", uuid.UUID{}
+	}
+	if cardIdx >= len(g.Battlefield.Cards) {
 		return "", uuid.UUID{}
 	}
 	card := &g.Battlefield.Cards[cardIdx]
 	reps := CatalogReplacements(CatalogAbilityKey(*card))
-	if repIdx < 0 || repIdx >= len(reps) {
+	if repIdx >= len(reps) {
 		return "", card.InstanceID
 	}
 	return reps[repIdx].Label, card.InstanceID
