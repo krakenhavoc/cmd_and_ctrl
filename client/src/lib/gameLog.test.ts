@@ -109,6 +109,8 @@ describe("logTone", () => {
       "sacrifice",
       "eliminated",
       "reveal",
+      "roll",
+      "flip",
     ];
     for (const k of kinds) expect(logTone(k)).toMatch(/^tone-/);
   });

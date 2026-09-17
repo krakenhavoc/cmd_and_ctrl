@@ -493,6 +493,11 @@ const (
 	// is raised; the flag, not the event, is what the client reads.
 	// Added for #628 (ADR 0055).
 	EventLoopSuspected EventKind = "loop_suspected"
+
+	// EventRollDie and EventFlipCoin are public random outcomes. One event is
+	// emitted per die/coin; BatchSeq identifies the instruction that made them.
+	EventRollDie  EventKind = "roll_die"
+	EventFlipCoin EventKind = "flip_coin"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -520,6 +525,10 @@ type Event struct {
 	Batch uint64 `json:"batch,omitempty"`
 
 	Kind EventKind `json:"kind"`
+
+	// BatchSeq groups per-die and per-coin events from one instruction. It is
+	// the Seq of that instruction's first event.
+	BatchSeq uint64 `json:"batch_seq,omitempty"`
 
 	// Actor is the player responsible for the event (caster,
 	// controller, drawing player, etc.). uuid.Nil for admin / SBA
@@ -566,6 +575,12 @@ type Event struct {
 	// classification. Kept as a string so adding new counter kinds
 	// doesn't require a schema change.
 	Label string `json:"label,omitempty"`
+
+	// Sides is the die size for EventRollDie. Call and Won describe an
+	// EventFlipCoin; Won is false for a face-only flip.
+	Sides int    `json:"sides,omitempty"`
+	Call  string `json:"call,omitempty"`
+	Won   bool   `json:"won,omitempty"`
 
 	// Step is the step that began, on EventStepBegan. Typed so a
 	// trigger's predicate compares a constant rather than a string
@@ -694,6 +709,9 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 // trigger a follow-on event sees state consistent with the event
 // it's reacting to.
 func (g *Game) EmitEvent(ev Event) {
+	if ev.Kind == EventTokenCreated {
+		g.noteCreatedSourceLocked(ev.CardID)
+	}
 	g.eventSeq++
 	ev.Seq = g.eventSeq
 	// #829: every event carries the batch that was open when it was

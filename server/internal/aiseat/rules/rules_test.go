@@ -2,13 +2,16 @@ package rules_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/rules"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // --- builders -------------------------------------------------------
@@ -17,6 +20,15 @@ var seat = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 
 func mv(kind legal.Kind, label string) legal.Move {
 	return legal.Move{Kind: kind, Label: label, Player: seat}
+}
+
+func coinMove(t *testing.T, id, call string) legal.Move {
+	t.Helper()
+	b, err := json.Marshal(map[string]string{"choice_id": id, "call": call})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return legal.Move{Type: legal.TypeResolveChoice, Kind: legal.KindChoice, Player: seat, Label: "call " + call, Params: b}
 }
 
 func pass() legal.Move { return mv(legal.KindPass, "Pass priority") }
@@ -130,6 +142,28 @@ func TestResolve(t *testing.T) {
 				t.Error("an absorbed window with no reason tells the log nothing")
 			}
 		})
+	}
+}
+
+func TestCoinCallWithoutStopIsAbsorbedAndAgreesWithHeuristic(t *testing.T) {
+	const id = "00000000-0000-4000-8000-000000000001" // tails
+	in := input(coinMove(t, id, "heads"), coinMove(t, id, "tails"))
+	in.View = protocol.GameView{PendingChoices: []protocol.PendingChoiceView{{ID: id, Kind: "coin_call", Chooser: in.Seat.String()}}}
+	v := rules.Resolve(in)
+	if !v.Absorbed() || v.Rule != rules.RuleCoinCall || v.Index != 1 {
+		t.Fatalf("coin verdict = %#v", v)
+	}
+	d, err := heuristic.New().Decide(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Index != v.Index {
+		t.Fatalf("Layer A index %d disagrees with heuristic %d", v.Index, d.Index)
+	}
+
+	in.View.PendingChoices[0].AllowStop = true
+	if v := rules.Resolve(in); v.Absorbed() {
+		t.Fatalf("stop window was absorbed: %#v", v)
 	}
 }
 
@@ -271,5 +305,23 @@ func TestFilterNameCarriesTheTier(t *testing.T) {
 	f.Tier = "heuristic"
 	if f.Name() != "heuristic" {
 		t.Errorf("Name() = %q after setting Tier", f.Name())
+	}
+}
+
+func TestCoinCallMatchesChooserAndChoiceID(t *testing.T) {
+	const own = "00000000-0000-4000-8000-000000000001"
+	const other = "00000000-0000-4000-8000-000000000002"
+	in := input(coinMove(t, other, "tails"), coinMove(t, own, "heads"), coinMove(t, own, "tails"))
+	in.View.PendingChoices = []protocol.PendingChoiceView{
+		{ID: other, Kind: "coin_call", Chooser: uuid.NewString()},
+		{ID: own, Kind: "coin_call", Chooser: in.Seat.String()},
+	}
+	v := rules.Resolve(in)
+	if !v.Absorbed() || v.Index != 2 {
+		t.Fatalf("matched the wrong prompt: %+v", v)
+	}
+	in.View.PendingChoices = in.View.PendingChoices[:1]
+	if v := rules.Resolve(in); v.Absorbed() {
+		t.Fatalf("answered another player's prompt: %+v", v)
 	}
 }

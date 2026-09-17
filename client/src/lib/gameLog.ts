@@ -72,6 +72,8 @@ const LOG_TONE: Record<LogKind, string> = {
   sacrifice: "tone-bad",
   eliminated: "tone-bad",
   reveal: "tone-cast",
+  roll: "tone-cast",
+  flip: "tone-cast",
 };
 
 export function logTone(kind: LogKind): string {

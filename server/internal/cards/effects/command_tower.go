@@ -7,7 +7,8 @@ package effects
 //
 // The single most-played card in Commander, and free to express:
 // the identity narrowing already exists for Arcane Signet, so this
-// is the same pipe set with the same engine-side filter, on a land.
+// is the same pipe set with the same NarrowToCommanderIdentity
+// filter, on a land.
 //
 // A land with a catalog entry declaring ManaAbilities bypasses the
 // synthetic basic-land ability the engine derives from TypeLine —
@@ -22,6 +23,8 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color in your commander's color identity",
+			// The printed text asks for the narrowing (manaPickOptionsFor).
+			NarrowToCommanderIdentity: true,
 		}},
 	})
 }

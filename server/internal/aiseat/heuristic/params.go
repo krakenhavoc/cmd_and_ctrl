@@ -66,6 +66,7 @@ type choiceParams struct {
 	Targets  []targetRef `json:"targets"`
 	Bottom   []string    `json:"bottom"`
 	TopOrder []string    `json:"top_order"`
+	Call     string      `json:"call"`
 }
 
 type mulliganParams struct {

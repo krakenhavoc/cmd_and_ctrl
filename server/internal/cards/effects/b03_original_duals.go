@@ -17,10 +17,9 @@ package effects
 // "Swamp card" both see the dual as printed.
 //
 // No enters-tapped, no drawback: one dualManaAbility row each, the
-// same shape the bond and check lands use. The pipe narrows to the
-// controller's commander identity at activation, as every two-colour
-// land in the catalog does — a UX narrowing that removes an option
-// the deck could never use and never adds one.
+// same shape the bond and check lands use. The pipe offers both
+// printed colours, the controller's commander identity listed first,
+// as every two-colour land in the catalog does.
 func init() {
 	for _, d := range []struct{ oracleID, name, a, b string }{
 		{"13ff3222-91cb-4796-a34e-899ed817694c", "Badlands", "B", "R"},

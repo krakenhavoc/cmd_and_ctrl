@@ -328,6 +328,11 @@ func TestBlockLegalityDoesNotMutate(t *testing.T) {
 		pushWalker(g, active, "Flier", "flying"),
 		pushWalker(g, active, "Fish", "islandwalk"),
 		pushWalker(g, active, "Booted", "nonbasic landwalk"),
+		pushWalker(g, active, "Fear", "fear"),
+		pushWalker(g, active, "Intimidator", "intimidate"),
+		pushWalker(g, active, "Shadow", "shadow"),
+		pushWalker(g, active, "Horse", "horsemanship"),
+		pushWalker(g, active, "Skulk", "skulk"),
 		pushWalker(g, active, "Plain"),
 		pushRestrictableCreature(g, g.playerByIDLocked(active), "Cloaked"),
 	}
@@ -344,7 +349,7 @@ func TestBlockLegalityDoesNotMutate(t *testing.T) {
 	}
 	advanceIntoStep(t, g, StepDeclareAttackers)
 	for i, a := range attackers {
-		target := []uuid.UUID{def, pw, battle, def, def}[i]
+		target := []uuid.UUID{def, pw, battle, def, def, def, def, def, def, def}[i]
 		if err := g.DeclareAttacker(a, target); err != nil {
 			t.Fatalf("DeclareAttacker: %v", err)
 		}

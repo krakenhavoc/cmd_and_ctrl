@@ -1320,7 +1320,7 @@ func TestB10FireLitThicketIsAFilterLand(t *testing.T) {
 		t.Errorf("ability 0 must be the {C} half, got %q", spec.ManaAbilities[0].Produced)
 	}
 	filter := spec.ManaAbilities[1]
-	if filter.Cost.Mana != "{R/G}" || filter.Produced != "{R|G}{R|G}" || !filter.IgnoreCommanderIdentity {
+	if filter.Cost.Mana != "{R/G}" || filter.Produced != "{R|G}{R|G}" || filter.NarrowToCommanderIdentity {
 		t.Errorf("filter half is %+v, want a {R/G} cost and two {R|G} picks", filter)
 	}
 }

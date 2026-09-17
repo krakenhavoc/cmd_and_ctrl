@@ -209,9 +209,11 @@ type PendingChoiceView struct {
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
-	// "C"). Absent for non-mana choices. Server-side filtered
-	// against commander identity before the wire leaves the engine.
-	// Added in S15 sub-PR 2.
+	// "C"). Absent for non-mana choices. Ordered server-side: the
+	// commander's colour identity first, then the rest; only a source
+	// whose printed text says "in your commander's color identity"
+	// (Command Tower, Arcane Signet) is narrowed to it. Render in the
+	// order given. Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
 	// ColorAmounts populates a "mana_pick" that adds more than one mana
@@ -285,6 +287,12 @@ type PendingChoiceView struct {
 	// otherwise price "pay 4 life to keep it" like "shuffle your
 	// library".
 	LifeCost int `json:"life_cost,omitempty"`
+
+	// Coin-call answers and the public progress of a flip chain.
+	AllowStop     bool `json:"allow_stop,omitempty"`
+	Coins         int  `json:"coins,omitempty"`
+	MaxUsefulWins int  `json:"max_useful_wins,omitempty"`
+	Wins          int  `json:"wins,omitempty"`
 
 	// ChooseMin / ChooseMax populate the "choose_cards" kind: how few
 	// and how many of Options the chooser must pick. Both are sent —
@@ -709,15 +717,25 @@ type CardView struct {
 	// Omitted for placeholder demo cards that have no resolved type.
 	// Added in S08.
 	TypeLine string `json:"type_line,omitempty"`
+	// Colors is the effective color list (W/U/B/R/G), including layer-5
+	// changes. Absent means colorless; mana cost is not a color fallback.
+	Colors []string `json:"colors,omitempty"`
 	// Power and Toughness are the parsed printed stats. Zero for
 	// non-creatures and for any card with non-numeric printed stats
 	// ("*", "1+*"). The client uses Power to label combat-panel
 	// creature rows; ResolveCombatDamage uses CurrentPower (base +
 	// counter modifiers) on the server side. Both omitempty for
 	// non-creatures. Added in S08.
-	Power       int            `json:"power,omitempty"`
-	Toughness   int            `json:"toughness,omitempty"`
-	Tapped      bool           `json:"tapped,omitempty"`
+	Power int `json:"power,omitempty"`
+	// NegativePower preserves signed power for comparisons such as skulk.
+	// Present only below zero; Power retains its combat-damage zero clamp.
+	NegativePower int  `json:"negative_power,omitempty"`
+	Toughness     int  `json:"toughness,omitempty"`
+	Tapped        bool `json:"tapped,omitempty"`
+	// NoUntap describes an untap-step restriction or one-shot marker on
+	// this battlefield permanent. Static is hidden for face-down cards;
+	// Next is public state and survives the face-down identity redaction.
+	NoUntap     *NoUntapView   `json:"no_untap,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
@@ -1019,6 +1037,15 @@ type CardView struct {
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
 	ActiveFace int `json:"active_face,omitempty"`
+}
+
+// NoUntapView is the public projection of a permanent's untap-step
+// restrictions. A controller-keyed marker is represented by the current
+// controller's player ID in Next; duplicate and eliminated players are
+// omitted by stampNoUntap.
+type NoUntapView struct {
+	Static bool     `json:"static,omitempty"`
+	Next   []string `json:"next,omitempty"`
 }
 
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
@@ -1407,6 +1434,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampCombatTargets(g, &view)
+		stampNoUntap(g, &view.Battlefield)
 		view.legalBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
@@ -1811,6 +1839,60 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 	}
 }
 
+// stampNoUntap projects the untap-step state that needs the game handle.
+// Caller holds g's read lock. The view and battlefield slices are kept in
+// the same order by viewOfZone, so this pass can use the card index without
+// exposing the internal marker representation.
+func stampNoUntap(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		static := !card.FaceDown && g.UntapStepRestrictedLocked(card)
+		next := projectedUntapSkipPlayers(g, card)
+		if !static && len(next) == 0 {
+			continue
+		}
+		view.Cards[i].NoUntap = &NoUntapView{Static: static, Next: next}
+	}
+}
+
+func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
+	if card == nil || len(card.NextUntapSkips) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
+	players := make([]string, 0, len(card.NextUntapSkips))
+	for _, skip := range card.NextUntapSkips {
+		playerID := skip.Player
+		if playerID == uuid.Nil {
+			playerID = card.Controller
+		}
+		if playerID == uuid.Nil || !livePlayer(g, playerID) {
+			continue
+		}
+		if _, ok := seen[playerID]; ok {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		players = append(players, playerID.String())
+	}
+	return players
+}
+
+func livePlayer(g *game.Game, id uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p != nil && p.ID == id {
+			return !p.Eliminated
+		}
+	}
+	return false
+}
+
 // stampManaSacrificeOptions fills the sacrifice clause on a
 // permanent's MANA abilities (Ashnod's Altar, Phyrexian Altar).
 //
@@ -1919,6 +2001,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceConfirm — the chained-choice two-way prompt.
 		// Only the branch labels travel; everything else about the
 		// question is already in Reason.
+		if c.Kind == game.PendingChoiceCoinCall {
+			v.AllowStop = c.CoinAllowStop
+			v.Coins = c.CoinCount
+			v.MaxUsefulWins = c.CoinMaxUsefulWins
+			v.Wins = c.CoinWins
+		}
 		if c.Kind == game.PendingChoiceConfirm {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
@@ -2586,8 +2674,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	}
 	out.Name = ""
 	out.TypeLine = ""
+	out.Colors = nil
 	out.ScryfallID = ""
 	out.Power = 0
+	out.NegativePower = 0
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
@@ -2731,6 +2821,7 @@ func viewOfCard(c game.Card) CardView {
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
 		TypeLine:   effectiveTypeLine(c, eff),
+		Colors:     append([]string(nil), eff.Colors...),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
@@ -2739,11 +2830,12 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:       c.CurrentPower(),
-		Toughness:   c.CurrentToughness(),
-		Tapped:      c.Tapped,
-		Counters:    counters,
-		IsCommander: c.IsCommander,
+		Power:         c.CurrentPower(),
+		NegativePower: min(0, c.PowerForComparison()),
+		Toughness:     c.CurrentToughness(),
+		Tapped:        c.Tapped,
+		Counters:      counters,
+		IsCommander:   c.IsCommander,
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

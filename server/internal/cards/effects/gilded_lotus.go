@@ -25,10 +25,9 @@ func init() {
 		Name:         "Gilded Lotus",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                OneColorOfAmount(3),
-			Label:                   "Add three mana of any one color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: OneColorOfAmount(3),
+			Label:    "Add three mana of any one color",
 		}},
 	})
 }

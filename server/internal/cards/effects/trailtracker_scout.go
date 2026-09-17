@@ -29,10 +29,9 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The expend trigger isn't implemented — spending your eighth mana in a turn doesn't return a permanent card from your graveyard."},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 	})
 }

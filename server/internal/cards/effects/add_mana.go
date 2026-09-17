@@ -20,9 +20,9 @@ import (
 // AddMana puts the mana described by Produced into Player's pool.
 // Produced uses the brace grammar ManaAbility.Produced does, pipe
 // syntax included — a "{W|U|B|R|G}" slot queues the same colour
-// pick a Birds of Paradise activation would, narrowed to the
-// controller's commander identity like Treasure is unless
-// IgnoreCommanderIdentity is set.
+// pick a Birds of Paradise activation would: every printed colour,
+// with the controller's commander identity listed first, unless
+// NarrowToCommanderIdentity is set.
 //
 // The mana is attributed to the resolving item's source card, and it
 // empties with the pool at the end of the step (CR 106.4): mana from
@@ -33,11 +33,13 @@ type AddMana struct {
 	Player   uuid.UUID
 	Produced string
 
-	// IgnoreCommanderIdentity keeps a pipe pick at its printed width,
-	// exactly as ManaAbility.IgnoreCommanderIdentity does for a mana
-	// ability. Set it whenever the printed text says "any color" with
-	// no commander-identity clause (Lotus Cobra, Deathrite Shaman).
-	IgnoreCommanderIdentity bool
+	// NarrowToCommanderIdentity intersects a pipe pick with the
+	// controller's commander colour identity, exactly as
+	// ManaAbility.NarrowToCommanderIdentity does for a mana ability.
+	// Set it only when the printed text says "any color in your
+	// commander's color identity"; "any color" (Lotus Cobra, Deathrite
+	// Shaman) leaves it off and offers all five, identity first.
+	NarrowToCommanderIdentity bool
 }
 
 func (a AddMana) Apply(ctx *Context) error {
@@ -49,5 +51,5 @@ func (a AddMana) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	return ctx.Game.AddManaWithOptionsForEffect(player, ctx.Source(), a.Produced,
-		game.AddManaOptions{IgnoreCommanderIdentity: a.IgnoreCommanderIdentity})
+		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity})
 }

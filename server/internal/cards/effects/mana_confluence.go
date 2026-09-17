@@ -16,15 +16,13 @@ package effects
 //   - Ancient Tomb, by contrast, taps happily at 1 life and then
 //     kills its controller.
 //
-// "One mana of any color" is a five-colour pipe with the
-// commander-identity narrowing switched OFF. The narrowing exists for
-// Arcane Signet and Command Tower, whose printed text names the
-// commander's identity; this card says "any color" flatly, and a
-// Rakdos deck's Mana Confluence really can produce {G}. (In practice
-// off-identity mana is only ever useful for generic costs, so the
-// narrowing would have been harmless — but it would also have been a
-// lie about what the card does, and the player would see a two-colour
-// picker on a card that prints five.)
+// "One mana of any color" is a five-colour pipe with no
+// commander-identity narrowing. The narrowing exists only for Arcane
+// Signet and Command Tower and their kin, whose printed text names
+// the commander's identity; this card says "any color" flatly, and a
+// Rakdos deck's Mana Confluence really can produce {G} (offered after
+// {B} and {R}). Narrowing it would be a lie about what the card does:
+// the player would see a two-colour picker on a card that prints five.
 //
 // Excluded from the auto-tapper (game.autoTapAbilityFor): a planner
 // that spends life without being asked is a planner nobody should
@@ -37,10 +35,9 @@ func init() {
 		Name:         "Mana Confluence",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Pay 1 life: Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Pay 1 life: Add one mana of any color",
 		}},
 	})
 }

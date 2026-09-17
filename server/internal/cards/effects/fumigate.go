@@ -20,7 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A commander hit by this IS counted, and that is right: CR 903.9
 // replaces the zone change, not the destruction — the commander was
-// destroyed, it just went somewhere else.
+// destroyed, it just went somewhere else. Its owner is asked first,
+// though, so the life gain happens when they answer rather than on
+// this line (#815).
+//
+// A destruction a replacement rewrote into an EXILE is the case that
+// looks the same and is counted the other way: CR 701.7a defines
+// destroying a permanent as moving it to its owner's GRAVEYARD, so a
+// permanent that was exiled instead was never destroyed, however
+// thoroughly it left. See ADR 0013 §5i.
 func init() {
 	Register(Spec{
 		OracleID:     "b17ea905-0696-4e58-b564-557e87236e27",

@@ -278,7 +278,7 @@ func TestParseProducedManaAmounts(t *testing.T) {
 }
 
 func oneColorShape(produced string) []ManaAbilityShape {
-	return []ManaAbilityShape{{TapCost: true, Produced: produced, Label: "Add three mana of any one color", IgnoreCommanderIdentity: true}}
+	return []ManaAbilityShape{{TapCost: true, Produced: produced, Label: "Add three mana of any one color"}}
 }
 
 // Gilded Lotus: one pick, three tokens of the picked colour.
@@ -346,10 +346,12 @@ func TestAddManaForEffectOneColorAmount(t *testing.T) {
 	}
 }
 
-// AddManaForEffect narrows a pick to the commander's colour identity;
-// the IgnoreCommanderIdentity option keeps the printed "any color"
-// width (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
-func TestAddManaForEffectIdentityOptOut(t *testing.T) {
+// AddManaForEffect offers the printed "any color" width with the
+// commander's colour identity listed first (Sanctum of Fruitful
+// Harvest, Lotus Cobra, Deathrite Shaman); the
+// NarrowToCommanderIdentity option intersects it with the identity
+// instead, for printed text that says so.
+func TestAddManaForEffectIdentityOrderAndNarrowing(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
@@ -367,25 +369,25 @@ func TestAddManaForEffectIdentityOptOut(t *testing.T) {
 			t.Fatalf("AddManaForEffect: %v", err)
 		}
 	})
-	narrowed := choiceByKind(g, PendingChoiceMana)
-	if narrowed == nil || !reflect.DeepEqual(narrowed.ColorOptions, []string{"G"}) {
-		t.Fatalf("default pick = %+v, want narrowed to [G]", narrowed)
+	wide := choiceByKind(g, PendingChoiceMana)
+	if wide == nil || !reflect.DeepEqual(wide.ColorOptions, []string{"G", "W", "U", "B", "R"}) {
+		t.Fatalf("default pick = %+v, want all five colours with G first", wide)
 	}
-	if err := g.ResolveManaChoice(narrowed.ID, me.ID, "G"); err != nil {
-		t.Fatalf("ResolveManaChoice: %v", err)
+	if wide.ManaAmounts["B"] != 3 {
+		t.Errorf("default pick amounts = %v, want three of each", wide.ManaAmounts)
+	}
+	if err := g.ResolveManaChoice(wide.ID, me.ID, "B"); err != nil {
+		t.Fatalf("ResolveManaChoice off-identity B: %v", err)
 	}
 
 	g.WithWriteLock(func() {
 		if err := g.AddManaWithOptionsForEffect(me.ID, uuid.New(), "{W3|U3|B3|R3|G3}",
-			AddManaOptions{IgnoreCommanderIdentity: true}); err != nil {
+			AddManaOptions{NarrowToCommanderIdentity: true}); err != nil {
 			t.Fatalf("AddManaWithOptionsForEffect: %v", err)
 		}
 	})
-	wide := choiceByKind(g, PendingChoiceMana)
-	if wide == nil || !reflect.DeepEqual(wide.ColorOptions, AllColors) {
-		t.Fatalf("opted-out pick = %+v, want all five colours", wide)
-	}
-	if wide.ManaAmounts["B"] != 3 {
-		t.Errorf("opted-out pick amounts = %v, want three of each", wide.ManaAmounts)
+	narrowed := choiceByKind(g, PendingChoiceMana)
+	if narrowed == nil || !reflect.DeepEqual(narrowed.ColorOptions, []string{"G"}) {
+		t.Fatalf("narrowed pick = %+v, want [G]", narrowed)
 	}
 }

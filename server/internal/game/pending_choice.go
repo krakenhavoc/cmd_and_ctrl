@@ -52,8 +52,9 @@ const (
 	PendingChoiceDiscardFromHand PendingChoiceKind = "discard_from_hand"
 
 	// PendingChoiceMana — the chooser picks one color from a fixed
-	// option set (Birds of Paradise's WUBRG, Arcane Signet's
-	// commander-identity subset). On resolve the picked color drops
+	// option set (Birds of Paradise's WUBRG with the commander's
+	// identity listed first, Arcane Signet's commander-identity
+	// subset). On resolve the picked color drops
 	// into the chooser's pool as one ManaToken sourced from the
 	// permanent that fired the ability. Added in S15 sub-PR 2.
 	PendingChoiceMana PendingChoiceKind = "mana_pick"
@@ -264,6 +265,10 @@ const (
 	// cascade.go for why, and for the delayed cleanup that keeps the
 	// grant from outliving the offer.
 	PendingChoiceMayCast PendingChoiceKind = "may_cast"
+
+	// PendingChoiceCoinCall asks a flipper to call heads or tails for a
+	// won/lost flip. Stop is available only when CoinAllowStop is true.
+	PendingChoiceCoinCall PendingChoiceKind = "coin_call"
 )
 
 // PendingChoice is one outstanding "someone needs to pick" entry
@@ -304,12 +309,20 @@ type PendingChoice struct {
 	// the wire carries it; no localisation yet.
 	Reason string
 
+	// Coin-call prompt data. These are data (not the continuation), so the
+	// protocol can render the exact choices and bot hint.
+	CoinAllowStop     bool
+	CoinCount         int
+	CoinMaxUsefulWins int
+	CoinWins          int
+
 	// ColorOptions is the legal-picks list for PendingChoiceMana.
 	// Uppercase single-character entries (W/U/B/R/G/C). Unused for
 	// other choice kinds. Populated server-side so the client
-	// renders a color picker with exactly the right buttons
-	// (commander-identity-filtered for Arcane Signet, the full five
-	// for Birds of Paradise). Added in S15 sub-PR 2.
+	// renders a color picker with exactly the right buttons, in
+	// order (commander-identity-filtered for Arcane Signet, the full
+	// five for Birds of Paradise with the commander's identity listed
+	// first — see manaPickOptionsFor). Added in S15 sub-PR 2.
 	ColorOptions []string
 
 	// ManaRestrictions are the spend restrictions the token minted
@@ -517,7 +530,8 @@ type PendingChoice struct {
 	// confirmResume is the server-only continuation pair for a
 	// PendingChoiceConfirm: one closure per branch. Not serialised.
 	// See chained_choice.go.
-	confirmResume *confirmFrame
+	confirmResume  *confirmFrame
+	coinFlipResume *coinFlipFrame
 
 	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
 	// in the order the client should render them. Wire-serialised via
@@ -961,6 +975,47 @@ func (g *Game) optionalReplacementChooserLocked(ev *ReplacementEvent, chosen act
 	return chooser
 }
 
+// offerOptionalReplacementLocked handles an applicable CR 614.10
+// "may" replacement. Returns true when the yes/no prompt was queued
+// and the caller must stop where it is — errReplacementPending from
+// the apply-loop, a bare nil from the chosen-order resume — which is
+// the pause-and-bail contract offerCopyChoiceLocked and
+// offerEntryLifePaymentLocked already have.
+//
+// Returns false — the "may" is DECLINED, and marked applied so the
+// apply-loop does not gather it a second time (CR 614.10: the
+// decision is once per event) — in the two cases where there is no
+// question to ask:
+//
+//   - the chooser has left the game, or cannot be identified. The
+//     commander of an eliminated player going to the graveyard rather
+//     than the command zone changes nothing for anyone.
+//   - the event has nothing to resume it (#359, see
+//     optionalReplacementResumableLocked). Pausing a battlefield entry
+//     that cannot be finished afterwards strands the card in its old
+//     zone; declining is weaker than printed and never stronger, the
+//     posture #268 chose for the shockland's payment and #272
+//     reaffirmed.
+//
+// It is a shared helper rather than two inline copies because the
+// multi-effect order path had NO copy (#847): applyReplacementsLocked
+// asked the question for a "may" that was the only applicable effect,
+// and ResolveReplacementOrder fired the same "may" blind when a second
+// effect had put it in a CR 616 ordering prompt — answering it in the
+// direction that favours it, which is the bug the CopySelector branch
+// beside it already existed to avoid.
+//
+// Caller must hold g.mu.
+func (g *Game) offerOptionalReplacementLocked(ev *ReplacementEvent, chosen activeReplacement) bool {
+	if !g.optionalReplacementResumableLocked(ev) ||
+		g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
+		g.markReplacementAppliedLocked(ev, chosen.id)
+		return false
+	}
+	g.queueOptionalReplacementPromptLocked(ev, chosen)
+	return true
+}
+
 // ResolveOptionalReplacement processes a resolve_choice action
 // for a PendingChoiceOptionalReplacement entry. `apply` is the
 // owner's yes/no decision: true → fire the stashed Replace; false
@@ -1230,6 +1285,22 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 			}
 			continue
 		}
+		if chosen.effect.Optional {
+			// #847: and a CR 614.10 "may" is the third of them. This
+			// branch was missing, so a "may" ordered alongside any
+			// other effect fired without ever being offered — the
+			// engine said yes on its controller's behalf, which is
+			// precisely what the two branches above exist to prevent.
+			// Same pause-and-bail, same one resume: the chain
+			// continues from this effect when
+			// ResolveOptionalReplacement re-enters the apply-loop,
+			// with the effects later in the chosen order still
+			// unapplied and therefore still gatherable.
+			if g.offerOptionalReplacementLocked(ev, chosen) {
+				return nil
+			}
+			continue
+		}
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
 		if chosen.effect.Replace != nil {
 			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
@@ -1364,7 +1435,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// move_card verb included. The two branches after it are the
 		// older, hand-rolled resumes for the battlefield entry and
 		// battlefield-leave paths.
-		if ev.zoneRoute != nil {
+		//
+		// The one route that is NOT finished here is the destroy /
+		// sacrifice / SBA exit, which keeps its own mover and carries
+		// a route only to hold a continuation (#815, ViaBattlefieldLeave).
+		// It falls through to the battlefield-leave branch below.
+		if ev.zoneRoute != nil && !ev.zoneRoute.ViaBattlefieldLeave {
 			return g.executeZoneRouteLocked(ev)
 		}
 		// S17 sub-PR 6: resume path for battlefield-leave moves
@@ -1396,7 +1472,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
 			owner = g.playerByIDLocked(card.Owner)
 		}
-		return g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+		// #815: through the shared finisher, so a destruction that
+		// paused on the CR 903.9 prompt runs its caller's continuation
+		// from exactly where an unpaused one runs it. A route reaches
+		// this branch only when it is flagged ViaBattlefieldLeave —
+		// every other exit went to executeZoneRouteLocked above.
+		return g.finishBattlefieldLeaveLocked(ev, owner)
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is

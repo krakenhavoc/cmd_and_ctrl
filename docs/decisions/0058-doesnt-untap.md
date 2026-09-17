@@ -810,3 +810,20 @@ record.
      untap-step choice ADR is filed as
      [#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826),
      unscheduled.
+
+
+## Implementation checkpoint — 2026-09-17
+
+The implementation for #751 combines the engine, board projection, bot support
+and first-wave cards in one feature PR. Static restrictions use the catalog's
+ability key, next-step markers survive undo and snapshots, and the common untap
+primitive replaces attempts with stun-counter removal. The auto-tapper reserves
+restricted sources until needed; the board and bot prompt explain held
+permanents using the same public projection.
+
+All 17 cards in the table are represented: 16 new entries and Tangle's completed
+untap clause. Mana Vault and Claustrophobia explicitly declare a remaining
+post-departure last-known-information limitation for their draw-step and entry
+abilities, respectively. Their untap restrictions are implemented. Winter Orb
+and the other choose-N cards still wait on #826; exert's action/cost and
+source-linked durations remain outside this implementation.

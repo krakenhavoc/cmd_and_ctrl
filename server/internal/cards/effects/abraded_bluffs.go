@@ -38,10 +38,9 @@ func init() {
 			},
 		}},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{R|W}",
-			Label:                   "Add {R} or {W}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{R|W}",
+			Label:    "Add {R} or {W}",
 		}},
 	})
 }

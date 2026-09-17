@@ -285,16 +285,19 @@ if len(losers) > 0 || g.ActiveSeatLeftPending { // Decision 3's deferred departu
     fired = true
 }
 // ... the permanent SBAs (704.5f-j, battles, sagas, legend rule) ...
-if moveOn { g.advancePastEliminatedLocked() } // last act of the pass
+// Return moveOn to the settling loop. Accumulate it across repeated SBA
+// passes; rotate once they are quiet, before draining waiting triggers.
 ```
 
-- **The rotation is the pass's last act, not the loss loop's.** Ending
+- **The rotation waits for repeated SBA passes to settle.** Ending
   the active player's turn runs the cleanup sweep, which removes marked
-  damage and deathtouch marks, and the destruction SBAs of the same pass
-  read those (CR 704.3: one event). Rotating straight after the loss
-  loop let every creature an Earthquake-style spell had just killed
-  survive when the same spell killed its caster (#834 review; fixed in
-  that PR, pinned by `TestActiveSeatSBALossStillDestroysMarkedCreatures`).
+  damage and deathtouch marks. The destruction SBAs read those marks,
+  including on later checks: a lord dying on one pass can make another
+  creature's damage lethal on the next. `runStateChecksLocked` therefore
+  repeats the checks before rotating, then checks the new turn's board
+  before draining the waiting triggers (#834 review; pinned by
+  `TestActiveSeatSBALossStillDestroysMarkedCreatures` and
+  `TestActiveSeatSBALossSettlesChainedLethalDamageBeforeCleanup`).
 
 - **Every gate is read at the check**, against the battlefield as it is
   then. A player at 0 life whose Platinum Angel dies loses at the next

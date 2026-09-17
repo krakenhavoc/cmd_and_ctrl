@@ -206,7 +206,9 @@ type GameSnapshot struct {
 	LastKnownBattlefield     map[uuid.UUID]Characteristic     `json:"lastKnownBattlefield,omitempty"`
 	LastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI `json:"lastKnownTriggerIdentity,omitempty"`
 
-	RNG rngSnapshot `json:"rng"`
+	RNG               rngSnapshot          `json:"rng"`
+	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
+	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
 
 	LayerVersion        uint64 `json:"layerVersion"`
 	LastResolvedVersion uint64 `json:"lastResolvedVersion"`
@@ -302,6 +304,7 @@ type cardSnapshot struct {
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
 	Tapped                   bool                `json:"tapped"`
+	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
 	BattleX                  float64             `json:"battleX"`
 	BattleY                  float64             `json:"battleY"`
 	Counters                 map[string]int      `json:"counters,omitempty"`
@@ -401,6 +404,10 @@ type pendingChoiceSnapshot struct {
 	Count                int                    `json:"count"`
 	Source               uuid.UUID              `json:"source"`
 	Reason               string                 `json:"reason,omitempty"`
+	CoinAllowStop        bool                   `json:"coinAllowStop,omitempty"`
+	CoinCount            int                    `json:"coinCount,omitempty"`
+	CoinMaxUsefulWins    int                    `json:"coinMaxUsefulWins,omitempty"`
+	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
@@ -726,6 +733,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// the new binary rebuilds them itself. See restoreGame.
 
 	s.RNG = snapshotRNG(g)
+	s.SourceOrdinals = cloneSourceOrdinals(g.sourceOrdinals)
+	s.SourceOrdinalNext = g.sourceOrdinalNext
 	s.LayerVersion = g.layerVersion.Load()
 	s.LastResolvedVersion = g.lastResolvedVersion.Load()
 	return s
@@ -792,6 +801,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -966,6 +976,10 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		Count:                c.Count,
 		Source:               c.Source,
 		Reason:               c.Reason,
+		CoinAllowStop:        c.CoinAllowStop,
+		CoinCount:            c.CoinCount,
+		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
+		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
@@ -1015,6 +1029,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"chooseCardsResume": c.chooseCardsResume != nil,
 		// #742's resolution-time "choose a color".
 		"chooseColorResume": c.chooseColorResume != nil,
+		"coinFlipResume":    c.coinFlipResume != nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -1179,6 +1194,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 
 	restoreRNG(g, s.RNG)
+	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
+	g.sourceOrdinalNext = s.SourceOrdinalNext
 
 	// Layer-engine counters, handled exactly as RestoreFrom does
 	// after an undo and for the same reason: every restored Card
@@ -1258,6 +1275,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -1420,6 +1438,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		Count:                c.Count,
 		Source:               c.Source,
 		Reason:               c.Reason,
+		CoinAllowStop:        c.CoinAllowStop,
+		CoinCount:            c.CoinCount,
+		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
+		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),

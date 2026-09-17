@@ -37,9 +37,9 @@ package effects
 // Net-positive filtering: {1} in, {A}{B} out, so a Signet ramps by
 // one and fixes by two. That is the whole card and it is all here.
 //
-// No simplification. IgnoreCommanderIdentity is not set and does not
-// need to be — the produced string names two specific colours as two
-// separate slots, not a pipe, so there is no option set to narrow.
+// No simplification. The produced string names two specific colours
+// as two separate slots, not a pipe, so there is no colour pick at
+// all.
 func init() {
 	for _, s := range []struct{ oracleID, name, a, b string }{
 		{"7d881c57-0bd9-4c57-aa4a-b10808b86143", "Dimir Signet", "U", "B"},

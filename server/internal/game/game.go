@@ -358,6 +358,13 @@ type Game struct {
 	rngCounters map[string]uint64
 	rngTurn     int
 
+	// sourceOrdinals makes an object's random-effect stream stable across
+	// independently seeded runs. Deck cards use class 0 (seat/index); objects
+	// created while playing use class 1 and the monotonically increasing
+	// sourceOrdinalNext. See ADR 0054 addendum.
+	sourceOrdinals    map[uuid.UUID]uint64
+	sourceOrdinalNext uint64
+
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change
 	// which static abilities are active or what they apply to —
@@ -508,9 +515,10 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	// Stamp every card with its owner (overwriting whatever the caller
 	// set) and route commanders vs. library cards.
-	for _, c := range deck {
+	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
+		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
 		if c.IsCommander {
 			p.Command.PushTop(c)
 		} else {
@@ -555,9 +563,10 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Library.Cards = p.Library.Cards[:0]
 	p.Command.Cards = p.Command.Cards[:0]
 
-	for _, c := range deck {
+	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
+		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
 		if c.IsCommander {
 			p.Command.PushTop(c)
 		} else {

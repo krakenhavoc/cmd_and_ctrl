@@ -34,10 +34,9 @@ const (
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.
 	CounterCharge = "charge"
-	// CounterStun is the stun counter (post-NEO). When the card
-	// is untapped, remove a stun counter instead. No SBA — the
-	// "remove instead of untap" behaviour is the cleanup-step
-	// turn-based action territory of S14+.
+	// CounterStun is the stun counter (post-NEO). A would-be untap
+	// removes one instead; untapPermanentLocked enforces it for every
+	// untap, not as a state-based action.
 	CounterStun = "stun"
 	// CounterShield is the shield counter (post-MOM).
 	CounterShield = "shield"

@@ -19,9 +19,8 @@ package effects
 //   - The output is two independent {B|R} slots. "BB, BR, or RR" is
 //     exactly the set of two independent picks from {B, R}, so two
 //     colour prompts give the printed choice space with no third
-//     shape. IgnoreCommanderIdentity is set for the painlands'
-//     reason: the card names its colours and says nothing about the
-//     command zone.
+//     shape. NarrowToCommanderIdentity stays off: the card names
+//     its colours and says nothing about the command zone.
 //
 // The colorless half sits at index 0 so the auto-tapper reaches for
 // it and never spends the player's floating mana on a filter.
@@ -35,10 +34,9 @@ func init() {
 		ManaAbilities: []ManaAbility{
 			painlessColorless(),
 			{
-				Cost:                    ManaAbilityCost{Tap: true, Mana: "{B/R}"},
-				Produced:                "{B|R}{B|R}",
-				Label:                   "{B/R}, {T}: Add {B}{B}, {B}{R}, or {R}{R}",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true, Mana: "{B/R}"},
+				Produced: "{B|R}{B|R}",
+				Label:    "{B/R}, {T}: Add {B}{B}, {B}{R}, or {R}{R}",
 			},
 		},
 	})

@@ -60,7 +60,16 @@ export interface ErrorPayload {
 // BlockRefusalReason mirrors game.BlockReason (server/internal/game/
 // block_legality.go): the tokens the server sends today. Stable once
 // shipped; new ones join in the change that first sends them.
-export type BlockRefusalReason = "cant_block" | "cant_be_blocked" | "flying" | "landwalk";
+export type BlockRefusalReason =
+  | "cant_block"
+  | "cant_be_blocked"
+  | "flying"
+  | "landwalk"
+  | "fear"
+  | "intimidate"
+  | "shadow"
+  | "horsemanship"
+  | "skulk";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -401,7 +410,12 @@ export type LogKind =
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
   // text names no card for anyone.
-  | "reveal";
+  | "reveal"
+  // S30 random effects: the server-rendered public outcome of a die
+  // roll or coin flip. The event text is already redacted and ready
+  // for both the log and the attention strip.
+  | "roll"
+  | "flip";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -446,6 +460,13 @@ export interface LogEvent {
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
+  // Random-effect details. These are optional so older log entries
+  // and future effect families remain wire-compatible.
+  sides?: number;
+  results?: number[];
+  faces?: string[];
+  call?: "heads" | "tails";
+  wins?: number;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
@@ -548,6 +569,9 @@ export interface PendingChoiceView {
     // than blue" is four). Answered with the same {choice_id, color}
     // payload a mana_pick uses; the server routes the two by kind.
     | "choose_color"
+    // S30 coin call: choose heads or tails for the pending flip. A
+    // stop answer is offered only when allow_stop is true.
+    | "coin_call"
     | string;
   chooser: string;
   from_player: string;
@@ -557,9 +581,12 @@ export interface PendingChoiceView {
   options?: CardView[];
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
-  // character values ("W", "U", "B", "R", "G", "C"). Server-filtered
-  // against commander identity for Arcane Signet; full 5-color for
-  // Birds of Paradise.
+  // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
+  // side with the chooser's commander colour identity first; render in
+  // the order sent. Full 5-color for Birds of Paradise ("G" first in a
+  // mono-green deck); narrowed to the identity only for Arcane Signet
+  // and the other cards whose text says "in your commander's color
+  // identity".
   color_options?: string[];
   // #742: on a "mana_pick" that adds more than one mana of the picked
   // colour ("{T}: Add three mana of any one color") — colour letter to
@@ -635,6 +662,12 @@ export interface PendingChoiceView {
   // server omits both fields for ordinary choices.
   doubled_by?: string;
   doubled_by_name?: string;
+  // S30 coin call prompt metadata. `coins` is the number of coins
+  // covered by one call; wins tracks an ongoing chain.
+  allow_stop?: boolean;
+  coins?: number;
+  max_useful_wins?: number;
+  wins?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -1073,6 +1106,11 @@ export interface CardFaceView {
   image?: string;
 }
 
+export interface NoUntapView {
+  static?: boolean;
+  next?: string[];
+}
+
 export interface CardView {
   instance_id: string;
   /**
@@ -1089,11 +1127,20 @@ export interface CardView {
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
   type_line?: string;
+  // Effective colors (W/U/B/R/G), including layer-5 changes. Omitted
+  // means colorless; clients must never infer colors from mana_cost.
+  colors?: string[];
+  // Signed power when below zero, for comparisons such as skulk.
+  // Otherwise use power, which retains its combat-damage zero clamp.
+  negative_power?: number;
   // Parsed printed creature stats. Omitted (zero) for non-creatures
   // and for cards with non-numeric printed stats. S08.
   power?: number;
   toughness?: number;
   tapped?: boolean;
+  // Untap-step restriction / one-shot marker state. `static` is omitted
+  // for face-down cards; `next` contains player IDs and is public state.
+  no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,

@@ -28,10 +28,9 @@ func init() {
 		Name:         "Replicating Ring",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Replicating Ring — put a night counter on it; at eight, replicate", func(g *game.Game, item *game.StackItem) error {

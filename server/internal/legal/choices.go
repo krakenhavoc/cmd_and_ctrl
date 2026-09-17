@@ -19,6 +19,7 @@ type choiceParams struct {
 	ChoiceID    string        `json:"choice_id"`
 	CardIDs     []string      `json:"card_ids,omitempty"`
 	Color       string        `json:"color,omitempty"`
+	Call        string        `json:"call,omitempty"`
 	Order       []string      `json:"order,omitempty"`
 	Apply       *bool         `json:"apply,omitempty"`
 	Assignments []assignParam `json:"assignments,omitempty"`
@@ -289,6 +290,22 @@ func (e *enumerator) choiceMoves() bool {
 					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
+			}
+
+		case game.PendingChoiceCoinCall:
+			for _, call := range []string{"heads", "tails"} {
+				p := base()
+				p.Call = call
+				if call == "heads" {
+					e.addAlwaysLegalChoice(c, reason+": call "+call, p)
+				} else {
+					e.addChoice(c, reason+": call "+call, p)
+				}
+			}
+			if c.CoinAllowStop {
+				p := base()
+				p.Call = "stop"
+				e.addChoice(c, reason+": stop flipping", p)
 			}
 
 		case game.PendingChoiceConfirm:

@@ -22,8 +22,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // targets (CR 605.1a): it goes on the stack, can be responded to, and
 // the mana lands on resolution through the AddMana primitive — the
 // five-colour pipe queues the same colour pick a Treasure does, at
-// its printed width ("any color", so IgnoreCommanderIdentity: no
-// commander-identity narrowing). "Activate only as an instant"
+// its printed width ("any color", so all five, commander identity
+// first). "Activate only as an instant"
 // is the default timing for an activated ability and needs nothing.
 //
 // Summoning sickness applies to all three (a creature source with a
@@ -48,7 +48,7 @@ func init() {
 					if err := (ExileTarget{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
 						return err
 					}
-					return AddMana{Produced: "{W|U|B|R|G}", IgnoreCommanderIdentity: true}.Apply(ctx)
+					return AddMana{Produced: "{W|U|B|R|G}"}.Apply(ctx)
 				},
 			},
 			{

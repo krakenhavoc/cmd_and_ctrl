@@ -55,9 +55,11 @@ func (g *Game) cloneLocked() *Game {
 		// RestoreFrom puts that back — undo rewinds randomness, the
 		// same way a snapshot restore resumes it (ADR 0054
 		// Decisions 3-4).
-		rngKey:      g.rngKey,
-		rngCounters: cloneRNGCounters(g.rngCounters),
-		rngTurn:     g.rngTurn,
+		rngKey:            g.rngKey,
+		rngCounters:       cloneRNGCounters(g.rngCounters),
+		rngTurn:           g.rngTurn,
+		sourceOrdinals:    cloneSourceOrdinals(g.sourceOrdinals),
+		sourceOrdinalNext: g.sourceOrdinalNext,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -200,6 +202,10 @@ func (g *Game) cloneLocked() *Game {
 			// other server-only frame on a PendingChoice: a resume
 			// reads it and never writes it.
 			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
+			if c.coinFlipResume != nil {
+				frame := *c.coinFlipResume
+				cloned.coinFlipResume = &frame
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -379,6 +385,11 @@ func cloneCard(c Card) Card {
 		}
 	} else {
 		out.Counters = nil
+	}
+	if len(c.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	} else {
+		out.NextUntapSkips = nil
 	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
@@ -568,6 +579,9 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
+			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
+				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
+			}
 			ev.zoneRoute = &r
 		}
 		out.ev = &ev
@@ -669,6 +683,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.rngKey = src.rngKey
 	g.rngCounters = src.rngCounters
 	g.rngTurn = src.rngTurn
+	g.sourceOrdinals = src.sourceOrdinals
+	g.sourceOrdinalNext = src.sourceOrdinalNext
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot
@@ -677,4 +693,15 @@ func (g *Game) RestoreFrom(src *Game) {
 	// snapshot-time state and must not be served as-is.
 	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
 	g.layerVersion.Store(src.layerVersion.Load() + 1)
+}
+
+func cloneSourceOrdinals(in map[uuid.UUID]uint64) map[uuid.UUID]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uint64, len(in))
+	for id, ordinal := range in {
+		out[id] = ordinal
+	}
+	return out
 }
