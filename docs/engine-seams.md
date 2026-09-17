@@ -13,15 +13,17 @@ own skipped cards to the table below, merging into an existing row when the
 seam is the same one already listed, and a seam moves from Open to Closed
 on the day the engine PR that closes it lands.
 
-The table covers every seam reported against **two or more** waiting cards
-across the first pass over the first 3600 cards (batches 01-36, issues
-#294-#313 and #383-#399). A seam that blocks exactly one card today is
+The table began as every seam reported against **two or more** waiting
+cards in the first pass over the first 3600 cards (batches 01-36, issues
+#294-#313 and #383-#399); the rows added from the 2026-09-16 audit (below)
+reach batch #467, and a few of them start with fewer recorded skips. A seam that blocks exactly one card today is
 noted on that card's own batch issue rather than duplicated here; it will
 earn a row here the moment a second card waits on it.
 
 **Count** is the number of cards that batch issues and batch PRs have
 recorded as skipped for the seam: the cards named in the row plus its
-"+N more". It changes only when a batch PR appends a skip or a skip
+"+N more" (on a row added from the audit, only the cards before "audit
+adds:"). It changes only when a batch PR appends a skip or a skip
 moves to the row it really belongs in, so it undercounts a seam that
 other batches hit without writing the skip here.
 
@@ -32,8 +34,8 @@ the *only* core blocker, then the number where it is *any* core blocker.
 It is a classifier's attribution, not a skip list, and it is never added
 to Count. For each seam the verifiers sampled the only-blocker cards and
 found between about 5% and 85% of them also blocked by something else or
-misattributed, so read it as an upper bound; the seam's tracking issue has
-the verified estimate and the cards that were checked. A figure marked †
+misattributed, so read it as an upper bound. For a row tracked by one of #742-#765, that
+issue has the verified estimate and the cards that were checked. A figure marked †
 was not verified against the code. Rows outside the audit's top 40 seams
 are left blank, except stack-item retarget, whose undercount the audit
 called out.
@@ -116,7 +118,7 @@ Closed when the engine PR lands.
 | Triggered and static abilities on non-copy tokens | primitive: `game.Card` gives a token intrinsic mana and activated abilities only, and a token that isn't a copy has no catalog key, so a token's own trigger ("a Pest with 'when this dies, gain 1 life'") or static can't be written. The audit's proposed fix is #521's token keys extended to every catalog slot | Mysidian Elder (#448); Reef Worm (#459); Nesting Dragon (#397); Chocobo Racetrack (#394); Gwaihir, Greatest of the Eagles (#464); Circle of Power (#384) | — | 18 / 24 | #521 (token keys; token triggers and statics are not yet in its scope) |
 | Conditional blocking restrictions | primitive: `CanBlock` checks only the restriction bits and flying/reach, so pair rules ("can't be blocked except by Walls", "can't be blocked by power 2 or less") have nowhere to go. `BlockerCountValid` knows only menace's minimum, and a maximum ("can't be blocked by more than one creature") has no home. A follow-on to #705's game-aware `CanBlock` | Legolas Greenleaf (#462); Prowler's Helm (#395); Champion of Lambholt (#297); Gingerbrute (#308); Thieves' Tools (#464); Hungering Hydra (#397); Alpha Authority (#391); Vorrac Battlehorns (#464) | — | 17 / 26 | #750 |
 | A spell's own cost modifier ("this spell costs {N} less", affinity) | primitive: cost modifiers are read from battlefield sources only ([ADR 0048](decisions/0048-cost-modification.md)), so a spell can't reduce or increase its own cost (CR 601.2f, affinity CR 702.41), and `CostQuery` carries no targets for a per-target price. Blasphemous Act ships with a caveat for it. Distinct from "Cost modification for activated abilities" above | Ghalta, Primal Hunger (#296); Thought Monitor (#299); Myr Enforcer (#461); Vanquish the Horde (#300); Ancient Stone Idol (#385); Fireball (#449); Call the Coppercoats (#307); Thrumming Hivepool (#455) | — | 17 / 21 | #746 |
-| Play and cast from the top of your library | primitive: the cast path has no library zone, only a card's own text opens a cast zone, and nothing keeps the current top card known to its owner or revealed to everyone (CR 401.5). Bots also assume one land play a turn. Built on #652's granted cast permission | Conspicuous Snoop (#394); Oracle of Mul Daya (#297); Korlessa, Scale Singer (#398); Emperor Mihail II (#403); Sigarda, Font of Blessings (#394); Realmwalker (#298); Augur of Autumn (#303); Courser of Kruphix (#304) | 1 | 17 / 23 | #765 |
+| Play and cast from the top of your library | primitive: the cast path has no library zone, only a card's own text opens a cast zone, and nothing keeps the current top card known to its owner or revealed to everyone (CR 401.5). Bots also assume one land play a turn. Built on #652's granted cast permission | Conspicuous Snoop (#394); audit adds: Oracle of Mul Daya (#297); Korlessa, Scale Singer (#398); Emperor Mihail II (#403); Sigarda, Font of Blessings (#394); Realmwalker (#298); Augur of Autumn (#303); Thundermane Dragon (#397) | 1 | 17 / 23 | #765 |
 | "Doesn't untap during your untap step" | primitive: `UntapStepPermission` has no restriction counterpart, so "doesn't untap during your untap step" can't be written, and there is no marker for "doesn't untap during its controller's next untap step". Winter Orb's "untap no more than N" is a separate choose-N prompt, not this row | Mana Vault (#294); Basalt Monolith (#297); Grim Monolith (#298); Goblin Sharpshooter (#399); Meekstone (#388); Back to Basics (#458); Wall of Frost (#453); Sleep (#466) | — | 17 / 20 | #751 |
 | Adventure casting | primitive: `CastableFaces` offers the front face only, so an adventure's spell half can't be cast from hand, a resolved adventure isn't exiled, and nothing lets its owner cast the creature from exile afterwards (CR 715; [ADR 0034](decisions/0034-multi-face-cards.md) step 6). Omens (shuffle instead of exile) are the same shape | Murderous Rider // Swift End (#308); Hypnotic Sprite // Mesmeric Glare (#462); Beanstalk Giant // Fertile Footsteps (#383) | — | 17 / 19 | #719 |
 | Landwalk, fear, intimidate, shadow, horsemanship, skulk | primitive: none of these is in `canonicalKeywords`, so the importer drops them and nothing enforces them, and `CanBlock(attacker, blocker)` has no game access for landwalk to see the defender's lands. #705 covers landwalk only; the other keywords have no tracker | Cold-Eyed Selkie (#312); Trailblazer's Boots (#298); Shizo, Death's Storehouse (#298); Cover of Darkness (#306); Bellowing Tanglewurm (#463); Looter il-Kor (#458) | — | 16 / 21 | #705 (landwalk) |
