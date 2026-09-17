@@ -149,3 +149,47 @@ func TestEnumeratorPricesPriceOfFameByTarget(t *testing.T) {
 	}
 	dispatchAll(t, g, active.ID, moves)
 }
+
+const oracleCallTheCoppercoats = "73d8c33d-916a-4220-96ae-9622aad36210"
+
+// Strive in the enumerator: Call the Coppercoats ({2}{W}, {1}{W} more
+// per target beyond the first) off one Plains and four Mountains is
+// offered at zero or one opponent, never at two ({3}{W}{W} has enough
+// mana in total but only one white source). With three Plains and two
+// Mountains the two-opponent cast is offered too, and three opponents
+// ({4}{W}{W}{W}, seven mana) never is. Every offered cast is accepted.
+func TestEnumeratorPricesStriveInColour(t *testing.T) {
+	for _, tc := range []struct {
+		plains, mountains int
+		maxTargets        int
+	}{
+		{plains: 1, mountains: 4, maxTargets: 1},
+		{plains: 3, mountains: 2, maxTargets: 2},
+	} {
+		g := newTable(t)
+		active := g.Seats[g.Turn.ActiveSeat]
+		clearHand(active)
+		coppercoats := handCard(active, game.Card{Name: "Call the Coppercoats", TypeLine: "Instant", ManaCost: "{2}{W}", OracleID: oracleCallTheCoppercoats})
+		for i := 0; i < tc.plains; i++ {
+			battlefieldCard(g, active, basic("Plains", "Plains"))
+		}
+		for i := 0; i < tc.mountains; i++ {
+			battlefieldCard(g, active, basic("Mountain", "Mountain"))
+		}
+		advanceTo(t, g, game.StepPrecombatMain)
+
+		moves := legal.EnumerateFor(g, active.ID)
+		casts := castsOf(t, moves, coppercoats)
+		most := -1
+		for _, c := range casts {
+			if c.targets > most {
+				most = c.targets
+			}
+		}
+		if most != tc.maxTargets {
+			t.Errorf("%d Plains + %d Mountains: largest Call the Coppercoats offered at %d targets, want %d: %v",
+				tc.plains, tc.mountains, most, tc.maxTargets, casts)
+		}
+		dispatchAll(t, g, active.ID, moves)
+	}
+}

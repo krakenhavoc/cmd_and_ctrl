@@ -236,8 +236,16 @@ func TestFireballPricesPerTargetAndDividesDamage(t *testing.T) {
 	}
 
 	// Zero targets is a legal cast that does nothing.
+	beforeMe := me.Life
+	beforeA, beforeB, beforeC = a.Life, b.Life, c.Life
 	castXSpell(t, g, "Fireball", "Sorcery", fireballOracle, "{X}{R}", 3, nil)
 	passPriorityAroundTable(t, g)
+	if g.Stack.Size() != 0 {
+		t.Errorf("Fireball with no targets did not resolve: stack size %d", g.Stack.Size())
+	}
+	if me.Life != beforeMe || a.Life != beforeA || b.Life != beforeB || c.Life != beforeC {
+		t.Error("Fireball with no targets changed a life total")
+	}
 }
 
 // Call the Coppercoats: strive's {1}{W} per extra target, and a token
@@ -383,9 +391,9 @@ func TestBothSlotCards(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Witherbloom, the Balancer", "Legendary Creature — Elder Dragon", witherbloomOracle, false)
 	pushCatalogPermanent(g, me.ID, "Mycosynth Golem", "Artifact Creature — Golem", mycosynthGolemOracle, false)
 	pushCatalogPermanent(g, me.ID, "Hamza, Guardian of Arashin", "Legendary Creature — Elephant Warrior", hamzaOracle, false)
-	// ...and from the battlefield: five creatures now (the three
-	// seeded plus Witherbloom, Golem and Hamza are creatures too), three
-	// artifacts (Myr, Golem... and nothing else — Hamza is not one).
+	// ...and from the battlefield: six creatures now (the three seeded
+	// plus Witherbloom, Golem and Hamza, which are creatures too), and
+	// two artifacts (Myr and Golem; Hamza is not one).
 	if got := priceInHand(t, g, me, "Divination", "Sorcery", "{4}{U}"); got != 1 {
 		t.Errorf("five-mana sorcery with Witherbloom and six creatures: %d, want 1 ({U})", got)
 	}

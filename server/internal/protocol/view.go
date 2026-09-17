@@ -2591,6 +2591,11 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
+			// #746: stamped for the owner's X picker with the other
+			// cast clauses, so it goes with them. Printed text, so
+			// nothing leaks; this keeps the field's documented scope
+			// ("the viewer's own hand") true.
+			c.TargetCostNotes = nil
 			out.Cards = append(out.Cards, c)
 		}
 	}

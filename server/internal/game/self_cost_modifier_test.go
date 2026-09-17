@@ -335,18 +335,37 @@ func TestColouredIncreaseUnitAddsColouredRequirements(t *testing.T) {
 	}
 }
 
+// mustParse parses a mana string a test spells out by hand.
+func mustParse(t *testing.T, s string) *ParsedCost {
+	t.Helper()
+	c, err := ParseCost(s)
+	if err != nil {
+		t.Fatalf("ParseCost(%q): %v", s, err)
+	}
+	return &c
+}
+
 // ADR 0048 §4, for the self slot: a negative amount refuses the cast
-// and names the card; so does a mana unit on a reduction.
+// and names the card; so does a mana unit on a reduction, and a unit on
+// an increase that carries {X}, a hybrid or a Phyrexian symbol (§16).
+// effects.Register refuses all of these at boot; this is the engine's
+// own refusal for a catalog hook that got past it.
 func TestBrokenSelfModifierRefusesTheCast(t *testing.T) {
 	const broken, badUnit = "test-self-broken", "test-self-bad-unit"
-	unit, _ := ParseCost("{W}")
+	const xUnit, hybridUnit, phyrexianUnit = "test-self-x-unit", "test-self-hybrid-unit", "test-self-phyrexian-unit"
+	increaseOf := func(unit string) []CostModifier {
+		return []CostModifier{{Kind: CostIncrease, Label: "odd surcharge", Amount: fixed(1), Unit: mustParse(t, unit)}}
+	}
 	withCatalogDefs(t, map[string]*CardDef{
-		broken:  {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "sign error", Amount: fixed(-2)}}},
-		badUnit: {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "coloured reduction", Amount: fixed(1), Unit: &unit}}},
+		broken:        {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "sign error", Amount: fixed(-2)}}},
+		badUnit:       {SelfCostModifiers: []CostModifier{{Kind: CostReduction, Label: "coloured reduction", Amount: fixed(1), Unit: mustParse(t, "{W}")}}},
+		xUnit:         {SelfCostModifiers: increaseOf("{X}")},
+		hybridUnit:    {SelfCostModifiers: increaseOf("{1}{W/U}")},
+		phyrexianUnit: {SelfCostModifiers: increaseOf("{W/P}")},
 	})
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	for _, oracle := range []string{broken, badUnit} {
+	for _, oracle := range []string{broken, badUnit, xUnit, hybridUnit, phyrexianUnit} {
 		id := catalogSpellInHand(t, g, me, "Broken Spell", "Sorcery", "{2}{R}", oracle)
 		err := g.CastSpell(me.ID, id, CastSpellParams{})
 		if !errors.Is(err, ErrCostModifier) {
@@ -393,6 +412,106 @@ func TestStrictCastPaysTheTargetSurcharge(t *testing.T) {
 	me.ManaPool.AddMana(ManaToken{Color: "C"})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{XValue: 2, Targets: two, Strict: true}); err != nil {
 		t.Fatalf("four mana for {2}{1}{R}: %v", err)
+	}
+}
+
+// strive is the Call the Coppercoats fixture: {2}{W}, "{1}{W} more for
+// each target beyond the first", targeting any number of players.
+func strive(t *testing.T) *CardDef {
+	return &CardDef{
+		Targets: &TargetSpec{Mode: "player", Players: true, Min: 0, Max: 0},
+		SelfCostModifiers: []CostModifier{{
+			Kind: CostIncrease, Label: "Strive", ReadsTargets: true, Unit: mustParse(t, "{1}{W}"),
+			Amount: func(q CostQuery) int {
+				if n := RealTargetCount(q.Targets); n > 1 {
+					return n - 1
+				}
+				return 0
+			},
+		}},
+	}
+}
+
+func whiteSymbols(c ParsedCost) int {
+	n := 0
+	for _, r := range c.Required {
+		if len(r.Options) == 1 && r.Options[0] == "W" {
+			n++
+		}
+	}
+	return n
+}
+
+// ADR 0048 addendum §16's ordering cases for a coloured increase. A
+// two-target Call the Coppercoats is {3}{W}{W}. Under Goblin
+// Electromancer ({1} less) it is {2}{W}{W}: the reduction spends
+// generic mana and both {W} stay. Under Sphere of Resistance and the
+// Electromancer it is {3}{W}{W}: both increases land before the
+// reduction (CR 601.2f).
+func TestColouredIncreaseUnderElectromancerAndSphere(t *testing.T) {
+	const coppercoats, mancer, sphere = "test-coppercoats", "test-electromancer", "test-sphere"
+	withCatalogDefs(t, map[string]*CardDef{coppercoats: strive(t)})
+	mods := map[string][]CostModifier{
+		mancer: {{Kind: CostReduction, Label: "{1} less", Amount: fixed(1)}},
+		sphere: {{Kind: CostIncrease, Label: "{1} more", Amount: fixed(1)}},
+	}
+	withCatalogCostModifiers(t, func(id string) []CostModifier { return mods[id] })
+	g := newActiveGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	id := catalogSpellInHand(t, g, me, "Call the Coppercoats", "Instant", "{2}{W}", coppercoats)
+	two := []TargetRef{{Kind: TargetPlayer, ID: them.ID}, {Kind: TargetPlayer, ID: me.ID}}
+
+	modifierSource(t, g, me, "Goblin Electromancer", mancer)
+	if got := priceOf(t, g, me, id, CastSpellParams{Targets: two}); got.Generic != 2 || whiteSymbols(got) != 2 || len(got.Required) != 2 {
+		t.Errorf("two-target strive under Electromancer = %+v, want {2}{W}{W}", got)
+	}
+	modifierSource(t, g, them, "Sphere of Resistance", sphere)
+	if got := priceOf(t, g, me, id, CastSpellParams{Targets: two}); got.Generic != 3 || whiteSymbols(got) != 2 || len(got.Required) != 2 {
+		t.Errorf("two-target strive under Sphere and Electromancer = %+v, want {3}{W}{W}", got)
+	}
+}
+
+// The added {W} is a real requirement at payment. A pool with enough
+// mana in total but one {W} short refuses the strict two-target cast,
+// and the auto-tapper taps a second white source for it.
+func TestColouredIncreaseIsPaidInColour(t *testing.T) {
+	const coppercoats = "test-coppercoats"
+	withCatalogDefs(t, map[string]*CardDef{coppercoats: strive(t)})
+
+	g := newActiveGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	two := []TargetRef{{Kind: TargetPlayer, ID: them.ID}, {Kind: TargetPlayer, ID: me.ID}}
+	id := catalogSpellInHand(t, g, me, "Call the Coppercoats", "Instant", "{2}{W}", coppercoats)
+	me.ManaPool.AddMana(ManaToken{Color: "W"}, ManaToken{Color: "C"}, ManaToken{Color: "C"}, ManaToken{Color: "C"}, ManaToken{Color: "C"}, ManaToken{Color: "C"})
+	err := g.CastSpell(me.ID, id, CastSpellParams{Targets: two, Strict: true})
+	var short *InsufficientManaError
+	if !errors.As(err, &short) {
+		t.Fatalf("{W} and five {C} for {3}{W}{W}: got %v, want InsufficientManaError", err)
+	}
+	if !me.Hand.Contains(id) {
+		t.Fatal("refused cast left the card out of hand")
+	}
+
+	g = newActiveGame(t)
+	me, them = g.Seats[0], g.Seats[1]
+	two = []TargetRef{{Kind: TargetPlayer, ID: them.ID}, {Kind: TargetPlayer, ID: me.ID}}
+	id = catalogSpellInHand(t, g, me, "Call the Coppercoats", "Instant", "{2}{W}", coppercoats)
+	plains := []uuid.UUID{
+		pushBattlefieldForTest(g, me.ID, "Plains", "Basic Land — Plains", ""),
+		pushBattlefieldForTest(g, me.ID, "Plains", "Basic Land — Plains", ""),
+	}
+	for i := 0; i < 4; i++ {
+		pushBattlefieldForTest(g, me.ID, "Mountain", "Basic Land — Mountain", "")
+	}
+	if err := g.CastSpell(me.ID, id, CastSpellParams{Targets: two, Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("auto-tap two-target strive off two Plains and four Mountains: %v", err)
+	}
+	for _, p := range plains {
+		for _, c := range g.Battlefield.Cards {
+			if c.InstanceID == p && !c.Tapped {
+				t.Errorf("a Plains stayed untapped: the added {W} was not paid in white")
+			}
+		}
 	}
 }
 

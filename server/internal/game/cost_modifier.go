@@ -238,9 +238,43 @@ type CostModifier struct {
 	//
 	// Increases only (ADR 0048 addendum, open question 3). A
 	// reduction still spends generic mana and nothing else (§3), and
-	// a Unit on any other kind, or a Unit carrying {X}, refuses the
-	// cast rather than guessing what it meant.
+	// a Unit on any other kind, or a Unit carrying {X}, a hybrid or a
+	// Phyrexian symbol, refuses the cast rather than guessing what it
+	// meant (§16). effects.Register refuses the same shapes at boot;
+	// both read UnitProblem.
 	Unit *ParsedCost
+}
+
+// UnitProblem says why a modifier's Unit cannot be applied, or ""
+// when it can: no Unit, or a Unit on an increase made only of generic
+// mana and single-colour symbols. ADR 0048 addendum §16: no printed
+// increase adds {X}, a hybrid or a Phyrexian symbol, and §3 keeps
+// every other kind generic-only, so each of those shapes is a card
+// file mistake. One function, so the boot guard and the cast-time
+// refusal cannot drift apart.
+func (m CostModifier) UnitProblem() string {
+	u := m.Unit
+	if u == nil {
+		return ""
+	}
+	if m.Kind != CostIncrease {
+		return "a mana unit on something other than an increase"
+	}
+	if u.XSlots > 0 {
+		return "a mana unit carrying {X}"
+	}
+	if u.HasPhyrexian {
+		return "a mana unit carrying a Phyrexian symbol"
+	}
+	for _, r := range u.Required {
+		if r.Phyrexian {
+			return "a mana unit carrying a Phyrexian symbol"
+		}
+		if len(r.Options) != 1 || r.HasNumericAlt {
+			return "a mana unit carrying a hybrid symbol"
+		}
+	}
+	return ""
 }
 
 // CatalogCostModifiers is the catalog hook the effects package wires
@@ -497,11 +531,13 @@ func amountFor(bm boundCostModifier, q CostQuery, cost ParsedCost) (int, bool, e
 		q.Targets = nil
 	}
 	// A Unit is an increase's shape (open question 3). On any other
-	// kind, or carrying an {X} no announcement could size, there is
-	// no honest price: refuse, as for a negative amount.
-	if u := bm.modifier.Unit; u != nil && (bm.modifier.Kind != CostIncrease || u.XSlots > 0) {
-		return 0, false, fmt.Errorf("%w: %q on %s declares a mana unit it cannot apply",
-			ErrCostModifier, bm.modifier.Label, bm.source.Name)
+	// kind, or carrying an {X} no announcement could size, or a hybrid
+	// or Phyrexian symbol whose payment no printed increase defines
+	// (§16), there is no honest price: refuse, as for a negative
+	// amount.
+	if why := bm.modifier.UnitProblem(); why != "" {
+		return 0, false, fmt.Errorf("%w: %q on %s declares %s",
+			ErrCostModifier, bm.modifier.Label, bm.source.Name, why)
 	}
 	if bm.modifier.AppliesTo != nil && !bm.modifier.AppliesTo(q) {
 		return 0, false, nil
@@ -540,7 +576,8 @@ func increaseBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 		}
 		out.Required = req
 	}
-	out.HasPhyrexian = cost.HasPhyrexian || unit.HasPhyrexian
+	// A Phyrexian or hybrid unit never gets here: amountFor refuses it
+	// through UnitProblem before the increase pass runs.
 	out.HasSnow = cost.HasSnow || unit.HasSnow
 	return out
 }
