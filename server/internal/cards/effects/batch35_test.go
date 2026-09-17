@@ -257,8 +257,8 @@ func TestB35ThirstForDiscoveryDrawsThreeAndOwesTwoDiscards(t *testing.T) {
 	if me.Hand.Size() != hand+3 {
 		t.Errorf("drew %d, want 3", me.Hand.Size()-hand)
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Errorf("owes %d discards, want 2", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Errorf("owes %d discards, want 2", discardOwed(g, me.ID))
 	}
 	if spec, _ := Lookup(b35ThirstForDiscoveryOracle); spec.Completeness != CompletenessCaveats {
 		t.Error("the missing basic-land alternative is a declared gap")
@@ -429,9 +429,10 @@ func TestB35SphinxsTutelageMillsTwoAndRepeatsWhileTheyShareAColor(t *testing.T) 
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if me.Hand.Size() != hand+1 || g.DiscardPending[me.ID] != 1 {
-		t.Errorf("hand %d → %d, owes %d discards; want +1 and 1", hand, me.Hand.Size(), g.DiscardPending[me.ID])
+	if me.Hand.Size() != hand+1 || discardOwed(g, me.ID) != 1 {
+		t.Errorf("hand %d → %d, owes %d discards; want +1 and 1", hand, me.Hand.Size(), discardOwed(g, me.ID))
 	}
+	discardFromHand(t, g, me.ID)
 	b04WaitForPick(t, g, me.ID)
 	b16PickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)

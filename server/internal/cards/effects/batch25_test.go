@@ -262,8 +262,8 @@ func TestB25QuickStudyAndCarefulStudyDraw(t *testing.T) {
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("Careful Study: drew two, then a discard prompt; hand %d → %d", hand, me.Hand.Size())
 	}
-	if g.DiscardPending[me.ID] != 2 {
-		t.Fatalf("Careful Study then asks the caster to discard two: %d owed", g.DiscardPending[me.ID])
+	if discardOwed(g, me.ID) != 2 {
+		t.Fatalf("Careful Study then asks the caster to discard two: %d owed", discardOwed(g, me.ID))
 	}
 }
 

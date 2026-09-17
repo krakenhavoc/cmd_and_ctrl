@@ -18,11 +18,15 @@ import (
 // discarder case: the caster is Chooser, the target is FromPlayer.
 //
 // The existing S13.4 DiscardPending map stays for cleanup-step
-// max-hand-size discards (those are simpler: chooser == owner,
-// and the cursor auto-resumes when the map drains). Effect-
-// driven choices that go through PendingChoices keep resolving
-// asynchronously — the spell routes to graveyard immediately,
-// the pick is made later by a resolve_choice action.
+// max-hand-size discards and NOTHING else (#651): that one is a
+// turn-based action (CR 514.1), chooser == owner, and the cursor
+// auto-resumes when the map drains. An EFFECT's discard is part of
+// the resolving effect (CR 608.2c) and goes through this queue like
+// every other deferred decision — QueueDiscardChoiceForEffect. Two
+// obligations, two mechanisms, no shared map. Effect-driven choices
+// keep resolving asynchronously — the spell routes to graveyard
+// immediately, the pick is made later by a resolve_choice action —
+// but the table does not move on while one is open (choice_gate.go).
 //
 // Introduced in S14 sub-PR 5 as infrastructure for Thoughtseize.
 

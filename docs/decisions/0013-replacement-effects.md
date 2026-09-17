@@ -313,7 +313,8 @@ without a `Source` (develop at `7c1ae9b`):
 
 | site | what discards there |
 |---|---|
-| `game/mutations.go` `DiscardSelection` | the cleanup hand-size discard, and every `DiscardChoiceForEffect` caller (Mind Rot, looting) |
+| `game/mutations.go` `DiscardSelection` | the cleanup hand-size discard (CR 514.1) |
+| `game/effect_api.go` `discardPicksLocked` | every effect discard the player chooses — Mind Rot, looting (#651 moved these off `DiscardSelection`) |
 | `game/effect_api.go` `DiscardRandomForEffect` | random discards |
 | `game/additional_cost.go` `payAdditionalCostLocked` | discard as an additional cost to cast a spell |
 | `game/pending_choice.go` `PendingChoiceDiscardFromHand` | Thoughtseize-style "you choose, they discard" |
@@ -326,13 +327,15 @@ too: a library search that puts the card into a graveyard (Entomb,
 `effect_api.go`) and surveil (`ResolveSurveil` in `pending_choice.go`).
 So Rest in Peace also needs those two.
 
-**There is also a bug underneath.** An effect discard doesn't block
-the game. `DiscardChoiceForEffect` adds to `DiscardPending`, the map
-the cleanup step uses. `PassPriority` never checks that map, and
-entering cleanup resets it to the hand-size count. So players can pass
-priority while a Mind Rot discard is still owed, and at cleanup the
-discard is lost (#651). That has to be fixed before a discard can
-pause inside the replacement window.
+**There was also a bug underneath, now fixed (#651).** An effect
+discard did not block the game: `DiscardChoiceForEffect` added to
+`DiscardPending`, the map the cleanup step uses, nothing read that map
+outside cleanup, and entering cleanup reset it to the hand-size count
+— so players could pass priority while a Mind Rot discard was still
+owed, and at cleanup the discard was lost. An effect's discard is now
+a `PendingChoice` (ADR 0010 §10 amendment), so it is owed, gated and
+never erased, and it has somewhere stable to pause when the
+replacement window arrives. `DiscardPending` is cleanup-only.
 
 **Where the work went.**
 
