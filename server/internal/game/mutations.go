@@ -3894,6 +3894,8 @@ func containsColor(set []string, c string) bool {
 // not control, because a stolen commander is still its owner's.
 // Zones are read in the order a commander usually sits: command zone,
 // stack, battlefield, graveyard, exile, hand, library.
+// A copy keeps its original printed values in PrintedSelf: its colour
+// identity comes from those values, never from the creature it copied.
 //
 // Partners and backgrounds: every commander the player owns
 // contributes, and the result is their union in discovery order
@@ -3929,12 +3931,17 @@ func commanderIdentityFor(g *Game, p *Player) []string {
 		if !c.IsCommander || c.Owner != p.ID {
 			return
 		}
-		colors := c.ColorIdentity
-		if len(colors) == 0 {
+		colors, cost := c.ColorIdentity, c.ManaCost
+		if original := c.PrintedSelf; original != nil {
+			colors, cost = original.ColorIdentity, original.ManaCost
+			if len(colors) == 0 {
+				colors = original.Colors
+			}
+		} else if len(colors) == 0 {
 			colors = c.Effective().Colors
 		}
 		if len(colors) == 0 {
-			colors = distinctColorsInManaCost(c.ManaCost)
+			colors = distinctColorsInManaCost(cost)
 		}
 		for _, col := range colors {
 			if !containsColor(out, col) {
