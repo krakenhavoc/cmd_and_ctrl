@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0054 dice rolls and coin flips) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0055 CR 726 loop breaker) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -1698,6 +1698,50 @@ optional triggers, `answerLatestTriggerPrompt` then
 `passPriorityAroundTable` again. Upkeep triggers: `advanceToUpkeepOf`
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
+
+### The CR 726 loop breaker (#628)
+
+Two permanents that trigger each other loop forever. The server never
+blocks — one bounded unit of work per pass — but with autopass on for
+every seat the table spins `pass → resolve → broadcast → pass` until
+somebody finds the toggle. So the engine counts, and when the same
+ability has resolved 25 times in one turn with **no player decision in
+between** it raises `Game.LoopNotice` and one `EventLoopSuspected`.
+
+What the notice does is suspend **automatic** passing — the client's
+autopass `$effect` and the bot runner both hold — and nothing else.
+Priority still rotates, `pass_priority` is still accepted, the trigger
+is still on the stack. A human clicks "next" to step the loop on, or
+casts something to end it. See
+[ADR 0055](docs/decisions/0055-loop-breaker.md).
+
+Three things to know if you touch priority, prompts or the tally:
+
+- **Detection is one function**, `loopSuspectedLocked`
+  (`server/internal/game/loop_breaker.go`), over `TurnTally.LoopRun` —
+  `Resolved` restarted at each decision, keyed by
+  `TallyKey(source, label)` like everything else in the tally. It
+  counts ONE ability of ONE permanent in ONE turn, which is why four
+  upkeep triggers from four players never approach it. The threshold is
+  `DefaultLoopThreshold`; `Game.LoopThreshold` overrides it per game for
+  tests. Do not add a second count.
+- **A decision is anything but a pass**, and
+  `notePlayerDecisionLocked` is the only thing that clears the run.
+  Cast / attack / block notch through `turnTallyListener`; an
+  activation notches in `ActivateCatalogAbility` (its announce emits
+  `EventTrigger`, indistinguishable from a triggered one); an answered
+  prompt notches in `dequeueChoiceLocked`. **A prompt the engine
+  withdraws calls `dropChoiceLocked` instead** — the prune paths must
+  not count as somebody deciding something, or a loop that queues and
+  prunes a prompt each iteration never trips.
+- **A bare `pass_priority` is not a decision**, on purpose: if it were,
+  the first manual "next" would clear the notice and four autopassing
+  clients would spin the loop straight back up.
+
+The CR 726 shortcut prompt ("resolve it K more times and stop?") and
+CR 726.4's draw are not built. A new `PendingChoiceKind` would need a
+case in `internal/legal/choices.go` first — see the choice-gate note
+above and #618.
 
 ### Untapping in another player's untap step (#74)
 

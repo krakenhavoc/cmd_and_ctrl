@@ -159,7 +159,16 @@ type GameSnapshot struct {
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
-	DiscardPending           map[uuid.UUID]int         `json:"discardPending,omitempty"`
+
+	// LoopNotice / LoopThreshold are the CR 726 loop breaker (#628).
+	// Both carried: a restore that dropped the notice would resume a
+	// table into a live loop with automatic passing back on, and one
+	// that dropped the threshold would silently re-default a game a
+	// test had configured.
+	LoopNotice    *LoopNotice `json:"loopNotice,omitempty"`
+	LoopThreshold int         `json:"loopThreshold,omitempty"`
+
+	DiscardPending map[uuid.UUID]int `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
 	// STRUCT (PromiseKey), and a JSON object key must be a string.
@@ -607,6 +616,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
+	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
+	s.LoopThreshold = g.LoopThreshold
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -1068,6 +1079,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
+	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
+	g.LoopThreshold = s.LoopThreshold
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)

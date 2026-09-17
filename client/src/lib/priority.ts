@@ -141,6 +141,37 @@ export function hasAnyLegalResponse(
   return hasNonPassMove(snap) ?? true;
 }
 
+// autopassSuspended reports whether the server has told this table to
+// stop passing AUTOMATICALLY (#628, CR 726).
+//
+// The engine raises `loop_notice` when one triggered ability has
+// resolved 25 times in a turn with nobody casting, activating,
+// answering a prompt or declaring a creature in between — a trigger
+// loop, which with every seat on autopass is a tight
+// pass → resolve → broadcast → pass spin that no one at the table can
+// get out of except by finding the toggle mid-flight.
+//
+// Deliberately NOT a "can the viewer act" question, so it sits with
+// the mulligan / game-over guards rather than with the stops grid:
+// the suspension is table-wide, it outranks every gate including the
+// autopass toggle itself, and it holds until a player makes a real
+// decision. Pressing "next" by hand still passes — stopping the game
+// is the server's job and it declines to.
+export function autopassSuspended(snap: GameView | null | undefined): boolean {
+  return !!snap?.loop_notice;
+}
+
+// loopNoticeText renders the banner line: "Mirror Engine — create a
+// Spark has resolved 25 times this turn." The label already reads
+// "<card> — <ability>" by catalog convention, so there is nothing to
+// look up on the board. Empty string when nothing is suspected.
+export function loopNoticeText(snap: GameView | null | undefined): string {
+  const n = snap?.loop_notice;
+  if (!n) return "";
+  const label = n.label || "An ability";
+  return `${label} has resolved ${n.count} times this turn.`;
+}
+
 // Testing hook: retained as a no-op. The memo cache it used to clear
 // went away with the card walk, but vitest teardowns still call it
 // and a missing export is a worse failure than a no-op.
