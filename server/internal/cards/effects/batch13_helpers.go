@@ -19,7 +19,7 @@ import (
 // b06SelfETB, the fetch-a-basic-tapped body is fetchBasicTapped, the
 // return-all-lands body is b10ReturnAllLandCardsFromGraveyardTapped,
 // the wheel's discard is discardWholeHand, the spell-side mana value
-// is manaValueOnStack, "nonbasic land" is b10NonbasicLand, and the
+// is game.(*Game).ManaValueForEffect, "nonbasic land" is b10NonbasicLand, and the
 // per-ability "one or more" dedup is OncePerBatch.
 
 // --- token templates ---------------------------------------------
@@ -236,10 +236,12 @@ func b13PowerGreaterThan(n int) CardPredicate {
 func b13ManaValueAtMostControllersGraveyard() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		controller := c.Controller
-		mv := c.ManaValue()
 		if item := g.StackItemForEffect(c.InstanceID); item != nil {
 			controller = item.Controller
-			mv = manaValueOnStack(c, item)
+		}
+		mv, ok := g.ManaValueForEffect(c)
+		if !ok {
+			return false
 		}
 		p := g.PlayerByIDForEffect(controller)
 		if p == nil || p.Graveyard == nil {

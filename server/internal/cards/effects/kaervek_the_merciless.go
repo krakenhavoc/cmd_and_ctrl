@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The table's tax collector. b15OpponentCastSpell is the condition;
 // the mana value is read off the stack as the trigger fires (CR
-// 202.3e — manaValueOnStack, so a spell cast for X = 5 hits for its
+// 202.3e — game.(*Game).ManaValueForEffect, so a spell cast for X = 5 hits for its
 // full cost) and captured in Build, because the spell may have
 // resolved or been countered by the time the trigger does. The
 // controller picks any target as the trigger goes on the stack;
@@ -33,7 +33,7 @@ func init() {
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				amount := 0
 				if spell, ok := g.LookupCardForEffect(ev.CardID); ok {
-					amount = manaValueOnStack(spell, g.StackItemForEffect(ev.CardID))
+					amount, _ = g.ManaValueForEffect(spell)
 				}
 				return game.NewTriggeredItem(source, "Kaervek the Merciless — deal damage equal to that spell's mana value to any target",
 					func(g *game.Game, item *game.StackItem) error {
