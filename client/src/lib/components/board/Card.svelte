@@ -54,11 +54,12 @@
     showManaCost?: boolean;
     // onActivateManaAbility — when supplied, right-click / context-menu
     // opens the ManaAbilityMenu for the card's mana_abilities and
-    // this callback fires with the chosen index. Parents set it on
-    // battlefield cards the viewer controls; undefined suppresses
+    // this callback fires with the chosen index — and, for an
+    // explicit per-colour row, the colour to produce. Parents set it
+    // on battlefield cards the viewer controls; undefined suppresses
     // the menu entirely (hand cards, opponent permanents, zones
     // where activations aren't meaningful).
-    onActivateManaAbility?: (abilityIndex: number) => void;
+    onActivateManaAbility?: (abilityIndex: number, color?: string) => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
     // parents for battlefield permanents the viewer controls.
     onActivateAbility?: (abilityIndex: number) => void;
@@ -408,7 +409,7 @@
       <ManaAbilityMenu
         abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
         tapped={!!card.tapped}
-        onActivate={(idx) => onActivateManaAbility?.(idx)}
+        onActivate={(idx, color) => onActivateManaAbility?.(idx, color)}
         activated={onActivateAbility ? (card.activated_abilities ?? []) : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}

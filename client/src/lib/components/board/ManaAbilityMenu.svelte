@@ -15,12 +15,16 @@
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
   import { ACTIVATION_CONDITION_UNMET } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
+  import { manaAbilityEntries } from "../../manaPick";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     abilities: ManaAbilityView[];
     tapped: boolean;
-    onActivate: (abilityIndex: number) => void;
+    // `color` is set on an explicit per-colour row (manaAbilityEntries):
+    // a Scrubland in a mono-white deck taps for {W} in one click from
+    // its first row, and offers {B} as a second row.
+    onActivate: (abilityIndex: number, color?: string) => void;
     // S21 sub-PR 2: CR 602 activated abilities, listed below the
     // mana abilities in the same popover. Costs that need a further
     // choice (sacrifice, target) are collected by the parent after
@@ -52,8 +56,8 @@
     onClose,
   }: Props = $props();
 
-  function activate(index: number): void {
-    onActivate(index);
+  function activate(index: number, color?: string): void {
+    onActivate(index, color);
     onClose?.();
   }
 
@@ -115,7 +119,7 @@
 <ModalLayer />
 
 <div class="mana-menu" role="menu" aria-label="abilities">
-  {#each abilities as a (a.index)}
+  {#each abilities.flatMap((a) => manaAbilityEntries(a).map((entry) => ({ a, entry }))) as { a, entry } (entry.key)}
     {@const blocked = abilityBlocked(a)}
     <button
       type="button"
@@ -125,10 +129,10 @@
       title={blocked || (a.produced ? `produces ${a.produced}` : a.label)}
       onclick={(ev) => {
         ev.stopPropagation();
-        if (!blocked) activate(a.index);
+        if (!blocked) activate(a.index, entry.color);
       }}
     >
-      <span class="label">{a.label || a.produced || "activate"}</span>
+      <span class="label">{entry.label}</span>
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
       {/if}

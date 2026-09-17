@@ -392,6 +392,8 @@ type manaParams struct {
 	CardID       string   `json:"card_id"`
 	AbilityIndex int      `json:"ability_index"`
 	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	// Color is set on the explicit per-colour moves (ManualManaColors).
+	Color string `json:"color,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents.
@@ -450,6 +452,13 @@ func (e *enumerator) manaMoves() {
 					continue
 				}
 			}
+			// Owner decision (2026-09-17): a bare manual tap makes the
+			// one commander-identity colour on offer without a prompt
+			// (Scrubland in a mono-white deck gives {W}). The colours
+			// that tap no longer asks about are offered here as one
+			// explicit move each, exactly the rows the client's ability
+			// menu shows, so every printed colour stays a legal move.
+			colors, oneClick := game.ManualManaColors(g, e.seat, ab)
 			for _, sacs := range sacrificeSets {
 				label := source.Name + ": " + ab.Label
 				if ab.Label == "" {
@@ -462,21 +471,38 @@ func (e *enumerator) manaMoves() {
 					}
 					label += " (sacrificing " + strings.Join(names, ", ") + ")"
 				}
-				e.add(Move{
-					Type:   TypeActivateManaAbility,
-					Player: e.seat,
-					Kind:   KindMana,
-					Label:  label,
-					Source: source.InstanceID,
-					// Mana Confluence's "Pay 1 life" is the same
-					// invisible cost an activated ability's is (#74).
-					Cost: moveCost(ab.LifeCost, 0),
-					Params: mustJSON(manaParams{
-						CardID:       source.InstanceID.String(),
-						AbilityIndex: idx,
-						SacrificeIDs: idStrings(sacs),
-					}),
-				})
+				// The bare activation: prompts, or makes `oneClick`.
+				variants := []string{""}
+				for _, c := range colors {
+					if c != oneClick {
+						variants = append(variants, c)
+					}
+				}
+				for _, color := range variants {
+					l := label
+					switch {
+					case color != "":
+						l += " [{" + color + "}]"
+					case oneClick != "":
+						l += " [{" + oneClick + "}]"
+					}
+					e.add(Move{
+						Type:   TypeActivateManaAbility,
+						Player: e.seat,
+						Kind:   KindMana,
+						Label:  l,
+						Source: source.InstanceID,
+						// Mana Confluence's "Pay 1 life" is the same
+						// invisible cost an activated ability's is (#74).
+						Cost: moveCost(ab.LifeCost, 0),
+						Params: mustJSON(manaParams{
+							CardID:       source.InstanceID.String(),
+							AbilityIndex: idx,
+							SacrificeIDs: idStrings(sacs),
+							Color:        color,
+						}),
+					})
+				}
 			}
 		}
 	}

@@ -623,7 +623,10 @@
   // abilities never target, so they fire immediately.
   type SacrificePrompt =
     | { kind: "ability"; card: CardView; ability: ActivatedAbilityView }
-    | { kind: "mana"; card: CardView; ability: ManaAbilityView };
+    // `color` rides along for a mana ability activated from an
+    // explicit per-colour row (Phyrexian Altar's "any color"), so the
+    // colour the player asked for survives the sacrifice picker.
+    | { kind: "mana"; card: CardView; ability: ManaAbilityView; color?: string };
 
   let sacrificePrompt = $state<SacrificePrompt | null>(null);
 
@@ -738,8 +741,12 @@
 
   // S21: a mana ability with a sacrifice-another cost, handed up by
   // PlayerPanel because the picker is board-wide.
-  function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
-    sacrificePrompt = { kind: "mana", card, ability };
+  function handleManaSacrificeCost(
+    card: CardView,
+    ability: ManaAbilityView,
+    color?: string,
+  ): void {
+    sacrificePrompt = { kind: "mana", card, ability, color };
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -752,10 +759,14 @@
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
     if (ability?.sacrifice_options) {
-      handleManaSacrificeCost(card, ability);
+      handleManaSacrificeCost(card, ability, activate.color);
       return;
     }
-    const params = { card_id: card.instance_id, ability_index: activate.index };
+    const params = {
+      card_id: card.instance_id,
+      ability_index: activate.index,
+      ...(activate.color ? { color: activate.color } : {}),
+    };
     sendAction("activate_mana_ability", params, card.controller);
   }
 
@@ -770,6 +781,7 @@
           card_id: p.card.instance_id,
           ability_index: p.ability.index,
           sacrifice_ids: instanceIDs,
+          ...(p.color ? { color: p.color } : {}),
         },
         viewerID ?? undefined,
       );

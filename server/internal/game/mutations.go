@@ -3448,6 +3448,17 @@ type ManaAbilityParams struct {
 	// component. Exactly one for a single-permanent clause; empty
 	// when the ability has no such cost.
 	SacrificeIDs []uuid.UUID
+	// Color names the colour a multi-option slot should produce
+	// ("B" off a Scrubland in a mono-white deck). Empty is the
+	// one-click default: a slot with exactly one printed colour in the
+	// controller's commander colour identity produces that colour
+	// without a prompt, and every other slot queues a mana_pick (owner
+	// decision 2026-09-17, see manualManaColor). A named colour must be
+	// one the ability's picks offer, or the activation is refused
+	// before anything is paid. It pins the FIRST slot that offers it;
+	// any further multi-option slot then prompts, so a player who asked
+	// for a specific colour is never handed the default for the rest.
+	Color string
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -3542,6 +3553,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. Same gate ActivateCatalogAbility applies to
 		// AbilityCost.Life.
+		return ErrInvalidParam
+	}
+	// A named colour is checked before anything is paid, like every
+	// other parameter: a {U} request to a Scrubland must not tap it.
+	identity := commanderIdentityFor(g, p)
+	if params.Color != "" && !manaColorRequestValid(ab, identity, params.Color) {
 		return ErrInvalidParam
 	}
 	// A mana component in the cost — the Signet cycle's "{1}, {T}",
@@ -3669,6 +3686,8 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		})
 		return nil
 	}
+	// pinned records that the named colour has been spent on a slot.
+	pinned := false
 	for _, slot := range slots {
 		options := slot.Options
 		if len(options) == 0 {
@@ -3694,7 +3713,18 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// or narrowed to the identity when the printed text says so
 		// (Command Tower, Arcane Signet: NarrowToCommanderIdentity).
 		// See manaPickOptionsFor.
-		filtered := manaPickOptionsFor(g, options, p, ab.NarrowToCommanderIdentity)
+		filtered := manaPickOptions(options, identity, ab.NarrowToCommanderIdentity)
+		// Owner decision (2026-09-17): a manual tap with no colour
+		// named produces the one identity colour in one click (a
+		// Scrubland in a mono-white deck gives {W}); a named colour
+		// pins this slot; anything else prompts. See manualManaColor.
+		if color := manualManaColor(filtered, identity, params.Color, pinned); color != "" {
+			if params.Color != "" {
+				pinned = true
+			}
+			g.mintPickedManaLocked(playerID, cardID, color, slot.Amounts, restrictionsFor(g, &ab, playerID, cardID))
+			continue
+		}
 		// Queue the pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
@@ -3902,6 +3932,118 @@ func producibleColors(abilities []ManaAbilityShape) map[string]bool {
 		}
 	}
 	return out
+}
+
+// manualManaColor is the colour a manual activation mints for one
+// multi-option slot without asking, or "" when the slot prompts.
+// `options` is the slot's pick list (manaPickOptions), `requested` the
+// colour the activation named, and `pinned` whether that colour has
+// already been spent on an earlier slot.
+//
+// Owner decision (2026-09-17). With no colour named, a slot whose
+// options hold exactly ONE of the controller's commander identity
+// colours produces it in one click: a Scrubland in a mono-white deck
+// gives {W}, Birds of Paradise under a mono-green commander gives {G},
+// a Treasure likewise. Two or more identity colours, or none, prompt.
+// Every printed colour is still one step away (the client's menu sends
+// a named colour, and the legal enumerator offers one move per colour,
+// see ManualManaColors), so a deliberate off-identity colour for a
+// stolen spell or an off-colour hybrid cost stays available.
+//
+// A named colour pins the first slot that offers it, and every other
+// multi-option slot of that activation prompts rather than taking the
+// default, so a {W|U}{W|U} filter asked for {U} can still make {U}{U}
+// or {U}{W}.
+//
+// Manual activation only. The auto-tapper plans with every printed
+// colour and picks per requirement (pickColorForSlot), and an effect
+// that adds "one mana of any color" (AddManaForEffect) still prompts.
+func manualManaColor(options, identity []string, requested string, pinned bool) string {
+	if requested != "" {
+		if !pinned && containsColor(options, requested) {
+			return requested
+		}
+		return ""
+	}
+	if in := intersectColors(options, identity); len(in) == 1 {
+		return in[0]
+	}
+	return ""
+}
+
+// manaColorRequestValid reports whether `color` is a colour the
+// ability's multi-option slots offer the controller. An ability whose
+// output is computed at activation (ProducedFunc) can only be checked
+// for the letter here; a colour its computed slots turn out not to
+// offer falls back to the prompt.
+func manaColorRequestValid(ab ManaAbilityShape, identity []string, color string) bool {
+	if ab.ProducedFunc != nil {
+		return containsColor([]string{"W", "U", "B", "R", "G", "C"}, color)
+	}
+	slots, err := ParseProducedMana(ab.Produced)
+	if err != nil {
+		return false
+	}
+	for _, slot := range slots {
+		if len(slot.Options) > 1 && containsColor(manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity), color) {
+			return true
+		}
+	}
+	return false
+}
+
+// ManualManaColors describes the colour choice a manual activation of
+// `ab` by `playerID` involves, for the two surfaces that offer it: the
+// card view's ability menu and the legal enumerator.
+//
+// `colors` is every colour the ability's multi-option slots offer,
+// identity first (the union of their manaPickOptions, in slot order).
+// It is non-nil only when a bare activation would mint at least one
+// colour without asking, which is exactly when a colour the player
+// might want is otherwise unreachable and has to be offered as an
+// explicit choice. `oneClick` is that colour when EVERY multi-option
+// slot resolves to it, so a bare activation asks nothing at all.
+//
+// Nil for an ability whose output is computed at activation
+// (ProducedFunc), for one with no multi-option slot, and whenever a
+// bare activation prompts for every slot. Caller must hold g.mu.
+func ManualManaColors(g *Game, playerID uuid.UUID, ab ManaAbilityShape) (colors []string, oneClick string) {
+	if ab.ProducedFunc != nil {
+		return nil, ""
+	}
+	slots, err := ParseProducedMana(ab.Produced)
+	if err != nil {
+		return nil, ""
+	}
+	identity := commanderIdentityFor(g, g.playerByIDLocked(playerID))
+	auto, all := false, true
+	for _, slot := range slots {
+		if len(slot.Options) <= 1 {
+			continue
+		}
+		options := manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
+		for _, o := range options {
+			if !containsColor(colors, o) {
+				colors = append(colors, o)
+			}
+		}
+		c := manualManaColor(options, identity, "", false)
+		switch {
+		case c == "":
+			all = false
+		case oneClick == "":
+			auto, oneClick = true, c
+		case c != oneClick:
+			all = false
+		}
+	}
+	if !auto {
+		return nil, ""
+	}
+	if !all {
+		oneClick = ""
+	}
+	return colors, oneClick
 }
 
 // manaPickOptionsFor is the colour list a multi-option mana slot

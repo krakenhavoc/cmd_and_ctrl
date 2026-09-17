@@ -851,30 +851,42 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// #742: "N mana of any one color" mints the picked colour's
-	// amount; an ordinary pick has no entry and mints one.
+	// The choice carried the ability's restrictions here so the minted
+	// token gets them (#352).
+	g.mintPickedManaLocked(p.ID, choice.Source, color, choice.ManaAmounts, choice.ManaRestrictions)
+	g.dequeueChoiceLocked(idx)
+	return nil
+}
+
+// mintPickedManaLocked adds the mana a multi-option slot produces once
+// its colour is known: one token, or the colour's amount for "N mana
+// of any one color" (#742; a colour missing from `amounts` mints one).
+// The one path for a pick the player answered (ResolveManaChoice) and
+// a manual activation that needed no answer (ActivateManaAbility's
+// one-click default and named colour), so the two mint identically.
+// Each token gets its own copy of `restrictions`, because tokens
+// outlive the choice or ability they came from. Caller must hold g.mu.
+func (g *Game) mintPickedManaLocked(playerID, source uuid.UUID, color string, amounts map[string]int, restrictions []string) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return
+	}
 	n := 1
-	if v, ok := choice.ManaAmounts[color]; ok {
+	if v, ok := amounts[color]; ok {
 		n = v
 	}
 	for k := 0; k < n; k++ {
 		p.ManaPool.AddMana(ManaToken{
-			Color:  color,
-			Source: choice.Source,
-			// The choice carried the ability's restrictions here so
-			// the minted token gets them (#352). copyRestrictions
-			// because the choice is about to be dequeued and the
-			// token outlives it.
-			Restrictions: copyRestrictions(choice.ManaRestrictions),
+			Color:        color,
+			Source:       source,
+			Restrictions: copyRestrictions(restrictions),
 		})
 		g.EmitEvent(Event{
 			Kind:   EventManaAdded,
-			Actor:  chooserID,
-			Source: choice.Source,
+			Actor:  playerID,
+			Source: source,
 		})
 	}
-	g.dequeueChoiceLocked(idx)
-	return nil
 }
 
 // dequeueChoiceLocked drops the choice at index idx because its

@@ -1325,6 +1325,18 @@ export interface ManaAbilityView {
   // Temple's "only colorless Eldrazi". Informational; the server's
   // pool solver is what actually refuses an illegal payment.
   restrictions?: string[];
+  // Owner decision (2026-09-17), ADR 0040: a bare activation of a
+  // multi-colour source with exactly one commander-identity colour on
+  // offer makes that colour in one click — a Scrubland in a mono-white
+  // deck gives {W}. These two fields are present exactly then:
+  // color_options is every colour the ability offers, identity first,
+  // and one_click_color is what the bare activation makes (absent when
+  // a further slot still prompts). The menu turns them into rows via
+  // manaAbilityEntries, sending the off-identity ones as `color` on
+  // activate_mana_ability. Both absent means the activation prompts
+  // with every colour, as it always did.
+  color_options?: string[];
+  one_click_color?: string;
 }
 
 // AttackTargetView is one legal attack target: the id to send as

@@ -24,7 +24,7 @@
     // battlefield permanent the viewer controls. Routed down to
     // Card.svelte so the right-click / context menu can hit it.
     // Undefined suppresses the menu entirely (opponent panels).
-    onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
+    onActivateManaAbility?: (card: CardView, abilityIndex: number, color?: string) => void;
     // S21 sub-PR 2: CR 602 activated abilities, same menu.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
@@ -94,7 +94,7 @@
                 enchantedPlayer={curseTargets[a.instance_id]}
                 onClick={onCardClick}
                 onActivateManaAbility={onActivateManaAbility
-                  ? (idx) => onActivateManaAbility(a, idx)
+                  ? (idx, color) => onActivateManaAbility(a, idx, color)
                   : undefined}
                 onActivateAbility={onActivateAbility
                   ? (idx) => onActivateAbility(a, idx)
@@ -111,7 +111,7 @@
             blocking={!!c.blocking_target}
             onClick={onCardClick}
             onActivateManaAbility={onActivateManaAbility
-              ? (idx) => onActivateManaAbility(c, idx)
+              ? (idx, color) => onActivateManaAbility(c, idx, color)
               : undefined}
             onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
             {sorcerySpeedBlocked}

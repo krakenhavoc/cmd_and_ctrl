@@ -1276,6 +1276,19 @@ type ManaAbilityView struct {
 	// Cabal Coffers), whose output only exists once computed at
 	// activation — those carry the description in Label instead.
 	Produced string `json:"produced,omitempty"`
+	// ColorOptions and OneClickColor describe the colour choice of a
+	// manual activation (owner decision 2026-09-17, ADR 0040). A bare
+	// activate_mana_ability produces the one commander-identity colour
+	// on offer without a prompt: a Scrubland in a mono-white deck gives
+	// {W}. ColorOptions is present exactly when that happens, and
+	// lists every colour the ability offers, identity first, so the
+	// menu can offer the rest as explicit `color` rows. OneClickColor
+	// is the colour the bare activation makes (absent when some slot
+	// still prompts). Both absent: the bare activation prompts with
+	// every colour, as before. From the controller's point of view,
+	// like ConditionUnmet; stamped by stampManaColors.
+	ColorOptions  []string `json:"color_options,omitempty"`
+	OneClickColor string   `json:"one_click_color,omitempty"`
 }
 
 // TurnView is the wire representation of the turn cursor. PriorityHolder
@@ -1399,6 +1412,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		stampManaColors(g, &view.Battlefield)
 		stampCombatTargets(g, &view)
 		view.legalBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
@@ -1744,6 +1758,42 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
+	}
+}
+
+// stampManaColors sets ManaAbilityView.ColorOptions and OneClickColor
+// on every battlefield permanent's mana abilities, from the
+// controller's commander identity (game.ManualManaColors). Its own
+// pass rather than part of stampActivatedAbilities, which skips cards
+// with no oracle ID: a Treasure token has none and is exactly the
+// "any color" source this is for. Caller must hold g's read lock.
+func stampManaColors(g *game.Game, bf *ZoneView) {
+	for i := range bf.Cards {
+		c := &bf.Cards[i]
+		if len(c.ManaAbilities) == 0 {
+			continue
+		}
+		controller, err := uuid.Parse(c.Controller)
+		if err != nil {
+			continue
+		}
+		instanceID, err := uuid.Parse(c.InstanceID)
+		if err != nil {
+			continue
+		}
+		card, ok := g.LookupCardForEffect(instanceID)
+		if !ok {
+			continue
+		}
+		raw := game.ManaAbilitiesForCard(card)
+		for j := range c.ManaAbilities {
+			if j >= len(raw) {
+				break
+			}
+			colors, oneClick := game.ManualManaColors(g, controller, raw[j])
+			c.ManaAbilities[j].ColorOptions = colors
+			c.ManaAbilities[j].OneClickColor = oneClick
+		}
 	}
 }
 

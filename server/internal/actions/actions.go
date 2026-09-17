@@ -1365,6 +1365,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// name and shape as activate_ability's, so the client
 			// reuses one picker for both ability kinds.
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// color names the colour a multi-option slot produces
+			// ("B" off a Scrubland in a mono-white deck). Omitted is
+			// the one-click default: exactly one identity colour on
+			// offer is produced without a prompt, anything else
+			// prompts. See game.ManaAbilityParams.Color.
+			Color string `json:"color,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1382,7 +1388,7 @@ func Dispatch(g *game.Game, a Action) error {
 			sacIDs = append(sacIDs, id)
 		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex,
-			game.ManaAbilityParams{SacrificeIDs: sacIDs})
+			game.ManaAbilityParams{SacrificeIDs: sacIDs, Color: p.Color})
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

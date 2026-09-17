@@ -24,6 +24,7 @@ import { attackAllLabel, attackAllParams, planAttackAll, seatLabel } from "./att
 import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
+import { manaAbilityEntries } from "./manaPick";
 import type { ActionType, CardView, GameView } from "./protocol";
 import { sacrificeShortfall } from "./sacrificeCost";
 import {
@@ -127,6 +128,10 @@ export type MenuPrompt = "custom_counter" | "mark_damage";
 export interface MenuActivate {
   kind: "mana" | "ability";
   index: number;
+  // Owner decision (2026-09-17): a mana ability's explicit per-colour
+  // row names the colour to produce (manaAbilityEntries). Absent on
+  // the bare row, which takes the server's one-click default.
+  color?: string;
 }
 
 export interface MenuItem {
@@ -487,13 +492,19 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
     // Mana abilities never carry a loyalty cost, so the context is
     // inert for them — passed anyway to keep one call shape.
     const blocked = manaRestricted || abilityBlocked(a, tapped, sick, loyalty);
-    items.push({
-      id: `mana-${a.index}`,
-      label: a.label || a.produced || "add mana",
-      hint: blocked || undefined,
-      disabled: !!blocked,
-      activate: { kind: "mana", index: a.index },
-    });
+    // One row per colour choice the activation offers: the bare row,
+    // plus the off-identity colours a one-click source no longer asks
+    // about (manaAbilityEntries). A source that still prompts has the
+    // one row it always had.
+    for (const entry of manaAbilityEntries(a)) {
+      items.push({
+        id: entry.color ? `mana-${a.index}-${entry.color}` : `mana-${a.index}`,
+        label: entry.label,
+        hint: blocked || undefined,
+        disabled: !!blocked,
+        activate: { kind: "mana", index: a.index, ...(entry.color ? { color: entry.color } : {}) },
+      });
+    }
   }
   for (const a of card.activated_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);

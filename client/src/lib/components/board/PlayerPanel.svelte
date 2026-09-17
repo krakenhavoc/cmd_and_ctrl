@@ -90,7 +90,7 @@
     // sacrifice chosen before it can be activated. Board owns that
     // modal, so the panel forwards the click instead of sending the
     // action. Only wired for the viewer's own panel.
-    onManaSacrificeCost?: (card: CardView, ability: ManaAbilityView) => void;
+    onManaSacrificeCost?: (card: CardView, ability: ManaAbilityView, color?: string) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -240,15 +240,17 @@
   // action itself once a card is picked.
   const activateManaAbility = $derived(
     isSelf
-      ? (card: CardView, abilityIndex: number) => {
+      ? (card: CardView, abilityIndex: number, color?: string) => {
           const ability = (card.mana_abilities ?? []).find((a) => a.index === abilityIndex);
           if (ability?.sacrifice_options && onManaSacrificeCost) {
-            onManaSacrificeCost(card, ability);
+            onManaSacrificeCost(card, ability, color);
             return;
           }
           sendAction(
             "activate_mana_ability",
-            { card_id: card.instance_id, ability_index: abilityIndex },
+            // An explicit per-colour row names the colour; the bare
+            // row omits it and takes the server's one-click default.
+            { card_id: card.instance_id, ability_index: abilityIndex, ...(color ? { color } : {}) },
             seat.id,
           );
         }
