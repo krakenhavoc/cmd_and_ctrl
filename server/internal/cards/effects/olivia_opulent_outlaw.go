@@ -22,7 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The anthem's cost is a mana component plus a sacrifice clause
 //     with a count of two (#747, SacrificeN) at sorcery speed. The
 //     counters go on each creature the controller controls as the
-//     ability resolves (b11PutCounterOnEachCreatureYouControl, twice).
+//     ability resolves, as one placement of two counters per creature
+//     (b11PutCountersOnEachCreatureYouControl), so a counter
+//     replacement such as Hardened Scales applies once, not twice.
 //
 // Declared simplification, weaker than printed: the trigger is once
 // per combat damage step, not once per player. The printed ability
@@ -51,10 +53,7 @@ func init() {
 			Cost:         Plus(ManaCost("{3}"), SacrificeN(2, "two Treasures", isTreasure)),
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				if err := b11PutCounterOnEachCreatureYouControl(g, item); err != nil {
-					return err
-				}
-				return b11PutCounterOnEachCreatureYouControl(g, item)
+				return b11PutCountersOnEachCreatureYouControl(g, item, 2)
 			},
 		}},
 	})

@@ -6,6 +6,7 @@ import {
   canConfirmSacrifice,
   chooseForMeState,
   chooseSacrificeForMe,
+  keepAvailablePicks,
   orderSacrificeOptions,
   sacrificeCount,
   sacrificeShortfall,
@@ -115,6 +116,14 @@ describe("the multi-select picker", () => {
       orderSacrificeOptions(board, ["food", "rock", "gone"]).map((c) => c.instance_id),
     ).toEqual(["food", "rock"]);
     expect(orderSacrificeOptions(board, undefined)).toEqual([]);
+  });
+
+  it("drops a pick that left the options while the picker was open", () => {
+    // Two of three Treasures picked, then one is destroyed in response.
+    expect(keepAvailablePicks(["t1", "t2"], ["t2", "t3"])).toEqual(["t2"]);
+    const chosen = ["t1", "t2"];
+    expect(keepAvailablePicks(chosen, ["t1", "t2", "t3"])).toBe(chosen);
+    expect(keepAvailablePicks([], [])).toEqual([]);
   });
 });
 

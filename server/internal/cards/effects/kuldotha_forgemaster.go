@@ -13,8 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The clause says "artifacts", not "other artifacts", and the
 // Forgemaster is itself an artifact, so it may be one of the three —
 // tapping and sacrificing the same permanent is one legal payment,
-// as on paper. The enumerator and the "Choose for me" button both put
-// it last. It is a creature with {T} in its cost, so summoning
+// as on paper. The enumerator and the "Choose for me" button both
+// follow the shared payment order (ADR 0020 addendum §15), where the
+// source only breaks ties after mana value: it goes last among the
+// permanents with its mana value (5), so a nontoken artifact of mana
+// value 6 or more still sorts after it. It is a creature with {T} in its cost, so summoning
 // sickness applies (CR 302.6).
 //
 // The search is the shared library search straight onto the

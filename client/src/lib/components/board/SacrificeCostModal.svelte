@@ -24,6 +24,7 @@
     canConfirmSacrifice,
     chooseForMeState,
     chooseSacrificeForMe,
+    keepAvailablePicks,
     toggleSacrificePick,
   } from "../../sacrificeCost";
   import ModalLayer from "../ModalLayer.svelte";
@@ -54,6 +55,17 @@
       lastSourceID = id;
       chosen = [];
     }
+  });
+
+  // A picked permanent that leaves the battlefield while the picker is
+  // open (a chosen Treasure destroyed in response) drops out of the
+  // selection, so its slot frees up and a confirm never sends it.
+  $effect(() => {
+    const kept = keepAvailablePicks(
+      chosen,
+      options.map((c) => c.instance_id),
+    );
+    if (kept !== chosen) chosen = kept;
   });
 
   const ready = $derived(canConfirmSacrifice(chosen, count));

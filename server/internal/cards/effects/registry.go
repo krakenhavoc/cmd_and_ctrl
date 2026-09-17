@@ -161,6 +161,13 @@ func Register(spec Spec) {
 //   - Players: a player is not a permanent.
 //
 // Nil (no sacrifice component) is fine.
+//
+// Register calls it on the three sites the ADR names: spec.Activated,
+// spec.ManaAbilities and spec.AdditionalCost. An ability granted at
+// runtime (a static grant, an Equipment's "equipped creature has …")
+// is built after registration and is not checked here. Every such
+// grant with a sacrifice clause today is a count of one, so nothing
+// escapes the guard yet; a grant with a variable count would.
 func checkSacrificeClause(card, where string, spec *game.TargetSpec) {
 	if spec == nil {
 		return

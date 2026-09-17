@@ -16,8 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     SacrificeN) over white creatures, with no tap and no mana, so it
 //     can be activated at instant speed as often as the board allows.
 //     The target is chosen before the cost is paid (CR 601.2c before
-//     601.2h), so a creature being sacrificed cannot be its own
-//     target. Teysa is white, so she may be one of the three.
+//     601.2h), so a white creature may be targeted and then be one of
+//     the three sacrificed, as on paper; its target is then gone and
+//     the ability does nothing on resolution (CR 608.2b). The engine
+//     does not forbid that overlap. Teysa is white, so she may be one
+//     of the three.
 //   - The Spirit trigger is the shared dies watcher (diedCreature),
 //     narrowed to another creature the controller controlled that is
 //     black. The three Spirits a removal activation makes are white,

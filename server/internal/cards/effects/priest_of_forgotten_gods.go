@@ -25,9 +25,11 @@ import (
 // asked to sacrifice a creature of their choice (a player with no
 // creature is skipped, CR 701.21a); then the controller adds {B}{B}
 // — it has targets, so it is not a mana ability (CR 605.1a) and the
-// mana arrives on resolution — and draws. The sacrifice prompts are
-// answered after the draw, which changes nothing a player can see: no
-// choice depends on the card drawn.
+// mana arrives on resolution — and draws. The target players'
+// sacrifice prompts are queued in APNAP order (CR 101.4: the active
+// player chooses first, then the others in turn order) and answered
+// after the draw, which changes nothing a player can see: no choice
+// depends on the card drawn.
 //
 // Declared simplification, weaker than printed: "two OTHER creatures"
 // is enforced by name (b03NotNamed, Warren Soultrader's posture),
@@ -55,10 +57,18 @@ func init() {
 // creature of their choice, then the controller adds {B}{B} and draws.
 func priestOfForgottenGodsEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var players []uuid.UUID
+	targeted := map[uuid.UUID]bool{}
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
-			players = append(players, t.ID)
+			targeted[t.ID] = true
+		}
+	}
+	// APNAP order (CR 101.4), not the order the targets were named:
+	// the sacrifice prompts are queued active player first.
+	var players []uuid.UUID
+	for _, p := range apnapPlayers(g) {
+		if targeted[p] {
+			players = append(players, p)
 		}
 	}
 	for _, p := range players {

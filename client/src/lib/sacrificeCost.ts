@@ -98,3 +98,15 @@ export function chooseSacrificeForMe(options: string[], count: number): string[]
 export function canConfirmSacrifice(chosen: string[], count: number): boolean {
   return chosen.length === count && new Set(chosen).size === count;
 }
+
+// keepAvailablePicks drops picks that are no longer among the options:
+// a chosen Treasure destroyed in response while the picker is open
+// would otherwise stay in the selection unseen, unable to be unticked,
+// holding a slot that disables every other row, and a confirm would
+// send an ID the server refuses. Returns `chosen` itself when nothing
+// was dropped, so a reactive caller can compare by reference.
+export function keepAvailablePicks(chosen: string[], optionIDs: string[]): string[] {
+  const available = new Set(optionIDs);
+  const kept = chosen.filter((id) => available.has(id));
+  return kept.length === chosen.length ? chosen : kept;
+}

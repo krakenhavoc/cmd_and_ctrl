@@ -359,6 +359,25 @@ func TestOliviaSacrificesTwoTreasuresForCountersOnEachCreature(t *testing.T) {
 	}
 }
 
+// "Put two +1/+1 counters on each creature" is one placement of two,
+// so Hardened Scales adds one counter per creature (2+1 = 3), not one
+// per counter placed (two placements of one would give 4).
+func TestOliviaCountersAreOnePlacementUnderHardenedScales(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	olivia := b12Push(g, me.ID, "Olivia, Opulent Outlaw", "Legendary Creature — Vampire Assassin", oliviaOpulentOutlawOracle, 3, 3)
+	bear := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
+	_ = seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me.ID)
+	treasures := pushTokens(g, me.ID, TreasureToken(), 2)
+	advanceToMain(t, g)
+	b16Activate(t, g, me.ID, olivia, 0, game.ActivateAbilityParams{SacrificeIDs: treasures})
+	for _, id := range []uuid.UUID{olivia, bear} {
+		if c, _ := battlefieldCard(g, id); c.Counters["+1/+1"] != 3 {
+			t.Errorf("%s has %d +1/+1 counters under Hardened Scales, want 3", c.Name, c.Counters["+1/+1"])
+		}
+	}
+}
+
 func TestOliviaMakesOneTreasureWhenOutlawsConnect(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
