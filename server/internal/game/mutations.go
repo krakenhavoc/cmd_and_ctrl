@@ -5144,49 +5144,41 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 
 // ChangePlayerLife adjusts a player's life total by delta (positive
 // for gain, negative for loss) and returns the new total.
+//
+// The sandbox verb: a player dragging their own life counter. It has
+// run the CR 614 window since S17 sub-PR 2, and since #482 so does
+// every other writer of a life total — all of them land in the one
+// tail in life_tail.go, so a hand-typed life change and a catalog
+// GainLife can no longer disagree about which replacements apply.
+//
+// A CR 616 ordering prompt returns (0, nil): the change lands from the
+// resume when the affected player answers, and there is no new total
+// to report yet.
 func (g *Game) ChangePlayerLife(playerID uuid.UUID, delta int) (int, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return 0, ErrGameNotActive
 	}
-	// S17 sub-PR 2: replacement pipeline — no catalog life-change
-	// replacements yet, so behavior is byte-for-byte identical to
-	// pre-S17. A CR 616 prompt path is a no-op for sub-PR 2 (the
-	// caller sees newLife=0 and no error; the pipeline resumes
-	// when the prompt resolves).
 	ev := &ReplacementEvent{
 		Kind:       RepEventLife,
 		LifePlayer: playerID,
 		LifeDelta:  delta,
 	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		return 0, nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
+	paused, err := g.changeLifeThroughReplacementsLocked(ev)
+	if err != nil {
 		return 0, err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		p := g.playerByIDLocked(playerID)
-		if p == nil {
-			return 0, ErrPlayerNotFound
-		}
-		return p.Life, nil
+	if paused {
+		return 0, nil
 	}
-	p := g.playerByIDLocked(out.LifePlayer)
+	// Read back off the event rather than the argument: a replacement
+	// is free to have redirected the change to someone else.
+	p := g.playerByIDLocked(ev.LifePlayer)
 	if p == nil {
 		return 0, ErrPlayerNotFound
 	}
-	newLife := p.ChangeLife(out.LifeDelta)
-	g.EmitEvent(Event{
-		Kind:   EventChangeLife,
-		Target: out.LifePlayer,
-		Amount: out.LifeDelta,
-	})
-	return newLife, nil
+	return p.Life, nil
 }
 
 // AddCounter modifies a named counter on a card by delta. Creates the
