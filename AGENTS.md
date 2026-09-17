@@ -958,6 +958,11 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"changeling"` | Changeling (CR 702.73) — S26, every creature type (`game.KeywordChangeling`) |
 | `"plainswalk"`, `"islandwalk"`, `"swampwalk"`, `"mountainwalk"`, `"forestwalk"` | Landwalk (CR 702.14) — #705, block legality |
 | `"nonbasic landwalk"` | Nonbasic landwalk (CR 702.14c) — #705, block legality |
+| `"fear"` | Fear (CR 702.36b) — artifact or black blockers |
+| `"intimidate"` | Intimidate (CR 702.13b) — artifact blockers or a shared color |
+| `"shadow"` | Shadow (CR 702.28b) — attacker and blocker must both have it or both lack it |
+| `"horsemanship"` | Horsemanship (CR 702.31b) — requires horsemanship on the blocker |
+| `"skulk"` | Skulk (CR 702.118b) — blocker power cannot exceed attacker power |
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
@@ -972,6 +977,12 @@ below). The landwalk tokens are read by `Game.BlockPairRefusalLocked`
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the
 table with their first card.
+
+The five evasion keywords in #825 use that same pair function. Read colors,
+types and power from effective characteristics; shadow restricts both
+directions, while horsemanship restricts only the attacker's blockers. The
+legal enumerator and block-decision signal share the engine answer. The
+bot's attack estimate reads the public view and never decides legality.
 
 The table is closed on purpose: **a keyword joins it in the same
 change that teaches the engine to honour it.** Declaring a token the

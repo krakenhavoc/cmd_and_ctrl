@@ -702,15 +702,21 @@ type CardView struct {
 	// Omitted for placeholder demo cards that have no resolved type.
 	// Added in S08.
 	TypeLine string `json:"type_line,omitempty"`
+	// Colors is the effective color list (W/U/B/R/G), including layer-5
+	// changes. Absent means colorless; mana cost is not a color fallback.
+	Colors []string `json:"colors,omitempty"`
 	// Power and Toughness are the parsed printed stats. Zero for
 	// non-creatures and for any card with non-numeric printed stats
 	// ("*", "1+*"). The client uses Power to label combat-panel
 	// creature rows; ResolveCombatDamage uses CurrentPower (base +
 	// counter modifiers) on the server side. Both omitempty for
 	// non-creatures. Added in S08.
-	Power     int  `json:"power,omitempty"`
-	Toughness int  `json:"toughness,omitempty"`
-	Tapped    bool `json:"tapped,omitempty"`
+	Power int `json:"power,omitempty"`
+	// NegativePower preserves signed power for comparisons such as skulk.
+	// Present only below zero; Power retains its combat-damage zero clamp.
+	NegativePower int  `json:"negative_power,omitempty"`
+	Toughness     int  `json:"toughness,omitempty"`
+	Tapped        bool `json:"tapped,omitempty"`
 	// NoUntap describes an untap-step restriction or one-shot marker on
 	// this battlefield permanent. Static is hidden for face-down cards;
 	// Next is public state and survives the face-down identity redaction.
@@ -2636,8 +2642,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	}
 	out.Name = ""
 	out.TypeLine = ""
+	out.Colors = nil
 	out.ScryfallID = ""
 	out.Power = 0
+	out.NegativePower = 0
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
@@ -2781,6 +2789,7 @@ func viewOfCard(c game.Card) CardView {
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
 		TypeLine:   effectiveTypeLine(c, eff),
+		Colors:     append([]string(nil), eff.Colors...),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
@@ -2789,11 +2798,12 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:       c.CurrentPower(),
-		Toughness:   c.CurrentToughness(),
-		Tapped:      c.Tapped,
-		Counters:    counters,
-		IsCommander: c.IsCommander,
+		Power:         c.CurrentPower(),
+		NegativePower: min(0, c.PowerForComparison()),
+		Toughness:     c.CurrentToughness(),
+		Tapped:        c.Tapped,
+		Counters:      counters,
+		IsCommander:   c.IsCommander,
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

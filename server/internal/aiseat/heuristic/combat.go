@@ -302,19 +302,67 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 // an illegal one.
 //
 // `defender` is the seat the attack would hit; landwalk reads that
-// seat's lands off the public view.
+// seat's lands off the public view. Fear, intimidate, shadow,
+// horsemanship, skulk, and restriction tokens read the same effective
+// public characteristics the engine projects.
 func couldBlock(st *state, defender string, atk, blk *protocol.CardView) bool {
 	if hasKeyword(atk, "flying") && !hasKeyword(blk, "flying") && !hasKeyword(blk, "reach") {
 		return false
 	}
-	if hasKeyword(blk, "can't block") {
+	if hasRestriction(blk, "cant_block") || hasRestriction(atk, "cant_be_blocked") {
 		return false
 	}
 	if landwalkBites(st, defender, atk) {
 		return false
 	}
+	if hasKeyword(atk, "fear") && !isArtifact(blk) && !hasColor(blk, "B") {
+		return false
+	}
+	if hasKeyword(atk, "intimidate") && !isArtifact(blk) && !sharesColor(atk, blk) {
+		return false
+	}
+	if hasKeyword(atk, "shadow") != hasKeyword(blk, "shadow") {
+		return false
+	}
+	if hasKeyword(atk, "horsemanship") && !hasKeyword(blk, "horsemanship") {
+		return false
+	}
+	if hasKeyword(atk, "skulk") && powerForComparison(blk) > powerForComparison(atk) {
+		return false
+	}
 	return true
 }
+
+func powerForComparison(c *protocol.CardView) int {
+	if c.NegativePower < 0 {
+		return c.NegativePower
+	}
+	return c.Power
+}
+
+// hasRestriction reads the server-projected restriction set. Restrictions
+// are effects on a card, not keywords in its ability list.
+func hasRestriction(c *protocol.CardView, want string) bool {
+	return c != nil && slices.Contains(c.Restrictions, want)
+}
+
+func hasColor(c *protocol.CardView, want string) bool {
+	return c != nil && slices.Contains(c.Colors, want)
+}
+
+func sharesColor(a, b *protocol.CardView) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	for _, color := range a.Colors {
+		if hasColor(b, color) {
+			return true
+		}
+	}
+	return false
+}
+
+func isArtifact(c *protocol.CardView) bool { return isType(c, "artifact") }
 
 // landwalkLand is what one landwalk keyword asks of a land (CR
 // 702.14c): a land subtype, or, for nonbasic landwalk, the absence of
