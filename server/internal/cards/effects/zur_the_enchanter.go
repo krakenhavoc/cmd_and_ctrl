@@ -35,7 +35,7 @@ func init() {
 			WheneverThisAttacks("Zur the Enchanter — you may search for an enchantment with mana value 3 or less", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.IsEnchantment() && manaValueOf(c) <= 3 },
+					Predicate: func(c game.Card) bool { return c.IsEnchantment() && c.ManaValue() <= 3 },
 					Dest:      game.ZoneBattlefield,
 					Limit:     1,
 					Shuffle:   true,

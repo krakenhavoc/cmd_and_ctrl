@@ -43,12 +43,10 @@ func ChooseN(prompt string, min, max int, options ...game.ModeOption) *game.Mode
 
 // ManaValueGE passes when the card's mana value is ≥ n (Austere
 // Command's "mana value 4 or greater").
+// Same reading as ManaValueLE: game.Card.ParsedManaValue.
 func ManaValueGE(n int) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		cost, err := game.ParseCost(c.ManaCost)
-		if err != nil {
-			return false
-		}
-		return cost.Generic+len(cost.Required) >= n
+		mv, ok := c.ParsedManaValue()
+		return ok && mv >= n
 	}
 }

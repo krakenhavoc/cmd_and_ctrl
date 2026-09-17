@@ -66,13 +66,26 @@ type ParsedCost struct {
 // colors that may satisfy it; a monocolored {R} has Options = {"R"},
 // a hybrid {W/U} has Options = {"W", "U"}. Phyrexian flags the
 // "or 2 life" alternative; NumericAlt flags the "{N/COLOR}" two-mana
-// hybrid alternative (Reaper King). Both are scaffolded for S17 and
-// unused by S15's validator / auto-tapper.
+// hybrid alternative (Reaper King). The validator and auto-tapper do
+// not read NumericAlt — they pay the coloured half — but the mana
+// value does (CR 202.3f, ColorRequirement.ManaValue).
 type ColorRequirement struct {
 	Options       []string
 	Phyrexian     bool
 	NumericAlt    int
 	HasNumericAlt bool
+}
+
+// ManaValue is what one coloured-mana slot contributes to a mana
+// value: the largest component of the symbol (CR 202.3f). That is 1
+// for {W}, {C}, snow, a two-colour or colourless hybrid ({W/U},
+// {C/W}) and a Phyrexian symbol (CR 202.3g), and N for a monocoloured
+// hybrid {N/W} — 2 for every printed one.
+func (r ColorRequirement) ManaValue() int {
+	if r.HasNumericAlt && r.NumericAlt > 1 {
+		return r.NumericAlt
+	}
+	return 1
 }
 
 // ParseCost walks s and produces a ParsedCost. Returns an error on
