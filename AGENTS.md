@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0055 CR 726 loop breaker) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0057 winning and losing by effect) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
