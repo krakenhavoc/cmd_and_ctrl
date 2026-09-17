@@ -41,11 +41,10 @@ func b18SpringleafShapeshifterToken() game.Card {
 		Toughness: 1,
 		Keywords:  []string{game.KeywordChangeling},
 		ManaAbilities: []game.ManaAbilityShape{{
-			TapCost:                 true,
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}: Add one mana of any color (while you control Springleaf Parade)",
-			IgnoreCommanderIdentity: true,
-			Condition:               b18ControlsNamed("Springleaf Parade"),
+			TapCost:   true,
+			Produced:  "{W|U|B|R|G}",
+			Label:     "{T}: Add one mana of any color (while you control Springleaf Parade)",
+			Condition: b18ControlsNamed("Springleaf Parade"),
 		}},
 	}
 }

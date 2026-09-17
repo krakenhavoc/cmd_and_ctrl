@@ -30,10 +30,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:                    ManaAbilityCost{Tap: true, Mana: "{W/U}"},
-				Produced:                "{W|U}{W|U}",
-				Label:                   "{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true, Mana: "{W/U}"},
+				Produced: "{W|U}{W|U}",
+				Label:    "{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}",
 			},
 		},
 	})

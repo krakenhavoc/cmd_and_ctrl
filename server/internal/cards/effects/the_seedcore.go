@@ -36,10 +36,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:                    ManaAbilityCost{Tap: true},
-				Produced:                "{W|U|B|R|G}",
-				Label:                   "Add one mana of any color (Phyrexian creature spells only)",
-				IgnoreCommanderIdentity: true,
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{W|U|B|R|G}",
+				Label:    "Add one mana of any color (Phyrexian creature spells only)",
 				Restrictions: []string{
 					ManaRestrictCast,
 					ManaRestrictType("Creature"),

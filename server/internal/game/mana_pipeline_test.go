@@ -220,11 +220,10 @@ func TestScaledManaAbilityWithNothingToCountStillTaps(t *testing.T) {
 
 func restrictedShape(produced string, restrictions []string) []ManaAbilityShape {
 	return []ManaAbilityShape{{
-		TapCost:                 true,
-		Produced:                produced,
-		Label:                   "restricted",
-		Restrictions:            restrictions,
-		IgnoreCommanderIdentity: true,
+		TapCost:      true,
+		Produced:     produced,
+		Label:        "restricted",
+		Restrictions: restrictions,
 	}}
 }
 

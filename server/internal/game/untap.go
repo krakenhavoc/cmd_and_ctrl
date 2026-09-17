@@ -84,14 +84,9 @@ import "github.com/google/uuid"
 //     for the game log, and its own doc comment says outright that
 //     adding a rules listener to it would be a mistake.
 //
-//   - A "this permanent doesn't untap" restriction (Winter Orb,
-//     Tangle's rider, Icy Manipulator's "doesn't untap during its
-//     controller's next untap step"). It is the same set
-//     computation from the other direction and untapStepSetLocked is
-//     where it goes when the first such card is written; it is not
-//     written speculatively here, because nothing in the catalog
-//     needs it yet and an unused predicate is a guess about a card
-//     nobody has read.
+// Static restrictions and next-untap markers narrow that same set.
+// Stun counters instead replace every individual untap in the shared
+// primitive, including untaps outside an untap step.
 
 // UntapStepPermission declares one card's contribution to the set of
 // permanents that untap during a player's untap step (CR 502.3) —
@@ -143,6 +138,43 @@ type UntapStepPermission struct {
 	Label string
 }
 
+// UntapStepRestriction is a static effect that keeps a permanent from
+// untapping during that permanent's controller's own untap step.
+type UntapStepRestriction struct {
+	Restricts func(target *Card, g *Game, source *Card) bool
+	Label     string
+}
+
+// UntapSkip is one one-shot next-untap-step marker. Nil Player follows the
+// permanent's controller; a non-nil Player names that player's next step.
+type UntapSkip struct{ Player uuid.UUID }
+
+type untapSkipSnapshot struct {
+	Player uuid.UUID `json:"player"`
+}
+
+func snapshotUntapSkips(in []UntapSkip) []untapSkipSnapshot {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]untapSkipSnapshot, len(in))
+	for i := range in {
+		out[i].Player = in[i].Player
+	}
+	return out
+}
+
+func restoreUntapSkips(in []untapSkipSnapshot) []UntapSkip {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]UntapSkip, len(in))
+	for i := range in {
+		out[i].Player = in[i].Player
+	}
+	return out
+}
+
 // CatalogUntapStepPermissions returns the untap-step permissions
 // declared by the given oracle ID (one entry per
 // effects.Spec.UntapStep element), or nil when the card declares
@@ -157,6 +189,8 @@ type UntapStepPermission struct {
 // untapStepSetLocked.
 var CatalogUntapStepPermissions func(oracleID string) []UntapStepPermission
 
+var CatalogUntapStepRestrictions func(oracleID string) []UntapStepRestriction
+
 // boundUntapPermission is one declared permission paired with the
 // battlefield card that declared it. Pointers into
 // g.Battlefield.Cards, valid only for the duration of the
@@ -166,9 +200,14 @@ type boundUntapPermission struct {
 	source     *Card
 }
 
+type boundUntapRestriction struct {
+	restriction UntapStepRestriction
+	source      *Card
+}
+
 // untapPermanentLocked turns one permanent from sideways to upright
-// (CR 701.26b) and announces it as EventUntapCard. Returns whether
-// anything happened.
+// (CR 701.26b) and announces it as EventUntapCard, unless a stun
+// counter replaces the untap with removing that counter.
 //
 // A permanent that is ALREADY untapped does not become untapped, and
 // gets no event: CR 701.26b describes a change of state, and "untap
@@ -190,12 +229,108 @@ func (g *Game) untapPermanentLocked(c *Card) {
 	if c == nil || !c.Tapped {
 		return
 	}
+	if c.Counters[CounterStun] > 0 {
+		_ = g.applyCounterLocked(c.InstanceID, CounterStun, -1)
+		return
+	}
 	c.Tapped = false
 	g.EmitEvent(Event{
 		Kind:   EventUntapCard,
 		Actor:  c.Controller,
 		CardID: c.InstanceID,
 	})
+}
+
+// SkipNextUntapForEffect adds a deduplicated next-untap marker to a
+// battlefield permanent. Caller already holds g.mu.
+func (g *Game) SkipNextUntapForEffect(cardID, player uuid.UUID) error {
+	if g.Battlefield == nil {
+		return nil
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.InstanceID != cardID {
+			continue
+		}
+		for _, skip := range c.NextUntapSkips {
+			if skip.Player == player {
+				return nil
+			}
+		}
+		c.NextUntapSkips = append(c.NextUntapSkips, UntapSkip{Player: player})
+		return nil
+	}
+	return nil
+}
+
+func (c Card) hasNextUntapSkipFor(player uuid.UUID) bool {
+	for _, skip := range c.NextUntapSkips {
+		if skip.Player == player || (skip.Player == uuid.Nil && c.Controller == player) {
+			return true
+		}
+	}
+	return false
+}
+
+// activeUntapStepRestrictionsLocked binds every live restriction source once
+// for a step-sized query. Caller holds g.mu.
+func (g *Game) activeUntapStepRestrictionsLocked() []boundUntapRestriction {
+	if g.Battlefield == nil || CatalogUntapStepRestrictions == nil {
+		return nil
+	}
+	var out []boundUntapRestriction
+	for i := range g.Battlefield.Cards {
+		source := &g.Battlefield.Cards[i]
+		key := CatalogAbilityKey(*source)
+		if key == "" {
+			continue
+		}
+		for _, restriction := range CatalogUntapStepRestrictions(key) {
+			if restriction.Restricts != nil {
+				out = append(out, boundUntapRestriction{restriction, source})
+			}
+		}
+	}
+	return out
+}
+
+func untapStepRestrictedBy(c *Card, g *Game, restrictions []boundUntapRestriction) bool {
+	if c == nil {
+		return false
+	}
+	for _, bound := range restrictions {
+		if bound.restriction.Restricts(c, g, bound.source) {
+			return true
+		}
+	}
+	return false
+}
+
+// UntapStepRestrictedLocked is the pure static half of the untap-step set.
+// Caller holds g.mu; it deliberately does not recompute layers.
+func (g *Game) UntapStepRestrictedLocked(c *Card) bool {
+	return untapStepRestrictedBy(c, g, g.activeUntapStepRestrictionsLocked())
+}
+
+func (g *Game) consumeUntapSkipsLocked(activePlayer uuid.UUID) {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		out := c.NextUntapSkips[:0]
+		for _, skip := range c.NextUntapSkips {
+			if skip.Player == activePlayer || (skip.Player == uuid.Nil && c.Controller == activePlayer) {
+				continue
+			}
+			out = append(out, skip)
+		}
+		if len(out) == 0 {
+			c.NextUntapSkips = nil
+		} else {
+			c.NextUntapSkips = out
+		}
+	}
 }
 
 // untapPermanentByIDLocked is untapPermanentLocked addressed by
@@ -274,6 +409,7 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		return nil
 	}
 	permissions := g.activeUntapStepPermissionsLocked(activePlayer)
+	restrictions := g.activeUntapStepRestrictionsLocked()
 	var ids []uuid.UUID
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -282,7 +418,13 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		}
 		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
+			if untapStepRestrictedBy(c, g, restrictions) || c.hasNextUntapSkipFor(activePlayer) {
+				continue
+			}
 			ids = append(ids, c.InstanceID)
+			continue
+		}
+		if c.hasNextUntapSkipFor(activePlayer) {
 			continue
 		}
 		for _, bp := range permissions {
@@ -340,7 +482,12 @@ func (g *Game) performUntapStepLocked(seat int) {
 			}
 		}
 	}
-	for _, id := range g.untapStepSetLocked(activePlayer) {
+	ids := g.untapStepSetLocked(activePlayer)
+	// Markers are consumed for the actual step even when their card was
+	// already upright and therefore absent from this set. Kept before any
+	// emits so listeners cannot observe a half-used step.
+	g.consumeUntapSkipsLocked(activePlayer)
+	for _, id := range ids {
 		g.untapPermanentByIDLocked(id)
 	}
 }

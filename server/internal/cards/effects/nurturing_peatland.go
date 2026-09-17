@@ -20,10 +20,9 @@ func init() {
 		Name:         "Nurturing Peatland",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                "{B|G}",
-			Label:                   "{T}, Pay 1 life: Add {B} or {G}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: "{B|G}",
+			Label:    "{T}, Pay 1 life: Add {B} or {G}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this land: Draw a card.",

@@ -13,9 +13,15 @@
 //	                estimate, finish_reason, whether a reasoning field
 //	                came back, whether the reply parsed.
 //
-// `arena` (headless bot-vs-bot games with win rates) and `suite` (a
-// labelled position suite) are the next two subcommands and land in
-// later PRs; the switch below is shaped for them.
+//	boteval suite   the labelled position suite: run a policy over every
+//	                labelled window and report agreement, harvest new
+//	                candidate windows out of decision logs, or render one
+//	                position as the exact prompt a model would see.
+//
+//	boteval arena   N headless bot-vs-bot games, with win rates and
+//	                Wilson intervals, the funnel's own counters and
+//	                the decision-latency tails, written out as a
+//	                report block and a machine-readable summary.
 //
 // Build it with `make -C server build-boteval`.
 //
@@ -43,9 +49,10 @@ func main() {
 	switch cmd := os.Args[1]; cmd {
 	case "probe":
 		os.Exit(runProbe(os.Args[2:]))
-	case "arena", "suite":
-		fmt.Fprintf(os.Stderr, "boteval: %q is not implemented yet (it lands with the arena and the position suite)\n", cmd)
-		os.Exit(2)
+	case "arena":
+		os.Exit(runArena(os.Args[2:]))
+	case "suite":
+		os.Exit(runSuite(os.Args[2:]))
 	case "-h", "--help", "help":
 		usage()
 		os.Exit(0)
@@ -73,7 +80,34 @@ subcommands:
           Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY,
           CMDCTRL_BOT_MODEL, CMDCTRL_SCRYFALL_DUMP.
 
-  arena   (not implemented yet)
-  suite   (not implemented yet)
+  arena   play N bot-vs-bot games headlessly and report who won, how
+          the funnel behaved and how long decisions took. Stalls are
+          reported, not fatal.
+
+          boteval arena --seats heuristic,heuristic [--decks a,b]
+                        [--names a,b]
+                        [--games N] [--seed N] [--rotate]
+                        [--turn-budget N] [--wall 30m] [--stall 0]
+                        [--max-think 20s] [--model ID] [--frontier-model ID]
+                        [--endpoint URL] [--out DIR] [--decision-log]
+                        [--decision-log-mode escalated|all|model]
+                        [--replays] [--dump path] [--note text]
+                        [--md] [--json]
+
+          A model tier with no endpoint is REFUSED, not downgraded: a
+          seat that quietly plays the heuristic under a model tier's
+          name would corrupt the measurement rather than break it.
+
+          Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY,
+          CMDCTRL_BOT_MODEL, CMDCTRL_BOT_FRONTIER_MODEL,
+          CMDCTRL_BOT_MAX_THINK, CMDCTRL_SCRYFALL_DUMP.
+
+  suite   the labelled position suite: run a policy over it, harvest
+          candidate windows out of decision logs, render one position as
+          the prompt a model would see.
+
+          boteval suite run     [--dir DIR] [--policy heuristic|assisted|strong]
+          boteval suite harvest --from 'dir/*.decisions.jsonl' --to inbox/
+          boteval suite render  --pos path/to/position.json
 `)
 }

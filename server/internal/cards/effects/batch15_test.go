@@ -915,11 +915,17 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 }
 
 // A commander caught in Blood Money was destroyed and pays a Treasure
-// (CR 903.9 replaces the zone change, not the destruction). The
-// engine keeps it on the battlefield until its owner answers the
-// command-zone prompt, which happens after the Treasures are made, so
-// the count cannot be read off the board. The answer must not change
-// it either way.
+// (CR 903.9 replaces the zone change, not the destruction). The engine
+// keeps it on the battlefield until its owner answers the command-zone
+// prompt, so the count is not knowable while the prompt is open.
+//
+// #815: the card WAITS for it. "For each creature destroyed this way"
+// runs from DestroyPermanentsThenForEffect's continuation, so no
+// Treasure is made until the answer arrives — and then the number is
+// the real one, whichever answer it was. Before #815 the Treasures
+// were made on the spot and the commander was counted on the strength
+// of the prompt having been queued, which was right here and wrong for
+// a destruction the window cancelled outright.
 func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -934,8 +940,9 @@ func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 
 			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
 			passPriorityAroundTable(t, g)
-			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
-				t.Errorf("the Bear and the commander are nontoken creatures destroyed: %d Treasures, want 2", n)
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 0 {
+				t.Errorf("%d Treasures while the CR 903.9 prompt is still open, want 0 — "+
+					"the count is not knowable until it is answered", n)
 			}
 
 			if tc.commandZone {
@@ -985,6 +992,37 @@ func TestB15BloodMoneyDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
 	}
 	if n := len(battlefieldIDsNamed(g, "Treasure")); n != 4 {
 		t.Errorf("four nontoken creatures died: %d Treasures, want 4", n)
+	}
+}
+
+// A commander prompt splits the physical moves across two actions, but the
+// wipe is still one simultaneous destruction. In particular, a Cutthroat
+// processed before the commander has already left the battlefield when the
+// owner answers; the carried LKI batch must be active around that resumed
+// move itself, not only around the continuation that starts the next leg.
+func TestB15BloodMoneyPausedCommanderStaysInTheSimultaneousDeathBatch(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", zulaportOracle, false)
+	pushWipeCreature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	commander := b36Commander(g, me.ID, "My Commander")
+
+	meBefore, oppBefore := me.Life, opp.Life
+	castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(commander) {
+		t.Fatal("the commander waits on its CR 903.9 choice")
+	}
+
+	// Declining makes this a graveyard death, which Zulaport watches.
+	b21DeclineCommandZone(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+
+	if want := oppBefore - 3; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (Cutthroat, Bear and resumed commander died together)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 3; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
 	}
 }
 

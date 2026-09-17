@@ -34,6 +34,8 @@ func commandTowerHook(oracleID string) []ManaAbilityShape {
 			TapCost:  true,
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color in your commander's color identity",
+			// The printed clause, as the catalog declares it.
+			NarrowToCommanderIdentity: true,
 		}}
 	}
 	return nil
@@ -77,8 +79,7 @@ func setCommanderIdentityForTest(t *testing.T, p *Player, identity []string) {
 // Colors: nil} because Scryfall puts both on card_faces[0], so
 // commanderIdentityFor's Effective().Colors →
 // distinctColorsInManaCost chain returned EMPTY — and an empty
-// identity makes filterPipeByCommanderIdentity skip narrowing
-// entirely. Command Tower, Arcane Signet and Fellwar Stone then
+// identity makes manaPickOptionsFor skip narrowing entirely. Command Tower, Arcane Signet and Fellwar Stone then
 // offered all five colours to an Azorius deck (game fe34c746).
 //
 // game.Card now carries ColorIdentity, copied straight from the
@@ -90,7 +91,7 @@ func TestTransformDFCCommanderHasColorIdentity(t *testing.T) {
 	p := g.Seats[0]
 	setCommanderIdentityForTest(t, p, []string{"W", "U"})
 
-	got := commanderIdentityFor(p)
+	got := commanderIdentityFor(g, p)
 	want := []string{"W", "U"}
 	if len(got) != len(want) {
 		t.Fatalf("commanderIdentityFor: got %v, want %v", got, want)
@@ -103,7 +104,7 @@ func TestTransformDFCCommanderHasColorIdentity(t *testing.T) {
 
 	// The consequence the issue actually reported: the any-colour
 	// pipe must narrow to Azorius.
-	pipe := filterPipeByCommanderIdentity([]string{"W", "U", "B", "R", "G"}, p)
+	pipe := manaPickOptionsFor(g, []string{"W", "U", "B", "R", "G"}, p, true)
 	if len(pipe) != 2 {
 		t.Fatalf("Command Tower pipe: got %v, want [W U]", pipe)
 	}
@@ -123,11 +124,11 @@ func TestCommanderIdentityFallsBackToManaCost(t *testing.T) {
 	p := g.Seats[0]
 	setCommanderCostForTest(t, p, "{1}{W}{U}")
 
-	got := commanderIdentityFor(p)
+	got := commanderIdentityFor(g, p)
 	if len(got) != 2 {
 		t.Fatalf("identity from printed cost: got %v, want two colours", got)
 	}
-	pipe := filterPipeByCommanderIdentity([]string{"W", "U", "B", "R", "G"}, p)
+	pipe := manaPickOptionsFor(g, []string{"W", "U", "B", "R", "G"}, p, true)
 	if len(pipe) != 2 {
 		t.Errorf("pipe from printed-cost identity: got %v, want [W U]", pipe)
 	}

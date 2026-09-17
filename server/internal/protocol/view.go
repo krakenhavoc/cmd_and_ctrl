@@ -209,9 +209,11 @@ type PendingChoiceView struct {
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
-	// "C"). Absent for non-mana choices. Server-side filtered
-	// against commander identity before the wire leaves the engine.
-	// Added in S15 sub-PR 2.
+	// "C"). Absent for non-mana choices. Ordered server-side: the
+	// commander's colour identity first, then the rest; only a source
+	// whose printed text says "in your commander's color identity"
+	// (Command Tower, Arcane Signet) is narrowed to it. Render in the
+	// order given. Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
 	// ColorAmounts populates a "mana_pick" that adds more than one mana
@@ -712,11 +714,15 @@ type CardView struct {
 	Power int `json:"power,omitempty"`
 	// NegativePower preserves signed power for comparisons such as skulk.
 	// Present only below zero; Power retains its combat-damage zero clamp.
-	NegativePower int            `json:"negative_power,omitempty"`
-	Toughness     int            `json:"toughness,omitempty"`
-	Tapped        bool           `json:"tapped,omitempty"`
-	Counters      map[string]int `json:"counters,omitempty"`
-	IsCommander   bool           `json:"is_commander,omitempty"`
+	NegativePower int  `json:"negative_power,omitempty"`
+	Toughness     int  `json:"toughness,omitempty"`
+	Tapped        bool `json:"tapped,omitempty"`
+	// NoUntap describes an untap-step restriction or one-shot marker on
+	// this battlefield permanent. Static is hidden for face-down cards;
+	// Next is public state and survives the face-down identity redaction.
+	NoUntap     *NoUntapView   `json:"no_untap,omitempty"`
+	Counters    map[string]int `json:"counters,omitempty"`
+	IsCommander bool           `json:"is_commander,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -1016,6 +1022,15 @@ type CardView struct {
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
 	ActiveFace int `json:"active_face,omitempty"`
+}
+
+// NoUntapView is the public projection of a permanent's untap-step
+// restrictions. A controller-keyed marker is represented by the current
+// controller's player ID in Next; duplicate and eliminated players are
+// omitted by stampNoUntap.
+type NoUntapView struct {
+	Static bool     `json:"static,omitempty"`
+	Next   []string `json:"next,omitempty"`
 }
 
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
@@ -1404,6 +1419,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampCombatTargets(g, &view)
+		stampNoUntap(g, &view.Battlefield)
 		view.legalBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
@@ -1806,6 +1822,60 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 			ID:   t.ID.String(),
 		})
 	}
+}
+
+// stampNoUntap projects the untap-step state that needs the game handle.
+// Caller holds g's read lock. The view and battlefield slices are kept in
+// the same order by viewOfZone, so this pass can use the card index without
+// exposing the internal marker representation.
+func stampNoUntap(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		static := !card.FaceDown && g.UntapStepRestrictedLocked(card)
+		next := projectedUntapSkipPlayers(g, card)
+		if !static && len(next) == 0 {
+			continue
+		}
+		view.Cards[i].NoUntap = &NoUntapView{Static: static, Next: next}
+	}
+}
+
+func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
+	if card == nil || len(card.NextUntapSkips) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
+	players := make([]string, 0, len(card.NextUntapSkips))
+	for _, skip := range card.NextUntapSkips {
+		playerID := skip.Player
+		if playerID == uuid.Nil {
+			playerID = card.Controller
+		}
+		if playerID == uuid.Nil || !livePlayer(g, playerID) {
+			continue
+		}
+		if _, ok := seen[playerID]; ok {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		players = append(players, playerID.String())
+	}
+	return players
+}
+
+func livePlayer(g *game.Game, id uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p != nil && p.ID == id {
+			return !p.Eliminated
+		}
+	}
+	return false
 }
 
 // stampManaSacrificeOptions fills the sacrifice clause on a

@@ -168,6 +168,7 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",

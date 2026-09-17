@@ -288,10 +288,9 @@ func b15CanopyLand(oracleID, name, a, b string) Spec {
 		Name:         name,
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true, Life: 1},
-			Produced:                produced,
-			Label:                   "{T}, Pay 1 life: Add {" + a + "} or {" + b + "}",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true, Life: 1},
+			Produced: produced,
+			Label:    "{T}, Pay 1 life: Add {" + a + "} or {" + b + "}",
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}, Sacrifice this land: Draw a card.",

@@ -1165,7 +1165,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // g.mu and have validated the plan via autoTapLocked.
 func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCost) {
 	pending := append([]ColorRequirement(nil), cost.Required...)
-	identity := commanderIdentityFor(p)
+	identity := commanderIdentityFor(g, p)
 	for _, cardID := range plan {
 		var card *Card
 		for i := range g.Battlefield.Cards {
@@ -1202,18 +1202,12 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
 		for _, slot := range slots {
-			options := slot.Options
-			if len(options) > 1 && len(identity) > 0 && !ab.IgnoreCommanderIdentity {
-				// Mirror ActivateManaAbility's narrowing, including
-				// its no-overlap fallback: an intersection that came
-				// back empty means the identity says nothing useful
-				// about this slot, and dropping the mana on the floor
-				// would silently short the plan the solver just
-				// validated against the raw option set.
-				if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
-					options = narrowed
-				}
-			}
+			// Mirror ActivateManaAbility's option list exactly —
+			// identity-first order, or the identity narrowing with its
+			// no-overlap fallback — so a generic-only slot defaults to
+			// an identity colour (pickColorForSlot's options[0]) and
+			// the executor never mints a colour the plan didn't have.
+			options := manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
 			color := pickColorForSlot(options, &pending)
 			if color == "" {
 				continue
@@ -2191,8 +2185,9 @@ func clearKnownInZoneLocked(zone *Zone) {
 }
 
 // stateBasedActionsLocked runs one pass of state-based actions per
-// CR 704.5. Returns true if any SBA fired so the caller can re-run
-// the loop (CR 704.3 — SBAs repeat until none fire).
+// CR 704.5. Reports whether any SBA fired and whether a player left.
+// The caller repeats the checks (CR 704.3) and settles departures only
+// after the repeated passes are quiet.
 //
 // Player-loss SBAs (S13.1):
 //   - 704.5a: a player at 0 or less life loses
@@ -2224,9 +2219,9 @@ func clearKnownInZoneLocked(zone *Zone) {
 // running the counter cancel pass before destruction collection.
 //
 // Caller must hold g.mu.
-func (g *Game) stateBasedActionsLocked() bool {
+func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.State != StateActive {
-		return false
+		return false, false
 	}
 	// S16: refresh effective characteristics before any toughness /
 	// loyalty / battle-defense check. Counter mutations + zone moves
@@ -2236,7 +2231,6 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// (a 2/2 + Glorious Anthem under 3 marked damage would die
 	// because CurrentToughness reads Effective().Toughness == 3).
 	g.RecomputeLayersIfStaleLocked()
-	fired := false
 
 	// S24 / CR 704.5m + 704.5n: an Equipment attached to something
 	// that is no longer a creature becomes unattached; an Aura
@@ -2286,16 +2280,11 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// (#766): moving the turn on per player would begin the turn of a
 	// seat that is leaving in this same pass.
 	//
-	// "After the batch" means after the whole pass, not after this
-	// loop. Moving play on can end the turn, and ending the turn runs
-	// the cleanup sweep, which removes marked damage and deathtouch
-	// marks. The destruction SBAs below read exactly those, and they
-	// belong to the same event as the losses (CR 704.3): an active
-	// player whose own Earthquake kills them still kills every
-	// creature it dealt lethal damage to. So the game-over check runs
-	// here, as it always has, and the turn moves on as the pass's
-	// last act (see the end of this function).
-	left := false
+	// Ending the turn clears marked damage, so runStateChecksLocked
+	// waits until repeated SBA passes settle before rotating. One pass
+	// is not enough: a lord dying here can make another creature's
+	// marked damage lethal on the next pass. The game-over check still
+	// runs immediately after every loser in this pass has left.
 	for _, p := range g.Seats {
 		if p.Eliminated {
 			continue
@@ -2320,7 +2309,9 @@ func (g *Game) stateBasedActionsLocked() bool {
 			fired = true
 		}
 	}
-	moveOn := left && !g.endGameIfDecidedLocked()
+	if left {
+		g.endGameIfDecidedLocked()
+	}
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
@@ -2422,7 +2413,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
 	// of the board still sees every one of those deaths. See
 	// simultaneous.go.
-	if g.destroyPermanentsLocked(doomed) > 0 {
+	g.destroyPermanentsLocked(doomed)
+	if len(doomed) > 0 {
+		// "Did this pass do anything", which is what `fired` means — not
+		// "how many were destroyed", which is what destroyPermanentsLocked
+		// now returns (#815). The two stopped being the same number the
+		// moment a cancelled destruction counted zero: a permanent whose
+		// destruction the CR 614 window replaced away is still doomed and
+		// still has to be looked at again, and one whose exit is paused on
+		// the CR 903.9 prompt is skipped by the collector above on the next
+		// pass. Both are answered by the set this pass COLLECTED.
 		fired = true
 	}
 
@@ -2459,17 +2459,7 @@ func (g *Game) stateBasedActionsLocked() bool {
 		fired = true
 	}
 
-	// The departures from the loss loop move play on last (#766), once
-	// every other state-based action of this pass has been performed
-	// on the board it applied to. That includes the legend rule: its
-	// prompt, if one was just queued, is part of this event and is
-	// queued before the turn ends, so it stays open into the next
-	// turn like any other prompt a departure leaves unanswered.
-	if moveOn {
-		g.advancePastEliminatedLocked()
-	}
-
-	return fired
+	return fired, left
 }
 
 // runStateChecksLocked runs the SBA + APNAP-trigger-drain loop until
@@ -2499,8 +2489,23 @@ func (g *Game) runStateChecksLocked() {
 	// every call outside the declare-blockers step.
 	g.commitBlockDeclarationLocked()
 	const maxIter = 32
+	departuresPending := false
 	for i := 0; i < maxIter; i++ {
-		fired := g.stateBasedActionsLocked()
+		fired, left := g.stateBasedActionsLocked()
+		departuresPending = departuresPending || left
+		if departuresPending && g.State == StateActive {
+			if fired {
+				// CR 704.3 repeats the checks before anything gets priority.
+				// Keep the old turn's damage until every destruction caused
+				// by these departures and the preceding deaths has settled.
+				continue
+			}
+			g.advancePastEliminatedLocked()
+			departuresPending = false
+			// Cleanup and the next turn's entry hooks can change the board.
+			// Check it before draining the waiting triggers into that turn.
+			continue
+		}
 		hasPending := len(g.PendingTriggers) > 0
 		if !fired && !hasPending {
 			return
@@ -2515,8 +2520,9 @@ func (g *Game) runStateChecksLocked() {
 
 // eliminatePlayerLocked is one player leaving the game on their own:
 // leaveGameLocked, then settleDeparturesLocked. Used by Concede. The
-// SBA loss pass calls the two halves itself so a batch of losers
-// moves play on once. Caller must hold g.mu.
+// SBA settling loop calls the two halves separately so a batch of
+// losers moves play on once, after repeated checks settle.
+// Caller must hold g.mu.
 func (g *Game) eliminatePlayerLocked(p *Player) {
 	if !g.leaveGameLocked(p) {
 		return
@@ -2550,9 +2556,8 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 // active player's turn ends through the rotation seam, #766).
 //
 // Used where the departures are the whole event (Concede). The SBA
-// loss pass calls the two halves itself, because the rest of that
-// pass must be performed before the turn ends — see
-// stateBasedActionsLocked.
+// settling loop calls the two halves separately, because the SBA
+// settling must finish before the turn ends — see runStateChecksLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) settleDeparturesLocked() {
@@ -2780,7 +2785,48 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 //
 // If the owner is no longer seated, the card lands in exile so the
 // engine doesn't carry a stale reference. Caller must hold g.mu.
+//
+// The FIRE-AND-FORGET form. A caller that has to know what the exit
+// actually did — "for each creature destroyed this way" — uses
+// routeBattlefieldExitThenLocked and reads the board from the
+// continuation, because any exit can pause on the CR 903.9 prompt
+// (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
+	return g.routeBattlefieldExitThenLocked(cardID, nil)
+}
+
+// routeBattlefieldExitThenLocked is the same exit with a CONTINUATION:
+// `then` runs once the move has reached a TERMINAL outcome — landed
+// (wherever the window settled it), cancelled, or refused. A pause is
+// not terminal; the resume reaches it later, through
+// applyResolvedReplacementEventLocked.
+//
+// It is the destroy / sacrifice / SBA route's half of the idiom
+// lifeTail, damageTail and zoneRoute.then already share (ADR 0013 §5b,
+// §5c, §5g). The continuation is carried on a zoneRoute like every
+// other exit's, flagged ViaBattlefieldLeave so the resume still
+// finishes the move through executeBattlefieldLeaveLocked: this route
+// is not folded into the shared exit primitive (see zone_route.go),
+// only its "then" is.
+//
+// `then` deliberately takes no outcome argument. What it wants to know
+// is where the permanent ended up, and it reads that off the live
+// board — the undo-safety contract every continuation in the engine
+// follows, and the only reading that is still true after a rewind into
+// the open prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
+	return g.routeBattlefieldExitInBatchThenLocked(cardID, nil, then)
+}
+
+// routeBattlefieldExitInBatchThenLocked is the batched form used by a
+// sequenced simultaneous destruction. `batch` rides the route across a
+// replacement prompt so finishBattlefieldLeaveLocked can publish it around
+// the resumed move itself, before the continuation starts the next leg.
+//
+// Caller must hold g.mu.
+func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, batch []Card, then func(g *Game) error) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -2810,21 +2856,63 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 		NewZone:      defaultDest,
 		NewZoneOwner: defaultOwner,
 	}
+	if then != nil {
+		ev.zoneRoute = &zoneRoute{
+			CardID: cardID, ViaBattlefieldLeave: true,
+			simultaneousExit: batch,
+			then:             then,
+		}
+	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
-		// Prompt queued; resume runs the move after the owner
-		// answers. Return nil so SBA caller doesn't report failure.
+		// Prompt queued; the resume runs the move after the owner
+		// answers, and the continuation goes with it — a pause is not
+		// terminal. Return nil so the SBA caller reports no failure.
 		return nil
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
+		if tailErr := g.runRouteTailLocked(ev.zoneRoute); tailErr != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: tailErr.Error()})
+		}
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled {
-		return nil
+		// CR 614: the permanent is not going anywhere — indestructible
+		// granted mid-window, "it isn't destroyed instead". Terminal,
+		// so a caller sequencing a batch through the continuation is
+		// told; it reads the board, finds the permanent still on the
+		// battlefield, and counts no destruction (#815).
+		return g.runRouteTailLocked(ev.zoneRoute)
 	}
-	return g.executeBattlefieldLeaveLocked(cardID, out.NewZone, out.NewZoneOwner, owner)
+	return g.finishBattlefieldLeaveLocked(out, owner)
+}
+
+// finishBattlefieldLeaveLocked performs a settled destroy / sacrifice /
+// SBA exit and then runs the route's continuation, if it is carrying
+// one. The two callers are the unpaused path above and the CR 903.9
+// resume in applyResolvedReplacementEventLocked, so a destruction that
+// paused and one that did not reach the continuation in the same place
+// — after the card has moved and its events are out.
+//
+// The tail runs even when the move failed: a refused move is as
+// terminal as a completed one, and a caller waiting on it must not be
+// left waiting. #815.
+//
+// Caller must hold g.mu.
+func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player) error {
+	closeBatch := func() {}
+	if ev.zoneRoute != nil {
+		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
+	}
+	defer closeBatch()
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	tailErr := g.runRouteTailLocked(ev.zoneRoute)
+	if moveErr != nil {
+		return moveErr
+	}
+	return tailErr
 }
 
 // executeBattlefieldLeaveLocked runs the physical zone move after
@@ -3565,11 +3653,11 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // the tap cost can't be paid because the card is already tapped
 // (ErrAlreadyTapped), or the ability index is out of bounds
 // (ErrInvalidParam). Commander-identity filtering for Arcane Signet
-// happens inline: the engine intersects the pipe set with the
-// controller's commander's color identity before queuing the pick —
-// unless the ability set IgnoreCommanderIdentity, which City of Brass
-// and the painland duals do because their printed text names their
-// colours outright.
+// happens inline: a pipe set keeps its printed width with the
+// controller's commander's colour identity listed first, and only an
+// ability that set NarrowToCommanderIdentity (the four cards whose text
+// says "in your commander's color identity") is intersected with it —
+// see manaPickOptionsFor.
 //
 // S22 adds the last two pieces the painland / Talisman / Ancient Tomb
 // / Mana Confluence batch needed:
@@ -3840,20 +3928,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
-		// Multi-option slot — intersect with the controller's commander
-		// identity (Arcane Signet). When no commander exists or the
-		// identity is empty (placeholder commanders from the demo seed),
-		// fall through to the raw option set so Birds of Paradise still
-		// offers the full five colors.
-		//
-		// S22: an ability whose printed text does NOT mention the
-		// commander's identity opts out — City of Brass says "any
-		// color", a painland names two specific colors, and neither
-		// should shrink because of who's in the command zone.
-		filtered := options
-		if !ab.IgnoreCommanderIdentity {
-			filtered = filterPipeByCommanderIdentity(options, p)
-		}
+		// Multi-option slot — the printed option set, commander
+		// identity first (Birds of Paradise offers all five colours),
+		// or narrowed to the identity when the printed text says so
+		// (Command Tower, Arcane Signet: NarrowToCommanderIdentity).
+		// See manaPickOptionsFor.
+		filtered := manaPickOptionsFor(g, options, p, ab.NarrowToCommanderIdentity)
 		// Queue the pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
@@ -4063,49 +4143,102 @@ func producibleColors(abilities []ManaAbilityShape) map[string]bool {
 	return out
 }
 
-// filterPipeByCommanderIdentity narrows `options` to just the colors
-// in the active player's commander's color identity. Used by the
-// `"{W|U|B|R|G}"` → Arcane Signet path. If the player has no
-// commander (or the commander has no color identity), returns the
-// raw options unchanged — Birds of Paradise falls through this path
-// with the full 5-color set intact.
-func filterPipeByCommanderIdentity(options []string, p *Player) []string {
-	// Find the player's commander in the command zone. Since #276
-	// the colour identity really is on game.Card directly, copied
-	// at deck-import time from cards.Card.ColorIdentity — this
-	// comment described that code for several sprints before it
-	// existed, which is why the gap went unnoticed.
-	// For S15 we scan the command zone only — post-move commanders
-	// on the battlefield still carry identity, but CR 903.4 keys
-	// identity off the printed card, so either source would work.
-	identity := commanderIdentityFor(p)
-	if len(identity) == 0 {
-		return options
-	}
-	keep := make([]string, 0, len(options))
-	for _, o := range options {
-		for _, id := range identity {
-			if o == id {
-				keep = append(keep, o)
-				break
-			}
-		}
-	}
-	if len(keep) == 0 {
-		// No overlap — degenerate case; fall back to raw so the
-		// player isn't stuck with an empty picker. Logged via the
-		// effect-error event for visibility.
-		return options
-	}
-	return keep
+// manaPickOptionsFor is the colour list a multi-option mana slot
+// offers `p`: the one list ActivateManaAbility, AddManaForEffect and
+// the auto-tapper (planner and executor alike) all read, so the three
+// can never disagree about what a source produces.
+//
+// Owner decision (2026-09-17): "any color" offers ALL FIVE colours,
+// with the commander's colour identity listed first. So by default
+// the slot keeps its printed width and is only REORDERED — identity
+// colours first, the rest after, each group in printed order. Birds
+// of Paradise in a mono-green deck offers G, W, U, B, R; a Scrubland
+// in a mono-white deck offers W, B. The order is what makes the
+// client's first button, the legal enumerator's first answer (the
+// bot's tie-break) and the auto-tapper's default pick
+// (pickColorForSlot's options[0]) an identity colour, without taking
+// the others away.
+//
+// `narrow` is for the four cards whose printed text says "any color
+// in your commander's color identity" — Command Tower, Arcane Signet,
+// Commander's Sphere, Path of Ancestry (NarrowToCommanderIdentity).
+// Those intersect with the identity instead, falling back to the raw
+// set when the intersection is empty so the player is never handed an
+// empty picker.
+//
+// The identity is the player's commander's wherever it is
+// (commanderIdentityFor, CR 903.4a). No identity (the player owns no
+// commander, or a placeholder with no colours) leaves the list as
+// printed either way; for `narrow` that is stronger than CR 903.4f,
+// tracked in #844. Always returns a fresh slice when it
+// changes anything, so a caller may keep it on a PendingChoice.
+func manaPickOptionsFor(g *Game, options []string, p *Player, narrow bool) []string {
+	return manaPickOptions(options, commanderIdentityFor(g, p), narrow)
 }
 
-// commanderIdentityFor returns the player's commander color identity
-// as uppercase single-character strings. Empty when no commander is
-// present. Sandbox: picks the first card in the command zone — the
-// partner-pair union is S20 polish territory.
+// manaPickOptions is manaPickOptionsFor with the identity already in
+// hand — the auto-tapper computes it once per plan.
+func manaPickOptions(options, identity []string, narrow bool) []string {
+	if len(options) <= 1 || len(identity) == 0 {
+		return options
+	}
+	if narrow {
+		if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
+			return narrowed
+		}
+		return options
+	}
+	return identityFirst(options, identity)
+}
+
+// identityFirst returns `options` reordered so the colours in
+// `identity` come first. Stable within each group, so WUBRG printed
+// order survives inside both halves.
+func identityFirst(options, identity []string) []string {
+	in := intersectColors(options, identity)
+	if len(in) == 0 || len(in) == len(options) {
+		return options
+	}
+	out := make([]string, 0, len(options))
+	out = append(out, in...)
+	for _, o := range options {
+		if !containsColor(in, o) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+func containsColor(set []string, c string) bool {
+	for _, x := range set {
+		if x == c {
+			return true
+		}
+	}
+	return false
+}
+
+// commanderIdentityFor returns the colour identity of the player's
+// commander as uppercase single-character strings. Empty when the
+// player owns no commander.
 //
-// Three sources, in order:
+// The commander is found in EVERY zone, not just the command zone.
+// CR 903.4a fixes colour identity before the game begins, so it does
+// not change when the commander is cast, dies or is exiled, and a
+// commander on the battlefield is the ordinary mid-game state. The
+// search matches on IsCommander and Owner (the flag survives zone
+// changes, and commander damage already relies on that); ownership,
+// not control, because a stolen commander is still its owner's.
+// Zones are read in the order a commander usually sits: command zone,
+// stack, battlefield, graveyard, exile, hand, library.
+// A copy keeps its original printed values in PrintedSelf: its colour
+// identity comes from those values, never from the creature it copied.
+//
+// Partners and backgrounds: every commander the player owns
+// contributes, and the result is their union in discovery order
+// (CR 903.4: the deck's identity is the combined identity).
+//
+// Three sources per commander, in order:
 //
 //  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
 //     copied at deck import. This is the only one of the three that
@@ -4113,40 +4246,64 @@ func filterPipeByCommanderIdentity(options []string, p *Player) []string {
 //     and BOTH faces of a double-faced card. Issue #276: a
 //     transform / modal-DFC commander has a null top-level
 //     mana_cost and colors (the real ones live on card_faces[0]),
-//     so sources 2 and 3 both returned empty and every "any colour
-//     in your commander's identity" pipe skipped narrowing —
-//     Command Tower offered all five colours to an Azorius deck.
+//     so sources 2 and 3 both returned empty and Command Tower
+//     offered all five colours to an Azorius deck.
 //  2. **Effective().Colors** (S16) — the commander's post-layer
 //     colours. Not identity, but a good proxy for any commander
-//     whose identity is fully captured by their mana cost, and it
-//     picks up Layer-5 colour-change effects (Painter's Servant on
-//     a commander) automatically.
+//     whose identity is fully captured by their mana cost.
 //  3. **distinctColorsInManaCost** — the original S15 proxy.
 //     Covers placeholder commanders with no stamped colours (the
 //     demo seed) and the lobby-time pre-effects-init path.
 //
-// Note the fallbacks can only ever be narrower than the truth, and
-// every call site uses the result to NARROW a mana pipe, so the
-// pre-#276 behaviour was permissive (offering colours that don't
-// exist) rather than restrictive.
-func commanderIdentityFor(p *Player) []string {
-	if p == nil || p.Command == nil {
+// The fallbacks can only be narrower than the truth. The result
+// feeds manaPickOptionsFor, which ORDERS an ordinary pipe by it (a
+// wrong identity only changes which colour is listed first) and
+// NARROWS only the four "in your commander's color identity" cards.
+func commanderIdentityFor(g *Game, p *Player) []string {
+	if p == nil {
 		return nil
 	}
-	for _, c := range p.Command.Cards {
-		if !c.IsCommander {
+	var out []string
+	add := func(c *Card) {
+		if !c.IsCommander || c.Owner != p.ID {
+			return
+		}
+		colors, cost := c.ColorIdentity, c.ManaCost
+		if original := c.PrintedSelf; original != nil {
+			colors, cost = original.ColorIdentity, original.ManaCost
+			if len(colors) == 0 {
+				colors = original.Colors
+			}
+		} else if len(colors) == 0 {
+			colors = c.Effective().Colors
+		}
+		if len(colors) == 0 {
+			colors = distinctColorsInManaCost(cost)
+		}
+		for _, col := range colors {
+			if !containsColor(out, col) {
+				out = append(out, col)
+			}
+		}
+	}
+	zones := []*Zone{p.Command}
+	if g != nil {
+		zones = append(zones, g.Stack, g.Battlefield)
+	}
+	zones = append(zones, p.Graveyard)
+	if g != nil {
+		zones = append(zones, g.Exile)
+	}
+	zones = append(zones, p.Hand, p.Library)
+	for _, z := range zones {
+		if z == nil {
 			continue
 		}
-		if len(c.ColorIdentity) > 0 {
-			return c.ColorIdentity
+		for i := range z.Cards {
+			add(&z.Cards[i])
 		}
-		eff := c.Effective()
-		if len(eff.Colors) > 0 {
-			return eff.Colors
-		}
-		return distinctColorsInManaCost(c.ManaCost)
 	}
-	return nil
+	return out
 }
 
 // distinctColorsInManaCost extracts the unique WUBRG letters that
