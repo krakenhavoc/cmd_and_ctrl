@@ -2048,29 +2048,11 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 }
 
 // HandEntryOptions are the modifiers a "put a card from your hand
-// onto the battlefield" effect applies to the entry it causes. The
-// zero value is the printed common case — Growth Spiral's untapped
-// land under its owner's control — so an ordinary caller passes an
-// empty struct, exactly as CreateTokenForEffect does with
-// TokenEntryOptions.
-type HandEntryOptions struct {
-	// Controller is who the permanent enters under. uuid.Nil, or a
-	// player who has left, means "under its owner's control", which
-	// is what every card in this family prints today ("put a land
-	// card from YOUR hand onto the battlefield"). The field exists
-	// because the move is generic: a "put it onto the battlefield
-	// under target opponent's control" has nowhere else to say so,
-	// and the CR 614 pipeline has to know the answer before it runs.
-	Controller uuid.UUID
-
-	// Tapped is the putting effect's own "onto the battlefield
-	// TAPPED" clause (Arboreal Grazer). It is SEEDED onto the
-	// replacement event rather than OR-ed in after the pipeline, the
-	// way SearchLibrarySpec.TappedOnEntry is: the effect's clause and
-	// whatever CR 614 adds on top then settle in one field, and no
-	// reader downstream can lose one of the two.
-	Tapped bool
-}
+// onto the battlefield" effect applies to the entry it causes. Since
+// #745 it is the shared ZoneEntryOptions (battlefield_put.go), because
+// the library move takes exactly the same two modifiers; the name is
+// kept so a hand caller reads as one.
+type HandEntryOptions = ZoneEntryOptions
 
 // PutFromHandOntoBattlefieldForEffect puts one card from its owner's
 // hand onto the battlefield without casting or playing it — "you may
@@ -2136,91 +2118,11 @@ type HandEntryOptions struct {
 //
 // Caller must hold g.mu.
 func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEntryOptions) (uuid.UUID, error) {
-	src := g.findCardZoneLocked(cardID)
-	if src == nil || src.Kind != ZoneHand {
-		return uuid.Nil, ErrCardNotFound
-	}
-	newController := opts.Controller
-	if newController == uuid.Nil || g.playerByIDLocked(newController) == nil {
-		newController = src.Owner
-	}
-	for i := range src.Cards {
-		if src.Cards[i].InstanceID != cardID {
-			continue
-		}
-		if !src.Cards[i].IsPermanent() {
-			return uuid.Nil, ErrInvalidParam
-		}
-		src.Cards[i].Controller = newController
-		break
-	}
-	ev := &ReplacementEvent{
-		Kind:         RepEventMove,
-		Actor:        newController,
-		CardID:       cardID,
-		OldZone:      ZoneHand,
-		NewZone:      ZoneBattlefield,
-		EntersTapped: opts.Tapped,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A CR 616 ordering prompt is open. Nothing has moved; the
-		// card is still in hand and the put simply does not happen.
-		return uuid.Nil, nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
+	entered, err := g.putOntoBattlefieldFromZoneLocked([]uuid.UUID{cardID}, ZoneHand, opts)
+	if err != nil || len(entered) == 0 {
 		return uuid.Nil, err
 	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		// Canceled, or redirected somewhere else by a replacement.
-		// There is no generic "put it wherever the pipeline said"
-		// helper for a hand source, so a redirect is treated as a
-		// cancel rather than guessed at — the same posture the
-		// exile-return path takes.
-		return uuid.Nil, nil
-	}
-	moved, err := MoveCard(src, g.Battlefield, cardID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
-			continue
-		}
-		g.Battlefield.Cards[i].Controller = newController
-		// out.EntersTapped carries both inputs: the putting effect's
-		// own "tapped" clause, seeded onto the event above, and
-		// whatever the CR 614 pipeline added on top. The permanent
-		// ARRIVES tapped — it is never tapped after the fact, so no
-		// tap event fires and nothing watching for one triggers.
-		if out.EntersTapped {
-			g.Battlefield.Cards[i].Tapped = true
-		}
-		// The impulse grant is spent by the entry, exactly as it is
-		// on the land-play and cast branches: a later effect that
-		// exiles this card must not inherit a permission it never
-		// granted.
-		g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
-		break
-	}
-	// The card just left a hidden zone for a public one, so the whole
-	// table knows it — the same call every other entry site makes.
-	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-	for name, n := range out.EntersWithCounters {
-		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   newController,
-		CardID:  moved.InstanceID,
-		OldZone: ZoneHand,
-		NewZone: ZoneBattlefield,
-	})
-	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: moved.InstanceID})
-	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-	return moved.InstanceID, nil
+	return entered[0], nil
 }
 
 // AddManaForEffect adds the mana a SPELL or a non-mana ability

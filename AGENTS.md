@@ -1299,6 +1299,34 @@ always keeps "choose nothing". With `Min` above zero, don't queue a
 prompt that no set can satisfy: nothing could answer it, and the
 enumerator logs it rather than inventing an answer.
 
+**"Put [it / a card from among them] onto the battlefield" off a
+library (#745):** a reveal or a look followed by a put is not a search,
+so never reach for `SearchLibrary` with a predicate (it emits
+`EventSearchLibrary` and shuffles). Say the first half with the right
+visibility, then hand the cards to `PutFromLibraryOntoBattlefield`
+(`put_from_library.go`):
+
+```go
+looked := g.LookAtTopOfLibraryForEffect(controller, 8)   // "look at": only the looker knows
+// revealed := g.RevealTopOfLibraryForEffect(...)         // "reveal": every seat knows
+return PutFromLibraryOntoBattlefield{
+    Cards: looked, Match: OfCreatureType("Dragon"),
+    Max: 1, Optional: true,                 // "you may put a"; Max 0 is "any number"; All for "put all"
+    Then: PutRestOnBottomInRandomOrder,     // or PutRestIntoGraveyard, or your own
+}.Apply(ctx)
+```
+
+The prompt is asynchronous, so "the rest" goes in `Then` — it is the
+only place that knows which cards were not chosen. Several picks enter
+as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
+so don't loop the single-card move over them. The whole-sentence
+shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
+`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
+bottom in a random order" anywhere else is
+`g.PutOnBottomInRandomOrderForEffect`, which draws from the game's
+seeded RNG — never `math/rand` — and repositions cards already in the
+library without a zone change.
+
 **"This permanent enters tapped" (S21):** declare a self-replacement,
 not an entry-hook tap:
 

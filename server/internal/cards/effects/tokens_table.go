@@ -49,6 +49,7 @@ var tokenTable = map[string]game.Card{
 	"0/0 white Spirit Cleric":                       {Name: "Spirit Cleric", TypeLine: "Token Creature — Spirit Cleric", Power: 0, Toughness: 0, Colors: []string{"W"}},
 	"0/1 black Wizard":                              {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	"0/1 colorless Plant":                           {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1},
+	"0/1 green Egg with defender":                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
