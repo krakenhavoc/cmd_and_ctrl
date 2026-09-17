@@ -1,0 +1,23 @@
+{
+  "id": "stale-label",
+  "v": 1,
+  "tags": [
+    "cast"
+  ],
+  "note": "A FIXTURE, not a real position: its accept matcher names a move that is not in the frozen list. Loading this directory must fail, naming the position. See TestAStaleMatcherFailsLoad.",
+  "source": {
+    "seat": 0,
+    "reviewer": "fixture",
+    "reviewed_at": "2026-09-17"
+  },
+  "input": {"view":{"id":"00000000-0000-0000-0000-000000000000","state":"active","seats":[],"battlefield":{"kind":"battlefield","count":0},"stack":{"kind":"stack","count":0},"exile":{"kind":"exile","count":0},"turn":{"number":1,"active_seat":0,"priority_holder":0,"phase":"precombat_main","step":"precombat_main"},"mulligans_open":false,"starting_seat":0},"seat":"00000000-0000-0000-0000-000000000000","moves":[{"type":"cast_spell","player":"00000000-0000-0000-0000-000000000000","kind":"cast","label":"Cast Bear"},{"type":"pass_priority","player":"00000000-0000-0000-0000-000000000000","kind":"pass","label":"Pass priority","always_legal":true}]},
+  "expected": {
+    "accept": [
+      {
+        "label": "Cast Grizzly Bears"
+      }
+    ],
+    "reject": []
+  },
+  "at_capture": {}
+}

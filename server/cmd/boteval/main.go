@@ -13,13 +13,15 @@
 //	                estimate, finish_reason, whether a reasoning field
 //	                came back, whether the reply parsed.
 //
+//	boteval suite   the labelled position suite: run a policy over every
+//	                labelled window and report agreement, harvest new
+//	                candidate windows out of decision logs, or render one
+//	                position as the exact prompt a model would see.
+//
 //	boteval arena   N headless bot-vs-bot games, with win rates and
 //	                Wilson intervals, the funnel's own counters and
 //	                the decision-latency tails, written out as a
 //	                report block and a machine-readable summary.
-//
-// `suite` (a labelled position suite) is the remaining subcommand and
-// lands in a later PR; the switch below is shaped for it.
 //
 // Build it with `make -C server build-boteval`.
 //
@@ -50,8 +52,7 @@ func main() {
 	case "arena":
 		os.Exit(runArena(os.Args[2:]))
 	case "suite":
-		fmt.Fprintf(os.Stderr, "boteval: %q is not implemented yet (it lands with the arena and the position suite)\n", cmd)
-		os.Exit(2)
+		os.Exit(runSuite(os.Args[2:]))
 	case "-h", "--help", "help":
 		usage()
 		os.Exit(0)
@@ -101,6 +102,12 @@ subcommands:
           CMDCTRL_BOT_MODEL, CMDCTRL_BOT_FRONTIER_MODEL,
           CMDCTRL_BOT_MAX_THINK, CMDCTRL_SCRYFALL_DUMP.
 
-  suite   (not implemented yet)
+  suite   the labelled position suite: run a policy over it, harvest
+          candidate windows out of decision logs, render one position as
+          the prompt a model would see.
+
+          boteval suite run     [--dir DIR] [--policy heuristic|assisted|strong]
+          boteval suite harvest --from 'dir/*.decisions.jsonl' --to inbox/
+          boteval suite render  --pos path/to/position.json
 `)
 }
