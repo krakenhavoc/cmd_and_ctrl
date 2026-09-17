@@ -21,6 +21,12 @@ var _ aiseat.Tracer = (*Policy)(nil)
 
 // DecideTraced is Decide with the ranking attached.
 //
+// It prices the window twice — once in Rank, once inside Decide — and
+// that is fine: the model funnel already does exactly this on every
+// Layer B window in production (policy.go calls Rank and then
+// Fallback.Decide), and both are microseconds against a deadline
+// measured in seconds.
+//
 // Rank and Decide are called SEQUENTIALLY and each takes the policy's
 // mutex on its own, exactly as funnel_game_test.go's agreement policy
 // does. Holding the lock across both would be the obvious thing and

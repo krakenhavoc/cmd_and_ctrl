@@ -79,7 +79,7 @@ func TestDecideTracedRecordsTheModelAnswer(t *testing.T) {
 		t.Fatalf("prompt not recorded: %+v", tr.Prompt)
 	}
 	if !strings.Contains(tr.Prompt.System[0], "You are playing one seat") {
-		t.Errorf("system block is not the primer: %q", truncate(tr.Prompt.System[0], 60))
+		t.Errorf("system block is not the primer: %q", Truncate(tr.Prompt.System[0], 60))
 	}
 }
 

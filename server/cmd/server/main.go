@@ -501,16 +501,26 @@ func loadConfig(log *slog.Logger) config {
 		c.BotMaxThink = d
 	}
 
-	// Same posture as CMDCTRL_BOT_MAX_THINK: a deployment that asked
-	// for a decision log in a mode this build does not have should be
-	// told at boot, not discover after a night of games that it
-	// silently got a different one.
-	mode, merr := decisionlog.ParseMode(os.Getenv("CMDCTRL_BOT_DECISION_LOG_MODE"))
-	if merr != nil {
-		log.Error("CMDCTRL_BOT_DECISION_LOG_MODE invalid", "value", os.Getenv("CMDCTRL_BOT_DECISION_LOG_MODE"), "err", merr)
+	// The mode only matters when the log is ON, and it fails the boot
+	// only then. Same posture as CMDCTRL_BOT_MAX_THINK for a
+	// deployment that asked for a log — silently getting a mode it
+	// did not ask for means discovering it after a night of games —
+	// but a stale CMDCTRL_BOT_DECISION_LOG_MODE left in an env file
+	// beside an unset log is refusing to start over a variable that
+	// changes nothing. That is a warning, not a dead server.
+	rawMode := os.Getenv("CMDCTRL_BOT_DECISION_LOG_MODE")
+	mode, merr := decisionlog.ParseMode(rawMode)
+	switch {
+	case merr == nil:
+		c.BotDecisionLogMode = mode
+	case c.BotDecisionLog != "":
+		log.Error("CMDCTRL_BOT_DECISION_LOG_MODE invalid", "value", rawMode, "err", merr)
 		os.Exit(1)
+	default:
+		log.Warn("CMDCTRL_BOT_DECISION_LOG_MODE is not a mode this build knows, and is being ignored because CMDCTRL_BOT_DECISION_LOG is unset (the bot decision log is off)",
+			"value", rawMode, "err", merr)
+		c.BotDecisionLogMode = decisionlog.ModeEscalated
 	}
-	c.BotDecisionLogMode = mode
 
 	if raw := os.Getenv("CMDCTRL_SESSION_TTL"); raw != "" {
 		d, err := time.ParseDuration(raw)

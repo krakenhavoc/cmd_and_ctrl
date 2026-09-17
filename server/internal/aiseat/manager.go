@@ -204,6 +204,31 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		return
 	}
 	gameID := room.Game.ID
+
+	// Opening the decision log creates a file, so it happens BEFORE
+	// the manager lock is taken. Every StartBots and StopBots on the
+	// server queues behind that one mutex; a slow, full or unwritable
+	// disk must not be able to stall a game starting in another
+	// lobby. The log is discarded on the one early return below.
+	var glog GameDecisionLog
+	m.mu.Lock()
+	dl := m.decisionLog
+	m.mu.Unlock()
+	if dl != nil {
+		// One log per GAME, shared by every seat: a decision log is a
+		// record of a table, and four per-seat files would have to be
+		// merged by hand to read one.
+		g, err := dl.OpenGame(gameID)
+		if err != nil {
+			// A diagnostic that cannot open its file must not stop a
+			// game from being played.
+			m.log.Error("bot decision log could not be opened; the game plays without one",
+				"game", gameID.String(), "err", err)
+		} else {
+			glog = g
+		}
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if old, ok := m.games[gameID]; ok {
@@ -218,21 +243,7 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		factory = builtinFactory{}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	bg := &botGame{cancel: cancel}
-	// One log per GAME, shared by every seat: a decision log is a
-	// record of a table, and four per-seat files would have to be
-	// merged by hand to read one.
-	if m.decisionLog != nil {
-		dl, err := m.decisionLog.OpenGame(gameID)
-		if err != nil {
-			// A diagnostic that cannot open its file must not stop a
-			// game from being played.
-			m.log.Error("bot decision log could not be opened; the game plays without one",
-				"game", gameID.String(), "err", err)
-		} else {
-			bg.dlog = dl
-		}
-	}
+	bg := &botGame{cancel: cancel, dlog: glog}
 	for _, seat := range seats {
 		tier, ok := LookupTier(seat.Tier)
 		if !ok {

@@ -225,8 +225,60 @@ func TestProbeReadsTheQwenReplyOffTheWire(t *testing.T) {
 	if res.Reply != "" || res.ReplyParsed() {
 		t.Errorf("content was empty on the wire; the probe thinks it parsed (%q, %v)", res.Reply, res.ParsedIndex)
 	}
+	// Both verdicts on the one shape, and this is the pair that
+	// matters. The prompt ARRIVED — 6231 tokens for the ~4700 sent —
+	// and the reply is unusable because the model thought instead of
+	// answering. Calling that truncation too would send an operator to
+	// raise a context length that was never the problem.
 	if v := thinkingVerdict(res); !strings.HasPrefix(v, "THINKING: not suppressed") {
-		t.Errorf("verdict on the measured qwen3 shape: %q", v)
+		t.Errorf("thinking verdict on the measured qwen3 shape: %q", v)
+	}
+	if v := truncationVerdict(res); !strings.HasPrefix(v, "TRUNCATION: not detected") {
+		t.Errorf("truncation verdict on the measured qwen3 shape: %q — thinking explains this reply, not a truncated prompt", v)
+	}
+}
+
+// The two verdicts must not both fire on one piece of evidence. An
+// unparseable reply is weak evidence of truncation and strong
+// evidence of thinking; where thinking explains it, truncation says
+// nothing.
+func TestThinkingEvidencePreemptsTheTruncationVerdict(t *testing.T) {
+	base := probeResult{SystemBytes: 8000, UserBytes: 1000, PromptTokens: 2900, Moves: 8}
+
+	reasoning := base
+	reasoning.FinishReason = "length"
+	reasoning.Reasoning = "Okay, let me think…"
+	if v := truncationVerdict(reasoning); !strings.HasPrefix(v, "TRUNCATION: not detected") {
+		t.Errorf("a reply explained by a reasoning field: %q", v)
+	}
+
+	lengthEmpty := base
+	lengthEmpty.FinishReason = "length"
+	if v := truncationVerdict(lengthEmpty); !strings.HasPrefix(v, "TRUNCATION: not detected") {
+		t.Errorf("an empty reply cut off at the token cap: %q", v)
+	}
+
+	// An unparseable reply with no thinking evidence is still the
+	// truncation signal it always was: the model answered, in a shape
+	// the instructions forbid, which is what a model that never saw
+	// the instructions does.
+	prose := base
+	prose.FinishReason = "stop"
+	prose.Reply = "I would cast Lightning Bolt."
+	prose.ParseErr = errors.New("no index")
+	if v := truncationVerdict(prose); !strings.HasPrefix(v, "TRUNCATION: likely") {
+		t.Errorf("prose instead of an index, with no thinking to blame: %q", v)
+	}
+
+	// And a genuinely short token count still wins over both: that is
+	// direct evidence about the prompt, not an inference from the
+	// reply.
+	short := base
+	short.PromptTokens = 1200
+	short.FinishReason = "length"
+	short.Reasoning = "thinking…"
+	if v := truncationVerdict(short); !strings.HasPrefix(v, "TRUNCATION: likely") {
+		t.Errorf("the endpoint counted a third of the prompt: %q", v)
 	}
 }
 
@@ -267,7 +319,7 @@ func TestRepresentativeInputFindsAnEscalatedWindow(t *testing.T) {
 		t.Fatal("the probe picked a window Layer A settles; the model would never see it")
 	}
 	if !strings.Contains(req.User, "0: ") {
-		t.Errorf("the user delta has no numbered move list in it:\n%s", head(req.User, 400))
+		t.Errorf("the user delta has no numbered move list in it:\n%s", model.Truncate(req.User, 400))
 	}
 	t.Logf("probe window: turn %d %s, %d moves, system %d bytes, user %d bytes (~%d tokens)",
 		in.View.Turn.Number, in.View.Turn.Step, len(in.Moves),

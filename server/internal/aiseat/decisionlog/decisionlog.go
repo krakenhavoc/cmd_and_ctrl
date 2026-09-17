@@ -36,6 +36,18 @@
 // hands; turning it on is still a decision an operator makes
 // deliberately.
 //
+// # Reading a file back
+//
+// Scan walks the lines in order and hands each Record to a callback.
+// One thing a reader has to know: the static system block — the rules
+// primer and the deck list, several KiB, byte-identical on every
+// window of a game — is written ONCE per distinct block. Every record
+// carries SystemHash; only the first record with a given hash carries
+// Trace.Prompt.System. A reader that wants the system text for a later
+// record looks up its SystemHash among the ones it has already seen,
+// which is one map and the natural shape of a sequential scan anyway.
+// Trace.Prompt.User, the per-decision half, is always present.
+//
 // # The import rule
 //
 // This package sits under aiseat/ and is bound by ADR 0033 §3 like
@@ -45,7 +57,10 @@ package decisionlog
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -139,8 +154,14 @@ type Final struct {
 	// as given. It is NOT Trace.Fallback, which is the funnel's
 	// internal classification of a model failure.
 	RunnerFallback string `json:"runner_fallback,omitempty"`
-	Applied        bool   `json:"applied"`
-	RejectErr      string `json:"reject_err,omitempty"`
+	// Forced is what the runner did INSTEAD of dispatching the answer
+	// it had: forced-pass, forced-always-legal, no-legal-answer,
+	// cancelled. Empty when it dispatched. It is a second axis, not a
+	// refinement of RunnerFallback — a window can time out and then be
+	// forced onto the always-legal answer, and both facts matter.
+	Forced    string `json:"forced,omitempty"`
+	Applied   bool   `json:"applied"`
+	RejectErr string `json:"reject_err,omitempty"`
 }
 
 // Record is one decision window on disk.
@@ -164,10 +185,15 @@ type Record struct {
 	Input *aiseat.Input `json:"input,omitempty"`
 	Moves []legal.Move  `json:"moves,omitempty"`
 
-	Trace     aiseat.Trace `json:"trace"`
-	Decision  Decision     `json:"decision"`
-	Final     Final        `json:"final"`
-	LatencyMS float64      `json:"latency_ms"`
+	Trace    aiseat.Trace `json:"trace"`
+	Decision Decision     `json:"decision"`
+	Final    Final        `json:"final"`
+	// SystemHash identifies the static system block this window was
+	// sent, empty when no model call was assembled. It is present on
+	// every model record; the block's TEXT is present only on the
+	// first record that carries this hash — see the package doc.
+	SystemHash string  `json:"system_hash,omitempty"`
+	LatencyMS  float64 `json:"latency_ms"`
 }
 
 // Escalated reports whether this window left Layer A — the windows a
@@ -204,10 +230,12 @@ func FromEvent(ev aiseat.DecisionEvent, mode Mode) Record {
 			Label:          ev.Label,
 			Reason:         ev.Reason,
 			RunnerFallback: ev.Fallback,
+			Forced:         ev.Forced,
 			Applied:        ev.Applied,
 			RejectErr:      errText(ev.RejectErr),
 		},
-		LatencyMS: float64(ev.Latency) / float64(time.Millisecond),
+		SystemHash: SystemHash(ev.Trace.Prompt),
+		LatencyMS:  float64(ev.Latency) / float64(time.Millisecond),
 	}
 	full := mode == ModeAll || mode == ModeModel || rec.Escalated()
 	if full {
@@ -217,6 +245,28 @@ func FromEvent(ev aiseat.DecisionEvent, mode Mode) Record {
 		rec.Moves = ev.Input.Moves
 	}
 	return rec
+}
+
+// SystemHash identifies a static system block by content. Empty for a
+// window that assembled no prompt.
+//
+// It is short (16 hex characters, 64 bits) because it is an identity
+// within ONE game file, not a cryptographic commitment: a collision
+// would need two different static blocks in the same game, and the
+// static block is fixed per seat at construction.
+func SystemHash(p *aiseat.Prompt) string {
+	if p == nil || len(p.System) == 0 {
+		return ""
+	}
+	h := sha256.New()
+	for _, b := range p.System {
+		_, _ = h.Write([]byte(b))
+		// A separator, so ["ab","c"] and ["a","bc"] are not the same
+		// block. They never are in practice; a hash that says they
+		// are is still wrong.
+		_, _ = h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
 func seatIndex(ev aiseat.DecisionEvent) int {
@@ -303,15 +353,8 @@ func (l *Logger) OpenGame(gameID uuid.UUID) (*GameLog, error) {
 		_ = f.Close()
 		return nil, fmt.Errorf("decisionlog: stat %s: %w", path, err)
 	}
-	return &GameLog{
-		path:  path,
-		mode:  l.opt.Mode,
-		max:   l.opt.MaxBytesPerGame,
-		log:   l.opt.Log.With("decision_log", path),
-		f:     f,
-		w:     bufio.NewWriterSize(f, 64<<10),
-		bytes: info.Size(),
-	}, nil
+	return newGameLog(path, l.opt.Mode, l.opt.MaxBytesPerGame,
+		l.opt.Log.With("decision_log", path), f, info.Size()), nil
 }
 
 // DecisionLogger adapts l to aiseat.DecisionLogger, which is the
@@ -334,31 +377,90 @@ func (l *Logger) DecisionLogger() aiseat.DecisionLogger {
 type Stats struct {
 	Path    string `json:"path"`
 	Records int64  `json:"records"`
-	Dropped int64  `json:"dropped"`
-	Bytes   int64  `json:"bytes"`
+	// Dropped is every record that did not reach the file, by cause:
+	// DroppedQueue when the seat goroutines outran the writer,
+	// DroppedCap when the per-game byte cap was reached, DroppedError
+	// when marshalling or writing failed.
+	Dropped      int64 `json:"dropped"`
+	DroppedQueue int64 `json:"dropped_queue"`
+	DroppedCap   int64 `json:"dropped_cap"`
+	DroppedError int64 `json:"dropped_error"`
+	Bytes        int64 `json:"bytes"`
 }
+
+// systemHashKey is the cheap gate dedupeSystem screens lines with.
+var systemHashKey = []byte(`"system_hash":`)
+
+// queueDepth is how many marshalled records may be in flight between
+// the seat goroutines and the writer.
+//
+// 256 is sized against the burst the runner can actually produce:
+// MaxActionsPerWake is 64 and four seats can be woken by the same
+// commit, so 256 windows back-to-back is the worst case a table
+// reaches. Anything shallower drops lines during ordinary play — a
+// four-seat burst against a 64-deep queue lost a quarter of them —
+// and the corpus these files exist to build is worth the memory.
+// The bound is the depth times one marshalled record, so ~15 MiB in
+// `all` mode on a four-player board and far less in `escalated`.
+const queueDepth = 256
 
 // GameLog is one game's file. It implements aiseat.DecisionObserver
 // and io.Closer.
 //
-// Every bot seat at the table shares one of these and each calls
-// Observe from its own goroutine, so the mutex is doing real work:
-// it serialises the four writers AND guarantees that a record is one
-// whole line, which is the only thing a JSONL reader can rely on.
+// # Why the write is asynchronous
+//
+// Observe is called inline on a bot seat's own goroutine, between the
+// decision and the next one. A synchronous write puts a shared mutex
+// and — every time the 64 KiB buffer fills, which one full record
+// does on its own — a disk write on that path, so four seats would
+// serialise on the disk while a table waited. A diagnostic that slows
+// the thing it is diagnosing measures its own overhead.
+//
+// So Observe marshals (on the caller's goroutine, where the data is
+// hot and the cost is microseconds) and hands the bytes to one writer
+// goroutine through a bounded channel. A full channel DROPS and
+// counts, exactly as the byte cap does: the log is a diagnostic, and
+// the alternative — blocking a seat until the disk catches up — is
+// the failure this design exists to avoid.
 type GameLog struct {
 	path string
 	mode Mode
 	max  int64
 	log  *slog.Logger
 
+	queue chan []byte
+	done  chan struct{} // closed by the writer when it has drained
+
+	// sendMu guards the send on queue against Close closing it. A
+	// sender holds it for reading; Close takes it for writing, so no
+	// send can be in flight when the channel closes. This is the one
+	// race that would take a bot seat down with a panic rather than
+	// losing a diagnostic line.
+	sendMu    sync.RWMutex
+	sendsShut bool
+
+	closeOnce sync.Once
+	closeErr  error
+
 	mu      sync.Mutex
-	f       *os.File
-	w       *bufio.Writer
 	records int64
-	dropped int64
+	dropped struct{ queue, cap, err int64 }
 	bytes   int64
 	warned  bool
-	closed  bool
+}
+
+func newGameLog(path string, mode Mode, max int64, log *slog.Logger, f *os.File, size int64) *GameLog {
+	g := &GameLog{
+		path:  path,
+		mode:  mode,
+		max:   max,
+		log:   log,
+		queue: make(chan []byte, queueDepth),
+		done:  make(chan struct{}),
+		bytes: size,
+	}
+	go g.write(f)
+	return g
 }
 
 // Path is the file being written.
@@ -367,81 +469,175 @@ func (g *GameLog) Path() string { return g.path }
 // Mode is the fullness this log was opened with.
 func (g *GameLog) Mode() Mode { return g.mode }
 
-// Stats snapshots the counters.
+// Stats snapshots the counters. Records and Bytes lag by whatever is
+// still in the queue; after Close they are exact.
 func (g *GameLog) Stats() Stats {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return Stats{Path: g.path, Records: g.records, Dropped: g.dropped, Bytes: g.bytes}
+	return Stats{
+		Path:         g.path,
+		Records:      g.records,
+		Dropped:      g.dropped.queue + g.dropped.cap + g.dropped.err,
+		DroppedQueue: g.dropped.queue,
+		DroppedCap:   g.dropped.cap,
+		DroppedError: g.dropped.err,
+		Bytes:        g.bytes,
+	}
 }
 
-// Observe writes one record.
+// Observe hands one record to the writer.
 //
-// It never returns an error and never panics a bot seat: a decision
-// log that cannot write is a diagnostic that stopped working, and
-// stopping the game over it would be a strictly worse outcome than
-// losing the diagnostic. Failures are counted and logged once.
+// It never blocks a bot seat, never returns an error and never panics
+// one: a decision log that cannot keep up is a diagnostic that lost
+// some lines, and stopping the game over it would be strictly worse.
 func (g *GameLog) Observe(ev aiseat.DecisionEvent) {
 	if !Includes(g.mode, ev) {
 		return
 	}
+	// Marshalling happens here, on the caller's goroutine, rather than
+	// in the writer: the data is hot, the cost is microseconds, and
+	// the event — which holds the seat's whole view — does not then
+	// have to stay reachable while the queue drains. It is done
+	// BEFORE the send lock so Close never waits on it.
 	line, err := json.Marshal(FromEvent(ev, g.mode))
 	if err != nil {
-		g.mu.Lock()
-		g.dropped++
-		g.warnOnceLocked("bot decision log: a record would not marshal; it was dropped", "err", err)
-		g.mu.Unlock()
+		g.drop(&g.dropped.err, "bot decision log: a record would not marshal; it was dropped")
 		return
 	}
 	line = append(line, '\n')
 
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.closed {
-		g.dropped++
+	g.sendMu.RLock()
+	defer g.sendMu.RUnlock()
+	if g.sendsShut {
+		// Closed: nothing is draining the queue any more.
+		g.drop(&g.dropped.queue, "")
 		return
 	}
-	if g.max > 0 && g.bytes+int64(len(line)) > g.max {
-		g.dropped++
-		g.warnOnceLocked("bot decision log has hit its size cap; further records for this game are DROPPED (raise the cap, or use a narrower CMDCTRL_BOT_DECISION_LOG_MODE)",
-			"cap_bytes", g.max, "records", g.records)
-		return
+	select {
+	case g.queue <- line:
+	default:
+		g.drop(&g.dropped.queue, "bot decision log cannot keep up with the table; records are being DROPPED (the disk is slow, or the mode is too verbose — try CMDCTRL_BOT_DECISION_LOG_MODE=escalated)")
 	}
-	n, werr := g.w.Write(line)
-	g.bytes += int64(n)
-	if werr != nil {
-		g.dropped++
-		g.warnOnceLocked("bot decision log write failed; records are being dropped", "err", werr)
-		return
-	}
-	g.records++
 }
 
-// warnOnceLocked logs at most one WARN per game. Caller holds g.mu.
-// One line, because the failure that matters here is a game-long
-// condition (the cap, a full disk) and a per-window warning would
-// bury the log it is warning about.
-func (g *GameLog) warnOnceLocked(msg string, args ...any) {
-	if g.warned {
+// drop counts one lost record and logs at most one WARN per game.
+func (g *GameLog) drop(counter *int64, warn string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	*counter++
+	if warn == "" || g.warned {
 		return
 	}
 	g.warned = true
-	g.log.Warn(msg, args...)
+	g.log.Warn(warn, "records", g.records, "cap_bytes", g.max)
 }
 
-// Close flushes and closes the file. Idempotent.
+// write is the single writer goroutine: the only thing that touches
+// the file, which is what makes one record one whole line.
+//
+// It also applies the system-block dedupe. The static half of a
+// model prompt is several KiB and byte-identical on every window of a
+// game (that is the whole point of a prompt cache), so writing it
+// thousands of times is most of the file. It is written once per
+// distinct block and thereafter carried by SystemHash alone — see the
+// package doc. The dedupe lives here because "first in THIS FILE" is
+// a property of the file, and only the writer knows it.
+func (g *GameLog) write(f *os.File) {
+	defer close(g.done)
+	w := bufio.NewWriterSize(f, 64<<10)
+	seen := make(map[string]bool, 4)
+	for line := range g.queue {
+		line = dedupeSystem(line, seen)
+		g.mu.Lock()
+		over := g.max > 0 && g.bytes+int64(len(line)) > g.max
+		g.mu.Unlock()
+		if over {
+			g.drop(&g.dropped.cap, "bot decision log has hit its size cap; further records for this game are DROPPED (raise the cap, or use a narrower CMDCTRL_BOT_DECISION_LOG_MODE)")
+			continue
+		}
+		n, err := w.Write(line)
+		g.mu.Lock()
+		g.bytes += int64(n)
+		g.mu.Unlock()
+		if err != nil {
+			g.drop(&g.dropped.err, "bot decision log write failed; records are being dropped")
+			continue
+		}
+		g.mu.Lock()
+		g.records++
+		g.mu.Unlock()
+	}
+	// Written before close(g.done), which Close waits on, so the
+	// handoff is ordered without another lock.
+	if err := w.Flush(); err != nil {
+		g.log.Error("bot decision log could not be flushed", "err", err)
+		g.closeErr = err
+	}
+	if err := f.Close(); err != nil {
+		g.log.Error("bot decision log could not be closed", "err", err)
+		if g.closeErr == nil {
+			g.closeErr = err
+		}
+	}
+}
+
+// dedupeSystem strips Trace.Prompt.System from a marshalled record
+// whose SystemHash has already been written to this file.
+//
+// It works on the marshalled bytes rather than the Record because the
+// Record was built on a seat's goroutine and the writer is the only
+// place that knows what this file has already seen. A record with no
+// system block, or the first one with a given hash, passes through
+// untouched.
+func dedupeSystem(line []byte, seen map[string]bool) []byte {
+	// Cheap gate first. Most records are not model windows, carry no
+	// system_hash at all (omitempty), and must not cost a JSON parse
+	// of a 60 KiB line on the writer goroutine to find that out.
+	if !bytes.Contains(line, systemHashKey) {
+		return line
+	}
+	var probe struct {
+		SystemHash string `json:"system_hash"`
+	}
+	if err := json.Unmarshal(line, &probe); err != nil || probe.SystemHash == "" {
+		return line
+	}
+	if !seen[probe.SystemHash] {
+		seen[probe.SystemHash] = true
+		return line
+	}
+	var rec Record
+	if err := json.Unmarshal(line, &rec); err != nil {
+		return line
+	}
+	if rec.Trace.Prompt == nil || len(rec.Trace.Prompt.System) == 0 {
+		return line
+	}
+	// Copy the prompt before editing it: FromEvent took the Prompt
+	// POINTER off the event, so the struct behind it may be shared
+	// with the policy's own records.
+	p := *rec.Trace.Prompt
+	p.System = nil
+	rec.Trace.Prompt = &p
+	out, err := json.Marshal(rec)
+	if err != nil {
+		return line
+	}
+	return append(out, '\n')
+}
+
+// Close stops accepting records, drains what is queued, flushes and
+// closes the file. Idempotent, and safe to call while seats are still
+// observing — a record that races the close is dropped and counted.
 func (g *GameLog) Close() error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.closed {
-		return nil
-	}
-	g.closed = true
-	ferr := g.w.Flush()
-	cerr := g.f.Close()
-	if ferr != nil {
-		return ferr
-	}
-	return cerr
+	g.closeOnce.Do(func() {
+		g.sendMu.Lock()
+		g.sendsShut = true
+		close(g.queue)
+		g.sendMu.Unlock()
+		<-g.done
+	})
+	return g.closeErr
 }
 
 // --- reading ---------------------------------------------------------

@@ -372,6 +372,13 @@ its raw reply, the index parsed out of it, the runner's own fallback
 cause when it overruled the policy, whether the engine accepted the
 move, and how long the decision took.
 
+Two facts are recorded separately on purpose: why the runner did not
+use the answer the policy returned (a timeout, an error, an
+out-of-range index) and what it did *instead* (forced a pass, took the
+enumerator's unconditional answer, ran out of answers, or was
+cancelled mid-window). A window can be both, and collapsing them loses
+the half that says the model is too slow.
+
 It exists because nothing else can measure the bot. Play strength,
 the funnel's absorption rate, whether the model is being truncated,
 whether a blunder was the heuristic's fault or the model's — all of
@@ -389,6 +396,18 @@ never touched a game.
 | `escalated` (default) | Every window. The full board view only for windows that left Layer A; the rest keep their move list and trace. On the `heuristic` tier that is about 85% of windows compacted; a policy that never runs Layer A saves nothing. |
 | `all` | Every window, with the full board view. Roughly 38 KiB per window at two seats, 59 KiB at four — a 12-turn two-seat game is ~23 MiB, and a four-seat game to a winner is 100–250 MiB. |
 | `model` | Only the windows that actually reached a model, with the full view. The mode for reviewing a model tier's play. |
+
+Writing happens on one background goroutine per game, fed by a bounded
+queue; a bot seat hands over its record and returns. The log never
+slows the table down, and the cost of that is that it can lose lines:
+if the seats outrun the disk the record is dropped and counted, the
+same way the byte cap does. `Stats` says which cause.
+
+The static half of a model prompt — the rules primer and the deck
+list, several KiB, identical on every window — is written **once per
+file** and carried by a `system_hash` on every later record. A reader
+walking the file in order keeps the blocks it has seen by hash; the
+per-decision half of the prompt is always present.
 
 One game's file is capped at 256 MiB; past the cap records are dropped
 and counted, with a single WARN. A long four-seat game can reach that

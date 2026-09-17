@@ -425,7 +425,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 	case perr != nil:
 		rec.Fallback = FallbackMalformed
 		p.cfg.Log.Warn("bot model reply was not an index; playing the heuristic's move",
-			"tier", p.cfg.Tier, "model", profile.ID, "reply", truncate(resp.Text, 200))
+			"tier", p.cfg.Tier, "model", profile.ID, "reply", Truncate(resp.Text, 200))
 		d, tr := finish(base)
 		return d, tr, nil
 	case idx < 0 || idx >= len(in.Moves):
@@ -583,7 +583,7 @@ func parseAnswer(text string) (int, string, error) {
 			return *a.Index, a.Why, nil
 		}
 	}
-	return 0, "", fmt.Errorf("no index in reply %q", truncate(s, 120))
+	return 0, "", fmt.Errorf("no index in reply %q", Truncate(s, 120))
 }
 
 // firstJSONObject returns the first balanced {...} run in s, ignoring
@@ -625,17 +625,22 @@ func firstJSONObject(s string) string {
 }
 
 func modelReason(model, why string) string {
-	why = oneLine(strings.TrimSpace(why))
+	why = OneLine(strings.TrimSpace(why))
 	if why == "" {
 		return model
 	}
-	return model + ": " + truncate(why, 120)
+	return model + ": " + Truncate(why, 120)
 }
 
-// truncate cuts at a rune boundary. A Decision.Reason reaches the
-// chat log behind the "show bot reasoning" setting, and half a rune
-// on the wire is a rendering bug in somebody else's code.
-func truncate(s string, n int) string {
+// Truncate cuts s to at most n bytes, at a rune boundary, adding an
+// ellipsis when it cut.
+//
+// Exported because every caller that shows a model's own text has the
+// same problem and there should be one answer to it: a Decision.Reason
+// reaches the chat log behind the "show bot reasoning" setting, and a
+// probe prints the first 300 characters of a reply. Half a rune is a
+// rendering bug in somebody else's code either way.
+func Truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}

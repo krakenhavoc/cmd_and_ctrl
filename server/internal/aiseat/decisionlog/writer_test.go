@@ -170,6 +170,9 @@ func TestRecordsRoundTripIntoAUsableInput(t *testing.T) {
 	if r.Decision.Index != 1 || r.Final.Label != "Cast Lightning Bolt" || !r.Final.Applied {
 		t.Errorf("decision/final did not survive: %+v %+v", r.Decision, r.Final)
 	}
+	if r.SystemHash == "" {
+		t.Error("a model window recorded no system hash; later records cannot find their system block")
+	}
 	if r.LatencyMS <= 0 {
 		t.Errorf("latency %v", r.LatencyMS)
 	}
@@ -247,8 +250,11 @@ func TestCapDropsAndCounts(t *testing.T) {
 	_ = g.Close()
 
 	st := g.Stats()
-	if st.Dropped == 0 {
-		t.Fatal("an 8 KiB cap took 50 full records without dropping any")
+	if st.Dropped == 0 || st.DroppedCap == 0 {
+		t.Fatalf("an 8 KiB cap took 50 full records without dropping any: %+v", st)
+	}
+	if st.DroppedQueue != 0 {
+		t.Errorf("records were dropped by the queue, not the cap: %+v", st)
 	}
 	if st.Records == 0 {
 		t.Fatal("the cap dropped everything, including the records that fit")
@@ -333,8 +339,19 @@ func TestObserveIsSafeFromEverySeatAtOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
-	if n != seats*each {
-		t.Errorf("scanned %d whole lines from %d concurrent writes", n, seats*each)
+	// What this test is about is that every record that reached the
+	// file is ONE WHOLE LINE — four goroutines interleaving half a
+	// record each is the failure a JSONL reader cannot recover from.
+	// A record the queue dropped is accounted for, not corrupt.
+	st := g.Stats()
+	if int64(n) != st.Records {
+		t.Errorf("scanned %d whole lines, counted %d records", n, st.Records)
+	}
+	if st.Records+st.Dropped != seats*each {
+		t.Errorf("%d written + %d dropped != %d observed", st.Records, st.Dropped, seats*each)
+	}
+	if st.Records != seats*each {
+		t.Logf("the queue dropped %d of %d records under a synthetic burst", st.Dropped, seats*each)
 	}
 }
 
@@ -397,5 +414,199 @@ func TestRecordSizeIsReported(t *testing.T) {
 		len(full), len(compact)))
 	if len(full) == 0 || len(compact) == 0 {
 		t.Fatal("a record marshalled to nothing")
+	}
+}
+
+// --- the two axes on the record ---------------------------------------
+
+// Fallback and Forced are independent: a window can time out inside
+// the policy AND be forced onto the always-legal answer afterwards,
+// and a record that keeps only one of those cannot answer "why did
+// this seat play fail-to-find".
+func TestRecordKeepsBothFallbackAndForced(t *testing.T) {
+	ev := event(1, "B")
+	ev.Fallback = aiseat.FallbackTimeout
+	ev.Forced = aiseat.ForcedAlwaysLegal
+	ev.Applied = true
+
+	_, g, dir := newLog(t, decisionlog.ModeAll, 0)
+	g.Observe(ev)
+	_ = g.Close()
+
+	var got decisionlog.Record
+	n := 0
+	if err := decisionlog.Scan(decisionlog.Path(dir, gameID), func(r decisionlog.Record) error {
+		got, n = r, n+1
+		return nil
+	}); err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("%d records", n)
+	}
+	if got.Final.RunnerFallback != aiseat.FallbackTimeout {
+		t.Errorf("runner_fallback %q, want %q", got.Final.RunnerFallback, aiseat.FallbackTimeout)
+	}
+	if got.Final.Forced != aiseat.ForcedAlwaysLegal {
+		t.Errorf("forced %q, want %q", got.Final.Forced, aiseat.ForcedAlwaysLegal)
+	}
+}
+
+// --- the system-block dedupe -----------------------------------------
+
+// The static system block is several KiB and byte-identical on every
+// window of a game. Writing it thousands of times is most of the
+// file, so it is written once and carried by hash after that.
+func TestSystemBlockIsWrittenOncePerFile(t *testing.T) {
+	_, g, dir := newLog(t, decisionlog.ModeAll, 0)
+	for i := 0; i < 3; i++ {
+		g.Observe(event(uint64(i+1), "C"))
+	}
+	// A seat whose static block differs — a different deck — must get
+	// its own copy rather than inheriting the first seat's.
+	other := event(4, "C")
+	other.Trace.Prompt = &aiseat.Prompt{System: []string{"a different primer"}, User: "u"}
+	g.Observe(other)
+	_ = g.Close()
+
+	var recs []decisionlog.Record
+	if err := decisionlog.Scan(decisionlog.Path(dir, gameID), func(r decisionlog.Record) error {
+		recs = append(recs, r)
+		return nil
+	}); err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if len(recs) != 4 {
+		t.Fatalf("%d records", len(recs))
+	}
+	if recs[0].SystemHash == "" || len(recs[0].Trace.Prompt.System) == 0 {
+		t.Fatalf("the first record must carry the system text and its hash: %+v", recs[0])
+	}
+	for i, r := range recs[1:3] {
+		if r.SystemHash != recs[0].SystemHash {
+			t.Errorf("record %d hash %q, want %q", i+1, r.SystemHash, recs[0].SystemHash)
+		}
+		if r.Trace.Prompt == nil || len(r.Trace.Prompt.System) != 0 {
+			t.Errorf("record %d repeated the system block; it is carried by hash after the first", i+1)
+		}
+		// The per-decision half is always present — that is the half
+		// that differs, and the half a reviewer reads.
+		if r.Trace.Prompt.User == "" {
+			t.Errorf("record %d lost its user delta", i+1)
+		}
+	}
+	if recs[3].SystemHash == recs[0].SystemHash {
+		t.Error("a different static block was given the first block's hash")
+	}
+	if len(recs[3].Trace.Prompt.System) == 0 {
+		t.Error("the first record of a NEW static block must carry its text")
+	}
+	// And the saving is the point.
+	first, later := decisionlog.SystemHash(recs[0].Trace.Prompt), recs[1].SystemHash
+	if first != later {
+		t.Errorf("SystemHash is not stable: %q vs %q", first, later)
+	}
+}
+
+func TestSystemHashIsEmptyWithoutAPrompt(t *testing.T) {
+	if got := decisionlog.SystemHash(nil); got != "" {
+		t.Errorf("SystemHash(nil) = %q", got)
+	}
+	if got := decisionlog.SystemHash(&aiseat.Prompt{User: "u"}); got != "" {
+		t.Errorf("SystemHash with no system blocks = %q", got)
+	}
+	a := decisionlog.SystemHash(&aiseat.Prompt{System: []string{"ab", "c"}})
+	b := decisionlog.SystemHash(&aiseat.Prompt{System: []string{"a", "bc"}})
+	if a == b {
+		t.Error("blocks that differ only in where they are split hash the same")
+	}
+}
+
+// --- the queue --------------------------------------------------------
+
+// Observe must never block a bot seat. When the seats outrun the
+// writer the record is dropped and counted, exactly as the byte cap
+// does — a diagnostic that loses lines is strictly better than one
+// that stalls a table.
+func TestQueueOverflowDropsAndCountsRatherThanBlocking(t *testing.T) {
+	dir := t.TempDir()
+	l, err := decisionlog.New(decisionlog.Options{Dir: dir, Mode: decisionlog.ModeAll})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	g, err := l.OpenGame(gameID)
+	if err != nil {
+		t.Fatalf("OpenGame: %v", err)
+	}
+	// Far more than the queue depth, faster than any disk. Whatever
+	// the writer does not get to must be counted, and Observe must
+	// return every time.
+	const n = 5000
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < n; i++ {
+			g.Observe(event(uint64(i+1), "C"))
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("Observe blocked a seat goroutine")
+	}
+	if err := g.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	st := g.Stats()
+	if st.Records+st.Dropped != n {
+		t.Errorf("%d written + %d dropped != %d observed (%+v)", st.Records, st.Dropped, n, st)
+	}
+	if st.DroppedCap != 0 || st.DroppedError != 0 {
+		t.Errorf("records were dropped for the wrong reason: %+v", st)
+	}
+	lines := 0
+	if err := decisionlog.Scan(decisionlog.Path(dir, gameID), func(decisionlog.Record) error {
+		lines++
+		return nil
+	}); err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if int64(lines) != st.Records {
+		t.Errorf("scanned %d whole lines, counted %d records", lines, st.Records)
+	}
+}
+
+// Close drains what is queued rather than throwing it away, and is
+// safe to call while seats are still observing.
+func TestCloseDrainsTheQueue(t *testing.T) {
+	_, g, dir := newLog(t, decisionlog.ModeAll, 0)
+	const n = 20
+	for i := 0; i < n; i++ {
+		g.Observe(event(uint64(i+1), "C"))
+	}
+	if err := g.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	lines := 0
+	if err := decisionlog.Scan(decisionlog.Path(dir, gameID), func(decisionlog.Record) error {
+		lines++
+		return nil
+	}); err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	if lines != n {
+		t.Errorf("Close kept %d of %d queued records", lines, n)
+	}
+	// Observing after Close counts the record as lost and does not
+	// panic on a closed channel, which is the one failure here that
+	// would take a bot seat down rather than lose a line.
+	before := g.Stats()
+	g.Observe(event(99, "C"))
+	if after := g.Stats(); after.Dropped != before.Dropped+1 {
+		t.Errorf("a record observed after Close was not counted: %+v then %+v", before, after)
+	}
+	if err := g.Close(); err != nil {
+		t.Errorf("second Close: %v", err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/rules"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // observer_test.go covers the runner's half of the decision trace:
@@ -157,18 +158,26 @@ func TestRunnerObserverClassifiesFallbacks(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _ := runWithObserver(t, tc.policy, tc.cfg, 3)
+			const want = 3
+			c, _ := runWithObserver(t, tc.policy, tc.cfg, want)
 			evs := c.events()
-			if len(evs) == 0 {
-				t.Fatal("no events")
+			if len(evs) < want {
+				t.Fatalf("only %d events", len(evs))
 			}
-			for i, ev := range evs {
+			// Only the first `want` events are guaranteed to predate
+			// the cancel that ends the runner; a decision racing that
+			// cancel is classified policy-error on ctx.Canceled, which
+			// is correct and not what this test is about.
+			for i, ev := range evs[:want] {
 				if ev.Fallback != tc.want {
 					t.Fatalf("event %d fallback %q, want %q (decision %+v, err %v)",
 						i, ev.Fallback, tc.want, ev.Decision, ev.DecisionErr)
 				}
 				if tc.want != aiseat.FallbackOutOfRange && ev.DecisionErr == nil {
 					t.Errorf("event %d has fallback %q but no policy error", i, ev.Fallback)
+				}
+				if ev.Forced != "" {
+					t.Errorf("event %d claims the runner forced %q; nothing was rejected", i, ev.Forced)
 				}
 			}
 		})
@@ -251,5 +260,131 @@ func TestPercentilesOfIsNearestRankAndDoesNotReorder(t *testing.T) {
 	single := aiseat.PercentilesOf([]time.Duration{7 * time.Second})
 	if single.P50 != 7*time.Second || single.Max != 7*time.Second || single.Count != 1 {
 		t.Errorf("one sample: %+v", single)
+	}
+}
+
+// --- the two windows that used to vanish ------------------------------
+
+// A decision paid for and then abandoned because the runner's context
+// ended during the pacing hold is still a window the policy decided
+// in. Before this it produced latency, a Decide call and no event at
+// all, so a decision census silently under-counted every game that
+// was stopped rather than finished.
+func TestRunnerObserverReportsAWindowCancelledDuringPacing(t *testing.T) {
+	room := newRoom(t, 2, 21)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := &collector{}
+	// MinThink far longer than the cancel below, so the runner is
+	// certain to be inside pace() when the context ends.
+	cfg := aiseat.Config{MinThink: 2 * time.Second, Observer: c}
+	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, &scripted{prefer: []string{"Keep hand"}}, cfg, nil, testLogger())
+	time.Sleep(60 * time.Millisecond)
+	cancel()
+	<-r.Done()
+
+	evs := c.events()
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want exactly the one abandoned window", len(evs))
+	}
+	ev := evs[0]
+	if ev.Forced != aiseat.ForcedCancelled {
+		t.Errorf("forced %q, want %q", ev.Forced, aiseat.ForcedCancelled)
+	}
+	if ev.Applied {
+		t.Error("an abandoned window was reported as applied")
+	}
+	if ev.Seq != 0 {
+		t.Errorf("seq %d on a window that committed nothing", ev.Seq)
+	}
+	if ev.Latency <= 0 || ev.Label == "" {
+		t.Errorf("the decision itself was not reported: %+v", ev)
+	}
+	// The policy's own answer survives alongside the runner's
+	// override: the seat decided, it just never got to play.
+	if ev.Fallback != "" {
+		t.Errorf("fallback %q — the policy answered fine", ev.Fallback)
+	}
+}
+
+// Forced is a SECOND axis, not a refinement of Fallback. A window
+// whose policy returned an out-of-range index and whose fallback was
+// then rejected onto the always-legal answer has to report both, or
+// the "why did this seat play fail-to-find" question has no answer.
+func TestRunnerObserverKeepsTheFallbackWhenItForcesAnAnswer(t *testing.T) {
+	room, me := newMyriadRoom(t, 7, 5)
+	if pi := aiseat.PassIndex(legal.EnumerateFor(room.Game, me.ID)); pi >= 0 {
+		t.Fatal("scenario is wrong: a seat owing a choice must not be offered a pass")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := &collector{}
+	pol := &millOnPick{t: t, room: room, seat: me.ID}
+	r := aiseat.Start(ctx, room, me.ID, pol, aiseat.Config{
+		MaxThink:              time.Second,
+		MaxConsecutiveRejects: 2,
+		Observer:              c,
+	}, nil, testLogger())
+	waitFor(t, "the search prompt to clear", 5*time.Second, func() bool {
+		open := true
+		room.Game.ReadSnapshot(func() { open = searchChoice(room.Game, me.ID) != nil })
+		return !open
+	})
+	cancel()
+	<-r.Done()
+
+	var forced, rejected int
+	for _, ev := range c.events() {
+		if ev.RejectErr != nil {
+			rejected++
+			if ev.Applied {
+				t.Error("a rejected move was reported as applied")
+			}
+		}
+		if ev.Forced == aiseat.ForcedAlwaysLegal {
+			forced++
+			if !ev.Applied {
+				t.Error("the always-legal answer was forced and then not applied")
+			}
+			if ev.Label == "" {
+				t.Error("the forced answer has no label")
+			}
+		}
+	}
+	if rejected < 2 {
+		t.Errorf("%d rejections observed; the scenario did not reject anything", rejected)
+	}
+	if forced != 1 {
+		t.Errorf("%d forced always-legal answers observed, want 1", forced)
+	}
+}
+
+// A Filter over a policy that cannot trace itself must not claim the
+// inner policy is a heuristic. It was reporting Layer "B" and an
+// index, which over a random policy is a fabricated claim about a
+// coin flip.
+func TestFilterOverAnUntraceablePolicyNamesIt(t *testing.T) {
+	c, _ := runWithObserver(t, rules.NewFilter(aiseat.NewRandomPolicy(nil), nil), aiseat.Config{}, 6)
+	sawInner := false
+	for i, ev := range c.events() {
+		if !ev.Traced {
+			t.Fatalf("event %d is untraced; the filter implements aiseat.Tracer", i)
+		}
+		switch ev.Trace.Layer {
+		case "A":
+			// Layer A answered; nothing below was asked.
+		case aiseat.TraceLayerRandom:
+			sawInner = true
+		default:
+			t.Errorf("event %d layer %q — a filter over the random policy has no Layer B", i, ev.Trace.Layer)
+		}
+		if ev.Trace.HeuristicIndex != aiseat.Decline {
+			t.Errorf("event %d claims heuristic index %d; no heuristic was consulted", i, ev.Trace.HeuristicIndex)
+		}
+	}
+	if !sawInner {
+		t.Errorf("no window reached the inner policy over %d events", c.len())
 	}
 }

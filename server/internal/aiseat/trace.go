@@ -127,8 +127,8 @@ type Tracer interface {
 	DecideTraced(ctx context.Context, in Input) (Decision, Trace, error)
 }
 
-// Runner fallback causes: why the move the runner DISPATCHED was not
-// the move the policy asked for. They are the runner's own
+// Runner fallback causes: why the ANSWER the runner took was not the
+// answer the policy returned. They are the runner's own
 // classification and are deliberately separate from Trace.Fallback,
 // which is the funnel's: a window can be a model failure inside the
 // policy (Trace.Fallback) and still have the policy's Layer B answer
@@ -143,12 +143,35 @@ const (
 	// FallbackDeclinePass — the policy declined while holding
 	// priority, so the decline became the pass it stood in for.
 	FallbackDeclinePass = "decline-pass"
-	// FallbackForcedPass — MaxConsecutiveRejects reached; the runner
-	// yielded priority.
-	FallbackForcedPass = "forced-pass"
-	// FallbackForcedAlwaysLegal — the same, with no pass on offer, so
-	// the enumerator's unconditional answer was taken (#544).
-	FallbackForcedAlwaysLegal = "forced-always-legal"
+)
+
+// Forced causes: what the runner did INSTEAD of dispatching the
+// answer it had, after the answer was already decided.
+//
+// They are a second, independent axis from the fallback causes above,
+// and keeping them apart is the point: a window can time out (Fallback
+// = timeout), have its fallback pass rejected three times, and end up
+// on the enumerator's unconditional answer (Forced =
+// forced-always-legal). Folding those into one field loses the first
+// fact, which is the one that says the model is too slow.
+const (
+	// ForcedPass — MaxConsecutiveRejects reached; the runner yielded
+	// priority.
+	ForcedPass = "forced-pass"
+	// ForcedAlwaysLegal — the same, with no pass on offer, so the
+	// enumerator's unconditional answer was taken (#544).
+	ForcedAlwaysLegal = "forced-always-legal"
+	// ForcedNoLegalAnswer — the same again, with NEITHER on offer:
+	// the runner has run out of answers and puts the window down. This
+	// is the shape of #544 and the reason the event is emitted at all;
+	// a seat that reaches it has stopped playing and nothing else says
+	// so.
+	ForcedNoLegalAnswer = "no-legal-answer"
+	// ForcedCancelled — the runner's context ended between the
+	// decision and the dispatch (the game finished, the manager
+	// stopped the seat, the process is going away). The decision was
+	// made and paid for; nothing was played.
+	ForcedCancelled = "cancelled"
 )
 
 // DecisionEvent is one decision window, after the dispatcher has had
@@ -178,8 +201,12 @@ type DecisionEvent struct {
 	Decision    Decision `json:"decision"`
 	DecisionErr error    `json:"-"`
 	// Fallback is the runner's own fallback cause, empty when the
-	// policy's answer was dispatched as given.
+	// policy's answer was taken as given.
 	Fallback string `json:"fallback,omitempty"`
+	// Forced is what the runner did instead of dispatching the answer
+	// it had — see the Forced* constants. Empty when it dispatched.
+	// Independent of Fallback: both can be set on one window.
+	Forced string `json:"forced,omitempty"`
 	// Index, Label and Reason are the move actually dispatched.
 	// Index is Decline when nothing was.
 	Index  int    `json:"index"`

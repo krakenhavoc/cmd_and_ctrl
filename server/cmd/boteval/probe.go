@@ -100,12 +100,29 @@ func (r probeResult) ReplyParsed() bool {
 	return r.ParsedIndex >= 0 && r.ParsedIndex < r.Moves
 }
 
+// thinkingEvidence reports whether the reply's shape is already
+// explained by a model that thought instead of answering.
+//
+// It exists to keep the two verdicts from both firing on one piece of
+// evidence. An unparseable reply is weak evidence of truncation and
+// STRONG evidence of unsuppressed thinking, and on the measured
+// qwen3 shape — empty content, finish_reason "length", the whole
+// answer in message.reasoning — the prompt arrived intact. Reporting
+// that as "TRUNCATION: likely" would send an operator to raise a
+// context length that was never the problem.
+func thinkingEvidence(r probeResult) bool {
+	return strings.TrimSpace(r.Reasoning) != "" ||
+		(r.FinishReason == "length" && strings.TrimSpace(r.Reply) == "")
+}
+
 // truncationVerdict answers hypothesis 1.
 //
 // Two independent signatures: the server counted far fewer prompt
 // tokens than were sent (the front of the prompt was dropped), or the
 // model answered in a shape the instructions forbid — which is what a
-// model that never saw the instructions does.
+// model that never saw the instructions does. The second is only
+// reported when thinking does not already explain it; see
+// thinkingEvidence.
 func truncationVerdict(r probeResult) string {
 	if r.CallErr != nil {
 		return "TRUNCATION: unknown — the call did not return"
@@ -117,6 +134,9 @@ func truncationVerdict(r probeResult) string {
 	case float64(r.PromptTokens) < float64(est)*truncationRatio:
 		return fmt.Sprintf("TRUNCATION: likely — the endpoint counted %d prompt tokens for ~%d sent (<%.0f%%); raise the server's context (OLLAMA_CONTEXT_LENGTH) or shrink the prompt",
 			r.PromptTokens, est, truncationRatio*100)
+	case !r.ReplyParsed() && thinkingEvidence(r):
+		return fmt.Sprintf("TRUNCATION: not detected — %d prompt tokens for ~%d sent. The reply is unusable, but thinking explains that (see below), not a truncated prompt.",
+			r.PromptTokens, est)
 	case !r.ReplyParsed():
 		return "TRUNCATION: likely — the prompt token count is plausible, but the reply ignores the answer format, which is what a model that never saw the instructions does"
 	default:
@@ -140,7 +160,7 @@ func thinkingVerdict(r probeResult) string {
 	case strings.TrimSpace(r.Reasoning) != "":
 		return fmt.Sprintf("THINKING: not suppressed — the reply carried a reasoning field (%d chars). This server honours neither `think:false` nor `reasoning_effort:\"none\"`; every window on it will score as malformed and play the heuristic.",
 			len(r.Reasoning))
-	case r.FinishReason == "length" && !r.ReplyParsed():
+	case thinkingEvidence(r):
 		return "THINKING: not suppressed — finish_reason is \"length\" and the reply is empty or unparseable: the budget went somewhere that is not the answer"
 	default:
 		return "THINKING: suppressed (or this model does not think) — no reasoning field and the answer arrived inside the token cap"
@@ -432,9 +452,9 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 	say(out, "reply empty        %v\n", strings.TrimSpace(r.Reply) == "")
 	say(out, "reasoning field    %v (%d chars)\n", strings.TrimSpace(r.Reasoning) != "", len(r.Reasoning))
 	say(out, "wall time          %v\n", r.Elapsed.Round(time.Millisecond))
-	say(out, "reply (first 300)  %s\n", oneLine(head(r.Reply, 300)))
+	say(out, "reply (first 300)  %s\n", model.OneLine(model.Truncate(r.Reply, 300)))
 	if strings.TrimSpace(r.Reasoning) != "" {
-		say(out, "reasoning (first 300) %s\n", oneLine(head(r.Reasoning, 300)))
+		say(out, "reasoning (first 300) %s\n", model.OneLine(model.Truncate(r.Reasoning, 300)))
 	}
 	if r.ParseErr != nil {
 		say(out, "parsed index       PARSE FAILED: %v\n", r.ParseErr)
@@ -451,15 +471,4 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 // and a write that fails has nowhere left to report it.
 func say(w io.Writer, format string, args ...any) {
 	_, _ = fmt.Fprintf(w, format, args...)
-}
-
-func head(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
-}
-
-func oneLine(s string) string {
-	return strings.Join(strings.Fields(strings.ReplaceAll(s, "\n", " ")), " ")
 }

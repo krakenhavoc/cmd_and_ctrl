@@ -181,10 +181,22 @@ func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 	if t, ok := f.Inner.(aiseat.Tracer); ok {
 		return t.DecideTraced(ctx, in)
 	}
+	// The inner policy cannot say how it decided, so neither can this.
+	// Calling it Layer B and recording its index as HeuristicIndex
+	// would be two claims the filter has no evidence for: a Filter
+	// wraps whatever it was given, and over a random policy "Layer B
+	// wanted move 3" would be a lie about a coin flip. Name the
+	// policy instead and leave HeuristicIndex unset.
 	d, err := f.Inner.Decide(ctx, in)
-	tr := aiseat.Trace{Layer: "B", HeuristicIndex: d.Index}
-	if err != nil {
-		tr.HeuristicIndex = aiseat.Decline
+	return d, aiseat.Trace{Layer: innerLayer(f.Inner), HeuristicIndex: aiseat.Decline}, err
+}
+
+// innerLayer names an untraceable inner policy. RandomPolicy gets the
+// layer name the runner uses for it, so a log does not have two
+// spellings of the same seat.
+func innerLayer(p aiseat.Policy) string {
+	if _, ok := p.(*aiseat.RandomPolicy); ok {
+		return aiseat.TraceLayerRandom
 	}
-	return d, tr, err
+	return p.Name()
 }

@@ -327,18 +327,23 @@ func (r *Runner) step(ctx context.Context) bool {
 			// seat by hand (#544). A suboptimal legal answer, a
 			// search's "fail to find", is not a good move. It is a
 			// move, and the game continues.
-			switch pi, si := PassIndex(moves), SafeIndex(moves); {
-			case pi >= 0:
-				idx, reason = pi, "forced pass after repeated rejections"
-				out.fallback = FallbackForcedPass
-			case si >= 0:
-				idx, reason = si, "forced always-legal answer after repeated rejections"
-				out.fallback = FallbackForcedAlwaysLegal
+			fi, freason, forced := forcedAnswer(moves)
+			out.forced = forced
+			switch forced {
+			case ForcedAlwaysLegal:
 				r.log.Warn("bot forced onto the always-legal answer",
-					"move", moves[si].Label, "rejects", rejects)
-			default:
+					"move", moves[fi].Label, "rejects", rejects)
+			case ForcedNoLegalAnswer:
+				// Nothing left to play: no pass, no unconditional
+				// answer, and the policy's picks keep bouncing. The
+				// seat puts the window down, which is #544's shape,
+				// so it is reported rather than only returned.
+				r.log.Warn("bot has run out of answers and is leaving the window open",
+					"rejects", rejects, "moves", len(moves))
+				r.observe(in, out, nil, 0, false, nil)
 				return true
 			}
+			idx, reason = fi, freason
 			out.index, out.reason = idx, reason
 		}
 		mv := moves[idx]
@@ -363,6 +368,12 @@ func (r *Runner) step(ctx context.Context) bool {
 			r.holdForBlockers(ctx)
 		}
 		if ctx.Err() != nil {
+			// The decision was made and paid for; the pacing hold
+			// outlived the runner. Report the window rather than
+			// dropping it, so "one event per window the policy
+			// decided in" holds even on the way out.
+			out.forced = ForcedCancelled
+			r.observe(in, out, &mv, 0, false, nil)
 			return false
 		}
 
@@ -413,6 +424,11 @@ type outcome struct {
 	// fallback is the runner's own fallback cause, empty when the
 	// policy's answer was taken as given.
 	fallback string
+	// forced is what the runner did instead of dispatching that
+	// answer, empty when it dispatched it. Independent of fallback:
+	// a window that timed out AND then had its fallback pass rejected
+	// into the always-legal answer sets both.
+	forced string
 	// decision and err are exactly what the policy returned.
 	decision Decision
 	err      error
@@ -492,6 +508,30 @@ func (r *Runner) decide(ctx context.Context, in Input) outcome {
 	return out
 }
 
+// forcedAnswer is what the runner takes when the policy's choices
+// have been refused MaxConsecutiveRejects times in a row: yield
+// priority if that is on offer, otherwise take the answer the engine
+// cannot refuse, otherwise admit there is nothing.
+//
+// It is its own function because the third case is the one that
+// matters and the hardest to reach: it needs an enumerator and an
+// engine that disagree, in a window with no pass and no unconditional
+// answer, which is #544's shape and is not constructible from a real
+// game in a test. Splitting it out makes the rule checkable on a move
+// list rather than only on a table.
+//
+// Returns the index to dispatch (Decline when there is none), the
+// reason for the log, and the Forced cause.
+func forcedAnswer(moves []legal.Move) (int, string, string) {
+	if pi := PassIndex(moves); pi >= 0 {
+		return pi, "forced pass after repeated rejections", ForcedPass
+	}
+	if si := SafeIndex(moves); si >= 0 {
+		return si, "forced always-legal answer after repeated rejections", ForcedAlwaysLegal
+	}
+	return Decline, "no legal answer left after repeated rejections", ForcedNoLegalAnswer
+}
+
 // observe emits one DecisionEvent. mv is the move that was
 // dispatched, nil when none was.
 func (r *Runner) observe(in Input, out outcome, mv *legal.Move, seq uint64, applied bool, rejectErr error) {
@@ -510,6 +550,7 @@ func (r *Runner) observe(in Input, out outcome, mv *legal.Move, seq uint64, appl
 		Decision:    out.decision,
 		DecisionErr: out.err,
 		Fallback:    out.fallback,
+		Forced:      out.forced,
 		Index:       out.index,
 		Reason:      out.reason,
 		Latency:     out.latency,
