@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
 
 // damage_tail.go is the single answer to "what still has to happen once
 // the CR 614 replacement pipeline has settled a damage event?", and it
@@ -48,6 +52,28 @@ import "github.com/google/uuid"
 // resolveTopOfStackLocked. The two callers that owe a sweep
 // (markDamageWithKind, and the CR 616 resume, which is an action
 // boundary like every other Resolve* handler) run it themselves.
+//
+// THE SECOND HALF OF THE TAIL: WHAT THE EVENT OWES ITS CALLER (#807).
+// Everything above is what the ENGINE still owes a settled damage
+// event. `damageTail.then` is the other half, and it is the same idea
+// life_tail.go's lifeTail carries: the rest of the EFFECT that asked
+// for the damage, run with the amount that actually landed.
+//
+// "This creature deals 1 damage to each opponent. You gain life equal
+// to the damage dealt this way" (Creeping Bloodsucker) used to read
+// each opponent's life total back on the line after dealing the
+// damage. A damage event runs the CR 614 window, so it can pause on a
+// CR 616 ordering prompt when two DIFFERENT damage replacements apply
+// to one target — and then the read-back happens before the prompt is
+// answered, that opponent counts as having taken nothing, and the gain
+// is short by everything they took. Exactly #793's bug with
+// DealDamageToPlayerForEffect in place of ChangePlayerLifeForEffect.
+//
+// So damage gets the same public continuation life got:
+// DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect
+// for one target, DealDamageEachThenForEffect for the batch, and
+// runDamageTailLocked is the one place `then` runs. Card authors learn
+// `...ThenForEffect` once and it means the same thing on both sides.
 
 // damageTailKind selects which shape of tail a settled damage event
 // gets. It is about the TARGET and the entry point's contract, not
@@ -131,6 +157,32 @@ type damageTail struct {
 	// runs two independent clocks (#77) and because the commander may
 	// have died to blocker damage before a paused event resumes.
 	commanderSource uuid.UUID
+
+	// then is the CALLER's half of the tail (#807): the rest of the
+	// effect that asked for the damage, run with the amount that
+	// ACTUALLY landed once the CR 614 window has settled it. The exact
+	// sibling of lifeTail.then, and set by the same kind of entry
+	// point — the catalog never builds a damageTail, it hands a `then`
+	// to one of the ...ThenForEffect forms.
+	//
+	// `dealt` is the post-replacement amount, always non-negative on
+	// the two rules paths, and 0 when nothing landed: fully prevented,
+	// replaced away under CR 614.10, or the target gone between the
+	// prompt and the answer. The continuation is told either way,
+	// because a batch adding up "the damage dealt this way" must not
+	// stall on the leg that dealt nothing.
+	//
+	// It takes the live *Game rather than capturing one, on the same
+	// undo-safety contract confirmFrame, StackItem.Effect and
+	// lifeTail.then follow — an undo restores this game's fields in
+	// place, so a *Game argument is always the right game. It runs
+	// with g.mu held, so it may start the next damage event or queue
+	// the next prompt itself.
+	//
+	// Nil on every engine-internal path: combat damage, the manual
+	// sandbox mark and every fire-and-forget catalog deal owe their
+	// caller nothing.
+	then func(g *Game, dealt int) error
 }
 
 // combatDamageTailLocked snapshots a live battlefield source into a
@@ -241,6 +293,52 @@ func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *dam
 	return t
 }
 
+// damageThroughReplacementsLocked runs the CR 614 window on a damage
+// event and lands it through the one tail. The shared body behind all
+// six entry points — the two effect-facing deals, the three combat
+// paths and the manual sandbox mark — and the exact sibling of
+// changeLifeThroughReplacementsLocked.
+//
+// Reports paused=true when a CR 616 ordering prompt was queued (two
+// DIFFERENT damage replacements applied to one event and the affected
+// player has to order them). The event is not lost: it lands from
+// applyResolvedReplacementEventLocked when the prompt is answered. A
+// caller that owes its own caller an amount has nothing to report
+// until then.
+//
+// Before #807 each of the six wrote this dance out itself, which is
+// how a new terminal outcome (the caller's continuation) would have
+// had to be added in six places and remembered in six more.
+//
+// Caller must hold g.mu.
+func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused bool, err error) {
+	if ev == nil {
+		return false, nil
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return true, nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return false, err
+	}
+	defer g.clearReplacementEventLocked(ev.ID)
+	if out == nil || out.Canceled {
+		// CR 614.10 with a null replacement — a Fog, a prevention
+		// shield that ate the whole event. No mutation and no
+		// EventDealDamage, because a "whenever ~ is dealt damage"
+		// trigger must not see damage that was prevented.
+		//
+		// The continuation still runs, with zero: "you gain life equal
+		// to the damage dealt this way" gains nothing when the damage
+		// was prevented, and a batch adding up several opponents would
+		// otherwise wait forever for this one.
+		return false, g.runDamageTailLocked(ev, 0)
+	}
+	return false, g.applyResolvedDamageLocked(out)
+}
+
 // applyResolvedDamageLocked performs the underlying mutation for a
 // damage ReplacementEvent whose replacement pipeline has settled. This
 // is the ONLY place damage lands: every entry point calls it on the
@@ -269,15 +367,58 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 	if t == nil {
 		t = &damageTail{kind: damageTailManualMark}
 	}
+	var dealt int
+	var err error
 	switch t.kind {
 	case damageTailManualMark:
-		return g.applyManualDamageMarkLocked(ev)
+		dealt, err = g.applyManualDamageMarkLocked(ev)
 	case damageTailPlayer:
-		return g.applyResolvedDamageToPlayerLocked(ev, t)
+		dealt, err = g.applyResolvedDamageToPlayerLocked(ev, t)
 	case damageTailPermanent:
-		return g.applyResolvedDamageToPermanentLocked(ev, t)
+		dealt, err = g.applyResolvedDamageToPermanentLocked(ev, t)
 	}
-	return nil
+	if err != nil {
+		// The target is no longer there. That is still a TERMINAL
+		// outcome of the event, so the continuation is told — with
+		// zero, because nothing landed — and the original error is
+		// what the caller (or the resume, which turns it into a
+		// logged drop) sees. A continuation that fails on top of a
+		// vanished target has nowhere better to go than the log.
+		if tailErr := g.runDamageTailLocked(ev, 0); tailErr != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "damage continuation failed: " + tailErr.Error(),
+			})
+		}
+		return err
+	}
+	return g.runDamageTailLocked(ev, dealt)
+}
+
+// runDamageTailLocked runs a settled damage event's continuation
+// exactly once, with the amount that actually landed. The continuation
+// is cleared before it runs, so one that re-enters the pipeline on the
+// same event value cannot run itself twice.
+//
+// Every TERMINAL outcome of a damage event goes through here — landed,
+// fully prevented, replaced away, target gone — because a caller adding
+// up "the damage dealt this way" has to be told even when the answer is
+// zero, or it waits forever. A pause is not a terminal outcome: the
+// resume reaches this function later, through applyResolvedDamageLocked.
+//
+// The continuation is cleared on the EVENT's own damageTail pointer, a
+// copy of which every undo snapshot has of its own
+// (cloneReplacementResume) — so undoing the answer to a CR 616 prompt
+// and answering it again runs the continuation again, exactly once.
+//
+// Caller must hold g.mu.
+func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
+	if ev == nil || ev.damageTail == nil || ev.damageTail.then == nil {
+		return nil
+	}
+	then := ev.damageTail.then
+	ev.damageTail.then = nil
+	return then(g, dealt)
 }
 
 // applyManualDamageMarkLocked is the sandbox MarkDamage verb's tail: a
@@ -286,8 +427,14 @@ func (g *Game) applyResolvedDamageLocked(ev *ReplacementEvent) error {
 // always been — it is the "a player is fixing the board by hand" path,
 // and a negative delta (undo a mark) is a legitimate use of it.
 //
+// Reports the damage DEALT, which is the delta only when it is
+// positive: taking a mark back off a creature is not dealing it
+// negative damage. The verb carries no continuation today, so this is
+// the answer to a question nobody asks; giving it the honest one costs
+// nothing and keeps the three tails' contract identical.
+//
 // Caller must hold g.mu.
-func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) error {
+func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) (int, error) {
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID != ev.DamageTarget {
 			continue
@@ -303,24 +450,29 @@ func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) error {
 				Target: ev.DamageTarget,
 				Amount: ev.DamageAmount,
 			})
+			return ev.DamageAmount, nil
 		}
-		return nil
+		return 0, nil
 	}
-	return ErrCardNotFound
+	return 0, ErrCardNotFound
 }
 
 // applyResolvedDamageToPlayerLocked lands settled damage on a player:
 // life loss, the CR 903.10a commander tally, the EventDealDamage the
 // "deals damage to a player" triggers watch, and CR 702.15 lifelink.
 //
+// Reports the damage actually dealt, for the caller's continuation.
+//
 // Caller must hold g.mu.
-func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damageTail) error {
+func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damageTail) (int, error) {
 	if ev.DamageAmount <= 0 {
-		return nil
+		// Fully prevented. Nothing landed and no EventDealDamage
+		// fires, so the continuation is told zero.
+		return 0, nil
 	}
 	p := g.playerByIDLocked(ev.DamageTarget)
 	if p == nil {
-		return ErrPlayerNotFound
+		return 0, ErrPlayerNotFound
 	}
 	// The event is emitted before the life change on the non-combat
 	// path so the log reads "damage dealt → life changed"; the combat
@@ -340,7 +492,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		p.ChangeLife(-ev.DamageAmount)
 	}
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
-	return nil
+	return ev.DamageAmount, nil
 }
 
 // applyResolvedDamageToPermanentLocked lands settled damage on a
@@ -348,20 +500,22 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 // creature, loyalty off a planeswalker, defense off a battle), then
 // emits the event and credits lifelink.
 //
+// Reports the damage actually dealt, for the caller's continuation.
+//
 // Caller must hold g.mu.
-func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *damageTail) error {
+func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *damageTail) (int, error) {
 	if ev.DamageAmount <= 0 {
 		// Fully prevented. The permanent is untouched and no
 		// EventDealDamage fires, which is what "prevented" means — a
 		// "whenever ~ is dealt damage" trigger must not see it.
-		return nil
+		return 0, nil
 	}
 	if !g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t.deathtouch) {
-		return ErrCardNotFound
+		return 0, ErrCardNotFound
 	}
 	g.emitDealDamageLocked(ev, t)
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
-	return nil
+	return ev.DamageAmount, nil
 }
 
 // emitDealDamageLocked emits the one EventDealDamage a settled damage

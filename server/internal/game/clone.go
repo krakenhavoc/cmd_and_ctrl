@@ -484,13 +484,22 @@ func cloneStackItem(s *StackItem) *StackItem {
 // copies of anyway — the same shallow sharing every other server-only
 // resume frame on a PendingChoice already has.
 //
-// The event's own pointer fields (zoneRoute, damageTail, lifeTail) are
-// shared for the same reason: each is written once by the entry point
-// before the pipeline runs and only ever read afterwards. What the
-// resume DOES write is the event's scalar payload — the counter delta,
-// the life delta, Canceled — and the lifeTail POINTER, which a
+// The event's zoneRoute is shared: it is written once by the entry
+// point before the pipeline runs and only ever read afterwards. What
+// the resume DOES write is the event's scalar payload — the counter
+// delta, the life delta, Canceled — and the lifeTail POINTER, which a
 // continuation clears as it runs. Both live in the struct this copies,
 // so the snapshot keeps the values the prompt was queued with. #793.
+//
+// The damageTail is the exception, and it is why it gets a copy of its
+// own (#807). Its continuation is cleared THROUGH the pointer —
+// runDamageTailLocked nils `then` on the tail rather than the tail on
+// the event, because the rest of the tail (the CR 120.3 target kind,
+// the deathtouch / lifelink / commander snapshot) is what
+// applyResolvedDamageLocked is still reading when it runs. Sharing the
+// struct would let the live game's run consume the snapshot's
+// continuation, so undoing the answer to a CR 616 prompt and answering
+// it again would land the damage and skip the rest of the card.
 func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 	if f == nil {
 		return nil
@@ -503,6 +512,10 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			for k, v := range f.ev.EntersWithCounters {
 				ev.EntersWithCounters[k] = v
 			}
+		}
+		if f.ev.damageTail != nil {
+			t := *f.ev.damageTail
+			ev.damageTail = &t
 		}
 		out.ev = &ev
 	}

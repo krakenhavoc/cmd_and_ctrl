@@ -1300,6 +1300,12 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 			// already dequeued, so returning the error here would
 			// fail the player's action AND take their prompt away
 			// with nothing to show for it. Log it and move on.
+			//
+			// #807: the caller's continuation has already been run
+			// with zero by applyResolvedDamageLocked, for the same
+			// reason the life side runs its tail here — a batch
+			// adding up "the damage dealt this way" must not stall on
+			// the opponent who conceded during the prompt.
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "damage dropped: its target is no longer in the game",
@@ -1416,6 +1422,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// on this one forever.
 	if ev.Kind == RepEventLife {
 		return g.runLifeTailLocked(ev, 0)
+	}
+	// #807: and the same for a cancelled DAMAGE event. "You gain life
+	// equal to the damage dealt this way" gains nothing when a Fog ate
+	// the damage, and the batch behind Creeping Bloodsucker has to be
+	// told so before it can move on to the next opponent.
+	if ev.Kind == RepEventDamage {
+		return g.runDamageTailLocked(ev, 0)
 	}
 	if ev.Kind != RepEventStepTransition {
 		return nil

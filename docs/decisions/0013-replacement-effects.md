@@ -302,6 +302,61 @@ on one table, and the alternative is a spell stuck on the stack.
 life: any future entry point with no resume and no rewind can set it,
 and the two branches that honour it are three lines each.
 
+### 5c. Amendment, 2026-09-17: damage owes its caller the same continuation
+
+*Amendment, 2026-09-17, branch `fix/708-807-damage-path`.
+Closes [#807](https://github.com/krakenhavoc/cmd_and_ctrl/issues/807).*
+
+§5b is about life. Everything in it is true of DAMAGE, word for word,
+because damage has run this window since S22 (players) and S30
+(permanents) and therefore pauses the same way. Creeping Bloodsucker —
+"this creature deals 1 damage to each opponent. You gain life equal to
+the damage dealt this way" — read each opponent's life total back on the
+line after damaging them, which is #793's shape with
+`DealDamageToPlayerForEffect` in place of `ChangePlayerLifeForEffect`,
+and gained nothing for an opponent whose damage was still waiting on a
+CR 616 prompt.
+
+**The decision is to make it one idiom rather than two.**
+`damageTail` already existed (#694) and carried what the ENGINE owes a
+settled damage event; it now also carries `then(g, dealt)`, the CALLER's
+half, exactly as `lifeTail` does. `runDamageTailLocked` is the one place
+it runs, reached from every TERMINAL outcome — landed, fully prevented,
+replaced away, target gone — with `dealt` the post-replacement amount
+and `0` for the three non-outcomes.
+
+The public surface mirrors the life side name for name:
+`DealDamageToPlayerThenForEffect`, `DealDamageToCreatureThenForEffect`,
+and `DealDamageEachThenForEffect` for "each opponent", the batch built
+on the single forms and sequenced through their continuations so the
+running total is a value carried forward rather than a shared
+accumulator. Card authors learn `...ThenForEffect` once.
+
+Two things fell out of doing it this way:
+
+- **Six copies of the pipeline dance became one.**
+  `damageThroughReplacementsLocked` is `changeLifeThroughReplacementsLocked`
+  for damage, and all six entry points (two effect deals, three combat
+  paths, the manual sandbox mark) now call it. Adding a terminal outcome
+  to a damage event is one edit, not six — which is the property #694
+  was reaching for and did not quite get.
+- **`Clone` deep-copies the `damageTail`.** The life tail is cleared by
+  nilling the POINTER on the event, which the snapshot already has its
+  own copy of; the damage tail is cleared by nilling `then` INSIDE it,
+  because the rest of the tail is still being read when the continuation
+  runs. Sharing the struct would let the live game's run consume the
+  snapshot's continuation, so an undone answer would land the damage and
+  skip the rest of the card.
+
+Nothing new is snapshotted: the tail rides the `replacementResume`
+frame, already counted by `ContinuationCensus.ChoiceResumeFrames`.
+
+The catalog lint from #793 grew a second pattern rather than a second
+file — `life_continuation_guard_test.go` now scans for a `.Life` or
+`.DamageMarked` read after a damage call as well as after a life change,
+and recognises the `DealDamage{…}.Apply(ctx)` primitive spelling. One
+card needed converting; the sweep found no others.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

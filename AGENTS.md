@@ -1336,9 +1336,28 @@ was replaced away ("your life total can't change") or the player has
 left — the continuation is told either way, so a batch never stalls on a
 leg that moved nothing. The batch form is built on the single one; don't
 write your own loop that waits. A card that only says "gain 3" keeps
-using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing. There
-is a lint: `life_continuation_guard_test.go` fails on a `.Life` read
-after a life change in the same function.
+using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing.
+
+**Damage has the same `Then` forms, for the same reason (#807).** A
+damage event runs the CR 614 window too, so "deals N damage to each
+opponent. You gain life equal to the damage dealt this way" (Creeping
+Bloodsucker) is the life drain's twin and reads zero the same way:
+
+```go
+g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error { … })
+g.DealDamageToCreatureThenForEffect(src, card, n, func(g *game.Game, dealt int) error { … })
+g.DealDamageEachThenForEffect(src, ctx.Opponents(), n, func(g *game.Game, total int) error { … })
+```
+
+`dealt` is the post-replacement amount and `0` when nothing landed
+(prevented, Fogged, or the target gone). The batch routes each target
+as the kind of thing it is — player or permanent — the way the
+`DealDamage` primitive does, and is built on the single forms. A card
+that only deals damage keeps using `DealDamage` / the plain
+`...ForEffect` calls. There is one lint for both halves:
+`life_continuation_guard_test.go` fails on a `.Life` read after a life
+change and on a `.Life` / `.DamageMarked` read after a damage call, in
+the same function.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a

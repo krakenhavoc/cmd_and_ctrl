@@ -10,9 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A drain on a two-drop. The damage is DAMAGE from the creature, not
 // life loss — a prevention shield stops it and a damage doubler grows
-// it — and "the damage dealt this way" is read back as the sum of
-// each opponent's actual life change, so what the Bloodsucker's
-// controller gains is what actually landed, as printed.
+// it — and "the damage dealt this way" comes from
+// DealDamageEachThenForEffect's continuation, so what the Bloodsucker's
+// controller gains is what actually landed, as printed, even when one
+// opponent's damage paused on a CR 616 ordering prompt (#807).
 //
 // No simplification.
 func init() {
