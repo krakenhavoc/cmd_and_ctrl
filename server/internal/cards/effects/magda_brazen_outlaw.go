@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Sacrifice five Treasures: Search your library for an artifact or
 //	 Dragon card, put that card onto the battlefield, then shuffle."
 //
-// Two of the three abilities are here whole. The anthem is a Layer
+// All three abilities are here. The anthem is a Layer
 // 7c static over other Dwarves (effective subtypes, so a changeling
 // counts). The Treasure trigger reads two event kinds, because the
 // engine taps an attacker without an EventTapCard — see
@@ -19,19 +19,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature is now tapped is "became tapped", and why a vigilance
 // Dwarf is not. Magda herself is a Dwarf, so her own attack pays.
 //
-// SANDBOX GAP, weaker than printed: the third ability is omitted.
-// "Sacrifice five Treasures" is a five-permanent sacrifice cost, and
-// AbilityCost.SacrificeOther pays exactly one permanent (Stoneforge
-// Mystic's posture: a cost with no shape leaves the ability out
-// rather than shipping a cheaper one). The card is still recognisably
-// Magda — the lord and the Treasure engine are what every Dwarf deck
-// plays her for.
+// "Sacrifice five Treasures" is a sacrifice cost with a count of five
+// (#747, SacrificeN); the owner's "Choose for me" button fills the
+// picker so it is not five clicks. The tutor is the shared library
+// search straight onto the battlefield. Until #747 the ability was
+// omitted, because a cost could sacrifice only one permanent.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "3d268e48-3004-4384-bf52-e63243fb5e02",
 		Name:         "Magda, Brazen Outlaw",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The five-Treasure tutor isn't implemented — Magda pumps Dwarves and makes Treasures only."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
@@ -49,5 +48,22 @@ func init() {
 				return b11DwarfYouControlBecameTapped(ev, source, g)
 			}, "Magda, Brazen Outlaw — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
+		Activated: []ActivatedAbility{{
+			Label: "Sacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle.",
+			Cost:  SacrificeN(5, "five Treasures", isTreasure),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return SearchLibrary{
+					Player: item.Controller,
+					Predicate: func(c game.Card) bool {
+						return c.IsArtifact() || c.HasSubtype("Dragon")
+					},
+					Dest:    game.ZoneBattlefield,
+					Limit:   1,
+					Shuffle: true,
+					Source:  item.SourceCardID,
+					Reason:  "Magda, Brazen Outlaw — an artifact or Dragon card, onto the battlefield",
+				}.Apply(NewContext(g, item))
+			},
+		}},
 	})
 }

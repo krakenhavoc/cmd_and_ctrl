@@ -137,6 +137,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 colorless Beast":                           {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4},
 	"4/4 green Bear":                                {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 green Phyrexian Beast":                     {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"4/4 red Scorpion Dragon with flying and haste": {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
 	"4/4 white Angel with flying":                   {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying and vigilance":     {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance"}},
 	"5/3 green Elemental":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 3, Colors: []string{"G"}},

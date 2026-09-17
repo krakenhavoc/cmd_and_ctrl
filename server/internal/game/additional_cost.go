@@ -35,7 +35,9 @@ type AdditionalCost struct {
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
-	// names one in CastSpellParams.SacrificeIDs.
+	// names them in CastSpellParams.SacrificeIDs — exactly the
+	// clause's count, which is 1 unless the spec says otherwise
+	// ("sacrifice two creatures", effects.SacrificeNCost, #747).
 	//
 	// Same reasoning as DiscardCards, one zone over: the creature
 	// dies while the spell is on the stack, so a Blood Artist or
@@ -170,10 +172,11 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 			return err
 		}
 	}
-	for _, id := range sacrificeIDs {
-		if err := g.sacrificePermanentLocked(id); err != nil {
-			return err
-		}
+	// The N permanents of a "sacrifice two creatures" clause leave as
+	// one simultaneous exit (#747, ADR 0021 addendum), so the order
+	// the IDs arrived in cannot change what the watchers see.
+	if err := g.payCostSacrificesLocked(sacrificeIDs); err != nil {
+		return err
 	}
 	if len(discardIDs) == 0 {
 		return nil

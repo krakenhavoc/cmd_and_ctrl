@@ -25,6 +25,7 @@ import { attackTargetHint, permanentAttackTargets } from "./attackTargets";
 import { isCreature, isLand, isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import type { ActionType, CardView, GameView } from "./protocol";
+import { sacrificeShortfall } from "./sacrificeCost";
 import {
   canActivateLoyalty,
   canActivateSorcerySpeedAbility,
@@ -360,7 +361,8 @@ export function damageAction(card: CardView, delta: number): MenuAction {
 interface AbilityCost {
   tap_cost?: boolean;
   sacrifice_label?: string;
-  sacrifice_options?: { players?: string[]; cards?: string[] };
+  // #747: min / max are the sacrifice count (sacrificeCost.ts).
+  sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
   legal_targets?: { players?: string[]; cards?: string[] };
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
@@ -394,9 +396,10 @@ export function abilityBlocked(
 ): string {
   if (a.tap_cost && tapped) return "already tapped";
   if (a.tap_cost && sick) return "summoning sickness";
-  if (a.sacrifice_options && (a.sacrifice_options.cards?.length ?? 0) === 0) {
-    return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
-  }
+  // #747: fewer options than the clause's count, not just none —
+  // "needs three Foods (you have 2)".
+  const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
+  if (sacrifice) return sacrifice;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
   // creatures that DO exist add up to the crew number is arithmetic

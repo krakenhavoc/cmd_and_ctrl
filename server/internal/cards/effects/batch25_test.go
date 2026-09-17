@@ -123,11 +123,10 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The thirteen declared skips must stay out until their seam
+	// The twelve declared skips must stay out until their seam
 	// lands: a counter-removal cost, an untap-step event, a
 	// resolution-time choice constrained by the triggering permanent,
-	// an "exiled with this" record plus an exile-to-graveyard move, a
-	// sacrifice cost of more than one permanent, an opponent's
+	// an "exiled with this" record plus an exile-to-graveyard move, an opponent's
 	// non-mana choice at resolution (three cards), a reveal-from-hand
 	// entry choice, a per-player "as though it had flash" plus a
 	// trigger replacement, a legendary-sorcery cast restriction, a
@@ -138,7 +137,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
 		"5cd2fd32-4da2-40eb-b003-c0b9a9ec91c1": "Cloudstone Curio",
 		"981298e6-ddee-49c0-9377-f47f019b4138": "Currency Converter",
-		"b0f99367-4313-4bb1-a9fd-7711bc4ce40e": "Kuldotha Forgemaster",
 		"8e356df5-ca92-4be2-871e-8965c2510fbe": "Tempt with Vengeance",
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",
 		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",

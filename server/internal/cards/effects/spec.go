@@ -621,12 +621,14 @@ type ManaAbilityCost struct {
 	Tap bool
 	// Sacrifice sacrifices the SOURCE (Treasure, Lotus Petal).
 	Sacrifice bool
-	// SacrificeOther sacrifices one OTHER permanent the activator
+	// SacrificeOther sacrifices OTHER permanents the activator
 	// controls, matched against this spec — Ashnod's Altar's
 	// "Sacrifice a creature: Add {C}{C}". Build it with the same
 	// constructors an activated ability's cost uses
-	// (SacrificeACreature().SacrificeOther), so the two ability
-	// kinds share one clause vocabulary and one client picker.
+	// (SacrificeACreature().SacrificeOther, or
+	// SacrificeN(n, …).SacrificeOther for "Sacrifice two …", #747),
+	// so the two ability kinds share one clause vocabulary and one
+	// client picker.
 	//
 	// Added in the S21 mana-cost pass, which is also what closed
 	// the S15 note that sacrifice costs were "reserved for future

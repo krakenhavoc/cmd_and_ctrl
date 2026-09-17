@@ -13,6 +13,7 @@
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
+  import { sacrificeShortfall } from "../../sacrificeCost";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -65,7 +66,7 @@
   type CostShaped = {
     tap_cost?: boolean;
     sacrifice_label?: string;
-    sacrifice_options?: { players?: string[]; cards?: string[] };
+    sacrifice_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
     legal_targets?: { players?: string[]; cards?: string[] };
     // Never set on a ManaAbilityView — mana abilities don't use the
     // stack and have no timing restriction (CR 605.1a) — so the arm
@@ -77,10 +78,9 @@
     if (a.tap_cost && tapped) return "already tapped";
     if (a.tap_cost && summoningSick) return "summoning sickness";
     if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
-    if (a.sacrifice_options) {
-      const n = a.sacrifice_options.cards?.length ?? 0;
-      if (n === 0) return `nothing to sacrifice (${a.sacrifice_label ?? "a permanent"})`;
-    }
+    // #747: count-aware — "needs three Foods (you have 2)".
+    const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
+    if (sacrifice) return sacrifice;
     // #625: a "remove N counters" cost with nothing that can pay it.
     const counters = counterCostBlocked(a);
     if (counters) return counters;

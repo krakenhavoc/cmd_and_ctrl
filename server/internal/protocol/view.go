@@ -351,8 +351,11 @@ type AdditionalCostView struct {
 	DiscardCards int `json:"discard_cards,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
-	// caster's own board (CR 701.21a). The picked instance ID rides
-	// back on cast_spell's sacrifice_ids. Absent when the cost has
+	// caster's own board (CR 701.21a). Its min / max are how many
+	// the clause sacrifices ("sacrifice two creatures" is 2 / 2,
+	// #747), and its cards come in payment order — see
+	// sacrificeCostOptions. The picked instance IDs ride back on
+	// cast_spell's sacrifice_ids. Absent when the cost has
 	// no sacrifice component; present-and-empty means the cost is
 	// unpayable, which makes the spell uncastable.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
@@ -1109,7 +1112,9 @@ type ActivatedAbilityView struct {
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
-	// no sacrifice component.
+	// no sacrifice component. SacrificeOptions' min / max are the
+	// count ("Sacrifice two artifacts" ships 2 / 2, #747) and its
+	// cards come in payment order — see sacrificeCostOptions.
 	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 	// CrewCost is the crew number of a Vehicle's crew ability
@@ -1528,11 +1533,9 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 						// LegalTargetsForEffect: an additional
 						// sacrifice cost doesn't target, so the
 						// hexproof / shroud gate must not narrow the
-						// list the client offers.
-						opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, ac.Sacrifice), ac.Sacrifice)
-						opts.Cards = filterToController(g, opts.Cards, caster)
-						opts.Players = nil
-						c.AdditionalCost.SacrificeOptions = opts
+						// list the client offers. The same list,
+						// count and order the abilities ship (#747).
+						c.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
 					}
 				}
 				// S22: convoke / waterbend. Stamped before the target
@@ -1777,7 +1780,7 @@ func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUI
 			continue
 		}
 		views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther)
+		views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
 	}
 }
 
@@ -2862,7 +2865,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther)
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -2958,10 +2961,33 @@ func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) 
 // way (activated.go). A sacrifice cost can only be paid with
 // permanents you control (CR 701.21a), and the spec walk doesn't know
 // that, so this filters to the controller. Caller must hold g.mu.
-func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
-	out := abilityClauseView(g.SpecCandidatesForEffect(controller, spec), spec)
-	out.Cards = filterToController(g, out.Cards, controller)
-	out.Players = nil
+//
+// #747: Min / Max are the clause's count (game.SacrificeCostCount) —
+// "Sacrifice three Foods" ships 3 / 3 — and the cards come in
+// game.SacrificePaymentOrderForEffect's order (tokens first, then
+// lower mana value, then the source last, then board order), which is
+// the order the legal enumerator takes its payment from. The client's
+// "Choose for me" button takes the first N of this list, so it picks
+// what a bot would. `sourceID` is the ability's source (uuid.Nil for a
+// spell's additional cost); `selfToo` drops the source from the list
+// when the cost also sacrifices it, because the engine refuses paying
+// one permanent twice.
+func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
+	lt := g.SpecCandidatesForEffect(controller, spec)
+	var ids []uuid.UUID
+	for _, id := range lt.Cards {
+		if selfToo && id == sourceID {
+			continue
+		}
+		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
+			ids = append(ids, id)
+		}
+	}
+	n := game.SacrificeCostCount(spec)
+	out := &LegalTargetsView{Min: n, Max: n}
+	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+		out.Cards = append(out.Cards, id.String())
+	}
 	return out
 }
 
