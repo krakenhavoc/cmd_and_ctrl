@@ -915,11 +915,17 @@ func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing
 }
 
 // A commander caught in Blood Money was destroyed and pays a Treasure
-// (CR 903.9 replaces the zone change, not the destruction). The
-// engine keeps it on the battlefield until its owner answers the
-// command-zone prompt, which happens after the Treasures are made, so
-// the count cannot be read off the board. The answer must not change
-// it either way.
+// (CR 903.9 replaces the zone change, not the destruction). The engine
+// keeps it on the battlefield until its owner answers the command-zone
+// prompt, so the count is not knowable while the prompt is open.
+//
+// #815: the card WAITS for it. "For each creature destroyed this way"
+// runs from DestroyPermanentsThenForEffect's continuation, so no
+// Treasure is made until the answer arrives — and then the number is
+// the real one, whichever answer it was. Before #815 the Treasures
+// were made on the spot and the commander was counted on the strength
+// of the prompt having been queued, which was right here and wrong for
+// a destruction the window cancelled outright.
 func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -934,8 +940,9 @@ func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
 
 			castCatalogSpell(t, g, "Blood Money", "Sorcery", b15BloodMoneyOracle, nil)
 			passPriorityAroundTable(t, g)
-			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 2 {
-				t.Errorf("the Bear and the commander are nontoken creatures destroyed: %d Treasures, want 2", n)
+			if n := len(battlefieldIDsNamed(g, "Treasure")); n != 0 {
+				t.Errorf("%d Treasures while the CR 903.9 prompt is still open, want 0 — "+
+					"the count is not knowable until it is answered", n)
 			}
 
 			if tc.commandZone {

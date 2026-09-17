@@ -797,6 +797,18 @@ does this yet; if yours is the first, say so on the PR rather than
 shipping it quietly — the fix is a declared flag in the `PureCancel`
 mould. See [ADR 0013 §5a](docs/decisions/0013-replacement-effects.md).
 
+**A `may` is always offered, however many effects share the window.**
+`Optional: true` (CR 614.10) queues a yes/no prompt for the effect's
+controller before `Replace` runs, and that is now true on the
+multi-effect paths too: an effect ordered alongside others by a CR 616
+prompt pauses for its own question when the chain reaches it
+([#847](https://github.com/krakenhavoc/cmd_and_ctrl/issues/847)), and
+a window nobody is left to order — or one that cannot pause at all,
+like a cost — skips it un-applied rather than firing it. So don't write
+a `Replace` that assumes it only ever runs after a "yes"; it never runs
+otherwise, but it may never run at all. See
+[ADR 0013 §5h](docs/decisions/0013-replacement-effects.md).
+
 **Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
@@ -1403,6 +1415,29 @@ step (CR 514.2), and the replacement gets to read it. If you add a
 replacement that removes damage — regeneration is the one the rules
 name, CR 701.15a — it does that in its own `Replace`, not by leaning on
 the destroy path.
+
+**"For each X destroyed this way" comes from a continuation too
+(#815).** A destruction can pause — a commander caught in a wipe stops
+to answer CR 903.9 — so the number is not knowable on the line after
+the sweep. `DestroyAllMatching`'s `Then` already receives it; what
+changed is that the clause now runs from the sweep's continuation
+(`g.DestroyPermanentsThenForEffect`), so it may run an action later,
+and its two arguments finally describe the same set: `swept` is the
+pre-move copies of the permanents that were actually DESTROYED and
+`destroyed` is how many of them there were. Write the clause as
+something that acts on what it is handed, not as the next line of the
+card. The fire-and-forget `g.DestroyPermanentsForEffect(ids)` keeps
+its `int` for a sweep nothing is waiting on; it cannot include a leg
+that paused, so never read it as "destroyed this way".
+
+What counts as destroyed is CR 701.7a — "move it from the battlefield
+to its owner's graveyard". A permanent the CR 614 window saved is not
+destroyed (it never left), and neither is one a replacement sent to
+exile, a hand or a library instead (it left, but not to a graveyard).
+A commander that takes CR 903.9's offer IS counted, which is the
+engine's one declared exception and lives in
+`destroyedThisWayLocked`. See
+[ADR 0013 §5i](docs/decisions/0013-replacement-effects.md).
 
 **And EVERY battlefield exit clears it, not just a destruction
 (#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup

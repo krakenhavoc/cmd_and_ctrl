@@ -2422,7 +2422,16 @@ func (g *Game) stateBasedActionsLocked() bool {
 	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
 	// of the board still sees every one of those deaths. See
 	// simultaneous.go.
-	if g.destroyPermanentsLocked(doomed) > 0 {
+	g.destroyPermanentsLocked(doomed)
+	if len(doomed) > 0 {
+		// "Did this pass do anything", which is what `fired` means — not
+		// "how many were destroyed", which is what destroyPermanentsLocked
+		// now returns (#815). The two stopped being the same number the
+		// moment a cancelled destruction counted zero: a permanent whose
+		// destruction the CR 614 window replaced away is still doomed and
+		// still has to be looked at again, and one whose exit is paused on
+		// the CR 903.9 prompt is skipped by the collector above on the next
+		// pass. Both are answered by the set this pass COLLECTED.
 		fired = true
 	}
 
@@ -2780,7 +2789,38 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 //
 // If the owner is no longer seated, the card lands in exile so the
 // engine doesn't carry a stale reference. Caller must hold g.mu.
+//
+// The FIRE-AND-FORGET form. A caller that has to know what the exit
+// actually did — "for each creature destroyed this way" — uses
+// routeBattlefieldExitThenLocked and reads the board from the
+// continuation, because any exit can pause on the CR 903.9 prompt
+// (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
+	return g.routeBattlefieldExitThenLocked(cardID, nil)
+}
+
+// routeBattlefieldExitThenLocked is the same exit with a CONTINUATION:
+// `then` runs once the move has reached a TERMINAL outcome — landed
+// (wherever the window settled it), cancelled, or refused. A pause is
+// not terminal; the resume reaches it later, through
+// applyResolvedReplacementEventLocked.
+//
+// It is the destroy / sacrifice / SBA route's half of the idiom
+// lifeTail, damageTail and zoneRoute.then already share (ADR 0013 §5b,
+// §5c, §5g). The continuation is carried on a zoneRoute like every
+// other exit's, flagged ViaBattlefieldLeave so the resume still
+// finishes the move through executeBattlefieldLeaveLocked: this route
+// is not folded into the shared exit primitive (see zone_route.go),
+// only its "then" is.
+//
+// `then` deliberately takes no outcome argument. What it wants to know
+// is where the permanent ended up, and it reads that off the live
+// board — the undo-safety contract every continuation in the engine
+// follows, and the only reading that is still true after a rewind into
+// the open prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -2810,21 +2850,54 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 		NewZone:      defaultDest,
 		NewZoneOwner: defaultOwner,
 	}
+	if then != nil {
+		ev.zoneRoute = &zoneRoute{CardID: cardID, ViaBattlefieldLeave: true, then: then}
+	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
-		// Prompt queued; resume runs the move after the owner
-		// answers. Return nil so SBA caller doesn't report failure.
+		// Prompt queued; the resume runs the move after the owner
+		// answers, and the continuation goes with it — a pause is not
+		// terminal. Return nil so the SBA caller reports no failure.
 		return nil
 	}
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 		g.clearReplacementEventLocked(ev.ID)
+		if tailErr := g.runRouteTailLocked(ev.zoneRoute); tailErr != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: tailErr.Error()})
+		}
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled {
-		return nil
+		// CR 614: the permanent is not going anywhere — indestructible
+		// granted mid-window, "it isn't destroyed instead". Terminal,
+		// so a caller sequencing a batch through the continuation is
+		// told; it reads the board, finds the permanent still on the
+		// battlefield, and counts no destruction (#815).
+		return g.runRouteTailLocked(ev.zoneRoute)
 	}
-	return g.executeBattlefieldLeaveLocked(cardID, out.NewZone, out.NewZoneOwner, owner)
+	return g.finishBattlefieldLeaveLocked(out, owner)
+}
+
+// finishBattlefieldLeaveLocked performs a settled destroy / sacrifice /
+// SBA exit and then runs the route's continuation, if it is carrying
+// one. The two callers are the unpaused path above and the CR 903.9
+// resume in applyResolvedReplacementEventLocked, so a destruction that
+// paused and one that did not reach the continuation in the same place
+// — after the card has moved and its events are out.
+//
+// The tail runs even when the move failed: a refused move is as
+// terminal as a completed one, and a caller waiting on it must not be
+// left waiting. #815.
+//
+// Caller must hold g.mu.
+func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player) error {
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner)
+	tailErr := g.runRouteTailLocked(ev.zoneRoute)
+	if moveErr != nil {
+		return moveErr
+	}
+	return tailErr
 }
 
 // executeBattlefieldLeaveLocked runs the physical zone move after
