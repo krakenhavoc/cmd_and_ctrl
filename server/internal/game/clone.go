@@ -255,6 +255,10 @@ func (g *Game) cloneLocked() *Game {
 	// announce the same attacker twice.
 	out.announcedBlocks = copyUUIDPairMap(g.announcedBlocks)
 	out.announcedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	// #859: the attack declaration's announcements rewind with it for
+	// the same reason — an undo across a re-point that kept them
+	// would swallow the re-done attack trigger.
+	out.announcedAttacks = copyBoolMap(g.announcedAttacks)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -663,10 +667,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	// cloneLocked.
 	g.eventBatch = src.eventBatch
 	g.oncePerBatchFired = src.oncePerBatchFired
-	// #830: see cloneLocked — the announcements rewind with the
-	// declaration they describe.
+	// #830 / #859: see cloneLocked — the announcements rewind with
+	// the declarations they describe.
 	g.announcedBlocks = src.announcedBlocks
 	g.announcedBecameBlocked = src.announcedBecameBlocked
+	g.announcedAttacks = src.announcedAttacks
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

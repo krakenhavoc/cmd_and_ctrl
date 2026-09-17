@@ -121,6 +121,11 @@ var gameFields = plan(
 	// attacker that is already blocked or swallow a real block.
 	"announcedBlocks", carried, "",
 	"announcedBecameBlocked", carried, "",
+	// #859 attack-declaration lock-in. Carried for the reason the two
+	// above are: a restore that dropped it would announce an attacker
+	// that has already attacked, and one that invented it would
+	// swallow a declaration the battlefield is still carrying.
+	"announcedAttacks", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the

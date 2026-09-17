@@ -1158,17 +1158,21 @@ Triggered: []game.TriggeredAbility{{
 }},
 ```
 
-**Combat declarations (#830):** an attack declaration announces per
-creature as it is declared (`EventAttack`), but a BLOCK declaration
-announces once, at its **lock-in** — the first priority boundary of
-the declare-blockers step — so `EventBlock` (one per blocker/attacker
-pair: "whenever this creature blocks", "becomes blocked by a
-creature") and `EventBecomesBlocked` (one per blocked attacker, CR
-506.4: "becomes blocked", afflict) are harvested once from the FINAL
-assignment, and a blocker re-pointed mid-step never triggers the
-attacker it left. See
+**Combat declarations (#830, #859):** BOTH combat declarations
+announce once, at their **lock-in** — the first priority boundary of
+the step that staged them — so attack and block triggers are
+harvested from the FINAL assignment and a creature re-pointed
+mid-step never triggers what it left. `EventAttack` (one per declared
+attacker, CR 508.1; `Target` is the defending player, planeswalker or
+battle it ends on, read through `b17DefendingPlayer` for the player
+behind it) comes from `commitAttackDeclarationLocked`; `EventBlock`
+(one per blocker/attacker pair: "whenever this creature blocks",
+"becomes blocked by a creature") and `EventBecomesBlocked` (one per
+blocked attacker, CR 506.4: "becomes blocked", afflict) come from
+`commitBlockDeclarationLocked`. A permanent PUT onto the battlefield
+attacking (CR 506.3c) is not declared and announces nothing. See
 [ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
-Decisions 19-21.
+Decisions 19-21 and 22.
 
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:

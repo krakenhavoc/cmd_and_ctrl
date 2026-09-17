@@ -211,20 +211,28 @@ const (
 	// gap EventETB already has, and no card in the catalog has that
 	// wording.
 	//
-	// Emitted from DeclareAttacker at the moment the creature is
-	// stamped — inside the declare-attackers step, before blockers
-	// exist — and only on a creature's FIRST declaration. The sandbox
-	// lets a player re-point an already-attacking creature at a
-	// different defender (paper does not); re-pointing is not a second
-	// attack and must not fire the trigger twice.
+	// Emitted from commitAttackDeclarationLocked — the lock-in, not
+	// the click (#859). CR 508.1 makes declaring attackers ONE
+	// turn-based action, so the sandbox's per-creature
+	// DeclareAttacker verb only stages the attack; nothing is
+	// announced until the declaration is complete, which is the first
+	// priority boundary of the declare-attackers step — still inside
+	// that step and still before blockers exist. A creature
+	// re-pointed at a different defender before that boundary
+	// therefore announces ONCE, naming the defender it ends on, and a
+	// creature re-pointed after it is not announced again at all
+	// (CR 508.1: a creature is declared as an attacker once).
 	//
-	// Target is always a player. DeclareAttacker takes a player ID and
-	// validates it against the seats — the engine has no
-	// attack-a-planeswalker path at all — so "the player or
-	// planeswalker it's attacking" collapses to the player. When
-	// planeswalker defenders land, Target widens to "player or
-	// permanent" the way EventDealDamage's already is, and existing
-	// consumers keep working because they read Target as an opaque ID.
+	// A permanent PUT onto the battlefield attacking (CR 506.3c —
+	// Parhelion II's Angels, Adeline's Humans, Legion Loyalty's
+	// myriad copies) was never declared and gets no event; see
+	// CreateTokensAttackingForEffect.
+	//
+	// Target is the DEFENDER: a player since S22, and since S27 a
+	// planeswalker or a battle too (CR 506.2, 508.1d) —
+	// classifyAttackTargetLocked is what widened it. Consumers that
+	// want "the defending player" behind a planeswalker or battle go
+	// through DefendingPlayerForAttackForEffect.
 	//
 	// Combat STATE is older and separate: DeclareAttacker stamps
 	// Card.AttackingTarget and ClearCombat wipes it, so a spell that

@@ -301,6 +301,20 @@ type Game struct {
 	announcedBlocks        map[uuid.UUID]uuid.UUID
 	announcedBecameBlocked map[uuid.UUID]bool
 
+	// announcedAttacks is the same bookkeeping for the ATTACK
+	// declaration (#859, attackers.go): the creatures that have had
+	// their one EventAttack this combat. Presence, not a pairing,
+	// because CR 508.1 declares a creature as an attacker once — a
+	// re-point is a correction to a declaration that is already
+	// announced, never a second attack. It doubles as the marker for
+	// a permanent PUT onto the battlefield attacking (CR 506.3c),
+	// which is never announced at all.
+	//
+	// Cleared by clearCombatLocked, and carried by Clone /
+	// RestoreFrom and the persisted snapshot, for the reasons the two
+	// block maps above are.
+	announcedAttacks map[uuid.UUID]bool
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -727,16 +741,17 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
-	// #830 / CR 509.2a: leaving a step completes whatever turn-based
-	// action was staged in it. A block declaration still staged here
-	// is locked in BEFORE the cursor moves, so its triggers are
-	// harvested inside the declare-blockers step and off the final
+	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes
+	// whatever turn-based action was staged in it. A combat
+	// declaration still staged here — attackers or blockers — is
+	// locked in BEFORE the cursor moves, so its triggers are
+	// harvested inside the declaring step and off the final
 	// assignment. Placed above the prompt gate on purpose: an
-	// optional block trigger (Grazilaxx's "you may return it") queues
-	// its yes/no here, and the gate then holds the cursor until it is
-	// answered rather than walking the table past it. No-op whenever
-	// nothing is staged.
-	if g.blockDeclarationPendingLocked() {
+	// optional declaration trigger (Grazilaxx's "you may return it",
+	// Legion Loyalty's myriad) queues its yes/no here, and the gate
+	// then holds the cursor until it is answered rather than walking
+	// the table past it. No-op whenever nothing is staged.
+	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
 		g.runStateChecksLocked()
 	}
 	// #730: an unanswered prompt gates the table. Checked before the
