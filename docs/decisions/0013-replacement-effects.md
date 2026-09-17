@@ -853,6 +853,77 @@ pending_choice.go) — never runs its route's continuation, so a
 sequenced batch behind it stalls. That hole is #853's as much as this
 one's; both are filed separately.
 
+### 5j. Amendment, 2026-09-17: a prompt taken away is still an outcome
+
+*Amendment, 2026-09-17, branch `fix/865-866-route-tail`.
+Closes [#865](https://github.com/krakenhavoc/cmd_and_ctrl/issues/865),
+filed by the #847/#815 agent in PR #863 and listed as not-fixed at the
+end of §5i.*
+
+§5g gave an exit a continuation (`zoneRoute.then`) and §5i put a
+sequenced batch on it. Both assumed a paused prompt is eventually
+ANSWERED. Two things take a prompt away instead, and both simply threw
+the frame out:
+
+- **dropped** — its chooser left the game, so nobody can answer it
+  (`cleanupStackForEliminatedLocked` → `finishDroppedReplacementLocked`,
+  mutations.go, CR 800.4a);
+- **pruned** — the card moved by some other route while the question
+  was open, so the move the prompt asks about can never happen
+  (`pruneStaleZoneChangeChoicesLocked`, #605/#701, and its answer-path
+  twin `dropStaleReplacementResumeLocked`).
+
+The continuation went out with the frame. A two-card discard stopped
+after the first card, a `DestroyAllMatching` with a `Then` stopped
+after the commander, and the caller's own clause — "then draw two",
+"for each creature destroyed this way" — never ran at all. The batch
+did not fail; it waited forever.
+
+**1. Abandoning is a terminal outcome, and has one function.** #808
+made "the player left" a terminal outcome of the life and damage tails
+for exactly this reason, and this is the same move for the exit:
+`abandonZoneRouteLocked(frame)` (zone_route.go) releases the CR 614.5
+once-per-event entry and runs `runRouteTailLocked`. All three sites
+call it; none of them has a copy of the reasoning.
+
+**2. Nothing moves, and the leg reports itself as not landed.** A
+paused route has moved nothing — the card is still in its old zone and
+no event has been emitted (`routeCardToZoneLocked`) — so an abandoned
+route is shaped exactly like a CR 614.10 cancellation: no
+`EventDiscardCard`, no `EventZoneMove`, no `EventLTB`. It follows that
+the leg is not counted, and it follows without a flag: every reader of
+a route's outcome reads the LIVE BOARD (`destroyedThisWayLocked`,
+`landedInZoneLocked` — §5i, §5k), and the board still has the card
+where it was. A commander whose owner conceded mid-prompt is not
+"destroyed this way", and a discard that never left the hand did not
+happen.
+
+**3. Every other exit of the frame, too.** Once "the tail runs at every
+terminal outcome" is the rule, the exceptions are bugs waiting to be
+found rather than decisions. `routeCardToZoneLocked` and
+`executeZoneRouteLocked` now run the tail from a deferred terminal
+outcome covering every return — a card that is nowhere, a destination
+that cannot be resolved, a failed `MoveCard`, the apply-loop erroring —
+rather than from the two branches that remembered to. The pause is the
+one exit that is deliberately not terminal, and it is the one the
+defer skips. `finishBattlefieldLeaveLocked` already made this call for
+the other exit ("the tail runs even when the move failed"); this is
+that rule, applied to the shared primitive.
+
+**4. The prune sweeps before it runs anything.** A tail may queue the
+next leg's prompt, and when that leg lands it re-enters
+`pruneStaleZoneChangeChoicesLocked` through `executeZoneRouteLocked`.
+So the prune collects its frames and drops every one of them from the
+queue FIRST, then runs the tails — the shape
+`cleanupStackForEliminatedLocked` already used for the dropped frames
+of #808, and for the same reason: walking a slice by index while a
+callee mutates it is the bug this avoids.
+
+**5. What this does not change.** Nothing about who is asked, when, or
+what an answered prompt does. The only observable difference is that a
+batch behind an abandoned prompt now finishes, with the abandoned leg
+counted as nothing.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

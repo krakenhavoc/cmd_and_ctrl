@@ -250,6 +250,56 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 	return then(g)
 }
 
+// abandonZoneRouteLocked is the terminal outcome a paused route reaches
+// when its prompt is taken AWAY rather than answered. Two things do
+// that, and before #865 both simply discarded the frame:
+//
+//   - the prompt is DROPPED because its chooser left the game
+//     (cleanupStackForEliminatedLocked, CR 800.4a);
+//   - the prompt is PRUNED because the card moved by some other route
+//     while the question was open, so the move it is asking about can
+//     never happen (pruneStaleZoneChangeChoicesLocked / #605, and its
+//     answer-path twin dropStaleReplacementResumeLocked).
+//
+// NOTHING MOVES and no event is emitted. A paused route has moved
+// nothing (see routeCardToZoneLocked), so the card is still in its old
+// zone and the route's own bookkeeping never happened — which is the
+// same shape a CR 614.10 cancellation has, and the reason a discard
+// abandoned here fires no EventDiscardCard: CR 701.8a defines a
+// discard as the move OUT of the hand, and there was none.
+//
+// WHAT IT OWES IS THE CONTINUATION. #808 made "the player left" a
+// terminal outcome of the life and damage tails for exactly this
+// reason: a caller sequencing a batch through a continuation has to be
+// told even when the answer is "nothing happened", or it waits
+// forever. Without this a two-card discard stopped after the first
+// card and a wipe stopped after the commander — the rest of the batch,
+// and the caller's own "then draw two" / "for each creature destroyed
+// this way", were dropped on the floor with the frame.
+//
+// The leg is reported as NOT LANDED, and it reports itself: every
+// reader of a route's outcome reads the live board rather than being
+// handed a verdict (destroyedThisWayLocked, landedInZoneLocked), and
+// the board still has the card where it was. So an abandoned leg is
+// not counted as destroyed, exiled, bounced or discarded, and needs no
+// flag to say so.
+//
+// Caller must hold g.mu, and must already have taken the prompt out of
+// g.PendingChoices.
+func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
+	if frame == nil || frame.ev == nil {
+		return nil
+	}
+	ev := frame.ev
+	// The CR 614.5 once-per-event bookkeeping the abandoned event was
+	// holding: nothing else will release it now.
+	g.clearReplacementEventLocked(ev.ID)
+	if ev.Kind != RepEventMove {
+		return nil
+	}
+	return g.runRouteTailLocked(ev.zoneRoute)
+}
+
 // routeCardToZoneLocked opens the CR 614 replacement window for a
 // move of r.CardID into r.Dst and, once the pipeline settles on a
 // destination, performs the move through executeZoneRouteLocked.
@@ -270,6 +320,23 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 //
 // Caller must hold g.mu.
 func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
+	// #865: every exit of this function but the PAUSE is terminal for
+	// the route — it landed, it was cancelled, it was never a move, or
+	// it was refused — so the caller's continuation runs from all of
+	// them, from here, rather than from each branch remembering to. A
+	// pause is not terminal: the resume reaches the tail later, through
+	// executeZoneRouteLocked. The landing path has already run the tail
+	// through this same pointer by the time this defer fires, and
+	// runRouteTailLocked clears the continuation as it runs, so it
+	// cannot run twice.
+	defer func() {
+		if paused {
+			return
+		}
+		if tailErr := g.runRouteTailLocked(&r); tailErr != nil && err == nil {
+			err = tailErr
+		}
+	}()
 	src := g.findCardZoneLocked(r.CardID)
 	if src == nil {
 		return false, ErrCardNotFound
@@ -284,7 +351,7 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		// pipeline must not fire for a move that isn't one. The
 		// caller's continuation still runs: "nothing to do" is an
 		// answer, and a batch sequenced through the tail needs it.
-		return false, g.runRouteTailLocked(&r)
+		return false, nil
 	}
 
 	ev := &ReplacementEvent{
@@ -314,7 +381,7 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		// CR 614.10 with a null replacement: the move simply does not
 		// happen. The caller's continuation still runs — see
 		// runRouteTailLocked.
-		return false, g.runRouteTailLocked(&r)
+		return false, nil
 	}
 	return false, g.executeZoneRouteLocked(out)
 }
@@ -332,10 +399,31 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 // re-read against the SETTLED destination, not the requested one.
 //
 // Caller must hold g.mu.
-func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
+func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if ev == nil || ev.zoneRoute == nil {
 		return ErrInvalidParam
 	}
+	// #865: this function is only ever reached for a route that is
+	// going to settle here, so EVERY exit of it is terminal — the move
+	// landed, it was not a move at all, or it was refused — and the
+	// caller's continuation runs from all of them. A refused move is as
+	// terminal as a completed one, and a batch waiting on the tail must
+	// not be left waiting; finishBattlefieldLeaveLocked makes the same
+	// call for the other exit.
+	//
+	// #866: a sequenced batch carries its pre-move copies on the route
+	// so the leg that runs on the far side of a CR 903.9 prompt is
+	// still part of the same simultaneous exit — the same thing
+	// finishBattlefieldLeaveLocked does for the destroy route. It is
+	// registered FIRST so LIFO runs it LAST: the continuation, like
+	// that one's, runs with the batch still open. Empty for every
+	// unbatched move, where publishing is a no-op.
+	defer g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)()
+	defer func() {
+		if tailErr := g.runRouteTailLocked(ev.zoneRoute); tailErr != nil && err == nil {
+			err = tailErr
+		}
+	}()
 	r := *ev.zoneRoute
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
@@ -346,7 +434,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 		return err
 	}
 	if dstZone == src {
-		return g.runRouteTailLocked(ev.zoneRoute)
+		return nil
 	}
 	if r.Actor != uuid.Nil {
 		actor = r.Actor
@@ -471,8 +559,10 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 	// #853: and now the rest of whatever asked for this move, with the
 	// card already where it is going and its event already emitted, so
 	// a continuation that starts the next move or reads the log sees
-	// this one finished. Last, because it may queue the next prompt.
-	return g.runRouteTailLocked(ev.zoneRoute)
+	// this one finished. Last, because it may queue the next prompt —
+	// which is why it is the deferred terminal outcome above rather
+	// than a line here.
+	return nil
 }
 
 // routeDestinationLocked resolves a destination zone kind + owner to

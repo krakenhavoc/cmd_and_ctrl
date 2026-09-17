@@ -2611,8 +2611,9 @@ func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
 }
 
 // pruneStaleZoneChangeChoicesLocked drops every queued prompt whose
-// paused exit can no longer happen, and releases the CR 614.5
-// once-per-event bookkeeping the abandoned event was holding.
+// paused exit can no longer happen, releases the CR 614.5
+// once-per-event bookkeeping the abandoned event was holding, and runs
+// each abandoned route's continuation.
 //
 // Called at the two points a card actually lands — the shared exit
 // primitive and the battlefield-leave resume — because that is the
@@ -2621,15 +2622,34 @@ func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
 // NOT run while a choice is queued. Same reasoning, and the same call
 // sites, as pruneSacrificeChoicesLocked.
 //
+// #865: the prune is a TERMINAL outcome of the route it withdraws, so
+// the continuation the route was carrying runs —
+// abandonZoneRouteLocked, shared with the drop path. The whole queue
+// is swept before any tail runs, for two reasons: a tail may queue the
+// next leg's prompt, and it re-enters this function through
+// executeZoneRouteLocked when that leg lands, so walking the slice by
+// index while a callee mutates it is exactly the bug this shape
+// avoids. finishDroppedReplacementLocked's caller collects its frames
+// the same way and for the same reason.
+//
 // Caller must hold g.mu.
 func (g *Game) pruneStaleZoneChangeChoicesLocked() {
+	var abandoned []*replacementResumeFrame
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
 		if c == nil || !g.pausedZoneChangeStaleLocked(c.replacementResume) {
 			continue
 		}
-		g.clearReplacementEventLocked(c.replacementResume.ev.ID)
+		abandoned = append(abandoned, c.replacementResume)
 		g.dropChoiceLocked(i)
+	}
+	for _, frame := range abandoned {
+		if err := g.abandonZoneRouteLocked(frame); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "route continuation failed: " + err.Error(),
+			})
+		}
 	}
 }
 
@@ -2640,17 +2660,28 @@ func (g *Game) pruneStaleZoneChangeChoicesLocked() {
 // prompt is already dequeued, and refusing the answer instead would
 // leave the seat holding a prompt it can never discharge.
 //
+// #865: abandoning is terminal, so it goes through the same
+// abandonZoneRouteLocked the prune and the drop do and the route's
+// continuation runs. Reaching here at all means the prune above missed
+// the frame, but a batch that stalls is a batch that stalls however it
+// got there.
+//
 // Caller must hold g.mu.
 func (g *Game) dropStaleReplacementResumeLocked(frame *replacementResumeFrame) bool {
 	if !g.pausedZoneChangeStaleLocked(frame) {
 		return false
 	}
-	g.clearReplacementEventLocked(frame.ev.ID)
 	g.EmitEvent(Event{
 		Kind: EventEffectError,
 		ErrorMsg: "replacement prompt dropped: its card is no longer in the " +
 			string(frame.ev.OldZone) + " the paused move would leave",
 	})
+	if err := g.abandonZoneRouteLocked(frame); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "route continuation failed: " + err.Error(),
+		})
+	}
 	return true
 }
 
