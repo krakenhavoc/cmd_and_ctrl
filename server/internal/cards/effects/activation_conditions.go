@@ -1,0 +1,174 @@
+package effects
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// activation_conditions.go — builders for an ability's "Activate only
+// if …" and "Activate only during …" instructions (CR 602.1b, #743,
+// ADR 0020's activation-condition addendum).
+//
+// Each builder returns the closure ActivatedAbility.Condition and
+// ManaAbility.Condition both take, so a helper written for one kind of
+// ability works for the other. ControlsAtLeast, the first of them,
+// predates this file and lives in mana_derivation.go.
+//
+// The contract every closure here keeps:
+//
+//   - READ-ONLY. It runs under g.mu — for write inside the activation,
+//     for read in the view and the legal enumerator — so it reads
+//     BattlefieldCardsForEffect, PlayerByIDForEffect, g.Turn and
+//     g.Seats, and never a public locking accessor.
+//   - PUBLIC INFORMATION ONLY. Every viewer receives the
+//     condition_unmet flag the view computes from it.
+//   - "You" is `controller`, the activating player; "this" is `source`.
+//
+// A builder is added with its first card, not before. Append-only: a
+// card PR adds a builder, it does not change what an existing one
+// means.
+
+// ActivationCondition is the shape of ActivatedAbility.Condition and
+// ManaAbility.Condition.
+type ActivationCondition = func(g *game.Game, controller, source uuid.UUID) bool
+
+// IsYourTurn reports whether `controller` is the active player. Reads
+// g.Turn and g.Seats directly, because g.ActivePlayer takes the read
+// lock and a condition already runs under g.mu.
+func IsYourTurn(g *game.Game, controller uuid.UUID) bool {
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return false
+	}
+	active := g.Seats[g.Turn.ActiveSeat]
+	return active != nil && active.ID == controller
+}
+
+// DuringYourTurn — "Activate only during your turn" (Sanctum of
+// Eternity). Any step of your turn, with or without an item on the
+// stack; not a sorcery-speed window.
+func DuringYourTurn() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return IsYourTurn(g, controller)
+	}
+}
+
+// countControlled counts the battlefield permanents `player` controls
+// that match.
+func countControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool) int {
+	n := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player && match(c) {
+			n++
+		}
+	}
+	return n
+}
+
+// eachOpponent calls fn for every seated, non-eliminated player other
+// than `controller`, and reports whether fn returned true for any.
+func eachOpponent(g *game.Game, controller uuid.UUID, fn func(opponent uuid.UUID) bool) bool {
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller || p.Eliminated {
+			continue
+		}
+		if fn(p.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+// OpponentControlsAtLeast — "Activate only if an opponent controls
+// four or more lands" (Tectonic Edge). True when ONE opponent controls
+// at least n on their own: in a four-player game the opponents' lands
+// are not added together.
+func OpponentControlsAtLeast(n int, match func(game.Card) bool) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return eachOpponent(g, controller, func(opp uuid.UUID) bool {
+			return countControlled(g, opp, match) >= n
+		})
+	}
+}
+
+// OpponentControlsMore — "Activate only if an opponent controls more
+// lands than you" (Weathered Wayfarer). The same per-opponent
+// comparison Keeper of the Accord's intervening-if makes, against the
+// activator's own count.
+func OpponentControlsMore(match func(game.Card) bool) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return eachOpponent(g, controller, func(opp uuid.UUID) bool {
+			return b11OpponentControlsMoreThanYou(g, controller, opp, match)
+		})
+	}
+}
+
+// GraveyardAtLeast — threshold, "Activate only if there are seven or
+// more cards in your graveyard" (Barbarian Ring, Cephalid Coliseum).
+// A nil match counts every card.
+func GraveyardAtLeast(n int, match func(game.Card) bool) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		p := g.PlayerByIDForEffect(controller)
+		if p == nil || p.Graveyard == nil {
+			return false
+		}
+		count := 0
+		for _, c := range p.Graveyard.Cards {
+			if match == nil || match(c) {
+				count++
+			}
+		}
+		return count >= n
+	}
+}
+
+// NoCardsInHand — "Activate only if you have no cards in hand" (Sea
+// Gate Wreckage). A hand's size is public; its contents are not read.
+func NoCardsInHand() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		p := g.PlayerByIDForEffect(controller)
+		return p != nil && (p.Hand == nil || len(p.Hand.Cards) == 0)
+	}
+}
+
+// SourceHasCountersAtLeast — "Activate only if this enchantment has
+// four or more quest counters on it" (Luminarch Ascension).
+func SourceHasCountersAtLeast(kind string, n int) ActivationCondition {
+	return func(g *game.Game, _, source uuid.UUID) bool {
+		c, ok := g.LookupCardForEffect(source)
+		return ok && c.Counters[kind] >= n
+	}
+}
+
+// LifeAtLeastAboveStarting — "Activate only if you have at least 7
+// life more than your starting life total" (Speaker of the Heavens).
+// The starting total is the format's, game.StartingLife.
+func LifeAtLeastAboveStarting(n int) ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		p := g.PlayerByIDForEffect(controller)
+		return p != nil && p.Life >= game.StartingLife+n
+	}
+}
+
+// MatchCreatureWithPowerAtLeast matches a creature whose current
+// power is at least n — Bonders' Enclave's "a creature with power 4
+// or greater". Post-layer, counters included.
+func MatchCreatureWithPowerAtLeast(n int) func(game.Card) bool {
+	return func(c game.Card) bool {
+		return c.IsCreature() && c.CurrentPower() >= n
+	}
+}
+
+// MatchColor matches a permanent of the given colour letter —
+// Leechridden Swamp's "two or more black permanents". Reads
+// Card.HasColor, the same colour test the target predicates use.
+func MatchColor(color string) func(game.Card) bool {
+	return func(c game.Card) bool { return c.HasColor(color) }
+}
+
+// MatchLegendaryCreature matches a legendary creature — Rivendell's
+// and Minas Tirith's "if you control a legendary creature". The same
+// test b08ControlsLegendaryCreature makes for their entry.
+func MatchLegendaryCreature(c game.Card) bool {
+	return c.IsCreature() && c.IsLegendary()
+}

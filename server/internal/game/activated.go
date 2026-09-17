@@ -224,6 +224,37 @@ type ActivatedAbilityShape struct {
 	// SorcerySpeed marks "activate only as a sorcery" (CR 602.5d).
 	SorcerySpeed bool
 
+	// Condition is the ability's other activation instructions
+	// (CR 602.1b): "Activate only if an opponent controls four or
+	// more lands" (Tectonic Edge), "Activate only during your turn"
+	// (Sanctum of Eternity). Nil means none, which is nearly every
+	// ability. ADR 0020's #743 addendum.
+	//
+	// The contract is ManaAbilityShape.Condition's, word for word:
+	// READ-ONLY, and it runs under g.mu — held for write by
+	// ActivateCatalogAbility, for read by the view and the legal
+	// enumerator — so it reads *ForEffect accessors and g.Turn /
+	// g.Seats directly, never a public locking accessor
+	// (g.ActivePlayer deadlocks the activation). `controller` is the
+	// activating player, the "you" of the printed text; `source` is
+	// the permanent's instance ID, enough to read a per-source count
+	// later without changing the signature.
+	//
+	// Checked once, in ActivateCatalogAbility, right after the timing
+	// check and before X, the loyalty checks, the costs and the
+	// targets, so a false return is ErrConditionNotMet with nothing
+	// paid (CR 602.5). Never re-checked at resolution: an activation
+	// instruction is not part of the effect (CR 602.1b).
+	//
+	// Every viewer receives the view's condition_unmet flag, so a
+	// condition must read only public information (board counts,
+	// graveyard and hand sizes, life, the turn and the step).
+	//
+	// SorcerySpeed stays a separate flag: some cards print both
+	// (Speaker of the Heavens), and the two fail with different
+	// errors.
+	Condition func(g *Game, controller, source uuid.UUID) bool
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -383,6 +414,16 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// carries the restriction, so a card can't forget it.
 	if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !g.sorcerySpeedOpenLocked(playerID) {
 		return ErrSorcerySpeedRequired
+	}
+	// CR 602.1b / 602.5: the ability's "Activate only if …" and
+	// "Activate only during …" instructions (#743). A player can't
+	// begin to activate an ability whose instructions forbid it, so
+	// this stops the activation before X, targets or any cost — and
+	// it is never checked again at resolution. When both this and the
+	// timing check fail, the timing error wins; that order is ours,
+	// not the rules'.
+	if ab.Condition != nil && !ab.Condition(g, playerID, cardID) {
+		return ErrConditionNotMet
 	}
 
 	// --- validate every cost before paying any ------------------

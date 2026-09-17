@@ -1047,6 +1047,17 @@ type ActivatedAbilityView struct {
 	ManaCost      string `json:"mana_cost,omitempty"`
 	LifeCost      int    `json:"life_cost,omitempty"`
 	SorcerySpeed  bool   `json:"sorcery_speed,omitempty"`
+	// ConditionUnmet is true when the ability carries an activation
+	// condition (CR 602.1b — "Activate only if an opponent controls
+	// four or more lands", "Activate only during your turn") and that
+	// condition is false right now. Absent when there is no condition
+	// or it holds. Negative so `omitempty` keeps the common case off
+	// the wire. Evaluated once, with the permanent's controller as
+	// "you", and sent to every viewer: a condition reads only public
+	// information. The client greys the row the way it greys
+	// SorcerySpeed; the server refuses the activation with
+	// ErrConditionNotMet either way. ADR 0020's #743 addendum.
+	ConditionUnmet bool `json:"condition_unmet,omitempty"`
 	// LoyaltyCost is the loyalty component of a planeswalker's
 	// loyalty ability: +N / 0 / −N (CR 606.4). A POINTER because [0]
 	// is a real printed cost and `omitempty` would erase it — the
@@ -1183,6 +1194,14 @@ type ManaAbilityView struct {
 	// fired against mana the player has already produced.
 	// Added in the S32 mana-pipeline pass (#352).
 	ManaCost string `json:"mana_cost,omitempty"`
+	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
+	// mana ability: true while the ability's "Activate only if …"
+	// condition is false — Temple of the False God with four lands,
+	// Mox Opal without metalcraft. Absent otherwise. Same closure the
+	// engine gates on, evaluated for the controller and stamped by
+	// stampActivatedAbilities (the pass with a game handle). Added
+	// with #743 on the owner's decision to grey both kinds of row.
+	ConditionUnmet bool `json:"condition_unmet,omitempty"`
 	// Restrictions are the "spend this mana only on …" tags the
 	// produced tokens will carry — Ancient Ziggurat, Eldrazi
 	// Temple, the coloured half of Delighted Halfling. Present so
@@ -1663,6 +1682,23 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
+		stampManaConditions(g, card, controller, c.ManaAbilities)
+	}
+}
+
+// stampManaConditions sets ManaAbilityView.ConditionUnmet for every
+// mana ability whose activation condition is false right now (#743):
+// the closure ActivateManaAbility gates on, with the controller as
+// "you". Split from viewOfManaAbilities for the reason the sacrifice
+// options are — that projection has no game handle. Caller must hold
+// g's read lock.
+func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) || raw[i].Condition == nil {
+			continue
+		}
+		views[i].ConditionUnmet = !raw[i].Condition(g, controller, card.InstanceID)
 	}
 }
 
@@ -2781,6 +2817,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		// — but the client greys on this flag, so stamp it.
 		if a.Cost.Loyalty != nil {
 			v.SorcerySpeed = true
+		}
+		// #743: the same closure ActivateCatalogAbility gates on,
+		// with the controller as "you" — `caster` is the permanent's
+		// controller here (stampActivatedAbilities).
+		if a.Condition != nil && !a.Condition(g, caster, c.InstanceID) {
+			v.ConditionUnmet = true
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label

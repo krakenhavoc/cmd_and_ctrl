@@ -899,6 +899,13 @@ export interface ActivatedAbilityView {
   mana_cost?: string;
   life_cost?: number;
   sorcery_speed?: boolean;
+  // #743: true while the ability's activation condition (CR 602.1b —
+  // "Activate only if an opponent controls four or more lands",
+  // "Activate only during your turn") is false. Absent when there is
+  // no condition or it holds. Evaluated server-side for the
+  // permanent's controller; the menu greys the row like
+  // sorcery_speed, and the server refuses the activation regardless.
+  condition_unmet?: boolean;
   // loyalty_cost is the +N / 0 / −N of a planeswalker's loyalty
   // ability (CR 606.4). Its PRESENCE, not its value, is what marks
   // the ability as a loyalty ability — 0 is a real printed cost —
@@ -1247,6 +1254,10 @@ export interface ManaAbilityView {
   // life_cost. The server never auto-taps into a mana ability, so the
   // player has to float this mana before the entry will fire.
   mana_cost?: string;
+  // #743: true while the mana ability's activation condition is false
+  // — Temple of the False God with four lands, Mox Opal without
+  // metalcraft. Same flag and meaning as ActivatedAbilityView's.
+  condition_unmet?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

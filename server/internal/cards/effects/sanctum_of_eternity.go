@@ -18,30 +18,29 @@ package effects
 // exactly as it does for a commander that dies. Declined, it is in
 // hand to be re-cast for the printed cost, which is the point.
 //
-// Sandbox simplification, declared: "activate only during your turn"
-// has no shape on an activated ability — the engine's one timing
-// gate is sorcery speed — so the ability is sorcery-speed instead.
-// Every window that allows is a window the printed card allows;
-// the printed card also allows your combat, your end step, and
-// responding on your own turn, which this cannot. Weaker than
-// printed, never stronger.
+// "Activate only during your turn" is the ability's activation
+// condition (CR 602.1b, #743): DuringYourTurn, not sorcery speed. So
+// the bounce is available in any step of your own turn — your combat,
+// your end step, and in response to something on your own turn — and
+// in none of an opponent's, as printed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "c7d9ff27-f1fc-42e4-a47b-d2e6d68e4035",
 		Name:         "Sanctum of Eternity",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The bounce can only be activated at sorcery speed, not at any time during your turn."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:        "{2}, {T}: Return target commander you own from the battlefield to your hand. Activate only during your turn.",
-			Cost:         Plus(ManaCost("{2}"), TapCost()),
-			Targets:      TargetPermanent("target commander you own", b36CommanderYouOwn()),
-			SorcerySpeed: true,
-			Effect:       bounceChosenTarget,
+			Label:     "{2}, {T}: Return target commander you own from the battlefield to your hand. Activate only during your turn.",
+			Cost:      Plus(ManaCost("{2}"), TapCost()),
+			Targets:   TargetPermanent("target commander you own", b36CommanderYouOwn()),
+			Condition: DuringYourTurn(),
+			Effect:    bounceChosenTarget,
 		}},
 	})
 }

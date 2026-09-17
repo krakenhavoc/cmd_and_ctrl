@@ -369,6 +369,9 @@ interface AbilityCost {
   // catalog's first; a loyalty ability gets the same window from its
   // own arm below rather than from this flag.
   sorcery_speed?: boolean;
+  // #743: the ability's "Activate only if …" condition is false right
+  // now. Carried by both mana and activated abilities.
+  condition_unmet?: boolean;
   // S27: a Vehicle's crew number and the creatures that could pay
   // it. Mana abilities never carry either.
   crew_cost?: number;
@@ -382,6 +385,11 @@ interface AbilityCost {
   counter_cost_label?: string;
   counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
 }
+
+// ACTIVATION_CONDITION_UNMET is the hint on a row whose
+// condition_unmet flag is set (#743). Exported so ManaAbilityMenu's
+// popover says the same thing as the context menu.
+export const ACTIVATION_CONDITION_UNMET = "activation condition not met";
 
 // abilityBlocked returns the reason an ability can't be activated
 // right now, or "" when it can. Advisory only — the server re-checks
@@ -428,6 +436,11 @@ export function abilityBlocked(
     const timing = canActivateSorcerySpeedAbility(loyalty.view, loyalty.viewerID);
     if (!timing.legal) return timing.reason ?? "sorcery-speed only";
   }
+  // #743, CR 602.1b: an "Activate only if …" condition the server says
+  // is false. After the timing arms, which is the order the server
+  // checks in, so a sorcery-speed row keeps its more specific reason.
+  // The row's label already prints the clause, so the reason doesn't.
+  if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
   if (a.legal_targets) {
     const n = (a.legal_targets.players?.length ?? 0) + (a.legal_targets.cards?.length ?? 0);
     if (n === 0) return "no legal target";

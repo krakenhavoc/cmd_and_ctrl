@@ -1130,6 +1130,30 @@ X lives in the MANA component and nowhere else. A cost with a
 variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
 is a different seam and is still open.
 
+**"Activate only if …" / "Activate only during your turn" (#743):**
+the ability's `Condition`, a `func(g, controller, source) bool` built
+from [activation_conditions.go](server/internal/cards/effects/activation_conditions.go)
+(or `ControlsAtLeast`), the same shape a `ManaAbility.Condition`
+takes:
+
+```go
+Condition: OpponentControlsAtLeast(4, MatchLand),   // Tectonic Edge
+Condition: DuringYourTurn(),                        // Sanctum of Eternity
+```
+
+The engine checks it once, at activation, before X, targets or any
+cost (`ErrConditionNotMet`, nothing paid), never at resolution
+(CR 602.1b); the enumerator and the view (`condition_unmet`) read the
+same closure. "Only as a sorcery" stays `SorcerySpeed: true` beside
+it — Speaker of the Heavens sets both. Contract: read-only, runs under
+`g.mu` (use `*ForEffect` accessors and `g.Turn` / `g.Seats`, never a
+locking accessor), and reads only public information, because every
+viewer receives the flag. Never drop a condition you can't express,
+and never move it into `Effect`: the first is stronger than printed
+(#259), the second charges the cost for nothing. "Activate only once
+each turn" and boast still have no shape (the per-source activation
+count in `docs/engine-seams.md`).
+
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
 `Spec.AdditionalCost`, not in `OnResolve`:
