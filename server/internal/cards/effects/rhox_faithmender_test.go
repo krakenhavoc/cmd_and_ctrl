@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"testing"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "testing"
 
 // rhox_faithmender_test.go covers the card through the paths a game
 // actually takes, which is what #482 was about. Batch 14 shipped the
@@ -66,36 +62,23 @@ func TestRhoxFaithmenderDoublesItsOwnLifelink(t *testing.T) {
 }
 
 // TestTwoRhoxFaithmendersQuadruple — two applicable replacements on one
-// event, so CR 616 asks the affected player to order them and the gain
-// lands from the resume. Both orders are the same arithmetic here
-// (x2 then x2), which is the point: the answer is never interesting,
-// but the gain still has to arrive, and before the shared tail a paused
-// life change landed through a second copy of the mutation.
+// event, and both of them are the same printed effect, so CR 616 has
+// nothing to ask: x2 then x2 is x2 then x2 whichever Faithmender is
+// named first. #792 made that window skip the prompt, so the gain
+// lands inline and the player pays no clicks for it. Before #482 a
+// paused life change landed through a second copy of the mutation and
+// lost its source; this is the one path that used to exercise it.
 func TestTwoRhoxFaithmendersQuadruple(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	first := b12Push(g, me.ID, "Rhox Faithmender", "Creature — Rhino Monk", b14RhoxFaithmenderOracle, 1, 5)
-	second := b12Push(g, me.ID, "Rhox Faithmender", "Creature — Rhino Monk", b14RhoxFaithmenderOracle, 1, 5)
+	b12Push(g, me.ID, "Rhox Faithmender", "Creature — Rhino Monk", b14RhoxFaithmenderOracle, 1, 5)
+	b12Push(g, me.ID, "Rhox Faithmender", "Creature — Rhino Monk", b14RhoxFaithmenderOracle, 1, 5)
 	mine := me.Life
 
 	b11Helix(t, g, opp.ID)
 
-	if me.Life != mine {
-		t.Fatalf("life moved to %d before the CR 616 prompt was answered, want %d", me.Life, mine)
-	}
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("pending choices = %d, want 1 CR 616 ordering prompt", len(g.PendingChoices))
-	}
-	prompt := g.PendingChoices[0]
-	if prompt.Kind != game.PendingChoiceReplacementOrder {
-		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, game.PendingChoiceReplacementOrder)
-	}
-	if prompt.Chooser != me.ID {
-		t.Errorf("chooser = %s, want the affected player %s", prompt.Chooser, me.ID)
-	}
-	firstEff, secondEff := replacementIDsForSources(t, g, prompt.ReplacementEffectIDs, first, second)
-	if err := g.ResolveReplacementOrder(prompt.ID, me.ID, []game.ReplacementEffectID{firstEff, secondEff}); err != nil {
-		t.Fatalf("ResolveReplacementOrder: %v", err)
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("two copies of ONE replacement queued %d prompts, want 0 (#792)", len(g.PendingChoices))
 	}
 	if me.Life != mine+12 {
 		t.Errorf("two Faithmenders on a gain of 3: %d → %d, want %d (3 × 2 × 2)", mine, me.Life, mine+12)
