@@ -1,6 +1,6 @@
 # ADR 0058 — "Doesn't untap": untap-step restrictions, a next-untap-step marker, and stun counters
 
-**Status:** Proposed · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#751](https://github.com/krakenhavoc/cmd_and_ctrl/issues/751)
+**Status:** Accepted · 2026-09-17 · unscheduled (card-coverage audit, wave 2) · tracked on [#751](https://github.com/krakenhavoc/cmd_and_ctrl/issues/751)
 **Numbering:** 0058 was assigned for #751. 0052 is reserved for the
 emblems ADR ([#623](https://github.com/krakenhavoc/cmd_and_ctrl/issues/623)).
 0056, 0057 and 0059 are being drafted at the same time for #748, #749
@@ -19,8 +19,19 @@ is 0055.
 **Related:** [#680](https://github.com/krakenhavoc/cmd_and_ctrl/issues/680)
 (Tangle's declared caveat), [#620](https://github.com/krakenhavoc/cmd_and_ctrl/issues/620)
 and [#633](https://github.com/krakenhavoc/cmd_and_ctrl/issues/633)
-(the `Card` layout guard), and [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753)
-(extra turns, which this design needs nothing from).
+(the `Card` layout guard), [#753](https://github.com/krakenhavoc/cmd_and_ctrl/issues/753)
+/ [ADR 0059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/824)
+(extra turns, which this design needs nothing from; ADR 0059 Decision 7
+requires the marker to be used up by an untap step, not a turn change,
+which is what Decision 2 does), [ADR 0056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/818)
+Decision 5 (counter events and placers; stun removal is outside it), and
+[#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826) (the
+untap-step choice ADR, filed for Decision 8).
+**Owner decisions:** answered 2026-09-17 and recorded under
+[Decided (2026-09-17)](#decided-2026-09-17): a "won't untap" badge on
+tapped permanents only plus a hover footer line, with no log line
+(question 1); the first wave includes the three stun cards (question 2);
+Winter Orb, Static Orb and Winter Moon wait for #826 (question 3).
 
 Line references are to `origin/develop` at `684f2786`.
 
@@ -280,9 +291,12 @@ both end at the same untap step (CR 701.43b).
   the mulligan window. Nothing new has to be written for this. It
   follows from putting the code in `performUntapStepLocked`, and a test
   pins it.
-- Extra turns (#753): an extra turn's untap step is that player's next
-  untap step, so it uses the marker up. The design reads no
-  `Turn.Number`, so #753's renumbering can't break it.
+- Extra turns (#753, ADR 0059): an extra turn's untap step is that
+  player's next untap step, so it uses the marker up. The design reads no
+  `Turn.Number`, so ADR 0059's move to `Seq` can't break it. When ADR
+  0059's rotation seam ends a departed active player's turn early, only
+  the next player's untap step uses markers up, through
+  `performUntapStepLocked` as usual; the seam itself uses nothing up.
 - A player-keyed entry naming a player who has left the game is never
   used up and has no effect. It is not swept. Decision 4 leaves it off
   the wire.
@@ -366,9 +380,15 @@ g.EmitEvent(…EventUntapCard…)
   result: the stun replacement only applies to an untap that would
   happen.
 - **Removing a counter is not "putting" one**, so Vorinclex-style
-  replacements on putting counters don't see it.
-  `applyCounterLocked` emits `EventCounterPlaced` with the new amount,
-  which is how every other counter removal already shows up.
+  replacements on putting counters don't see it. The removal calls
+  `applyCounterLocked` directly and **stays outside `RepEventCounter`**:
+  no replacement window runs for it. Its `EventCounterPlaced` carries
+  the new amount and a **`uuid.Nil` placer** (`Actor`), which is how
+  every other rules-driven counter removal shows up. This is the same
+  rule [ADR 0056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/818)
+  Decision 5 states for removals ("Removals are not placements"), so
+  its `CounterPlacer` and `CounterFromCombatDamage` fields never apply
+  here.
 - **Why not a `ReplacementEffect` in the CR 614 pipeline.** The rule
   has no source permanent for `gatherActiveReplacementsLocked` to find,
   and there is no untap replacement event kind. The only other untap
@@ -412,12 +432,25 @@ type NoUntapView struct {
   face-down allowlist (`protocol/face_down_view_test.go`). `static` is
   derived from card identity and is always false for a face-down
   permanent, because a face-down permanent has no abilities.
-- `docs/protocol.md` and `client/src/lib/protocol.ts` get the type. How
-  the client shows it is [owner question 1](#open-questions-for-the-owner).
+- `docs/protocol.md` and `client/src/lib/protocol.ts` get the type.
+- **How the client shows it** (owner-decided, [question 1](#decided-2026-09-17),
+  option (a)):
+  - A small "won't untap" badge on a permanent that is **tapped** and
+    has `no_untap` that applies to its controller's next untap step
+    (`static`, or `next` containing the current controller). An
+    untapped Mana Vault or an untapped nonbasic land under Back to
+    Basics wears no badge.
+  - A line in the hover-zoom footer for **any** permanent with
+    `no_untap`, tapped or not: "doesn't untap during its controller's
+    untap step" for `static`, and "doesn't untap during Alice's next
+    untap step" for each `next` entry.
+  - Stun counters need nothing new: they already show as counter pips.
+  - **No log line** and no reveal-strip cue. The log records changes to
+    the game's outcome and turn structure, not per-object annotations.
 - **No new event kind.** No card triggers on "didn't untap". The untap
   step already emits `EventStepBegan`, and a permanent that stays tapped
-  is simply one without an `EventUntapCard`. Owner question 1's option
-  (c) is the only thing that would add one.
+  is simply one without an `EventUntapCard`. The log-line option that
+  would have added one (question 1 (c)) was not chosen.
 
 ## Decision 5 — Bots and the auto-tapper
 
@@ -448,11 +481,14 @@ type NoUntapView struct {
 - **Catalog soak** (#601): the first card wave goes into the random
   catalog decks, and one run's report is attached to the card PR.
 
-## Decision 6 — Tangle loses its caveat in the first card PR
+## Decision 6 — Tangle loses its caveat in sub-PR 1
 
 `tangle.go` gets `DoesntUntapNextUntapStep` over the attacking creatures
 at resolution, controller-keyed. `Completeness` becomes `Full`, and the
-comment block at `:11-29` is replaced. `docs/engine-seams.md`'s
+comment block at `:11-29` is replaced. Tangle is one of sub-PR 1's
+reference cards (see [PR split](#pr-split)): under the owner's policy
+(2026-09-17) every new seam path ships with at least one real card, so
+the engine PR carries one card per path. `docs/engine-seams.md`'s
 "Doesn't untap during your untap step" row (`:118`) moves to Closed
 when sub-PR 1 lands.
 
@@ -481,8 +517,10 @@ when sub-PR 1 lands.
   bots and the enumerator a new prompt. That is a follow-up with its
   own ADR. The restriction and marker here don't depend on it, and it
   will read them: a permanent that can't untap is not one of the N
-  choices. Whether the Winter Orb cards wait for it is
-  [owner question 3](#open-questions-for-the-owner).
+  choices. **Winter Orb, Static Orb and Winter Moon wait for it**
+  (owner-decided, [question 3](#decided-2026-09-17)). The ADR is filed
+  as [#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826) and
+  is not scheduled.
 - **Duration-bound restrictions** ("for as long as you control this
   creature": Dungeon Geists, Wall of Stolen Identity; "for as long as
   this remains tapped": Amber Prison, Rust Tick). These are an
@@ -524,6 +562,9 @@ when sub-PR 1 lands.
 - `Card` grows by 24 bytes.
 - Snapshot files gain an optional key. Old files restore unchanged.
 - The wire gains `CardView.no_untap`. Old clients ignore it.
+- Players see a "won't untap" badge only on tapped permanents that will
+  stay tapped, and the reason in the hover footer. The log doesn't
+  change.
 
 ## Alternatives considered
 
@@ -557,7 +598,7 @@ when sub-PR 1 lands.
 untap step (the stale-read bug in Decision 1), with its regression test.
 Sub-PR 1 assumes that line exists and adds it if it doesn't.
 
-**Sub-PR 1 — engine.** No card changes.
+**Sub-PR 1 — engine, with one reference card per path.**
 - `UntapStepRestriction`, `CatalogUntapStepRestrictions`,
   `activeUntapStepRestrictionsLocked`, `UntapStepRestrictedLocked`.
   `Spec.UntapStepRestrictions`, the `CardDef` field and the `buildDef`
@@ -572,6 +613,12 @@ Sub-PR 1 assumes that line exists and adds it if it doesn't.
   `enchantedDoesntUntap` (over `AttachedToSource`) and
   `doesntUntapDuringTheirControllersUntapSteps(match)`, next to
   `untap_step.go`.
+- **Reference cards**, so no path lands without a real card (owner
+  policy, 2026-09-17): Basalt Monolith (static self, and the
+  auto-tapper's ordering), Claustrophobia (static attached), Meekstone
+  (static filtered, read after layer 7), Tangle's caveat removal
+  (controller-keyed marker, Decision 6), Frost Breath (`TapAndFreeze`),
+  Sleep (player-keyed marker) and Alchemax Slayer-Bots (stun).
 - Docs: `untap.go` header, the `counter_types.go` comment, AGENTS.md §7,
   and moving the `docs/engine-seams.md` row to Closed.
 - Checks: `go test ./internal/game/... ./internal/cards/... ./internal/legal/...`,
@@ -581,12 +628,16 @@ Sub-PR 1 assumes that line exists and adds it if it doesn't.
 - `CardView.no_untap` stamping, `docs/protocol.md`, `protocol.ts`, and
   the face-down allowlist.
 - Heuristic weights and the model-tier flag.
-- The client rendering chosen in owner question 1.
+- The client rendering decided in owner question 1 (Decision 4): the
+  "won't untap" badge on tapped permanents only, and the hover-footer
+  line. No log line.
 - Checks: `go test ./internal/protocol/... ./internal/aiseat/...`,
   `npm run test`, `npm run check`.
 
-**Card PRs.** Tangle's caveat comes off (Decision 6), plus the wave
-chosen in owner question 2. Each card follows AGENTS.md §7: `Spec`
+**Card PRs.** The rest of the first wave decided in owner question 2,
+option (b): Mana Vault, Grim Monolith, Goblin Sharpshooter, Traxos,
+Back to Basics, Intruder Alarm, Wall of Frost, Kefnet's Monument,
+Dreamdew Entrancer and Cryogen Relic. Each card follows AGENTS.md §7: `Spec`
 slots, completeness declared, caveats weaker than printed and never
 stronger, and oracle text checked against the dump. The catalog soak
 runs with the wave in the random decks.
@@ -658,13 +709,24 @@ Wire and bots:
 19. **Catalog soak** with the first wave: no stalls, and the report
     lists the wave's cards as exercised.
 
-Cards (card PRs): each card gets its behaviour test. Tangle's test
-changes from "caveat" to "attacking creatures stay tapped through their
-controller's next untap step, and blockers do not".
+Cards (sub-PR 1's reference cards and the card PRs): each card gets its
+behaviour test. Tangle's test changes from "caveat" to "attacking
+creatures stay tapped through their controller's next untap step, and
+blockers do not". Alchemax Slayer-Bots' test checks that the stun
+counter's removal emits `EventCounterPlaced` with a Nil `Actor` and runs
+no counter replacement (a Doubling Season-style stub on the battlefield
+sees nothing).
 
-## Card first wave — candidates
+Client (sub-PR 2): the badge predicate (tapped, and `no_untap` applies
+to the current controller's next untap step) and the footer text are a
+pure helper with vitest coverage. Rendering is checked by hand until
+#689.
 
-The oracle text below was checked against the Scryfall dump on
+## Card first wave
+
+Owner-decided ([question 2](#decided-2026-09-17), option (b)): every card
+in the table ships, the three stun cards included. The oracle text below
+was checked against the Scryfall dump on
 2026-09-17. "Other needs" is what else each card uses, and every such
 piece exists on develop today unless marked.
 
@@ -688,13 +750,19 @@ piece exists on develop today unless marked.
 | Dreamdew Entrancer | "Reach. When this creature enters, tap up to one target creature and put three stun counters on it. If you control that creature, draw two cards." | stun | — |
 | Cryogen Relic | "When this artifact enters or leaves the battlefield, draw a card. {1}{U}, Sacrifice this artifact: Put a stun counter on up to one target tapped creature." | stun | — |
 
-Tamiyo, the Moon Sage (emblem, #623), Hands of Binding (cipher), Kiora
-Bests the Sea God and the Winter Orb cards are not candidates.
+Tamiyo, the Moon Sage (emblem, #623), Hands of Binding (cipher) and Kiora
+Bests the Sea God are not in the wave. Winter Orb, Static Orb and Winter
+Moon wait for the untap-step choice ADR,
+[#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826).
 
-## Open questions for the owner
+## Decided (2026-09-17)
+
+Answered by the owner on 2026-09-17. The options are kept, the chosen one
+is marked **(chosen)**, and the recommendation text is kept for the
+record.
 
 1. **How does the board show that a permanent won't untap?**
-   - (a) A small badge on a **tapped** permanent that won't untap during
+   - (a) **(chosen)** A small badge on a **tapped** permanent that won't untap during
      its controller's next untap step (static or marker), and a line in
      the hover-zoom footer for any permanent with `no_untap` ("doesn't
      untap during Alice's next untap step" / "doesn't untap during its
@@ -708,19 +776,25 @@ Bests the Sea God and the Winter Orb cards are not candidates.
      surprising is about to happen, and the footer covers planning
      ("if I attack with this, it stays tapped"). Stun counters already
      show as counter pips.
+   - **Decision: (a).** The badge on tapped permanents only, plus the
+     hover footer line, and no log line. Applied in Decision 4 and
+     sub-PR 2.
 2. **Which cards go in the first wave?**
    - (a) Tangle's caveat removal plus the 14 static and marker cards in
      the table.
-   - (b) (a) plus the three stun-counter cards.
+   - (b) **(chosen)** (a) plus the three stun-counter cards.
    - (c) A minimal wave: Tangle, Mana Vault, Basalt Monolith, Grim
      Monolith, Sleep, Frost Breath (one card per shape), with the rest
      as batch fill.
    - **Recommendation: (b).** Stun ships in the same engine PR, and real
      cards put it through the soak. The three candidates need nothing
      else.
+   - **Decision: (b).** Every card in the first-wave table ships,
+     including Alchemax Slayer-Bots, Dreamdew Entrancer and Cryogen
+     Relic. One card per path goes in sub-PR 1 (PR split).
 3. **Do the Winter Orb cards wait for the untap-step choice ADR, or
    ship early with an automatic pick?**
-   - (a) They wait. File "untap-step choices (choose N, may choose not
+   - (a) **(chosen)** They wait. File "untap-step choices (choose N, may choose not
      to untap)" as its own ADR issue and don't schedule it yet.
    - (b) Ship Winter Orb, Static Orb and Winter Moon now, with the engine
      choosing which N untap (for example, the lands that produce the
@@ -732,3 +806,7 @@ Bests the Sea God and the Winter Orb cards are not candidates.
      A visible automatic pick in that spot is worse than a card that
      honestly isn't there yet. The shape is rare in Commander, so the
      ADR doesn't need scheduling now.
+   - **Decision: (a).** Winter Orb, Static Orb and Winter Moon wait. The
+     untap-step choice ADR is filed as
+     [#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826),
+     unscheduled.
