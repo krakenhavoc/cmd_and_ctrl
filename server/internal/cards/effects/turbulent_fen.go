@@ -22,7 +22,7 @@ func init() {
 		OracleID:      "114dd40d-5ad8-4913-a08f-572b9521eb5b",
 		Name:          "Turbulent Fen",
 		Completeness:  CompletenessFull,
-		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b34OpponentsControlLandsAtLeast(8))},
+		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b40CatchUpDualCondition())},
 		ManaAbilities: []ManaAbility{dualManaAbility("B", "G")},
 	})
 }

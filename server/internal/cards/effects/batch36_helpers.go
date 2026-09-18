@@ -30,7 +30,7 @@ import (
 // is b27ExiledWith, "another" by name is b03NotNamed, the basic-land
 // test is b30IsBasicLandCard, "enters tapped unless your opponents
 // control N lands" is SelfEntersTappedUnless(
-// b34OpponentsControlLandsAtLeast(n)), the white flying Spirit is
+// b40CatchUpDualCondition()), the white flying Spirit is
 // b28WhiteSpiritFlyingToken, the predicate-scoped anthem is
 // b16Anthem, and the lord builders are TribalAnthem /
 // TribalKeywordGrant.

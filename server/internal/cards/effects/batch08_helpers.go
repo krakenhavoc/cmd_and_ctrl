@@ -200,17 +200,7 @@ func b08KrosanVergeFetch(g *game.Game, item *game.StackItem) error {
 // response cannot be sacrificed, so no reflexive trigger is created
 // and nothing is searched.
 func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
-	pred := func(c game.Card) bool {
-		if !IsBasicLand(c) {
-			return false
-		}
-		for _, s := range subtypes {
-			if c.HasSubtype(s) {
-				return true
-			}
-		}
-		return false
-	}
+	pred := IsBasicLandOfAnySubtype(subtypes...)
 	reason := name + " — a basic " + subtypes[0]
 	for i := 1; i < len(subtypes); i++ {
 		if i == len(subtypes)-1 {

@@ -88,22 +88,6 @@ func b34IsGreen(c game.Card) bool {
 	return false
 }
 
-// b34OpponentsControlLandsAtLeast is Turbulent Fen's untapped
-// condition: the controller's opponents, between them, control `n`
-// or more lands. The reader takes the entering land's controller, as
-// SelfEntersTappedUnless hands it.
-func b34OpponentsControlLandsAtLeast(n int) func(g *game.Game, controller uuid.UUID) bool {
-	return func(g *game.Game, controller uuid.UUID) bool {
-		total := 0
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller != controller && c.IsLand() {
-				total++
-			}
-		}
-		return total >= n
-	}
-}
-
 // b34GraveyardHasAtLeast is threshold's test: `player`'s graveyard
 // holds `n` or more cards.
 func b34GraveyardHasAtLeast(g *game.Game, player uuid.UUID, n int) bool {

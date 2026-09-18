@@ -74,6 +74,23 @@ func b23NoCreaturesOnBattlefield(g *game.Game) bool {
 	return true
 }
 
+// b23SacrificeSelfWhenNoCreatures is the resolution half of "at the
+// beginning of the end step, if no creatures are on the battlefield,
+// sacrifice this enchantment" — Pyrohemia's clause, and Pestilence's
+// word for word (#401).
+//
+// It re-checks the intervening-if (CR 603.4): the condition held when
+// the trigger went on the stack, and a creature flashed in since
+// keeps the enchantment. It also checks that the source is still on
+// the battlefield, because a permanent that has already left cannot
+// be sacrificed and doing so would be a second departure.
+func b23SacrificeSelfWhenNoCreatures(g *game.Game, item *game.StackItem) error {
+	if !b23NoCreaturesOnBattlefield(g) || !onBattlefield(g, item.SourceCardID) {
+		return nil
+	}
+	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+}
+
 // b23IsYourTurn reports whether the source's controller is the
 // active player — "during your turn". The body moved to IsYourTurn
 // (activation_conditions.go, #743), which the activation conditions

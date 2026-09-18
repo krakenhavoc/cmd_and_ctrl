@@ -456,8 +456,14 @@ func b33RemoveChargeCountersForMana(g *game.Game, item *game.StackItem) error {
 	return AddMana{Player: item.Controller, Produced: produced}.Apply(ctx)
 }
 
-// b33PutChargeCounterOnSelf is Coalition Relic's "{T}: Put a charge
-// counter on this artifact" body.
+// b33PutChargeCounterOnSelf is "put a charge counter on this
+// permanent" — Coalition Relic's "{T}: Put a charge counter on this
+// artifact" and Lost Jitte's "whenever equipped creature deals combat
+// damage, put a charge counter on Lost Jitte" (batch 43).
+//
+// The zone guard is the load-bearing half for both: AddCounter does
+// not check where its target is, and an artifact destroyed in response
+// to its own trigger should not bank a counter in the graveyard.
 func b33PutChargeCounterOnSelf(g *game.Game, item *game.StackItem) error {
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
