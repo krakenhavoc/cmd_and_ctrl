@@ -9,6 +9,7 @@ import {
   canConfirm,
   confirm,
   hasXCost,
+  castLocksXAtZero,
   isModal,
   isMultiPick,
   isPicked,
@@ -78,6 +79,45 @@ describe("hasXCost + xValue on the prompt — S20 sub-PR 3", () => {
     expect(hasXCost(card({ mana_cost: "{2}{B}", additional_cost: { discard_cards: 1 } }))).toBe(
       false,
     );
+  });
+});
+
+// CR 107.3b (#831): a free cast of an {X} spell has exactly one legal
+// X and it is 0, so the picker must not open. The client never
+// re-derives the rule from the cost strings — the server ships the
+// answer on the offer being taken.
+describe("castLocksXAtZero — CR 107.3b", () => {
+  const stroke = (extras: Partial<CardView> = {}) => card({ mana_cost: "{X}{U}", ...extras });
+
+  it("is false for an ordinary cast, which still announces X", () => {
+    expect(castLocksXAtZero(stroke(), undefined)).toBe(false);
+    expect(hasXCost(stroke())).toBe(true);
+  });
+
+  it("locks X under a free-cast exile grant (cascade, a Siege)", () => {
+    const hit = stroke({
+      exile_play: { player: "p0", cast_only: true, cost_override: "{0}", x_locked_at_zero: true },
+    });
+    expect(castLocksXAtZero(hit, undefined)).toBe(true);
+  });
+
+  it("leaves an unpriced impulse grant alone — it pays the printed cost", () => {
+    expect(castLocksXAtZero(stroke({ exile_play: { player: "p0" } }), undefined)).toBe(false);
+  });
+
+  it("locks X for an alternative cost without X, and only when claimed", () => {
+    const c = stroke({
+      alternative_costs: [
+        { key: "free", label: "Cast without paying its mana cost", x_locked_at_zero: true },
+        { key: "kicked", label: "Pay {X}{R}", mana_cost: "{X}{R}" },
+      ],
+    });
+    expect(castLocksXAtZero(c, "free")).toBe(true);
+    expect(castLocksXAtZero(c, "kicked")).toBe(false);
+    // Nothing claimed: the printed cost is being paid.
+    expect(castLocksXAtZero(c, undefined)).toBe(false);
+    // A key the card doesn't offer is not an offer.
+    expect(castLocksXAtZero(c, "overload")).toBe(false);
   });
 });
 
