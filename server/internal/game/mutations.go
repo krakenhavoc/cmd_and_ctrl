@@ -2548,6 +2548,11 @@ func (g *Game) runStateChecksLocked() {
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
 		fired, left := g.stateBasedActionsLocked()
+		// #864: belt-and-braces backstop, run every pass so nothing can
+		// leave this function about to hand a seat priority while a
+		// choice sits pending for a chooser this same pass (or an
+		// earlier one) already eliminated. See sweepEliminatedChoicesLocked.
+		g.sweepEliminatedChoicesLocked()
 		departuresPending = departuresPending || left
 		if departuresPending && g.State == StateActive {
 			if fired {
@@ -2692,31 +2697,14 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	// bot enumerator offers nothing while a choice is open). Drop the
 	// eliminated player's prompts — their objects are gone with them
 	// (CR 800.4a), so a damage assignment, target pick or scry they
-	// owed has nothing left to act on. Same for a cleanup-discard
-	// pause in their name. Found by the S31 bot fuzzer.
+	// owed has nothing left to act on. Found by the S31 bot fuzzer.
 	//
 	// #808: a dropped prompt may be holding a paused replacement event,
 	// and a life or damage event carries its CALLER's continuation — the
 	// rest of a drain, every later opponent's loss, the caster's gain.
-	// Those frames are collected here and finished below, once the queue
-	// no longer holds the dropped prompts.
-	var dropped []*replacementResumeFrame
-	if len(g.PendingChoices) > 0 {
-		kept := g.PendingChoices[:0]
-		for _, c := range g.PendingChoices {
-			if c == nil || c.Chooser != playerID {
-				kept = append(kept, c)
-				continue
-			}
-			if c.replacementResume != nil && c.replacementResume.ev != nil {
-				dropped = append(dropped, c.replacementResume)
-			}
-		}
-		g.PendingChoices = kept
-		if len(g.PendingChoices) == 0 {
-			g.PendingChoices = nil
-		}
-	}
+	// dropChoicesForPlayerLocked collects those frames; finish them
+	// below, once the queue no longer holds the dropped prompts.
+	dropped := g.dropChoicesForPlayerLocked(playerID)
 	if g.DiscardPending != nil {
 		delete(g.DiscardPending, playerID)
 		if len(g.DiscardPending) == 0 {
@@ -2726,6 +2714,74 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	g.recomputeSplitSecondLocked()
 	for _, frame := range dropped {
 		g.finishDroppedReplacementLocked(playerID, frame)
+	}
+}
+
+// dropChoicesForPlayerLocked removes every PendingChoice owed by
+// playerID — the same-name cleanup-discard pause in their name is
+// left to the caller — and returns the replacementResume frames those
+// choices were holding, for the caller to finish via
+// finishDroppedReplacementLocked (#808). Shared by
+// cleanupStackForEliminatedLocked (the instant a player leaves) and
+// sweepEliminatedChoicesLocked (#864's defensive backstop, below) so
+// the two run the identical drop. Caller must hold g.mu.
+func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResumeFrame {
+	if len(g.PendingChoices) == 0 {
+		return nil
+	}
+	var dropped []*replacementResumeFrame
+	kept := g.PendingChoices[:0]
+	for _, c := range g.PendingChoices {
+		if c == nil || c.Chooser != playerID {
+			kept = append(kept, c)
+			continue
+		}
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  c.Chooser,
+			Source: c.Source,
+			Label:  string(c.Kind),
+		})
+		if c.replacementResume != nil && c.replacementResume.ev != nil {
+			dropped = append(dropped, c.replacementResume)
+		}
+	}
+	g.PendingChoices = kept
+	if len(g.PendingChoices) == 0 {
+		g.PendingChoices = nil
+	}
+	return dropped
+}
+
+// sweepEliminatedChoicesLocked drops any PendingChoice whose chooser
+// has left the game. #864: cleanupStackForEliminatedLocked already
+// does this the instant a player leaves (#287/#808), but that sweep
+// runs once, at that exact moment — it cannot catch a choice queued
+// for the same player afterward. QueueChoiceForEffect's own guard
+// (#864) now refuses to queue such a choice going forward, so this
+// sweep is the belt to that guard's braces: a second, independent
+// layer that self-heals the queue at every state-based-action pass
+// (runStateChecksLocked, which is the seam where the table is next
+// about to offer a seat priority) regardless of whether some future
+// caller ever manages to slip a choice past the queue-time guard, or
+// a game restored from a snapshot written before this fix shipped
+// carries one already.
+//
+// Idempotent: a game with no eliminated seat holding a choice costs
+// one scan of g.Seats and returns without touching g.PendingChoices.
+// Never touches a live chooser's choice — only p.Eliminated seats are
+// considered. Caller must hold g.mu.
+func (g *Game) sweepEliminatedChoicesLocked() {
+	if len(g.PendingChoices) == 0 {
+		return
+	}
+	for _, p := range g.Seats {
+		if p == nil || !p.Eliminated {
+			continue
+		}
+		for _, frame := range g.dropChoicesForPlayerLocked(p.ID) {
+			g.finishDroppedReplacementLocked(p.ID, frame)
+		}
 	}
 }
 
@@ -3197,8 +3253,21 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 				break
 			}
 		}
-		if seat == -1 {
-			// Controller no longer seated — drop the trigger.
+		if seat == -1 || g.Seats[seat].Eliminated {
+			// Controller no longer seated, or has since left the game
+			// (CR 800.4a) — drop the trigger. #864: this specifically
+			// includes a trigger that lands here for a player the SBA
+			// loop already eliminated earlier in the SAME pass (a
+			// creature destroyed after its controller's life hit 0
+			// queues a "dies" trigger against the now-eliminated
+			// controller). Dropping it here, before it can ever reach
+			// seatNeedsTriggerOrder below, matters beyond tidiness:
+			// QueueChoiceForEffect now refuses to queue an ordering
+			// prompt for an eliminated chooser, but the loop below
+			// still marked the WHOLE APNAP drain `held` for that seat
+			// before finding that out, which would have wedged every
+			// other seat's triggers behind an ordering prompt that
+			// could never be created, let alone answered.
 			continue
 		}
 		bySeat[seat] = append(bySeat[seat], t)

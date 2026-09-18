@@ -765,7 +765,43 @@ type replacementResumeFrame struct {
 // QueueChoiceForEffect appends a PendingChoice to the game's queue.
 // Caller must hold g.mu. Returns the generated ID so the caller
 // can reference the choice downstream if needed.
+//
+// #864: a choice whose Chooser is not seated, or is seated but
+// already Eliminated, is refused rather than queued. This is the
+// generic backstop underneath the per-kind guards that already
+// existed (QueuePayUnlessForEffect and friends) — every append to
+// g.PendingChoices runs through here, so this is the one place that
+// can promise the queue never holds an unanswerable prompt at the
+// moment it's created. It does not by itself protect against a LIVE
+// chooser who is eliminated later while their choice sits open —
+// that's sweepEliminatedChoicesLocked's job (mutations.go), run at
+// every runStateChecksLocked pass.
+//
+// Returns uuid.Nil on refusal, the same sentinel
+// QueueDiscardChoiceForEffect already returns for its own
+// zero-count short-circuit, so every caller in this codebase already
+// treats "no choice, nothing to reference" as an ignorable return —
+// audited caller by caller for #864. The one caller that needed more
+// than "ignore the zero value" (drainPendingTriggersAPNAPLocked,
+// which would otherwise treat the refusal as a still-open CR 603.3b
+// ordering prompt and hold the whole APNAP drain forever) is fixed at
+// its own call site to stop asking before it gets here.
+//
+// A dropped choice emits EventPendingChoiceDropped rather than
+// failing silently, so a stalled table's event log shows why a seat
+// never got prompted, and rather than EventEffectError because
+// nothing failed — CR 800.4a means there was never anyone left to
+// ask.
 func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
+	if p := g.playerByIDLocked(choice.Chooser); p == nil || p.Eliminated {
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  choice.Chooser,
+			Source: choice.Source,
+			Label:  string(choice.Kind),
+		})
+		return uuid.Nil
+	}
 	if choice.ID == uuid.Nil {
 		choice.ID = uuid.New()
 	}
