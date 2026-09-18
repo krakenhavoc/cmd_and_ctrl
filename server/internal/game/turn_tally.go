@@ -72,7 +72,7 @@ type TurnTally struct {
 	Triggered map[string]int `json:"triggered,omitempty"`
 	// EnteredSubtypes counts the permanents that entered the
 	// battlefield this turn, per the player they entered under and per
-	// subtype they had as they entered, keyed by enteredSubtypeKey. A
+	// subtype they had as they entered, keyed by subtypeTallyKey. A
 	// permanent with every creature type (changeling, CR 702.73a) is
 	// counted once under enteredAllCreatureTypes instead of once per
 	// creature type. Read through Game.EnteredWithSubtypeThisTurn.
