@@ -307,7 +307,17 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	if ev.Kind != RepEventMove {
 		return nil
 	}
-	return g.runRouteTailLocked(ev.zoneRoute)
+	if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
+		return err
+	}
+	// #478: a paused ENTRY is abandoned the same way and owes the same
+	// answer. A fetch whose entry prompt is taken away — its chooser
+	// left, or the card left the library by another route while the
+	// question was open — moved nothing, and the search behind it has
+	// to be told so, or its shuffle and its caller's Then wait forever.
+	// A move carries a route or a tail, never both, so this is one call
+	// and a no-op for every exit.
+	return g.runEntryTailLocked(ev, uuid.Nil)
 }
 
 // routeCardToZoneLocked opens the CR 614 replacement window for a

@@ -1441,9 +1441,6 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	default:
 		return ErrZoneNotFound
 	}
-	actor := ownerID
-	var entersTapped bool
-	var enterCounters map[string]int
 	if destZone.Kind == ZoneBattlefield {
 		newController := controller
 		if newController == uuid.Nil {
@@ -1464,76 +1461,41 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 				break
 			}
 		}
-		actor = newController
 		// #263: a reanimated permanent enters the battlefield like
 		// any other, so the CR 614 entry pipeline has to run on it.
 		// Skipping it meant a reanimated shockland ignored its own
 		// enters-tapped clause and a creature reanimated under an
 		// opponent's nose dodged Authority of the Consuls.
-		ev := &ReplacementEvent{
-			Kind:    RepEventMove,
-			Actor:   newController,
-			CardID:  cardID,
-			OldZone: ZoneGraveyard,
-			NewZone: ZoneBattlefield,
-		}
-		out, err := g.applyReplacementsLocked(ev)
-		if errors.Is(err, errReplacementPending) {
-			// A CR 616 ordering prompt is open. Nothing has moved —
-			// the card is still in the graveyard — so the return is
-			// dropped rather than stranded mid-zone. Same posture the
-			// land-play and exile-return paths take.
-			return nil
-		}
-		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-			g.clearReplacementEventLocked(ev.ID)
-			return err
-		}
-		defer g.clearReplacementEventLocked(ev.ID)
-		if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-			return nil
-		}
-		entersTapped = out.EntersTapped
-		enterCounters = out.EntersWithCounters
+		//
+		// #478: and the entry can PAUSE — a reanimated shockland is
+		// asked to pay, two entry replacements queue the CR 616
+		// ordering prompt. It used to be dropped on that pause; it is
+		// resumable now, through the same finisher the unpaused path
+		// runs, so nothing moves until the answer arrives and then the
+		// permanent enters exactly as it would have.
+		_, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+			Kind:           RepEventMove,
+			Actor:          newController,
+			CardID:         cardID,
+			OldZone:        ZoneGraveyard,
+			NewZone:        ZoneBattlefield,
+			entryResumable: true,
+		})
+		return err
 	}
+	// A hand or library destination is not an entry: no pipeline, no
+	// ETB, nothing to pause on.
 	if _, err := MoveCard(src, destZone, cardID); err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
-	var oracleID string
-	if destZone.Kind == ZoneBattlefield {
-		for i := range destZone.Cards {
-			if destZone.Cards[i].InstanceID == cardID {
-				destZone.Cards[i].Controller = actor
-				if entersTapped {
-					destZone.Cards[i].Tapped = true
-				}
-				oracleID = CatalogKey(destZone.Cards[i])
-				break
-			}
-		}
-		for name, n := range enterCounters {
-			_ = g.AddCounterForEffect(cardID, name, n)
-		}
-	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
-		Actor:   actor,
+		Actor:   ownerID,
 		CardID:  cardID,
 		OldZone: ZoneGraveyard,
 		NewZone: destZone.Kind,
 	})
-	if destZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventETB, Actor: actor, CardID: cardID})
-		// A reanimated permanent enters the battlefield like any
-		// other, so the catalog's AsEnters / StartingLoyalty hook has to
-		// run — otherwise reanimating Solemn Simulacrum fetches
-		// nothing and reanimating a planeswalker gives it no loyalty.
-		// Every other path onto the battlefield already fires this;
-		// this one was the omission. A no-op for a card with no
-		// oracle ID (tokens, fixtures) or no catalog entry.
-		g.fireETBHookLocked(cardID, oracleID)
-	}
 	return nil
 }
 
@@ -1737,9 +1699,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	}
 	if !spec.Optional && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
-		// No decision to make — take them all.
-		found := g.executeSearchTakeLocked(spec, p, matches)
-		return g.finishSearchLocked(spec, p, found)
+		// No decision to make — take them all. The take finishes the
+		// search itself (#478): a battlefield destination is an entry
+		// and an entry can pause, so "then shuffle" is the last link of
+		// a chain rather than the line after the loop.
+		return g.executeSearchTakeLocked(spec, p, matches)
 	}
 	g.queueSearchChoiceLocked(spec, p, matches)
 	return nil
@@ -1809,24 +1773,24 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 // permanent enters identically either way.
 //
 // Caller must hold g.mu.
-func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) []uuid.UUID {
+func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
 		// ZoneLibrary means the card does not leave the library.
 		// With ToTop set it will be moved to the top AFTER the
-		// shuffle, in finishSearchLocked — so the IDs are returned
-		// as found, and nothing is moved here. Without it the clause
-		// is "leave it where it is" and only the reveal applies.
+		// shuffle, in finishSearchLocked — so the IDs are carried
+		// through as found, and nothing is moved here. Without it the
+		// clause is "leave it where it is" and only the reveal applies.
 		if err != nil {
-			return nil
+			return g.finishSearchLocked(spec, p, nil)
 		}
 		if spec.Reveal {
 			g.revealLibraryCardsLocked(spec, p, ids)
 		}
 		if spec.ToTop {
-			return ids
+			return g.finishSearchLocked(spec, p, ids)
 		}
-		return nil
+		return g.finishSearchLocked(spec, p, nil)
 	}
 	// S22: the reveal happens ONCE, before anything moves, and names
 	// every card the search took. Cultivate's "reveal those cards" is
@@ -1836,17 +1800,21 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	if spec.Reveal {
 		g.revealLibraryCardsLocked(spec, p, ids)
 	}
+	if destZone.Kind == ZoneBattlefield {
+		// #478: a battlefield destination is an ENTRY, and an entry can
+		// pause. The takes are therefore SEQUENCED through the entry's
+		// continuation rather than looped — each card's entry starts the
+		// next one and the last one finishes the search — so a Skyshroud
+		// Claim whose first Forest stops for a prompt does not fetch the
+		// second one over the top of the open question. The same idiom
+		// the discard batch and the exit sweeps use, and the same reason:
+		// the found list is carried forward BY VALUE, which is what makes
+		// an undo across the prompt replay identically.
+		return g.searchEnterEachThenFinishLocked(spec, ids, nil)
+	}
 	found := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		if !p.Library.Contains(id) {
-			continue
-		}
-		if destZone.Kind == ZoneBattlefield {
-			moved, ok := g.searchEnterBattlefieldLocked(spec, p, id)
-			if !ok {
-				continue
-			}
-			found = append(found, moved)
 			continue
 		}
 		if _, err := MoveCard(p.Library, destZone, id); err != nil {
@@ -1862,7 +1830,44 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		})
 		found = append(found, id)
 	}
-	return found
+	return g.finishSearchLocked(spec, p, found)
+}
+
+// searchEnterEachThenFinishLocked puts the head of `ids` onto the
+// battlefield and continues with the tail from that entry's
+// continuation. The empty list is the base case: the search is finished
+// (EventSearchLibrary, the shuffle, spec.Then) with the cards that
+// actually entered.
+//
+// The player is re-looked-up from the live *Game on every step rather
+// than captured, on the undo-safety contract every continuation in the
+// engine follows.
+//
+// Caller must hold g.mu.
+func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, found []uuid.UUID) error {
+	p := g.playerByIDLocked(spec.Player)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	// A card that is no longer in the library is skipped rather than
+	// fetched: it left while an earlier card's entry prompt was open.
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) {
+		ids = ids[1:]
+	}
+	if len(ids) == 0 {
+		return g.finishSearchLocked(spec, p, found)
+	}
+	head, rest := ids[0], ids[1:]
+	return g.searchEnterBattlefieldLocked(spec, p, head, func(g *Game, entered uuid.UUID) error {
+		out := found
+		if entered != uuid.Nil {
+			// A fresh slice rather than an append in place: two runs of
+			// the same continuation (an undo, then the same answer
+			// again) must not see each other's entry.
+			out = append(append(make([]uuid.UUID, 0, len(found)+1), found...), entered)
+		}
+		return g.searchEnterEachThenFinishLocked(spec, rest, out)
+	})
 }
 
 // searchEnterBattlefieldLocked puts one fetched card onto the
@@ -1878,40 +1883,36 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 // express a conditional one.
 //
 // The pipeline is consulted BEFORE the card leaves the library, for
-// the same reason the exile-return path does it: a CR 616 ordering
-// prompt means bailing, and bailing with the card already lifted out
-// of its zone would strand it. On that bail this card is simply not
-// found — the same posture the land-play path takes when its own
-// pipeline call pauses.
+// the same reason the exile-return path does it: a paused entry moves
+// nothing, and pausing with the card already lifted out of its zone
+// would strand it.
 //
-// DECLARED SIMPLIFICATION — this event is NOT entryResumable, so a
-// fetched permanent never gets an entry prompt.
+// #478: the entry is RESUMABLE, so a fetched permanent gets its entry
+// prompt. A fetchland cracking for a shockland asks "pay 2 life so it
+// enters untapped?" exactly as the play path does, and two entry
+// replacements on one fetched land (Kismet plus Thalia, Heretic
+// Cathar) queue the CR 616 ordering prompt and then finish the fetch
+// when it is answered.
 //
-// The concrete case is a fetchland cracking for a shockland. On the
-// play path the controller is asked "pay 2 life so it enters
-// untapped?"; fetched, they are not asked, and the land enters
-// tapped. Weaker than printed, never stronger — which is exactly the
-// posture ReplacementEvent.entryResumable exists to enforce, and a
-// strict improvement on the old behaviour, where a fetched shockland
-// ignored its entry clause altogether and arrived untapped for free.
+// That used to be a declared simplification, and the argument against
+// closing it was that executeEntryToBattlefieldLocked could finish the
+// MOVE but knew nothing about the search that started it — the library
+// would never be shuffled, EventSearchLibrary would never fire, and the
+// Then continuation (Fabled Passage's "untap that land", Gamble's
+// random discard) would never run. All three of those now ride across
+// the pause on ev.entryTail, so the resume finishes the search rather
+// than only the move; see entry_tail.go. With two applicable
+// replacements the OLD behaviour was not a graceful degradation at all:
+// the prompt was still queued, the player still answered it, and the
+// card was still in the library afterwards.
 //
-// Setting entryResumable here would be actively worse, not better.
-// executeEntryToBattlefieldLocked can finish the MOVE, but it knows
-// nothing about the search that started it: the library would never
-// be shuffled, EventSearchLibrary would never fire, and the Then
-// continuation — Fabled Passage's "untap that land", Gamble's random
-// discard — would never run. A missing shuffle is worse than a
-// missing prompt, because it silently leaks library order.
-//
-// A faithful version needs the search's own continuation to survive
-// the entry prompt: a second frame stacked under the replacement
-// one, plus a hook in the entry resume to run it. That is its own
-// change, not a rider on this one.
-//
-// Returns the moved card's ID and whether it moved.
+// `then` is handed the entering permanent's ID, or uuid.Nil when
+// nothing entered — cancelled, redirected, or its prompt taken away. It
+// runs from every terminal outcome, which is what lets the search
+// sequence its remaining takes through it.
 //
 // Caller must hold g.mu.
-func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID) (uuid.UUID, bool) {
+func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, then func(g *Game, entered uuid.UUID) error) error {
 	// The controller has to be stamped before the pipeline runs:
 	// Authority of the Consuls asks whose permanent is entering, and
 	// a self-replacement's condition ("unless you control two or
@@ -1922,7 +1923,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 			break
 		}
 	}
-	ev := &ReplacementEvent{
+	_, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
 		Kind:    RepEventMove,
 		Actor:   spec.Player,
 		CardID:  id,
@@ -1931,57 +1932,15 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// The fetching effect's own "put it onto the battlefield
 		// TAPPED" clause is seeded onto the event rather than OR-ed
 		// in after the pipeline. Same result for the inline path, and
-		// it is the difference between right and wrong for any resume
+		// it is the difference between right and wrong for the resume
 		// path: a resume reads ev.EntersTapped and has no idea what
 		// spell sent the card, so a Cultivate-fetched land that
 		// paused for a prompt would otherwise come back untapped.
-		EntersTapped: spec.TappedOnEntry,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		return uuid.Nil, false
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return uuid.Nil, false
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		return uuid.Nil, false
-	}
-	moved, err := MoveCard(p.Library, g.Battlefield, id)
-	if err != nil {
-		return uuid.Nil, false
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
-			continue
-		}
-		g.Battlefield.Cards[i].Controller = spec.Player
-		// out.EntersTapped carries both inputs: the fetching effect's
-		// printed "tapped" clause, seeded onto the event above, and
-		// whatever the CR 614 pipeline added on top.
-		if out.EntersTapped {
-			g.Battlefield.Cards[i].Tapped = true
-		}
-		break
-	}
-	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-	for name, n := range out.EntersWithCounters {
-		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   spec.Player,
-		CardID:  moved.InstanceID,
-		OldZone: ZoneLibrary,
-		NewZone: ZoneBattlefield,
+		EntersTapped:   spec.TappedOnEntry,
+		entryResumable: true,
+		entryTail:      &entryTail{then: then},
 	})
-	g.EmitEvent(Event{Kind: EventETB, Actor: spec.Player, CardID: moved.InstanceID})
-	// Same omission as the reanimation path had: a fetched permanent
-	// enters like any other, so its catalog AsEnters hook runs.
-	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-	return moved.InstanceID, true
+	return err
 }
 
 // revealLibraryCardsLocked reveals the named library cards to the
@@ -2477,11 +2436,17 @@ func lookAtTopReason(n int) string {
 // an ordinary battlefield entry does, so Authority of the Consuls
 // taps the blinked creature and a self "enters tapped" replacement
 // still applies. The pipeline is consulted BEFORE the card is lifted
-// out of exile: if it queues a CR 616 ordering prompt the card has
-// not moved yet, so the return simply doesn't happen rather than
-// stranding the card between zones. (That path needs two competing
-// replacements on one entry; no card in the catalog produces it
-// today.)
+// out of exile, so nothing is stranded between zones.
+//
+// #478: the entry can PAUSE. Two entry replacements on one returning
+// permanent queue the CR 616 ordering prompt, and a shockland blinked
+// back is asked to pay. Until now the return was DROPPED on that pause
+// — the reason #909's Living Death could hang both of its remaining
+// passes off one continuation. It is now resumable like every other
+// entry: nothing has moved while the question is open, and the return
+// completes, with its new object identity, when the answer arrives.
+// The call returns uuid.Nil with a nil error in the meantime, which is
+// the same "nothing entered" the cancel and redirect branches return.
 //
 // Both EventETB and the catalog's AsEnters hook fire, so the permanent
 // re-triggers everything a fresh entry would.
@@ -2507,76 +2472,27 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		g.Exile.Cards[i].Controller = newController
 		break
 	}
-	ev := &ReplacementEvent{
-		Kind:    RepEventMove,
-		Actor:   newController,
-		CardID:  cardID,
-		OldZone: ZoneExile,
-		NewZone: ZoneBattlefield,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A CR 616 ordering prompt is open. Nothing has moved; the
-		// card stays in exile and the return is dropped.
-		return uuid.Nil, nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return uuid.Nil, err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		// Canceled, or redirected elsewhere by a replacement. There
-		// is no generic "put it wherever the pipeline said" helper
-		// for an exile source, so a redirect is treated as a cancel
-		// rather than guessed at.
-		return uuid.Nil, nil
-	}
-	card, err := g.Exile.Remove(cardID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	newID := uuid.New()
-	// A blink gets a new instance ID but remains the same random source.
-	if ordinal, ok := g.sourceOrdinals[cardID]; ok {
-		g.sourceOrdinals[newID] = ordinal
-	}
-	card.InstanceID = newID
-	card.Controller = newController
-	card.Tapped = tapped || out.EntersTapped
-	card.NextUntapSkips = nil
-	card.Counters = nil
-	card.LostLastCounter = false
-	card.KnownBy = nil
-	card.ExilePlay = ExilePlayPermission{}
-	card.DamageMarked = 0
-	card.MarkedLethalByDeathtouch = false
-	card.AttackingTarget = uuid.Nil
-	card.BlockingTarget = uuid.Nil
-	card.GoadedBy = uuid.Nil
-	card.FaceDown = false
-	card.BattleX = 0
-	card.BattleY = 0
-	card.EnteredBattlefieldAt = 0
-	card.SummonedThisTurn = false
-	card.NamedTribe = ""
-	card.ChosenColor = ""
-	card.effective = nil
-	g.Battlefield.PushTop(card)
-	g.markCardKnownInZoneLocked(g.Battlefield, newID)
-	for name, n := range out.EntersWithCounters {
-		_ = g.AddCounterForEffect(newID, name, n)
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   newController,
-		CardID:  newID,
-		OldZone: ZoneExile,
-		NewZone: ZoneBattlefield,
+	// The effect's own "return it TAPPED" clause is seeded onto the
+	// event rather than OR-ed in after the pipeline, the way
+	// SearchLibrarySpec.TappedOnEntry and ZoneEntryOptions.Tapped are:
+	// a resume reads ev.EntersTapped and has no idea what effect sent
+	// the card, so a Thassa blink that paused would otherwise come back
+	// untapped.
+	return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+		Kind:           RepEventMove,
+		Actor:          newController,
+		CardID:         cardID,
+		OldZone:        ZoneExile,
+		NewZone:        ZoneBattlefield,
+		EntersTapped:   tapped,
+		entryResumable: true,
+		// CR 400.7: the returning permanent is a NEW OBJECT. The
+		// finisher mints the ID and strips the old object's
+		// battlefield state, on the inline path and the resumed one
+		// alike — which is what the old "an exile return cannot be
+		// resumed generically" note was about.
+		entryTail: &entryTail{newObject: true},
 	})
-	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: newID})
-	g.fireETBHookLocked(newID, CatalogKey(card))
-	return newID, nil
 }
 
 // HandEntryOptions are the modifiers a "put a card from your hand

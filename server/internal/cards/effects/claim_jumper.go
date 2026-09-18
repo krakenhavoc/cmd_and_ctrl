@@ -24,8 +24,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // happens shuffles, which is what the last sentence permits.
 //
 // The fetched Plains enters tapped through the search's own tapped
-// clause (#478: the search path cannot pause for the land's own
-// entry replacements, so the flag is the reliable half).
+// clause, which is what the card prints; the land's own entry
+// replacements are OR-ed on top of it by the CR 614 pipeline and may
+// now pause for their own question (#478).
 //
 // No simplification.
 func init() {

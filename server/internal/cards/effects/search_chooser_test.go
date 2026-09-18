@@ -553,53 +553,79 @@ func TestGambleDiscardsAfterTheSearchPromptIsAnswered(t *testing.T) {
 	}
 }
 
-// --- the declared limit, pinned -----------------------------------
+// --- the declared limit, closed -----------------------------------
 
-// A fetched shockland enters TAPPED and nobody is asked to pay.
+// A fetched shockland asks its owner to pay, and the search waits.
 //
-// This is the declared simplification on searchEnterBattlefieldLocked
-// made executable. The search path now runs the CR 614 pipeline, so
-// the shockland's entry replacement IS consulted — but the search
-// entry site is not entryResumable, so the pipeline cannot pause
-// there to ask the question, and takes the un-paid branch.
+// This test used to pin the declared simplification on
+// searchEnterBattlefieldLocked: the CR 614 pipeline ran, so the entry
+// replacement was consulted, but the site was not entryResumable, so
+// the pipeline could not pause to ask and took the un-paid branch. The
+// land entered tapped — weaker than printed, never stronger.
 //
-// Weaker than printed, never stronger, and a strict improvement on
-// the pre-#263 behaviour where the clause was skipped entirely and
-// the land arrived untapped for free. When the search path learns to
-// carry its continuation through an entry prompt, this test flips to
-// "a prompt is queued and the land enters untapped if you pay".
-func TestFetchedShocklandEntersTappedWithNoPaymentOffered(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	lifeBefore := me.Life
-	seedSearchLibrary(me, game.Card{
-		Name:     "Blood Crypt",
-		TypeLine: "Land — Swamp Mountain",
-		OracleID: bloodCryptOracle,
-	})
+// #478 closed it. The search's own duties (the shuffle,
+// EventSearchLibrary, the Then continuation) ride across the pause on
+// the entry tail, so the entry is resumable and the question is asked;
+// the land enters untapped when it is paid. Both branches are pinned
+// here, because "offered" and "answered correctly" are different
+// claims.
+func TestFetchedShocklandOffersItsPaymentAndTheSearchWaits(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		pay        bool
+		wantTapped bool
+	}{
+		{"pay 2 life", true, false},
+		{"decline", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			lifeBefore := me.Life
+			seedSearchLibrary(me, game.Card{
+				Name:     "Blood Crypt",
+				TypeLine: "Land — Swamp Mountain",
+				OracleID: bloodCryptOracle,
+			})
+			before := len(g.Events)
 
-	g.WithWriteLock(func() {
-		_ = g.SearchLibraryForEffect(me.ID,
-			func(c game.Card) bool { return c.Name == "Blood Crypt" },
-			game.ZoneBattlefield, 1, false, false)
-	})
+			g.WithWriteLock(func() {
+				_ = g.SearchLibraryForEffect(me.ID,
+					func(c game.Card) bool { return c.Name == "Blood Crypt" },
+					game.ZoneBattlefield, 1, false, true)
+			})
 
-	card, ok := searchFetchedCard(g, "Blood Crypt")
-	if !ok {
-		t.Fatal("Blood Crypt was not fetched onto the battlefield")
-	}
-	if !card.Tapped {
-		t.Error("a fetched shockland entered UNTAPPED for free — the entry clause was skipped")
-	}
-	if searchChoiceFor(g, me.ID) != nil {
-		t.Error("a search prompt is open; the fetch had exactly one candidate")
-	}
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceEntryPayLife {
-			t.Error("the fetched entry queued a pay-life prompt it has no resume for")
-		}
-	}
-	if me.Life != lifeBefore {
-		t.Errorf("life %d -> %d; nothing should have been paid", lifeBefore, me.Life)
+			if _, ok := searchFetchedCard(g, "Blood Crypt"); ok {
+				t.Fatal("nothing moves while the pay-life question is open")
+			}
+			if plSearchFired(g, before) {
+				t.Error("the search is not finished until the entry is")
+			}
+			prompt := entryPayLifeChoiceFor(g, me.ID)
+			if prompt == nil {
+				t.Fatal("the fetched shockland's entry offers the payment")
+			}
+			if err := g.ResolveEntryPayLife(prompt.ID, me.ID, tc.pay); err != nil {
+				t.Fatalf("ResolveEntryPayLife: %v", err)
+			}
+
+			card, ok := searchFetchedCard(g, "Blood Crypt")
+			if !ok {
+				t.Fatal("answering finishes the fetch")
+			}
+			if card.Tapped != tc.wantTapped {
+				t.Errorf("tapped = %v, want %v", card.Tapped, tc.wantTapped)
+			}
+			wantLife := lifeBefore
+			if tc.pay {
+				wantLife -= 2
+			}
+			if me.Life != wantLife {
+				t.Errorf("life %d -> %d, want %d", lifeBefore, me.Life, wantLife)
+			}
+			if !plSearchFired(g, before) {
+				t.Error("the search event fires once the entry has settled")
+			}
+		})
 	}
 }

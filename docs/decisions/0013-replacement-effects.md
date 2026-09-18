@@ -1294,6 +1294,121 @@ the `replacementResume` frame from §5g, with §5k's undo contract;
 `paused_tuck_continuation_test.go` (engine) and
 `paused_tuck_continuations_test.go` (catalog) pin it.
 
+### 5o. Amendment, 2026-09-18: an entry can pause, and the effect waits
+
+*Amendment, 2026-09-18, branch `fix/783-478-tuck-and-fetch-pause`.
+Closes [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478),
+filed by the batch 16 card agent in PR #477 and re-confirmed in the
+2026-09-14 triage sweep.*
+
+§5f gave the EXIT side a resume that finishes a move from whatever zone
+the window opened over. This is the ENTRY side's, and the bug it closes
+is worse than a missing prompt: with two entry replacements on one
+fetched permanent (Kismet plus Thalia, Heretic Cathar on a Guildgate)
+the CR 616 ordering prompt was still queued, the player still answered
+it, and **the card was still in the library afterwards**. The library was
+never shuffled either.
+
+**1. The old reasoning, and the half of it that was right.** Three
+effect-side entries — the library search, the exile return and the
+reanimation — deliberately did not set `entryResumable`, with the
+argument written out at length above `searchEnterBattlefieldLocked`:
+`executeEntryToBattlefieldLocked` can finish the MOVE, but it knows
+nothing about the search that started it, so the library would never be
+shuffled, `EventSearchLibrary` would never fire, and the `Then`
+continuation would never run — and a missing shuffle silently leaks
+library order, which is worse than a missing prompt.
+
+That is a correct account of the COST and the wrong conclusion. It
+justifies the one-replacement case, where the pipeline never pauses and
+a fetched shockland simply enters tapped with no payment offered
+(weaker than printed, never stronger — the posture `entryResumable`
+exists to enforce). It does not justify the two-replacement case, which
+is not a graceful degradation at all.
+
+**2. The answer is the one the exit already had.** Not "don't resume":
+carry the duties across the pause, exactly as `zoneRoute` carries the
+destination, the to-the-bottom instruction and the caller's
+continuation. `ReplacementEvent.entryTail` (`entry_tail.go`) holds what
+the effect still owes — the CR 400.7 new object an exile return mints,
+and `then`, the rest of the effect — and the same
+`replacementResume` frame every other paused event uses carries it.
+There is no second entry resume:
+`applyResolvedReplacementEventLocked`'s entry branch →
+`executeEntryToBattlefieldLocked`, which is also now the finisher the
+INLINE path runs, so a fetched permanent cannot enter differently
+depending on whether anybody happened to be asked a question.
+`enterBattlefieldThroughPipelineLocked` is the entry primitive the three
+sites share, built to `routeCardToZoneLocked`'s shape: paused means
+nothing moved, and every other exit is terminal and runs the tail.
+
+**3. What can now pause where it could not before.** A library search
+(`SearchLibraryThenForEffect` and every wrapper over it — every fetch,
+tutor and Cultivate in the catalog), `ReturnFromExileToBattlefieldForEffect`
+(every blink and flicker), and `ReturnFromGraveyardUnderControlForEffect`
+with a battlefield destination (every reanimation). In each case the
+delay is one action and it happens only when two entry replacements
+apply, or a shockland is fetched, or a Clone is reanimated. The public
+`...ForEffect` signatures are unchanged; what changed is that
+`ReturnFromExileToBattlefieldForEffect` may return `uuid.Nil` with a nil
+error meaning "not yet", which was already its cancel-and-redirect
+return, and that the line after a fetch may run one action later than
+the call. A card that reads what arrived uses `SearchLibrarySpec.Then`.
+
+**4. A multi-card fetch is sequenced.** A search may take more than one
+card, and a battlefield take is an entry, so the takes go IN SEQUENCE —
+each from the previous one's continuation, with the found list carried
+forward by value — and `finishSearchLocked` (the shuffle,
+`EventSearchLibrary`, `spec.Then`) is the base case. Skyshroud Claim's
+second Forest does not arrive over the top of the first one's open
+question. The same idiom §5g's discard batch and §5k's exit sweeps use,
+and for the same undo reason.
+
+**5. Two rules that had to move with it.**
+
+- **CR 305.2, the land drop.** The resume bumped `LandsPlayedThisTurn`
+  for "a land with no stack item", which identified the land play
+  correctly while the land play and stack resolution were the only
+  resumable entries and would have counted a fetched, reanimated or
+  blinked land now that they are not. The signal is declared on the
+  event (`landPlay`) instead of inferred.
+- **#701's stale-prompt prune.** A paused entry moves nothing, so the
+  card sits in its LIBRARY with the question open and a mill, a draw or
+  an opponent's exile can take it. `pausedZoneChangeStaleLocked` covers
+  entries now (a card already on the battlefield is not stale — the
+  resume short-circuits), and `executeEntryToBattlefieldLocked` refuses
+  to move a card that is no longer in `ev.OldZone` as the backstop for a
+  departure the prune does not run at. The abandoned entry's tail still
+  runs, so the search behind it is not stranded.
+
+**6. §5m's caveat is discharged.** It said Living Death could hang both
+of its remaining passes off one continuation "because a battlefield
+ENTRY cannot pause", and that if that changed the reanimation half would
+need a continuation of its own. It does not: the return is no longer
+DROPPED on a pause, so a creature whose entry stops for a prompt arrives
+when the answer comes and the rest of the pass carries on around it —
+the fire-and-forget posture the sacrifice pass already has. Nothing in
+Living Death reads the returns, and nothing is stranded.
+
+**7. The one entry that still cannot pause.**
+`putOntoBattlefieldFromZoneLocked` — the hand / library "put onto the
+battlefield" batch (#654, #745). It runs every card's pipeline against
+the pre-entry board and then moves them together, which is what makes
+"any number of permanent cards" a simultaneous entry (CR 614.12,
+CR 603.6a); a per-card resume would break that. A card of that batch
+whose pipeline pauses stays where it was: weaker than printed, never
+stronger, and it is now the only site `optionalReplacementResumableLocked`
+and `offerEntryLifePaymentLocked` refuse to prompt for.
+
+**8. Nothing new is snapshotted.** `entryTail` rides the
+`replacementResume` frame the census already counts
+(`ChoiceResumeFrames`), and gets its own copy in
+`cloneReplacementResume` for the reason `zoneRoute` and `damageTail` do:
+its `then` is cleared THROUGH the pointer, so sharing the struct would
+let the live game's run consume the snapshot's continuation.
+`paused_entry_continuations_test.go` pins the undo — rewind into the
+open entry prompt, answer it again, and the Guildgate arrives again.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

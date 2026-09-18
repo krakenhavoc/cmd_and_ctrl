@@ -199,18 +199,28 @@ type ReplacementEvent struct {
 	// entryResumable is an unexported breadcrumb meaning "if this
 	// entry pauses for a prompt, the generic resume path may finish
 	// it" (executeEntryToBattlefieldLocked). Set by the land-play
-	// branch of CastSpell and — since S16.5, so Clone can ask what
-	// to copy — by stack resolution, which hands the resume its
-	// StackItem so the Aura attach and evoke's sacrifice trigger
-	// survive the pause.
+	// branch of CastSpell, by stack resolution — since S16.5, so Clone
+	// can ask what to copy — which hands the resume its StackItem so
+	// the Aura attach and evoke's sacrifice trigger survive the pause,
+	// and since #478 by the three effect-side entries that go through
+	// enterBattlefieldThroughPipelineLocked: the library search, the
+	// exile return and the reanimation.
 	//
-	// Off by default on purpose. The remaining battlefield-entry
-	// sites do things the generic push can't: an exile→battlefield
-	// return mints a new InstanceID (CR 400.7), and the library-
-	// search path owes its caller a shuffle. Finishing those
-	// generically would silently drop the new object identity or
-	// leak library order, which is worse than leaving them exactly
-	// as they are — they still never pause today.
+	// Those three used to be unflagged, on the argument that finishing
+	// them generically would silently drop work the starting effect
+	// owed — the search's shuffle and EventSearchLibrary, the caller's
+	// Then, and the exile return's new object identity (CR 400.7). The
+	// argument was right about the cost; what was missing was a way to
+	// CARRY those duties across the pause, which is what entryTail
+	// below is. With one the generic resume is faithful, so they are
+	// flagged and the entry can ask its question.
+	//
+	// Off by default still. putOntoBattlefieldFromZoneLocked (the
+	// hand / library "put onto the battlefield" batch) is the remaining
+	// unflagged entry: it runs every card's pipeline against the
+	// pre-entry board and then moves them together, a simultaneity a
+	// per-card resume would break. A card of that batch whose pipeline
+	// pauses stays where it was — weaker than printed, never stronger.
 	//
 	// An effect that WOULD pause consults this before prompting: a
 	// pay-life entry choice on an unflagged event takes the un-paid
@@ -218,6 +228,35 @@ type ReplacementEvent struct {
 	// offerEntryLifePaymentLocked). Any entry site that grows a
 	// faithful resume should set this and inherit the prompt.
 	entryResumable bool
+
+	// entryTail is the entry half's answer to zoneRoute: what the
+	// effect that asked for this battlefield ENTRY still owes once the
+	// pipeline settles — the new object identity an exile return mints,
+	// and the rest of the effect (a search's shuffle and its caller's
+	// Then). Set by enterBattlefieldThroughPipelineLocked's callers and
+	// read only by executeEntryToBattlefieldLocked and
+	// runEntryTailLocked, which both the inline path and the CR 616
+	// resume go through.
+	//
+	// A non-nil value is not what makes an entry resumable —
+	// entryResumable is — but it is what makes resuming it FAITHFUL.
+	// See entry_tail.go. Added in #478.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	entryTail *entryTail
+
+	// landPlay flags the one battlefield entry that is a LAND DROP
+	// (CR 305.2): the land branch of CastSpell. The resume bumps
+	// LandsPlayedThisTurn only for it.
+	//
+	// It is declared rather than derived. The resume used to infer a
+	// land play from "this card is a land and the event carries no
+	// StackItem", which was true while the only two resumable entries
+	// were the land play and stack resolution and became wrong the
+	// moment a fetched, reanimated or blinked land could pause there
+	// (#478): a land an effect puts onto the battlefield was not
+	// PLAYED, so it must not spend the turn's land drop.
+	landPlay bool
 
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face

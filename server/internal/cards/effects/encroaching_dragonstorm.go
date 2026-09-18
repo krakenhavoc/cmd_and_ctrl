@@ -19,9 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // when the trigger resolves, so it can be recast for another two
 // lands, which is the whole loop.
 //
-// No simplification. The known engine gap on a fetched permanent
-// whose own entry queues a prompt (#478) is the search path's, not
-// the card's, and a basic land never asks anything on entry.
+// No simplification. A fetched permanent whose own entry queues a
+// prompt now waits for the answer (#478); a basic land never asks
+// anything on entry, so nothing here changes either way.
 func init() {
 	Register(Spec{
 		OracleID:     "1e95c273-7fec-4f8d-8be9-e21ad4b93717",

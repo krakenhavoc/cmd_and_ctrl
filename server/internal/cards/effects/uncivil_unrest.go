@@ -27,12 +27,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // DECLARED SIMPLIFICATION, weaker than printed: riot always gives
 // the +1/+1 counter; the haste option is not offered. The choice is
-// made as the creature enters, which is a prompt inside the entry
-// pipeline, and only the stack-resolution and land-play entry sites
-// can pause for one — a creature reanimated or fetched onto the
-// battlefield would be stranded in its old zone (#478). A counter
-// every time is one of the two printed outcomes, never a third, and
-// it is the half the second ability wants.
+// made as the creature enters, which means a prompt inside the entry
+// pipeline and a PendingChoiceKind to carry the answer; #478 gave the
+// effect-side entries a resume, so the blocker is now only that the
+// prompt itself does not exist. A counter every time is one of the two
+// printed outcomes, never a third, and it is the half the second
+// ability wants.
 func init() {
 	Register(Spec{
 		OracleID:     "bd655e8b-f192-4635-9e23-357b6f89ef8f",

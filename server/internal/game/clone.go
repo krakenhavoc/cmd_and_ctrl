@@ -595,6 +595,19 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			}
 			ev.zoneRoute = &r
 		}
+		// #478: and the ENTRY tail, for exactly the reason the route
+		// gets a copy. runEntryTailLocked nils `then` on the tail rather
+		// than the tail on the event, because the rest of what it
+		// carries (the CR 400.7 new-object flag) is what
+		// executeEntryToBattlefieldLocked is still reading when it runs.
+		// Sharing the struct would let the live game's run consume the
+		// snapshot's continuation, so undoing the answer to a fetched
+		// permanent's entry prompt and answering it again would push the
+		// card and skip the library shuffle.
+		if f.ev.entryTail != nil {
+			tail := *f.ev.entryTail
+			ev.entryTail = &tail
+		}
 		out.ev = &ev
 	}
 	return &out
