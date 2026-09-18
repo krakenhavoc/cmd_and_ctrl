@@ -207,8 +207,6 @@ func report(t *testing.T, byOracle map[string]catalog.Entry, name string, list *
 		full, caveated, unreviewed, unregd int
 		rows                               []row
 		seen                               = map[string]bool{}
-		copies                             = map[string]int{}
-		order                              []string
 	)
 
 	cardsIn := append(append([]cards.Card{}, list.Commanders...), list.Mainboard...)
@@ -220,12 +218,10 @@ func report(t *testing.T, byOracle map[string]catalog.Entry, name string, list *
 		// Per distinct card, like decks.Coverage: a deck's four
 		// Treasure-makers are four rows, its three Islands are one.
 		key := c.OracleID.String()
-		copies[key]++
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		order = append(order, key)
 
 		e, ok := byOracle[key]
 		switch {
