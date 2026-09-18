@@ -313,7 +313,7 @@ added by #830/#857/#859) in place, so a creature stolen mid-combat and
 re-declared later in the same combat would be silently denied its
 "whenever ~ attacks" trigger — the announcement said it had already
 been declared. Noted by #871's agent, fixed here: one
-`removeFromCombatLocked(id)` helper clears the declaration and its
+`removeFromCombatLocked(*Card)` helper clears the declaration and its
 announcements together, and both `materialiseControlLocked` and any
 future single-permanent CR 506.4 site call it.
 

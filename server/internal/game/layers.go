@@ -658,7 +658,10 @@ func (g *Game) silencedSetLocked() map[uuid.UUID]bool {
 //     cleared, so a hasty creature is still hasty (HasSummoningSickness
 //     reads the keyword at read time).
 //   - CR 506.4 — a permanent that changes control is removed from
-//     combat.
+//     combat. Declaration AND announcement, through
+//     `removeFromCombatLocked`: clearing `AttackingTarget` alone left
+//     the creature marked as already-announced for this combat, so
+//     its next attack declaration fired no trigger (#871).
 //
 // Both fire only on an actual delta, so a recompute that changes
 // nothing touches nothing.
@@ -681,8 +684,7 @@ func (g *Game) materialiseControlLocked() {
 		}
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
-		c.AttackingTarget = uuid.Nil
-		c.BlockingTarget = uuid.Nil
+		g.removeFromCombatLocked(c)
 	}
 }
 
