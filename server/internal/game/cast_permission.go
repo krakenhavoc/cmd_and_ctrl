@@ -575,12 +575,18 @@ func (g *Game) EndCastPermissionAtTurnForEffect(playerID, cardID uuid.UUID, unti
 // cast or play this card out of this zone right now?
 //
 // It returns nil for hand and the command zone (CR 601.1 and CR 903.4
-// need no effect) and nil when the card's own text already opens the
-// zone (Gravecrawler needs no grant, and a printed flashback cost
-// must not be repriced by a permission). Otherwise it is the stored
-// or derived permission that opens the cast, and the cast path, the
-// view and the bot enumerator all read this one function so none of
-// them can disagree about what is legal.
+// need no effect); otherwise the stored or derived permission that
+// opens the cast. The cast path, the view and the bot enumerator all
+// read this one function, so none of them can disagree about what is
+// legal.
+//
+// It does NOT answer nil for a card whose own text already opens the
+// zone, and deliberately: Gravecrawler under an Underworld Breach is
+// castable both ways and the caster picks. Which PRICE wins is a
+// separate question, answered in one other place —
+// resolveAlternativeCostLocked consults the catalog first, so a
+// printed flashback cost is never repriced by a permission that
+// happens to name the same key.
 //
 // #760 hook: a permission that carries a "cast only if" condition
 // (legendary sorcery, Rakdos) is checked by the one announce-time

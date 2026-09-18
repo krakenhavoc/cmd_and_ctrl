@@ -213,6 +213,49 @@ func TestAGrantedPriceMustBeClaimed(t *testing.T) {
 	}
 }
 
+// A permission must never take away a path the card already prints.
+// Gravecrawler's own text opens the graveyard for free; an Underworld
+// Breach on the table ADDS escape and must not start charging for the
+// free cast — a permission that made its controller strictly worse off
+// would be wrong in both directions at once.
+func TestAPermissionNeverRemovesThePrintedPath(t *testing.T) {
+	const oracle = "test-gravecrawler"
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, StepPrecombatMain)
+	withCatalogCastableZones(t, castableZonesFor(oracle, ZoneGraveyard))
+	withCatalogCastPermissions(t, func(id string) []CastPermission {
+		if id != "test-breach" {
+			return nil
+		}
+		return []CastPermission{{
+			Zone: ZoneGraveyard, Scope: ScopeStanding, WhileInZone: true,
+			Filter: PermissionFilter{NonLandOnly: true}, AltCostKey: "escape",
+		}}
+	})
+	source := permanentFor(g, me, "Test Breach", "Enchantment", "{1}{R}")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == source {
+				g.Battlefield.Cards[i].OracleID = "test-breach"
+			}
+		}
+	})
+	crawler := seedGraveyard(me, "Test Gravecrawler", "Creature — Zombie", "{B}")
+	g.WithWriteLock(func() {
+		for i := range me.Graveyard.Cards {
+			if me.Graveyard.Cards[i].InstanceID == crawler {
+				me.Graveyard.Cards[i].OracleID = oracle
+			}
+		}
+	})
+
+	// The printed path: no claim, no price.
+	if err := g.CastSpell(me.ID, crawler, CastSpellParams{FromZone: "graveyard"}); err != nil {
+		t.Fatalf("the card's own free graveyard cast was refused under a permission: %v", err)
+	}
+}
+
 // --- the library top ------------------------------------------------
 
 // CR 401.5: the permission opens the top card and nothing else, and

@@ -160,11 +160,16 @@ the view and the bot enumerator all go through
 func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneKind) *CastPermission
 ```
 
-which is `nil` when the card's own text already opens the zone (no grant is
-needed) and otherwise the permission that opens it. `validateCastPathLocked`
-takes it in place of the old `hasExileGrant bool`, so exile stops being a
-special case in the switch: a granted graveyard cast, a granted exile cast and
-a granted library-top cast reach the same three rules.
+which is `nil` for hand and the command zone and otherwise the permission
+that opens the cast. `validateCastPathLocked` takes it in place of the old
+`hasExileGrant bool`, so exile stops being a special case in the switch: a
+granted graveyard cast, a granted exile cast and a granted library-top cast
+reach the same rules.
+
+It does **not** answer `nil` for a card whose own text already opens the
+zone. Gravecrawler under an Underworld Breach is castable both ways and the
+caster picks; which *price* wins is a separate question, settled in one other
+place (below).
 
 The **price** rides the same object. A grant that names an alternative-cost
 key synthesises the `AlternativeCost` the cast is judged under:

@@ -216,15 +216,22 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 			return ErrCastZoneNotAllowed
 		}
 	}
-	// Rule 4, before rule 3: a permission is the reason this cast is
-	// happening at all, so its price is the one that must be paid.
-	if grant != nil {
+	// Rule 4, and it applies only when the permission is the REASON
+	// this cast is legal. A permission must never take away a path the
+	// card already prints: Gravecrawler under an Underworld Breach is
+	// castable out of the graveyard for free, as it always was, AND
+	// for Breach's escape cost, and the caster picks. Demanding the
+	// granted price on a card that opens the zone itself would have
+	// made a Breach on the table strictly WORSE for its controller,
+	// which is the wrong direction twice over.
+	if grant != nil && !CardCastableFromZone(key, srcKind) {
 		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
 			return ErrCastCostRequired
 		}
 		return nil
 	}
-	// Rule 3.
+	// Rule 3. Reached for a card that opens the zone itself, whether or
+	// not a permission also does: the card's own price is still owed.
 	if bound := zoneBoundAlternativeCosts(key, srcKind); len(bound) > 0 && alt == nil {
 		return ErrCastCostRequired
 	}
