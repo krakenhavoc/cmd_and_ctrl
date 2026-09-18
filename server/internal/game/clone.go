@@ -458,6 +458,7 @@ func clonePlayer(p *Player) *Player {
 	out.Hand = cloneZone(p.Hand)
 	out.Graveyard = cloneZone(p.Graveyard)
 	out.Command = cloneZone(p.Command)
+	out.Emblems = cloneZone(p.Emblems)
 	if len(p.CommanderDamage) > 0 {
 		out.CommanderDamage = make(map[uuid.UUID]int, len(p.CommanderDamage))
 		for k, v := range p.CommanderDamage {

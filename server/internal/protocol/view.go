@@ -736,6 +736,35 @@ type PlayerView struct {
 	// outside a cast). Drives the S15 ManaPoolPips UI. Added in
 	// S15 sub-PR 2.
 	ManaPool []string `json:"mana_pool,omitempty"`
+
+	// Emblems are the emblems this player has (CR 114), in creation
+	// order. Absent for every seat that has none, which is nearly
+	// every seat in nearly every game.
+	//
+	// Not a ZoneView: a ZoneView carries CardViews, and an emblem has
+	// no characteristics at all (CR 114.1), so a CardView of one is a
+	// row of empty strings that the hover-zoom, the card-image route
+	// and the targeting layer would each have to learn to skip. The
+	// label and the text are the whole thing a client needs.
+	//
+	// PUBLIC and unredacted. An emblem sits face up in the command
+	// zone and any player may read it, so FilterViewFor leaves this
+	// field alone - the same posture as delayed_triggers and
+	// life_history. Added in S40 (#623, ADR 0064).
+	Emblems []EmblemView `json:"emblems,omitempty"`
+}
+
+// EmblemView is one emblem on the wire (CR 114). Label is what the
+// board calls it ("Elspeth, Sun's Champion emblem") and Text is its
+// printed ability, for the chip's hover.
+//
+// Both are read from the catalog on every projection rather than
+// stored on the object, so a wording fix in a card file reaches a
+// game that is already in progress.
+type EmblemView struct {
+	InstanceID string `json:"instance_id"`
+	Label      string `json:"label"`
+	Text       string `json:"text"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -2468,6 +2497,17 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			manaPool[i] = t.Color
 		}
 	}
+	// #623 / CR 114. The label and text come from the catalog, so a
+	// game restored on a binary whose card file reworded the emblem
+	// shows the new wording.
+	var emblems []EmblemView
+	for _, e := range g.EmblemsForPlayer(p.ID) {
+		emblems = append(emblems, EmblemView{
+			InstanceID: e.InstanceID.String(),
+			Label:      e.Label,
+			Text:       e.Text,
+		})
+	}
 	return PlayerView{
 		ID:                p.ID.String(),
 		Name:              p.Name,
@@ -2501,6 +2541,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
+		Emblems:             emblems,
 	}
 }
 

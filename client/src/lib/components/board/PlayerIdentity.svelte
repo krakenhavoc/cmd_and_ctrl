@@ -414,6 +414,21 @@
     </div>
   </div>
 
+  <!-- Emblems (CR 114, #623). They sit under the core row rather
+       than in the marker column because an emblem is a sentence, not
+       a count: the label is what identifies it and the printed
+       ability is the hover. Shown on every seat, self and opponent
+       alike — emblems are public. -->
+  {#if seat.emblems && seat.emblems.length > 0}
+    <div class="emblems" aria-label="emblems">
+      {#each seat.emblems as emblem (emblem.instance_id)}
+        <span class="emblem" title={`${emblem.label} — ${emblem.text}`}>
+          <Icon name="star" size={11} />{emblem.label}
+        </span>
+      {/each}
+    </div>
+  {/if}
+
   {#if seat.eliminated}
     <span class="tag elim">eliminated</span>
   {/if}
@@ -823,6 +838,35 @@
   .counter-btn:hover {
     background: rgba(255, 255, 255, 0.08);
     color: var(--fg);
+  }
+
+  /* Emblem chips (#623). A wrapping row so several fit at any panel
+     width, each truncated to the panel rather than widening it — the
+     full text is the title attribute. */
+  .emblems {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 6px;
+    max-width: 100%;
+  }
+  .emblem {
+    font-size: 11px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: var(--gold-soft, rgba(255, 208, 122, 0.14));
+    border: 1px solid rgba(255, 208, 122, 0.45);
+    color: var(--gold);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
   }
 
   .tag {

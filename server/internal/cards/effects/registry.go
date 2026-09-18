@@ -173,8 +173,18 @@ func Register(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q declares %d replacement effects — the ID scheme reserves %d slots per card (game.MaxCatalogReplacementSlots)",
 			spec.Name, n, game.MaxCatalogReplacementSlots))
 	}
+	checkEmblemSpec(spec.Name, spec.Emblem)
 	registry[spec.OracleID] = spec
 	defs[spec.OracleID] = buildDef(spec)
+	// #623 / CR 114: a card that makes an emblem files a SECOND def
+	// for the emblem object, under "emblem:<this key>". It goes in
+	// `defs` and not in `registry`, so the engine finds the emblem's
+	// abilities through the ordinary CatalogLookup and the card
+	// census keeps counting cards — an emblem is not a card
+	// (CR 114.4). See emblem.go and ADR 0064.
+	if spec.Emblem != nil {
+		defs[game.EmblemKey(spec.OracleID)] = buildEmblemDef(*spec.Emblem)
+	}
 }
 
 // checkSacrificeClause is #747's registration guard (ADR 0020

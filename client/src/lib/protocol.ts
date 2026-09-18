@@ -881,6 +881,22 @@ export interface PlayerView {
   // Empties at every step boundary (CR 106.4), so this is absent
   // / empty in the common case outside an active cast sequence.
   mana_pool?: string[];
+  // #623 (CR 114): the emblems this seat has, in creation order.
+  // Absent for a seat with none, which is nearly every seat.
+  //
+  // Not a ZoneView — an emblem has no characteristics at all, so it
+  // is not a card and there is nothing for the card renderer to draw.
+  // The board shows these as chips beside the player identity, with
+  // `text` as the hover. Public: every seat sees every emblem.
+  emblems?: EmblemView[];
+}
+
+// One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
+// Champion emblem"); `text` is its printed ability, for the hover.
+export interface EmblemView {
+  instance_id: string;
+  label: string;
+  text: string;
 }
 
 export interface LifeChangeView {

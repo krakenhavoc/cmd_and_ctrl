@@ -220,7 +220,7 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 }
 
 // activeStaticAbilitiesLocked collects every continuous effect in
-// play from its two sources and returns them as
+// play from its three sources and returns them as
 // `ContinuousEffect`s bound to source pointers + timestamps:
 //
 //  1. Battlefield permanents — walks g.Battlefield and looks each
@@ -230,6 +230,9 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 //  2. Scoped statics — the floating continuous-effect registry
 //     (scoped_statics.go), whose entries have no battlefield source
 //     and end on a duration instead (CR 611.2).
+//  3. Emblems — the S40 command-zone objects (emblem.go, #623),
+//     whose abilities function where they are (CR 114.3) and which
+//     nothing can remove short of their owner leaving the game.
 //
 // Caller must hold g.mu in write mode.
 //
@@ -254,10 +257,11 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 // Song'd Control Magic stays attached and only this silence hands
 // the creature back today.
 //
-// Scoped statics are never silenced. They have no battlefield
-// source to take abilities away from: the effect outlived its source
-// by construction (CR 611.2b), so nothing on the board can switch it
-// off.
+// Scoped statics and emblems are never silenced. Neither has a
+// battlefield source to take abilities away from: a scoped static
+// outlived its source by construction (CR 611.2b), and nothing in the
+// game can name an emblem at all (CR 114), so nothing on the board
+// can switch either off.
 func (g *Game) activeStaticAbilitiesLocked(silenced map[uuid.UUID]bool) []ContinuousEffect {
 	// S32/S38: floating effects with a duration first. They are
 	// gathered unconditionally — they outlive their source card, so
@@ -266,6 +270,10 @@ func (g *Game) activeStaticAbilitiesLocked(silenced map[uuid.UUID]bool) []Contin
 	// per-bucket sort in applyLayerLocked re-orders everything by
 	// timestamp (CR 613.7) before applying.
 	out := g.scopedContinuousEffectsLocked()
+	// #623 / CR 114.3: an emblem's abilities function in the command
+	// zone. One more source list into the same gather, never a second
+	// pass — see emblem.go.
+	out = append(out, g.emblemContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

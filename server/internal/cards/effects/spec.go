@@ -491,6 +491,18 @@ type Spec struct {
 	// Set it when you add or change a card. Leaving it unset is
 	// permitted and is not a failure — it publishes the card as
 	// unaudited, which is true.
+	// Emblem is the emblem this card's abilities create (CR 114) —
+	// "You get an emblem with [ability]". Nil for every card that
+	// makes none, which is nearly all of them.
+	//
+	// Declared once here, next to the ability that creates it; the
+	// ability itself is `CreateEmblem{}.Apply(ctx)` and names
+	// nothing, because the emblem it makes is this one. Register
+	// files the emblem's own CardDef under game.EmblemKey(OracleID),
+	// which is how its statics reach the layer pass and its triggers
+	// reach the harvester. See emblem.go and ADR 0064.
+	Emblem *EmblemSpec
+
 	Completeness Completeness
 
 	// Caveats names the printed clauses this spec does NOT model,
