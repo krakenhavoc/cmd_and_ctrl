@@ -1,0 +1,403 @@
+package game
+
+import (
+	"sort"
+
+	"github.com/google/uuid"
+)
+
+// autotap.go is the S15 sub-PR 4 backtracking auto-tapper. Public
+// API: `Game.AutoTapForCost(controller, cost, xValue)` returns a
+// plan (list of permanent IDs to tap) that satisfies the parsed
+// cost, or (nil, false) when no plan fits within the budget.
+// `AutoTapForCostExcluding` accepts a set of "lock-tap" excluded
+// sources the player has pre-pinned for a different purpose; the
+// tapper solves the remaining cost from the surviving pool.
+//
+// Algorithm: greedy-with-backtracking, restriction-first heuristic.
+// Each available source contributes a list of `ProducedManaEntry`
+// slots — Sol Ring is `[{C}, {C}]`, Birds of Paradise is
+// `[{W,U,B,R,G}]`, Arcane Signet (Bant) is `[{W,U,G}]`. For each
+// colored requirement in `cost.Required`, the solver finds the
+// most-restrictive un-used source whose first matching slot can
+// cover it; on failure it backtracks to the previous requirement
+// and tries the next-best source. After all colored requirements
+// land, the remaining slots across used sources are tallied
+// against `cost.Generic + cost.XSlots*xValue`; if short, the
+// solver recruits additional unused sources (preferring colorless
+// producers) until the budget is met or the source pool runs out.
+//
+// Budget cap: 10k node expansions. A pathological manabase
+// (12+ duals + filter lands + tri-lands) can blow up the search
+// tree; the cap returns (nil, false) cleanly so the client falls
+// back to manual tapping. Real Commander manabases (38 lands +
+// rocks) resolve in microseconds.
+//
+// What this sub-PR does NOT do: filter-land sub-payment (S17),
+// Cavern of Souls tribe-locking (later sprint), phyrexian self-
+// pay life cost (S17), hybrid-color preferences (greedy picks
+// the first matching half), `{X}` mid-cast slider with live
+// recompute (auto-tapper consumes the announced XValue verbatim).
+//
+// Mana abilities are tap-cost-only in S15; sacrifice-cost
+// abilities (Lotus Petal, etc.) are filtered out of the source
+// list because `applyManaAbilityCostLocked` would require an
+// additional decision the auto-tapper can't make autonomously.
+
+// AutoTapBudget is the maximum number of solver-recursion nodes
+// the auto-tapper expands before bailing. Hit this cap and the
+// public API returns (nil, false), signalling the client to fall
+// back to manual tapping.
+const AutoTapBudget = 10_000
+
+// AutoTapForCost is the no-exclusions entry point — equivalent to
+// AutoTapForCostExcluding(controller, cost, xValue, nil). Callers
+// who haven't pre-pinned any sources should use this. The returned
+// plan lists the permanent IDs in the order the solver picked them
+// (colored requirements first, generic recruits second).
+func (g *Game) AutoTapForCost(controller uuid.UUID, cost ParsedCost, xValue int) ([]uuid.UUID, bool) {
+	return g.AutoTapForCostExcluding(controller, cost, xValue, nil)
+}
+
+// AutoTapForCostExcluding lets the caller pre-exclude a set of
+// sources (lock-tap UI: the player wants Island #4 reserved for
+// some other spell). Excluded sources never enter the candidate
+// pool; the solver works only with what's left.
+func (g *Game) AutoTapForCostExcluding(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+) ([]uuid.UUID, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.autoTapLocked(controller, cost, xValue, excluded)
+}
+
+// AutoTapForCostForEffect is the *ForEffect-surface twin of
+// AutoTapForCost for callers already under g.mu (the S31 legal-move
+// enumerator runs inside ReadSnapshot). Read-only, same contract.
+func (g *Game) AutoTapForCostForEffect(controller uuid.UUID, cost ParsedCost, xValue int) ([]uuid.UUID, bool) {
+	return g.autoTapLocked(controller, cost, xValue, nil)
+}
+
+// autoTapLocked is the lock-aware core. Public callers use the
+// RLock-wrapped exported methods above; internal callers that
+// already hold either lock can route here directly. Read-only —
+// does not mutate any game state, just inspects the battlefield
+// and the catalog.
+func (g *Game) autoTapLocked(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+) ([]uuid.UUID, bool) {
+	sources := gatherTapSources(g, controller, excluded)
+	if len(sources) == 0 && (len(cost.Required) > 0 || cost.Generic+cost.XSlots*xValue > 0) {
+		return nil, false
+	}
+	// Sort sources by restrictiveness — fewer color options first.
+	// The solver picks from the front of the slice for each
+	// requirement, so restrictive sources get reserved for the
+	// requirements that need them most.
+	sort.SliceStable(sources, func(i, j int) bool {
+		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
+	})
+	need := cost.Generic + cost.XSlots*xValue
+	used := make([]bool, len(sources))
+	consumed := make([]int, len(sources)) // per-source slot consumption (colored reqs eat 1 each)
+	plan := make([]uuid.UUID, 0, len(cost.Required))
+	budget := AutoTapBudget
+	if !solveColored(sources, used, consumed, &plan, cost.Required, 0, &budget) {
+		return nil, false
+	}
+	if budget <= 0 {
+		return nil, false
+	}
+	if !recruitGeneric(sources, used, consumed, &plan, need) {
+		return nil, false
+	}
+	return plan, true
+}
+
+// tapSource is one available mana ability on the battlefield. Slots
+// is the parsed Produced string — a list of ProducedManaEntry,
+// each with an Options set of legal colors. Sol Ring is two C
+// slots; Birds of Paradise is one 5-color slot; Arcane Signet
+// (Bant) is one 3-color slot (server-narrowed by commander
+// identity at gather time).
+type tapSource struct {
+	CardID uuid.UUID
+	Slots  []ProducedManaEntry
+}
+
+// gatherTapSources walks the battlefield and collects every tap-
+// for-mana ability the controller has access to. Tapped, foreign,
+// or excluded permanents are skipped. A card with multiple mana
+// abilities contributes only its first tap-cost ability for S15;
+// multi-ability mana sources (Mox Diamond, City of Brass with
+// activations) need a richer model that lands in a later sprint.
+func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool) []tapSource {
+	if g.Battlefield == nil {
+		return nil
+	}
+	var out []tapSource
+	p := g.playerByIDLocked(controller)
+	identity := commanderIdentityFor(p)
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller != controller || c.Tapped {
+			continue
+		}
+		if excluded[c.InstanceID] {
+			continue
+		}
+		abilities := ManaAbilitiesForCard(c)
+		var picked *ManaAbilityShape
+		for i := range abilities {
+			a := abilities[i]
+			if !a.TapCost || a.SacrificeCost {
+				continue
+			}
+			picked = &a
+			break
+		}
+		if picked == nil {
+			continue
+		}
+		slots, err := ParseProducedMana(picked.Produced)
+		if err != nil || len(slots) == 0 {
+			continue
+		}
+		// Arcane Signet's commander-identity narrowing happens
+		// at activation time in ActivateManaAbility; mirror it
+		// here so the auto-tapper's planning matches what the
+		// activation will actually produce. Birds of Paradise
+		// (no commander filter when identity is empty) keeps the
+		// raw 5-color set.
+		if len(identity) > 0 {
+			for i, slot := range slots {
+				if len(slot.Options) <= 1 {
+					continue
+				}
+				slots[i].Options = intersectColors(slot.Options, identity)
+			}
+		}
+		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots})
+	}
+	return out
+}
+
+// restrictivenessScore lower = more restrictive (better picked
+// first). For multi-slot sources, the score is the sum of per-slot
+// option counts — Sol Ring [{C},{C}] = 2, Forest [{G}] = 1,
+// Birds [{W,U,B,R,G}] = 5, Arcane Signet (Bant) [{W,U,G}] = 3.
+func restrictivenessScore(s tapSource) int {
+	n := 0
+	for _, slot := range s.Slots {
+		n += len(slot.Options)
+	}
+	return n
+}
+
+// solveColored places each colored requirement onto a source slot
+// via depth-first backtracking. Returns true on a complete
+// assignment, false on dead-end. The shared budget counter halts
+// pathological searches.
+func solveColored(
+	sources []tapSource,
+	used []bool,
+	consumed []int,
+	plan *[]uuid.UUID,
+	reqs []ColorRequirement,
+	reqIdx int,
+	budget *int,
+) bool {
+	if *budget <= 0 {
+		return false
+	}
+	*budget--
+	if reqIdx >= len(reqs) {
+		return true
+	}
+	req := reqs[reqIdx]
+	for i := range sources {
+		// Try each source — used or not. A used source can still
+		// satisfy a requirement from one of its remaining slots.
+		if consumed[i] >= len(sources[i].Slots) {
+			continue
+		}
+		// Find a slot in this source that hasn't been consumed
+		// AND matches the requirement's options.
+		slotIdx := pickMatchingSlot(sources[i], consumed[i], req.Options)
+		if slotIdx < 0 {
+			continue
+		}
+		// Tentatively pick. Mark used (idempotent for
+		// already-used sources), bump the consumed counter,
+		// append to plan only on the source's first use.
+		wasUsed := used[i]
+		if !wasUsed {
+			used[i] = true
+			*plan = append(*plan, sources[i].CardID)
+		}
+		consumed[i]++
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget) {
+			return true
+		}
+		consumed[i]--
+		if !wasUsed {
+			used[i] = false
+			*plan = (*plan)[:len(*plan)-1]
+		}
+	}
+	return false
+}
+
+// pickMatchingSlot returns the index of the first slot in `s`
+// (starting at startIdx — the next un-consumed slot) whose Options
+// intersect with reqOptions. -1 when nothing matches. The
+// "starting at consumed[i]" convention is fine for the simple
+// uniform-slot case (Sol Ring's two C slots are interchangeable);
+// a richer multi-color mana rock would need a per-slot pick, but
+// that doesn't ship in S15.
+func pickMatchingSlot(s tapSource, startIdx int, reqOptions []string) int {
+	for i := startIdx; i < len(s.Slots); i++ {
+		slot := s.Slots[i]
+		for _, opt := range slot.Options {
+			if matchColor(opt, reqOptions) {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// recruitGeneric tallies spare slots across already-used sources
+// and recruits additional unused sources until total spare meets
+// `need`. Generic-friendly preference: colorless-producing slots
+// first (preserves colored mana for the next cast), then
+// any-color slots, then plain colored. Returns true on success,
+// false when even the full source pool can't cover the need.
+func recruitGeneric(
+	sources []tapSource,
+	used []bool,
+	consumed []int,
+	plan *[]uuid.UUID,
+	need int,
+) bool {
+	if need <= 0 {
+		return true
+	}
+	// Spare slots from already-used sources first — they're
+	// already paid for.
+	spare := 0
+	for i := range sources {
+		if !used[i] {
+			continue
+		}
+		spare += len(sources[i].Slots) - consumed[i]
+	}
+	if spare >= need {
+		return true
+	}
+	deficit := need - spare
+	// Recruit additional sources, preferring colorless producers.
+	candidateOrder := orderUnusedByGenericPreference(sources, used)
+	for _, i := range candidateOrder {
+		if used[i] {
+			continue
+		}
+		used[i] = true
+		*plan = append(*plan, sources[i].CardID)
+		deficit -= len(sources[i].Slots)
+		if deficit <= 0 {
+			return true
+		}
+	}
+	if deficit > 0 {
+		return false
+	}
+	return true
+}
+
+// orderUnusedByGenericPreference returns indices into `sources`
+// for the unused entries in the order the generic recruiter
+// should try them. Colorless-only sources (Sol Ring) come first
+// — they preserve colored mana for future casts. Then any-color
+// (Birds-style), then plain monocolored. Within a tier, slot
+// count descending so a single recruitment plan covers more
+// generic faster.
+func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
+	type rank struct {
+		idx     int
+		tier    int // 0 = colorless-only, 1 = any-color, 2 = monocolored
+		slotCnt int
+	}
+	out := make([]rank, 0, len(sources))
+	for i, s := range sources {
+		if used[i] {
+			continue
+		}
+		t := tierForGeneric(s)
+		out = append(out, rank{idx: i, tier: t, slotCnt: len(s.Slots)})
+	}
+	sort.SliceStable(out, func(a, b int) bool {
+		if out[a].tier != out[b].tier {
+			return out[a].tier < out[b].tier
+		}
+		return out[a].slotCnt > out[b].slotCnt
+	})
+	idxs := make([]int, len(out))
+	for i, r := range out {
+		idxs[i] = r.idx
+	}
+	return idxs
+}
+
+// tierForGeneric scores a source's "generic-spending preference"
+// — lower = recruit-first. Colorless-only producers are tier 0
+// (Sol Ring); any-color (Birds, Signet) tier 1; plain mono-
+// colored tier 2 (basics — preserve them as long as possible).
+func tierForGeneric(s tapSource) int {
+	allColorless := true
+	anyMulti := false
+	for _, slot := range s.Slots {
+		if len(slot.Options) == 1 && slot.Options[0] == "C" {
+			continue
+		}
+		allColorless = false
+		if len(slot.Options) > 1 {
+			anyMulti = true
+		}
+	}
+	switch {
+	case allColorless:
+		return 0
+	case anyMulti:
+		return 1
+	default:
+		return 2
+	}
+}
+
+// intersectColors returns the elements of `a` that also appear in
+// `b`. Used for Arcane Signet's commander-identity narrowing —
+// the produced "{W|U|B|R|G}" gets intersected with the
+// controller's commander identity (e.g. {W,U,G} for a Bant deck)
+// so the auto-tapper knows what colors it can actually plan with.
+func intersectColors(a, b []string) []string {
+	if len(a) == 0 || len(b) == 0 {
+		return nil
+	}
+	bSet := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		bSet[x] = struct{}{}
+	}
+	out := make([]string, 0, len(a))
+	for _, x := range a {
+		if _, ok := bSet[x]; ok {
+			out = append(out, x)
+		}
+	}
+	return out
+}

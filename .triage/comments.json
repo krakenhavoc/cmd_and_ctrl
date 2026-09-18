@@ -1,0 +1,5741 @@
+{
+ "294": {
+  "batch": 1,
+  "ready": 28,
+  "freed": [
+   [
+    "Mana pipeline",
+    16,
+    "#352 (S32)",
+    [
+     "Exotic Orchard",
+     "Dark Ritual",
+     "Temple of the False God",
+     "Chromatic Lantern",
+     "Jeska's Will",
+     "Chrome Mox",
+     "Dimir Signet",
+     "Rakdos Signet",
+     "Reflecting Pool",
+     "Izzet Signet",
+     "Orzhov Signet",
+     "Idol of Oblivion",
+     "Cabal Coffers",
+     "Mox Amber",
+     "Azorius Signet",
+     "Secluded Courtyard"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Toxic Deluge",
+     "Deflecting Swat",
+     "War Room",
+     "Herald's Horn",
+     "Flawless Maneuver",
+     "Force of Will",
+     "Crop Rotation",
+     "The Great Henge"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Rogue's Passage",
+     "Heroic Intervention",
+     "The One Ring",
+     "Teferi's Protection",
+     "Return of the Wildspeaker",
+     "Boros Charm",
+     "Akroma's Will"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Swiftfoot Boots",
+     "Lightning Greaves",
+     "Skullclamp",
+     "Wild Growth",
+     "Animate Dead",
+     "Sword of the Animist"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Urza's Saga"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    1,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 38
+ },
+ "295": {
+  "batch": 2,
+  "ready": 46,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    12,
+    "#93 (S28)",
+    [
+     "Rishkar's Expertise",
+     "Gray Merchant of Asphodel",
+     "Harrow",
+     "Foundry Inspector",
+     "Everflowing Chalice",
+     "Force of Negation",
+     "Etali, Primal Storm",
+     "Diabolic Intent",
+     "Jet Medallion",
+     "Ruby Medallion",
+     "Craterhoof Behemoth",
+     "Urza's Incubator"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    9,
+    "#352 (S32)",
+    [
+     "Mox Opal",
+     "Unclaimed Territory",
+     "Boros Signet",
+     "Bloom Tender",
+     "Inventors' Fair",
+     "Mana Geyser",
+     "Seething Song",
+     "Darkwater Catacombs",
+     "Skycloud Expanse"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Mithril Coat",
+     "Basilisk Collar",
+     "Shadowspear",
+     "Whispersilk Cloak",
+     "Utopia Sprawl",
+     "Blackblade Reforged"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    5,
+    "#279 (S32)",
+    [
+     "Untimely Malfunction",
+     "Inspiring Call",
+     "Finale of Devastation",
+     "Dawn's Truce",
+     "Shifting Woodland"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 32
+ },
+ "296": {
+  "batch": 3,
+  "ready": 48,
+  "freed": [
+   [
+    "Mana pipeline",
+    10,
+    "#352 (S32)",
+    [
+     "Goldspan Dragon",
+     "Spire of Industry",
+     "Gilded Lotus",
+     "Minas Tirith",
+     "Shadowblood Ridge",
+     "Tainted Wood",
+     "Sungrass Prairie",
+     "Tainted Field",
+     "Gaea's Cradle",
+     "Cabal Ritual"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Sapphire Medallion",
+     "Dauthi Voidwalker",
+     "Kami of Whispered Hopes",
+     "Selvala, Heart of the Wilds",
+     "Demand Answers",
+     "Etherium Sculptor",
+     "Thassa's Oracle",
+     "Pearl Medallion",
+     "Ghalta, Primal Hunger"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Arena of Glory",
+     "Aetherflux Reservoir",
+     "Kessig Wolf Run",
+     "Silence",
+     "Snakeskin Veil",
+     "Unnatural Growth",
+     "Cursed Mirror",
+     "Vault of the Archangel"
+    ]
+   ],
+   [
+    "Attachments",
+    1,
+    "#280 / S33",
+    [
+     "Helm of the Host"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Spark Double"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    3,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    1,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 29
+ },
+ "297": {
+  "batch": 4,
+  "ready": 38,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Tamiyo's Safekeeping",
+     "Plaza of Heroes",
+     "Vito, Thorn of the Dusk Rose",
+     "Mother of Runes",
+     "The Meathook Massacre",
+     "Felidar Retreat",
+     "Massacre Wurm",
+     "Liquimetal Torque",
+     "Veil of Summer",
+     "Ignoble Hierarch",
+     "Unbreakable Formation"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Blasphemous Edict",
+     "Culling the Weak",
+     "Voice of Victory",
+     "Overwhelming Stampede",
+     "Bolt Bend",
+     "Mindbreak Trap",
+     "Goblin Anarchomancer",
+     "Redirect Lightning"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    8,
+    "#352 (S32)",
+    [
+     "Tainted Peak",
+     "Faeburrow Elder",
+     "Tainted Isle",
+     "Blazemire Verge",
+     "Mossfire Valley",
+     "Bonders' Enclave",
+     "Opposition Agent",
+     "Talon Gates of Madara"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Commander's Plate",
+     "The Reaver Cleaver",
+     "Sword of Feast and Famine",
+     "Brotherhood Regalia"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    8,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 31
+ },
+ "298": {
+  "batch": 5,
+  "ready": 35,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Emerald Medallion",
+     "Tibalt's Trickery",
+     "Return the Favor",
+     "Corrupted Conviction",
+     "Emry, Lurker of the Loch",
+     "Cloud Key",
+     "Dig Through Time",
+     "Treasure Cruise",
+     "Sanctum Weaver",
+     "Goreclaw, Terror of Qal Sisma",
+     "Goblin Electromancer",
+     "Sphere of Safety",
+     "Bontu's Monument"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Clever Concealment",
+     "Access Tunnel",
+     "Selfless Spirit",
+     "Shizo, Death's Storehouse",
+     "Harmonic Prodigy",
+     "Shared Animosity",
+     "Purphoros, God of the Forge"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    7,
+    "#352 (S32)",
+    [
+     "Culling Ritual",
+     "Simic Signet",
+     "Incubation Druid",
+     "Rite of Flame",
+     "Opal Palace",
+     "Black Market",
+     "Hushwood Verge"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Darksteel Mutation",
+     "Curiosity",
+     "Puresteel Paladin",
+     "All That Glitters",
+     "Trailblazer's Boots"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Caretaker's Talent",
+     "Wizard Class",
+     "Innkeeper's Talent"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    8,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    3,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ]
+  ],
+  "total_freed": 35
+ },
+ "299": {
+  "batch": 6,
+  "ready": 35,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Chasm Skulker",
+     "Chain Reaction",
+     "Snuff Out",
+     "The Earth Crystal",
+     "Flare of Fortitude",
+     "Isochron Scepter",
+     "Eldritch Evolution",
+     "Thought Monitor",
+     "Chimil, the Inner Sun",
+     "Seize the Spoils",
+     "Collective Resistance",
+     "Danitha Capashen, Paragon",
+     "Coruscation Mage"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    10,
+    "#352 (S32)",
+    [
+     "Mirari's Wake",
+     "Golgari Signet",
+     "Viridescent Bog",
+     "Overflowing Basin",
+     "Castle Garenbrig",
+     "Lion's Eye Diamond",
+     "Pyretic Ritual",
+     "Thornspire Verge",
+     "Priest of Titania",
+     "Ferrous Lake"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Springheart Nantuko",
+     "Curse of Opulence",
+     "Kenrith's Transformation",
+     "Hammer of Nazahn",
+     "Champion's Helm",
+     "Aqueous Form",
+     "Imprisoned in the Moon",
+     "Kaya's Ghostform"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Tyvar's Stand",
+     "Loyal Apprentice",
+     "Valley Floodcaller",
+     "Veyran, Voice of Duality",
+     "Noble Hierarch",
+     "Sylvan Safekeeper",
+     "Ranger-Captain of Eos"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Elspeth, Storm Slayer"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 39
+ },
+ "300": {
+  "batch": 7,
+  "ready": 40,
+  "freed": [
+   [
+    "Mana pipeline",
+    9,
+    "#352 (S32)",
+    [
+     "Gruul Signet",
+     "The World Tree",
+     "Sunscorched Divide",
+     "Sunbillow Verge",
+     "Gyre Sage",
+     "Cephalid Coliseum",
+     "Riverpyre Verge",
+     "Throne of Eldraine",
+     "Elvish Archdruid"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Urza, Lord High Artificer",
+     "Vanquish the Horde",
+     "Mizzix's Mastery",
+     "Bitter Triumph",
+     "Dragon Tempest",
+     "Tear Asunder",
+     "Descent into Avernus",
+     "Rite of Replication"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Colossus Hammer",
+     "Sigarda's Aid",
+     "Rancor",
+     "Bear Umbra",
+     "Sword of Hearth and Home",
+     "Buster Sword"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    6,
+    "#279 (S32)",
+    [
+     "High Tide",
+     "Escape Tunnel",
+     "Boromir, Warden of the Tower",
+     "Tragic Slip",
+     "Disrupt Decorum",
+     "Grim Hireling"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Liliana, Dreadhorde General",
+     "Elspeth, Sun's Champion"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    6,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ]
+  ],
+  "total_freed": 31
+ },
+ "301": {
+  "batch": 8,
+  "ready": 43,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "The Fire Crystal",
+     "Kappa Cannoneer",
+     "Thoughtcast",
+     "Stormcatch Mentor",
+     "Archmage of Runes",
+     "Desperate Ritual",
+     "Destiny Spinner",
+     "The Wind Crystal"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Myr Battlesphere",
+     "Dismember",
+     "Crashing Drawbridge",
+     "Kardur, Doomscourge",
+     "Mirror Entity",
+     "Moraug, Fury of Akoum",
+     "Defile",
+     "Sokenzan, Crucible of Defiance"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Blade of Selves",
+     "Excalibur, Sword of Eden",
+     "Darksteel Plate",
+     "Loxodon Warhammer",
+     "Mask of Memory",
+     "Mechanized Production"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Desolate Mire",
+     "Evendo, Waking Haven",
+     "Wastewood Verge",
+     "Cabal Stronghold"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Narset, Parter of Veils"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 27
+ },
+ "302": {
+  "batch": 9,
+  "ready": 44,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    10,
+    "#279 (S32)",
+    [
+     "Cyberdrive Awakener",
+     "Manifold Key",
+     "Yahenni, Undying Partisan",
+     "Heliod, Sun-Crowned",
+     "Chatterfang, Squirrel General",
+     "Arcane Lighthouse",
+     "Karlach, Fury of Avernus",
+     "Witch's Clinic",
+     "Lathliss, Dragon Queen",
+     "Castle Embereth"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Force of Vigor",
+     "Omniscience",
+     "Oketra's Monument",
+     "Apex Devastator",
+     "Jhoira's Familiar",
+     "K'rrik, Son of Yawgmoth",
+     "Three Steps Ahead",
+     "Anim Pakal, Thousandth Moon",
+     "Cathartic Reunion"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Necromancy",
+     "Nettlecyst",
+     "The Reality Chip",
+     "Fertile Ground",
+     "Ethereal Armor",
+     "Not Dead After All",
+     "Genji Glove"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Rivendell",
+     "Willowrush Verge",
+     "Selesnya Signet",
+     "Circle of Dreams Druid"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Ugin, the Ineffable",
+     "Jace, Wielder of Mysteries"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    3,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 32
+ },
+ "303": {
+  "batch": 10,
+  "ready": 38,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Great Train Heist",
+     "Twilight Prophet",
+     "Flare of Duplication",
+     "Well of Lost Dreams",
+     "Vivi Ornitier",
+     "Spymaster's Vault",
+     "Nightscape Familiar",
+     "Plumb the Forbidden",
+     "Starfield Mystic",
+     "Insatiable Avarice",
+     "Xenagos, God of Revels",
+     "Moonshaker Cavalry",
+     "Agate Instigator"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    12,
+    "#279 (S32)",
+    [
+     "Vilis, Broker of Blood",
+     "Skrelv, Defector Mite",
+     "Restoration Magic",
+     "Herd Heirloom",
+     "Enduring Courage",
+     "Steel Hellkite",
+     "Captain Lannery Storm",
+     "Triumph of the Hordes",
+     "The Black Gate",
+     "Zopandrel, Hunger Dominus",
+     "Neheb, the Eternal",
+     "Expedite"
+    ]
+   ],
+   [
+    "Attachments",
+    2,
+    "#280 / S33",
+    [
+     "Fireshrieker",
+     "Tarrian's Soulcleaver"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Teferi, Time Raveler"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    1,
+    "#352 (S32)",
+    [
+     "Haven of the Spirit Dragon"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    6,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 29
+ },
+ "304": {
+  "batch": 11,
+  "ready": 38,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "The Darkness Crystal",
+     "Skyclave Apparition",
+     "Requisition Raid",
+     "Arachnogenesis",
+     "Elenda, the Dusk Rose",
+     "Twinflame",
+     "Carpet of Flowers",
+     "Flare of Malice",
+     "Valgavoth, Terror Eater",
+     "Jukai Naturalist",
+     "Dragonspeaker Shaman"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Kogla, the Titan Ape",
+     "Slayers' Stronghold",
+     "Alexios, Deimos of Kosmos",
+     "Enter the Enigma",
+     "Duelist's Heritage",
+     "Mirage Mirror",
+     "Windcrag Siege"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Shrine of the Forsaken Gods",
+     "Waste Not",
+     "Chromatic Orrery",
+     "Coveted Jewel"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Forge Anew",
+     "Amphibian Downpour",
+     "Sheltered by Ghosts"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Tezzeret, Cruel Captain",
+     "Hedge Shredder",
+     "Summon: Bahamut"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 28
+ },
+ "305": {
+  "batch": 12,
+  "ready": 36,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Whir of Invention",
+     "Electro, Assaulting Battery",
+     "Organic Extinction",
+     "Baral, Chief of Compliance",
+     "Palant\u00edr of Orthanc",
+     "Dragonlord's Servant",
+     "Cavern-Hoard Dragon",
+     "Sephara, Sky's Blade",
+     "Enthusiastic Mechanaut",
+     "Electrodominance",
+     "Baleful Mastery"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Undying Malice",
+     "Key to the City",
+     "Rootborn Defenses",
+     "Atarka, World Render",
+     "Secret Tunnel",
+     "Grand Crescendo",
+     "Giver of Runes",
+     "Gaea's Gift",
+     "Ghostly Pilferer"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Sword of Fire and Ice",
+     "Conqueror's Flail",
+     "Embercleave",
+     "Leyline Axe",
+     "Shiny Impetus",
+     "Mantle of the Ancients"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Astral Cornucopia",
+     "Brass's Bounty",
+     "Uthros, Titanic Godcore",
+     "Kinnan, Bonder Prodigy",
+     "Agatha's Soul Cauldron"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Binding the Old Gods",
+     "Vraska, Betrayal's Sting"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "306": {
+  "batch": 13,
+  "ready": 43,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Flare of Denial",
+     "Grab the Prize",
+     "Comet Storm",
+     "Fling",
+     "Obscuring Haze",
+     "Rain of Riches",
+     "Disciple of Bolas",
+     "Myrel, Shield of Argive"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Koma, Cosmos Serpent",
+     "Legolas's Quick Reflexes",
+     "Temur Battle Rage",
+     "Feign Death",
+     "Dreadhorde Invasion",
+     "Fake Your Own Death",
+     "Odric, Lunarch Marshal"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Caduceus, Staff of Hermes",
+     "Lizard Blades",
+     "Diamond Pick-Axe",
+     "Snake Umbra",
+     "Lavaspur Boots"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Cleric Class"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    1,
+    "#352 (S32)",
+    [
+     "Weathered Wayfarer"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 22
+ },
+ "307": {
+  "batch": 14,
+  "ready": 45,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Scourge of Valkas",
+     "Misdirection",
+     "Natural Order",
+     "Malcolm, Alluring Scoundrel",
+     "Morophon, the Boundless",
+     "The Water Crystal",
+     "Smuggler's Surprise",
+     "Ulamog, the Defiler",
+     "March of Swirling Mist",
+     "Maelstrom Wanderer",
+     "Call the Coppercoats",
+     "Defiler of Vigor",
+     "Fomori Vault",
+     "The Skullspore Nexus",
+     "Maddening Cacophony"
+    ]
+   ],
+   [
+    "Attachments",
+    9,
+    "#280 / S33",
+    [
+     "Codsworth, Handy Helper",
+     "Freed from the Real",
+     "Sword of Vengeance",
+     "Thran Power Suit",
+     "Bloodforged Battle-Axe",
+     "Eldrazi Conscription",
+     "Sting, the Glinting Dagger",
+     "Illusionist's Bracers",
+     "Masterwork of Ingenuity"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Rumor Gatherer",
+     "Ashling, Flame Dancer",
+     "Monastery Mentor",
+     "Overprotect",
+     "End-Raze Forerunners",
+     "Surrak and Goreclaw",
+     "Golgari Charm",
+     "Unleash Fury"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Chandra, Torch of Defiance",
+     "Artist's Talent"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Horizon of Progress",
+     "The Grey Havens"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    3,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 36
+ },
+ "308": {
+  "batch": 15,
+  "ready": 35,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Traverse the Outlands",
+     "Ouroboroid",
+     "Pirate's Pillage",
+     "Trumpeting Carnosaur",
+     "Galadriel's Dismissal",
+     "The Eternity Elevator",
+     "Metalwork Colossus",
+     "Painful Truths",
+     "Lively Dirge"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Elvish Warmaster",
+     "Grenzo, Havoc Raiser",
+     "Avatar's Wrath",
+     "Gingerbrute",
+     "Savage Ventmaw",
+     "Allosaurus Shepherd",
+     "Shore Up",
+     "Overrun",
+     "Massacre Girl"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    7,
+    "#352 (S32)",
+    [
+     "Prismatic Lens",
+     "Battle Hymn",
+     "Gwenna, Eyes of Gaea",
+     "Giada, Font of Hope",
+     "Extraplanar Lens",
+     "Eldrazi Temple",
+     "Crypt of Agadeem"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Ophidian Eye",
+     "Kaldra Compleat",
+     "Ardenn, Intrepid Archaeologist",
+     "Timely Ward",
+     "Sword of Truth and Justice",
+     "Spirit Mantle"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Druid Class",
+     "Ugin, the Spirit Dragon",
+     "Nissa, Who Shakes the World"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "309": {
+  "batch": 16,
+  "ready": 38,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Overlord of the Hauntwoods",
+     "Ancient Brass Dragon",
+     "The Scarab God",
+     "Proft's Eidetic Memory",
+     "Ghalta and Mavren",
+     "Honest Rutstein",
+     "Grand Arbiter Augustin IV",
+     "Hit the Mother Lode",
+     "Call Forth the Tempest"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Fire Nation Palace",
+     "Molten Duplication",
+     "Season of Gathering",
+     "Seize the Spotlight",
+     "Supernatural Stamina",
+     "Doomwake Giant",
+     "Legion Warboss",
+     "Tannuk, Memorial Ensign"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Lion Sash",
+     "Power Fist",
+     "Paradise Mantle",
+     "Silver Shroud Costume",
+     "Song of the Dryads",
+     "Sage's Reverie"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Vorinclex, Voice of Hunger",
+     "Barad-d\u00fbr",
+     "Ilysian Caryatid",
+     "Nimbus Maze",
+     "Great Hall of the Citadel"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Tezzeret the Seeker",
+     "Ugin, Eye of the Storms"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 30
+ },
+ "310": {
+  "batch": 17,
+  "ready": 38,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Junk Winder",
+     "Orim's Chant",
+     "Emrakul, the Promised End",
+     "As Foretold",
+     "Elenda's Hierophant",
+     "Tormenting Voice",
+     "Herald of the Pantheon",
+     "Sunbird's Invocation",
+     "Helm of Awakening",
+     "Defense Grid",
+     "Hazoret's Monument"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Sunhome, Fortress of the Legion",
+     "Insurrection",
+     "Fists of Flame",
+     "Temur Sabertooth",
+     "Origin of Metalbending",
+     "Mutavault",
+     "Loran's Escape",
+     "Sonic Screwdriver"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Sticky Fingers",
+     "Hero's Blade",
+     "Sword of Forge and Frontier",
+     "The Aetherspark",
+     "Winged Boots",
+     "Gift of Immortality"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "The Eternal Wanderer",
+     "Smuggler's Copter"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Hostage Taker",
+     "Drana and Linvala"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    9,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 29
+ },
+ "311": {
+  "batch": 18,
+  "ready": 45,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    12,
+    "#279 (S32)",
+    [
+     "Inti, Seneschal of the Sun",
+     "Port Razer",
+     "For the Common Good",
+     "Hero of Bladehold",
+     "Eldritch Immunity",
+     "Shinka, the Bloodsoaked Keep",
+     "Angel's Grace",
+     "Inkmoth Nexus",
+     "Lord of the Accursed",
+     "Thassa, God of the Sea",
+     "Mutational Advantage",
+     "Taunt from the Rampart"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    6,
+    "#93 (S28)",
+    [
+     "Nasty End",
+     "Horn of Gondor",
+     "Quartzwood Crasher",
+     "Commandeer",
+     "Halana and Alena, Partners",
+     "Starscape Cleric"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Witness Protection",
+     "Bitterthorn, Nissa's Animus",
+     "Adaptive Omnitool",
+     "Goldvein Pick",
+     "Sunforger"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "The Eldest Reborn",
+     "Grist, the Hunger Tide",
+     "Daretti, Scrap Savant",
+     "Summon: Titan"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Varragoth, Bloodsky Sire",
+     "Power Depot",
+     "Bootleggers' Stash",
+     "Conduit Pylons"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 31
+ },
+ "312": {
+  "batch": 19,
+  "ready": 27,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    13,
+    "#279 (S32)",
+    [
+     "Resplendent Angel",
+     "Crippling Fear",
+     "Wake the Past",
+     "Crash Through",
+     "Akiri, Fearless Voyager",
+     "Vengeful Ancestor",
+     "Drown in Ichor",
+     "Everybody Lives!",
+     "Sudden Spoiling",
+     "The Last Agni Kai",
+     "Nissa, Resurgent Animist",
+     "Balmor, Battlemage Captain",
+     "Psychic Frog"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Nashi, Moon Sage's Scion",
+     "Night of the Sweets' Revenge",
+     "Fallen Shinobi",
+     "Sarkhan, Soul Aflame",
+     "Goblin Warchief",
+     "Pearl-Ear, Imperial Advisor",
+     "Sowing Mycospawn",
+     "Semblance Anvil",
+     "Food Chain"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "Summon: Fenrir",
+     "Garruk, Primal Hunter",
+     "There and Back Again",
+     "Liliana, Death's Majesty",
+     "Karn, the Great Creator",
+     "Alchemist's Talent",
+     "Oko, Thief of Crowns"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Warping Wail",
+     "Maelstrom of the Spirit Dragon",
+     "Abstergo Entertainment"
+    ]
+   ],
+   [
+    "Attachments",
+    2,
+    "#280 / S33",
+    [
+     "Hydra's Growth",
+     "Haunted Cloak"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "313": {
+  "batch": 20,
+  "ready": 29,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Rhonas's Monument",
+     "Galadhrim Ambush",
+     "Thunderclap Drake",
+     "Delay",
+     "Flare of Cultivation",
+     "Monstrous Vortex",
+     "Aura of Silence",
+     "Klauth, Unrivaled Ancient",
+     "Descendants' Path",
+     "Scourge of Fleets",
+     "Overlord of the Balemurk",
+     "Aerith Gainsborough",
+     "Arabella, Abandoned Doll",
+     "Pact of the Serpent",
+     "Final Showdown"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Mina and Denn, Wildborn",
+     "Ruby, Daring Tracker",
+     "Kitsa, Otterball Elite",
+     "Overkill",
+     "Ainok Strike Leader",
+     "Swarmyard Massacre",
+     "Poison Dart Frog",
+     "Will of the Jeskai",
+     "Carnelian Orb of Dragonkind"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    6,
+    "#92 (S27)",
+    [
+     "Liliana of the Dark Realms",
+     "Forge of Heroes",
+     "Ral, Crackling Wit",
+     "Teferi, Master of Time",
+     "Imposter Mech",
+     "Summon: Knights of Round"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "The Key to the Vault",
+     "Dragonfire Blade",
+     "Combat Research",
+     "Argentum Armor",
+     "Sword of Wealth and Power"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Bone Miser",
+     "Kozilek's Command",
+     "Glimpse the Impossible",
+     "Brainstealer Dragon"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 39
+ },
+ "383": {
+  "batch": 21,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Dragonhawk, Fate's Tempest",
+     "Warden of the Grove",
+     "Rooftop Storm",
+     "Glittering Stockpile",
+     "Neoform",
+     "Thrumming Stone",
+     "Temur Battlecrier",
+     "Plargg and Nassari",
+     "Dracogenesis",
+     "Arcane Bombardment",
+     "Kindred Summons",
+     "Thalia, Guardian of Thraben",
+     "Chthonian Nightmare",
+     "Inscription of Abundance",
+     "It That Heralds the End"
+    ]
+   ],
+   [
+    "Attachments",
+    10,
+    "#280 / S33",
+    [
+     "Sword of Light and Shadow",
+     "Ancestral Mask",
+     "Bloodthirsty Blade",
+     "Explorer's Scope",
+     "Fighter Class",
+     "Dance of the Dead",
+     "Lignify",
+     "Umbral Mantle",
+     "Grafted Exoskeleton",
+     "Thieving Skydiver"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Earthbender Ascension",
+     "Slip Through Space",
+     "Whirler Rogue",
+     "Bubbling Muck",
+     "Song of Totentanz",
+     "Blacksmith's Skill",
+     "Ezuri, Renegade Leader"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Tyvar, Jubilant Brawler",
+     "Shorikai, Genesis Engine",
+     "Summon: Primal Odin"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Hidden Grotto",
+     "Urza's Workshop",
+     "Sceptre of Eternal Glory"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 38
+ },
+ "384": {
+  "batch": 22,
+  "ready": 34,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    10,
+    "#93 (S28)",
+    [
+     "Constant Mists",
+     "Conduit of Ruin",
+     "Animar, Soul of Elements",
+     "Darksteel Monolith",
+     "Duty Beyond Death",
+     "God-Pharaoh's Statue",
+     "Villainous Wealth",
+     "Harvest Season",
+     "Consuming Corruption",
+     "Force of Despair"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    10,
+    "#279 (S32)",
+    [
+     "Tainted Strike",
+     "Your Temple Is Under Attack",
+     "Zealous Conscripts",
+     "Silkguard",
+     "Outpost Siege",
+     "Perch Protection",
+     "Amonkhet Raceway",
+     "Circle of Power",
+     "Endbringer",
+     "Mutilate"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Greater Auramancy",
+     "Super State",
+     "Bruenor Battlehammer",
+     "Cranial Plating",
+     "Abundant Growth"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Kiora, Behemoth Beckoner",
+     "The Indomitable",
+     "Summon: Yojimbo",
+     "Professor Onyx",
+     "Wrenn and Seven"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Manamorphose",
+     "Zendikar Resurgent"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    1,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 32
+ },
+ "385": {
+  "batch": 23,
+  "ready": 21,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    17,
+    "#93 (S28)",
+    [
+     "Ancient Cellarspawn",
+     "Pantlaza, Sun-Favored",
+     "Wand of Wonder",
+     "Powerbalance",
+     "Endless Ranks of the Dead",
+     "Valley Rotcaller",
+     "Not of This World",
+     "Aminatou's Augury",
+     "Alibou, Ancient Witness",
+     "Railway Brawler",
+     "Skyclave Relic",
+     "Haughty Djinn",
+     "Ghoulcaller Gisa",
+     "Alandra, Sky Dreamer",
+     "Ancient Stone Idol",
+     "Artifact Mutation",
+     "Life's Legacy"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Agitator Ant",
+     "Crimson Wisps",
+     "Lightning, Army of One",
+     "Roiling Vortex",
+     "Lair of the Hydra",
+     "Kogla and Yidaro",
+     "Karn, Legacy Reforged"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Mnemonic Betrayal",
+     "Inga and Esika",
+     "Endless Atlas",
+     "Voldaren Estate",
+     "Brightstone Ritual"
+    ]
+   ],
+   [
+    "Attachments",
+    2,
+    "#280 / S33",
+    [
+     "Blade of the Bloodchief",
+     "Unquestioned Authority"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Weatherlight",
+     "The Regalia"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "386": {
+  "batch": 24,
+  "ready": 40,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    10,
+    "#93 (S28)",
+    [
+     "Baldur's Gate",
+     "Imoti, Celebrant of Bounty",
+     "Reiterate",
+     "Inquisitive Glimmer",
+     "Momentous Fall",
+     "Rakdos, Lord of Riots",
+     "Urabrask's Forge",
+     "Ancient Bronze Dragon",
+     "The Immortal Sun",
+     "The Ur-Dragon"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Assault Formation",
+     "Blossoming Defense",
+     "Bloodthirster",
+     "Siege-Gang Lieutenant",
+     "Gl\u00f3in, Dwarf Emissary",
+     "Twinferno",
+     "Gogo, Mysterious Mime",
+     "Baylen, the Haymaker",
+     "Valorous Stance"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Armored Skyhunter",
+     "Beamtown Beatstick",
+     "And\u00faril, Narsil Reforged",
+     "Brass Squire",
+     "Angelic Destiny",
+     "Ghoulish Impetus",
+     "Thornbite Staff",
+     "Black Mage's Rod"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    8,
+    "#352 (S32)",
+    [
+     "Ancient Ziggurat",
+     "Leechridden Swamp",
+     "Tinybones, the Pickpocket",
+     "Somberwald Sage",
+     "Mox Jasper",
+     "Arch of Orazca",
+     "Gond Gate",
+     "Cunning Rhetoric"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Saheeli, Sublime Artificer"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 36
+ },
+ "387": {
+  "batch": 25,
+  "ready": 32,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    7,
+    "#93 (S28)",
+    [
+     "Chandra's Incinerator",
+     "Thalisse, Reverent Medium",
+     "Mind's Dilation",
+     "Cid, Freeflier Pilot",
+     "Voyager Quickwelder",
+     "Fire Covenant",
+     "Aura Mutation"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    6,
+    "#279 (S32)",
+    [
+     "PuPu UFO",
+     "Eldrazi Confluence",
+     "Spectacular Showdown",
+     "Thrakkus the Butcher",
+     "Skithiryx, the Blight Dragon",
+     "Tifa Lockhart"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Pemmin's Aura",
+     "Pip-Boy 3000",
+     "Hyena Umbra",
+     "Zack Fair",
+     "Sword of War and Peace"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Ashiok, Dream Render",
+     "Freyalise, Llanowar's Fury",
+     "Skysovereign, Consul Flagship",
+     "Domri, Anarch of Bolas",
+     "Semester's End"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Planar Nexus",
+     "Crystal Grotto",
+     "Master of Dark Rites"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 26
+ },
+ "388": {
+  "batch": 26,
+  "ready": 35,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Retreat to Hagra",
+     "Alseid of Life's Bounty",
+     "Raging Ravine",
+     "Witch-king of Angmar",
+     "Sundial of the Infinite",
+     "Ethersworn Canonist",
+     "Reyav, Master Smith",
+     "Lazotep Plating"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    7,
+    "#93 (S28)",
+    [
+     "Bone Shards",
+     "Dina, Soul Steeper",
+     "Case of the Ransacked Lab",
+     "Heartless Summoning",
+     "Prime Speaker Zegana",
+     "Transcendent Envoy",
+     "Olivia's Wrath"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Quietus Spike",
+     "Parasitic Impetus",
+     "Vorpal Sword"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Inspired Tinkering",
+     "Mirrex"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Wrenn and Realmbreaker"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 21
+ },
+ "389": {
+  "batch": 27,
+  "ready": 29,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    17,
+    "#93 (S28)",
+    [
+     "Basilisk Gate",
+     "Silent-Blade Oni",
+     "Tooth and Nail",
+     "Rionya, Fire Dancer",
+     "Jodah, the Unifier",
+     "Mocking Sprite",
+     "Celestine, the Living Saint",
+     "Zhulodok, Void Gorger",
+     "Sacrifice",
+     "Overlord of the Floodpits",
+     "Jolrael, Mwonvuli Recluse",
+     "Undead Warchief",
+     "Outcaster Trailblazer",
+     "Rottenmouth Viper",
+     "Mindsplice Apparatus",
+     "Starnheim Courser",
+     "Savage Beating"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    12,
+    "#279 (S32)",
+    [
+     "Weathered Sentinels",
+     "Preposterous Proportions",
+     "Jeskai Ascendancy",
+     "Scythecat Cub",
+     "Simic Charm",
+     "Nowhere to Run",
+     "Shadow Rift",
+     "Nirkana Revenant",
+     "Bitter Reunion",
+     "Geode Rager",
+     "Underrealm Lich",
+     "The Chain Veil"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Aettir and Priwen",
+     "Keen Sense",
+     "Fraying Sanity",
+     "Paradox Haze",
+     "Phyresis",
+     "Umezawa's Jitte",
+     "Pariah"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Mistveil Plains",
+     "Overgrown Battlement",
+     "Glistening Sphere",
+     "Mudflat Village",
+     "Oakhollow Village"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Cultivator's Caravan"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 42
+ },
+ "390": {
+  "batch": 28,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Storm Herd",
+     "Arbor Adherent",
+     "Eye of Ugin",
+     "Will of the Sultai",
+     "Iridescent Vinelasher",
+     "Tyvar, the Pummeler",
+     "Zurgo Stormrender",
+     "Longshot, Rebel Bowman",
+     "Marauding Raptor",
+     "Thickest in the Thicket",
+     "Temporal Trespass"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Brokers Ascendancy",
+     "Liliana of the Veil",
+     "Tamiyo, Field Researcher",
+     "Esika's Chariot",
+     "Reaver Titan"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    5,
+    "#279 (S32)",
+    [
+     "Tower Defense",
+     "Creeping Tar Pit",
+     "Jumbo Cactuar",
+     "Surge of Salvation",
+     "Nuclear Fallout"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Abundant Countryside",
+     "Resonating Lute",
+     "Malevolent Rumble",
+     "Serra's Sanctum"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Pain for All",
+     "Wrecking Ball Arm",
+     "Robe of Stars"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 28
+ },
+ "391": {
+  "batch": 29,
+  "ready": 33,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    16,
+    "#279 (S32)",
+    [
+     "Blinkmoth Nexus",
+     "Den of the Bugbear",
+     "Selfless Savior",
+     "Bria, Riptide Rogue",
+     "Inferno Titan",
+     "Abyssal Harvester",
+     "Magic Damper",
+     "Kenrith, the Returned King",
+     "Autumn's Veil",
+     "Bothersome Quasit",
+     "Breeches, Eager Pillager",
+     "Etchings of the Chosen",
+     "Basim Ibn Ishaq",
+     "Render Silent",
+     "Siege Smash",
+     "Biomancer's Familiar"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    10,
+    "#93 (S28)",
+    [
+     "Daze",
+     "Infernal Plunge",
+     "Eluge, the Shoreless Sea",
+     "Stonybrook Banneret",
+     "Demon of Fate's Design",
+     "Toph, Earthbending Master",
+     "Otepec Huntmaster",
+     "Marrow-Gnawer",
+     "Burnt Offering",
+     "Reshape"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Royal Treatment",
+     "Blanchwood Armor",
+     "Overgrowth",
+     "Spirit Link",
+     "Alpha Authority",
+     "Mask of Griselbrand"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Lagomos, Hand of Hatred",
+     "Diamond City",
+     "Heap Gate",
+     "Rumble Arena"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Elspeth Conquers Death"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    9,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    1,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 37
+ },
+ "393": {
+  "batch": 30,
+  "ready": 32,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    12,
+    "#279 (S32)",
+    [
+     "Goro-Goro, Disciple of Ryusei",
+     "Hollowmurk Siege",
+     "Frontier Warmonger",
+     "Ms. Bumbleflower",
+     "\u00c9owyn, Fearless Knight",
+     "Pippin, Guard of the Citadel",
+     "Mishra's Factory",
+     "Flayer of Loyalties",
+     "Archpriest of Shadows",
+     "Skyhunter Strike Force",
+     "Spectacular Spider-Man",
+     "Shambling Ghast"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Darkstar Augur",
+     "Starnheim Aspirant",
+     "Eaten Alive",
+     "Herald of War",
+     "Gr\u00edma, Saruman's Footman",
+     "Whispering Madness",
+     "Geode Golem",
+     "Spell Swindle",
+     "Collective Effort",
+     "Endrek Sahr, Master Breeder",
+     "Firebending Student"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Ajani, Strength of the Pride",
+     "One Ring to Rule Them All",
+     "Parhelion II",
+     "Tezzeret, Master of the Bridge",
+     "Nautiloid Ship"
+    ]
+   ],
+   [
+    "Attachments",
+    2,
+    "#280 / S33",
+    [
+     "Mj\u00f6lnir, Storm Hammer",
+     "Strong Back"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Songs of the Damned",
+     "Howlsquad Heavy"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    6,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 32
+ },
+ "394": {
+  "batch": 31,
+  "ready": 24,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    16,
+    "#279 (S32)",
+    [
+     "Rain of Filth",
+     "Fires of Yavimaya",
+     "Hope of Ghirapur",
+     "Octopus Form",
+     "Ogre Battledriver",
+     "Shelter",
+     "Skarrg, the Rage Pits",
+     "Orzhov Advokist",
+     "Archenemy's Charm",
+     "Renegade Tactics",
+     "Zirda, the Dawnwaker",
+     "Mech Hangar",
+     "Chittering Witch",
+     "Make a Stand",
+     "Chocobo Racetrack",
+     "Eiganjo Castle"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Tenuous Truce",
+     "Grievous Wound",
+     "Infantry Shield",
+     "Lion Umbra",
+     "Shielded by Faith",
+     "Celestial Armor"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Dire Fleet Daredevil",
+     "Eclipsed Realms",
+     "Sisay, Weatherlight Captain",
+     "Mana Flare",
+     "Luminarch Ascension"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    4,
+    "#93 (S28)",
+    [
+     "Axebane Guardian",
+     "Rampant Rejuvenator",
+     "Cut Your Losses",
+     "Gathering Stone"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Chandra, Awakened Inferno",
+     "Teferi, Temporal Pilgrim"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    7,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "395": {
+  "batch": 32,
+  "ready": 30,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    14,
+    "#93 (S28)",
+    [
+     "Mortality Spear",
+     "Skittering Cicada",
+     "Court of Locthwain",
+     "Mycosynth Golem",
+     "Esior, Wardwing Familiar",
+     "Earthquake Dragon",
+     "Stinging Study",
+     "Ensnared by the Mara",
+     "Ovika, Enigma Goliath",
+     "Killian, Ink Duelist",
+     "Pathbreaker Ibex",
+     "Costly Plunder",
+     "Blood for the Blood God!",
+     "Thryx, the Sudden Storm"
+    ]
+   ],
+   [
+    "Attachments",
+    9,
+    "#280 / S33",
+    [
+     "Songbirds' Blessing",
+     "Daybreak Coronet",
+     "Inventory Management",
+     "Squirrel Nest",
+     "Nyxborn Hydra",
+     "Eidolon of Countless Battles",
+     "Sigil of Sleep",
+     "Prowler's Helm",
+     "Monstrous Rage"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Aragorn, the Uniter",
+     "Nylea, God of the Hunt",
+     "Defend the Rider",
+     "Mob Rule",
+     "Restless Cottage",
+     "Daily Bugle Building",
+     "Devilish Valet",
+     "Firdoch Core",
+     "K-9, Mark I"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "The Mending of Dominaria"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "396": {
+  "batch": 33,
+  "ready": 34,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    18,
+    "#93 (S28)",
+    [
+     "Consult the Star Charts",
+     "Hamza, Guardian of Arashin",
+     "Invigorate",
+     "Wirewood Channeler",
+     "Grow from the Ashes",
+     "Curtains' Call",
+     "Shadow in the Warp",
+     "Chrome Host Seedshark",
+     "Shadowheart, Dark Justiciar",
+     "Nylea, Keen-Eyed",
+     "Berserk",
+     "Florian, Voldaren Scion",
+     "Commissar Severina Raine",
+     "Communal Brewing",
+     "Aetherworks Marvel",
+     "Lyse Hext",
+     "Wildsear, Scouring Maw",
+     "Spirit Water Revival"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Soul of New Phyrexia",
+     "Gods Willing",
+     "Agent Frank Horrigan",
+     "Captivating Crew",
+     "Frontline Medic",
+     "Strength of Will",
+     "Blazing Crescendo",
+     "Take Up the Shield"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "And\u00faril, Flame of the West",
+     "Nim Deathmantle",
+     "Steel of the Godhead",
+     "Komainu Battle Armor"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Roxanne, Starfall Savant",
+     "Pit of Offerings"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Dihada, Binder of Wills"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    7,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "397": {
+  "batch": 34,
+  "ready": 42,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Rashmi, Eternities Crafter",
+     "Titan's Presence",
+     "Winged Words",
+     "Champion of Dusk",
+     "Rose Room Treasurer",
+     "Hidden Nursery",
+     "Mind's Desire",
+     "Spellstutter Sprite",
+     "Transmute Artifact"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "The Spear of Leonidas",
+     "Hexplate Wallbreaker",
+     "Redemption Arc",
+     "Idolized",
+     "Calix, Guided by Fate",
+     "Bureau Headmaster",
+     "Angelic Gift"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    6,
+    "#279 (S32)",
+    [
+     "Lord of the Nazg\u00fbl",
+     "Nesting Dragon",
+     "Detection Tower",
+     "Flamekin Village",
+     "Thundermane Dragon",
+     "Coercive Recruiter"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "War of the Last Alliance",
+     "Jace, the Mind Sculptor",
+     "Hunter's Talent",
+     "Thunderhawk Gunship",
+     "Ral, Storm Conduit"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Blitzball",
+     "Jeweled Amulet"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    6,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 29
+ },
+ "398": {
+  "batch": 35,
+  "ready": 28,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Charix, the Raging Isle",
+     "Jazal Goldmane",
+     "Study Hall",
+     "Diluvian Primordial",
+     "Astarion's Thirst",
+     "Saruman, the White Hand",
+     "The Wise Mothman",
+     "Alisaie Leveilleur",
+     "Access Denied",
+     "Maester Seymour",
+     "Court of Embereth",
+     "Minds Aglow",
+     "Laughing Jasper Flint"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Glorious Sunrise",
+     "Squall, SeeD Mercenary",
+     "And They Shall Know No Fear",
+     "Liquimetal Coating",
+     "Bladewing the Risen",
+     "Riptide Gearhulk",
+     "MacCready, Lamplight Mayor",
+     "Astarion, the Decadent",
+     "Whisper of the Dross",
+     "Kor Haven",
+     "Phyresis Outbreak"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Eye of Nidhogg",
+     "Shadow of the Second Sun",
+     "Behemoth Sledge",
+     "The Sound of Drums",
+     "Infiltration Lens",
+     "Blacksmith's Talent",
+     "The Masamune"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Jace Beleren",
+     "Summon: Ixion",
+     "Reckoner Bankbuster",
+     "Nissa, Ascended Animist"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Prizefight",
+     "Speaker of the Heavens",
+     "Flick a Coin"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    1,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 38
+ },
+ "399": {
+  "batch": 36,
+  "ready": 33,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Hour of Revelation",
+     "Famished Worldsire",
+     "Sanctum of Stone Fangs",
+     "Mnemonic Deluge",
+     "Planetarium of Wan Shi Tong",
+     "Reckoner's Bargain",
+     "Galadhrim Brigade",
+     "Baral's Expertise"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Brave the Elements",
+     "Goldnight Commander",
+     "Karazikar, the Eye Tyrant",
+     "Might of the Meek",
+     "Hidden Hideout",
+     "Champions from Beyond",
+     "Unctus, Grand Metatect",
+     "Waterbender Ascension"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Martial Impetus",
+     "Chainsaw",
+     "Curse of Verbosity",
+     "Stonehewer Giant",
+     "Heirloom Blade",
+     "Eaten by Piranhas",
+     "Stoneskin"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Summon: Leviathan",
+     "Fortune Teller's Talent",
+     "Garruk, Cursed Huntsman",
+     "Sorcerer Class",
+     "Salvation Engine"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Dark Petition",
+     "Mishra's Workshop",
+     "Orb of Dragonkind"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 31
+ },
+ "400": {
+  "batch": 37,
+  "ready": 40,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    13,
+    "#279 (S32)",
+    [
+     "Hideous Taskmaster",
+     "Tifa, Martial Artist",
+     "Molten Psyche",
+     "Noble Heritage",
+     "Primal Might",
+     "Llanowar Loamspeaker",
+     "Secluded Starforge",
+     "Devastating Onslaught",
+     "Rampaging Brontodon",
+     "Rikku, Resourceful Guardian",
+     "Neheb, Dreadhorde Champion",
+     "Sephiroth, Fallen Hero",
+     "Reins of Power"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    10,
+    "#93 (S28)",
+    [
+     "Warden of Evos Isle",
+     "Trash for Treasure",
+     "Baldin, Century Herdmaster",
+     "Cactus Preserve",
+     "Voyage Home",
+     "Hidden Volcano",
+     "Eriette of the Charmed Apple",
+     "Sazacap's Brew",
+     "Nils, Discipline Enforcer",
+     "Wizards of Thay"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Unlicensed Hearse",
+     "Vivien, Champion of the Wilds",
+     "Tevesh Szat, Doom of Fools",
+     "Scavenger's Talent",
+     "Clown Car"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Maddening Hex",
+     "The Irencrag",
+     "Unable to Scream"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    1,
+    "#352 (S32)",
+    [
+     "Lilypad Village"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 32
+ },
+ "401": {
+  "batch": 38,
+  "ready": 36,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    10,
+    "#93 (S28)",
+    [
+     "Avenger of the Fallen",
+     "Sunfall",
+     "Annoyed Altisaur",
+     "Scion of Draco",
+     "Breaching Dragonstorm",
+     "White Lotus Tile",
+     "Volcanic Torrent",
+     "Metallurgic Summonings",
+     "Bottle-Cap Blast",
+     "Vines of Vastwood"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Swift Reconfiguration",
+     "Well Rested",
+     "Conformer Shuriken",
+     "Ajani's Chosen",
+     "Hero's Heirloom",
+     "Colossification",
+     "Pariah's Shield",
+     "Nazg\u00fbl Battle-Mace"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    5,
+    "#279 (S32)",
+    [
+     "Apex of Power",
+     "Restless Anchorage",
+     "Haste Magic",
+     "Muxus, Goblin Grandee",
+     "Shay Cormac"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Minsc & Boo, Timeless Heroes",
+     "Tezzeret, Betrayer of Flesh",
+     "Sorin, Imperious Bloodlord",
+     "Barbarian Class"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Tablet of Discovery",
+     "Elementalist's Palette"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 29
+ },
+ "402": {
+  "batch": 39,
+  "ready": 35,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Tromell, Seymour's Butler",
+     "Empowered Autogenerator",
+     "Ethereal Investigator",
+     "Kefka, Dancing Mad",
+     "Invoke Calamity",
+     "Nested Shambler",
+     "Blossoming Bogbeast",
+     "Thundering Raiju",
+     "Blast-Furnace Hellkite",
+     "Afterlife from the Loam",
+     "S\u00e9ance Board"
+    ]
+   ],
+   [
+    "Attachments",
+    9,
+    "#280 / S33",
+    [
+     "Feather of Flight",
+     "Mask of Avacyn",
+     "Maul of the Skyclaves",
+     "Sword of the Squeak",
+     "Rogue's Gloves",
+     "Curse of Disturbance",
+     "Inquisitor's Flail",
+     "Assault Suit",
+     "Firion, Wild Rose Warrior"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "In the Darkness Bind Them",
+     "Vivien Reid",
+     "The Cruelty of Gix",
+     "Artificer Class",
+     "Ob Nixilis, the Hate-Twisted",
+     "Ajani, the Greathearted",
+     "Sorin Markov"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Mutable Explorer",
+     "Restless Reef",
+     "Azure Beastbinder",
+     "Aragorn, King of Gondor",
+     "Selfless Safewright",
+     "Merfolk Sovereign",
+     "Erebos, Bleak-Hearted"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Tectonic Edge",
+     "Crucible of the Spirit Dragon"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    10,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 36
+ },
+ "403": {
+  "batch": 40,
+  "ready": 28,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Tymna the Weaver",
+     "Kopala, Warden of Waves",
+     "Tender Wildguide",
+     "Hidden Strings",
+     "Jace's Sanctum",
+     "Drag to the Roots",
+     "Champions of the Perfect",
+     "The First Sliver",
+     "Overlord of the Mistmoors",
+     "The Gitrog, Ravenous Ride",
+     "Gargos, Vicious Watcher",
+     "Notorious Throng",
+     "Tavern Brawler"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    9,
+    "#92 (S27)",
+    [
+     "Rolling Hamsphere",
+     "Vraska, Golgari Queen",
+     "Koth, Fire of Resistance",
+     "Chandra, Hope's Beacon",
+     "Lumbering Worldwagon",
+     "Teferi, Hero of Dominaria",
+     "Bandit's Talent",
+     "Kaito, Cunning Infiltrator",
+     "Lolth, Spider Queen"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Witch's Mark",
+     "Ordeal of Nylea",
+     "Sword of Sinew and Steel",
+     "Resurrection Orb",
+     "Umbra Mystic",
+     "Cori-Steel Cutter"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    5,
+    "#279 (S32)",
+    [
+     "Omnath, Locus of Creation",
+     "Retraction Helix",
+     "Tail Swipe",
+     "Leap",
+     "Neyith of the Dire Hunt"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    1,
+    "#352 (S32)",
+    [
+     "Heartbeat of Spring"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "448": {
+  "batch": 41,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Highway Robbery",
+     "Dance with Calamity",
+     "Chaos Wand",
+     "Foil",
+     "Phyrexian Rebirth",
+     "Clockspinning",
+     "Submerge",
+     "Helga, Skittish Seer",
+     "Snapback"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Dancer's Chakrams",
+     "Ossification",
+     "Canopy Cover",
+     "Sword of Body and Mind",
+     "Aether Tunnel",
+     "Staff of Titania",
+     "Level Up",
+     "Nighthowler"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Pippin, Warden of Isengard",
+     "Locke, Treasure Hunter",
+     "Chocobo Knights",
+     "Mothdust Changeling",
+     "Permission Denied",
+     "Plumecreed Escort",
+     "Cauldron of Souls",
+     "Tato Farmer"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Thopter Fabricator",
+     "Tyvar Kell",
+     "Demonic Junker",
+     "Ob Nixilis Reignited"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    1,
+    "#352 (S32)",
+    [
+     "Vizier of the Menagerie"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 30
+ },
+ "449": {
+  "batch": 42,
+  "ready": 38,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    13,
+    "#279 (S32)",
+    [
+     "Ancestors' Aid",
+     "Hashep Oasis",
+     "Rammas Echor, Ancient Shield",
+     "Undying Evil",
+     "Jade Orb of Dragonkind",
+     "Children of Korlis",
+     "Titan's Strength",
+     "Brute Force",
+     "Legion Loyalist",
+     "Nanogene Conversion",
+     "Enter the Avatar State",
+     "Walking Bulwark",
+     "Knollspine Dragon"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    12,
+    "#93 (S28)",
+    [
+     "Timberwatch Elf",
+     "Orcish Siegemaster",
+     "Fist of Suns",
+     "Joraga Warcaller",
+     "Elturel Survivors",
+     "Watcher of the Spheres",
+     "Savvy Trader",
+     "New Blood",
+     "Kura, the Boundless Sky",
+     "Guff Rewrites History",
+     "Price of Fame",
+     "Fireball"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Teferi, Temporal Archmage",
+     "Tezzeret, Artifice Master",
+     "Ajani, Caller of the Pride",
+     "Gossip's Talent",
+     "Tasha, the Witch Queen"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Jasmine Dragon Tea Shop",
+     "Mage-Ring Network",
+     "Thieving Varmint",
+     "You Find Some Prisoners",
+     "Zuko, Exiled Prince"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Mage Slayer",
+     "Light of Promise",
+     "Luxior, Giada's Gift"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    1,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 38
+ },
+ "450": {
+  "batch": 43,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    12,
+    "#93 (S28)",
+    [
+     "Birthing Ritual",
+     "Securitron Squadron",
+     "Luck Bobblehead",
+     "Haze of Rage",
+     "Fanatical Offering",
+     "Maelstrom Colossus",
+     "Bone-Cairn Butcher",
+     "Overlord of the Boilerbilges",
+     "Sapling Nursery",
+     "Skemfar Shadowsage",
+     "Collective Voyage",
+     "Banquet Guests"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Swashbuckler Extraordinaire",
+     "Moogles' Valor",
+     "Enter the Infinite",
+     "Queen Brahne",
+     "Vizkopa Guildmage",
+     "Noxious Ghoul",
+     "Octomancer",
+     "Cerulean Wisps",
+     "Sokrates, Athenian Teacher",
+     "Goblin Rabblemaster",
+     "Seasoned Dungeoneer"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Lost Jitte",
+     "Flickering Ward",
+     "Cloud, Ex-SOLDIER",
+     "Zephyr Boots",
+     "Shield of the Oversoul",
+     "Nerd Rage",
+     "Battle Mastery",
+     "Endless Evil"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "Mechtitan Core",
+     "Kaya, Geist Hunter",
+     "Cryptcaller Chariot",
+     "Jeska, Thrice Reborn",
+     "Stormchaser's Talent",
+     "Teferi, Who Slows the Sunset",
+     "City of Death"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Interplanar Beacon",
+     "Bloodsoaked Champion"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    8,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    1,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 40
+ },
+ "451": {
+  "batch": 44,
+  "ready": 39,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    15,
+    "#279 (S32)",
+    [
+     "Polymorphist's Jest",
+     "The Odd Acorn Gang",
+     "Stolen Strategy",
+     "Th\u00e9oden, King of Rohan",
+     "Depthshaker Titan",
+     "Death Kiss",
+     "Hakoda, Selfless Commander",
+     "Restless Bivouac",
+     "Restless Ridgeline",
+     "Restless Fortress",
+     "Katara, Water Tribe's Hope",
+     "Marisi, Breaker of the Coil",
+     "Brallin, Skyshark Rider",
+     "Psychotic Fury",
+     "Tifa's Limit Break"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    7,
+    "#93 (S28)",
+    [
+     "Seismic Sense",
+     "Ghostfire Slice",
+     "Entrapment Maneuver",
+     "Moseo, Vein's New Dean",
+     "Aang's Journey",
+     "Calamity of the Titans",
+     "Shadow of Mortality"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Nicol Bolas, Dragon-God",
+     "RMS Titanic",
+     "Kiora Bests the Sea God",
+     "Summon: Fat Chocobo",
+     "Summon: Valefor"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Grim Reaper's Sprint",
+     "Viridian Longbow",
+     "Frogify",
+     "Indomitable Might"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Cryptic Caves",
+     "Skittering Invasion",
+     "Rose, Cutthroat Raider"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    9,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "452": {
+  "batch": 45,
+  "ready": 28,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    14,
+    "#93 (S28)",
+    [
+     "Wizard's Retort",
+     "Marshal's Anthem",
+     "Season of Loss",
+     "Felisa, Fang of Silverquill",
+     "Memory Plunder",
+     "Slinn Voda, the Rising Deep",
+     "Divine Resilience",
+     "Sami, Wildcat Captain",
+     "Guardian Scalelord",
+     "Heronblade Elite",
+     "Warren Warleader",
+     "Defiler of Dreams",
+     "Stolen Identity",
+     "Nullpriest of Oblivion"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Short Bow",
+     "Mj\u00f6lnir, Hammer of Thor",
+     "Gilgamesh, Master-at-Arms",
+     "Excalibur II",
+     "Mirrormind Crown",
+     "Freya Crescent"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    6,
+    "#279 (S32)",
+    [
+     "Hajar, Loyal Bodyguard",
+     "Haunted One",
+     "Angelic Skirmisher",
+     "Orcish Medicine",
+     "Smoke Bomb",
+     "Wulfgar of Icewind Dale"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Peacewalker Colossus",
+     "Of Herbs and Stewed Rabbit",
+     "Song of Freyalise",
+     "Surgehacker Mech",
+     "Paladin Class"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Kelpie Guide",
+     "Trenzalore Clocktower",
+     "Star Compass"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    6,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "453": {
+  "batch": 46,
+  "ready": 30,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    14,
+    "#279 (S32)",
+    [
+     "Nemata, Primeval Warden",
+     "Act of Treason",
+     "Bonus Round",
+     "Lumbering Falls",
+     "Ichorclaw Myr",
+     "Gyome, Master Chef",
+     "Stonehoof Chieftain",
+     "Restless Spire",
+     "Adriana, Captain of the Guard",
+     "Cathedral of War",
+     "Reflector Mage",
+     "Winota, Joiner of Forces",
+     "Doors of Durin",
+     "Biomass Mutation"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Nogi, Draco-Zealot",
+     "Creative Technique",
+     "Deekah, Fractal Theorist",
+     "Wondrous Crucible",
+     "Camaraderie",
+     "Towering Titan",
+     "Defiler of Instinct",
+     "Urza, Chief Artificer",
+     "Ancestral Anger",
+     "Possibility Storm",
+     "Death's Presence",
+     "Surge to Victory",
+     "Taigam, Master Opportunist"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Audacity",
+     "Wand of Orcus",
+     "Twinblade Blessing",
+     "Helm of the Gods",
+     "Astor, Bearer of Blades",
+     "Bilbo's Ring",
+     "Hateful Eidolon",
+     "Sword of Once and Future"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Kaito, Bane of Nightmares",
+     "Brotherhood Vertibird",
+     "Liliana Vess",
+     "Aminatou, the Fateshifter"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Lupinflower Village",
+     "Barbarian Ring",
+     "Izzet Generatorium"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 42
+ },
+ "454": {
+  "batch": 47,
+  "ready": 31,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    13,
+    "#279 (S32)",
+    [
+     "Sudden Breakthrough",
+     "Black Sun's Twilight",
+     "Knight of the Ebon Legion",
+     "Faerie Conclave",
+     "Amoeboid Changeling",
+     "Avatar Roku, Firebender",
+     "King Darien XLVIII",
+     "Imotekh the Stormlord",
+     "Haystack",
+     "Behind the Scenes",
+     "Rakdos, the Muscle",
+     "Profane Command",
+     "Ardbert, Warrior of Darkness"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "Cool but Rude",
+     "Summon: Magus Sisters",
+     "The Bath Song",
+     "Nissa, Vital Force",
+     "Summon: Good King Mog XII",
+     "Calix, Destiny's Hand",
+     "Sorin, Lord of Innistrad"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Machinist's Arsenal",
+     "With Great Power . . .",
+     "Moonlit Meditation",
+     "Wolfwillow Haven",
+     "Ultima Weapon"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    4,
+    "#93 (S28)",
+    [
+     "Raffine, Scheming Seer",
+     "Defiler of Faith",
+     "Joint Exploration",
+     "The Magic Mirror"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Smokebraider",
+     "Prophetic Prism"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 31
+ },
+ "455": {
+  "batch": 48,
+  "ready": 30,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Sweet-Gum Recluse",
+     "Triple Triad",
+     "Thrumming Hivepool",
+     "Vastwood Surge",
+     "Phenax, God of Deception",
+     "Endless Foot Assault",
+     "Agility Bobblehead",
+     "Jaheira's Respite",
+     "Stadium Headliner",
+     "Zurgo, Thunder's Decree",
+     "Sin, Unending Cataclysm"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "God-Eternal Rhonas",
+     "Ornery Tumblewagg",
+     "Flaming Fist",
+     "Naga Fleshcrafter",
+     "Rydia, Summoner of Mist",
+     "Reverse the Polarity",
+     "Suspicious Bookcase"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Fiendlash",
+     "Brass Knuckles",
+     "Batterskull",
+     "Sword of Hours",
+     "Bonehoard",
+     "Stoneforge Masterwork"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Summon: Shiva",
+     "The Wanderer",
+     "Aerial Surveyor",
+     "Xenagos, the Reveler",
+     "Elspeth Tirel"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Stella Lee, Wild Card",
+     "Beastcaller Savant",
+     "Omen Hawker",
+     "Sliver Hive"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    4,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    2,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "456": {
+  "batch": 49,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Arcane Heist",
+     "Contest of Claws",
+     "Relentless Dead",
+     "The Boulder, Ready to Rumble",
+     "Savage Order",
+     "Kefnet's Monument",
+     "Minthara, Merciless Soul",
+     "Life of the Party",
+     "Narci, Fable Singer",
+     "Long-Range Sensor",
+     "Withering Boon"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Putrid Imp",
+     "Sokka, Tenacious Tactician",
+     "Battle Cry Goblin",
+     "Glacier Godmaw",
+     "Arwen, Mortal Queen",
+     "Captain Howler, Sea Scourge",
+     "Qasali Pridemage",
+     "Restless Prairie",
+     "Restless Vents",
+     "Akroma, Vision of Ixidor",
+     "Kamahl, Heart of Krosa"
+    ]
+   ],
+   [
+    "Attachments",
+    9,
+    "#280 / S33",
+    [
+     "Underworld Connections",
+     "Cloudsteel Kirin",
+     "Ring of Valkas",
+     "Robe of the Archmagi",
+     "Bigger on the Inside",
+     "Curse of the Restless Dead",
+     "Instill Energy",
+     "Trespasser's Curse",
+     "Chains of Custody"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Mm'menon, the Right Hand",
+     "Nexos"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    1,
+    "#92 (S27)",
+    [
+     "Hoard Hauler"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    2,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    1,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 34
+ },
+ "457": {
+  "batch": 50,
+  "ready": 30,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    14,
+    "#93 (S28)",
+    [
+     "Rush of Dread",
+     "The Infamous Cruelclaw",
+     "Hidden Cataract",
+     "Zuko, Firebending Master",
+     "Ashcoat of the Shadow Swarm",
+     "HELIOS One",
+     "Sanctum of Fruitful Harvest",
+     "Sanctum of Calm Waters",
+     "Champions of Minas Tirith",
+     "Tend the Pests",
+     "Ruinous Intrusion",
+     "Diamond Weapon",
+     "Capsize",
+     "Ureni, the Song Unending"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Rhonas the Indomitable",
+     "Sylvan Awakening",
+     "Soul of Windgrace",
+     "Biosynthic Burst",
+     "Kumena, Tyrant of Orazca",
+     "The Master, Transcendent",
+     "Rile",
+     "Aligned Heart",
+     "Fervent Charge",
+     "Sidar Kondo of Jamuraa",
+     "Beregond of the Guard"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Mirror Shield",
+     "Gavel of the Righteous",
+     "Pacifism",
+     "Helm of the Ghastlord"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Awaken the Honored Dead",
+     "Nissa, Voice of Zendikar",
+     "Maximum Carnage",
+     "Ajani Steadfast"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Broadside Bombardiers",
+     "Timestream Navigator"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    6,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    6,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    4,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ]
+  ],
+  "total_freed": 35
+ },
+ "458": {
+  "batch": 51,
+  "ready": 37,
+  "freed": [
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    10,
+    "#279 (S32)",
+    [
+     "Victor, Valgavoth's Seneschal",
+     "Spear of Heliod",
+     "Shefet Dunes",
+     "Lord Skitter's Butcher",
+     "Betor, Ancestor's Voice",
+     "Silumgar, the Drifting Death",
+     "Temmet, Naktamun's Will",
+     "Drannith Ruins",
+     "Opera Love Song",
+     "Terra, Herald of Hope"
+    ]
+   ],
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    7,
+    "#93 (S28)",
+    [
+     "Nahiri, Forged in Fury",
+     "The Pride of Hull Clade",
+     "Final Vengeance",
+     "Wrexial, the Risen Deep",
+     "Pyrokinesis",
+     "Kotis, the Fangkeeper",
+     "Djeru and Hazoret"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    5,
+    "#92 (S27)",
+    [
+     "Scroll of Isildur",
+     "Summon: Esper Valigarmanda",
+     "Teyo, Geometric Tactician",
+     "Elspeth Resplendent",
+     "Mobilizer Mech"
+    ]
+   ],
+   [
+    "Attachments",
+    3,
+    "#280 / S33",
+    [
+     "Necrogen Communion",
+     "Astrologian's Planisphere",
+     "Rabbit Battery"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    8,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 25
+ },
+ "459": {
+  "batch": 52,
+  "ready": 34,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    13,
+    "#93 (S28)",
+    [
+     "Geralf, Visionary Stitcher",
+     "Universal Surveillance",
+     "Into the Roil",
+     "Shriekwood Devourer",
+     "Narset, Enlightened Exile",
+     "Manaform Hellkite",
+     "Szat's Will",
+     "Zoyowa's Justice",
+     "Prosperous Bandit",
+     "Toph, Greatest Earthbender",
+     "Press the Enemy",
+     "Thunderherd Migration",
+     "Desmond Miles"
+    ]
+   ],
+   [
+    "Attachments",
+    8,
+    "#280 / S33",
+    [
+     "Shardmage's Rescue",
+     "Vampiric Link",
+     "Sword of the Paruns",
+     "Observed Stasis",
+     "Strength-Testing Hammer",
+     "Glimmer Lens",
+     "Assassin Gauntlet",
+     "Benevolent Blessing"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    4,
+    "#279 (S32)",
+    [
+     "Agent of the Shadow Thieves",
+     "Grishn\u00e1kh, Brash Instigator",
+     "Offer Immortality",
+     "Horrid Vigor"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Share the Spoils",
+     "White Lotus Hideout",
+     "Squandered Resources"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Quintorius Kand",
+     "Sorin, Vengeful Bloodlord"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    7,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    3,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ]
+  ],
+  "total_freed": 30
+ },
+ "460": {
+  "batch": 53,
+  "ready": 30,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    11,
+    "#93 (S28)",
+    [
+     "Suspend",
+     "Burst Lightning",
+     "Lady Octopus, Inspired Inventor",
+     "Venerated Stormsinger",
+     "Aether Refinery",
+     "Kellan, the Kid",
+     "Finale of Promise",
+     "Go-Shintai of Hidden Cruelty",
+     "Rot Hulk",
+     "Cream of the Crop",
+     "Hidden Courtyard"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    10,
+    "#279 (S32)",
+    [
+     "Needle Spires",
+     "South Pole Voyager",
+     "Kangee, Sky Warden",
+     "Infuriate",
+     "Najeela, the Blade-Blossom",
+     "Goblin Surprise",
+     "Celestial Colonnade",
+     "Hunter's Prowess",
+     "Grand Warlord Radha",
+     "Hall of Storm Giants"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Armadillo Cloak",
+     "Splinter Twin",
+     "Staggering Insight",
+     "Tempest Technique",
+     "Glamdring",
+     "Crown of Gondor",
+     "Battlemage's Bracers"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Hall of Oracles",
+     "Magus of the Coffers",
+     "Ayli, Eternal Pilgrim",
+     "Flamebraider"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Karn, Scion of Urza",
+     "Archangel Elspeth",
+     "Karn, Living Legacy"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    6,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    2,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ]
+  ],
+  "total_freed": 35
+ },
+ "461": {
+  "batch": 54,
+  "ready": 31,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Into the Story",
+     "Thundertrap Trainer",
+     "Sprout Swarm",
+     "All-Fates Scroll",
+     "Aetherflux Conduit",
+     "Avatar of Woe",
+     "Ezuri, Claw of Progress",
+     "Liesa, Shroud of Dusk",
+     "Defiler of Flesh",
+     "Myr Enforcer",
+     "Bring to Light",
+     "Fungal Sprouting",
+     "Jodah, Archmage Eternal",
+     "Natural Reclamation",
+     "Vren, the Relentless"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Ashling, the Limitless",
+     "Thada Adel, Acquisitor",
+     "Ironwill Forger",
+     "Higure, the Still Wind",
+     "Tangletrove Kelp",
+     "Howling Moon",
+     "Dreadmaw's Ire",
+     "Defiant Strike"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    5,
+    "#352 (S32)",
+    [
+     "Gallifrey Council Chamber",
+     "Sea Gate Wreckage",
+     "Troyan, Gutsy Explorer",
+     "Brotherhood Headquarters",
+     "Abstruse Appropriation"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Tamiyo, the Moon Sage",
+     "Nissa of Shadowed Boughs",
+     "Rogue Class"
+    ]
+   ],
+   [
+    "Attachments",
+    2,
+    "#280 / S33",
+    [
+     "Minion's Return",
+     "Eel Umbra"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    4,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    2,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    2,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 33
+ },
+ "462": {
+  "batch": 55,
+  "ready": 39,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    9,
+    "#93 (S28)",
+    [
+     "Cemetery Prowler",
+     "Worthy Cost",
+     "Sage of the Maze",
+     "Sphinx of the Revelation",
+     "Go-Shintai of Ancient Wars",
+     "Cait Sith, Fortune Teller",
+     "The Mycotyrant",
+     "Dinosaur Egg",
+     "Archive Trap"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    8,
+    "#279 (S32)",
+    [
+     "Molten Primordial",
+     "Day's Undoing",
+     "The Seedcore",
+     "Warlord's Fury",
+     "Restless Vinestalk",
+     "Firbolg Flutist",
+     "Hex Parasite",
+     "Tyrant Guard"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Pact Weapon",
+     "Reprobation",
+     "Curator's Ward",
+     "Fungal Fortitude"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Galazeth Prismari",
+     "Zaxara, the Exemplary",
+     "Heartless Conscription"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    2,
+    "#92 (S27)",
+    [
+     "Jace, the Perfected Mind",
+     "Sarkhan the Masterless"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 26
+ },
+ "463": {
+  "batch": 56,
+  "ready": 37,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    8,
+    "#93 (S28)",
+    [
+     "Tangled Colony",
+     "Herald of Slaanesh",
+     "Hidden Necropolis",
+     "Ivory Tower",
+     "Majestic Genesis",
+     "Endurance Bobblehead",
+     "Gornog, the Red Reaper",
+     "Witherbloom, the Balancer"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "Cybership",
+     "Knight Paladin",
+     "Serra the Benevolent",
+     "Sarkhan, Fireblood",
+     "Nicol Bolas, God-Pharaoh",
+     "Garruk Wildspeaker",
+     "Liliana, Waker of the Dead"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Terror of Mount Velus",
+     "Ambrosia Whiteheart",
+     "Shambling Vent",
+     "Treetop Village",
+     "Mirkwood Spider",
+     "Cactusfolk Sureshot",
+     "Turtle Lair"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Tenza, Godo's Maul",
+     "On Serra's Wings",
+     "Spider Umbra",
+     "Bladehold War-Whip"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Cloudpost",
+     "Cruelclaw's Heist"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    6,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    3,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    3,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 28
+ },
+ "464": {
+  "batch": 57,
+  "ready": 36,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    14,
+    "#93 (S28)",
+    [
+     "Sarevok's Tome",
+     "Intelligence Bobblehead",
+     "Will, Scion of Peace",
+     "Doran, Besieged by Time",
+     "Boundless Realms",
+     "Liliana's Standard Bearer",
+     "Obsessive Pursuit",
+     "Hope Estheim",
+     "Maralen, Fae Ascendant",
+     "Monastery Siege",
+     "Charisma Bobblehead",
+     "Perception Bobblehead",
+     "Bone Splinters",
+     "Killing Wave"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    7,
+    "#92 (S27)",
+    [
+     "Lifecraft Engine",
+     "Chandra, Flameshaper",
+     "Recon Craft Theta",
+     "Elspeth, Knight-Errant",
+     "Mighty Servant of Leuk-o",
+     "Chandra, Acolyte of Flame",
+     "Gourmand's Talent"
+    ]
+   ],
+   [
+    "Attachments",
+    6,
+    "#280 / S33",
+    [
+     "Corrupted Conscience",
+     "Trickster's Elk",
+     "Eternal Thirst",
+     "Vorrac Battlehorns",
+     "Thieves' Tools",
+     "Bone Sabres"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    6,
+    "#279 (S32)",
+    [
+     "Sword Coast Sailor",
+     "Breya, Etherium Shaper",
+     "Scion of the Ur-Dragon",
+     "Gwaihir, Greatest of the Eagles",
+     "Vihaan, Goldwaker",
+     "Demolisher Spawn"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    2,
+    "#352 (S32)",
+    [
+     "Whisperer of the Wilds",
+     "Pillar of Origins"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    7,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 35
+ },
+ "465": {
+  "batch": 58,
+  "ready": 27,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Sakashima's Protege",
+     "Trash the Town",
+     "Rodolf Duskbringer",
+     "Octavia, Living Thesis",
+     "Corpse Augur",
+     "The Wandering Minstrel",
+     "Fury of the Horde",
+     "Oreskos Explorer",
+     "G'raha Tia, Scion Reborn",
+     "Dalkovan Packbeasts",
+     "Strength Bobblehead",
+     "Faerie Bladecrafter",
+     "Dina, Essence Brewer",
+     "Go-Shintai of Lost Wisdom",
+     "Armix, Filigree Thrasher"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    9,
+    "#279 (S32)",
+    [
+     "Havengul Lich",
+     "Benevolent Bodyguard",
+     "Wall of Blood",
+     "Roar of Resistance",
+     "Corsairs of Umbar",
+     "Emerald Charm",
+     "Forerunner of the Legion",
+     "Shadow Puppeteers",
+     "Rockface Village"
+    ]
+   ],
+   [
+    "Attachments",
+    5,
+    "#280 / S33",
+    [
+     "Pre-War Formalwear",
+     "Wizard's Staff",
+     "Cloak of the Bat",
+     "Hidden Blade",
+     "Security Bypass"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Golden Argosy",
+     "Ral Zarek",
+     "The Weatherseed Treaty",
+     "Summon: Kujata"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    3,
+    "#352 (S32)",
+    [
+     "Vedalken Engineer",
+     "Ixalli's Lorekeeper",
+     "Crystal Quarry"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    6,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    5,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    2,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ]
+  ],
+  "total_freed": 36
+ },
+ "466": {
+  "batch": 59,
+  "ready": 25,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    14,
+    "#93 (S28)",
+    [
+     "River Song's Diary",
+     "Blood Tribute",
+     "Cosmic Cube",
+     "Gush",
+     "Lock and Load",
+     "Jubilant Skybonder",
+     "Agatha of the Vile Cauldron",
+     "Deploy to the Front",
+     "Firebending Lesson",
+     "Rumbleweed",
+     "Sunscape Familiar",
+     "Louisoix's Sacrifice",
+     "Savage Stomp",
+     "Tourach, Dread Cantor"
+    ]
+   ],
+   [
+    "Attachments",
+    7,
+    "#280 / S33",
+    [
+     "Yuffie, Materia Hunter",
+     "Breath of Fury",
+     "Gorgon's Head",
+     "Captain America's Shield",
+     "Cliffhaven Kitesail",
+     "Sixth Sense",
+     "Lord Skitter's Blessing"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    7,
+    "#279 (S32)",
+    [
+     "Incandescent Soulstoke",
+     "Nezumi Prowler",
+     "Tyvar the Bellicose",
+     "Rosa, Resolute White Mage",
+     "Tori D'Avenant, Fury Rider",
+     "Impolite Entrance",
+     "Erebos's Intervention"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    7,
+    "#352 (S32)",
+    [
+     "Dune Chanter",
+     "Captivating Cave",
+     "Dictate of Karametra",
+     "Rodeo Pyromancers",
+     "Sunken Citadel",
+     "Corrupted Crossroads",
+     "Primal Beyond"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    3,
+    "#92 (S27)",
+    [
+     "Jace, Memory Adept",
+     "Lord Windgrace",
+     "Kaya the Inexorable"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    10,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    6,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    5,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    1,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ]
+  ],
+  "total_freed": 38
+ },
+ "467": {
+  "batch": 60,
+  "ready": 40,
+  "freed": [
+   [
+    "Cost modification, alternative casts and costs computed at activation",
+    15,
+    "#93 (S28)",
+    [
+     "Sunderflock",
+     "Voja, Jaws of the Conclave",
+     "Epic Experiment",
+     "Solidarity of Heroes",
+     "Become the Avalanche",
+     "Abjure",
+     "Magmatic Insight",
+     "Magnus the Red",
+     "Halo Forager",
+     "Herald of Kozilek",
+     "Pitiless Carnage",
+     "Walk the Aeons",
+     "Mona Lisa, Science Geek",
+     "Hatchery Sliver",
+     "Soul Immolation"
+    ]
+   ],
+   [
+    "Until-end-of-turn continuous effects (turn-scoped statics)",
+    11,
+    "#279 (S32)",
+    [
+     "Involuntary Employment",
+     "Brokers Charm",
+     "Crumb and Get It",
+     "Choco, Seeker of Paradise",
+     "Bond of Discipline",
+     "Signal Pest",
+     "Okina, Temple to the Grandfathers",
+     "Iraxxa, Empress of Mars",
+     "Retreat to Emeria",
+     "Jirina, Dauntless General",
+     "Inferno of the Star Mounts"
+    ]
+   ],
+   [
+    "Attachments",
+    4,
+    "#280 / S33",
+    [
+     "Hunter's Bow",
+     "Leyline Immersion",
+     "Dragon Mantle",
+     "Orcrist, Goblin-cleaver"
+    ]
+   ],
+   [
+    "Card-type completeness",
+    4,
+    "#92 (S27)",
+    [
+     "Kaito Shizuki",
+     "Kotori, Pilot Prodigy",
+     "Battle at the Helvault",
+     "Sarkhan Unbroken"
+    ]
+   ],
+   [
+    "Mana pipeline",
+    4,
+    "#352 (S32)",
+    [
+     "Hurl Through Hell",
+     "Shang-Chi, Master of Kung Fu",
+     "Hall of Tagsin",
+     "Cormela, Glamour Thief"
+    ]
+   ]
+  ],
+  "partial": [
+   [
+    "Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse)",
+    5,
+    "flashback (#411) and escape shipped; cycling #660, foretell #658, suspend #659, madness #657 remain"
+   ],
+   [
+    "Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling\u2026)",
+    5,
+    "landwalk (#705) and changeling (S26) shipped; infect/wither/toxic is #748 and prowess is #706"
+   ],
+   [
+    "Multi-face cards (MDFC / transform / adventure / split / class / case)",
+    4,
+    "the face model and MDFC picker shipped (#357, #574); the transform verb is #343 and adventure is #719"
+   ],
+   [
+    "Protection / hexproof / ward / indestructible / shroud, damage prevention, copying",
+    3,
+    "hexproof, shroud, ward, indestructible and damage prevention shipped (#353, #421/#433, #647, #380, #420); protection itself is #662 and copying is #665/#666"
+   ]
+  ],
+  "total_freed": 38
+ }
+}
