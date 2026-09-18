@@ -217,7 +217,8 @@ func fizzles(g *Game, oracleID string, itemID uuid.UUID) bool {
 	out := false
 	g.WithWriteLock(func() {
 		item := g.StackMeta[itemID]
-		out = spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(oracleID, item))
+		_ = oracleID
+		out = spellAllTargetsIllegalLocked(g, item)
 	})
 	return out
 }

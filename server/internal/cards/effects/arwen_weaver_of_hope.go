@@ -17,16 +17,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // you put counters" payoff does not see them, the Hangarback Walker
 // posture.
 //
-// Sandbox simplification, declared: creature TOKENS get nothing.
-// Token creation skips the CR 614 zone-move pipeline (the Urabrask
-// the Hidden gap), so no entry replacement sees a token. Weaker
-// than printed, never stronger.
+// Creature TOKENS get the counters too, since #762: a created token
+// runs the same battlefield-entry pipeline every other permanent
+// runs, so this replacement sees one exactly as it sees a cast
+// creature.
 func init() {
 	Register(Spec{
 		OracleID:     "c0891157-f3dd-4866-866f-fd13e9be9633",
 		Name:         "Arwen, Weaver of Hope",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Creature tokens you create don't get the extra +1/+1 counters — only creature cards entering the battlefield do."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b17OtherCreaturesYouControlEnterWithCounters("Arwen, Weaver of Hope: enters with +1/+1 counters equal to Arwen's toughness"),
 		},

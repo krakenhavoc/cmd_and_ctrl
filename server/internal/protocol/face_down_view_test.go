@@ -205,6 +205,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Unimplemented:       true,
 		TargetMode:          "creature",
 		LegalTargets:        lt,
+		Clauses:             []LegalTargetsView{*lt, *lt},
 		Modes:               &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{Label: "mode"}}},
 		AdditionalCost:      &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts:    []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},

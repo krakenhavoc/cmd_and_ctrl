@@ -78,7 +78,10 @@ func (g *Game) refreshTargetChoicesLocked() {
 		)
 		switch {
 		case c.pickTargetResume != nil:
-			spec = c.pickTargetResume.spec
+			// #764: the clause the OPEN step is asking about, not the
+			// ability's first — a multi-clause trigger re-reads
+			// whichever one the prompt belongs to.
+			spec = c.pickTargetResume.currentClause()
 			chooser = c.pickTargetResume.source.Controller
 		case c.copySpellResume != nil:
 			spec = c.copySpellResume.spec

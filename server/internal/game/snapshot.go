@@ -77,10 +77,20 @@ import (
 // cannot know. Card.VariableToughness is the one such field; see
 // snapshot_backfill.go.
 //
+// The OTHER direction is also a reason to bump, and it is why v2
+// exists (#623, ADR 0064 Decision 7): emblems are additive and
+// restore correctly from a v1 file, but a v1 BINARY reading a v2 file
+// would restore a game with the emblems silently missing. There is no
+// per-field way to say "refuse this file if you don't know what an
+// emblem is", so the version is it. checkSchema already refuses a
+// file newer than the reader (ErrSchemaTooNew); the bump is what
+// makes it fire. The cost is that a pre-emblem binary refuses EVERY
+// post-emblem restore point, emblem or not.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 1
+const SnapshotSchemaVersion = 2
 
 // minRestorableSchema is the oldest schema Restore still understands.
 // Raise it only when carrying a migration forward stops being worth
@@ -256,6 +266,12 @@ type playerSnapshot struct {
 	Hand      *zoneSnapshot `json:"hand"`
 	Graveyard *zoneSnapshot `json:"graveyard"`
 	Command   *zoneSnapshot `json:"command"`
+	// Emblems is the other half of the command zone (CR 114, #623).
+	// Absent from every pre-S40 file, which restores as an empty
+	// zone — the right reading, because no game written before
+	// emblems existed had one. See SnapshotSchemaVersion for why the
+	// schema was bumped anyway.
+	Emblems *zoneSnapshot `json:"emblems,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -403,10 +419,11 @@ type stackItemSnapshot struct {
 	Seq           uint64            `json:"seq"`
 	Ordered       bool              `json:"ordered"`
 
-	// HasEffect / HasTargetSpec record the two closure slots so the
-	// census can count what restore had to drop.
+	// HasEffect / HasTargetSpec / HasModeSpec record the catalog
+	// slots so the census can count what restore had to drop.
 	HasEffect     bool `json:"hasEffect,omitempty"`
 	HasTargetSpec bool `json:"hasTargetSpec,omitempty"`
+	HasModeSpec   bool `json:"hasModeSpec,omitempty"`
 
 	// OracleID is the source card's oracle ID, captured so restore
 	// can re-derive a SPELL's target spec from the catalog without
@@ -453,6 +470,11 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
+	ModeOptionIndex      []int                  `json:"modeOptionIndex,omitempty"`
+	ModeOptionLabel      []string               `json:"modeOptionLabel,omitempty"`
+	ModeMin              int                    `json:"modeMin,omitempty"`
+	ModeMax              int                    `json:"modeMax,omitempty"`
+	ModeRepeatable       bool                   `json:"modeRepeatable,omitempty"`
 	SacrificeOptions     []uuid.UUID            `json:"sacrificeOptions,omitempty"`
 	CopyOptions          []uuid.UUID            `json:"copyOptions,omitempty"`
 	ScryCards            []uuid.UUID            `json:"scryCards,omitempty"`
@@ -902,6 +924,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Hand:               snapshotZone(p.Hand, cen),
 		Graveyard:          snapshotZone(p.Graveyard, cen),
 		Command:            snapshotZone(p.Command, cen),
+		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
@@ -963,6 +986,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Ordered:       s.Ordered,
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
+		HasModeSpec:   s.modeSpec != nil,
 		OracleID:      oracleIDOfLocked(g, s.SourceCardID),
 	}
 	if s.Effect != nil {
@@ -977,6 +1001,13 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 	if s.targetSpec != nil && !spellSpecRederivable(out) {
 		cen.StackTargetSpecs++
 		cen.note("stack target spec: %s", labelOr(s.Label, string(s.Kind)))
+	}
+	// #764: an ABILITY's ModeSpec came off the ability declaration,
+	// reached by an index the item does not record, so it cannot be
+	// recovered here either. A spell's is looked up by oracle ID.
+	if s.modeSpec != nil && !spellSpecRederivable(out) {
+		cen.StackTargetSpecs++
+		cen.note("stack mode spec: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	return out
 }
@@ -1043,6 +1074,11 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -1089,6 +1125,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
 		"chooseColorResume": c.chooseColorResume != nil,
+		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
 	} {
 		if present {
@@ -1401,6 +1438,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Hand:               restoreZone(p.Hand, ZoneHand),
 		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
 		Command:            restoreZone(p.Command, ZoneCommand),
+		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
@@ -1425,6 +1463,13 @@ func restorePlayer(p *playerSnapshot) *Player {
 	// means the default.
 	if out.LandDropsPerTurn <= 0 {
 		out.LandDropsPerTurn = DefaultLandDropsPerTurn
+	}
+	// #623: a pre-emblem file carries no emblem zone, so restoreZone
+	// hands back one owned by nobody. newPlayer stamps the owner, so
+	// stamp it here too and a restored seat is the shape a fresh one
+	// is.
+	if out.Emblems != nil {
+		out.Emblems.Owner = out.ID
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.
@@ -1482,6 +1527,9 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
 		out.targetSpec = CatalogTargetSpec(s.OracleID)
 	}
+	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
+		out.modeSpec = CatalogModeSpec(s.OracleID)
+	}
 	return out
 }
 
@@ -1524,6 +1572,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),

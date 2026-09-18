@@ -249,8 +249,11 @@ func TestSagaEntersWithTwoLoreCountersUnderDoublingSeason(t *testing.T) {
 	if got := loreCountersOn(g, sagaID); got != 2 {
 		t.Fatalf("lore counters under Doubling Season = %d, want 2", got)
 	}
-	if got := countBattlefieldByName(g, "Knight"); got != 2 {
-		t.Errorf("Knights after chapters I and II fired together = %d, want 2", got)
+	// #762: Doubling Season's token half works, so each chapter's
+	// "create a 2/2 Knight" is one CR 701.7b creation event that makes
+	// two. Two chapters, four Knights.
+	if got := countBattlefieldByName(g, "Knight"); got != 4 {
+		t.Errorf("Knights after chapters I and II fired together = %d, want 4 (both doubled)", got)
 	}
 }
 

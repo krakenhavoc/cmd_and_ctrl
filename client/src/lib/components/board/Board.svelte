@@ -49,7 +49,9 @@
     cancel as cancelTargeting,
     beginChoice as beginTargetingChoice,
     beginForAbility as beginTargetingForAbility,
-    beginForMode as beginTargetingForMode,
+    beginForModes as beginTargetingForModes,
+    advance,
+    allPicks,
     hasXCost,
     castLocksXAtZero,
     isModal,
@@ -500,18 +502,18 @@
   // option's legal set, otherwise the cast fires straight away.
   let modePromptCard = $state<CardView | null>(null);
   let modePromptChoices: CastChoices = {};
+  // #764: EVERY chosen bullet contributes its clauses to the walk,
+  // in the order they were chosen (CR 700.2c), and a repeated bullet
+  // (CR 700.2d) contributes them once per occurrence. The old shape
+  // took the FIRST targeted option and dropped the rest, which is
+  // why Kolaghan's Command could not be cast.
   function confirmModes(modes: number[]): void {
     const card = modePromptCard;
     const choices = modePromptChoices;
     modePromptCard = null;
     modePromptChoices = {};
     if (!card) return;
-    const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
-    if (targeted !== undefined) {
-      const option = card.modes!.options[targeted];
-      beginTargetingForMode(card, option, modes, choices);
-      return;
-    }
+    if (beginTargetingForModes(card, modes, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     applyCastChoices(params, choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
@@ -569,13 +571,26 @@
       targeting.set(togglePick(state, ref));
       return;
     }
-    fireTargets(state, [ref]);
+    stepOrFire({ ...state, picked: [ref] });
   }
 
   function confirmTargets(): void {
     const state = $targeting;
     if (!state || !canConfirm(state)) return;
-    fireTargets(state, state.picked);
+    stepOrFire(state);
+  }
+
+  // stepOrFire is the two-step picker's hinge (#764): a walk with
+  // another clause to ask about opens the next prompt; a finished
+  // walk fires the one action carrying every pick, each stamped with
+  // the clause it answered.
+  function stepOrFire(state: TargetingState): void {
+    const next = advance(state);
+    if (next) {
+      targeting.set(next);
+      return;
+    }
+    fireTargets(state, allPicks(state));
   }
   $effect(() => {
     setConfirmHandler(confirmTargets);
@@ -603,12 +618,15 @@
         targets,
       };
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
+      if (state.modes !== undefined) params.modes = state.modes;
       sendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.modes !== undefined) params.modes = state.modes;
+    // #764: a modal activated ability sends its modes beside its
+    // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
@@ -792,6 +810,7 @@
     crewIDs: string[] = [],
     xValue?: number,
     counter?: CounterPayment,
+    modes?: number[],
   ): void {
     // CR 602.2b: X is announced with the other choices and before
     // any cost is paid, so the picker opens after the cost picks
@@ -801,9 +820,21 @@
       xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
       return;
     }
-    if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue, counter);
+    // #764, CR 602.2b: a modal activated ability chooses its modes
+    // with its targets, in the one announcement — so the mode picker
+    // sits exactly where a modal cast's does, between the costs and
+    // the targeting walk.
+    if (ability.modes && modes === undefined) {
+      abilityModePrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter };
       return;
+    }
+    if (ability.legal_targets || ability.clauses?.length || (modes && modes.length > 0)) {
+      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes);
+      const t = $targeting;
+      if (t && t.steps.length > 0 && (t.legal || t.steps.length > 1)) return;
+      // A modal ability whose chosen bullets take no target falls
+      // through to the immediate activation below.
+      cancelTargeting();
     }
     const params: Record<string, unknown> = {
       source_card_id: card.instance_id,
@@ -813,7 +844,32 @@
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
+    if (modes !== undefined) params.modes = modes;
     sendAction("activate_ability", params, viewerID ?? undefined);
+  }
+
+  // #764: the mode picker for a modal ACTIVATED ability. It reuses
+  // ModePickerModal by handing it a synthetic card view carrying the
+  // ability's ModeSpec — one picker, three owners, the same way the
+  // engine has one ModeSpec for three owners.
+  let abilityModePrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+  } | null>(null);
+  const abilityModeCard = $derived(
+    abilityModePrompt
+      ? ({ ...abilityModePrompt.card, modes: abilityModePrompt.ability.modes } as CardView)
+      : null,
+  );
+  function confirmAbilityModes(modes: number[]): void {
+    const p = abilityModePrompt;
+    abilityModePrompt = null;
+    if (!p) return;
+    continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, p.xValue, p.counter, modes);
   }
 
   // S20 sub-PR 2: a pick_target pending choice addressed to the
@@ -1117,6 +1173,13 @@
     onCancel={() => {
       modePromptCard = null;
       modePromptChoices = {};
+    }}
+  />
+  <ModePickerModal
+    card={abilityModeCard}
+    onConfirm={confirmAbilityModes}
+    onCancel={() => {
+      abilityModePrompt = null;
     }}
   />
   {#if $zoneBrowser}

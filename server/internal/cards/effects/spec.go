@@ -491,6 +491,18 @@ type Spec struct {
 	// Set it when you add or change a card. Leaving it unset is
 	// permitted and is not a failure — it publishes the card as
 	// unaudited, which is true.
+	// Emblem is the emblem this card's abilities create (CR 114) —
+	// "You get an emblem with [ability]". Nil for every card that
+	// makes none, which is nearly all of them.
+	//
+	// Declared once here, next to the ability that creates it; the
+	// ability itself is `CreateEmblem{}.Apply(ctx)` and names
+	// nothing, because the emblem it makes is this one. Register
+	// files the emblem's own CardDef under game.EmblemKey(OracleID),
+	// which is how its statics reach the layer pass and its triggers
+	// reach the harvester. See emblem.go and ADR 0064.
+	Emblem *EmblemSpec
+
 	Completeness Completeness
 
 	// Caveats names the printed clauses this spec does NOT model,
@@ -521,9 +533,17 @@ type Spec struct {
 // game.ActivatedAbilityShape; the wire hook converts. Added in S21
 // sub-PR 2.
 type ActivatedAbility struct {
-	Label        string
-	Cost         game.AbilityCost
-	Targets      *game.TargetSpec
+	Label   string
+	Cost    game.AbilityCost
+	Targets *game.TargetSpec
+	// Modes is the CR 700.2 mode clause of a modal activated ability
+	// ("{4}, {T}: Choose one —"). The same game.ModeSpec a modal
+	// spell declares in Spec.Modes, built with the same ChooseOne /
+	// ChooseN constructors (#764, ADR 0065 §3). Modes and targets are
+	// announced together at activation (CR 602.2b); each chosen
+	// bullet's ModeOption.Effect runs at resolution in announce
+	// order. Declare the target clause on the OPTION, not here.
+	Modes        *game.ModeSpec
 	SorcerySpeed bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as

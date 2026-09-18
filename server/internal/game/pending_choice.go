@@ -41,8 +41,6 @@ import (
 //
 // Future kinds (reserved names, not implemented yet):
 //
-//	"mode_pick"         — chooser picks a mode index for a modal
-//	                      spell.
 //	"mill_reveal"       — chooser picks which of the revealed top-N
 //	                      library cards go where (Brainstorm's
 //	                      put-two-back half).
@@ -400,6 +398,30 @@ type PendingChoice struct {
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
 
+	// ModeOptionIndex / ModeOptionLabel are the options a
+	// PendingChoiceModePick offers, in printed order: the ModeSpec
+	// index of each option and its oracle bullet. Only the choosable
+	// ones are listed (an option whose clause has no legal target is
+	// dropped, CR 603.3d), so the answer is validated against this
+	// list rather than against the whole ModeSpec — and the CLIENT
+	// cannot offer what the engine would refuse. Carried by the
+	// snapshot: the options ARE the prompt. Added by #764.
+	ModeOptionIndex []int
+	ModeOptionLabel []string
+
+	// ModeMin / ModeMax / ModeRepeatable are the ModeSpec's bounds,
+	// repeated onto the prompt so the picker and the bot's
+	// enumerator need nothing but the prompt to answer it.
+	// Added by #764.
+	ModeMin, ModeMax int
+	ModeRepeatable   bool
+
+	// modePickResume is the server-only continuation for a
+	// PendingChoiceModePick: the captured trigger, so the answer
+	// continues into the CR 603.3d target walk and then Build.
+	// Added by #764.
+	modePickResume *modePickFrame
+
 	// copySpellResume is the other continuation a
 	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
@@ -647,13 +669,44 @@ type mayCastFrame struct {
 
 // pickTargetFrame is the continuation for a targeted trigger's
 // pick_target prompt. Added in S20 sub-PR 2.
+//
+// #764: a trigger's targets are a WALK over the announcement's
+// clause steps, not a single clause. One prompt is one step; the
+// frame accumulates the picks and re-queues itself for the next
+// step until the list is exhausted, and only then does Build run.
+// A single-clause trigger — every targeted trigger that predates
+// #764 — is that walk with one step, which is one prompt, which is
+// exactly what it was.
 type pickTargetFrame struct {
-	ev        Event
-	source    Card
-	lki       Characteristic
-	build     func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
-	spec      *TargetSpec
+	ev     Event
+	source Card
+	lki    Characteristic
+	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+	// spec is the ability's card-level clause statement (nil for a
+	// modal ability, whose clauses come from the chosen options).
+	spec *TargetSpec
+	// modeSpec / modes are the ability's modes and the occurrences
+	// chosen at CR 603.3c, stamped onto the built item so the
+	// resolution re-check can find each ref's clause.
+	modeSpec *ModeSpec
+	modes    []int
+	// steps is the announcement's clause list, step the cursor into
+	// it, and picked the refs answered so far (each already stamped
+	// with its Mode / Slot).
+	steps  []AnnouncedClause
+	step   int
+	picked []TargetRef
+
 	doubledBy doublerRef
+}
+
+// currentClause is the clause the open prompt is asking about, or
+// nil when the walk is finished.
+func (f *pickTargetFrame) currentClause() *TargetClause {
+	if f == nil || f.step < 0 || f.step >= len(f.steps) {
+		return nil
+	}
+	return &f.steps[f.step].Clause
 }
 
 // triggerResumeFrame stashes the per-trigger continuation data the
@@ -884,7 +937,7 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// an index into g.PendingChoices does not survive that.
 		g.dequeueChoiceLocked(idx)
 		return g.discardCardsLocked(from.ID, picks, discardOptions{
-			cause:  discardCauseEffect,
+			cause:  DiscardCauseEffect,
 			source: choice.Source,
 		})
 	default:
@@ -1495,7 +1548,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// happens here — which is also where it was before #694.
 		g.runStateChecksLocked()
 		return nil
-	case RepEventMove:
+	case RepEventMove, RepEventDiscard:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
 		// it is finished by the same code the unpaused path runs —
@@ -1566,6 +1619,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// this branch only when it is flagged ViaBattlefieldLeave —
 		// every other exit went to executeZoneRouteLocked above.
 		return g.finishBattlefieldLeaveLocked(ev, owner)
+	case RepEventCreateTokens:
+		// #762: the CR 701.7b window has settled on how many tokens of
+		// which kinds this instruction makes. Creating them is the
+		// same function the unpaused path runs, so a creation that
+		// paused on an ordering prompt and one that did not cannot
+		// drift apart — and each token then takes the ordinary
+		// battlefield entry, which may pause again on its own.
+		return g.applyResolvedTokenCreationLocked(ev)
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is
@@ -1642,6 +1703,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if ev.Kind == RepEventDamage {
 		return g.runDamageTailLocked(ev, 0)
 	}
+	// #762: a cancelled or replaced-away token CREATION makes nothing,
+	// and the rest of the card ("create a Treasure, then sacrifice
+	// it") has to be told so rather than wait for tokens that will
+	// never arrive.
+	if ev.Kind == RepEventCreateTokens {
+		return g.abandonTokenCreationLocked(ev)
+	}
 	// #853: and the same for a cancelled EXIT that carries a route.
 	// The card stays where it is, but a multi-card discard sequenced
 	// through the route's continuation has to be told, or the rest of
@@ -1653,7 +1721,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// multi-card fetch has to be told before it can start the next one.
 	// Only one of the two is ever set, so running both is one call and
 	// a no-op.
-	if ev.Kind == RepEventMove {
+	if isExitMove(ev.Kind) {
+		// #762: a cancelled ENTRY of a created token is the one move
+		// that leaves an object behind. A token exists only on the
+		// battlefield (CR 111.1), so one whose entry was replaced away
+		// simply ceases to be; the rest of its batch still lands,
+		// through the entry tail below.
+		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
 		}
@@ -1975,40 +2049,124 @@ func (g *Game) queueTriggerPromptLocked(
 // refreshTargetChoicesLocked re-reads the frozen set at the next
 // priority-grant boundary (#809). Caller must hold g.mu. Added in S20
 // sub-PR 2.
-func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
-	lt := g.legalTargetsLocked(source.Controller, t.Targets)
-	// CR 603.3d: no legal target ⇒ the ability is removed from the
-	// stack and does nothing. dispatchTriggerInstanceLocked already
-	// checked this at harvest time, but the OPTIONAL path comes back
-	// through here from ResolveTriggerPrompt, an arbitrary time later,
-	// and a prompt with an empty option list is a prompt nobody can
-	// answer — which since #791 is a table that cannot move.
-	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause) {
+	g.queuePickTargetStepLocked(&pickTargetFrame{
+		ev:        ev,
+		source:    source,
+		lki:       lki,
+		build:     t.Build,
+		spec:      t.Targets,
+		modeSpec:  t.Modes,
+		modes:     append([]int(nil), modes...),
+		steps:     steps,
+		doubledBy: doubledBy,
+	})
+}
+
+// queuePickTargetStepLocked opens the prompt for the frame's CURRENT
+// step, skipping steps whose optional clause ("up to one target") has
+// nothing to offer, and finishing the walk when the steps run out.
+//
+// CR 603.3d: a REQUIRED clause with no legal target means the ability
+// is removed from the stack and does nothing.
+// dispatchTriggerInstanceLocked already checked that at harvest time,
+// but the OPTIONAL path comes back through here from
+// ResolveTriggerPrompt an arbitrary time later, and a prompt with an
+// empty option list is a prompt nobody can answer — which since #791
+// is a table that cannot move.
+//
+// Caller must hold g.mu.
+func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
+	for f.step < len(f.steps) {
+		clause := f.currentClause()
+		lt := g.legalTargetsLocked(f.source.Controller, clause)
+		lt = withoutPicked(lt, f.picked, clause.Distinct)
+		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+			if clause.Min > 0 {
+				// The whole ability is removed (CR 603.3d), together
+				// with the picks already made for earlier clauses —
+				// nothing was put on the stack, so nothing is undone.
+				return
+			}
+			// "Up to one target" with nothing to point at: the step is
+			// answered by choosing nothing.
+			f.step++
+			continue
+		}
+		label := clause.Label
+		if label == "" {
+			label = "Choose a target"
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:              PendingChoicePickTarget,
+			Chooser:           f.source.Controller,
+			Count:             1,
+			Source:            f.source.InstanceID,
+			Reason:            label,
+			PickTargetPlayers: lt.Players,
+			PickTargetCards:   lt.Cards,
+			PickTargetMin:     clause.Min,
+			PickTargetMax:     clause.Max,
+			pickTargetResume:  f,
+		})
 		return
 	}
-	label := t.Targets.Label
-	if label == "" {
-		label = "Choose a target"
+	g.finishPickTargetLocked(f)
+}
+
+// finishPickTargetLocked runs Build with every step answered and
+// queues the item, stamping the announcement onto it so the CR
+// 608.2b re-check can find each ref's clause.
+//
+// Caller must hold g.mu.
+func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
+	if f.build == nil {
+		return
 	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoicePickTarget,
-		Chooser:           source.Controller,
-		Count:             1,
-		Source:            source.InstanceID,
-		Reason:            label,
-		PickTargetPlayers: lt.Players,
-		PickTargetCards:   lt.Cards,
-		PickTargetMin:     t.Targets.Min,
-		PickTargetMax:     t.Targets.Max,
-		pickTargetResume: &pickTargetFrame{
-			ev:        ev,
-			source:    source,
-			lki:       lki,
-			build:     t.Build,
-			spec:      t.Targets,
-			doubledBy: doubledBy,
-		},
-	})
+	source := f.source
+	item := f.build(f.ev, &source, f.lki, g)
+	if item == nil {
+		return
+	}
+	item.Targets = append([]TargetRef(nil), f.picked...)
+	item.Modes = append([]int(nil), f.modes...)
+	item.targetSpec = f.spec
+	item.modeSpec = f.modeSpec
+	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
+	g.queueHarvestedTriggerLocked(item)
+	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
+	// it is put on the stack, which is right here. Emitted after the
+	// queue so a "becomes the target" trigger stacks above the
+	// ability that targeted. Added in S22 for Monk Gyatso.
+	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, item.Targets)
+	g.runStateChecksLocked()
+}
+
+// withoutPicked drops from a legal set every object already picked
+// for an EARLIER clause, when this clause is Distinct ("a second
+// target permanent you control"). A non-Distinct clause gets the set
+// untouched — CR 601.2c lets one object fill two different instances
+// of the word "target".
+func withoutPicked(lt LegalTargets, picked []TargetRef, distinct bool) LegalTargets {
+	if !distinct || len(picked) == 0 {
+		return lt
+	}
+	taken := make(map[uuid.UUID]bool, len(picked))
+	for _, p := range picked {
+		taken[p.ID] = true
+	}
+	out := LegalTargets{}
+	for _, id := range lt.Players {
+		if !taken[id] {
+			out.Players = append(out.Players, id)
+		}
+	}
+	for _, id := range lt.Cards {
+		if !taken[id] {
+			out.Cards = append(out.Cards, id)
+		}
+	}
+	return out
 }
 
 // ResolvePickTarget processes the controller's target choice for a
@@ -2060,7 +2218,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
 	}
 	frame := choice.pickTargetResume
-	if frame == nil || frame.build == nil || frame.spec == nil {
+	step := frame.currentClause()
+	if frame == nil || frame.build == nil || step == nil {
 		g.dequeueChoiceLocked(idx)
 		return nil
 	}
@@ -2069,25 +2228,32 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateTargetsLocked(chooserID, frame.spec, targets); err != nil {
+	// #764: the refs answer THIS step, so they are validated against
+	// this clause alone and stamped with its (Mode, Slot) — the walk
+	// asks one clause at a time and the item ends up carrying the
+	// whole announcement.
+	cur := frame.steps[frame.step]
+	stamped := make([]TargetRef, 0, len(targets))
+	for _, t := range targets {
+		t.Mode, t.Slot = cur.Mode, cur.Slot
+		stamped = append(stamped, t)
+	}
+	if err := g.validateAnnouncedTargetsLocked(chooserID, frame.steps[frame.step:frame.step+1], stamped); err != nil {
 		return err
 	}
-	g.dequeueChoiceLocked(idx)
-	source := frame.source
-	item := frame.build(frame.ev, &source, frame.lki, g)
-	if item == nil {
-		return nil
+	if step.Distinct {
+		for _, t := range stamped {
+			for _, p := range frame.picked {
+				if p.ID == t.ID {
+					return ErrInvalidParam
+				}
+			}
+		}
 	}
-	item.Targets = append([]TargetRef(nil), targets...)
-	item.targetSpec = frame.spec
-	item.DoubledBy, item.DoubledByName = frame.doubledBy.id, frame.doubledBy.name
-	g.queueHarvestedTriggerLocked(item)
-	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
-	// it is put on the stack, which is right here. Emitted after the
-	// queue so a "becomes the target" trigger stacks above the
-	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, targets)
-	g.runStateChecksLocked()
+	g.dequeueChoiceLocked(idx)
+	frame.picked = append(frame.picked, stamped...)
+	frame.step++
+	g.queuePickTargetStepLocked(frame)
 	return nil
 }
 
@@ -2131,7 +2297,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy)
+	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the
@@ -2692,12 +2858,17 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 		return false
 	}
 	ev := frame.ev
-	if ev.Kind != RepEventMove {
+	if !isExitMove(ev.Kind) {
 		return false
 	}
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
-		return true
+		// #762: a CREATED TOKEN whose entry is paused is in no zone at
+		// all — minted, staged, not yet pushed. That is not a card that
+		// has left by another route; it is exactly where the paused
+		// entry left it.
+		_, staged := g.enteringTokenLocked(ev.CardID)
+		return !staged
 	}
 	if ev.NewZone == ZoneBattlefield && src == g.Battlefield {
 		return false
@@ -2721,7 +2892,7 @@ func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
 			continue
 		}
 		ev := c.replacementResume.ev
-		if ev == nil || ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+		if ev == nil || !isExitMove(ev.Kind) || ev.NewZone == ZoneBattlefield {
 			continue
 		}
 		if ev.CardID == cardID {

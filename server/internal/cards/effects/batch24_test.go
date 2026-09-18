@@ -367,14 +367,16 @@ func TestB24SoulsFireBitesWithACreatureYouControl(t *testing.T) {
 	if g.Battlefield.Contains(theirs) {
 		t.Error("4 damage from the Beast kills the Bear")
 	}
-	// The first slot must be a creature you control — checked at
-	// resolution: an opponent's creature in the first slot bites
-	// nothing.
-	castCatalogSpell(t, g, "Soul's Fire", "Instant", b24SoulsFireOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: wall}, {Kind: game.TargetCard, ID: mine}})
-	passPriorityAroundTable(t, g)
+	// #764: the first slot is its own CLAUSE, so an opponent's
+	// creature there is refused at ANNOUNCE (CR 601.2c) rather than
+	// discovered at resolution. Back the clause list out to one wide
+	// spec and this cast is accepted and quietly does nothing.
+	if err := castCatalogSpellErr(t, g, "Soul's Fire", "Instant", b24SoulsFireOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: wall}, {Kind: game.TargetCard, ID: mine}}); err != game.ErrIllegalTarget {
+		t.Errorf("their Wall in slot 0: err %v, want ErrIllegalTarget", err)
+	}
 	if damageMarkedOn(g, mine) != 0 {
-		t.Error("their Wall is not a creature you control — nothing is dealt")
+		t.Error("a refused announcement deals nothing")
 	}
 	// A player in the second slot: face damage equal to power.
 	life := opp.Life

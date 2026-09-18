@@ -368,7 +368,17 @@
                 {#if item.alt_cost}
                   <span class="chip flag">{item.alt_cost}</span>
                 {/if}
-                {#if item.modes && item.modes.length > 0}
+                <!-- #764: the chosen bullets, in announce order (CR
+                     700.2c) and with repeats (CR 700.2d). This used to
+                     print the raw indexes ("modes: 0, 2"), which nobody
+                     at the table could read: the caster's hand card is
+                     gone once the spell is on the stack, so the labels
+                     have to travel with the item. -->
+                {#if item.mode_labels && item.mode_labels.length > 0}
+                  {#each item.mode_labels as modeLabel, mi (mi)}
+                    <span class="chip">{modeLabel}</span>
+                  {/each}
+                {:else if item.modes && item.modes.length > 0}
                   <span class="chip">modes: {item.modes.join(", ")}</span>
                 {/if}
                 {#if item.split_second}

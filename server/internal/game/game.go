@@ -396,6 +396,25 @@ type Game struct {
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
 
+	// enteringTokens holds the tokens whose CR 614 battlefield-entry
+	// window is open and which are therefore in NO zone yet: minted,
+	// not pushed. A card entering the battlefield sits in the zone it
+	// is leaving while its entry replacements are consulted; a token
+	// has no such zone (CR 111.1 — it is created on the battlefield),
+	// and an entry replacement still has to be able to read it.
+	// Urabrask the Hidden asks whether the entering permanent is a
+	// creature an opponent controls, and it asks through
+	// LookupCardForEffect, which is why that function looks here when
+	// no zone holds the card.
+	//
+	// Non-empty only for the duration of one token's entry — normally
+	// a few statements, and across a prompt when that entry pauses on
+	// a CR 616 ordering question. Clone copies it so an undo across
+	// such a prompt still has the token; the persisted snapshot does
+	// not carry it, exactly as it does not carry the once-per-event
+	// map the same paused window is holding. See token_create.go.
+	enteringTokens []Card
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives

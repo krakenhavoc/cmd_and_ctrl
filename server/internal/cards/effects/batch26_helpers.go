@@ -221,17 +221,6 @@ func b26ControlsCommanderCreatureOwnedBy(g *game.Game, controller, owner uuid.UU
 
 // --- target specs ------------------------------------------------
 
-// b26TargetCreatureYouControlThenCreatureOrPlaneswalkerYouDontControl
-// is Bite Down's two-slot clause in the Soul's Fire posture: one
-// predicate over both slots — a creature or planeswalker — with the
-// per-slot halves ("you control", "you don't control") enforced at
-// resolution rather than refused at announce. See the card comment.
-func b26TargetCreatureYouControlThenCreatureOrPlaneswalkerYouDontControl() *game.TargetSpec {
-	spec := TargetPermanent("target creature you control, then target creature or planeswalker you don't control",
-		Or(Creature(), Planeswalker())).WithCount(2, 2)
-	return spec
-}
-
 // b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf is
 // Carmen's attack target: "up to one target permanent card with mana
 // value less than or equal to Carmen's power from your graveyard".

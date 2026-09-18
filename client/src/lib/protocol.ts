@@ -583,6 +583,10 @@ export interface PendingChoiceView {
     // resolved this turn; loop_max_iterations is the ceiling the
     // engine will accept.
     | "loop_shortcut"
+    // #764, CR 603.3c: a modal triggered ability's mode, chosen as
+    // the ability is put on the stack. mode_options / mode_indexes /
+    // mode_min / mode_max / mode_repeatable describe the offer.
+    | "mode_pick"
     | string;
   chooser: string;
   from_player: string;
@@ -697,6 +701,18 @@ export interface PendingChoiceView {
   // answer the engine accepts. `reason` carries "<card> — <ability>".
   loop_count?: number;
   loop_max_iterations?: number;
+  // #764, CR 603.3c: populated for kind "mode_pick" — the bullets a
+  // modal TRIGGER offers its controller as the ability is put on the
+  // stack. Only the choosable ones are listed (a bullet whose clause
+  // has no legal target is dropped), so mode_indexes carries the
+  // ModeSpec index each label belongs to and that is what the answer
+  // sends back: `resolve_choice {choice_id, modes: [i, …]}`.
+  // Repeats are legal only when mode_repeatable (CR 700.2d).
+  mode_options?: string[];
+  mode_indexes?: number[];
+  mode_min?: number;
+  mode_max?: number;
+  mode_repeatable?: boolean;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -761,6 +777,11 @@ export interface StackItemView {
   label?: string;
   targets?: TargetRefView[];
   modes?: number[];
+  // #764: the oracle bullet of each chosen mode, in announce order
+  // and with repeats. The caster's hand card is gone by the time the
+  // spell is on the stack, so the overlay reads the labels off the
+  // item rather than printing raw indexes.
+  mode_labels?: string[];
   x_value?: number;
   distribution?: Record<string, number>;
   hold_priority?: boolean;
@@ -785,6 +806,12 @@ export interface StackItemView {
 export interface TargetRefView {
   kind: "player" | "card" | "self" | "none";
   id?: string;
+  // #764: the target CLAUSE this pick answered — the clause index,
+  // and the index into the item's `modes` whose clause list that is.
+  // Both omitted at zero, which is every single-clause non-modal
+  // announcement.
+  slot?: number;
+  mode?: number;
 }
 
 export interface VoteView {
@@ -881,6 +908,22 @@ export interface PlayerView {
   // Empties at every step boundary (CR 106.4), so this is absent
   // / empty in the common case outside an active cast sequence.
   mana_pool?: string[];
+  // #623 (CR 114): the emblems this seat has, in creation order.
+  // Absent for a seat with none, which is nearly every seat.
+  //
+  // Not a ZoneView — an emblem has no characteristics at all, so it
+  // is not a card and there is nothing for the card renderer to draw.
+  // The board shows these as chips beside the player identity, with
+  // `text` as the hover. Public: every seat sees every emblem.
+  emblems?: EmblemView[];
+}
+
+// One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
+// Champion emblem"); `text` is its printed ability, for the hover.
+export interface EmblemView {
+  instance_id: string;
+  label: string;
+  text: string;
 }
 
 export interface LifeChangeView {
@@ -911,6 +954,10 @@ export interface ModeSpecView {
   min: number;
   max: number;
   options: ModeOptionView[];
+  // #764, CR 700.2d: "you may choose the same mode more than once"
+  // (Mystic Confluence). The picker offers a count per option rather
+  // than a toggle, and each occurrence is asked for its own targets.
+  repeatable?: boolean;
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -952,6 +999,9 @@ export interface AlternativeCostView {
   // fires straight away.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: the offer's clause list when its rewritten statement has
+  // more than one clause.
+  clauses?: LegalTargetsView[];
   // S28: the "pay N life" half of the cost (Force of Will's 1, Snuff
   // Out's 4). Absent for the costs that charge none. The server
   // enforces the life total; this is for the label.
@@ -1130,6 +1180,13 @@ export interface ActivatedAbilityView {
   // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: every clause of the ability's statement when it has more
+  // than one, and its CR 700.2 mode clause when it is modal
+  // (Aetheric Amplifier). A modal ability announces its modes with
+  // its targets in the one activate_ability (CR 602.2b), so the menu
+  // shows the same mode picker a modal spell's hand card gets.
+  clauses?: LegalTargetsView[];
+  modes?: ModeSpecView;
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -1143,6 +1200,11 @@ export interface ModeOptionView {
   label: string;
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: every clause of the bullet's statement when it has more
+  // than one, in printed order. Absent for the one-clause bullet
+  // that is nearly every bullet, where legal_targets is the whole
+  // answer.
+  clauses?: LegalTargetsView[];
 }
 
 // LegalTargetsView is a clause's legal set right now plus its
@@ -1157,6 +1219,13 @@ export interface LegalTargetsView {
   // meaningless until X is chosen, so the picker substitutes the X
   // collected in the cost prompts.
   count_from_x?: boolean;
+  // #764: the clause's printed wording, shown in the picker banner
+  // when a statement has more than one clause and the banner has to
+  // say which question it is asking.
+  label?: string;
+  // #764: this clause's picks must differ from every EARLIER
+  // clause's ("a second target permanent you control").
+  distinct?: boolean;
 }
 
 /**
@@ -1306,6 +1375,13 @@ export interface CardView {
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
   legal_targets?: LegalTargetsView;
+  // #764: every clause of a MULTI-clause target statement, in
+  // printed order, each with its own legal set, count and printed
+  // wording — Bite Down's "target creature you control" then "target
+  // creature or planeswalker you don't control". Absent for the
+  // single-clause card that is nearly every card. The picker walks
+  // them one prompt at a time.
+  clauses?: LegalTargetsView[];
   // S20 sub-PR 4: for a modal card in the viewer's own hand — the
   // "Choose one" clause. Each option carries its label and, when it
   // targets, its own target_mode + legal set. The cast flow shows a

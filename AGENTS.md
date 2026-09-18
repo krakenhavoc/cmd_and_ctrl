@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0060 leaving the game) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0065 modal and multi-target clauses) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -420,7 +420,36 @@ surface tiny.
    `OnResolve` iterates `ctx.LegalTargets()` (or indexes
    `item.Targets` with `ctx.IsTargetLegal` per slot when the order
    matters, as in Arc Trail) so a target that left in response is
-   skipped rather than erroring. The engine computes the legal
+   skipped rather than erroring.
+
+   **Target clauses (#764).** A count is one predicate chosen N
+   times. When the slots have DIFFERENT predicates — Bite Down's
+   "target creature you control" then "target creature or
+   planeswalker you don't control" — they are separate CLAUSES, and a
+   statement is an ordered list of them:
+   ```go
+   Targets: Clauses(
+       TargetCreature("target creature you control", YouControl()),
+       TargetPermanent("target creature or planeswalker you don't control",
+           Or(Creature(), Planeswalker()), OpponentControls()),
+   ),
+   // "a SECOND target permanent you control" — must differ from the first:
+   Targets: Clauses(
+       TargetPermanent("target permanent you control", YouControl()),
+       Distinct(TargetPermanent("a second target permanent you control", YouControl())),
+   ),
+   ```
+   A `game.TargetSpec` **is** its first clause and hangs the rest off
+   it (`Rest`), so a one-clause card, a cost-payment predicate
+   (`SacrificeOther` and friends) and a mode's clause are all the same
+   struct and the same walk — see
+   [ADR 0065 §1](docs/decisions/0065-modal-and-multi-target-clauses.md).
+   Each clause is enforced on its own at announce (CR 601.2c) and
+   re-checked on its own at resolution (CR 608.2b), so a pair that
+   fits the wrong slots is REFUSED rather than resolving to nothing.
+   Read the slots back with `ctx.ClauseTarget(slot)` /
+   `ctx.ClauseTargets(slot)`; `item.Targets` is still one flat list in
+   announce order, so a positional reader keeps working. The engine computes the legal
    set for the client's picker on every snapshot, rejects an illegal
    pick at announce (`ErrIllegalTarget`, CR 601.2c), and re-runs the
    same predicate at resolution (CR 608.2b). Colour predicates read
@@ -442,12 +471,39 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 608.2c). The engine validates the choice at
+   printed order (CR 700.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
-   targeting. Limit: one targeted option per cast — `Register`
-   panics on a `Max > 1` card with two targeted options (per-mode
-   target slots ride with multi-target).
+   targeting.
+
+   **Modes (#764): one `ModeSpec`, three owners.** The same
+   `game.ModeSpec` is read by `Spec.Modes` (a spell),
+   `TriggeredAbility.Modes` (a trigger) and `ActivatedAbility.Modes`
+   (an activated ability) — see
+   [ADR 0065 §3](docs/decisions/0065-modal-and-multi-target-clauses.md).
+   What differs is only WHEN the choice is made:
+
+   - a **spell** announces its modes at CR 601.2b, with the cast;
+   - an **activated ability** announces them at CR 602.2b, with the
+     activation — one indivisible message, no prompt;
+   - a **trigger** is put on the stack by the engine, so it asks:
+     a `mode_pick` pending choice at CR 603.3c, after the "you may"
+     prompt and before the CR 603.3d target pick. A bullet whose
+     clause has no legal target is not offered, and if that leaves
+     fewer than `Min` the trigger is removed (CR 603.3d).
+
+   Every bullet targets if it wants to — the old "one targeted option
+   per cast" panic in `Register` is gone — and each chosen occurrence
+   gets its OWN target group. Constructors: `ChooseOne`, `ChooseN`,
+   `ChooseOneOrMore` (Sublime Epiphany) and `ChooseNRepeating`
+   (CR 700.2d, "you may choose the same mode more than once" — Mystic
+   Confluence). A trigger or activated ability has no `OnResolve` to
+   branch in, so declare each bullet's body on the option with
+   `ModeDoing(label, targets, fn)`; the engine runs the chosen ones
+   in announce order, once per occurrence. Inside a bullet, read its
+   own targets with `ModeTarget(ctx, occurrence)` /
+   `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
+   belongs to whichever bullet was chosen first.
 
 4. **Write the card file.** One file per card at
    `server/internal/cards/effects/<snake_name>.go`:
@@ -772,14 +828,31 @@ goes in `game.TuckOptions` so it rides the route and survives the
 prompt — never reposition the card yourself on the next line. See
 [ADR 0013 §5n](docs/decisions/0013-replacement-effects.md).
 
-**A discard still can't be replaced *as a discard*.** What the window
-sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
-(effect, cost or turn-based action), so the cause-sensitive family —
-Library of Leng, madness, the Obstinate Baloth shape — still has
-nothing to key on. Don't ship one of them with the replacement omitted;
-they wait on
-[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650). See
-[ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
+**A discard is its own replaceable event** (#650,
+[ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+The route opens `RepEventDiscard`, not a plain move, because what a
+discard replacement watches for is the discard — so declare
+`Watches: []game.EventKind{game.EventDiscardCard}` and check
+`ev.Kind == game.RepEventDiscard`. It carries `DiscardPlayer`,
+`DiscardCause` (`"effect"` / `"cost"` / `"cleanup"`) and the causing
+`Source`, alongside the move payload your `Replace` rewrites
+(`ev.NewZone`, `ev.NewZoneOwner`).
+
+The CAUSE is the clause the rules draw, not "voluntary": an effect's
+instruction, a cost (CR 601.2h, 602.2b, and the CR 118.12 "unless you
+discard" branch), or the cleanup step's turn-based action (CR 514.1).
+Library of Leng replaces `DiscardCauseEffect` only; madness replaces
+every cause; the Obstinate Baloth shape reads the cause plus the
+controller of `Source`. Build one with `DiscardBecomes{…}.Build()`
+(`cards/effects/discard_replacements.go`) rather than by hand.
+
+`EventDiscardCard` still fires wherever the card ends up (CR 701.8a
+defines a discard by the move OUT of the hand), so a discard your
+replacement redirects is still a discard for Megrim and friends, and a
+discarded commander still gets the CR 903.9 offer. A COST discard
+settles without asking, so an `Optional` replacement on one is skipped
+un-applied — which is also the right answer, since costs are not
+effects.
 
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
@@ -828,6 +901,8 @@ func init() {
 | Card draw | `RepEventDraw` | `DrawPlayer` |
 | Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
+| Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
+| Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **`AppliesTo` patterns:**
@@ -843,6 +918,34 @@ func init() {
 - Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+
+**A token creation is a replaceable event** (#762,
+[ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+`RepEventCreateTokens` is opened once per creation **instruction**
+(CR 701.7b), so "create two Treasures" is one event a doubler turns
+into four Treasures. It carries GROUPS — a template, a count and the
+creation's entry clause per KIND — because Academy Manufactor changes
+*which* tokens are made and a bare count could not say so. Write a
+doubler as `TokensDoubled(label)` (or `AnyPlayersTokensDoubled` for
+Primal Vigor's symmetrical one); write anything else with
+`ev.MultiplyTokens(n)`, `ev.ReplaceTokenKindsWhere(pred, templates…)`
+and `ev.TokenTemplatesMatch(pred)` — never by reading `ev.TokenGroups`
+directly.
+
+Once that window settles, every token it makes goes through
+`enterBattlefieldThroughPipelineLocked` — **the same entry primitive a
+library search, an exile return and a reanimation use** (#478) — as a
+`RepEventMove` into `ZoneBattlefield` with an empty `OldZone` (a token
+comes from no zone, CR 111.1). So an
+enters-tapped or enters-with-counters replacement you write for cards
+covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation CAN PAUSE — two different effects in the window is a CR 616
+ordering prompt — and so can a single token's entry, so
+`CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
+your card's sentence continues past the tokens ("create a Treasure,
+then sacrifice it"), hand that over as
+`CreateTokensThenForEffect(spec, then)` rather than reading the slice
+on the next line.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog
@@ -2612,6 +2715,63 @@ exercise the actual card and check controller restrictions and a negative
 cause, not just the helper predicate. The `OncePerBatch` first-event
 limitation and remaining card wave are tracked in
 [ADR 0018's addendum](docs/decisions/0018-triggers-on-the-stack.md#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted).
+
+### Emblems (#623)
+
+"You get an emblem with [ability]" (CR 114) is one `Spec` slot plus a
+one-line ability. Declare the emblem next to the ability that makes
+it, and make the ability's whole effect `CreateEmblem{}` — it names
+nothing, because the emblem it creates is this card's:
+
+```go
+Register(Spec{
+    OracleID: "05e6b243-…",
+    Name:     "Elspeth, Sun's Champion",
+    Emblem: &EmblemSpec{
+        Label:  "Elspeth, Sun's Champion emblem",   // "<card> emblem"
+        Text:   "Creatures you control get +2/+2 and have flying.",
+        Static: []game.StaticAbility{ /* … */ },   // and/or Triggered
+    },
+    Activated: []ActivatedAbility{{
+        Label:  "−7: You get an emblem with \"…\"",
+        Cost:   LoyaltyCost(-7),
+        Effect: func(g *game.Game, item *game.StackItem) error {
+            return CreateEmblem{}.Apply(NewContext(g, item))
+        },
+    }},
+})
+```
+
+An emblem's abilities are written in **exactly** the vocabulary a
+permanent's are: `game.StaticAbility` with a layer and a sub-layer
+(the emblem object is the `source`, so "creatures you control" is the
+same `target.Controller == source.Controller` an anthem uses), and the
+ordinary trigger constructors (`Targeting(WheneverYouDraw(…), spec)`).
+There is no emblem dialect, because `effects.Register` files a second
+`game.CardDef` under `game.EmblemKey(OracleID)` and the emblem object
+reaches the layer pass and the harvester through the same
+`CatalogStaticAbilities` / `CatalogTriggers` hooks a battlefield
+permanent does. See [ADR 0064](docs/decisions/0064-emblems.md).
+
+Three things to know:
+
+- **`Register` panics** on an `EmblemSpec` with no `Label`, no `Text`,
+  or no abilities at all. An emblem whose printed ability the engine
+  cannot express yet is NOT declared with an empty `Static` — leave
+  the ultimate omitted and say why in `Caveats`, as Wrenn and Six does
+  for retrace (#652). ADR 0032 still holds: a −7 that costs seven
+  loyalty and delivers a chip that does nothing is the lie the
+  omission exists to avoid.
+- **Nothing removes an emblem**, and nothing can name one. It is not a
+  permanent, not a card, never a legal target, and there is no move,
+  route or admin verb that reaches it — `Player.Emblems` is a second
+  command-zone slice and `ZoneRef` is `{Kind, Owner}`, so
+  `{command, owner}` always resolves to the commander pile. The one
+  exit is CR 800.4a, its owner leaving the game.
+- **The wire is `PlayerView.emblems[]`**, public and unredacted, with
+  the label and text read from the catalog on every projection. The
+  board draws chips beside the player identity; the command-zone pile
+  stays commander-only.
 
 ### Adding a `Spec` slot (#622)
 

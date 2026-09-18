@@ -60,6 +60,14 @@
     <span class="prompt">
       {#if state.choiceID}
         <strong>{state.card.name}</strong> triggered — click {state.label || "a target"}
+      {:else if state.steps.length > 1}
+        <!-- #764: a multi-clause or per-mode announcement is a WALK,
+             so the banner names the clause it is asking about right
+             now and says where in the walk the player is. Without
+             this a two-slot card asks the same question twice with no
+             way to tell which slot is open. -->
+        <strong>{state.card.name}</strong> — click {state.label || modeHint(state.mode)}
+        <span class="count">· step {state.step + 1} of {state.steps.length}</span>
       {:else}
         Click {modeHint(state.mode)} to target
         <strong>{state.card.name}</strong>

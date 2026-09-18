@@ -156,6 +156,7 @@ var gameFields = plan(
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
+	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
@@ -258,6 +259,11 @@ var playerFields = plan(
 	"Hand", carried, "",
 	"Graveyard", carried, "",
 	"Command", carried, "",
+	// #623 / CR 114: the other half of the command zone. Carried, and
+	// it has to be — which emblems a player has is not derivable from
+	// anything else on the board, and a restore that dropped them
+	// would quietly un-ultimate a planeswalker.
+	"Emblems", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -341,6 +347,13 @@ var stackItemFields = plan(
 	"Ordered", carried, "",
 
 	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	// #764: the ModeSpec an item was announced under, so the CR
+	// 608.2b re-check can find the clause of the mode occurrence a
+	// TargetRef names. Same disposition as targetSpec and for the
+	// same reason: catalog data, keyed by oracle ID for a spell and
+	// unreachable for an ability, which is why an ability carrying
+	// one is counted in ContinuationCensus.StackTargetSpecs.
+	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID; an ability's is censused",
 	"Effect", dropped, "a closure; counted in ContinuationCensus.StackEffects (spells need none — they dispatch via EffectResolver)",
 )
 
@@ -385,6 +398,16 @@ var pendingChoiceFields = plan(
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
+	// #764 mode_pick. Carried for the same reason ChooseCards is:
+	// the offered options ARE the prompt, and a restored game that
+	// forgot them would put a question with no answers in front of a
+	// seat. The bounds travel with them because the answer is
+	// validated against them.
+	"ModeOptionIndex", carried, "",
+	"ModeOptionLabel", carried, "",
+	"ModeMin", carried, "",
+	"ModeMax", carried, "",
+	"ModeRepeatable", carried, "",
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
@@ -425,6 +448,7 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",

@@ -307,21 +307,45 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 			err = tailErr
 		}
 	}()
+	var (
+		srcKind ZoneKind
+		moved   Card
+	)
 	src := g.findCardZoneLocked(ev.CardID)
-	if src == nil {
-		return uuid.Nil, ErrCardNotFound
-	}
-	if src == g.Battlefield {
+	switch {
+	case src == g.Battlefield:
 		// Something already resolved the entry; don't double-push.
 		return ev.CardID, nil
-	}
-	if src.Kind != ev.OldZone {
-		return uuid.Nil, nil
-	}
-	srcKind := src.Kind
-	moved, err := MoveCard(src, g.Battlefield, ev.CardID)
-	if err != nil {
-		return uuid.Nil, err
+	case src == nil:
+		// #762: a CREATED TOKEN, staged in Game.enteringTokens while
+		// its entry window was open. It is minted rather than moved —
+		// a token comes from no zone at all (CR 111.1) — so it is
+		// pushed here and its arrival announces EventTokenCreated
+		// rather than a zone move. Everything after that point is the
+		// entry every other permanent takes, which is the whole point
+		// of it being on this path.
+		tok, ok := g.takeEnteringTokenLocked(ev.CardID)
+		if !ok {
+			return uuid.Nil, ErrCardNotFound
+		}
+		if tok.AttackingTarget != uuid.Nil {
+			// CR 506.3c: PUT onto the battlefield attacking, never
+			// declared, so the attack-declaration lock-in must not
+			// mistake this for a staged declaration and announce it.
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
+		}
+		g.Battlefield.PushTop(tok)
+		moved = tok
+	default:
+		if src.Kind != ev.OldZone {
+			return uuid.Nil, nil
+		}
+		srcKind = src.Kind
+		m, err := MoveCard(src, g.Battlefield, ev.CardID)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		moved = m
 	}
 	entered = moved.InstanceID
 	if ev.entryTail != nil && ev.entryTail.newObject {
@@ -380,13 +404,26 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		}
 		g.LandsPlayedThisTurn[ev.Actor]++
 	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   ev.Actor,
-		CardID:  entered,
-		OldZone: srcKind,
-		NewZone: ZoneBattlefield,
-	})
+	if srcKind == "" {
+		// #762: a created token arrived from no zone, so the
+		// announcement is the creation itself (CR 111.1). One event,
+		// never two — a token that also emitted a zone move would be
+		// counted twice by everything watching permanents arrive.
+		g.EmitEvent(Event{
+			Kind:   EventTokenCreated,
+			Actor:  ev.Actor,
+			Source: ev.Source,
+			CardID: entered,
+		})
+	} else {
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   ev.Actor,
+			CardID:  entered,
+			OldZone: srcKind,
+			NewZone: ZoneBattlefield,
+		})
+	}
 	// S16.5: the two jobs stack resolution does that no other entry
 	// site does. Both need the StackItem, which is why carrying it
 	// across the pause is what made the stack site resumable at all.

@@ -340,9 +340,14 @@ func TestB16UrabraskGrantsHasteAndTapsOpponentsCreatures(t *testing.T) {
 	if b16Tapped(t, g, rock) {
 		t.Error("an opponent's artifact is not a creature")
 	}
-	// Declared: a token skips the entry pipeline and enters untapped.
-	if spec, _ := Lookup(b16UrabraskTheHiddenOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	// #762: a created token runs the same entry pipeline, so an
+	// opponent's creature token arrives tapped too.
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, RedGoblinToken(), 1) })
+	if !b16Tapped(t, g, findBattlefieldByName(g, "Goblin")) {
+		t.Error("an opponent's creature TOKEN enters tapped")
+	}
+	if spec, _ := Lookup(b16UrabraskTheHiddenOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 
