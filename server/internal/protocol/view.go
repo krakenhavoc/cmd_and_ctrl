@@ -37,9 +37,12 @@ type GameView struct {
 	// keep / mulligan dialog while open. Added in S08.
 	MulligansOpen bool `json:"mulligans_open"`
 	// Monarch is the player ID currently designated as the monarch,
-	// or empty string if no monarch is set. Sandbox marker; the must-
-	// attack-when-able and combat-damage-transfer rules are not
-	// enforced. Added in S10.
+	// or empty string if no monarch is set. Since #375 the engine
+	// moves this itself: CR 724.2's two inherent triggered abilities
+	// (the end-step draw, and the transfer to whoever deals combat
+	// damage to the monarch) are enforced server-side, so a client
+	// that renders this field renders a crown that moves on its own.
+	// Added in S10.
 	Monarch string `json:"monarch,omitempty"`
 	// Initiative is the player ID currently holding the initiative
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
