@@ -119,6 +119,17 @@
 
   // answer sends a resolve_choice for the open prompt. Every kind's
   // submit goes through here so a refusal of any of them is shown.
+  // A new mode_pick prompt must not arrive holding the last one's
+  // picks — two Gala Greeters triggers in a turn are two questions.
+  let lastModeID: string | null = null;
+  $effect(() => {
+    const id = isModePick ? (active?.id ?? null) : null;
+    if (id !== lastModeID) {
+      lastModeID = id;
+      modePicks = [];
+    }
+  });
+
   function answer(params: Record<string, unknown>): void {
     if (!active || !viewerID) return;
     submission = { choiceID: active.id, sentAt: Date.now() };
@@ -367,6 +378,49 @@
   function answerOptionPick(index: number): void {
     if (!active || !viewerID) return;
     answer({ option_index: index });
+  }
+
+  // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
+  // chosen as the ability is put on the stack. A spell and an
+  // activated ability need no prompt (the player who announces is
+  // the player who chooses); a trigger has nobody to ask, because
+  // the engine is what puts it on the stack.
+  //
+  // Only the bullets that can actually be taken are on the wire —
+  // one whose clause has no legal target was dropped server-side —
+  // so `mode_indexes` says which ModeSpec index each label is, and
+  // that is what the answer sends back.
+  const isModePick = $derived(active?.kind === "mode_pick");
+  const modeLabels = $derived(active?.mode_options ?? []);
+  const modeIndexes = $derived(active?.mode_indexes ?? []);
+  const modeMin = $derived(active?.mode_min ?? 1);
+  const modeMax = $derived(active?.mode_max ?? 1);
+  const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // The chosen bullets IN THE ORDER CHOSEN — CR 700.2c resolves them
+  // in that order, and CR 700.2d lets the same one appear twice.
+  let modePicks = $state<number[]>([]);
+  const modeSingle = $derived(modeMax === 1 && !modeRepeatable);
+  const canConfirmModes = $derived(
+    modePicks.length >= modeMin && (modeMax <= 0 || modePicks.length <= modeMax),
+  );
+  function toggleMode(idx: number): void {
+    if (modeSingle) {
+      modePicks = [idx];
+      return;
+    }
+    if (!modeRepeatable && modePicks.includes(idx)) {
+      modePicks = modePicks.filter((x) => x !== idx);
+      return;
+    }
+    if (modeMax > 0 && modePicks.length >= modeMax) return;
+    modePicks = [...modePicks, idx];
+  }
+  function modeTimes(idx: number): number {
+    return modePicks.filter((x) => x === idx).length;
+  }
+  function answerModes(): void {
+    if (!canConfirmModes) return;
+    answer({ modes: modePicks });
   }
 
   // #804 loop_shortcut — CR 726. The loop breaker has fired and this
@@ -1014,6 +1068,46 @@
             </li>
           {/each}
         </ul>
+      {:else if isModePick}
+        <h2 id="choice-title">
+          {triggerSourceName(active.source)}
+          <span class="prompt-src" aria-hidden="true">{active.reason || "choose one"}</span>
+        </h2>
+        <p class="prompt-hint">
+          The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
+          603.3c), and any targets it asks for come after.
+          {#if modeRepeatable}
+            You may choose the same mode more than once.
+          {/if}
+        </p>
+        <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
+          {#each modeLabels as label, i (i)}
+            {@const idx = modeIndexes[i] ?? i}
+            {@const times = modeTimes(idx)}
+            <li>
+              <button
+                type="button"
+                class="prompt-opt"
+                class:on={times > 0}
+                role={modeSingle ? "radio" : "checkbox"}
+                aria-checked={times > 0}
+                onclick={() => toggleMode(idx)}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="mode-label">{label}</span>
+                {#if modeRepeatable && times > 0}
+                  <span class="mode-times">&times;{times}</span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+        <div class="prompt-foot">
+          <span class="prompt-count">{modePicks.length} / {modeMax > 0 ? modeMax : "any"}</span>
+          <button type="button" class="primary" disabled={!canConfirmModes} onclick={answerModes}>
+            Choose
+          </button>
+        </div>
       {:else if isConfirm}
         <h2 id="choice-title">
           {active.reason || "Choose one"}

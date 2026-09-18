@@ -32,17 +32,27 @@ and [ADR 0044](0044-surviving-a-deploy.md) (snapshot / restore, the
 continuation census), [ADR 0043](0043-copy-effects.md) (copy
 retargeting).
 
-**Explicitly NOT reused:** the `option_pick` pending-choice kind from
-PR #918. It is not on `develop` at this branch's base
-(`11f4c3d5`) — `grep -r option_pick` over the whole tree returns
-nothing, and `internal/game` declares 25 kinds, none of them that one.
-There was nothing to reuse, so this ADR adds one kind of its own
-(`mode_pick` — the name `pending_choice.go:38` has held in reserve
-for it since S20, [§4](#4-modal-triggers-the-mode-is-chosen-as-the-trigger-goes-on-the-stack-cr-6033c)).
-If #918 lands later with a general labelled-option prompt, `mode_pick` is the
-obvious first thing to fold into it; the answer shape below (a
-multiset of indices bounded by Min/Max) is what such a kind would have
-to carry.
+**Explicitly NOT reused:** the `option_pick` pending-choice kind
+(#568). It was not on `develop` at this branch's base (`11f4c3d5`) —
+`grep -r option_pick` over the whole tree returned nothing — and it
+landed while this branch was being written, so the decision below was
+made without it and the rebase kept it. This ADR adds a kind of its
+own, `mode_pick`: the name `pending_choice.go` has held in reserve for
+exactly this since S20
+([§4](#4-modal-triggers-the-mode-is-chosen-as-the-trigger-goes-on-the-stack-cr-6033c)).
+
+The two are not the same question and folding them together would
+lose both halves. `option_pick` is answered with ONE index, is asked
+at RESOLUTION (CR 608.2), is frequently addressed to somebody other
+than the controller, and its options carry cards — its own commit
+message says a modal spell's "choose one" is deliberately not that
+kind. `mode_pick` is answered with a bounded MULTISET of indices in
+the order chosen (CR 700.2c, and CR 700.2d lets one repeat), is asked
+as the ability is put on the stack (CR 603.3c), always goes to the
+ability's controller, and each option carries a target clause rather
+than a card list. If a later change gives `option_pick` bounds and an
+ordered multi-answer, `mode_pick` is the obvious first thing to fold
+into it.
 
 ---
 

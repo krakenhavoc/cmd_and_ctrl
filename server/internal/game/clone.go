@@ -176,6 +176,15 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.PickTargetCards) > 0 {
 				cloned.PickTargetCards = append([]uuid.UUID(nil), c.PickTargetCards...)
 			}
+			// #764 mode_pick: the offered options and their labels.
+			// Own backing arrays for the same reason every other slice
+			// here gets one.
+			if len(c.ModeOptionIndex) > 0 {
+				cloned.ModeOptionIndex = append([]int(nil), c.ModeOptionIndex...)
+			}
+			if len(c.ModeOptionLabel) > 0 {
+				cloned.ModeOptionLabel = append([]string(nil), c.ModeOptionLabel...)
+			}
 			// S22 search chooser: the candidate list is a slice, so
 			// it needs its own backing array for the same reason
 			// every other slice here does — an undo that shared it
@@ -533,6 +542,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Effect:     s.Effect,
 		Ordered:    s.Ordered,
 		targetSpec: s.targetSpec,
+		// #764: catalog data, read-never-written, so the undo clone
+		// shares the pointer exactly as it shares targetSpec.
+		modeSpec: s.modeSpec,
 	}
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))

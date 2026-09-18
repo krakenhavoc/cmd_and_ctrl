@@ -62,7 +62,7 @@ func TestValidateModes(t *testing.T) {
 	}
 }
 
-func TestCastTargetSpecFollowsChosenMode(t *testing.T) {
+func TestAnnouncedClausesFollowChosenModes(t *testing.T) {
 	const oracle = "test-charm"
 	withCatalogModeSpec(t, func(id string) *ModeSpec {
 		if id == oracle {
@@ -72,17 +72,29 @@ func TestCastTargetSpecFollowsChosenMode(t *testing.T) {
 	})
 	withCatalogTargetSpec(t, func(string) *TargetSpec { return nil })
 
-	if spec, err := castTargetSpec(oracle, []int{0}); err != nil || spec == nil || spec.Mode != "player" {
-		t.Errorf("mode 0: spec %+v err %v, want player spec", spec, err)
+	ms := ModeSpecFor(oracle)
+
+	steps := AnnouncedClauses(nil, ms, []int{0})
+	if len(steps) != 1 || steps[0].Clause.Mode != "player" || steps[0].Mode != 0 || steps[0].Slot != 0 {
+		t.Errorf("mode 0: steps %+v, want one player clause at (0,0)", steps)
 	}
-	if spec, err := castTargetSpec(oracle, []int{2}); err != nil || spec != nil {
-		t.Errorf("untargeted mode: spec %+v err %v, want nil, nil", spec, err)
+	if steps := AnnouncedClauses(nil, ms, []int{2}); len(steps) != 0 {
+		t.Errorf("untargeted mode: steps %+v, want none", steps)
 	}
-	if _, err := castTargetSpec(oracle, []int{0, 1}); err != ErrInvalidParam {
-		t.Errorf("two targeted modes: err %v, want ErrInvalidParam", err)
+	// #764: two targeting modes are now expressible, and each gets
+	// its OWN target group — occurrence 0 and occurrence 1.
+	steps = AnnouncedClauses(nil, ms, []int{0, 1})
+	if len(steps) != 2 {
+		t.Fatalf("two targeted modes: %d steps, want 2", len(steps))
 	}
-	if spec, err := castTargetSpec("not-modal", nil); err != nil || spec != nil {
-		t.Errorf("non-modal, no targets: %+v %v", spec, err)
+	if steps[0].Mode != 0 || steps[0].Option != 0 || steps[0].Clause.Mode != "player" {
+		t.Errorf("first step %+v, want occurrence 0 of option 0 (player)", steps[0])
+	}
+	if steps[1].Mode != 1 || steps[1].Option != 1 || steps[1].Clause.Mode != "permanent" {
+		t.Errorf("second step %+v, want occurrence 1 of option 1 (permanent)", steps[1])
+	}
+	if steps := AnnouncedClauses(nil, ModeSpecFor("not-modal"), nil); len(steps) != 0 {
+		t.Errorf("non-modal, no targets: %+v", steps)
 	}
 }
 

@@ -225,6 +225,23 @@ type ActivatedAbilityShape struct {
 	// untargeted abilities.
 	Targets *TargetSpec
 
+	// Modes is the CR 700.2 mode clause of a modal activated ability
+	// ("{4}, {T}: Choose one — double the counters on target
+	// permanent; double the counters you have"). The same
+	// game.ModeSpec a modal spell and a modal triggered ability
+	// declare — one struct, three owners (#764, ADR 0065 §3).
+	//
+	// Chosen at ACTIVATION with the targets (CR 602.2b), in the same
+	// message, because activating an ability is one indivisible step
+	// and there is nobody to prompt: the player who activates is the
+	// player who chooses. Validated exactly as a cast's modes are;
+	// each chosen occurrence contributes its option's target clauses
+	// to the announcement, in mode order.
+	//
+	// Nil for every ability that is not modal, which is nearly all of
+	// them. Added by #764.
+	Modes *ModeSpec
+
 	// SorcerySpeed marks "activate only as a sorcery" (CR 602.5d).
 	SorcerySpeed bool
 
@@ -332,8 +349,16 @@ type ActivateAbilityParams struct {
 	CounterKind string
 
 	// Targets are the ability's targets, validated against the
-	// ability's spec.
+	// ability's clause list — or, for a modal ability, against the
+	// clauses of the chosen modes (#764).
 	Targets []TargetRef
+
+	// Modes are the mode indexes announced for a modal activated
+	// ability (CR 602.2b, CR 700.2), in the order chosen; a repeated
+	// index is legal only when the ability's ModeSpec is Repeatable
+	// (CR 700.2d). Empty for every non-modal ability, and non-empty
+	// for one is rejected rather than ignored. Added by #764.
+	Modes []int
 
 	// XValue is the value announced for an {X} in the ability's mana
 	// component (CR 602.2b). Chosen as part of ACTIVATING the
@@ -502,12 +527,28 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// after.
 		return ErrInvalidParam
 	}
-	if ab.Targets != nil {
-		if err := g.validateTargetsLocked(playerID, ab.Targets, params.Targets); err != nil {
-			return err
-		}
-	} else if len(params.Targets) > 0 {
+	// CR 602.2b / 700.2: the modes are announced with the targets, in
+	// that order — the chosen bullets are what decide which target
+	// clauses the activation even has (#764).
+	if err := validateModes(ab.Modes, params.Modes); err != nil {
+		return err
+	}
+	if ab.Modes == nil && len(params.Modes) > 0 {
 		return ErrInvalidParam
+	}
+	steps := AnnouncedClauses(ab.Targets, ab.Modes, params.Modes)
+	if len(steps) == 0 && len(params.Targets) > 0 {
+		return ErrInvalidParam
+	}
+	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	params.Targets = assignAnnouncedSlots(steps, params.Targets)
+	for _, i := range xSteps {
+		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
+			return ErrInvalidParam
+		}
+	}
+	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+		return err
 	}
 
 	// --- pay ----------------------------------------------------
@@ -593,6 +634,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		SourceCardID: cardID,
 		Label:        ab.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
+		Modes:        append([]int(nil), params.Modes...),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships
@@ -600,6 +642,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		XValue:     params.XValue,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
+		modeSpec:   ab.Modes,
 		Seq:        g.nextStackSeqLocked(),
 	}
 	g.StackMeta[itemID] = item
