@@ -66,10 +66,12 @@ type Game struct {
 	MulligansOpen bool
 
 	// Monarch is the player ID currently designated as the monarch
-	// (Conspiracy mechanic; player draws an extra card at end of their
-	// turn). uuid.Nil means "no monarch currently". Set manually via
-	// the set_monarch action — sandbox doesn't enforce the combat-damage
-	// transfer rule. Added in S10.
+	// (CR 724). uuid.Nil means "no monarch currently". Handed out by
+	// the set_monarch action or by a card effect; from #375 onward the
+	// engine then enforces the designation's two inherent triggered
+	// abilities — the monarch's end-step draw and the transfer to
+	// whoever deals combat damage to them — in monarch.go. Added in
+	// S10.
 	Monarch uuid.UUID
 
 	// Initiative is the player ID currently designated as having taken
@@ -491,6 +493,14 @@ func NewGame() *Game {
 	// emit, queues matching catalog-declared TriggeredAbility
 	// entries onto PendingTriggers. See triggers.go.
 	g.Listeners = append(g.Listeners, triggerHarvester{})
+	// #375: the two inherent triggered abilities of the monarch
+	// (CR 724.2) have no source card for the harvester above to find
+	// them on, so they ride the listener registry instead. Registered
+	// AFTER the harvester so that when a card trigger and a monarch
+	// trigger watch the same event, the card's lands on
+	// PendingTriggers first — CR 603.3b reorders anything that
+	// actually matters. See monarch.go.
+	g.Listeners = append(g.Listeners, monarchTriggers{})
 	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See
