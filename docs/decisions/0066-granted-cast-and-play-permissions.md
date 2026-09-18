@@ -127,7 +127,7 @@ It is not free, which is why it is a follow-up rather than a line in this PR:
 `Duration` expiry needs the game (`durationExpiredLocked`), so `Active(player,
 turn)` becomes a method on `*Game` and every caller — including
 `faceForCastLocked` and about a hundred test literals — moves with it. The
-follow-up is tracked; `NotBeforeTurn` survives it either way, because warp's
+follow-up is #945; `NotBeforeTurn` survives it either way, because warp's
 "on a later turn" is a FLOOR and `Duration` has no concept of one.
 
 ### 2. CR 400.7 is an object-identity check, not a sweep

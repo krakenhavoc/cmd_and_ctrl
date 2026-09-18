@@ -253,7 +253,7 @@ type CastPermission struct {
 
 	// --- the window ------------------------------------------------
 	//
-	// FOLLOW-UP (ADR 0066): these three fields predate ADR 0063's
+	// FOLLOW-UP (#945, ADR 0066): these three fields predate ADR 0063's
 	// game.Duration, which landed on develop while this work was in
 	// flight, and they are a second duration vocabulary until they are
 	// swapped for one. Active below is the single function that reads
