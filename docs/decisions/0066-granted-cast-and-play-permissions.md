@@ -238,7 +238,7 @@ Daya, Courser of Kruphix).
 `Card.KnownBy` is per card and cannot express this: the top card changes
 identity on every draw, mill, shuffle, scry and cast, and stamping the new one
 means finding every library mutation. So the rule is **per player and kept on
-the position**, as `CardDef.LibraryTopVisibleTo` derived from the battlefield
+the position**, as `CardDef.LibraryTopVisible` derived from the battlefield
 exactly like a standing permission:
 
 ```go
@@ -252,14 +252,25 @@ library mutation. Eager stamping would have to hook `PopTop`, `PushTop`,
 every shuffle and every search; lazy resolution is correct by construction
 because the question is always asked about "whatever is on top *now*".
 
-The view marks the current top card as known to the players the rule names
-(`markCardKnownInZoneLocked` on the live card, so the knowledge is sticky the
-way every other reveal is — a card that was legally seen on top and is then
-drawn stays known to whoever saw it, which is right) and the per-viewer
-filter is widened by exactly one case: an opponent's library, which was
-wholesale-hidden, now keeps its **top card only, and only when the viewer
-knows it**. A tucked card in the middle of a library that still carries a
-stale knower is not exposed, because only the last element is considered.
+The view marks the current top card as visible to the players the rule names
+**in the projection**, not on the card. It cannot write `Card.KnownBy` — the
+view runs under a read lock — and it should not want to: being KNOWN and being
+VISIBLE WHERE IT SITS are different facts, and conflating them is how a
+one-shot "reveal the top two cards of your library" would turn into a
+permanent window into the library. So each frame stamps the projected card's
+`knowers` set (which the S13.5 redactor already consults) plus an unexported
+`libraryTop` marker, and both are re-derived next frame. CR 401.6 — a top card
+that stops being revealed and is revealed again is a new object — falls out,
+because nothing remembers the old answer.
+
+The per-viewer filter is then widened by exactly one case: an opponent's
+library, which was wholesale-hidden, keeps its **top card only, and only when
+that viewer knows it AND the standing rule put it there**. A tucked card in
+the middle of a library that still carries a stale knower is not exposed,
+because only the last element is considered; and a card merely revealed once
+is not exposed either, because it carries no `libraryTop` marker. A spectator
+still gets the library wholesale-hidden, since their knower check answers true
+for everything.
 
 ### 6. Timing and the gates a grant does not open
 
