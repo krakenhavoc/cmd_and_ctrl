@@ -3,6 +3,11 @@
 **Status:** Accepted · 2026-04-23 · Sprint S13.6
 **Amended by:** S31 sub-PR 2 ([ADR 0033](0033-ai-bot-seat.md) §1, PR #429) — the
 mechanism under decisions 2–4 is gone, the policy above it is not.
+**Amended by:** S35 (#526) — **decision 6 is reversed on one point: the autopass
+toggle no longer overrides a manual pin.** See "Amendment: a manual pin beats the
+autopass toggle (#526)" below. The gate chain also moved out of `Game.svelte`
+into `client/src/lib/autopassDecision.ts`, which is where the precedence list
+now lives in code.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -25,6 +30,54 @@ already computed. Three consequences for a reader of the sections below:
 
 The module split decision 2 argues for (`timing.ts` per-action, `priority.ts`
 aggregate) still holds and is unchanged.
+
+## Amendment: a manual pin beats the autopass toggle (#526)
+
+Decision 6 below says the autopass toggle "ignores every gate (stops grid,
+smartAutoPass predicate, manual pins, `settings.autoPassPriority`)". The pins
+half of that was wrong, and a playtester reported it as a bug: *"When autopass
+is turned on, and a manual stop is placed on a step, the game continues to
+autopass right through without ever stopping."*
+
+**The precedence is now:** a manual pin (decision 5) sits **above** the autopass
+toggle. Everything else in decision 6 stands — the toggle still out-votes
+`settings.autoPassPriority`, the stops grid, the smartAutoPass predicate and the
+#323 own-stack rule.
+
+**Why the original reading doesn't survive contact with play.** Decision 6's
+argument was "the point of autopass is 'no more asking'". But the pin is a
+*later and narrower* instruction than the toggle: the toggle is standing intent
+("I'm tapped out, carry me"), the pin is a click made for one step of one turn,
+and the only reason to make it is to interrupt automatic passing. Under the old
+order the affordance was dead in exactly the state where a player needs it —
+the PhaseDisplay icon lit up and changed nothing. Decision 5's own argument
+("if smartAutoPass could skip a pinned step, the affordance would be a lie")
+applies with more force to the toggle, not less.
+
+**It does not strand the toggle.** The pin is consumed on the next step
+transition, so the cursor holds once and autopass resumes on its own with no
+second click. The player who wants out of autopass entirely still clicks the
+toggle.
+
+**Two things deliberately kept above the pin:**
+
+- The guards that are not questions about what the viewer *may* do — an open
+  pending choice, an owed declare-blockers decision (#328), the CR 726 loop
+  breaker ([ADR 0055](0055-loop-breaker.md), #628), mulligans, game over,
+  elimination. All of these hold anyway, so the pin changes nothing there.
+- The safety belt (decision 7). Entering the viewer's own `precombat_main`
+  *disarms the toggle* instead of passing, which holds the cursor too — so a
+  pin on your own main phase loses nothing by sitting under it, and gains the
+  disarm. Putting the pin first would leave a forgotten toggle armed for the
+  rest of that turn.
+
+**Where the code lives.** The chain was ~90 lines inline in one `$effect` in
+`Game.svelte`, which is how the bug survived four sprints: no test could reach
+it. It is now `autopassDecision(gates) -> "hold" | "pass" | "clear-toggle"` in
+`client/src/lib/autopassDecision.ts`, a pure function over resolved booleans,
+with `autopassDecision.test.ts` covering the precedence, #526's reported
+configuration and #599's declare-attackers window. The component keeps the
+reactive reads and the two side effects.
 
 ## Context
 
@@ -143,7 +196,8 @@ effect sees a pinned step, it short-circuits before any other rule
 is consumed on the next snapshot step transition, so the next cycle
 of that step is unpinned unless re-clicked.
 
-**Precedence order (strongest first):**
+**Precedence order (strongest first)** — amended by #526, which put the pin
+above the autopass toggle of decision 6 as well:
 
 1. Manual pin → hold (this decision).
 2. `stepStops[step] === true` + `smartAutoPass=true` + predicate
@@ -195,9 +249,11 @@ the PhaseDisplay box itself, below the priority pills:
   window," not "pass [the thing I have]."
 - **`autopass`** — a session toggle (not a one-shot). When on,
   the auto-pass `$effect` ignores every gate (stops grid,
-  smartAutoPass predicate, manual pins, `settings.autoPassPriority`)
+  smartAutoPass predicate, ~~manual pins~~, `settings.autoPassPriority`)
   and fires `pass_priority` on every snapshot where the viewer
   holds priority. Persists until clicked off or reload.
+  **Amended (#526): manual pins are no longer among the gates it
+  ignores** — see the amendment near the top of this ADR.
 
 `pass turn` (active-player-only whole-turn skip) and `undo` stay in
 the Game.svelte toolbar — they're not priority passes, and they

@@ -34,10 +34,11 @@
 // pass*, never what counts as a legal response. The legality
 // predicates live in priority.ts / timing.ts and are untouched.
 
-import { writable, get, type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { GameView } from "./protocol";
 
-const held = writable(false);
+const held = guardedWritable(false, "holdPriority");
 
 // holdPriority is the read-only view for reactive consumers
 // (PhaseDisplay's button, StackOverlay's header, the auto-pass

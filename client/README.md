@@ -42,6 +42,7 @@ client/
 │       └── ws.ts           # WebSocket client + Svelte stores
 ├── index.html              # Vite entry HTML
 ├── vite.config.ts          # Vite + /ws proxy to Go server
+├── vitest.config.ts        # test-only Vite config (see Tests)
 ├── svelte.config.js        # Svelte preprocessor
 ├── tsconfig.json
 ├── eslint.config.js        # ESLint 9 flat config
@@ -55,10 +56,97 @@ client/
 - State from the server lives in Svelte stores exposed by `GameClient`
   (`lib/ws.ts`). Components subscribe to stores; they never call the
   WebSocket directly.
+- **Build every store with `guardedWritable` / `guardedDerived` from
+  `lib/guardedStore.ts`, never `writable` / `derived` from
+  `svelte/store`.** ESLint enforces it. `svelte/store` keeps ONE
+  module-global `subscriber_queue` and never resets it after a callback
+  throws, so a single throwing subscriber — or a throwing `derived`
+  callback, or a `localStorage` write that hits a quota inside one —
+  stops notifications on _every_ store in the app for the life of the
+  page. That is #266's "state freeze": socket green, frames arriving,
+  nothing reaching the DOM. `guardedStore.ts` has the full mechanism;
+  `subscriberQueue.test.ts` pins that it is still unfixed upstream.
+- A throw while _rendering_ is the other half, and Svelte 5 batches
+  those onto a microtask rather than through the queue.
+  `<svelte:boundary>` around `<Board>` in `routes/Game.svelte` catches
+  them, records them via `clientErrors.ts` and offers the player a
+  redraw. Do not widen it to the whole route: the header, the
+  bug-report button and "back to lobby" have to survive a dead table.
 - The protocol types in `lib/protocol.ts` are a hand-maintained mirror of
   `server/internal/protocol/protocol.go`. When the spec in
   `docs/protocol.md` changes, update both sides in lockstep.
 - Svelte 5 runes (`$state`, etc.) are used throughout.
+
+## Tests
+
+`npm test` runs vitest against `src/**/*.test.ts`. The config is
+`vitest.config.ts`, deliberately separate from `vite.config.ts` so the
+dev proxy and the build-only service-worker plugin stay out of a test
+run; read the comments there before changing it.
+
+**Default to a pure-helper test.** Pull the decision out of the
+component into `lib/<thing>.ts` and test that. It is faster, it reads
+as a specification of the rule rather than of the markup, and it
+survives a redesign. `lib/choiceRejection.ts`, `lib/cardArtRetry.ts`,
+`lib/combatBeats.ts` and `lib/priorityStops.ts` are all this pattern,
+and it should stay the common case.
+
+**Write a render test only for behaviour that does not exist until the
+markup does** (#689):
+
+- roles, ARIA and accessible names — `role="alert"` on a refusal,
+  `aria-describedby` on a tile whose art failed
+- focus: what is a tab stop, where focus lands, what `:focus-visible`
+  triggers
+- event propagation — a control inside a control, which is most of the
+  board
+- conditional rendering: that a branch is reachable at all with real
+  props
+
+If a test would only re-assert what a helper already pins, it belongs
+in the helper's file instead.
+
+### Writing one
+
+Add `// @vitest-environment jsdom` as the **first line** of the file.
+The suite defaults to the `node` environment and that is on purpose:
+most tests are pure logic, and several of them (`settings.ts`,
+`session.ts`) exist to pin the branch taken when there is no
+`localStorage`, which a global DOM would quietly stop testing.
+
+Mount through `lib/test/render.svelte.ts` — Svelte's own `mount`, the
+same entry point `main.ts` uses, no testing-library layer:
+
+```ts
+// @vitest-environment jsdom
+import { afterEach, expect, it } from "vitest";
+import Thing from "./components/Thing.svelte";
+import { render, click, cleanup, flushSync } from "./test/render.svelte";
+
+afterEach(cleanup);
+
+it("announces the refusal", () => {
+  const view = render(Thing, { value: 1, onDone: () => {} });
+  click(view.container.querySelector("button")!);
+  view.setProps({ error: "nope" }); // reactive: props are a $state proxy
+  expect(view.container.querySelector('[role="alert"]')?.textContent).toContain("nope");
+});
+```
+
+- `render` flushes the first render for you; `setProps` flushes after
+  merging. Mutate state by any other route and call `flushSync()`
+  yourself.
+- `cleanup()` in an `afterEach` is not optional. A leaked mount's
+  `$effect`s keep running against the next test's document.
+- `click` dispatches a real bubbling `MouseEvent`, because propagation
+  is usually the thing under test.
+- Faking timers: fake `setTimeout` only
+  (`vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })`).
+  Svelte flushes updates on a microtask, so faking `queueMicrotask`
+  strands every render behind a tick nobody advances.
+
+`choicePromptModal.render.test.ts` and `cardArtPip.render.test.ts` are
+the two worked examples.
 
 ## Card art
 

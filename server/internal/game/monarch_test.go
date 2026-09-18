@@ -298,22 +298,52 @@ func TestMonarchEliminatedMonarchDrawsNothing(t *testing.T) {
 	monarch := g.Seats[2]
 	crown(t, g, monarch.ID)
 
-	before := monarch.Hand.Size()
+	// Guard the probe itself: both assertions below are about a hand
+	// that should stay empty and a draw that should never fire, so a
+	// seat that started with nothing to lose would pass either of them
+	// without testing anything.
+	if monarch.Hand.Size() == 0 {
+		t.Fatalf("setup: monarch started with an empty hand, so a draw would not show")
+	}
 	if err := g.Concede(monarch.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
 	if g.Monarch == monarch.ID {
 		t.Fatalf("crown stayed with the conceded player")
 	}
+	// A hand-size DELTA cannot be the probe. CR 800.4a (#769) sweeps
+	// every zone the departed player owns, hand included, so comparing
+	// against the cards they were holding reads the sweep itself as a
+	// draw of -7. The two facts worth asserting are independent:
+	//
+	//   - the hand is still empty after a full cycle. The sweep runs
+	//     ONCE, at elimination, so anything drawn afterwards would
+	//     still be sitting there. This catches a draw that LANDED.
+	//   - no EventDrawCard names the seat. It fires per card and
+	//     carries the drawer in Actor. This catches a draw that was
+	//     ATTEMPTED, including one whose card never reached the hand.
+	firstAfterConcede := len(g.Events)
+
 	// Walk a full cycle; the eliminated seat's end step never comes,
-	// and nothing draws into their hand.
+	// so its monarch draw never triggers.
 	for i := 0; i < len(g.Seats); i++ {
 		advanceTo(t, g, StepEnd)
 		settleMonarchStack(t, g)
 		advanceTo(t, g, StepUpkeep)
 	}
-	if monarch.Hand.Size() != before {
-		t.Errorf("eliminated monarch drew %d cards", monarch.Hand.Size()-before)
+
+	if got := monarch.Hand.Size(); got != 0 {
+		t.Errorf("eliminated monarch's hand holds %d cards; CR 800.4a emptied it and nothing should have refilled it", got)
+	}
+
+	drew := 0
+	for _, ev := range g.Events[firstAfterConcede:] {
+		if ev.Kind == EventDrawCard && ev.Actor == monarch.ID {
+			drew++
+		}
+	}
+	if drew != 0 {
+		t.Errorf("eliminated monarch drew %d cards", drew)
 	}
 }
 
