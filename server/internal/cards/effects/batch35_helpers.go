@@ -461,25 +461,6 @@ func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.
 	}.Apply(ctx)
 }
 
-// b35MillTwoThenReturnChosen is Eden, Seat of the Sanctum's
-// sacrifice body: the controller mills two, then the announced
-// permanent card, if it is still in the controller's graveyard,
-// returns to their hand. The target was picked at announce, before
-// the mill, so the two cards just milled are never it — declared on
-// the card.
-func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	return b34ReturnChosenGraveyardCardToHand(ctx)
-}
-
-// b35MillTwo is Eden's plain body: the controller mills two.
-func b35MillTwo(g *game.Game, item *game.StackItem) error {
-	return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-}
-
 // b35GainLifeEqualToToughness is Ikra Shidiqi's body: life equal to
 // the dealing creature's toughness, read live at resolution when it
 // is still on the battlefield (so a pump in response counts) and

@@ -2116,6 +2116,25 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Choices made at resolution (#796)
+
+**`MayChoice{Player, Question, YesLabel, NoLabel, LifeCost, OnYes,
+OnNo}`** ([may_choice.go](server/internal/cards/effects/may_choice.go))
+is the free yes/no a RESOLVING effect asks — "you may [do X]. If you
+do, [Y]" where X is neither a search nor a cost the engine already
+prompts for (Eden's sacrifice after the mill, Mask of Memory's
+optional draw). It is the existing `confirm` prompt underneath, so it
+needs no new kind; `Player` defaults to the controller, and naming
+another seat is how an opponent-facing card asks the same question.
+Anything printed after the decision goes in `OnYes`, not after `Apply`
+returns — `Apply` only queues the prompt, exactly as `Scry.Then`
+exists.
+
+Branches take a `*Context` and are package-level functions capturing
+scalars — never a `*game.Game` or a pointer into a zone, for
+`StackItem.Effect`'s reason: an undo restores a clone and the branch
+has to resolve against that one.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind

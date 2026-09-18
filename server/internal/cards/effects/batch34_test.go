@@ -827,17 +827,25 @@ func TestB34CrosswayTroublemakersAttackingVampiresAndTheLifeDraw(t *testing.T) {
 	// A Vampire dies: pay 2 life, draw a card.
 	life, hand := me.Life, me.Hand.Size()
 	b27Kill(g, vamp)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	// #796: the question is asked as the ability RESOLVES, not as the
+	// trigger goes on the stack, so there is no CR 603.5 prompt.
+	if latestTriggerPrompt(g, me.ID) != nil {
+		t.Error("the pay-2-life decision is made at resolution, not on announce")
+	}
+	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Life != life-2 || me.Hand.Size() != hand+1 {
 		t.Errorf("paid 2 and drew 1: life %d → %d, hand %d → %d", life, me.Life, hand, me.Hand.Size())
 	}
 	b27Kill(g, bear)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKind(g, game.PendingChoiceConfirm) != nil {
 		t.Error("a Bear is not a Vampire")
 	}
 	b27Kill(g, home)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if me.Life != life-2 || me.Hand.Size() != hand+1 {
 		t.Error("declining pays and draws nothing")

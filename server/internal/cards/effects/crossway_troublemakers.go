@@ -32,9 +32,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     Vampire put onto the battlefield attacking is not covered; a
 //     Vampire removed from combat keeps the keywords until end of
 //     turn, which changes nothing outside combat.
-//   - The pay-2-life decision is taken when the trigger fires
-//     rather than as it resolves, so opponents see the answer before
-//     it resolves.
+//
+// The pay-2-life decision used to be taken when the trigger fired
+// (the CR 603.5 "you may" prompt the harvester asks before the
+// ability goes on the stack), because that was the only yes/no the
+// engine had. #796 gave a resolving effect its own, so the question
+// is now asked where the card prints it — as the ability RESOLVES,
+// after the response window, which is when a player actually knows
+// whether the 2 life is affordable.
 func init() {
 	Register(Spec{
 		OracleID:     "1a362e4d-6c02-4b67-ab63-c6622e505195",
@@ -42,13 +47,54 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Deathtouch and lifelink are granted as each of your Vampires is declared as an attacker and last until end of turn, so a Vampire that enters the battlefield already attacking doesn't get them.",
-			"Whether to pay 2 life for the card is decided when the trigger goes on the stack, not as it resolves.",
 		},
 		Triggered: []game.TriggeredAbility{
 			b34AttackingVampiresHaveDeathtouchAndLifelink("Crossway Troublemakers"),
-			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b34VampireYouControlDied(ev, source, g)
-			}, "Crossway Troublemakers — pay 2 life, draw a card", b34PayLifeToDraw(2)), "Crossway Troublemakers — a Vampire died. Pay 2 life to draw a card?"),
+			}, "Crossway Troublemakers — pay 2 life, draw a card", crosswayMayPayTwoLifeToDraw),
 		},
 	})
 }
+
+// crosswayMayPayTwoLifeToDraw is the printed body: "you may pay 2
+// life. If you do, draw a card."
+//
+// LifeCost is declared so the move list prices it (#547). Without it
+// a bot at 2 life answers "pay" and dies — the branch re-checks
+// affordability anyway (life moves between the question and the
+// answer), but a policy that cannot see the price never gets that far.
+//
+// Caller holds g.mu.
+func crosswayMayPayTwoLifeToDraw(g *game.Game, item *game.StackItem) error {
+	return MayChoice{
+		Question: "Crossway Troublemakers — a Vampire died. Pay 2 life to draw a card?",
+		YesLabel: "Pay 2 life",
+		NoLabel:  "Decline",
+		LifeCost: crosswayLifePayment,
+		OnYes:    crosswayPayTwoLifeThenDraw,
+	}.Apply(NewContext(g, item))
+}
+
+// crosswayPayTwoLifeThenDraw is the "if you do" branch: a CR 118.3
+// cost, then the linked draw.
+//
+// Caller holds g.mu.
+func crosswayPayTwoLifeThenDraw(ctx *Context) error {
+	controller := ctx.Controller()
+	p := ctx.Game.PlayerByIDForEffect(controller)
+	if p == nil || p.Eliminated || p.Life < crosswayLifePayment {
+		// CR 119.4: a player cannot pay life they do not have, and
+		// life can move between the question and the answer. An
+		// unaffordable payment degrades to the decline rather than
+		// erroring, the same shape ResolveEntryPayLife uses.
+		return nil
+	}
+	if err := ctx.Game.PayLifeForEffect(ctx.Source(), controller, crosswayLifePayment); err != nil {
+		return err
+	}
+	return DrawCards{Player: controller, N: 1}.Apply(ctx)
+}
+
+// crosswayLifePayment is the printed 2.
+const crosswayLifePayment = 2
