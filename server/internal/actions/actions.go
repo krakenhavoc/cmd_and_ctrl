@@ -1129,6 +1129,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// is "stop here", which is why this branch is routed by
 			// the choice's KIND and not by the field's presence.
 			Iterations int `json:"iterations"`
+			// OptionIndex answers a PendingChoiceOptionPick (#568):
+			// which of the prompt's branches the chooser took.
+			// Zero — the field's own zero value — is the FIRST
+			// option and the commonest answer, which is why this
+			// branch is routed by the choice's KIND and not by the
+			// field's presence, exactly as Iterations above is.
+			OptionIndex int `json:"option_index"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1146,6 +1153,13 @@ func Dispatch(g *game.Game, a Action) error {
 		// presence to route on.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
 			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
+		}
+		// #568, CR 608.2: "choose one of the following", addressed to
+		// any seat. Routed by kind for the same reason the shortcut
+		// above is — the whole payload is an integer whose most
+		// meaningful value is zero.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOptionPick {
+			return g.ResolveOptionPick(choiceID, a.Player, p.OptionIndex)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to

@@ -132,6 +132,12 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceEntryPayLife:        true,
 	PendingChoiceCopyTarget:          true,
 	PendingChoiceCreatureType:        true,
+	// #568. "Choose one of the following", addressed to any seat —
+	// Torment of Hailfire's three-way question, and the second half
+	// of a Fact or Fiction pile split. It blocks for the reason every
+	// resolution-time prompt does: the effect that asked it is paused
+	// mid-resolution and its continuation is the rest of the card.
+	PendingChoiceOptionPick: true,
 	// #804, CR 726. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the

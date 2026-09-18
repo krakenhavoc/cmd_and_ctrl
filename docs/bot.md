@@ -157,6 +157,50 @@ anything but the bot's own hand (the battlefield, a library, an
 opponent's hand) carries nothing on the wire that says what naming a
 card costs, so the bot takes the first answer offered.
 
+### What a bot answers when somebody else's card asks (#796 / #568)
+
+Two prompt shapes reach a bot seat from a spell or ability it does not
+control, and neither is a card-from-hand pick, so the section above
+does not price them.
+
+**A free yes/no at resolution (`confirm`, #796).** `MayChoice` is the
+"you may [do X]. If you do, [Y]" a resolving effect asks — Eden's
+sacrifice, Mask of Memory's optional draw, Combustible Gearhulk's
+question to its target. It rides the existing `confirm` kind, so the
+policy is the one `confirm` already has: both branches are offered, the
+accept branch carries whatever life the card charges as
+`LegalMoveView.cost.life`, and the DECLINE is the kind's always-legal
+answer. A bot therefore never takes a life payment it cannot see the
+price of, which is the #547 rule pointed at a prompt instead of an
+activated ability.
+
+**An option pick (`option_pick`, #568).** "Choose one of the
+following", addressed to any seat: Torment of Hailfire's three-way
+question, and the pile a Fact or Fiction chooser takes. Every branch is
+enumerated, in the card's printed order, and each carries its declared
+life cost — so "lose 3 life" and "discard a card" are priced
+differently and a bot at 3 life is not handed a way to kill itself for
+free. **The first option is the always-legal one**, by the kind's own
+contract: an effect builds its option list out of what this seat can
+actually do (CR 608.2), and the branch it puts first is one that never
+fails ("lose 3 life", which needs no permanent and no card in hand).
+A policy with nothing better to say takes it, which terminates.
+
+**A pile split** needs no policy of its own. Its first half is an
+ordinary `choose_cards` prompt over public, revealed cards, so the
+existing card-set enumeration offers the subsets — including the empty
+pile, which is this prompt's always-legal answer — and its second half
+is the option pick above, two branches, each labelled with its pile's
+size. A heuristic that takes the first offer splits and then takes
+pile one; that is a weak split rather than an illegal one, and it
+terminates, which is the bar this list exists to clear.
+
+The general rule behind all three: a prompt from somebody else's card
+carries nothing on the wire that says what an answer is WORTH beyond
+its declared cost, so a bot prices what it can see and takes the first
+offer otherwise — the same posture the paragraph above takes for a
+prompt over anything but the bot's own hand.
+
 ### An unavailable tier is refused, not downgraded
 
 Every declared tier is listed by `GET /bot/options`, including the

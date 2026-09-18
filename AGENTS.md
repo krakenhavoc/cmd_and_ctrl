@@ -2116,19 +2116,37 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
-### Choices made at resolution (#796)
+### Choices made at resolution (#796, #568)
+
+Three shapes, all addressed by `Player` / `Chooser`, so "you may" and
+"an opponent may" are the same call with a different seat.
 
 **`MayChoice{Player, Question, YesLabel, NoLabel, LifeCost, OnYes,
 OnNo}`** ([may_choice.go](server/internal/cards/effects/may_choice.go))
 is the free yes/no a RESOLVING effect asks — "you may [do X]. If you
 do, [Y]" where X is neither a search nor a cost the engine already
-prompts for (Eden's sacrifice after the mill, Mask of Memory's
-optional draw). It is the existing `confirm` prompt underneath, so it
-needs no new kind; `Player` defaults to the controller, and naming
-another seat is how an opponent-facing card asks the same question.
-Anything printed after the decision goes in `OnYes`, not after `Apply`
-returns — `Apply` only queues the prompt, exactly as `Scry.Then`
-exists.
+prompts for (Eden's sacrifice after the mill, Combustible Gearhulk's
+question to its target). It is the existing `confirm` prompt underneath,
+so it needs no new kind; `Player` defaults to the controller. Anything
+printed after the decision goes in `OnYes`, not after `Apply` returns
+— `Apply` only queues the prompt, exactly as `Scry.Then` exists.
+
+**`PickOption{Player, From, Question, Options, Then}`**
+([resolution_choice.go](server/internal/cards/effects/resolution_choice.go))
+is "choose one of the following" over three or more branches, on the
+new `option_pick` kind; `Then` gets the chosen INDEX. Build the option
+list out of what the chooser can actually DO (CR 608.2) and put a
+branch that always works FIRST — the enumerator marks that one
+always-legal, and a prompt whose every branch can fail is a seat that
+can be stuck (#544).
+
+**`PileSplit{Splitter, Chooser, Owner, Cards, Then}`** is "an opponent
+separates those cards into two piles; you take one" — two chained
+prompts to two different seats, and no kind of its own. **Reveal the
+cards first** (`RevealTopOfLibrary`): the splitter is being asked about
+a zone that is not theirs, and protocol's `redactChoiceCards` shows
+them only what is public, so an unrevealed pool reaches them as an
+empty prompt.
 
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for

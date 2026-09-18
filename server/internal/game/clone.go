@@ -193,6 +193,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			// #568: the branches of an option pick. A slice of
+			// structs each holding a card slice, so the deep copy
+			// goes one level further than every other field here —
+			// a shallow copy would share the pile arrays with the
+			// undo snapshot.
+			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox

@@ -447,7 +447,11 @@ type pendingChoiceSnapshot struct {
 	DeclineLabel         string                 `json:"declineLabel,omitempty"`
 	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
 	ChooseMin            int                    `json:"chooseMin,omitempty"`
-	ChooseMax            int                    `json:"chooseMax,omitempty"`
+	// #568: the branches of an option pick. Carried for the reason
+	// ChooseCards is — the prompt is the options, and a restored game
+	// that forgot them would render a question with no answers.
+	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
+	ChooseMax   int            `json:"chooseMax,omitempty"`
 	// #804 CR 726 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -1028,6 +1032,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -1056,6 +1061,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"confirmResume":     c.confirmResume != nil,
 		"chooseCardsResume": c.chooseCardsResume != nil,
 		// #742's resolution-time "choose a color".
+		// #568's option pick, for the same reason.
+		"optionPickResume":  c.optionPickResume != nil,
 		"chooseColorResume": c.chooseColorResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
 	} {
@@ -1504,6 +1511,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,

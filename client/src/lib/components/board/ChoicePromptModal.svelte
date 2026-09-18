@@ -17,6 +17,7 @@
     DamageAssignmentView,
     GameView,
     PendingChoiceView,
+    PickOptionView,
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
@@ -349,6 +350,24 @@
   const isConfirm = $derived(active?.kind === "confirm");
   const confirmAccept = $derived(active?.accept_label || "Yes");
   const confirmDecline = $derived(active?.decline_label || "No");
+
+  // #568 option_pick — "choose one of the following", CR 608.2. The
+  // prompt an OPPONENT is asked while somebody else's spell resolves:
+  // Torment of Hailfire's three-way question, and the pile a Fact or
+  // Fiction chooser takes.
+  //
+  // A button per branch, answered with the INDEX. Not the card grid
+  // below: the answer is which consequence, not which cards, and an
+  // option's cards are context rather than the thing being picked.
+  // An option whose cards this seat may not see arrives with its
+  // label and no cards, which is the redaction pass working and not a
+  // missing render — so the button is still live.
+  const isOptionPick = $derived(active?.kind === "option_pick");
+  const pickOptions = $derived<PickOptionView[]>(active?.pick_options ?? []);
+  function answerOptionPick(index: number): void {
+    if (!active || !viewerID) return;
+    answer({ option_index: index });
+  }
 
   // #804 loop_shortcut — CR 726. The loop breaker has fired and this
   // viewer controls the ability that is repeating, so they get the
@@ -970,6 +989,31 @@
             Pay {active.pay_cost ?? ""}
           </button>
         </div>
+      {:else if isOptionPick}
+        <h2 id="choice-title">
+          {active.reason || "Choose one"}
+          <span class="prompt-src" aria-hidden="true">choose one · CR 608.2</span>
+        </h2>
+        <p class="prompt-hint">
+          Someone else's spell or ability is asking you. Every option listed is one you can take,
+          and the game waits until you pick one.
+        </p>
+        <ul class="pick-options">
+          {#each pickOptions as opt, i (i)}
+            <li>
+              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+                <span class="pick-label">{opt.label}</span>
+                {#if opt.cards && opt.cards.length > 0}
+                  <span class="pick-cards">
+                    {#each opt.cards as c (c.instance_id)}
+                      <Card card={c} />
+                    {/each}
+                  </span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
       {:else if isConfirm}
         <h2 id="choice-title">
           {active.reason || "Choose one"}
@@ -1303,6 +1347,31 @@
   }
   .card-pick.bottomed {
     opacity: 0.45;
+  }
+  .pick-options {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pick-option {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    text-align: left;
+  }
+  .pick-label {
+    font-weight: 600;
+  }
+  .pick-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 6px;
+    width: 100%;
   }
   .card-grid {
     display: grid;
