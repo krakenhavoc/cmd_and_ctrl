@@ -22,8 +22,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     battlefield.
 //   - "One or more … deal combat damage" is the Professional
 //     Face-Breaker dedup by label: the engine emits one damage event
-//     per creature, and the second is declined while the first
-//     trigger is pending or on the stack.
+//     per creature, and the second is declined as a later event of
+//     the same batch (OncePerBatch; see AGENTS.md §7).
 //
 // No simplification.
 const b18GrazilaxxDrawLabel = "Grazilaxx, Illithid Scholar — draw a card"

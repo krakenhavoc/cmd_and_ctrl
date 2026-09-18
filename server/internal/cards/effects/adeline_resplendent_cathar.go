@@ -20,13 +20,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     every token she just made. The printed "*" is 0 in the card
 //     data; the CDA overrides it.
 //   - "Whenever you attack" is ONE trigger per attack declaration.
-//     The engine emits EventAttack per creature, so the AppliesTo
-//     declines any further event while an Adeline trigger is already
-//     queued or on the stack — OncePerBatch, a wider
-//     net than Professional Face-Breaker's because attackers
-//     declared one at a time each drain the queue (see the helper) —
-//     and without it a three-creature attack would make three times
-//     the tokens, which is the #259 direction.
+//     The engine emits EventAttack per creature, so OncePerBatch
+//     declines every later event of the SAME batch — and one attack
+//     declaration is one batch however many DeclareAttacker clicks
+//     the sandbox splits it across (see AGENTS.md §7) — without
+//     which a three-creature attack would make three times the
+//     tokens, which is the #259 direction.
 //
 // The tokens really do enter TAPPED AND ATTACKING: the template
 // carries Tapped and AttackingTarget, CreateTokenForEffect copies

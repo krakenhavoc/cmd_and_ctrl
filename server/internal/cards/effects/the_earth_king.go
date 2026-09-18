@@ -16,9 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The ETB makes the 4/4.
 //   - "One or more … attack" is one trigger per combat: EventAttack
 //     fires once per attacker, so the first attacker with power 4 or
-//     more queues the ability and later ones are declined while it
-//     is pending or on the stack (OncePerBatch, the
-//     Adeline dedup). "That many" is read as the ability RESOLVES —
+//     more queues the ability and the rest of the declaration — one
+//     batch (OncePerBatch, the Adeline dedup; see AGENTS.md §7) — is
+//     declined. "That many" is read as the ability RESOLVES —
 //     the count of attacking creatures the controller controls with
 //     power 4 or more at that moment, so a pump in response widens
 //     the search and a shrink narrows it. The search is "up to", so

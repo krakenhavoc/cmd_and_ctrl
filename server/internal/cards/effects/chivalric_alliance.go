@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // b16PlayerAttackedWithAtLeast (Aurelia's / Firemane Commando's
 // shape): the engine emits EventAttack per creature, so the ability
 // fires on the declaration that brings the controller to two
-// attackers and the per-label dedup (queued, on the stack, already
-// fired this turn) declines every later one.
+// attackers, and the dedup — every later event of the same batch
+// (OncePerBatch, see AGENTS.md §7), then the rest of the turn —
+// declines every later one.
 //
 // DECLARED SIMPLIFICATION, weaker than printed: the Knight-making
 // ability is not offered. "Discard a card" is a cost component the

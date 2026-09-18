@@ -19,12 +19,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 //   - "One or more creatures you control deal combat damage to a
 //     player" is ONE trigger per damage step. The engine emits one
-//     damage event per creature, so the AppliesTo declines any
-//     further event while a Food trigger from this Guest is already
-//     queued or on the stack (OncePerBatch, by label —
-//     the other two abilities must not swallow it). Without the
-//     dedup a three-creature alpha strike would make three Foods,
-//     the #259 direction.
+//     damage event per creature, so the AppliesTo declines every
+//     later event of the same batch (OncePerBatch, see AGENTS.md
+//     §7), keyed by label because the other two abilities must not
+//     swallow it. Without the dedup a three-creature alpha strike
+//     would make three Foods, the #259 direction.
 //   - "You sacrifice a Food" is the sacrifice event by the
 //     controller, the Food read while it is still on the battlefield
 //     (b31YouSacrificedAFood).

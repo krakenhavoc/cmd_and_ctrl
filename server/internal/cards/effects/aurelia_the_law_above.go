@@ -22,11 +22,12 @@ const (
 // the declaring player controls after each declaration and fires
 // each ability once per declaration — the engine emits EventAttack
 // per creature, so the count reaching the threshold is what
-// triggers, and the per-label dedup (queued, on the stack, or already
-// fired this turn) is what keeps a six-creature attack from drawing
-// four cards. "A player" is any player, Aurelia's controller
-// included, and the damage goes to Aurelia's controller's opponents
-// whoever attacked, as printed.
+// triggers, and the dedup — every later event of the same batch
+// (OncePerBatch, see AGENTS.md §7), then the rest of the turn — is
+// what keeps a six-creature attack from drawing four cards. "A
+// player" is any player, Aurelia's controller included, and the
+// damage goes to Aurelia's controller's opponents whoever attacked,
+// as printed.
 //
 // Declared weaker than printed: with an extra combat in the same
 // turn the abilities would not fire again. The engine has no extra

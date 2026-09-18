@@ -17,10 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 //   - "One or more Goblins you control attack" is ONE trigger per
 //     attack declaration. The engine emits EventAttack per creature,
-//     so the AppliesTo declines any further Goblin's event while a
-//     Kreat attack trigger is already queued or on the stack
-//     (OncePerBatch, by label — the ping trigger is a
-//     different ability and must not swallow it). Kreat is a Goblin
+//     so the AppliesTo declines any further Goblin's event from the
+//     same batch — one declaration is one batch (OncePerBatch, see
+//     AGENTS.md §7) — keyed by label, because the ping trigger is a
+//     different ability and must not swallow it. Kreat is a Goblin
 //     and counts for his own trigger; effective subtypes, so a
 //     changeling counts.
 //   - The token enters TAPPED AND ATTACKING through

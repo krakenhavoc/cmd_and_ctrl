@@ -23,10 +23,11 @@ import (
 // anyone, Breena's controller included. The ability triggers ONCE
 // PER OPPONENT ATTACKED per combat, not once per creature: the
 // engine emits EventAttack per creature, so the label carries the
-// attacked player's name and the per-label dedup (queued, on the
-// stack, already fired this turn) declines the later creatures
-// aimed at the same opponent while a split attack on two opponents
-// still triggers twice.
+// attacked player's name and the dedup is the engine's
+// TriggerInFlightForEffect — the per-event-key leftover, not the
+// OncePerBatch batch guard, until #784. It declines the later
+// creatures aimed at the same opponent while a split attack on two
+// opponents still triggers twice.
 //
 // The intervening if (CR 603.4) — the attacked opponent has more
 // life than at least one OTHER opponent of Breena's controller — is

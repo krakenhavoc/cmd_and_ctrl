@@ -34,11 +34,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "IS ATTACKED" is once per combat in paper (CR 506.3 — one or
 //     more creatures attacking that player). The engine emits one
 //     EventAttack per attacker, so the trigger is batched by the
-//     same OncePerBatch guard Professional Face-Breaker
-//     uses: the second and later attackers in one declaration find a
-//     Curse trigger already waiting and decline. Without it, three
-//     attackers would make three Golds, which is STRONGER than
-//     printed and not shippable.
+//     same OncePerBatch guard Professional Face-Breaker uses: one
+//     declaration is one batch (see AGENTS.md §7), and the second
+//     and later attackers' events are declined as later events of
+//     it. Without that, three attackers would make three Golds,
+//     which is STRONGER than printed and not shippable.
 //
 // Deferred to whichever sprint teaches the engine to see a declared
 // attack as one batch.
