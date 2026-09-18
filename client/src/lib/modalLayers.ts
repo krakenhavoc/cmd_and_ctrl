@@ -22,18 +22,28 @@
 // and works correctly today; this store exists purely so the global
 // layer can stand down.
 
-import { writable, derived, get, type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
 
-const layers = writable<ReadonlySet<number>>(new Set());
+import { guardedDerived, guardedWritable } from "./guardedStore";
+
+const layers = guardedWritable<ReadonlySet<number>>(new Set(), "modalLayers");
 
 let nextID = 1;
 
 // modalDepth is how many layers are currently registered. Exposed for
 // the dev frame inspector and tests; most consumers want modalOpen.
-export const modalDepth: Readable<number> = derived(layers, (s) => s.size);
+export const modalDepth: Readable<number> = guardedDerived(layers, (s) => s.size, "modalDepth", 0);
 
 // modalOpen is the reactive predicate the shortcut layer reads.
-export const modalOpen: Readable<boolean> = derived(layers, (s) => s.size > 0);
+// `false` is the fail-safe: a stuck-open global layer would swallow
+// every keyboard shortcut on the board, which is worse than a modal
+// that has to be dismissed with its own close button.
+export const modalOpen: Readable<boolean> = guardedDerived(
+  layers,
+  (s) => s.size > 0,
+  "modalOpen",
+  false,
+);
 
 // pushModalLayer registers a layer and returns its unregister
 // function. Idempotent on the way out: calling the returned function

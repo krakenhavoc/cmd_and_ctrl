@@ -8,7 +8,9 @@
 // per hover. The in-memory cache here returns synchronously after the
 // first fetch resolves.
 
-import { writable, type Readable } from "svelte/store";
+import { type Readable } from "svelte/store";
+
+import { guardedWritable } from "./guardedStore";
 
 // CardMeta is the wire shape of GET /cards/{id}. Mirrors the trimmed
 // Scryfall projection in server/internal/cards/index.go — only the
@@ -43,12 +45,16 @@ const cache = new Map<string, CacheEntry>();
 // re-rendered when the fetch resolves. Created on demand and shared
 // across subscribers so two cards hovered in quick succession both
 // see the same store fill in once.
-const stores = new Map<string, ReturnType<typeof writable<CardMeta | null>>>();
+// #720: guarded, because these are the stores with a hand-written
+// `.subscribe(...)` on them (HoverZoomOverlay.svelte). That callback
+// runs inside svelte/store's shared drain loop, so a throw in it is
+// the exact shape that freezes every other store in the app.
+const stores = new Map<string, ReturnType<typeof guardedWritable<CardMeta | null>>>();
 
 function storeFor(id: string) {
   let s = stores.get(id);
   if (!s) {
-    s = writable<CardMeta | null>(null);
+    s = guardedWritable<CardMeta | null>(null, `cardMeta:${id}`);
     stores.set(id, s);
   }
   return s;

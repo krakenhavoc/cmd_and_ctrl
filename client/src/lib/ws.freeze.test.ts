@@ -4,6 +4,11 @@ import { get, writable } from "svelte/store";
 import { GameClient } from "./ws";
 import { PROTOCOL_VERSION, type GameView } from "./protocol";
 import { recentClientErrors, resetClientErrors } from "./clientErrors";
+import { settings } from "./settings";
+import { targeting } from "./targeting";
+import { manualStops, toggleManualStop, _resetForTests as resetStops } from "./priorityStops";
+import { guardedDerived, guardedWritable } from "./guardedStore";
+import { modalOpen, pushModalLayer, _resetForTests as resetModalLayers } from "./modalLayers";
 
 // Regression cover for #266 "[in-app] State freeze": the board stops
 // updating while the socket stays green and the server keeps sending.
@@ -158,5 +163,138 @@ describe("#266 — one throwing subscriber must not freeze the client", () => {
 
     expect(client.sendAction("pass_priority")).not.toBeNull();
     expect(socket.sent.some((s) => s.includes("pass_priority"))).toBe(true);
+  });
+});
+
+// #720: the half of #266 that #284 did not cover. The queue is GLOBAL,
+// so the dangerous thrower is not one of GameClient's own subscribers —
+// those were already guarded — but one on ANY OTHER store in the app.
+// Before guardedStore.ts, a throwing subscriber on `settings`,
+// `targeting` or `manualStops` left the queue non-empty, and from then
+// on GameClient's `snapshot.set()` enqueued and returned without
+// flushing: frames kept arriving, seq kept advancing, the board never
+// moved again.
+//
+// Every thrower below is ARMED AFTER it subscribes, on purpose. A throw
+// during `subscribe` is called back directly and escapes without
+// touching the queue; it takes a throw during a later `set` — inside
+// svelte/store's drain loop — to skip the reset and poison it. Arming
+// afterwards is what reproduces the freeze rather than a mere uncaught
+// error. subscriberQueue.test.ts pins the mechanism itself.
+describe("#720 — a throw in an unrelated store must not stall GameClient", () => {
+  beforeEach(() => {
+    resetStops();
+    resetModalLayers();
+    targeting.set(null);
+  });
+
+  // thrower returns a subscriber that is inert until `arm()` is called,
+  // and the arm function.
+  function thrower(what: string): { fn: () => void; arm: () => void } {
+    let armed = false;
+    return {
+      fn: () => {
+        if (armed) throw new Error(`${what} subscriber blew up`);
+      },
+      arm: () => {
+        armed = true;
+      },
+    };
+  }
+
+  // snapshotsFlow feeds two frames and returns the turn numbers a
+  // healthy subscriber actually saw. An empty result is the freeze.
+  function snapshotsFlow(): { seen: number[]; seq: number } {
+    const { client, socket } = connected();
+    const seen: number[] = [];
+    client.snapshot.subscribe((v) => {
+      if (v) seen.push(v.turn.number);
+    });
+    socket.emit("message", { data: snapshotFrame(91) });
+    socket.emit("message", { data: snapshotFrame(92) });
+    return { seen, seq: get(client.lastSeq) };
+  }
+
+  it("survives a throwing subscriber on the settings store", () => {
+    const t = thrower("settings");
+    settings.subscribe(t.fn);
+    t.arm();
+    expect(() => settings.update((s) => ({ ...s }))).not.toThrow();
+
+    const { seen, seq } = snapshotsFlow();
+    expect(seen).toEqual([2, 2]);
+    expect(seq).toBe(92);
+  });
+
+  it("survives a throwing subscriber on the targeting store", () => {
+    const t = thrower("targeting");
+    targeting.subscribe(t.fn);
+    t.arm();
+    expect(() =>
+      targeting.set({ mode: "cast", sourceCardID: "x" } as unknown as never),
+    ).not.toThrow();
+
+    const { seen } = snapshotsFlow();
+    expect(seen).toEqual([2, 2]);
+  });
+
+  it("survives a throwing subscriber on manualStops (#284 follow-up 2)", () => {
+    // manualStops is re-exported as a bare `{ subscribe }`, so this also
+    // covers that the guard survives being handed on that way.
+    const t = thrower("manualStops");
+    manualStops.subscribe(t.fn);
+    t.arm();
+    expect(() => toggleManualStop("upkeep")).not.toThrow();
+
+    const { seen } = snapshotsFlow();
+    expect(seen).toEqual([2, 2]);
+  });
+
+  it("survives a throwing subscriber on a derived store", () => {
+    // modalOpen is a `derived`, whose own mapping runs inside its
+    // parent's subscriber — two chances to poison the queue rather than
+    // one.
+    const t = thrower("modalOpen");
+    modalOpen.subscribe(t.fn);
+    t.arm();
+    const pop = pushModalLayer();
+
+    const { seen } = snapshotsFlow();
+    expect(seen).toEqual([2, 2]);
+    pop();
+  });
+
+  it("survives a store whose own logic throws, not just its subscriber", () => {
+    // The other shape the #720 review called out: a `derived` mapping
+    // that throws. It runs inside the PARENT's subscriber, so it is on
+    // the same code path as the poisoner above but one level in.
+    const parent = guardedWritable(1, "parent");
+    const mapped = guardedDerived(
+      parent,
+      (v: number) => {
+        if (v > 1) throw new Error("mapping blew up");
+        return v;
+      },
+      "mapped",
+      0,
+    );
+    mapped.subscribe(() => {});
+    expect(() => parent.set(2)).not.toThrow();
+
+    const { seen } = snapshotsFlow();
+    expect(seen).toEqual([2, 2]);
+  });
+
+  it("records which store's subscriber threw", () => {
+    const t = thrower("settings");
+    settings.subscribe(t.fn);
+    t.arm();
+    settings.update((s) => ({ ...s }));
+
+    const texts = recentClientErrors().map((e) => e.text);
+    expect(
+      texts.some((t2) => /subscriber threw on settings/.test(t2)),
+      `errors were: ${texts.join(" | ")}`,
+    ).toBe(true);
   });
 });

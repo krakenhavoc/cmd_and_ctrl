@@ -10,7 +10,8 @@
 // Only one modal is open at a time. Opening a second one replaces
 // the first; closing writes null.
 
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 
 export type BrowsableZone = "graveyard" | "exile" | "command" | "stack";
 
@@ -24,7 +25,7 @@ export interface ZoneBrowserOpen {
   ownerName: string;
 }
 
-export const zoneBrowser: Writable<ZoneBrowserOpen | null> = writable(null);
+export const zoneBrowser: Writable<ZoneBrowserOpen | null> = guardedWritable(null, "zoneBrowser");
 
 export function openZoneBrowser(open: ZoneBrowserOpen): void {
   zoneBrowser.set(open);

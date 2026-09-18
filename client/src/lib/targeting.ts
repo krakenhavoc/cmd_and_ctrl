@@ -1,4 +1,5 @@
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type {
   ActivatedAbilityView,
   AlternativeCostView,
@@ -184,7 +185,7 @@ export interface TargetRef {
   id: string;
 }
 
-export const targeting: Writable<TargetingState | null> = writable(null);
+export const targeting: Writable<TargetingState | null> = guardedWritable(null, "targeting");
 
 // begin enters a targeting prompt. Overwrites any existing prompt
 // — the last cast wins. The caller has already verified the

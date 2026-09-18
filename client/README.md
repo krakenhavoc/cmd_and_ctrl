@@ -56,6 +56,22 @@ client/
 - State from the server lives in Svelte stores exposed by `GameClient`
   (`lib/ws.ts`). Components subscribe to stores; they never call the
   WebSocket directly.
+- **Build every store with `guardedWritable` / `guardedDerived` from
+  `lib/guardedStore.ts`, never `writable` / `derived` from
+  `svelte/store`.** ESLint enforces it. `svelte/store` keeps ONE
+  module-global `subscriber_queue` and never resets it after a callback
+  throws, so a single throwing subscriber — or a throwing `derived`
+  callback, or a `localStorage` write that hits a quota inside one —
+  stops notifications on _every_ store in the app for the life of the
+  page. That is #266's "state freeze": socket green, frames arriving,
+  nothing reaching the DOM. `guardedStore.ts` has the full mechanism;
+  `subscriberQueue.test.ts` pins that it is still unfixed upstream.
+- A throw while _rendering_ is the other half, and Svelte 5 batches
+  those onto a microtask rather than through the queue.
+  `<svelte:boundary>` around `<Board>` in `routes/Game.svelte` catches
+  them, records them via `clientErrors.ts` and offers the player a
+  redraw. Do not widen it to the whole route: the header, the
+  bug-report button and "back to lobby" have to survive a dead table.
 - The protocol types in `lib/protocol.ts` are a hand-maintained mirror of
   `server/internal/protocol/protocol.go`. When the spec in
   `docs/protocol.md` changes, update both sides in lockstep.
