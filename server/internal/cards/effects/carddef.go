@@ -44,6 +44,8 @@ func buildDef(spec Spec) *game.CardDef {
 		WantsDistinctColors:   spec.WantsDistinctColors,
 		AdditionalLandPlays:   spec.AdditionalLandPlays,
 		XMatters:              spec.XMatters,
+		CastPermissions:       standingCastPermissions(spec.CastPermissions),
+		LibraryTopVisible:     spec.LibraryTopVisible,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
@@ -134,4 +136,27 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Static = nil
 	}
 	return d
+}
+
+// standingCastPermissions normalises a Spec's declared permissions
+// into the shape the engine derives them in (ADR 0066): a permanent's
+// static ability is always a STANDING permission and always lasts for
+// as long as the permanent remains.
+//
+// Forced here rather than checked in Register, because there is no
+// other thing a card file could have meant: a Spec slot is read off
+// the battlefield, and the two fields it would be setting are the two
+// the derivation owns. A per-instance permission does not come from a
+// Spec at all.
+func standingCastPermissions(in []game.CastPermission) []game.CastPermission {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.CastPermission, len(in))
+	copy(out, in)
+	for i := range out {
+		out[i].Scope = game.ScopeStanding
+		out[i].WhileInZone = true
+	}
+	return out
 }

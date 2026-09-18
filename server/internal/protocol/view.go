@@ -1841,10 +1841,19 @@ func ViewOfGame(g *game.Game) GameView {
 			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
 		stampLegalTargets(g, view.Seats)
-		stampGrantedPermissions(g, &view.Exile, game.ZoneExile)
-		for si := range view.Seats {
-			stampGrantedPermissions(g, &view.Seats[si].Graveyard, game.ZoneGraveyard)
-			stampGrantedPermissions(g, &view.Seats[si].Library, game.ZoneLibrary)
+		// ADR 0066. Gated, and the gate is load-bearing rather than
+		// tidy: these passes ask a per-card question whose answer is
+		// "nobody may play this" in almost every game, and a bot's
+		// decision loop pays for every frame it builds.
+		if g.AnyCastPermissionsForEffect() {
+			stampGrantedPermissions(g, &view.Exile, g.Exile)
+			for si := range view.Seats {
+				seat := g.PlayerByIDForEffect(mustParseSeatID(view.Seats[si].ID))
+				if seat == nil {
+					continue
+				}
+				stampGrantedPermissions(g, &view.Seats[si].Graveyard, seat.Graveyard)
+			}
 		}
 		stampLibraryTop(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
@@ -1974,29 +1983,46 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 		if err != nil {
 			continue
 		}
+		live := g.PlayerByIDForEffect(caster)
 		zones := []struct {
 			view *ZoneView
 			kind game.ZoneKind
+			live *game.Zone
 		}{
-			{&seat.Hand, game.ZoneHand},
-			{&seat.Command, game.ZoneCommand},
-			{&seat.Graveyard, game.ZoneGraveyard},
+			{&seat.Hand, game.ZoneHand, nil},
+			{&seat.Command, game.ZoneCommand, nil},
+			{&seat.Graveyard, game.ZoneGraveyard, zoneOf(live, game.ZoneGraveyard)},
 			// S42 / CR 401.5: the library is a cast surface for its
 			// top card when a permission opens it. Walked for every
 			// seat and gated per card below, exactly as the graveyard
 			// is — the per-viewer filter drops the whole zone for a
 			// library the viewer may not see into.
-			{&seat.Library, game.ZoneLibrary},
+			{&seat.Library, game.ZoneLibrary, zoneOf(live, game.ZoneLibrary)},
 		}
+		anyGrant := g.AnyCastPermissionsForEffect()
 		for _, zone := range zones {
-			for ci := range zone.view.Cards {
+			// CR 401.5: a library is a cast surface for exactly one
+			// card, the top one, and the top is the LAST element.
+			// Walking the rest would be both wrong and the most
+			// expensive loop in the view.
+			first := 0
+			if zone.kind == game.ZoneLibrary {
+				if !anyGrant || len(zone.view.Cards) == 0 {
+					continue
+				}
+				first = len(zone.view.Cards) - 1
+			}
+			for ci := first; ci < len(zone.view.Cards); ci++ {
 				c := &zone.view.Cards[ci]
 				if zone.kind == game.ZoneGraveyard || zone.kind == game.ZoneLibrary {
 					// The card's own text, or a granted permission
 					// (ADR 0066) — the same merge the cast path makes,
 					// so the client can never render a button
 					// CastSpell would refuse.
-					granted := grantedCastOffer(g, caster, c, zone.kind)
+					var granted *game.AlternativeCost
+					if anyGrant && zone.live != nil && ci < len(zone.live.Cards) {
+						granted = grantedCastOffer(g, caster, zone.live.Cards[ci], zone.kind)
+					}
 					if granted == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
 						continue
 					}
@@ -3779,17 +3805,19 @@ func viewOfCard(c game.Card) CardView {
 // created the permission resolved in the open — so one pass over the
 // zone is all it takes, and the per-viewer filter strips the field
 // from a card the viewer cannot read.
-func stampGrantedPermissions(g *game.Game, zone *ZoneView, kind game.ZoneKind) {
+func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
+	if live == nil || len(zone.Cards) != len(live.Cards) {
+		// viewOfZone projects a zone card-for-card and in order, so a
+		// length mismatch means something moved between the two and
+		// the indices no longer line up. Skipping is the safe half of
+		// that race: a frame without the stamp, never a stamp on the
+		// wrong card.
+		return
+	}
+	kind := live.Kind
 	for i := range zone.Cards {
 		v := &zone.Cards[i]
-		id, err := uuid.Parse(v.InstanceID)
-		if err != nil {
-			continue
-		}
-		card, ok := g.LookupCardForEffect(id)
-		if !ok {
-			continue
-		}
+		card := live.Cards[i]
 		perm := g.CastPermissionOnCardForEffect(card, kind)
 		if perm == nil {
 			continue
@@ -3827,15 +3855,7 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, kind game.ZoneKind) {
 // function CastSpell validates with. That is the whole point: the
 // client cannot be shown a cast the engine would refuse, and it
 // cannot be shown the wrong price for one it would allow.
-func grantedCastOffer(g *game.Game, caster uuid.UUID, c *CardView, kind game.ZoneKind) *game.AlternativeCost {
-	id, err := uuid.Parse(c.InstanceID)
-	if err != nil {
-		return nil
-	}
-	card, ok := g.LookupCardForEffect(id)
-	if !ok {
-		return nil
-	}
+func grantedCastOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) *game.AlternativeCost {
 	perm := g.CastPermissionForLocked(caster, card, kind)
 	if !perm.Active(caster, g.Turn.Number) {
 		return nil
@@ -3857,6 +3877,9 @@ func grantedCastOffer(g *game.Game, caster uuid.UUID, c *CardView, kind game.Zon
 // stops being revealed and is revealed again is a new object, and
 // nothing here remembers the old one.
 func stampLibraryTop(g *game.Game, seats []PlayerView) {
+	if game.CatalogLibraryTopVisible == nil {
+		return
+	}
 	for si := range seats {
 		seat := &seats[si]
 		owner, err := uuid.Parse(seat.ID)
@@ -4319,4 +4342,38 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 		}
 	}
 	return out
+}
+
+// mustParseSeatID parses a seat's UUID string, answering uuid.Nil for
+// anything it cannot read. Seat IDs are minted by the engine and are
+// always valid; the fallback exists so a projection never panics on a
+// hand-built fixture.
+func mustParseSeatID(id string) uuid.UUID {
+	out, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil
+	}
+	return out
+}
+
+// zoneOf picks one of a player's own zones by kind, nil-safe on both
+// the player and the kind. The view's stamping passes index a live
+// zone alongside the projected one, and a nil here simply skips the
+// stamp rather than reaching for a lookup by ID — which is a scan of
+// every zone in the game, per card, per frame.
+func zoneOf(p *game.Player, kind game.ZoneKind) *game.Zone {
+	if p == nil {
+		return nil
+	}
+	switch kind {
+	case game.ZoneGraveyard:
+		return p.Graveyard
+	case game.ZoneLibrary:
+		return p.Library
+	case game.ZoneHand:
+		return p.Hand
+	case game.ZoneCommand:
+		return p.Command
+	}
+	return nil
 }

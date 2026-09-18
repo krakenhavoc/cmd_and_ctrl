@@ -471,6 +471,45 @@ type Spec struct {
 	// one-line Spec each rather than an engine change.
 	AdditionalLandPlays int
 
+	// CastPermissions declares the STANDING cast and play permissions
+	// this permanent grants its controller while it is on the
+	// battlefield (ADR 0066) — "each nonland card in your graveyard
+	// has escape" (Underworld Breach), "you may play lands and cast
+	// spells from the top of your library" (Bolas's Citadel).
+	//
+	// Scope is forced to game.ScopeStanding and the window to "while
+	// the source remains", because that is what a permanent's static
+	// ability means: the engine re-derives these from the battlefield
+	// on every query, so two Underworld Breaches compose, one of them
+	// leaving does not revoke the other's permission, and there is no
+	// duration to expire. A per-INSTANCE permission (Snapcaster's
+	// flashback for one card, impulse exile) is granted by an EFFECT
+	// instead — game.Game.GrantCastPermissionOverCardForEffect.
+	//
+	// Narrow which cards qualify with game.PermissionFilter, price the
+	// cast with AltCostKey / Cost / LifeEqualToManaValue /
+	// ExileOtherFromGraveyard, and set TopOfLibraryOnly for a library
+	// permission (CR 401.5). A library permission ALSO needs
+	// LibraryTopVisible below: a card you cannot see is a card you
+	// cannot play, and every printed card carries both halves.
+	CastPermissions []game.CastPermission
+
+	// LibraryTopVisible declares the printed clause that makes this
+	// permanent's controller's top library card visible (CR 401.5) —
+	// game.LibraryTopOwner for "you may look at the top card of your
+	// library any time" (Realmwalker, Bolas's Citadel),
+	// game.LibraryTopRevealed for "play with the top card of your
+	// library revealed" (Oracle of Mul Daya, Courser of Kruphix).
+	//
+	// Deliberately NOT a `Static` entry, for the reason
+	// AdditionalLandPlays above is not: it is a fact about a PLAYER
+	// and a zone position, not a characteristic of an object, so the
+	// CR 613 layer engine has nowhere to put it. Derived from the
+	// battlefield on every query instead (game.LibraryTopVisibilityLocked),
+	// which also means the answer is always about whatever is on top
+	// NOW — no library mutation has to invalidate anything.
+	LibraryTopVisible game.LibraryTopVisibility
+
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding
 	// Clock, Drumbellower, Bender's Waterskin, and the second half

@@ -751,6 +751,40 @@ func (g *Game) permissionZoneLocked(playerID uuid.UUID, kind ZoneKind) *Zone {
 	return nil
 }
 
+// AnyCastPermissionsForEffect reports whether ANY permission could be
+// in play right now — a stored one on any seat, or a standing one from
+// a permanent on the battlefield.
+//
+// A fast negative for the view and the bot enumerator, and it is not a
+// micro-optimisation: without it every frame walked every graveyard,
+// every library and the whole of exile asking a question whose answer
+// is "no" in the overwhelming majority of games, and the cost of that
+// walk is what a bot's decision loop pays. The check is one pass over
+// the seats plus, only if that finds nothing, one over the
+// battlefield.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AnyCastPermissionsForEffect() bool {
+	for _, p := range g.Seats {
+		if p != nil && len(p.CastPermissions) > 0 {
+			return true
+		}
+	}
+	if g.Battlefield == nil || CatalogCastPermissions == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.OracleID == "" {
+			continue
+		}
+		if len(CatalogCastPermissions(CatalogAbilityKey(*c))) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // CastPermissionOnCardForEffect is the view and client half: the
 // permission (if any) that lets ANY player cast this card from the
 // zone it is sitting in. Used to project the `exile_play` wire field,
