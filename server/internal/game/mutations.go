@@ -2182,6 +2182,20 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		Distribution: cloneDistributionLocked(params.Distribution),
 		Seq:          g.nextStackSeqLocked(),
 	}
+	// CR 115.7: the targets are chosen as the ability goes on the
+	// stack, and becoming a target is an event whether the ability
+	// came out of the catalog or off a player's own reading of the
+	// card (#968). Same call, same place as the catalog activation
+	// (activated.go) and the manual trigger announce below: after the
+	// item exists, so a ward or "becomes the target" trigger harvested
+	// off it lands on the stack above the thing that targeted.
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
+	// And the drain the catalog path runs for the same reason: the
+	// activator receives priority right after activating (CR 117.3c),
+	// so a trigger harvested off the announce goes on the stack at
+	// that boundary (CR 603.3b) — above the ability, where a ward
+	// trigger has to be to counter it.
+	g.runStateChecksLocked()
 	return nil
 }
 
