@@ -211,6 +211,18 @@ type GameSnapshot struct {
 	// already carries. No schema bump.
 	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
 
+	// FirstStrikeStepParticipants is the CR 510.4 / 702.7c
+	// participation record for the combat damage steps (#716): the
+	// combatants that had first strike or double strike as the first
+	// one began. Empty outside a combat that had a first-strike step,
+	// and a file written before it restores as empty — which reads as
+	// "there was no first-strike step", so every combatant deals
+	// damage in the regular step. That is the right answer for every
+	// older file except one paused in the priority window between the
+	// two steps, which could not exist before the steps did. No schema
+	// bump.
+	FirstStrikeStepParticipants map[uuid.UUID]bool `json:"firstStrikeStepParticipants,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -649,6 +661,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
 	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
+	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -1154,6 +1167,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
 	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
+	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)

@@ -542,6 +542,31 @@ damage event was dealt in. The text cue and the cached-geometry ghost
 arrows are still useful, because a creature that died in the first step
 is still gone by the time its frame renders.
 
+**#717 landed (2026-09-18). What it changed here, and what it did
+not.** Nothing is removed. The two beats usually do arrive in two
+frames now, with a real priority window between them, so the same-frame
+pause fires less often — but it still has to exist: a table on autopass,
+or a seat that clicks `advance_step` twice, delivers both steps in one
+frame, and the pause is what keeps them readable. Three things changed,
+all of them small:
+
+- `splitBeats` keys a combat's beats on the **first** damage step entry
+  it sees (`first_strike_damage` when there was one, `combat_damage`
+  otherwise) instead of on the `combat_damage` entry alone. Without that
+  the two steps are two `stepSeq`s, the pause never pairs and the text
+  cue splits into two boxes.
+- `keepArrowCache` keeps the geometry through `first_strike_damage`
+  as well, so the ghost arrows a first-strike death needs survive.
+- Decision 1's `combat_step` tag is unchanged and still earns its keep:
+  it is what tells a first-strike entry from a regular one INSIDE a
+  frame, and it still appears only when the combat had a first-strike
+  step. It is now redundant with the step entry for most entries and
+  not for damage that lands late from a prompt, which is the case a
+  position-based reading was always wrong about.
+
+Decisions 2, 3 and 4 (reduced motion, no empty beat, the arrow cue) are
+untouched, and the animation is not rebuilt.
+
 ## Beats across frames
 
 A beat is a set of log entries. These rules say which entries, and how

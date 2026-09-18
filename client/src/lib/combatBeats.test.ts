@@ -1084,3 +1084,50 @@ describe("BeatDirector", () => {
     expect(fired).toEqual([]);
   });
 });
+
+// ---- #717: the two combat damage steps are two step entries ----
+
+describe("two real combat damage steps (#717, CR 510.4)", () => {
+  const before = declaredCombat();
+  // The wire shape after #717: a first_strike_damage step entry, then
+  // a combat_damage one, with a priority window in between.
+  const firstStrikeOnly = [
+    ...before,
+    step(120, "first_strike_damage"),
+    dmgCard(121, "ace", "bears", 1, "first_strike"),
+  ];
+  const both = [
+    ...firstStrikeOnly,
+    step(130, "combat_damage"),
+    dmgCard(131, "ace", "bears", 1, "regular"),
+    dmgCard(132, "bears", "ace", 2, "regular"),
+    dies(133, "bears"),
+  ];
+
+  it("keys both beats on the first-strike step, so they stay one pair", () => {
+    const t = track(primedOn(before), both);
+    const { beats } = splitBeats(t.tracker, both, t.fresh);
+    expect(beats.map((b) => b.tag)).toEqual(["first_strike", "regular"]);
+    expect(beats.map((b) => b.stepSeq)).toEqual([120, 120]);
+    expect(beats[1].pauseBefore).toBe(true);
+    expect(beats[1].entries.map((e) => e.seq)).toEqual([131, 132, 133]);
+  });
+
+  it("does not repeat the first-strike beat when the second step arrives in a later frame", () => {
+    const first = track(primedOn(before), firstStrikeOnly);
+    const afterFirst = splitBeats(first.tracker, firstStrikeOnly, first.fresh);
+    expect(afterFirst.beats.map((b) => b.tag)).toEqual(["first_strike"]);
+
+    const second = track(afterFirst.tracker, both);
+    const { beats } = splitBeats(second.tracker, both, second.fresh);
+    expect(beats.map((b) => b.tag)).toEqual(["regular"]);
+    expect(beats[0].stepSeq).toBe(120);
+    // Across frames the time between frames is the pause.
+    expect(beats[0].pauseBefore).toBe(false);
+    expect(beats[0].continuation).toBe(false);
+  });
+
+  it("keeps the arrow geometry cache through the first-strike step", () => {
+    expect(keepArrowCache("first_strike_damage", 0)).toBe(true);
+  });
+});

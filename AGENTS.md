@@ -1070,6 +1070,18 @@ is tested in `server/internal/game/combat_test.go` against
 manufactured battlefield state — card-level tests just verify the
 keyword strings are exposed.
 
+**First strike and double strike change the TURN, not just the
+damage.** A combat in which any attacking or blocking creature has
+either keyword as combat damage would begin has TWO combat damage
+steps (CR 506.1 / 510.4), and the engine models that as a real step:
+`first_strike_damage` sits before `combat_damage` in `turnSequence`,
+and a turn that does not need it walks straight through it without
+entering it (`Game.stepExistsLocked`). Each step grants priority, so a
+"whenever this deals combat damage" trigger from first-strike damage
+goes on the stack and resolves BEFORE regular damage is dealt, and the
+table can respond in between (#717). Nothing about this is per card:
+declare the keyword and the turn structure follows.
+
 **Keyword behaviour is engine-side, not catalog-side.** You do not
 write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.
@@ -2035,9 +2047,10 @@ turn-based action is one batch however many engine calls the sandbox
 splits it across (three `DeclareAttacker` clicks are one declaration
 and one Adeline trigger), and the NEXT resolution is a new batch
 however much of the last one is still on the stack (two Unsummons in
-one turn draw two cards). One step the RULES split and the cursor
-does not counts too: the first-strike and regular combat damage
-steps are two batches (CR 510.4, #784), so a first-striker and a
+one turn draw two cards). The rule has no exception clause: the
+first-strike and regular combat damage steps are two batches
+(CR 510.4, #784), and since #717 they are two batches because they
+are two real steps the cursor enters — so a first-striker and a
 regular attacker connecting with the same player are two triggers.
 The batch id is stamped on `Event.Batch` and the guard is
 `oncePerBatchAllowsLocked`

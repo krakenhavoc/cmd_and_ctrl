@@ -220,6 +220,11 @@ func TestFullFourPlayerTurnCycle(t *testing.T) {
 	// External step sequence as observed by AdvanceStep callers
 	// post-S13. Untap and Cleanup are auto-advanced through their
 	// entry hooks and are never visible at the AdvanceStep boundary.
+	// Neither is first_strike_damage here, for a different reason:
+	// nobody attacks in this test, so CR 506.1 gives the combat no
+	// first combat damage step and the cursor walks through it
+	// (#717). A turn with a first striker in it sees it like any
+	// other step — TestTwoCombatDamageStepsWithAFirstStriker.
 	visible := []Step{
 		StepUpkeep,
 		StepDraw,

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { get } from "svelte/store";
+import { stopKeyFor, hasOwnStop } from "./turn";
 
 // vitest runs in node by default and the client isn't configured
 // for jsdom. settings.ts only needs a minimal localStorage
@@ -269,5 +270,28 @@ describe("settings", () => {
     updateSettings("audio", "muted", true);
     const b = fingerprintSettings();
     expect(b).not.toBe(a1);
+  });
+});
+
+// ---- #717: the two combat damage steps share one stop ----
+
+describe("per-step stops and the first-strike damage step", () => {
+  it("gives the first-strike damage step no row of its own", async () => {
+    const { defaultStepStops } = await freshModule();
+    const stops = defaultStepStops();
+    expect(Object.keys(stops)).not.toContain("first_strike_damage");
+    expect(Object.keys(stops)).toContain("combat_damage");
+    // Untap and Cleanup are out for the older reason: no priority.
+    expect(Object.keys(stops)).not.toContain("untap");
+    expect(Object.keys(stops)).not.toContain("cleanup");
+  });
+
+  it("routes the first-strike damage step's stop to combat_damage", () => {
+    expect(stopKeyFor("first_strike_damage")).toBe("combat_damage");
+    expect(stopKeyFor("combat_damage")).toBe("combat_damage");
+    expect(stopKeyFor("declare_blockers")).toBe("declare_blockers");
+    expect(hasOwnStop("first_strike_damage")).toBe(false);
+    expect(hasOwnStop("combat_damage")).toBe(true);
+    expect(hasOwnStop("untap")).toBe(false);
   });
 });

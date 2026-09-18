@@ -333,6 +333,24 @@ type Game struct {
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
 
+	// firstStrikeStepParticipants is THIS combat's CR 510.4
+	// participation record: the attacking and blocking creatures that
+	// had first strike or double strike as the FIRST combat damage
+	// step began, recorded once at that step's entry (#717).
+	//
+	// It is what the first-strike step deals damage for, and it is
+	// how the regular step knows there WAS a first-strike step —
+	// which is what decides whether either step's damage carries the
+	// ADR 0053 Event.CombatStep tag. Empty means the combat had one
+	// damage step, which is also the zero value's answer.
+	//
+	// Cleared by clearCombatLocked alongside the declarations it
+	// describes, and carried by Clone / RestoreFrom and the persisted
+	// snapshot for the reason announcedBlocks is, plus one of its own:
+	// the gap between the two steps is a priority window, so an undo
+	// or a restore can land inside it.
+	firstStrikeStepParticipants map[uuid.UUID]bool
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -750,6 +768,10 @@ func (g *Game) End() {
 // the turn number increments. Returns the new Turn.
 //
 // Side effects on step transitions:
+//   - Entering first_strike_damage: the first-strike damage pass
+//     runs (CR 510.4). The step exists only when a combatant has
+//     first or double strike as it would begin; otherwise the cursor
+//     walks through it without entering it.
 //   - Entering combat_damage: ResolveCombatDamage runs (S08 —
 //     auto-applies unblocked attacker damage to defending players'
 //     life totals). Combat declarations (AttackingTarget /
@@ -879,6 +901,32 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 	return g.SpellsCastThisTurn[playerID]
 }
 
+// stepExistsLocked reports whether the step the cursor has landed on
+// is one THIS turn actually has. A step that does not exist is walked
+// through by runStepEntryHooksLocked without being entered: nothing
+// announces, no turn-based action runs, and no player receives
+// priority in it.
+//
+// One step answers false today. CR 506.1 / 510.4: a combat phase has
+// TWO combat damage steps, the first of them for first strike, only
+// "if at least one attacking or blocking creature has first strike or
+// double strike as the combat damage step begins". The cursor is at
+// that moment right now, so the check is the live board — which is
+// also why it is a predicate here rather than a flag set when blockers
+// were declared: a creature can gain or lose first strike during the
+// declare-blockers step's own priority window.
+//
+// The regular combat damage step always exists (every combat has one),
+// and so does every other step in turnSequence.
+//
+// Caller must hold g.mu.
+func (g *Game) stepExistsLocked(s Step) bool {
+	if s != StepFirstStrikeDamage {
+		return true
+	}
+	return len(g.firstStrikeStepParticipantSetLocked()) > 0
+}
+
 // runStepEntryHooksLocked dispatches the per-step side effects that
 // fire on entering certain steps. Called from every code path that
 // changes Turn.Step (AdvanceStep, PassPriority's wrap-and-advance
@@ -929,6 +977,17 @@ func (g *Game) runStepEntryHooksLocked() {
 	// untap step's own untaps bump it again on the way into upkeep.
 	// Fast-path no-op when nothing changed.
 	g.RecomputeLayersIfStaleLocked()
+	// #717 / CR 506.1: not every turn has every step. A step this
+	// turn does not have never begins — no announcement, no turn-based
+	// action, no priority — so the cursor walks straight through it,
+	// which is the same move a step CANCELLED by a replacement makes
+	// below (CR 500.11). Checked before the replacement window because
+	// a step that does not exist is not a step anything can replace.
+	if !g.stepExistsLocked(g.Turn.Step) {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -1121,6 +1180,14 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			Kind:  EventBeginDrawStep,
 			Actor: g.Seats[g.Turn.ActiveSeat].ID,
 		})
+	case StepFirstStrikeDamage:
+		// CR 510.4: the first combat damage step's turn-based action.
+		// It grants priority like any other step, so there is no
+		// auto-advance — the triggers this damage causes go on the
+		// stack at the boundary resolveFirstStrikeCombatDamageLocked
+		// runs, and the active player gets to respond before the
+		// second step's damage is dealt (CR 510.3).
+		g.resolveFirstStrikeCombatDamageLocked()
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:

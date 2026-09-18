@@ -28,11 +28,17 @@ import "github.com/google/uuid"
 // PLAY MOVES ON — and there are exactly two such points:
 //
 //   - a stack item begins to resolve (resolveTopOfStackLocked), and
-//   - the turn cursor enters a new step (advanceCursorLocked), plus
-//     the one step the RULES split in two and the cursor does not:
-//     the first-strike and regular combat damage steps (CR 510.4),
-//     which resolveCombatDamageLocked runs back to back inside the
-//     cursor's single combat_damage step (#784).
+//   - the turn cursor enters a new step (advanceCursorLocked).
+//
+// That is the whole rule, and since #717 it is the whole rule with no
+// exception attached. The first-strike and regular combat damage
+// steps are TWO combat damage steps (CR 510.4), so a first-striker
+// and a regular attacker connecting with the same player are two
+// occurrences — and the cursor now really does enter two steps, so
+// the ordinary boundary produces the two batches. #784 had to open
+// one by hand between the two passes because both ran inside the
+// cursor's single combat_damage step; that hand-rolled boundary is
+// gone with the step it worked around.
 //
 // Nothing else opens a batch. That is deliberate, and the two
 // consequences are the ones the rules want:
