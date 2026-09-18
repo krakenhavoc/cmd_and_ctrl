@@ -692,6 +692,10 @@ Mana abilities can carry cost components beyond `{T}`:
 | Sacrifice this | `ManaAbilityCost{Sacrifice: true}` | Lotus Petal, Treasure |
 | Sacrifice another permanent | `ManaAbilityCost{SacrificeOther: SacrificeACreature().SacrificeOther}` | Ashnod's Altar, Phyrexian Altar |
 | Sacrifice N permanents | `ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther}` | (none yet; #747) |
+| Pay N life | `ManaAbilityCost{Life: 1}` | Mana Confluence |
+| A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
+| Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
+| Remove any number of counters | `ManaAbilityCost{RemoveCounters: RemoveCountersXFromThis("storage", 0).RemoveCounters}` | Mage-Ring Network |
 
 `SacrificeOther` takes a `*game.TargetSpec`, the same shape the CR 602
 activated abilities use — build it with the `SacrificeACreature()` /
@@ -714,6 +718,55 @@ Summoning sickness applies to any mana ability with a tap cost on a
 creature source (CR 302.6) — Birds of Paradise, Palladium Myr. The
 engine enforces it inside `ActivateManaAbility`; specs don't declare
 it.
+
+**Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
+`*game.CounterRemovalCost` a CR 602 ability's cost carries — one
+component with two owners — so build it with the same constructors and
+take their `.RemoveCounters` field: `RemoveCountersFromThis(kind, n)`,
+`RemoveCountersXFromThis(kind, floor)` for "remove X / any number", and
+`RemoveCountersFrom` / `RemoveCountersAmong` for the clauses that name
+other permanents. The payment rides `ManaAbilityParams` with exactly the
+fields `ActivateAbilityParams` uses (`CounterSourceIDs`,
+`CounterCounts`, `CounterKind`), the view ships the same
+`counter_cost_*` fields, and the client opens the same
+`CounterCostModal`.
+
+An ability whose OUTPUT depends on what the cost paid declares
+`ProducedForPaid` instead of `Produced` — "Add {C} for each storage
+counter removed this way" is
+`ProducedForPaid: ProducedPerCounterRemoved("{C}")`. It is handed the
+one `game.PaidCost` record, because by the time the mana is minted the
+counters are gone.
+
+The AUTO-TAPPER plans a counter-cost source only when it can both
+DECIDE and AFFORD the cost: the counters must come off the source, the
+kind and count must be printed, and the permanent must hold enough
+right now. A Vivid land out of charge counters is not a mana source,
+and a variable or any-kind cost is a decision the planner never makes.
+Order the abilities so the free one is FIRST — the planner takes one
+ability per permanent, in order, which is what keeps a Vivid land's
+charge counters for a deliberate click.
+
+**Reading the mana that paid (#761).** A spell that counts the mana
+spent on it reads `effects.Context`, beside `PaidAltCost`:
+`ctx.ColorsSpentCount()` (converge, CR 702.86),
+`SunburstCounters(kind)` in `OnResolve` (sunburst, CR 702.44),
+`AdamantSpent(ctx, "R", 3)` (adamant), and `ctx.NoManaSpent()` — or
+`NoManaWasSpentToCast(g, spellID)` from a cast trigger — for "if no
+mana was spent to cast it".
+
+A converge or sunburst card must ALSO set `Spec.WantsDistinctColors`,
+which makes the cast gate pay the generic half of the cost with colours
+it has not spent yet. Without it the payment is colourless-first and the
+card converges for less than the board allowed. Adamant deliberately
+does not set it.
+
+One rule covers every reader, and no card has to restate it: a payment
+the engine WAIVED — permissive mode (the human default) or a
+strict-mode override — answers "unknown", and unknown is always the
+weaker-than-printed answer. Converge counts no colours, adamant does not
+turn on, and "if no mana was spent" is false. Say so in a caveat, as
+Painful Truths and Vexing Bauble do.
 
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.

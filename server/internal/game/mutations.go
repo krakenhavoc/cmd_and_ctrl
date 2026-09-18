@@ -1373,7 +1373,7 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		// response), and tapping a Vivid land the executor then
 		// cannot charge would be the strand this whole function
 		// avoids.
-		if !manaCounterCostPlannable(g, p.ID, card, ab) {
+		if !manaCounterCostPlannable(card, ab) {
 			continue
 		}
 		counterPaid := PaidCost{}

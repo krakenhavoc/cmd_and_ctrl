@@ -311,6 +311,85 @@ var mechanics = []Mechanic{
 		Confidence: Heuristic,
 		Adopt:      "implement the surveil on entry once the keyword exists, then drop the caveat",
 	},
+	{
+		// #761: a spell that reads the COLOURS of the mana that paid
+		// for it. Converge and sunburst are the two, and both
+		// declare Spec.WantsDistinctColors — not because the words
+		// mean the same thing (converge counts at resolution,
+		// sunburst at entry) but because the declaration is the
+		// engine-visible fact both depend on: without it the cast
+		// gate pays colourless-first and the card converges for less
+		// than the board allowed.
+		//
+		// "Adamant" is deliberately NOT in this row's phrases and has
+		// its own below: an adamant card does not want the colours
+		// spread, so it never sets the flag, and a shared row would
+		// report every adamant card as unimplemented forever.
+		Name:    "converge and sunburst",
+		Phrases: []string{"converge", "sunburst"},
+		Implements: func(s effects.Spec) bool {
+			return s.WantsDistinctColors
+		},
+		Evidence:   "the spec declares WantsDistinctColors, the colour-spreading payment #761 added",
+		Confidence: Exact,
+		Adopt:      `WantsDistinctColors: true plus ctx.ColorsSpentCount() (converge) or SunburstCounters(kind) in OnResolve — see effects/mana_spent.go`,
+	},
+	{
+		// #761's other reader, and a Heuristic one because there is
+		// nothing on the Spec to point at: adamant is an ability word
+		// (CR 207.2c), so the whole mechanic lives inside OnResolve,
+		// and "does this closure call ManaSpentOfColor?" is not a
+		// question a probe can ask. What IS observable is that a card
+		// whose caveat says its adamant does nothing has grown a
+		// resolution body at all.
+		//
+		// The false positive is a card that gains an unrelated
+		// OnResolve; the fix then is to tighten this probe, not to
+		// delete the row. When adamant becomes a declared slot rather
+		// than a closure, probe for the slot and promote to Exact.
+		Name:    "adamant",
+		Phrases: []string{"adamant"},
+		Implements: func(s effects.Spec) bool {
+			return s.OnResolve != nil
+		},
+		Evidence:   "the spec declares an OnResolve body, which it did not when the caveat was written",
+		Confidence: Heuristic,
+		Adopt:      `AdamantSpent(ctx, "R", 3) inside OnResolve — see effects/mana_spent.go`,
+	},
+	{
+		// #625, then #789: removing counters as part of paying an
+		// ability's cost, on either ability kind. The probe reads the
+		// DECLARATION off the cost — one CounterRemovalCost with two
+		// owners — so it is exact and covers a card that puts the
+		// component on a mana ability (Vivid Creek, Ramos) as well as
+		// on a CR 602 one (Heart of Kiran).
+		//
+		// Phrases stay about a counter being REMOVED TO PAY. Bare
+		// "counter" is far too common in caveat prose (countering
+		// spells, +1/+1 counters arriving), and a probe that fired on
+		// those would name the wrong mechanic with total confidence.
+		Name: "a counter-removal cost",
+		Phrases: []string{
+			"counter-removal cost", "remove counters", "removing counters",
+			"remove a counter", "removing a counter",
+		},
+		Implements: func(s effects.Spec) bool {
+			for _, ab := range s.Activated {
+				if ab.Cost.RemoveCounters != nil {
+					return true
+				}
+			}
+			for _, ma := range s.ManaAbilities {
+				if ma.Cost.RemoveCounters != nil {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "the spec declares RemoveCounters on an activated or mana ability's cost",
+		Confidence: Exact,
+		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
+	},
 }
 
 // Mechanics returns the curated table. Exported so a card author can

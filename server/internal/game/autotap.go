@@ -218,7 +218,7 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// executor refuses, stranding whatever it had already
 		// tapped, which is the same failure mode the sickness and
 		// gate checks above exist to prevent.
-		if !manaCounterCostPlannable(g, controller, &c, picked) {
+		if !manaCounterCostPlannable(&c, picked) {
 			continue
 		}
 		// A derived or scaled ability declares nothing useful in
@@ -381,7 +381,7 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 // any other land until its second charge counter is gone, and then
 // quietly stops being a five-colour source — exactly as it stops
 // being one in paper.
-func manaCounterCostPlannable(g *Game, controller uuid.UUID, c *Card, ab *ManaAbilityShape) bool {
+func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
 	if ab == nil || c == nil {
 		return false
 	}
