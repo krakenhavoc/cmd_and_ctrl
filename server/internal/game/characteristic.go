@@ -116,6 +116,15 @@ type Characteristic struct {
 // the cost-only derivation was what made every colour-indicator face
 // read as colourless.)
 func (c Card) printedCharacteristic() Characteristic {
+	// CR 708.2, ADR 0069 decision 3: a face-down permanent IS a 2/2
+	// creature with no name, text, subtypes, mana cost or colour.
+	// That is not an effect applied to the real card — the object has
+	// those characteristics — so it enters at layer 0, the baseline
+	// the whole CR 613 pass is applied to. Every later layer and
+	// every reader then sees the 2/2 for free.
+	if c.FaceDownIsPermanent() {
+		return faceDownCharacteristic(c)
+	}
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
 	// Printed keywords come from two places. The catalog's
 	// Spec.PrintedKeywords slot (S18 sub-PR 2) is the older one;

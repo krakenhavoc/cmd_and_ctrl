@@ -145,6 +145,22 @@
   // in cardBack.ts.
   const showBack = $derived(showsCardBack(card, faceDown));
 
+  // ADR 0069 — a face-down object the viewer IS allowed to look at:
+  // the controller of their own morph or manifest (CR 708.5), the
+  // owner of their own foretold card (CR 702.143d). They see the real
+  // face, because hiding their own card from them helps nobody, plus
+  // a badge saying the table sees a back. `face_visible` is the
+  // server's answer to that permission; the `face_down` fallback keeps
+  // the badge on a locally-built CardView that predates the field.
+  const showFaceDownBadge = $derived(
+    !showBack && (card.face_visible === true || card.face_down === true),
+  );
+  // The kind is public, so a card back can say WHAT it is rather than
+  // just that something is there.
+  const faceDownLabel = $derived(
+    card.face_down_kind ? card.face_down_kind.toUpperCase() : "FACE DOWN",
+  );
+
   // Type-aware P/T overlay (S16): every creature card on the table
   // gets a small bottom-right pip showing its current power/toughness
   // — these are the post-layer effective values from the wire, so an
@@ -296,6 +312,12 @@
       decoding="async"
       draggable="false"
     />
+    {#if card.face_down_kind}
+      <!-- The kind is public (ADR 0069): the table can see that a
+           permanent is a morph and that an exiled card is foretold,
+           even though nobody may look at the face. -->
+      <span class="badge face-down">{faceDownLabel}</span>
+    {/if}
   {:else if imgSrc}
     <!-- use:cardArt (#33): retry once, then a click-to-retry pip.
          Front face only — the back above is a bundled asset. -->
@@ -308,6 +330,19 @@
       fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
+    {#if showFaceDownBadge}
+      <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
+           permanent they control, CR 702.143d for their own foretold
+           card), so they get the real art — and the badge, because
+           everyone else is looking at a card back. -->
+      <span
+        class="badge face-down"
+        title="face down — only you may look at this card"
+        aria-label={`face down: ${faceDownLabel}`}
+      >
+        {faceDownLabel}
+      </span>
+    {/if}
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
@@ -361,6 +396,19 @@
     {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
+    {#if showFaceDownBadge}
+      <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
+           permanent they control, CR 702.143d for their own foretold
+           card), so they get the real art — and the badge, because
+           everyone else is looking at a card back. -->
+      <span
+        class="badge face-down"
+        title="face down — only you may look at this card"
+        aria-label={`face down: ${faceDownLabel}`}
+      >
+        {faceDownLabel}
+      </span>
+    {/if}
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
@@ -540,6 +588,22 @@
     border: 1px solid rgba(255, 208, 122, 0.45);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
+  }
+  .badge.face-down {
+    /* ADR 0069. Top-right like GOAD, and the two never co-occur: a
+       face-down permanent has no text, so nothing can goad it. Cool
+       slate rather than gold so it reads as "hidden state", not as a
+       property of the card. */
+    left: auto;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 22, 44, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
+    font-size: 7px;
   }
   .badge.goad {
     /* Top-right so it doesn't collide with the CMD badge on legendary

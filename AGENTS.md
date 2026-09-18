@@ -1580,6 +1580,51 @@ Two other things the engine handles so a card never has to:
   queues no prompt, and `Then` still runs — the instruction after
   "then" isn't conditional on there having been cards to look at.
 
+**Face-down objects (CR 406.3a / 708, [ADR 0069](docs/decisions/0069-face-down-objects.md)).**
+A card is face down because of a *kind*, and the kind answers every
+question about it. `Card.SetFaceDown(kind)` and `Card.ClearFaceDown()`
+are the only writers of `FaceDown` + `FaceDownKind`; never set either
+field directly. Six kinds, in two families:
+
+- **exile** — `FaceDownExiled` (CR 406.3: nobody may look, not even
+  the player who exiled it — Necropotence) and `FaceDownForetold`
+  (CR 702.143d: the OWNER may look). An exiled face-down card keeps
+  its real characteristics and its catalog entry, because the cast out
+  of exile needs them.
+- **CR 708.2 permanents** — `FaceDownManifested`, `FaceDownMorphed`,
+  `FaceDownDisguised`, `FaceDownCloaked` (CR 708.5: the CONTROLLER may
+  look). `Card.FaceDownIsPermanent()` is that partition, and for one
+  of these the object **is** a 2/2 colourless creature with no name,
+  text, subtypes or mana cost — whatever the card underneath says.
+
+Four things a card therefore never has to do:
+
+- **Who may look is written into `KnownBy`, not kept separately.** The
+  face-down landing (`applyFaceDownLandingLocked`) REPLACES the
+  knowledge set with the kind's answer, and skips
+  `markCardKnownInZoneLocked` — exile and the battlefield are public
+  ZONES, and that skip is the only thing that makes a face-down object
+  private in one.
+- **The 2/2 is layer 0.** `printedCharacteristic` returns it, so
+  `Effective()`, targeting, "creature you control" predicates, combat,
+  the SBAs and the wire all see a 2/2 with no further plumbing. Don't
+  add a layer-1 override. `PrintedIsCreature` / `PrintedIsLand` stay
+  the real card: they are the CR 707.2 copiable surface.
+- **The catalog is silent.** `CatalogKey` returns the EMPTY key for a
+  face-down permanent, so every `Catalog*` reader answers "no entry"
+  (CR 708.2a: no text). A face-down permanent runs no trigger, static,
+  replacement, activated or mana ability, fires no ETB hook and has no
+  printed keywords. Turning it face up needs no restore step — the
+  key simply answers again.
+- **`MoveCard` clears the state on every zone change** (CR 400.7), so
+  a new mover is covered by the rule and not by a code review; the
+  DESTINATION sets it back if the destination is itself a face-down
+  state. A face-down permanent that leaves the battlefield is revealed
+  through the S22 reveal frame (CR 708.9), and `ManifestForEffect` is
+  the primitive that makes one (CR 701.40a). The mechanics — the
+  `turn_face_up` special action (CR 116.2g), the face-down cast
+  (CR 708.4), morph and foretell themselves — are #95 and #658.
+
 **Life changes: "that much life" comes from a continuation, never from
 a read-back (#793).** A life change runs the CR 614 window (#482), so
 it can pause on a CR 616 ordering prompt exactly the way damage can
