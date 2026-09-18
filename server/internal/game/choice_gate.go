@@ -13,9 +13,10 @@ import (
 //
 // Why the engine and not just the client. `internal/legal` already
 // models this for bots: a seat that owes a choice is offered that
-// choice's answers and nothing else, and while ANY choice is open no
-// seat is offered anything (legal.anyChoiceOpen). The client mirrors
-// it in its own way. Neither is enforcement — a hand-built frame, a
+// choice's answers and nothing else, and while a BLOCKING choice is
+// open no seat is offered anything (legal.anyBlockingChoiceOpen, which
+// asks ChoiceBlocksTable below — #794). The client mirrors it in its
+// own way. Neither is enforcement — a hand-built frame, a
 // stale tab, or an admin clicking "next step" walks the cursor past
 // the prompt, and the continuation then resumes against a game that
 // has moved on. #701 and #725 each had to teach one resume path to
@@ -24,12 +25,12 @@ import (
 // — a prompt can go stale without anyone advancing the step — but
 // they are the second line, not the first.
 //
-// Deny by default. A pending choice blocks unless its kind is on
-// nonBlockingChoiceKinds below. That direction is deliberate: a kind
-// added later (choose_color arrived in #742 while this was being
-// written) blocks without its author having to find this file, and
-// the failure mode of the wrong default is a table that waits, not a
-// table that silently loses a decision.
+// Deny by default. A pending choice blocks unless choiceGateDecisions
+// below classifies its kind as non-blocking. That direction is
+// deliberate: a kind added later (choose_color arrived in #742 while
+// this was being written) blocks without its author having to find
+// this file, and the failure mode of the wrong default is a table that
+// waits, not a table that silently loses a decision.
 
 // ErrChoicePending is the sentinel behind every refusal from this
 // gate. Callers discriminate with errors.Is; the concrete
@@ -70,10 +71,10 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // trigger prompts and ordering, search / choose-cards, scry, surveil,
 // look-at-top, replacement order and optional replacements, creature
 // type, colour choice, copy target, may-cast, mana pick, legend rule,
-// battle protector, entry pay-life — blocks, including any kind added
-// after this comment was written.
+// battle protector, entry pay-life, the CR 726 loop shortcut — blocks,
+// including any kind added after this comment was written.
 //
-// One entry today:
+// One kind is classified `false` today:
 //
 //	pay_unless — ADR 0018 §6 accepted the looseness on purpose.
 //	Rhystic Study asks a DIFFERENT player a question after the
@@ -84,7 +85,7 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //	the cursor: the answer spends from the chooser's pool or runs
 //	OnDecline, neither of which reads the step.
 //
-// mana_pick is deliberately NOT here, though it looks like a
+// mana_pick is deliberately NOT one of them, though it looks like a
 // candidate. The engine does not treat it as a background decision:
 // legal offers nothing else while it is open, and the auto-tapper
 // skips multi-option slots precisely because its contract is "no
@@ -92,20 +93,87 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // unanswered mana_pick is mana that has not entered the pool yet, so
 // advancing past it would quietly discard the ability the player just
 // activated.
-var nonBlockingChoiceKinds = map[PendingChoiceKind]struct{}{
-	PendingChoicePayUnless: {},
+//
+// #794: this table used to be a bare allowlist read only from inside
+// this file, and `internal/legal` kept its own, stricter copy — a seat
+// was offered nothing at all while ANY prompt was open, `pay_unless`
+// included. The two disagreed for the whole life of the allowlist, so
+// a bot idled until a human answered a Rhystic tax, which is the
+// opposite of what §6 decided. The map is now a full classification —
+// every kind, an explicit true or false — read through
+// ChoiceBlocksTable by the engine AND by the enumerator, so there is
+// one answer to "does this prompt stop the table" and no second list
+// to drift from.
+var choiceGateDecisions = map[PendingChoiceKind]bool{
+	// The ADR 0018 §6 allowlist, entire.
+	PendingChoicePayUnless: false,
+
+	// Everything else stops the table.
+	PendingChoiceDiscardFromHand:     true,
+	PendingChoiceMana:                true,
+	PendingChoiceReplacementOrder:    true,
+	PendingChoiceOptionalReplacement: true,
+	PendingChoiceDamageAssignment:    true,
+	PendingChoiceTriggerPrompt:       true,
+	PendingChoiceTriggerOrder:        true,
+	PendingChoicePickTarget:          true,
+	PendingChoiceSacrifice:           true,
+	PendingChoiceScry:                true,
+	PendingChoiceSurveil:             true,
+	PendingChoiceLookAtTop:           true,
+	PendingChoiceSearchLibrary:       true,
+	PendingChoiceMayCast:             true,
+	PendingChoiceCoinCall:            true,
+	PendingChoiceChooseProtector:     true,
+	PendingChoiceLegendRule:          true,
+	PendingChoiceColor:               true,
+	PendingChoiceConfirm:             true,
+	PendingChoiceChooseCards:         true,
+	PendingChoiceEntryPayLife:        true,
+	PendingChoiceCopyTarget:          true,
+	PendingChoiceCreatureType:        true,
 }
 
-// blockingChoiceLocked returns the first outstanding choice whose
-// kind is not on the allowlist, or nil when the table is free to
-// move. Queue order, so the error names the prompt that has been
-// waiting longest. Caller must hold g.mu.
+// ChoiceBlocksTable is THE question "does an unanswered prompt of this
+// kind stop the table?", and the only place it is answered. The engine
+// gates advance_step / pass_priority / pass_turn on it
+// (blockingChoiceLocked, below) and `internal/legal` decides whether to
+// enumerate a seat's ordinary moves with it
+// (legal.anyBlockingChoiceOpen). A second copy of this judgement is
+// what #794 was.
+//
+// Deny by default: a kind missing from choiceGateDecisions blocks. The
+// failure mode of the wrong default is a table that waits, not a table
+// that silently loses a decision — and
+// TestEveryChoiceKindIsClassifiedAndEnumerated (internal/legal) fails
+// until the new kind is given a row here anyway.
+func ChoiceBlocksTable(kind PendingChoiceKind) bool {
+	blocks, ok := choiceGateDecisions[kind]
+	return !ok || blocks
+}
+
+// ClassifiedChoiceKinds lists every kind the gate has an explicit
+// decision for, so a test can hold that list against the kinds
+// declared in this package and fail on one that was never classified.
+// Order is unspecified.
+func ClassifiedChoiceKinds() []PendingChoiceKind {
+	out := make([]PendingChoiceKind, 0, len(choiceGateDecisions))
+	for kind := range choiceGateDecisions {
+		out = append(out, kind)
+	}
+	return out
+}
+
+// blockingChoiceLocked returns the first outstanding choice whose kind
+// blocks the table, or nil when the table is free to move. Queue
+// order, so the error names the prompt that has been waiting longest.
+// Caller must hold g.mu.
 func (g *Game) blockingChoiceLocked() *PendingChoice {
 	for _, c := range g.PendingChoices {
 		if c == nil {
 			continue
 		}
-		if _, ok := nonBlockingChoiceKinds[c.Kind]; ok {
+		if !ChoiceBlocksTable(c.Kind) {
 			continue
 		}
 		return c

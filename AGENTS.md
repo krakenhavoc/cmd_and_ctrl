@@ -2014,6 +2014,28 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Adding a `PendingChoiceKind` (#730, #794)
+
+A new prompt kind owes two answers, and neither has a compiler behind
+it. **One:** does an unanswered prompt of this kind stop the table?
+Say so with a row in `choiceGateDecisions`
+(`server/internal/game/choice_gate.go`), whose exported reader
+`game.ChoiceBlocksTable(kind)` is the *only* predicate in the tree for
+that question — the gated verbs ask it and so does `internal/legal`,
+which is what keeps the bots and the engine from disagreeing the way
+they did for the whole life of the allowlist (#794). Deny by default:
+an unclassified kind blocks, and `pay_unless` is still the one kind
+that does not (ADR 0018 §6). **Two:** a case in `choiceMoves`
+(`server/internal/legal/choices.go`), or every seat owing one is
+offered no answer *and* no pass — the #499 / #618 wedge that stopped
+real tables on Door of Destinies and Cavern of Souls.
+
+`TestEveryChoiceKindIsClassifiedAndEnumerated`
+(`server/internal/legal/choice_gate_test.go`) reads the kind constants
+out of `internal/game` and fails until both are done, naming the kind
+and the file. If it goes red on a kind you just added, that is the
+gate working.
+
 ### The CR 726 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never

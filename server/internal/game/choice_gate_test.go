@@ -169,6 +169,12 @@ func TestPayUnlessPromptDoesNotBlockTheTable(t *testing.T) {
 // against behaviour so that a kind added later — #742's choose_color
 // was added while this was being written — is blocking without its
 // author having to know this file exists.
+//
+// The list here is a behaviour probe, not the registry: the registry
+// is choiceGateDecisions, and the test that every declared kind has a
+// row in it (and a case in the enumerator) is
+// TestEveryChoiceKindIsClassifiedAndEnumerated in internal/legal,
+// which is the package that needs both facts to be true (#794).
 func TestEveryChoiceKindBlocksUnlessAllowlisted(t *testing.T) {
 	kinds := []PendingChoiceKind{
 		PendingChoiceDiscardFromHand,
@@ -214,13 +220,22 @@ func TestEveryChoiceKindBlocksUnlessAllowlisted(t *testing.T) {
 			t.Errorf("%s: PassPriority = %v, want ErrChoicePending", kind, err)
 		}
 	}
-	// And the allowlist, stated the same way.
-	if _, ok := nonBlockingChoiceKinds[PendingChoicePayUnless]; !ok {
-		t.Error("pay_unless is the allowlist (ADR 0018 §6)")
+	// And the allowlist, stated the same way: the kinds classified
+	// non-blocking are exactly {pay_unless}.
+	var loose []PendingChoiceKind
+	for _, kind := range ClassifiedChoiceKinds() {
+		if !ChoiceBlocksTable(kind) {
+			loose = append(loose, kind)
+		}
 	}
-	if len(nonBlockingChoiceKinds) != 1 {
-		t.Errorf("the allowlist has %d entries; adding one is an ADR 0018 §6 amendment",
-			len(nonBlockingChoiceKinds))
+	if len(loose) != 1 || loose[0] != PendingChoicePayUnless {
+		t.Errorf("kinds that do not block = %v, want exactly [pay_unless]; adding one is an ADR 0018 §6 amendment", loose)
+	}
+	// An unclassified kind blocks — the same deny-by-default the probe
+	// above exercises through the verbs, stated against the predicate
+	// both the engine and internal/legal now read.
+	if !ChoiceBlocksTable(PendingChoiceKind("some_future_kind")) {
+		t.Error("ChoiceBlocksTable is not deny-by-default")
 	}
 }
 

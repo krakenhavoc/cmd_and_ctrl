@@ -48,7 +48,11 @@ type assignParam struct {
 // choiceMoves enumerates answers to every pending choice owed by
 // this seat. Returns true when at least one choice is owed — the
 // caller then offers nothing else, because the engine refuses
-// pass_priority while any choice is open.
+// pass_priority while a blocking choice is open, and because a
+// question already in front of a seat is the one thing it should be
+// answering. That holds for a NON-blocking prompt too (#794): a bot
+// owing a Rhystic tax is offered pay / decline, not the rest of its
+// turn — one dispatch clears it and the next window has everything.
 //
 // Ordering choices (replacement_order, trigger_order) and scry are
 // permutation-shaped; they are offered as a small canonical set

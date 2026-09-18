@@ -199,6 +199,42 @@ always be unstuck by hand. Casting and activating are not gated either;
 `internal/legal` declines to offer them, and widening the refusal that
 far is a bigger behaviour change than this bug needs.
 
+**Amendment (2026-09-18, #794): one predicate, `game.ChoiceBlocksTable`,
+read by the engine and by the bots.** The allowlist above was read only
+from inside `choice_gate.go`, and `internal/legal` kept a second,
+stricter rule of its own: `anyChoiceOpen` returned an empty move list
+for *every* seat while *any* prompt sat in the queue, `pay_unless`
+included. The two disagreed for the whole life of the allowlist. The
+engine let the table play on through an unanswered Rhystic tax exactly
+as this section decided, and the enumerator told every bot seat it had
+nothing to do until a human answered it — so a bot idled on a question
+that was not addressed to it, which is neither what this section
+decided nor what a human at the same table may do.
+
+The allowlist is now a full classification, one row per kind, in
+`choiceGateDecisions` (`server/internal/game/choice_gate.go`), read
+through the exported `game.ChoiceBlocksTable(kind)`. The gated verbs
+ask it (`blockingChoiceLocked`) and so does the enumerator
+(`legal.anyBlockingChoiceOpen`), so there is one answer to "does this
+prompt stop the table" and no second list to drift from. The decisions
+themselves are unchanged: `pay_unless` is still the only kind that does
+not block, and an *unclassified* kind still blocks — `ChoiceBlocksTable`
+is deny-by-default for exactly the reason this section already gives.
+
+A seat that owes a non-blocking prompt is still offered that prompt's
+answers and nothing else. The prompt is a question already in front of
+it; answering is one dispatch, and the next window carries the seat's
+whole turn. What changed is only what the *other* seats may do.
+
+Adding a kind is now gated rather than trusted:
+`TestEveryChoiceKindIsClassifiedAndEnumerated`
+(`server/internal/legal/choice_gate_test.go`) reads every
+`PendingChoiceKind` constant out of `internal/game` and fails unless it
+has a row here *and* a case in `legal.choiceMoves`. Those are the two
+silent failures a new kind used to be able to ship with — a gate
+decision nobody made, and an empty move list for the seat that owes it
+(the #499 / #618 wedge).
+
 Two more drains fell out of the sub-PR 6 cards: `CastSpell` (the
 caster gets priority right after casting, CR 117.3c — Rhystic's
 trigger must be on the stack by then) and the sandbox `draw_card`
