@@ -911,6 +911,14 @@ type CardView struct {
 	// meaningful for creatures on the battlefield; omitted when
 	// zero. Added in S13.1.
 	DamageMarked int `json:"damage_marked,omitempty"`
+	// RegenerationShields is how many regeneration shields (CR 701.19a)
+	// this permanent is carrying — the number of times the next
+	// destructions this turn will tap it, remove all damage from it and
+	// take it out of combat instead of killing it. Public, like the
+	// damage above and for the same reason: everyone at the table needs
+	// it to decide whether removal is worth casting. Cleared at the
+	// cleanup step and on zone exit; omitted when zero. Added in #667.
+	RegenerationShields int `json:"regeneration_shields,omitempty"`
 	// FaceDown reflects Card.FaceDown — a card flipped face-down
 	// by morph / manifest / mutate-bottom (CR 708). Distinct from
 	// KnownByYou: a face-down creature is face-down to everyone
@@ -3391,22 +3399,23 @@ func viewOfCard(c game.Card) CardView {
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the
 		// battlefield and leaves them nil everywhere else (#29).
-		DamageMarked:  c.DamageMarked,
-		FaceDown:      c.FaceDown,
-		FaceDownKind:  string(c.FaceDownKind),
-		Auto:          game.IsAutoCard(game.CatalogKey(c)),
-		Unimplemented: game.Unimplemented(c),
-		TargetMode:    game.TargetModeFor(game.CatalogKey(c)),
-		oracleID:      c.OracleID,
-		ManaCost:      c.ManaCost,
-		ManaAbilities: viewOfManaAbilities(c),
-		SummoningSick: game.HasSummoningSickness(&c),
-		Abilities:     viewOfAbilityBadges(eff),
-		Restrictions:  eff.Restrictions.Names(),
-		knowers:       knowers,
-		Layout:        c.Layout,
-		Faces:         viewOfFaces(c),
-		ActiveFace:    c.ActiveFace,
+		DamageMarked:        c.DamageMarked,
+		RegenerationShields: c.RegenerationShields,
+		FaceDown:            c.FaceDown,
+		FaceDownKind:        string(c.FaceDownKind),
+		Auto:                game.IsAutoCard(game.CatalogKey(c)),
+		Unimplemented:       game.Unimplemented(c),
+		TargetMode:          game.TargetModeFor(game.CatalogKey(c)),
+		oracleID:            c.OracleID,
+		ManaCost:            c.ManaCost,
+		ManaAbilities:       viewOfManaAbilities(c),
+		SummoningSick:       game.HasSummoningSickness(&c),
+		Abilities:           viewOfAbilityBadges(eff),
+		Restrictions:        eff.Restrictions.Names(),
+		knowers:             knowers,
+		Layout:              c.Layout,
+		Faces:               viewOfFaces(c),
+		ActiveFace:          c.ActiveFace,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()

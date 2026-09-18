@@ -70,6 +70,13 @@ func (g *Game) sweepTurnEndLocked() {
 	for i := range g.Battlefield.Cards {
 		clearBattlefieldDamage(&g.Battlefield.Cards[i])
 	}
+	// #667 / CR 701.19a: a regeneration shield lasts until it is used
+	// or until the turn ends, and this is the second of those. Swept
+	// beside the marked damage because they are the same kind of
+	// thing — per-turn state on one permanent — and because a shield
+	// that outlived its turn would save a creature next turn from a
+	// destruction nobody paid for.
+	g.clearRegenerationShieldsLocked()
 	// S17 sub-PR 5: "until end of turn" replacement effects (Fog's
 	// prevent-all-combat-damage, future prevention shields with a
 	// per-turn duration) clear at cleanup so next turn starts with a

@@ -134,10 +134,55 @@ func (m MillCards) Apply(ctx *Context) error {
 // OnResolve.
 type DestroyTarget struct {
 	Target uuid.UUID
+
+	// CantBeRegenerated is the clause printed on Mortify, Putrefy,
+	// Pongify, Terminate, Snuff Out and the rest: this destruction
+	// ignores regeneration shields (CR 701.19c). The shields are not
+	// spent — CR 701.19d leaves an ignored one on the permanent.
+	//
+	// It was cosmetic on every card that printed it until #667 gave
+	// the engine a shield to ignore. Set it wherever the oracle text
+	// says it; leaving it off a card that prints it is a real bug now.
+	CantBeRegenerated bool
 }
 
 func (d DestroyTarget) Apply(ctx *Context) error {
-	return ctx.Game.DestroyPermanentForEffect(d.Target)
+	return ctx.Game.DestroyPermanentForEffect(d.Target,
+		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated})
+}
+
+// Regenerate creates one regeneration shield for a permanent
+// (CR 701.19a) — "Regenerate target creature", "regenerate it".
+//
+// The shield replaces the NEXT destruction of that permanent this
+// turn: instead of being destroyed it is tapped, all damage is
+// removed from it, and it is removed from combat. It is used up doing
+// so, it expires at the cleanup step if it is not, and a second
+// Regenerate stacks a second shield. Everything about how that works
+// is in game/regeneration.go; a card just says this.
+//
+// What it does NOT save the permanent from: a sacrifice (CR 701.21a),
+// zero toughness (CR 704.5f), the legend rule, exile, a bounce, or a
+// destruction whose effect says it can't be regenerated
+// (CR 701.19c — DestroyTarget.CantBeRegenerated above).
+//
+// A target that is no longer on the battlefield is a no-op rather
+// than an error: CR 701.19b regenerates nothing.
+type Regenerate struct {
+	Target uuid.UUID
+}
+
+func (r Regenerate) Apply(ctx *Context) error {
+	if r.Target == uuid.Nil {
+		return nil
+	}
+	if err := ctx.Game.RegenerateForEffect(r.Target); err != nil {
+		// The permanent left before the ability resolved. CR 701.19b:
+		// regenerating a permanent that is not on the battlefield does
+		// nothing, which is not an error the card should report.
+		return nil
+	}
+	return nil
 }
 
 // SacrificePermanent sacrifices a battlefield permanent on behalf

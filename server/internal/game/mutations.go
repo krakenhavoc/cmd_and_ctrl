@@ -2567,7 +2567,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// (Card.VariableToughness): a `*` creature's 0 is the import
 	// stand-in whether or not it once had counters, so it stays
 	// skipped.
-	var doomed []uuid.UUID
+	// #667: each entry carries whether its rule DESTROYS the permanent
+	// (CR 704.5g/h) or merely puts it into a graveyard (CR 704.5f/i/v),
+	// because a regeneration shield replaces the first two and not the
+	// last three. The set still leaves as one simultaneous event.
+	var doomed []doomedPermanent
 	for _, c := range g.Battlefield.Cards {
 		// #605: a permanent whose exit is already paused on a player
 		// prompt is still HERE, with whatever doomed it intact — a
@@ -2591,7 +2595,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			// indestructible deliberately does not save it here. A
 			// 2/2 with indestructible under two -1/-1 counters dies.
 			if curT <= 0 {
-				doomed = append(doomed, c.InstanceID)
+				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
 				continue
 			}
 			// S25 (#77): the two damage-driven creature SBAs below
@@ -2600,7 +2604,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			// damage stays marked either way — see indestructible.go.
 			indestructible := IsIndestructible(&c)
 			if c.DamageMarked >= curT && !indestructible {
-				doomed = append(doomed, c.InstanceID)
+				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
 				continue
 			}
 			// S18 sub-PR 3: CR 702.2c — a creature hit by any nonzero
@@ -2614,21 +2618,21 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			// damage it belongs to (#816) — there is no "zone-move
 			// listener", which is what this comment used to claim.
 			if c.MarkedLethalByDeathtouch && !indestructible {
-				doomed = append(doomed, c.InstanceID)
+				doomed = append(doomed, doomedPermanent{id: c.InstanceID, destruction: true})
 			}
 			continue
 		}
 		// 704.5i — planeswalker with 0 loyalty counters.
 		if c.IsPlaneswalker() {
 			if c.Counters == nil || c.Counters[CounterLoyalty] <= 0 {
-				doomed = append(doomed, c.InstanceID)
+				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
 			}
 			continue
 		}
 		// 704.5v — battle with 0 defense counters.
 		if c.IsBattle() {
 			if c.Counters == nil || c.Counters[CounterDefense] <= 0 {
-				doomed = append(doomed, c.InstanceID)
+				doomed = append(doomed, doomedPermanent{id: c.InstanceID})
 			}
 			continue
 		}
@@ -2653,7 +2657,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// Artist that Pyroclasm or Toxic Deluge killed alongside the rest
 	// of the board still sees every one of those deaths. See
 	// simultaneous.go.
-	g.destroyPermanentsLocked(doomed)
+	g.sweepDoomedPermanentsLocked(doomed)
 	if len(doomed) > 0 {
 		// "Did this pass do anything", which is what `fired` means — not
 		// "how many were destroyed", which is what destroyPermanentsLocked
@@ -3191,7 +3195,7 @@ func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) erro
 //
 // Caller must hold g.mu.
 func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
-	return g.routeBattlefieldExitInBatchThenLocked(cardID, nil, then)
+	return g.routeBattlefieldExitInBatchThenLocked(cardID, battlefieldExitRoute, nil, then)
 }
 
 // routeBattlefieldExitInBatchThenLocked is the batched form used by a
@@ -3199,8 +3203,16 @@ func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Gam
 // replacement prompt so finishBattlefieldLeaveLocked can publish it around
 // the resumed move itself, before the continuation starts the next leg.
 //
+// `r` is the route TEMPLATE the verb chose — destroyRoute for a
+// destruction, battlefieldExitRoute for a sacrifice or a zero-counter
+// state-based action. It is what tells the CR 701.19 regeneration
+// built-in whether this exit is a destruction at all, and whether the
+// destroying effect said it can't be regenerated (#667). Its CardID,
+// simultaneousExit and then are filled in here, exactly as
+// routeLegLocked fills them in for every other exit.
+//
 // Caller must hold g.mu.
-func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, batch []Card, then func(g *Game) error) error {
+func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRoute, batch []Card, then func(g *Game) error) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -3229,13 +3241,20 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, batch []C
 		OldZone:      ZoneBattlefield,
 		NewZone:      defaultDest,
 		NewZoneOwner: defaultOwner,
+		// #667: what KIND of exit this is, and the rider the
+		// destroying effect printed. Carried on the event rather than
+		// re-derived downstream, because every exit off the
+		// battlefield ends in the same graveyard by the same route
+		// and nothing else can tell a destruction from a sacrifice.
+		Destruction:       r.Destruction,
+		CantBeRegenerated: r.CantBeRegenerated,
 	}
 	if then != nil {
-		ev.zoneRoute = &zoneRoute{
-			CardID: cardID, ViaBattlefieldLeave: true,
-			simultaneousExit: batch,
-			then:             then,
-		}
+		r.CardID = cardID
+		r.ViaBattlefieldLeave = true
+		r.simultaneousExit = batch
+		r.then = then
+		ev.zoneRoute = &r
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {

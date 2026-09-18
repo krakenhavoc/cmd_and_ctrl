@@ -207,6 +207,36 @@ type ReplacementEvent struct {
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
 
+	// Destruction says this battlefield exit is a DESTRUCTION
+	// (CR 701.7a), as opposed to the other things that take the same
+	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
+	// attached Aura, a creature at zero toughness, a planeswalker at
+	// zero loyalty, a battle at zero defense. Only meaningful on a
+	// RepEventMove whose OldZone is the battlefield.
+	//
+	// DECLARED, never derived. Every one of those exits ends in the
+	// same graveyard through the same primitive, so there is nothing
+	// about the event a reader could have looked at to tell them
+	// apart; the engine had no use for the distinction until
+	// regeneration needed it (#667), and indestructible sidesteps it
+	// by filtering BEFORE the window opens (indestructible.go).
+	//
+	// Set from the route the destroying verb chose (destroyRoute in
+	// simultaneous.go), so it survives a CR 903.9 pause with
+	// everything else the move was asked for.
+	Destruction bool
+
+	// CantBeRegenerated is the rider printed by Damnation, Day of
+	// Judgment, Mortify, Putrefy, Pongify and the rest: this
+	// destruction ignores regeneration shields (CR 701.19c).
+	//
+	// It gates the built-in's AppliesTo rather than being consumed
+	// inside its Replace, because CR 701.19d leaves an ignored shield
+	// UNUSED — a creature with a shield that Damnation kills would
+	// still have had that shield if something had saved it. Only
+	// meaningful alongside Destruction.
+	CantBeRegenerated bool
+
 	// EntersTapped is mutated by enters-tapped replacements
 	// (Kismet). Only meaningful when NewZone == ZoneBattlefield.
 	// The battlefield-entry path reads this and sets Card.Tapped

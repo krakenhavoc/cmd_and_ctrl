@@ -46,11 +46,17 @@ import "github.com/google/uuid"
 // rules consequences.
 //
 // Deliberately NOT addressed here:
-//   - Regeneration is not modelled anywhere in the engine
-//     (keywords.go's canonical set is closed and does not contain
-//     it), so "they can't be regenerated" is still cosmetic. A batch
-//     changes nothing about that.
-//   - Totem armor, likewise absent.
+//   - Totem armor is absent.
+//
+// Regeneration USED to be on that list too, with the same shape of
+// note indestructible below carried: "not modelled anywhere in the
+// engine, so they can't be regenerated is still cosmetic". #667
+// shipped CR 701.19, and the batch DID have to change for it — see
+// doomedPermanent and routeAllLandedPerLegLocked below. One
+// state-based-action pass is one event (CR 704.3) and its doomed set
+// mixes two rules that destroy with three that merely put a permanent
+// into a graveyard, so the legs now leave together by different
+// routes rather than together by one.
 //
 // Indestructible USED to be on that list, and the entry outlived its
 // truth: S25 (#380) shipped CR 702.12 hours after this file landed,
@@ -216,8 +222,8 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 // save.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
-	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids))
+func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOptions) int {
+	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids), firstDestroyOptions(opts))
 }
 
 // DestroyPermanentsThenForEffect destroys every permanent in `ids` as
@@ -246,8 +252,8 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
 // form does, so a survivor is neither destroyed nor counted.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error) error {
-	return g.routeAllThenLocked(destroyRoute, g.DestructibleForEffect(ids), then)
+func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error, opts ...DestroyOptions) error {
+	return g.routeAllThenLocked(destroyRouteWith(firstDestroyOptions(opts)), g.DestructibleForEffect(ids), then)
 }
 
 // destroyedThisWayLocked reports whether a settled destruction of
@@ -337,11 +343,31 @@ func (g *Game) landedInZoneLocked(cardID uuid.UUID, dst ZoneKind, dstOwner uuid.
 // physical move belongs to executeBattlefieldLeaveLocked, whose event
 // names its own default ("its owner's graveyard", or exile when the
 // owner has left the table). See zoneRoute.ViaBattlefieldLeave.
+//
+// battlefieldExitRoute is the same exit WITHOUT the destruction flag,
+// and it is the one every other way off the battlefield takes: a
+// sacrifice (CR 701.21a), the legend rule (CR 704.5j), an illegally
+// attached Aura (CR 704.5m), a creature at zero toughness (CR 704.5f),
+// a planeswalker at zero loyalty (CR 704.5i), a battle at zero defense
+// (CR 704.5v). None of those is a destruction, so none of them may be
+// regenerated — and the flag is the only thing that says so, because
+// all of them end in the same graveyard through the same primitive
+// (#667, regeneration.go).
 var (
-	destroyRoute = zoneRoute{ViaBattlefieldLeave: true}
-	exileRoute   = zoneRoute{Dst: ZoneExile}
-	bounceRoute  = zoneRoute{Dst: ZoneHand}
+	destroyRoute         = zoneRoute{ViaBattlefieldLeave: true, Destruction: true}
+	battlefieldExitRoute = zoneRoute{ViaBattlefieldLeave: true}
+	exileRoute           = zoneRoute{Dst: ZoneExile}
+	bounceRoute          = zoneRoute{Dst: ZoneHand}
 )
+
+// destroyRouteWith is the destroy template carrying the rider a
+// particular destruction printed — "it can't be regenerated" and
+// nothing else, today (CR 701.19c).
+func destroyRouteWith(opts DestroyOptions) zoneRoute {
+	r := destroyRoute
+	r.CantBeRegenerated = opts.CantBeRegenerated
+	return r
+}
 
 // millRoute is the fourth template (#893) and the one that cannot be a
 // package var, because two things about a mill are decided by the
@@ -464,12 +490,34 @@ func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
+	return g.routeAllLandedPerLegLocked(ids, func(uuid.UUID) zoneRoute { return r })
+}
+
+// routeAllLandedPerLegLocked is that body with the route chosen PER
+// LEG rather than once for the batch.
+//
+// One caller needs it and it is the state-based-action sweep. A
+// single SBA pass is one event (CR 704.3) and its doomed set mixes
+// two rules that DESTROY a permanent (CR 704.5g lethal damage,
+// CR 704.5h deathtouch) with three that merely put it into a
+// graveyard (CR 704.5f zero toughness, CR 704.5i zero loyalty,
+// CR 704.5v zero defense). They have to leave together — a Blood
+// Artist must see the whole pass — and they have to leave by
+// different routes, because a regeneration shield may replace the
+// first two and must not touch the last three (#667).
+//
+// Everything else about the batch is unchanged: the pre-move copies
+// are published once for the whole loop, and nothing here can pause.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
 	if len(ids) == 0 {
 		return nil
 	}
 	defer g.beginSimultaneousExitLocked(ids)()
 	landed := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
+		r := routeFor(id)
 		if g.routeLegNothingToDoLocked(r, id) {
 			continue
 		}
@@ -495,7 +543,7 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 // Caller must hold g.mu in write mode.
 func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func(g *Game) error) error {
 	if r.ViaBattlefieldLeave {
-		return g.routeBattlefieldExitInBatchThenLocked(id, batch, then)
+		return g.routeBattlefieldExitInBatchThenLocked(id, r, batch, then)
 	}
 	r.CardID = id
 	r.simultaneousExit = batch
@@ -565,8 +613,52 @@ func (g *Game) routeLegLandedLocked(r zoneRoute, id uuid.UUID) bool {
 // here, in the exile sweep and in the bounce sweep — is one.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) destroyPermanentsLocked(ids []uuid.UUID) int {
-	return g.routeAllLocked(destroyRoute, ids)
+func (g *Game) destroyPermanentsLocked(ids []uuid.UUID, opts DestroyOptions) int {
+	return g.routeAllLocked(destroyRouteWith(opts), ids)
+}
+
+// doomedPermanent is one entry of the state-based-action sweep's
+// doomed set: the permanent, and whether the rule that doomed it
+// DESTROYS it (CR 704.5g lethal damage, CR 704.5h deathtouch) or
+// merely puts it into a graveyard (CR 704.5f, CR 704.5i, CR 704.5v).
+//
+// The distinction was invisible before regeneration, because all five
+// end in the same graveyard by the same route. It is visible now: a
+// regeneration shield replaces the first two and does nothing about
+// the last three, and a 2/2 under two -1/-1 counters with a shield on
+// it dies (#667).
+type doomedPermanent struct {
+	id          uuid.UUID
+	destruction bool
+}
+
+// sweepDoomedPermanentsLocked performs one state-based-action pass's
+// collected doomed set as ONE simultaneous event (CR 704.3), each
+// permanent by the route its own rule asks for.
+//
+// The SBA's half of what destroyPermanentsLocked used to do for both
+// callers. It is a separate function rather than a flag on that one
+// because the two callers are answering different questions: the
+// effect path destroys a set it has already narrowed with one rule
+// (CR 702.12b indestructible), and this path leaves with five.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) sweepDoomedPermanentsLocked(doomed []doomedPermanent) {
+	if len(doomed) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, 0, len(doomed))
+	destruction := make(map[uuid.UUID]bool, len(doomed))
+	for _, d := range doomed {
+		ids = append(ids, d.id)
+		destruction[d.id] = d.destruction
+	}
+	g.routeAllLandedPerLegLocked(ids, func(id uuid.UUID) zoneRoute {
+		if destruction[id] {
+			return destroyRoute
+		}
+		return battlefieldExitRoute
+	})
 }
 
 // ExileCardsForEffect exiles every card in `ids` as one simultaneous

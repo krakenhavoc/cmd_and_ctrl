@@ -194,6 +194,13 @@ var cardFields = plan(
 	"BlockingTarget", carried, "",
 	"GoadedBy", carried, "",
 	"DamageMarked", carried, "",
+	// #667 regeneration shields. Carried for the reason DamageMarked
+	// is: it is per-turn state on one permanent that nothing can
+	// re-derive, and a restore that dropped it would let a creature
+	// the table has already paid to protect die to the next Doom
+	// Blade. Not a counter, so it is its own field rather than a
+	// Counters entry (see Card.RegenerationShields).
+	"RegenerationShields", carried, "",
 	"FaceDown", carried, "",
 	// ADR 0069: carried — the kind is the rule. A restore that
 	// dropped it would bring back a face-down object with no viewers

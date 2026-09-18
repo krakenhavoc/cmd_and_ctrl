@@ -199,6 +199,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ExilePlay = ExilePlayPermission{}
 		c.DamageMarked = 0
 		c.MarkedLethalByDeathtouch = false
+		c.RegenerationShields = 0
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
 		c.GoadedBy = uuid.Nil

@@ -17,10 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // shown the free option — and the engine refuses the claim if the
 // Swamp leaves in the window between snapshot and announce.
 //
-// SANDBOX SIMPLIFICATION — "It can't be regenerated" is not
-// implemented: the engine has no regeneration shield to suppress, so
-// there is nothing for the clause to do. It becomes live for free the
-// day regeneration ships.
+// "It can't be regenerated" is ENFORCED as of #667 (CR 701.19c):
+// the rider rides the destroy route onto the CR 614 event and the
+// regeneration built-in declines. The shield is not spent
+// (CR 701.19d).
 func init() {
 	Register(Spec{
 		OracleID: "324824cb-f938-401c-b9b5-d8908b431ef0",
@@ -33,7 +33,7 @@ func init() {
 			if len(item.Targets) == 0 {
 				return nil
 			}
-			return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
+			return DestroyTarget{Target: item.Targets[0].ID, CantBeRegenerated: true}.Apply(ctx)
 		},
 	})
 }

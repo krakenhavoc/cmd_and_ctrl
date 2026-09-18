@@ -14,9 +14,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard and its controller field is stale for a permanent that
 // had changed hands.
 //
-// "It can't be regenerated" is not modelled because regeneration
-// itself is not modelled: no catalog card grants a regeneration
-// shield and DestroyPermanentForEffect has nothing to consult. The
+// "It can't be regenerated" is ENFORCED as of #667 (CR 701.19c).
+// The
 // clause is a no-op today rather than a simplification — if a
 // regeneration shield ever lands, this card has to be revisited, so
 // the note stays.
@@ -35,7 +34,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+			if err := (DestroyTarget{Target: target, CantBeRegenerated: true}).Apply(ctx); err != nil {
 				return err
 			}
 			return CreateToken{

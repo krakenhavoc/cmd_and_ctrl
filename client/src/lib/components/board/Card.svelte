@@ -379,6 +379,15 @@
         {card.damage_marked}
       </span>
     {/if}
+    {#if (card.regeneration_shields ?? 0) > 0}
+      <span
+        class="badge regen"
+        title={`${card.regeneration_shields} regeneration shield${(card.regeneration_shields ?? 0) === 1 ? "" : "s"} — replaces the next destruction this turn`}
+        aria-label="regeneration shield"
+      >
+        REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
+      </span>
+    {/if}
     {#if showPT}
       {#if isPlaneswalker}
         <span class="badge loyalty" title={`loyalty ${loyaltyValue}`} aria-label="loyalty">
@@ -435,6 +444,15 @@
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
+      </span>
+    {/if}
+    {#if (card.regeneration_shields ?? 0) > 0}
+      <span
+        class="badge regen"
+        title={`${card.regeneration_shields} regeneration shield${(card.regeneration_shields ?? 0) === 1 ? "" : "s"} — replaces the next destruction this turn`}
+        aria-label="regeneration shield"
+      >
+        REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
     {/if}
     {#if showPT}
@@ -671,6 +689,19 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.regen {
+    /* Top-right, clear of the bottom-right damage / P-T stack: a
+       shield is a fact about the NEXT destruction, not about the
+       creature's current numbers. */
+    top: 3px;
+    left: auto;
+    right: 3px;
+    color: #9fe8a8;
+    background: rgba(0, 48, 16, 0.9);
+    border-color: rgba(120, 220, 140, 0.5);
+    font-size: 9px;
+    letter-spacing: 0.04em;
   }
   .badge.pt,
   .badge.loyalty {

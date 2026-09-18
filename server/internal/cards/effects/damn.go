@@ -17,8 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // S23: the overloaded half is DestroyAllMatching, so the creatures
 // die as one event and the aristocrats payoffs see all of them.
 //
-// "Can't be regenerated" is a no-op because regeneration is not
-// modelled — see terminate.go for the note to revisit.
+// "A creature destroyed this way can't be regenerated" is
+// ENFORCED as of #667 (CR 701.19c), on both halves: the targeted
+// destruction and the overloaded sweep each carry the rider.
 func init() {
 	Register(Spec{
 		OracleID:     "b01d61cc-9844-4191-86a0-f2db6d42d6e5",
@@ -30,12 +31,12 @@ func init() {
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.PaidAltCost("overload") {
-				return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+				return DestroyAllMatching{Match: Creature(), CantBeRegenerated: true}.Apply(ctx)
 			}
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
+			return DestroyTarget{Target: item.Targets[0].ID, CantBeRegenerated: true}.Apply(ctx)
 		},
 	})
 }

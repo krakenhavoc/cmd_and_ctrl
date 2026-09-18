@@ -96,8 +96,8 @@ func TestRestoreFromRollsBackTurnScopedReplacements(t *testing.T) {
 	if n := len(g.TurnScopedReplacements); n != 0 {
 		t.Errorf("RestoreFrom kept %d turn-scoped replacements, want 0", n)
 	}
-	if n := len(g.BuiltinReplacements); n != 1 {
-		t.Errorf("RestoreFrom lost the built-in registry: %d entries, want 1 (commander zone)", n)
+	if n := len(g.BuiltinReplacements); n != len(snap.BuiltinReplacements) {
+		t.Errorf("RestoreFrom lost the built-in registry: %d entries, want %d", n, len(snap.BuiltinReplacements))
 	}
 }
 

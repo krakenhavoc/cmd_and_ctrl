@@ -364,6 +364,7 @@ type cardSnapshot struct {
 	BlockingTarget           uuid.UUID           `json:"blockingTarget"`
 	GoadedBy                 uuid.UUID           `json:"goadedBy"`
 	DamageMarked             int                 `json:"damageMarked"`
+	RegenerationShields      int                 `json:"regenerationShields,omitempty"`
 	FaceDown                 bool                `json:"faceDown"`
 	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
 	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
@@ -891,6 +892,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BlockingTarget:           c.BlockingTarget,
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
+		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
@@ -1393,6 +1395,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BlockingTarget:           c.BlockingTarget,
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
+		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
 		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),

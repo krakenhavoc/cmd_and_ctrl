@@ -12,14 +12,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one matches its own board: Vandalblast if you have rocks of your
 // own, Shatterstorm if you do not and want them all gone.
 //
-// "They can't be regenerated" is cosmetic — regeneration is not
-// modelled. See mass.go.
+// "They can't be regenerated" is ENFORCED as of #667
+// (CR 701.19c). See mass.go.
 func init() {
 	Register(Spec{
 		OracleID: "96ce2403-4607-440a-92ae-80aceb458c5d",
 		Name:     "Shatterstorm",
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{Match: Artifact()}.Apply(ctx)
+			return DestroyAllMatching{Match: Artifact(), CantBeRegenerated: true}.Apply(ctx)
 		},
 	})
 }

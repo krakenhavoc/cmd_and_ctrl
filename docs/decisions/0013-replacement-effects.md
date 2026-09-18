@@ -1409,6 +1409,103 @@ let the live game's run consume the snapshot's continuation.
 `paused_entry_continuations_test.go` pins the undo — rewind into the
 open entry prompt, answer it again, and the Guildgate arrives again.
 
+### 5p. Amendment, 2026-09-18: regeneration is an engine built-in on the destroy event
+
+**Status:** accepted (#667). Extends Decision 5 and Decision 8; no
+decision is reversed.
+
+CR 701.19 was the last thing in the sprint's "S30 tail" that the
+engine could print and not read. There was no regeneration shield, no
+"regenerate" primitive and no destruction replacement, so "it can't be
+regenerated" was cosmetic on every card that printed it — eleven of
+them in the catalog — and Asceticism plus fourteen batch skips were
+waiting on it.
+
+**1. The shield is a count on the permanent, not a scoped effect.**
+`Card.RegenerationShields int`. CR 701.19a creates a shield *for a
+permanent*; it changes no characteristic, it is consumed rather than
+expiring when it applies, and "regenerate it twice" is two shields
+that survive two destructions. A per-object integer says all of that;
+a [ADR 0063](0063-durations-and-control.md) `Duration`-scoped entry
+would have said none of it, because `ScopedStatics` is the registry
+for continuous effects and a shield is not one. It is deliberately NOT
+a counter (CR 122): nothing that reads, removes, doubles or
+proliferates counters may see it, so it does not live in
+`Card.Counters`. It clears at the cleanup step beside the marked
+damage (`sweepTurnEndLocked`) and on the way off the battlefield
+(`MoveCard`'s exit cleanup), the latter because CR 400.7 makes the
+card in the next zone a new object.
+
+**2. One built-in replacement owns the rule.**
+`regenerationShieldReplacement` in `builtin_replacements.go`, beside
+CR 903.9's, because the rule is printed in the Comprehensive Rules
+rather than on any object and the shield outlives the ability that
+made it — the Asceticism that shielded your creature may be gone
+before the shield is spent. Its `AppliesTo` is "this is a destruction,
+the destroying effect did not forbid regeneration, and the permanent
+has a shield"; its `Replace` spends one shield, cancels the move, taps
+the permanent, clears its damage through the shared
+`clearBattlefieldDamage`, removes it from combat through #921's
+`removeFromCombatLocked`, and emits `EventRegenerated`.
+
+Cancelling rather than redirecting is what makes the rest fall out
+right: nothing leaves the battlefield, so no `EventLTB` fires, no
+dies-trigger sees it, and `destroyedThisWayLocked` reads the live
+board and counts no destruction (§5i).
+
+**3. It is NOT flagged `PureCancel`, although it cancels.** That flag
+(§5a) declares that `Replace` "rewrites no other field on the event
+and changes nothing else in the game", and this one changes four
+things about the permanent. The cost of leaving it false is a CR 616
+ordering prompt in the single window where a second replacement also
+applies — a shielded COMMANDER, where CR 903.9 is also offering — and
+that prompt is the correct outcome, not a wart: CR 616.1 gives the
+affected permanent's controller the choice. Both orders reach the same
+board (regeneration first cancels the move; CR 903.9 first rewrites a
+destination the CR 616.1f re-check then lets the shield cancel
+anyway), but the question is genuinely asked.
+
+Two SHIELDS never prompt, and not through §5a's identical-window rule:
+a built-in is registered once per game, so two shields on one
+permanent are ONE applicable replacement in the gather. The second
+waits for the next destruction.
+
+**4. "Destruction" is declared on the event, never derived.**
+`ReplacementEvent.Destruction`. Every way a permanent leaves the
+battlefield goes through one exit primitive — destroy, sacrifice
+(CR 701.21a), the legend rule, an illegally attached Aura (CR 704.5m),
+zero toughness (CR 704.5f), zero loyalty (CR 704.5i), zero defense
+(CR 704.5v) — and every one of them ends in the same graveyard, so
+there was nothing a reader could have looked at to tell them apart.
+Indestructible sidesteps the question by filtering BEFORE the window
+opens; a replacement cannot. So the destroy route sets the flag
+(`destroyRoute`) and every other exit uses `battlefieldExitRoute`,
+which does not.
+
+The state-based-action sweep is the interesting caller, because ONE
+pass (CR 704.3) collects permanents doomed by five different rules,
+two of which destroy and three of which merely put into a graveyard.
+They still leave as one simultaneous event, each by its own route:
+`doomedPermanent{id, destruction}` and `routeAllLandedPerLegLocked`.
+
+**5. "Can't be regenerated" is a rider carried on the same event, and
+it does not spend the shield.** `DestroyOptions{CantBeRegenerated}` →
+`zoneRoute` → `ReplacementEvent.CantBeRegenerated` → the built-in's
+`AppliesTo` declines. Gating `AppliesTo` rather than consuming the
+shield inside `Replace` is CR 701.19d: an ignored shield stays on the
+permanent for a later destruction that does not say this. The rider is
+VARIADIC on the destroy verbs (`DestroyPermanentForEffect(id, opts
+...DestroyOptions)`) so that the ~120 existing "destroy this" call
+sites, almost all of them tests, stay exactly as they were.
+
+**6. What shipped on the cards.** Four conversions — Asceticism
+(full), Wrap in Vigor, Welding Jar, Goblin Chirurgeon — and the rider
+wired onto the eleven catalog cards that print it. Golgari Charm's
+regenerate mode still waits on the modal-clause seam (#764), which is
+the only reason it is not in that list. Totem armor (CR 702.111) and
+CR 701.19b's static "if this would be destroyed, regenerate it"
+remain unmodelled; no catalog card needs either yet.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

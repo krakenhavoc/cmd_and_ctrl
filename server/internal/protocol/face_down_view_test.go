@@ -39,7 +39,12 @@ var redactedCardKeys = map[string]bool{
 	"controller":    true,
 	"tapped":        true,
 	"damage_marked": true,
-	"face_down":     true,
+	// #667: a regeneration shield is a fact about what happens to the
+	// permanent next, not about which card it is. A face-down
+	// creature with a shield on it is something the table has to be
+	// able to see before deciding whether removal is worth casting.
+	"regeneration_shields": true,
+	"face_down":            true,
 	// ADR 0069: WHY it is face down is public — everyone can see
 	// that a permanent is a morph and that an exiled card is
 	// foretold. The identity of the card under it is not.
@@ -177,21 +182,22 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 	lt := &LegalTargetsView{Cards: []string{"target"}, Min: 1, Max: 1}
 	x, y := 0.25, 0.75
 	return CardView{
-		InstanceID:    uuid.NewString(),
-		Name:          "Hidden Name",
-		Owner:         owner,
-		Controller:    owner,
-		ScryfallID:    "scryfall",
-		TypeLine:      "Legendary Creature — Test",
-		Colors:        []string{"B", "R"},
-		NegativePower: -2,
-		Power:         3,
-		Toughness:     3,
-		Tapped:        true,
-		Counters:      map[string]int{"+1/+1": 1},
-		IsCommander:   true,
-		DamageMarked:  1,
-		FaceDown:      true,
+		InstanceID:          uuid.NewString(),
+		Name:                "Hidden Name",
+		Owner:               owner,
+		Controller:          owner,
+		ScryfallID:          "scryfall",
+		TypeLine:            "Legendary Creature — Test",
+		Colors:              []string{"B", "R"},
+		NegativePower:       -2,
+		Power:               3,
+		Toughness:           3,
+		Tapped:              true,
+		Counters:            map[string]int{"+1/+1": 1},
+		IsCommander:         true,
+		DamageMarked:        1,
+		RegenerationShields: 2,
+		FaceDown:            true,
 		// An EXILE kind on purpose: a CR 708.2 permanent kind would
 		// put the public 2/2 body back after the redaction (decision
 		// 6), and this table is the guard for every card that is NOT

@@ -15,8 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // in response leaves its creature exposed. One simultaneous event,
 // so a dies-payoff sees every creature that fell together.
 //
-// "They can't be regenerated" is cosmetic until regeneration lands
-// — the same note Wrath of God carries.
+// "They can't be regenerated" is ENFORCED as of #667
+// (CR 701.19c) — the same rider Wrath of God carries.
 //
 // No simplification.
 func init() {
@@ -25,7 +25,7 @@ func init() {
 		Name:         "Winds of Rath",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{Match: And(Creature(), b15NotEnchanted())}.Apply(ctx)
+			return DestroyAllMatching{Match: And(Creature(), b15NotEnchanted()), CantBeRegenerated: true}.Apply(ctx)
 		},
 	})
 }

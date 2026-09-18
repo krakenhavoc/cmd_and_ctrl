@@ -15,8 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard and its controller field is stale for a creature that
 // had changed hands.
 //
-// "It can't be regenerated" is a no-op because regeneration is not
-// modelled — see terminate.go / pongify.go for the note to revisit.
+// "It can't be regenerated" is ENFORCED as of #667 (CR 701.19c):
+// the rider rides the destroy route onto the CR 614 event and the
+// regeneration built-in declines. The shield is not spent
+// (CR 701.19d).
 func init() {
 	Register(Spec{
 		OracleID:     "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71",
@@ -33,7 +35,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+			if err := (DestroyTarget{Target: target, CantBeRegenerated: true}).Apply(ctx); err != nil {
 				return err
 			}
 			return CreateToken{
