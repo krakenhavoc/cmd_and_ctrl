@@ -170,6 +170,17 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if err != nil {
 		return Card{}, err
 	}
+	// CR 400.7, before anything else this function forgets: the card
+	// that arrives in `dst` is a NEW OBJECT. Everything below strips
+	// one more piece of the object that is ending; this is the piece
+	// that says an object ended at all, for the per-object state the
+	// ENGINE keeps in maps keyed by instance ID — which survives a
+	// zone change and cannot tell the two objects apart on its own.
+	// Unconditional, for every source and every destination, for the
+	// same reason ClearFaceDown below is: a caller added later is
+	// covered by the rule rather than by a code review. See
+	// Card.ObjectEpoch and ObjectTallyKey (#936).
+	c.ObjectEpoch++
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.

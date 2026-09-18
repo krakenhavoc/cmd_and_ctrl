@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -64,11 +65,16 @@ type TurnTally struct {
 	// CreaturesDied is the table-wide count, any controller.
 	CreaturesDied int `json:"creaturesDied,omitempty"`
 	// Resolved counts stack items that resolved this turn, keyed by
-	// TallyKey(source, label) — the "once per turn" gate for an
-	// ability that must not fire twice.
+	// ObjectTallyKey(source, epoch, label) — the "once per turn" gate
+	// for an ability that must not fire twice. PER OBJECT (#936,
+	// CR 400.7): a permanent that left the battlefield and came back
+	// is a new object and starts its own count, because the epoch in
+	// the key changed with it. Read through Game.ResolvedThisTurn,
+	// which takes the epoch of whichever object the source names now.
 	Resolved map[string]int `json:"resolved,omitempty"`
 	// Triggered counts triggered abilities announced onto
-	// PendingTriggers this turn, keyed the same way.
+	// PendingTriggers this turn, keyed the same way and per object
+	// for the same reason.
 	Triggered map[string]int `json:"triggered,omitempty"`
 	// EnteredSubtypes counts the permanents that entered the
 	// battlefield this turn, per the player they entered under and per
@@ -101,9 +107,14 @@ type TurnTally struct {
 	// or declaring a creature in between. Reset to nil by
 	// notePlayerDecisionLocked; read by loopSuspectedLocked and
 	// nothing else. See loop_breaker.go (#628).
+	//
+	// Keyed by TallyKey — the CARD, not the object (#936). A blink
+	// loop is a loop however many objects it mints on the way round,
+	// and this is the count that must NOT restart when the permanent
+	// leaves and re-enters.
 	LoopRun map[string]int `json:"loopRun,omitempty"`
 	// LoopAllowance is the CR 726 shortcut the loop's controller
-	// agreed to, keyed like LoopRun: how many more resolutions of
+	// agreed to, keyed like LoopRun (per CARD): how many more resolutions of
 	// that ability the table runs before the breaker asks again.
 	// Written by ResolveLoopShortcut, decremented by
 	// noteResolutionForLoopLocked, cleared by
@@ -119,10 +130,75 @@ type TurnTally struct {
 	FirstEvent int `json:"firstEvent,omitempty"`
 }
 
-// TallyKey names one printed ability for the Resolved / Triggered
-// maps: the source permanent and the stack label it announces with.
+// TallyKey names one printed ability of one CARD: the source's
+// instance ID and the stack label it announces with.
+//
+// This is the CARD-LEVEL projection of the key, and since #936 it has
+// exactly two readers left — TurnTally.LoopRun and
+// TurnTally.LoopAllowance, the CR 726 loop breaker's pair
+// (loop_breaker.go) — plus oncePerBatchFired, which compares its
+// entries against the live event batch and so cannot read a stale
+// one (event_batch.go).
+//
+// The breaker wants this projection and not the per-object one: a
+// blink loop leaves and re-enters the battlefield on every iteration,
+// and a loop is a loop whichever object is running it. Keyed per
+// object, its run would reset every iteration and the threshold would
+// never be reached — the escape hatch would be created by exactly the
+// loops the breaker exists for.
 func TallyKey(source uuid.UUID, label string) string {
 	return source.String() + "|" + label
+}
+
+// ObjectTallyKey names one printed ability of one OBJECT: the
+// card-level key plus the epoch that changes when the card changes
+// zones (CR 400.7, Card.ObjectEpoch).
+//
+// This is the projection the CARD-FACING "only once each turn" gates
+// read — TurnTally.Resolved and TurnTally.Triggered, through
+// ResolvedThisTurn / TriggeredThisTurn — because CR 400.7 makes a
+// permanent that leaves and returns a new object, and "whenever …, if
+// this is the first time this has happened this turn" is a question
+// about the object. A Conclave Mentor blinked in response to its own
+// trigger may trigger again; the entries the old object wrote are
+// still in the map and are simply unreachable, which is what "no
+// memory of its previous existence" means for a map that is flushed
+// when the turn ends.
+//
+// One key with two projections, not two keys: they are the same
+// (source, label) pair, and the epoch is the one dimension that says
+// which of the two questions is being asked. Which reader uses which
+// is the doc comment on each map.
+func ObjectTallyKey(source uuid.UUID, epoch int, label string) string {
+	return objectTallyPrefix(source, epoch) + label
+}
+
+// objectTallyPrefix is ObjectTallyKey with no label — what a
+// label-less sum scans for. The epoch sits BEFORE the label
+// separator so that prefix is per (object), not per (card).
+func objectTallyPrefix(source uuid.UUID, epoch int) string {
+	return source.String() + "#" + strconv.Itoa(epoch) + "|"
+}
+
+// objectTallyKeyLocked is ObjectTallyKey for the object `source`
+// names right now: the epoch is read off the card wherever it
+// currently is. A source the engine can no longer find (a token that
+// has ceased to exist, CR 111.7) reads as epoch zero, which is a key
+// nothing else writes.
+//
+// Caller must hold g.mu.
+func (g *Game) objectTallyKeyLocked(source uuid.UUID, label string) string {
+	return ObjectTallyKey(source, g.objectEpochLocked(source), label)
+}
+
+// objectEpochLocked returns the current object epoch of the card
+// `source` names, or zero when it is nowhere findable. Caller must
+// hold g.mu.
+func (g *Game) objectEpochLocked(source uuid.UUID) int {
+	if c := g.findCardByIDLocked(source); c != nil {
+		return c.ObjectEpoch
+	}
+	return 0
 }
 
 // TurnTallyFor returns playerID's tally for the current turn (the
@@ -133,23 +209,38 @@ func (g *Game) TurnTallyFor(playerID uuid.UUID) PlayerTurnTally {
 
 // ResolvedThisTurn reports how many times the ability labelled
 // `label` from `source` has resolved this turn. An empty label sums
-// every ability of the source. Caller must hold g.mu.
+// every ability of the source.
+//
+// Per OBJECT (#936, CR 400.7): the count belongs to the permanent
+// that resolved it, so a source that has left the battlefield and
+// come back this turn answers zero. Caller must hold g.mu.
 func (g *Game) ResolvedThisTurn(source uuid.UUID, label string) int {
-	return sumTally(g.TurnTally.Resolved, source, label)
+	return sumTally(g.TurnTally.Resolved, g.objectTallyPrefixLocked(source), label)
 }
 
 // TriggeredThisTurn reports how many times the ability labelled
 // `label` from `source` has been announced this turn. An empty label
-// sums every ability of the source. Caller must hold g.mu.
+// sums every ability of the source. Per OBJECT, like its sibling
+// above. Caller must hold g.mu.
 func (g *Game) TriggeredThisTurn(source uuid.UUID, label string) int {
-	return sumTally(g.TurnTally.Triggered, source, label)
+	return sumTally(g.TurnTally.Triggered, g.objectTallyPrefixLocked(source), label)
 }
 
-func sumTally(m map[string]int, source uuid.UUID, label string) int {
+// objectTallyPrefixLocked is the per-object key prefix for whichever
+// object `source` names right now. Caller must hold g.mu.
+func (g *Game) objectTallyPrefixLocked(source uuid.UUID) string {
+	return objectTallyPrefix(source, g.objectEpochLocked(source))
+}
+
+// sumTally reads one cell of a keyed tally, or sums every cell under
+// `prefix` when the caller named no label. The prefix carries the
+// whole identity of the thing being asked about — a card for
+// TallyKey, an object for ObjectTallyKey — so this function does not
+// need to know which projection it is walking.
+func sumTally(m map[string]int, prefix, label string) int {
 	if label != "" {
-		return m[TallyKey(source, label)]
+		return m[prefix+label]
 	}
-	prefix := source.String() + "|"
 	n := 0
 	for k, v := range m {
 		if strings.HasPrefix(k, prefix) {
@@ -418,14 +509,16 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Source == uuid.Nil {
 			return
 		}
-		key := TallyKey(ev.Source, ev.Label)
 		if g.TurnTally.Resolved == nil {
 			g.TurnTally.Resolved = map[string]int{}
 		}
-		g.TurnTally.Resolved[key]++
+		// #936: the card-facing gate is per OBJECT (CR 400.7) and the
+		// loop breaker is per CARD. Two projections of one key, both
+		// taken here, so the two questions cannot drift apart.
+		g.TurnTally.Resolved[g.objectTallyKeyLocked(ev.Source, ev.Label)]++
 		// #628: the same count, restarted at each player decision, is
 		// the CR 726 loop breaker's input. See loop_breaker.go.
-		g.noteResolutionForLoopLocked(ev, key)
+		g.noteResolutionForLoopLocked(ev, TallyKey(ev.Source, ev.Label))
 	case EventTrigger:
 		if ev.Source == uuid.Nil {
 			return
@@ -433,7 +526,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if g.TurnTally.Triggered == nil {
 			g.TurnTally.Triggered = map[string]int{}
 		}
-		g.TurnTally.Triggered[TallyKey(ev.Source, ev.Label)]++
+		g.TurnTally.Triggered[g.objectTallyKeyLocked(ev.Source, ev.Label)]++
 	}
 }
 

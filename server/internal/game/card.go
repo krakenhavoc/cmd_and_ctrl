@@ -264,6 +264,31 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
+	// ObjectEpoch counts how many times this card has changed zones,
+	// and so is the identity of the OBJECT rather than of the card
+	// (CR 400.7: "an object that moves from one zone to another
+	// becomes a new object with no memory of its previous
+	// existence"). Bumped once per move in MoveCard — every zone
+	// change, in both directions, because the rule has no exceptions
+	// — and it never resets: an epoch is a serial number, not a
+	// count of anything a player can see.
+	//
+	// The engine keeps several per-object registries keyed by
+	// instance ID, which is the CARD's identity and survives a zone
+	// change. Those that must forget are dropped at the one
+	// battlefield exit (battlefield_exit.go). TurnTally's per-ability
+	// counts could not be, because the CR 726 loop breaker shares
+	// their key and a blink loop would reset its own run every
+	// iteration (#936) — so they are keyed by (instance, epoch)
+	// instead: the returning object reads a key nothing has written,
+	// while the breaker keeps counting the card. See
+	// ObjectTallyKey in turn_tally.go.
+	//
+	// Not a characteristic and not on the wire: nothing renders it
+	// and no rule reads the number itself, only whether two readings
+	// of it are equal.
+	ObjectEpoch int
+
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.
 

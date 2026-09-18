@@ -69,18 +69,27 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 //
 // What deliberately stays:
 //
-//   - TurnTally's per-ability counts (Resolved, Triggered, LoopRun,
-//     LoopAllowance) are keyed by TallyKey(source, label), which is
-//     per object too, and a returning object arguably should trigger
-//     its "only once each turn" ability again. Clearing them here
-//     would hand ADR 0055's loop breaker an escape hatch: a blink loop
-//     leaves and re-enters on every iteration, so it would reset its
-//     own LoopRun every iteration and never trip the threshold. That
-//     trade needs the breaker keyed on something other than the source
-//     instance before it can be made; see turn_tally.go.
+//   - TurnTally's per-ability counts, and since #936 they stay for a
+//     better reason than the one recorded here before: the card-facing
+//     gates (Resolved, Triggered) are keyed per OBJECT — by
+//     ObjectTallyKey(source, Card.ObjectEpoch, label) — so a returning
+//     permanent reads a key nothing has written and its "only once
+//     each turn" clause can fire again (CR 400.7) with nothing
+//     deleted. The entries the old object wrote are unreachable, and
+//     the turn-boundary flush collects them.
+//
+//     Deleting them here instead would have handed ADR 0055's loop
+//     breaker an escape hatch, which is why #630 left them: LoopRun
+//     and LoopAllowance share the (source, label) pair and are keyed
+//     per CARD, because a blink loop leaves and re-enters on every
+//     iteration and a loop is a loop whichever object is running it.
+//     One key, two projections, and the exit is the wrong place for
+//     either. See turn_tally.go.
+//
 //   - oncePerBatchFired is per object, but each entry is compared
 //     against the live event batch (#829), so an entry left by an
 //     object that has gone cannot match a later batch.
+//
 //   - lastKnownBattlefield / lastKnownTriggerIdentity are the CR 603.10
 //     snapshots this very exit writes, consumed by the harvester a few
 //     lines later.

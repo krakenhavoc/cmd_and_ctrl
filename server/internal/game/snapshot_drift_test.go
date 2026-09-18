@@ -213,6 +213,15 @@ var cardFields = plan(
 	"FaceDownKind", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
+	// #936 / CR 400.7: the object's serial number, and the epoch half
+	// of every per-object tally key. Carried, not rebuilt — nothing
+	// can re-derive how many times a card has changed zones, and a
+	// restore that zeroed it would silently merge the returning
+	// object's "only once each turn" counts with the ones the object
+	// before it wrote. Absent in a file written before the field
+	// existed, which decodes as zero: the same answer a card that has
+	// never moved gives.
+	"ObjectEpoch", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	// #683: carried — a restore that dropped it would let a 0/0 that
