@@ -8,11 +8,13 @@
 **Numbering:** every remote branch was swept with the AGENTS.md §4 loop on
 2026-09-18 (`git ls-remote --heads origin`, 266 heads; `git log --all
 --diff-filter=A --name-only -- docs/decisions/` over the fetched refs).
-`0060` is on `develop`; `0061` (token creation and discard),
+`0060` was on `develop`; `0061` (token creation and discard),
 `0062` (abilities and special actions from the hand), `0063` (durations and
-control) and `0064` (emblems) are held by in-flight branches, and `0065` is
-claimed by a fifth parallel agent that has not pushed. `0066` is the first
-free number. `0005`, `0024`, `0029` and `0030` stay permanently unused.
+control) and `0064` (emblems) were held by in-flight branches, and `0065`
+(modal and multi-target clauses) was claimed by a fifth parallel agent that
+had not pushed. All five merged to `develop` while this branch was in flight,
+and the sweep was repeated immediately before pushing: `0066` is still the
+first free number, with `0067` and `0069` now held by other branches. `0005`, `0024`, `0029` and `0030` stay permanently unused.
 
 ## Context
 
