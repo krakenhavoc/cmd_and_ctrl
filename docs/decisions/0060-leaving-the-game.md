@@ -4,8 +4,11 @@
 **Amended:** 2026-09-18 — the CR 800.4 remainder
 ([#902](https://github.com/krakenhavoc/cmd_and_ctrl/issues/902)): reassigning
 a departed player's choice (800.4g/h), last known information (800.4i), and
-"until that player's next turn" (800.4m). See the amendment at the end of this
-file; Decision 8's "Still open" list is now empty.
+"until that player's next turn" (800.4m). Amended again 2026-09-18 — CR
+800.4f's consequence and the departure table's drop-action column
+([#961](https://github.com/krakenhavoc/cmd_and_ctrl/issues/961)). See the
+amendments at the end of this file; Decision 8's "Still open" list is now
+empty.
 **Issue:** [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769)
 **Numbering:** on 2026-09-18, after `git fetch --all --prune`, every remote
 branch was listed with `git ls-tree docs/decisions/`. The highest number
@@ -357,7 +360,7 @@ pre-#902 behaviour and is safe.
 | `choose_cards` | **yes** | CR 800.4g — a pile split's first half, over cards the splitter does not own. |
 | `discard_from_hand` | **yes** | CR 800.4g — Thoughtseize-shaped, chooser ≠ the hand. |
 | `option_pick` | **yes** | CR 800.4g — a pile split's second half. Torment's own-material ask is stopped by gate 3. |
-| `pay_unless` | no | CR 800.4f — that cost is not paid. |
+| `pay_unless` | no | CR 800.4f — that cost is not paid. Its DROP runs the "unless" branch; see the 2026-09-18 #961 amendment. |
 | `entry_pay_life` | no | CR 800.4f. |
 | `mana_pick` | no | The mana would enter a pool that left the game. |
 | `sacrifice_choice` | no | Their permanents left with them (800.4a). |
@@ -372,7 +375,7 @@ pre-#902 behaviour and is safe.
 | `choose_protector` | no | CR 310.9, chosen as their battle enters. |
 | `coin_call` | no | The flip belongs to its flipper, whom the untouched frame names. |
 | `loop_shortcut` | no | CR 726 — the allowance is on their loop's tally key. |
-| `confirm` | no | The prompt carries no record of whose material it is about (see Consequences). |
+| `confirm` | **yes** | Since #961: `ConfirmPrompt.FromPlayer` records whose material it is about, so gate 3 can tell a self-question from a cross-table one. Every confirm queued today defaults the field to the chooser and is still dropped. |
 | `replacement_order` / `optional_replacement` | no | The CR 616 pair settles its own drop through `finishDroppedReplacementLocked` (#808). |
 
 #### What the reassignment does, and what it does not
@@ -495,7 +498,8 @@ that half of the rule has nothing to implement.
   the pre-#902 drop. Lifting it is one field — a `From` on
   `ConfirmPrompt`, carried into the `PendingChoice` the way
   `ChooseCardsPrompt.FromPlayer` already is — and deliberately not done
-  in the PR that decides the policy.
+  in the PR that decides the policy. **Resolved by #961**, which added
+  exactly that field; see the amendment below.
 - **`pick_target`, `trigger_prompt` and `discard_from_hand` are
   classified reassignable but are not reachable from the harvester
   today**, because `queuePickTargetLocked` and
@@ -512,7 +516,8 @@ that half of the rule has nothing to implement.
   this one, and it is left out of scope on purpose: the fix is to run a
   continuation from inside the elimination sweep, which is the class of
   change #808 had to be careful about. See
-  `pending_choice.go`'s `payUnlessFrame`.
+  `pending_choice.go`'s `payUnlessFrame`. **Resolved by #961**; see the
+  amendment below.
 
 ### Decision 8's "Still open" list, updated
 
@@ -527,3 +532,121 @@ that half of the rule has nothing to implement.
   by consequence — `QueueChoiceForEffect` refuses a departed chooser and
   the trigger queue drops a departed controller's abilities — and has no
   test of its own.
+
+## Amendment — 2026-09-18: CR 800.4f's consequence, and the drop-action column (#961)
+
+**Status:** Accepted · 2026-09-18 · S36 — Tables that wedge: the engine's
+dead ends
+**Issue:** [#961](https://github.com/krakenhavoc/cmd_and_ctrl/issues/961)
+(noted by the #902 agent in PR #959)
+**Related:** [#808](https://github.com/krakenhavoc/cmd_and_ctrl/issues/808)
+(a continuation run from inside the elimination sweep — the pattern this
+follows), [#864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/864)
+(`QueueChoiceForEffect` refuses a departed chooser, which is what makes
+running one safe)
+
+The amendment above closed 800.4g/h and left 800.4f half-implemented: a
+departed player's `pay_unless` was never reassigned — correct — and was
+then discarded whole, which is not. The rule says the **cost is not
+paid**; "unless that player pays {1}" is a sentence about what happens
+when it is not, so the Study's controller draws and the Tithe's
+controller makes a Treasure. This amendment runs that branch.
+
+### The table gains a second column
+
+`choiceReassignDecisions` is now `choiceDepartureDecisions`
+(`leave_game.go`), one row per `PendingChoiceKind` and two columns:
+
+| column | question | default |
+|---|---|---|
+| `reassign` | CR 800.4g — does somebody else make this choice? | no |
+| `onDrop` | when it is dropped, does the rule that ends it say what happens instead? | `dropDiscard` — nothing |
+
+Deny by default in both, for the reason the first column already had:
+an unclassified kind behaves exactly as it did before #902, which is
+safe and cannot wedge. `TestEveryChoiceKindHasAReassignmentDecision`
+still fails until a new kind has a row.
+
+**One kind declares an action today.** `pay_unless` is
+`{onDrop: dropDecline}`: the drop runs the frame's decline continuation
+(`declineDepartedChoiceLocked`, `pending_choice.go`) — the same
+continuation `ResolvePayUnless` runs for an answered "no", reached from
+the elimination sweep instead of from an answer. `entry_pay_life` is
+CR 800.4f too and keeps the default, because its "unless" branch (the
+permanent enters tapped) is about the departed player's own permanent,
+which 800.4a takes in the same breath.
+
+**The action is declared in the table, not in the sweep.** The
+departure sweep (`dropChoicesForPlayerLocked`, `mutations.go`) is one
+loop reading one table: it drops, and then runs whatever action the row
+names. A future kind with a default action of its own adds a row, not a
+branch.
+
+### What makes running a continuation inside the sweep safe
+
+Three things, and none of them is a new check:
+
+1. **It runs after the queue is rewritten**, exactly like #808's
+   replacement frames. A continuation may queue the next prompt, and it
+   must not land in a slice the drop loop is still writing over.
+2. **It cannot re-queue a prompt to the departed seat.**
+   `QueueChoiceForEffect` refuses an eliminated chooser (#864) and emits
+   `EventPendingChoiceDropped` instead. A prompt queued to a **survivor**
+   is kept: that seat really does owe it.
+3. **It only runs for a prompt whose object a survivor still controls**
+   — `departedChoiceObjectLocked`, gates 2 and 3 of the reassignment
+   predicate, shared rather than re-written. CR 800.4f's subject is "an
+   OBJECT requires a player who has left the game to pay a cost", which
+   is 800.4g's opening clause one rule earlier.
+
+Gate 3 is what makes **cumulative upkeep** come out right. "Sacrifice
+this permanent unless you pay its upkeep cost" is asked of the
+permanent's own controller, so when they concede the permanent leaves
+the game with them (800.4a) instead of dying. The difference is
+observable: a sacrifice is a death, and the rest of the table's triggers
+watch for one.
+
+**Undo owes nothing new.** The prompt, its frame and the board are all
+already cloned, so a rewind past the concede takes the drawn card back
+and a replayed departure draws it again.
+
+### `ConfirmPrompt.FromPlayer`, and the row it unlocks
+
+The amendment above listed `confirm` as never reassigned, for a reason
+that was about the engine rather than the rule: `QueueConfirmForEffect`
+stamped `FromPlayer` with the chooser unconditionally, so gate 3 could
+not tell a self-question from one asked across the table. That is now
+the one field it named — `ConfirmPrompt.FromPlayer`, defaulting to
+`Chooser`, carried the way `ChooseCardsPrompt.FromPlayer` already is —
+and the row is `{reassign: true}`, `trigger_prompt`'s resolution-time
+twin.
+
+Nothing changes for any confirm the engine queues today: all of them
+leave the field defaulted, so gate 3 still drops every one of them. The
+row is a decision about the rule, kept so that the first card to ask a
+cross-table yes/no (Combustible Gearhulk's question to its target) does
+not land on a silent wrong default.
+
+### Consequences
+
+**Good**
+
+- CR 800.4f is enforced in both halves: nobody inherits a departed
+  player's tax, and the tax still pays out. A player conceding in
+  response to a Rhystic trigger no longer eats the card.
+- The sweep stayed one loop over one table. The second column is where
+  the next kind's default action goes, and the elimination sweep does
+  not have to learn about it.
+
+**Tradeoffs**
+
+- **A dropped `pay_unless` runs its decline branch, not its "pay"
+  branch**, even for a may-pay frame whose whole payload hangs off the
+  payment (`QueueMayPayForEffect`, Hashaton). Nothing happens there,
+  which is the right reading of "if you do" for a player who no longer
+  can — but it does mean the departure is silent for that shape rather
+  than announced.
+- **`pay_unless` is still the only kind with a drop action.** Every
+  other CR 800.4f prompt the engine has is about the departed player's
+  own material, so the honest row is the default; the column exists
+  because the next one may not be.

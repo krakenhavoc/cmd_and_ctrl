@@ -2747,6 +2747,47 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 	return nil
 }
 
+// declineDepartedChoiceLocked runs the "no" branch of a prompt whose
+// chooser left the game still owing it. It is the dropDecline action
+// of the departure table (choiceDepartureDecisions, leave_game.go) and
+// the second half of CR 800.4f: the departed player's cost is not
+// paid, and "unless that player pays" is a sentence about what happens
+// when it is not. Rhystic Study still draws; Smothering Tithe still
+// makes its Treasure (#961).
+//
+// This is the SAME continuation ResolvePayUnless runs for an answered
+// "no", reached from the elimination sweep rather than from an answer
+// — the #808 shape: one more terminal outcome of a paused pipeline,
+// and leaving the game is the one being added. Two things make it safe
+// to run from inside the sweep, and both are somebody else's invariant
+// rather than a check here:
+//
+//   - it cannot re-queue a prompt to the departed seat, because
+//     QueueChoiceForEffect refuses an eliminated chooser (#864). A
+//     prompt it queues to a SURVIVOR is fine and stays queued;
+//   - it is only reached for a prompt whose object a survivor still
+//     controls (departedChoiceObjectLocked), so the branch is written
+//     against material CR 800.4a has not just taken off the table.
+//
+// A may-pay frame (QueueMayPayForEffect: "you may pay {2}. If you do,
+// ...") carries no decline branch and nothing happens, which is the
+// right reading of "if you do" for a player who no longer can.
+//
+// Caller must hold g.mu.
+func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
+	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.onDecline == nil {
+		return
+	}
+	if err := c.payUnlessResume.onDecline(g); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    c.Chooser,
+			Source:   c.Source,
+			ErrorMsg: err.Error(),
+		})
+	}
+}
+
 // S32 (#352): this one keeps the zero spend context deliberately. A
 // pay-unless / may-pay cost is not a cast and not an activation — it
 // is a cost demanded by a resolving effect — so no "spend only to

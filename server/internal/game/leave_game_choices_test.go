@@ -267,7 +267,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 // SOURCE'S CONTROLLER, and a controller who leaves takes the source
 // with them (CR 800.4a), so the trigger harvester cannot produce an
 // opponent-addressed pick_target today. The row in
-// choiceReassignDecisions is a decision about the RULE — an object's
+// choiceDepartureDecisions is a decision about the RULE — an object's
 // choice that is not a cost is reassigned — and #918 already lets a
 // card address any seat, so the prompt is built here the way such a
 // card would build it.
@@ -560,8 +560,8 @@ func TestEveryChoiceKindHasAReassignmentDecision(t *testing.T) {
 		t.Fatalf("the gate classifies only %d kinds — this test's premise has broken", len(classified))
 	}
 	for _, kind := range classified {
-		if _, ok := choiceReassignDecisions[kind]; !ok {
-			t.Errorf("%q has no row in choiceReassignDecisions — decide whether CR 800.4g reassigns it and say so in server/internal/game/leave_game.go (ADR 0060, 2026-09-18 amendment)", kind)
+		if _, ok := choiceDepartureDecisions[kind]; !ok {
+			t.Errorf("%q has no row in choiceDepartureDecisions — decide whether CR 800.4g reassigns it, and what its drop still has to do (CR 800.4f), and say so in server/internal/game/leave_game.go (ADR 0060, 2026-09-18 amendment)", kind)
 		}
 	}
 	gate := make(map[PendingChoiceKind]bool, len(classified))
@@ -570,7 +570,7 @@ func TestEveryChoiceKindHasAReassignmentDecision(t *testing.T) {
 	}
 	for _, kind := range ReassignableChoiceKinds() {
 		if !gate[kind] {
-			t.Errorf("choiceReassignDecisions classifies %q, which no longer exists", kind)
+			t.Errorf("choiceDepartureDecisions classifies %q, which no longer exists", kind)
 		}
 	}
 }
