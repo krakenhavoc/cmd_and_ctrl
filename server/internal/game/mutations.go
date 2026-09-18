@@ -3286,12 +3286,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
-	// The LKI snapshot is taken here, while the permanent is still on
-	// the battlefield with everything that was true of it — including
-	// the damage that killed it, which MoveCard's exit cleanup zeroes
-	// a line later (#816). CR 603.10: an LTB trigger is judged on what
-	// the permanent looked like while it was still there.
-	g.snapshotLKILocked(cardID)
+	// The exit runs here, while the permanent is still on the
+	// battlefield with everything that was true of it: the CR 603.10
+	// LKI snapshot an LTB trigger is judged on — including the damage
+	// that killed it, which MoveCard's exit cleanup zeroes a line
+	// later (#816) — and the Game-side forget of what this object did
+	// this turn (#630, CR 400.7). See battlefield_exit.go.
+	g.battlefieldExitLocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
@@ -3863,7 +3864,11 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		return nil
 	}
 	if srcZone.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
+		// LKI, and the CR 400.7 forget — battlefield_exit.go. The
+		// sandbox move is a battlefield exit like any other: a
+		// planeswalker shoved to hand from the context menu is as new
+		// an object when it comes back as one Venser bounced.
+		g.battlefieldExitLocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err

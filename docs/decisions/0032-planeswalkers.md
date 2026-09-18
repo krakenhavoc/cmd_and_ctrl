@@ -504,3 +504,45 @@ started, and two of them cost real time:
   action it gates is not in the client's action union at all. *As of
   §8 the tick is finally earned: the predicate gates the card menu's
   loyalty rows and `activate_loyalty` is in the union.*
+
+## Amendment (2026-09-18, #630): the once-per-turn gate is per OBJECT, and dies with it (CR 400.7)
+
+"`LoyaltyActivatedThisTurn` and its turn-boundary flush were already
+right" (§ *The once-per-turn gate moved*) was half right. The map is
+keyed by instance ID and flushed when a turn begins, and nothing else
+ever removed an entry — but an instance ID survives a zone change, so
+the flush was not enough for the one case CR 400.7 makes different:
+
+> Activate Teferi's `+1`. Return him to hand the same turn (Venser's
+> enters trigger, or the sandbox **Move to → Hand**). Recast him. Both
+> rows are greyed with "Already activated this turn", the server
+> refuses the activation, and the recast snapshot still carries
+> `loyalty_activated: true`.
+
+The permanent that came back is a **new object** (CR 400.7) and
+CR 606.3 applies per object, so it gets its own activation. The entry
+is now deleted when the permanent leaves the battlefield, in
+`battlefieldExitLocked`
+([server/internal/game/battlefield_exit.go](../../server/internal/game/battlefield_exit.go)) —
+the Game-side companion to `MoveCard`'s battlefield-exit cleanup,
+which strips the same kind of state from the card itself but cannot
+reach a map on `Game`. All three battlefield exits (the destroy /
+sacrifice route, the effect route, the sandbox move) go through it,
+which is what makes the fix true of a bounce, an exile, a sacrifice
+and a context-menu shove alike. The blink path was already safe for a
+different reason — it mints a new instance ID (ADR 0026 §5) — and now
+also stops leaving a dead row behind.
+
+Unchanged: a planeswalker that stays put still spends its turn's
+activation (the delete is per object, not a flush), the turn-boundary
+flush still exists for everything that never moved, and §8's wire flag
+`loyalty_activated` needs no change — it reads the same map, so the
+returning walker projects as available and the client stops greying
+the rows.
+
+The same exit forgets the combat announcement maps (`announcedAttacks`,
+`announcedBlocks`, `announcedBecameBlocked`), which have the same
+per-object shape. `TurnTally`'s per-ability counts deliberately do not
+move: they are per object as well, but clearing them on exit would let
+a blink loop reset ADR 0055's `LoopRun` every iteration and never trip
+the breaker.

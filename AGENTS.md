@@ -1730,6 +1730,20 @@ never carried marked damage, and the `source` card a trigger is handed
 is the new object, which by CR 400.7 has none). Don't clear damage in a
 card's effect: if your card leaves the battlefield, it is already done.
 
+**Per-object state the ENGINE keeps is cleared by the other half of
+that exit (#630).** `MoveCard` is a package-level function over two
+zones, so it cannot reach a map on `Game` — and those maps are keyed by
+instance ID, which survives a zone change. `battlefieldExitLocked`
+(`server/internal/game/battlefield_exit.go`) is the Game-side half: it
+takes the LKI snapshot and then forgets what the leaving OBJECT did —
+`LoyaltyActivatedThisTurn` (CR 606.3, so a planeswalker bounced and
+recast the same turn may activate again) and the combat announcement
+maps. All three battlefield exits call it, and a new per-object
+registry goes in it rather than growing a fourth clearing site. What
+deliberately stays is `TurnTally`'s per-ability counts: they are per
+object too, but clearing them would give ADR 0055's loop breaker's
+`LoopRun` an escape hatch on every blink loop.
+
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
 shockland, an activation cost, "pay 2 life. If you do, draw". CR 119.4
