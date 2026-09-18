@@ -220,6 +220,18 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// happened to be picked last time — including, after a seat
 		// is eliminated, nobody.
 		c.ProtectorPlayerID = uuid.Nil
+		// #630 / CR 400.7: "entered the battlefield at" and the
+		// summoning-sickness marker it comes with belong to the
+		// permanent, not to the card. Every battlefield entry stamps
+		// both, unconditionally (stampBattlefieldEntryLocked), so the
+		// permanent that comes back gets its own pair; what clearing
+		// them here fixes is the card in between, which was still
+		// telling the wire it was summoning sick in the graveyard it
+		// had died to. Cleared together for the same reason they are
+		// stamped together, and the same pair the exile return zeroes
+		// when it mints a new instance ID (resetAsNewObjectLocked).
+		c.EnteredBattlefieldAt = 0
+		c.SummonedThisTurn = false
 	}
 	// CR 400.7: a card that leaves exile is a new object with no
 	// memory of its previous one. Two exile-only fields go with it:

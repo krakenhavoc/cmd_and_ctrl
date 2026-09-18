@@ -1342,6 +1342,21 @@ attacking (CR 506.3c) is not declared and announces nothing. See
 [ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
 Decisions 19-21 and 22.
 
+**A trigger in the cleanup step gets priority (#661, CR 514.3a).**
+Cleanup normally grants nobody priority, so a trigger queued there —
+the hand-size discard is the usual one — used to wait for the next
+player's upkeep. It doesn't now: if a state-based action is performed
+or a trigger is waiting, the SBAs happen, the triggers go on the
+stack, the active player gets priority **in** the cleanup step, and
+once the stack is empty and everyone passes, **another cleanup step
+begins** (hand size checked again, the CR 514.2 sweep run again, so an
+"until end of turn" effect a cleanup trigger creates still ends this
+turn). One exit decides it, `exitCleanupStepLocked`
+(`server/internal/game/cleanup.go`), called from the cleanup step-entry
+hook and from `DiscardSelection`'s resume. Nothing changes for a quiet
+cleanup: it ends the turn in the same call it always did, so no new
+auto-pass stop appears.
+
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:
 `g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
@@ -1770,6 +1785,20 @@ dies-trigger reads the creature that died (the LKI `Characteristic` has
 never carried marked damage, and the `source` card a trigger is handed
 is the new object, which by CR 400.7 has none). Don't clear damage in a
 card's effect: if your card leaves the battlefield, it is already done.
+
+**Per-object state the ENGINE keeps is cleared by the other half of
+that exit (#630).** `MoveCard` is a package-level function over two
+zones, so it cannot reach a map on `Game` — and those maps are keyed by
+instance ID, which survives a zone change. `battlefieldExitLocked`
+(`server/internal/game/battlefield_exit.go`) is the Game-side half: it
+takes the LKI snapshot and then forgets what the leaving OBJECT did —
+`LoyaltyActivatedThisTurn` (CR 606.3, so a planeswalker bounced and
+recast the same turn may activate again) and the combat announcement
+maps. All three battlefield exits call it, and a new per-object
+registry goes in it rather than growing a fourth clearing site. What
+deliberately stays is `TurnTally`'s per-ability counts: they are per
+object too, but clearing them would give ADR 0055's loop breaker's
+`LoopRun` an escape hatch on every blink loop.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a

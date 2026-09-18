@@ -496,7 +496,8 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 
 	fromBattlefield := src.Kind == ZoneBattlefield
 	if fromBattlefield {
-		g.snapshotLKILocked(ev.CardID)
+		// LKI, and the CR 400.7 forget — battlefield_exit.go.
+		g.battlefieldExitLocked(ev.CardID)
 	}
 	if _, err := MoveCard(src, dstZone, ev.CardID); err != nil {
 		return err
