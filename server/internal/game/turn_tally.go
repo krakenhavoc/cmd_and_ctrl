@@ -87,6 +87,18 @@ type TurnTally struct {
 	// notePlayerDecisionLocked; read by loopSuspectedLocked and
 	// nothing else. See loop_breaker.go (#628).
 	LoopRun map[string]int `json:"loopRun,omitempty"`
+	// LoopAllowance is the CR 726 shortcut the loop's controller
+	// agreed to, keyed like LoopRun: how many more resolutions of
+	// that ability the table runs before the breaker asks again.
+	// Written by ResolveLoopShortcut, decremented by
+	// noteResolutionForLoopLocked, cleared by
+	// notePlayerDecisionLocked with everything else. Nil is the
+	// ordinary state: nobody has taken a shortcut this turn.
+	//
+	// It is the ONLY counter #804 adds. The detector is still
+	// loopSuspectedLocked over LoopRun; this says whether the answer
+	// it gives is news. See loop_breaker.go (#804).
+	LoopAllowance map[string]int `json:"loopAllowance,omitempty"`
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
@@ -241,6 +253,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
+	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	return out
 }
 

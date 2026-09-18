@@ -90,10 +90,10 @@ func pushLoopToken(g *game.Game, name string, controller, owner uuid.UUID) {
 
 // TestBotsStopPassingWhenTheLoopBreakerFires: two bot seats, a real
 // two-permanent trigger loop, and a threshold of five. The bots pass
-// the loop around until the engine raises the notice, and then they
-// hold — the room's commit sequence stops moving, which is the whole
-// point. The alternative was a table that spins until the process is
-// killed.
+// the loop around until the engine raises the notice, take the CR 726
+// shortcut once, and then stop — the room's commit sequence stops
+// moving, which is the whole point. The alternative was a table that
+// spins until the process is killed.
 //
 // "They stopped" used to be a 250ms sleep and a sequence that had not
 // moved (#848). It is now the runners' own answer: a bot that kept
@@ -108,7 +108,8 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	g.WithWriteLock(func() { g.LoopThreshold = 5 })
+	const threshold = 5
+	g.WithWriteLock(func() { g.LoopThreshold = threshold })
 
 	pol := func() aiseat.Policy { return &scripted{prefer: []string{"Keep hand"}} }
 	r0 := aiseat.Start(ctx, room, g.Seats[0].ID, pol(), aiseat.Config{}, nil, testLogger())
@@ -134,26 +135,59 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 		pushLoopToken(g, loopTokenA, owner, owner)
 	})
 
-	waitFor(t, "the loop breaker to fire", func() bool {
-		return g.AutoPassSuspended()
+	// #804 changed what "they stop" looks like, and the change is the
+	// point of the feature. The breaker now comes with a CR 726
+	// prompt, so a bot seat that controls the loop answers it rather
+	// than sitting on a question: 10 more iterations the first time it
+	// is asked in a turn, and stop the second time, because the
+	// enumerator offers nothing but stop on a repeat ask
+	// (internal/legal, docs/bot.md). The table therefore runs the
+	// number it agreed to and then comes to rest — bounded, which is
+	// all a bot-only table on a real loop can be.
+	waitFor(t, "both bots to park with the notice up", func() bool {
+		return r0.Idle() && r1.Idle() && g.AutoPassSuspended()
 	})
-	noticed := room.Seq()
 	notice := g.CurrentLoopNotice()
-	if notice == nil || notice.Count < 5 {
+	if notice == nil || notice.Count < threshold {
 		t.Fatalf("loop notice = %+v, want a count of at least the threshold", notice)
 	}
-
-	// With automatic passing suspended, both bots hold and park.
-	waitFor(t, "both bots to park with the notice up", func() bool {
-		return r0.Idle() && r1.Idle()
+	// Both asks answered: nothing is left owed, which is why the
+	// runners could park at all.
+	var owed int
+	g.ReadSnapshot(func() {
+		for _, c := range g.PendingChoices {
+			if c != nil {
+				owed++
+			}
+		}
 	})
-	// Getting there may cost one commit per seat: a runner that read
-	// AutoPassSuspended a moment before the notice went up still
-	// dispatches the pass it had already decided on. After that,
-	// nothing — before #628's runner rule the same window carried
-	// dozens of passes and this table never came to rest at all.
-	if got := room.Seq(); got > noticed+2 {
-		t.Errorf("room sequence moved from %d to %d while the loop breaker was up — a bot kept passing", noticed, got)
+	if owed != 0 {
+		t.Errorf("%d prompts still open with both bots parked — a seat is sitting on a question", owed)
+	}
+
+	// The count is the assertion that the shortcut ran once and only
+	// once: the threshold's worth of iterations that raised the first
+	// notice, plus the K the bot agreed to, and then nothing.
+	wantResolutions := threshold + game.DefaultLoopShortcutIterations
+	var got int
+	g.ReadSnapshot(func() {
+		for _, n := range g.TurnTally.Resolved {
+			if n > got {
+				got = n
+			}
+		}
+	})
+	if got != wantResolutions {
+		t.Errorf("the loop's busiest ability resolved %d times, want %d (threshold %d + one shortcut of %d)",
+			got, wantResolutions, threshold, game.DefaultLoopShortcutIterations)
+	}
+
+	// Parked, with nothing owed and nothing else writing to this room,
+	// the sequence has stopped by construction. Re-reading both is the
+	// check that it has: a bot still passing would have woken itself.
+	stopped := room.Seq()
+	if !r0.Idle() || !r1.Idle() || room.Seq() != stopped {
+		t.Errorf("room sequence moved past %d with the loop breaker up — a bot kept passing", stopped)
 	}
 	if !g.AutoPassSuspended() {
 		t.Error("the notice cleared itself; only a player decision or a new turn should")

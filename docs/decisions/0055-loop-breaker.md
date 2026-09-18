@@ -138,6 +138,82 @@ plus a client modal, plus a bot answer. The breaker is useful without it:
 the loop stops running on its own, priority comes back, and a player can
 break it or concede. The prompt is a follow-up.
 
+**Amendment (2026-09-18, #804): the shortcut prompt is built; §6 is
+closed.** CR 726.4's draw is still not, and stays out of scope — a
+mandatory loop nobody can stop is a different question from "how many more
+times", and nothing in the catalog makes one.
+
+*The kind.* `PendingChoiceLoopShortcut` (`"loop_shortcut"`), declared in
+`loop_breaker.go` beside the notice that raises it and queued from
+`queueLoopShortcutLocked` at the moment the notice goes up — to the
+**controller** of the ability the notice names, because CR 726 is their
+proposal to make. It carries the tally key the answer attaches to, the
+count the notice is quoting, and a `LoopShortcutRepeat` flag (below). The
+prompt is queued only when there is a live, unelminated seat to ask; a loop
+with no controller raises the notice and no question, which is this ADR's
+original behaviour and the only safe one, since the prompt blocks.
+
+*Allowance semantics.* The answer is an integer K, 0 ≤ K ≤
+`MaxLoopShortcutIterations` (1000), written to
+`TurnTally.LoopAllowance[key]`. There is no second detector:
+`loopSuspectedLocked` is still the whole rule, and the allowance only
+decides whether its answer is worth saying out loud. Each further
+resolution of that key spends one (`spendLoopAllowanceLocked`), silently;
+the K-th raises the notice again and re-offers the prompt. While a shortcut
+is live the notice is down, so the client's autopass and the bot runner
+both run — they read `loop_notice` and `AutoPassSuspended()`, and neither
+needed a line of change. A shortcut running on one key also suppresses a
+notice for the loop's *other* key, because a two-permanent loop is two keys
+and one conversation.
+
+K = 0 is "stop here": the prompt clears and the table goes back exactly
+where the breaker left it — notice standing at its count, automatic passing
+suspended, and the count still climbing if the players step the loop on by
+hand.
+
+*The counter subtlety, stated because it is the whole of the change.*
+Answering a prompt is a player decision (§3), and a decision restarts every
+run — right for every other prompt and exactly wrong for this one. With
+`LoopRun` back at zero nothing would consult the allowance until the
+ability had resolved a further `LoopThreshold` times, so "resolve it 3 more
+times" would mean 28. `grantLoopShortcutLocked` therefore re-arms *this
+key's* run to where the notice found it, after the dequeue has cleared
+everything. Every other key stays cleared: the decision was real. And
+because the prompt blocks the table, `notePlayerDecisionLocked` now also
+withdraws any outstanding shortcut prompt (`dropChoiceLocked`, not
+dequeue — the engine is withdrawing it, nobody answered): a prompt left
+behind by a cleared notice would not be a stale question, it would be a
+wedged game.
+
+*Blocking.* This prompt **blocks the table** (`ChoiceBlocksTable`, ADR 0018
+§6's 2026-09-18 amendment), which is a real departure from §4's "the engine
+refuses no passes". It is right here and wrong for a Rhystic tax for the
+same reason: the shortcut is proposed while the loop's trigger is still on
+the stack, and what the answer decides is how many times that trigger
+resolves next. A table that could pass through the question would be
+answering it by doing. §4's rule is otherwise untouched — once the question
+is answered, every pass works and priority still rotates.
+
+*Bot policy.* `internal/legal` enumerates the kind (it has to: a kind with
+no case there is an empty move list, which is the #499 / #618 wedge this
+ADR's §6 named). The first ask of a turn offers 10 — first in the list,
+which is what a bot takes — then 100, then stop. The **second** ask for the
+same loop in the same turn offers *only* stop. That termination guarantee
+is in the enumerator rather than in a policy on purpose: a policy that can
+rank "100 more" top can rank it top every time, and a random policy
+eventually will. With one answer on the list, every policy at the table
+stops. A bot-only table on a real loop therefore runs threshold + 10
+iterations and comes to rest, which is §5's outcome with one shortcut's
+worth of progress in front of it. See [docs/bot.md](../bot.md).
+
+*Undo and restore.* The prompt's three fields and `TurnTally.LoopAllowance`
+are `carried` by both copies. Writing the undo test turned up that
+`RestoreFrom` had never copied `LoopNotice` or `LoopThreshold` at all —
+#628 added them to `cloneLocked` and to the snapshot but not to the undo
+path, so an undo across the moment the breaker fired left the live notice
+untouched. Fixed in the same change, because a restored prompt without its
+notice is a question about nothing.
+
 ## Consequences
 
 ### Good
