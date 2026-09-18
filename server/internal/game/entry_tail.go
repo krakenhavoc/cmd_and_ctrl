@@ -202,7 +202,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.AttackingTarget = uuid.Nil
 		c.BlockingTarget = uuid.Nil
 		c.GoadedBy = uuid.Nil
-		c.FaceDown = false
+		c.ClearFaceDown()
 		c.BattleX = 0
 		c.BattleY = 0
 		c.EnteredBattlefieldAt = 0

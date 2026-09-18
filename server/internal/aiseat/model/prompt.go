@@ -393,10 +393,22 @@ func cardNames(cards []protocol.CardView, max int) string {
 }
 
 // cardName respects the view's own redaction. A face-down card the
-// seat is not a knower of arrives with no name, and the prompt says
-// so rather than inventing one.
+// seat may not look at arrives with no name, and the prompt says so
+// rather than inventing one.
+//
+// ADR 0069: the question is `face_visible` — the rules permission to
+// look at the face (CR 406.3a, CR 702.143d, CR 708.5) — not
+// `known_by_you`. They agree on the wire today, but naming the
+// permission is what stops a bot reading a hidden face if they ever
+// come apart, and it is what makes a face-down PERMANENT read as the
+// public CR 708.2 object it is: "a face-down 2/2" to the table, not
+// the card under it even to its own controller, who sees the card in
+// their client but is playing against an object with no name.
 func cardName(c *protocol.CardView) string {
-	if c.FaceDown && !c.KnownByYou {
+	if c.IsFaceDownPermanent() {
+		return "a face-down 2/2 creature"
+	}
+	if c.FaceDown && !c.FaceVisible {
 		return "a face-down card"
 	}
 	if c.Name == "" {

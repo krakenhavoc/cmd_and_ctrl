@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3cc79d36-1a24-4395-8ad1-915a65db8a60",
 		Name:         "Awaken the Woods",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 green Dryad"), N: ctx.X()}.Apply(ctx)

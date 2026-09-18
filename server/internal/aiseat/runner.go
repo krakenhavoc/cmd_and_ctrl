@@ -181,11 +181,14 @@ type Runner struct {
 	latNext                                         int
 	done                                            chan struct{}
 
-	// idle is true while the loop is parked on its wake channel with
-	// no wake already pending. Guarded by idleMu because Idle is read
-	// from another goroutine. See Idle.
+	// idle is true while the loop is parked on its wake channel, and
+	// wake is that channel, installed by loop once it has subscribed.
+	// Both guarded by idleMu because Idle is read from another
+	// goroutine. Parked is not the same as having nothing to do, which
+	// is why Idle reads the channel as well as the flag — see Idle.
 	idleMu sync.Mutex
 	idle   bool
+	wake   <-chan struct{}
 }
 
 // Start launches a runner goroutine for seat in room. bc may be nil.
@@ -224,9 +227,20 @@ func (r *Runner) Done() <-chan struct{} { return r.done }
 // looks exactly like one that has stopped. The runner knows, so it
 // says so.
 //
-// Idle is a fact about this instant. A commit from another seat can
-// wake the runner immediately afterwards, which is a bot with new work
-// rather than a bot that lied.
+// "No wake already pending" is asked of the wake channel HERE, at the
+// moment of the call, and that is #924. The flag alone was set from
+// `len(wake) == 0` as the loop parked, so a commit landing one
+// instruction later left a runner that reported itself idle with a
+// wake sitting in the channel — parked between waking and dispatching,
+// which reads exactly like parked with nothing to do. The window is a
+// scheduler quantum wide on a single-CPU machine, which is why it was
+// a CI flake and not a local one.
+//
+// Idle is still a fact about this instant. A commit from another seat
+// can wake the runner immediately afterwards, which is a bot with new
+// work rather than a bot that lied — so a test that needs a table to
+// have STOPPED asks every runner at it, and asks the game what it is
+// holding, in the same wait.
 func (r *Runner) Idle() bool {
 	select {
 	case <-r.done:
@@ -235,7 +249,9 @@ func (r *Runner) Idle() bool {
 	}
 	r.idleMu.Lock()
 	defer r.idleMu.Unlock()
-	return r.idle
+	// len of a nil channel is 0, so a runner whose loop has not yet
+	// subscribed answers on idle alone — which is false until it parks.
+	return r.idle && len(r.wake) == 0
 }
 
 func (r *Runner) setIdle(v bool) {
@@ -290,14 +306,20 @@ func (r *Runner) loop(ctx context.Context) {
 	defer close(r.done)
 	wake, unsubscribe := r.room.Subscribe()
 	defer unsubscribe()
+	r.idleMu.Lock()
+	r.wake = wake
+	r.idleMu.Unlock()
 	if !r.step(ctx) {
 		return
 	}
 	for {
 		// Parked. A wake already sitting in the channel is work in
 		// hand — the select below takes it without blocking — so it is
-		// not idleness, and Idle must not report it as such.
-		r.setIdle(len(wake) == 0)
+		// not idleness, and Idle must not report it as such. Idle asks
+		// the channel itself, so this only has to say "parked": the
+		// answer then stays right for a wake that arrives after this
+		// line rather than before it (#924).
+		r.setIdle(true)
 		select {
 		case <-ctx.Done():
 			return
@@ -406,6 +428,31 @@ func (r *Runner) step(ctx context.Context) bool {
 			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 726)")
 			r.observe(in, out, &mv, 0, false, nil)
 			return true
+		}
+		// #810, the other shape of the same runaway. A trigger loop
+		// runs itself and the breaker stops it by suspending automatic
+		// PASSES. An activation loop is fed one activation at a time,
+		// so the move that keeps it turning is not a pass and the line
+		// above never sees it — a bot handed a free, repeatable
+		// ability took it until the wall clock ran out. A bot's
+		// activation of the permanent the notice names is as automatic
+		// as its pass, so it holds on that too, and holds on nothing
+		// else: any other move is progress and clears the notice like
+		// any other decision.
+		//
+		// The notice names a permanent and one of its abilities; this
+		// matches on the permanent. Holding a second ability of the
+		// same source for as long as the notice stands is the
+		// conservative direction — the notice means "stop feeding this
+		// card" — and it costs a bot nothing it could not do on the
+		// next turn.
+		if mv.Kind == legal.KindActivate {
+			if n := r.room.Game.CurrentLoopNotice(); n != nil && n.Source == mv.Source {
+				r.log.Warn("bot holding: the loop breaker named this permanent's ability (CR 726)",
+					"move", mv.Label, "ability", n.Label, "count", n.Count)
+				r.observe(in, out, &mv, 0, false, nil)
+				return true
+			}
 		}
 		r.pace(ctx, started)
 		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {

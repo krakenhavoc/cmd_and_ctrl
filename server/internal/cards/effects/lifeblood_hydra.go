@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "b14d05c0-fe10-4079-a90e-0aea1a8fd375",
 		Name:            "Lifeblood Hydra",
+		XMatters:        true,
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		PrintedKeywords: []string{"trample"},

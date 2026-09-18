@@ -901,6 +901,24 @@ type CardView struct {
 	// client can hover-reveal the printed characteristics. Added
 	// in S13.5.
 	FaceDown bool `json:"face_down,omitempty"`
+	// FaceDownKind is WHY the card is face down (ADR 0069) — one of
+	// "exiled", "foretold", "manifested", "morphed", "disguised",
+	// "cloaked", or absent for a face-up card. PUBLIC: every player
+	// can see that a permanent is a morph and that an exiled card is
+	// foretold, so it survives the non-knower redaction. The client
+	// uses it to label the card back.
+	FaceDownKind string `json:"face_down_kind,omitempty"`
+	// FaceVisible is whether THIS viewer may look at the face of a
+	// face-down object — the controller of a CR 708.5 permanent, the
+	// owner of a foretold card (CR 702.143d), nobody for a plain
+	// face-down exile (CR 406.3). Stamped per-viewer by
+	// FilterViewFor beside KnownByYou and never trusted from the
+	// input; it is exactly `face_down && known_by_you`, on the wire
+	// rather than derived client-side because it is the rules
+	// permission and one place should own it. The client renders the
+	// real face plus a face-down badge when it is true and a card
+	// back when it is not. Added by ADR 0069.
+	FaceVisible bool `json:"face_visible,omitempty"`
 	// KnownByYou reports whether the viewer is currently a knower
 	// of this card's identity (S13.5). Computed per-viewer at
 	// FilterViewFor time. When false, printed characteristics
@@ -3037,6 +3055,13 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out := c
 	out.knowers = nil
 	out.KnownByYou = known
+	// ADR 0069 decision 6: "may this viewer look at the face" is the
+	// rules permission, computed here beside known_by_you and never
+	// carried in from the input. A face-down object's knowers are set
+	// to the CR 406.3a / CR 702.143d / CR 708.5 answer as it enters
+	// the state, so being a knower of a face-down card IS being
+	// allowed to look at it.
+	out.FaceVisible = c.FaceDown && known
 	if known {
 		return out
 	}
@@ -3110,6 +3135,77 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.LoyaltyActivated = false
 	out.Defense = 0
 	out.ProtectorPlayer = ""
+	return stampFaceDownPublicBody(out, c)
+}
+
+// stampFaceDownPublicBody puts the CR 708.2 body back onto a card the
+// redaction has just stripped, when that card is a FACE-DOWN PERMANENT
+// (ADR 0069 decision 6).
+//
+// The redaction above clears name, type line, colours and P/T because
+// on an ordinary hidden card those fields name it. On a face-down
+// permanent they are not the card's — they are the projection the
+// engine put in at layer 0, a 2/2 colourless creature with no name
+// that identifies nothing and that CR 708.2 makes PUBLIC. Opponents
+// have to see the 2/2 to block it, target it and count it.
+//
+// It re-stamps rather than widening `redactedCardKeys`, so the #646
+// zone × viewer table stays exactly as strict as it is for every card
+// that is not a face-down permanent, and this one case gets its own
+// cells. Everything that names the card — scryfall_id (the art),
+// mana_cost, faces, layout, oracle_id, auto, target_mode and the
+// ability lists — is still gone, and CatalogKey suppression means most
+// of it was never stamped.
+//
+// The restored fields are taken from `orig` — the view viewOfCard
+// built — rather than re-derived, because viewOfCard already read them
+// off the layer-0 projection and added the counter deltas the pip
+// needs. game.FaceDownBody is consulted only for "is this a CR 708.2
+// object", so there is still one definition of the 2/2 for the engine
+// and the wire both.
+// IsFaceDownPermanent reports whether this view is a CR 708.2 object —
+// a face-down permanent, which every viewer sees as a 2/2 colourless
+// creature with no name (ADR 0069 decision 3), as opposed to a
+// face-down card in exile, which has no characteristics at all.
+//
+// Exported for readers on this side of the wire — the bot's board
+// evaluator and prompt renderer — so "is this the public 2/2" has one
+// definition there too rather than a re-derivation per reader.
+func (c CardView) IsFaceDownPermanent() bool {
+	if !c.FaceDown {
+		return false
+	}
+	_, ok := game.FaceDownBody(game.FaceDownKind(c.FaceDownKind))
+	return ok
+}
+
+func stampFaceDownPublicBody(out, orig CardView) CardView {
+	if !out.IsFaceDownPermanent() {
+		// A face-down card in EXILE has no characteristics at all
+		// (CR 406.3a) and gets nothing back — it is not a permanent,
+		// and its real characteristics are exactly what must not
+		// reach a non-knower.
+		return out
+	}
+	// Name is "" on the projection, so restoring it is a no-op; it is
+	// here to say that the empty name is the OBJECT's name (CR 708.2:
+	// no name) and not a redaction.
+	out.Name = orig.Name
+	out.TypeLine = orig.TypeLine
+	out.Colors = orig.Colors
+	out.Power = orig.Power
+	out.NegativePower = orig.NegativePower
+	out.Toughness = orig.Toughness
+	// nil today; disguise and cloak's ward is #95's (ADR 0069 §3).
+	out.Abilities = orig.Abilities
+	// Counters on a face-down permanent are public — they are what
+	// makes the restored P/T add up, and a +1/+1 counter on a morph
+	// is visible across the table.
+	out.Counters = orig.Counters
+	// "Creature without haste" is public and combat-relevant: an
+	// opponent has to know whether the face-down 2/2 can attack this
+	// turn. It says "creature", which is already on the type line.
+	out.SummoningSick = orig.SummoningSick
 	return out
 }
 
@@ -3217,6 +3313,7 @@ func viewOfCard(c game.Card) CardView {
 		// battlefield and leaves them nil everywhere else (#29).
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
+		FaceDownKind:  string(c.FaceDownKind),
 		Auto:          game.IsAutoCard(game.CatalogKey(c)),
 		Unimplemented: game.Unimplemented(c),
 		TargetMode:    game.TargetModeFor(game.CatalogKey(c)),

@@ -602,3 +602,69 @@ sections above:
   the funnel depends on which one is used. The objection recorded
   there still applies to any deployed server pointed at a model on a
   home network.
+
+## Amendment (2026-09-18, #810, #619): the enumerator's X rule
+
+§1's contract is that every enumerated move is one `actions.Dispatch`
+accepts. Two bugs from the catalog soak sit either side of it: one where a
+move was legal, accepted, and still not worth offering, and one where the
+contract was simply broken.
+
+**1. A zero-effect X=0 move is not a move (#810).** CR 601.2b / 602.2b make
+X a number the caster announces and CR 107.3 leaves 0 legal wherever the
+printed text sets no floor, so the engine accepts Soothsaying's "{X}: Look
+at the top X cards of your library" at X=0 and is right to. It costs
+nothing, does nothing, and is back on the move list the moment it resolves —
+CR 732.2a's repeatable sequence of optional actions, which no player is ever
+made to keep repeating. A table of bots applied 79,519 actions in five
+minutes on turn 18 without the turn advancing.
+
+The rule is **one function**, `enumeratedXFloor` in
+`internal/legal/x.go`, shared by casts and activations because the mistake
+was identical on both sides: the smallest X the enumerator will announce for
+a cost carrying an {X} slot is 1 when the whole effect scales with X, and
+where that cannot be paid the move is not offered at all — the treatment
+Helm of Obedience's printed "X can't be 0" already got. Nothing about
+legality changes, and no card is special-cased.
+
+*"The whole effect scales with X" is declared, not guessed.*
+`effects.Spec.XMatters`, read through `game.XMattersFor`, is the catalog's
+one-bit answer to a question nothing else can derive. A card with a fixed
+RIDER — The Goose Mother's 2/2 flying body, Springleaf Parade's mana static
+— leaves it unset and keeps its X=0 offer, which is then made exactly when
+nothing larger is affordable, because the search takes the largest payable
+X. A source scan in `effects/x_matters_guard_test.go` fails the build on a
+Spec that reads `ctx.X()` without declaring, with an allowlist for riders.
+Thirty-four of the catalog's forty-two X cards declare; eight are riders.
+
+*Two gaps, both "the enumerator is not choosing X here".* An X announced by
+a cost that is not the mana cost is still announced as 0, because nothing in
+`internal/legal` prices such a cost: Toxic Deluge is offered at X=0 and
+sweeps for -0/-0. (Waterbender's Restoration is the same shape and lands on
+the other side of it — its clause counts FROM X, so rule 2 below declines to
+enumerate it at all.) And `CountFromX` on an activated ability has no engine
+support to mirror.
+
+**2. An X-defined target count ties X to the targets (#619).** Crackle with
+Power's target count *is* X, and the enumerator offered one target with X=0
+— a cast `cast_spell` refuses outright, which is a soundness break, not a
+quality one.
+
+An announcement is a list of target STEPS since #937
+(`game.AnnouncedClauses`), so the rule is written over those: a step whose
+clause has `CountFromX` is opened to 1..(largest payable X) rather than to
+its printed count, and the X the move announces is read back off the set —
+how many refs carry that step's (Mode, Slot). Two X-counted steps that
+disagree are not a set any announcement could cover, so they are dropped.
+The expansion is bounded by `MaxExpansionPerSource` like every other. It is
+the mirror image of the engine's own `resolveStepCountsFromX`, which pins
+the same clauses to an X already announced — the difference between
+validating an announcement and building one.
+
+The floor is 1, not 0: X=0 means zero targets and a spell that does nothing,
+so rule 1 covers it and no separate case is needed. A `CountFromX` clause
+whose X comes from a cost this package cannot price (Waterbender's
+Restoration's waterbend) is not enumerated at all, because the only
+announcement it could make is the one the engine refuses.
+
+**The bot's threat ordering (§1) is still not built** (#687). Unchanged.

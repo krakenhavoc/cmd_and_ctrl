@@ -52,6 +52,14 @@ func (g *Game) survivingSeatsLocked() int {
 //
 // Caller must hold g.mu, and must already have set p.Eliminated.
 func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
+	// 0. CR 702.143f, ADR 0069 decision 5: when a player leaves the
+	//    game, all cards they own that are face down in exile are
+	//    revealed. BEFORE step 1, because step 1 takes those cards out
+	//    of the game and there is nothing left to reveal afterwards.
+	//    A reveal is not a zone change, so this does not disturb the
+	//    no-zone-move posture the sweep below deliberately takes.
+	g.revealFaceDownOwnedByLocked(playerID)
+
 	// 1. Everything they own leaves the game.
 	removed := g.removeObjectsOwnedByLocked(playerID)
 

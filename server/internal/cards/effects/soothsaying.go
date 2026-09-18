@@ -35,6 +35,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "517b702a-2c5c-40d7-825e-6c674019b298",
 		Name:         "Soothsaying",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{

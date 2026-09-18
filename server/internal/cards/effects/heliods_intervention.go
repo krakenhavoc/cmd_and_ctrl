@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e7564d66-767c-4cd9-a5f0-0f2488a4a74b",
 		Name:         "Heliod's Intervention",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Destroy X target artifacts and/or enchantments.", b13XTargetArtifactsOrEnchantments()),
