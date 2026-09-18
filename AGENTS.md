@@ -1504,6 +1504,31 @@ that DOES count the command zone, and §5i says why.) The fire-and-forget
 their `int` for a sweep nothing is waiting on. See
 [ADR 0013 §5k](docs/decisions/0013-replacement-effects.md).
 
+**A ONE-CARD read-back uses the same `Then` (#870).** "Exile it with a
+hit counter on it", "you may exile it. If you do, return a card",
+Winds of Abandon's single-target mode: one card is not a smaller
+problem, because the one leg is the one that can pause. So there is no
+per-card exile path to keep in step — `ExileTarget{Target: id, Then:
+func(ctx, exiled bool) error}` and `g.ExileCardThenForEffect` are
+wrappers over the batch, and `exiled` is the batch's CR 400.7 answer.
+`ExileTarget` with no `Then`, and the bare `g.ExileCardForEffect(id)`,
+stay the fire-and-forget form: their `nil` means "no error", never "it
+is in exile". A card that reads the move at all reaches for the `Then`.
+
+**Never call a locking accessor inside a snapshot body (#877).**
+Anything that runs inside `g.ReadSnapshot(func(){…})` or
+`g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`
+is not reentrant in either mode: a second `RLock` from the same
+goroutine blocks the moment a writer is queued between the two, and a
+second `Lock` hangs outright. Use the lock-free `*ForEffect` accessor
+(`g.PlayerByIDForEffect`, not `g.PlayerByID`) or read the fields the
+body can already see — in tests exactly as much as in the engine, since
+every instance found so far was a test helper and one of them was the
+aiseat flake that read as a slow machine (#848 / #876).
+`game/snapshot_lock_guard_test.go` is the lint: it derives the
+dangerous set from the engine's own sources and fails on any of them
+called inside a snapshot body.
+
 **A `Then` clause runs even when the prompt is never answered (#865).**
 A paused exit whose prompt is taken away — its chooser conceded, or the
 card left by another route while the question was open — reaches the

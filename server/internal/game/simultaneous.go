@@ -564,6 +564,36 @@ func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exile
 	return g.routeAllThenLocked(exileRoute, ids, then)
 }
 
+// ExileCardThenForEffect is the SINGLE-CARD form: exile one card and
+// tell `then` whether it actually reached exile.
+//
+// #870. A one-card read-back is the same bug as a batch one and it
+// arrived by the same route: ExileCardForEffect returns nil when the
+// leg merely PAUSED on the CR 903.9 prompt, so "exile it with a hit
+// counter on it" put the counter on a card still in its owner's
+// graveyard. The answer is not a second exile path with its own notion
+// of what landed — that is how exile and destroy drifted apart in the
+// first place (#815, #866) — so this is a WRAPPER over the batch,
+// which already sequences the pause, carries the landed list across it
+// and replays identically under an undo. A batch of one publishes a
+// one-card simultaneous exit, which no watcher can observe: the
+// harvest skips the card whose own move is being reported.
+//
+// `exiled` is CR 400.7's reading, the batch's: true when the card is
+// in exile, false when the window cancelled the move, when a
+// replacement sent it somewhere else, and when a commander took
+// CR 903.9's offer — it left, but not to exile.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exiled bool) error) error {
+	return g.ExileCardsThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
 // BounceCardsToHandForEffect returns every card in `ids` to its
 // owner's hand as one simultaneous event and returns how many of them
 // reached a hand. Evacuation, an overloaded Cyclonic Rift, Whelming

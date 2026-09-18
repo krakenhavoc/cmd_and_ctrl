@@ -1008,6 +1008,11 @@ since §5i: how many of the legs that SETTLED landed where the route
 asked. A cancelled leg is not in it; a paused leg cannot be, which is
 what the `Then` forms are for.
 
+*#870: the SINGLE-CARD read-back joins this body rather than keeping
+its own — `ExileCardThenForEffect` is a wrapper over
+`ExileCardsThenForEffect` with a batch of one, so one card gets the
+same CR 400.7 answer and the same replay-under-undo as a sweep.*
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

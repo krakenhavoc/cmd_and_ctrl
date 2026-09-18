@@ -948,6 +948,12 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 // That is #372 (Airbend exiles a commander with no prompt). When the
 // prompt is queued nothing has moved yet and this returns nil; the
 // move completes when the owner answers.
+//
+// Which is why this is the FIRE-AND-FORGET form: nil means "no error",
+// never "it is in exile". A caller with an "if you do" or a "for each
+// card exiled this way" hanging off the move uses
+// ExileCardThenForEffect (one card) or ExileCardsThenForEffect
+// (several), which wait for the answer and report what landed (#870).
 func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 	_, err := g.routeCardToZoneLocked(zoneRoute{CardID: cardID, Dst: ZoneExile})
 	return err

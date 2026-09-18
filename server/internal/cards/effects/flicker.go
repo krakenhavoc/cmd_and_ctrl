@@ -55,24 +55,42 @@ func returnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// exileTargetsForDelayedReturn exiles every still-legal card target
-// on the resolving item and returns the instance IDs that actually
-// made it to exile, in announce order — the payload a delayed return
-// trigger carries.
+// exileTargetsThenScheduleReturn exiles every still-legal card target
+// on the resolving item as ONE event and, from that exile's
+// continuation, schedules the delayed trigger that returns the cards
+// which actually made it to exile, in announce order.
 //
 // The IDs survive the move: exiling does not re-mint an InstanceID,
 // only returning to the battlefield does (CR 400.7), so the delayed
-// trigger can name the exiled cards by the ID it saw here.
-func exileTargetsForDelayedReturn(ctx *Context) ([]uuid.UUID, error) {
-	var exiled []uuid.UUID
+// trigger can name the exiled cards by the ID the sweep saw.
+//
+// #870: the payload used to be built per exile call that returned no
+// error, which is not the same set — a commander among the targets
+// pauses on the CR 903.9 prompt, so its ID went into the payload
+// before its owner had answered, and a blink of three creatures was
+// not one event at all but three. The batch form is both halves at
+// once: the legs leave together, and the continuation is handed the
+// cards that reached exile.
+func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
+	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
 			continue
 		}
-		if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-			return exiled, err
-		}
-		exiled = append(exiled, t.ID)
+		ids = append(ids, t.ID)
 	}
-	return exiled, nil
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains.
+	item := ctx.Item
+	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
+		if len(exiled) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			At:     game.StepEnd,
+			Label:  label,
+			Cards:  exiled,
+			Effect: returnExiledCardsToOwners,
+		}.Apply(NewContext(g, item))
+	})
 }

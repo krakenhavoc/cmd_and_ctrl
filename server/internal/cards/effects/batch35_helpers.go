@@ -587,19 +587,29 @@ func b35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) erro
 // and nothing returns. A Greenwarden chosen as its own target is
 // exiled first and is then no longer in the graveyard, so nothing
 // returns either — as printed.
+//
+// #870: the "if you do" reads the exile's CONTINUATION rather than the
+// exile zone on the next line. The Greenwarden is a commander often
+// enough to matter, and a graveyard is a CR 903.9 zone: the old
+// read-back ran while the owner's prompt was still open, found the
+// card not in exile and returned nothing — and then the owner said
+// "exile it" and the card sat in exile with the second half of its own
+// trigger already skipped.
 func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
-	if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {
-		return err
-	}
-	if !g.Exile.Contains(item.SourceCardID) {
-		return nil
-	}
-	return b34ReturnChosenGraveyardCardToHand(ctx)
+	return ExileTarget{
+		Target: item.SourceCardID,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				return nil
+			}
+			return b34ReturnChosenGraveyardCardToHand(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // b35TenDamageToEachOpponentIfThirtyCounters is Lux Artillery's body:

@@ -235,44 +235,67 @@ func b18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
 }
 
 // b18ExileCreaturesThenControllersFetch is Winds of Abandon's body
-// for a set of creatures: exile them, then each former controller
-// searches for as many basic lands as they lost creatures, onto the
-// battlefield tapped. One search per player rather than one per
-// creature, so no two prompts are ever open over the same library
+// for a set of creatures: exile them as ONE event, then each former
+// controller searches for as many basic lands as they lost creatures,
+// onto the battlefield tapped. One search per player rather than one
+// per creature, so no two prompts are ever open over the same library
 // (Cultivate's rule); a player with three creatures exiled gets one
 // three-card search, which is the same three lands.
 //
-// Searches are queued in seat order so the prompts are answered in
-// a stable order; each shuffles as it finishes, which nothing can
-// observe.
+// #870: "for each creature exiled this way" is a CONTINUATION, and it
+// counts what ARRIVED in exile (CR 400.7). The old body called the
+// single-card exile per creature and paid a land for every call that
+// returned no error — which includes a leg that only PAUSED on the
+// CR 903.9 prompt and a leg the CR 614 window took away, so an
+// opponent whose commander was merely ASKED about the command zone
+// fetched a basic for a creature that is still on the battlefield.
+// The grouping is done from the batch's landed list instead: the
+// controllers are read BEFORE anything moves (afterwards the card is
+// in exile and a creature that had changed hands reads stale), the
+// exile is the shared batch form, and the counting happens when the
+// last leg has settled.
+//
+// Searches are queued in the order the exiled creatures were swept,
+// so the prompts arrive in a stable order; each shuffles as it
+// finishes, which nothing can observe.
 func b18ExileCreaturesThenControllersFetch(ctx *Context, creatures []game.Card, reason string) error {
-	owed := map[uuid.UUID]int{}
-	var order []uuid.UUID
+	controllers := make(map[uuid.UUID]uuid.UUID, len(creatures))
+	ids := make([]uuid.UUID, 0, len(creatures))
 	for _, c := range creatures {
 		if z := ctx.Game.FindCardZoneForEffect(c.InstanceID); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (ExileTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-			return err
-		}
-		if owed[c.Controller] == 0 {
-			order = append(order, c.Controller)
-		}
-		owed[c.Controller]++
+		ids = append(ids, c.InstanceID)
+		controllers[c.InstanceID] = c.Controller
 	}
-	for _, player := range order {
-		if err := (SearchLibrary{
-			Player:        player,
-			Predicate:     IsBasicLand,
-			Dest:          game.ZoneBattlefield,
-			Limit:         owed[player],
-			Reveal:        true,
-			Shuffle:       true,
-			TappedOnEntry: true,
-			Reason:        reason,
-		}).Apply(ctx); err != nil {
-			return err
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains.
+	item := ctx.Item
+	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
+		owed := map[uuid.UUID]int{}
+		var order []uuid.UUID
+		for _, id := range exiled {
+			controller := controllers[id]
+			if owed[controller] == 0 {
+				order = append(order, controller)
+			}
+			owed[controller]++
 		}
-	}
-	return nil
+		ctx := NewContext(g, item)
+		for _, player := range order {
+			if err := (SearchLibrary{
+				Player:        player,
+				Predicate:     IsBasicLand,
+				Dest:          game.ZoneBattlefield,
+				Limit:         owed[player],
+				Reveal:        true,
+				Shuffle:       true,
+				TappedOnEntry: true,
+				Reason:        reason,
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
