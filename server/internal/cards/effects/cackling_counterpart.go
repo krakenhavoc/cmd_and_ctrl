@@ -31,20 +31,6 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{U}{U}")},
 		Targets:          TargetCreature("target creature you control", YouControl()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				return CreateTokenCopy{
-					Controller: item.Controller,
-					Copy:       t.ID,
-					N:          1,
-				}.Apply(ctx)
-			}
-			// Every target left in response (CR 608.2c): the spell
-			// does as much as it can, which is nothing.
-			return nil
-		},
+		OnResolve:        TokenCopyOfSingleTarget,
 	})
 }

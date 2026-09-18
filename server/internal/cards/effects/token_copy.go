@@ -84,6 +84,30 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	return CreateToken{Controller: c.Controller, Template: tmpl, N: c.N}.Apply(ctx)
 }
 
+// TokenCopyOfSingleTarget is the whole body of the "create a token
+// that's a copy of target <thing>" family — Cackling Counterpart's
+// creature, Relm's Sketching's artifact, creature or land. The target
+// clause is the only thing those cards do not share, and it lives on
+// the Spec.
+//
+// It reads the first still-legal card target and copies it under the
+// resolving item's controller. Every target having left in response
+// is not an error: the spell does as much as it can, which is nothing
+// (CR 608.2c).
+func TokenCopyOfSingleTarget(item *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return CreateTokenCopy{
+			Controller: item.Controller,
+			Copy:       t.ID,
+			N:          1,
+		}.Apply(ctx)
+	}
+	return nil
+}
+
 // TokenCopyTemplate builds a CreateToken template carrying the
 // copiable values (CR 707.2) of the card `cardID`, wherever it
 // currently sits. Reports ok=false when no such card exists.
