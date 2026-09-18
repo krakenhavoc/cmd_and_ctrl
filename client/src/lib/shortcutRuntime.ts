@@ -19,13 +19,14 @@
 // remount in App.svelte does exactly this), and an unguarded
 // unregister would then tear down the NEW route's handlers.
 
-import { writable, get, type Readable, type Writable } from "svelte/store";
+import { get, type Readable, type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import { idleContext, type ShortcutContext, type ShortcutID } from "./shortcuts";
 
 export type ShortcutHandlers = Partial<Record<ShortcutID, () => void>>;
 
-const handlersStore = writable<ShortcutHandlers>({});
-const contextStore = writable<ShortcutContext>(idleContext());
+const handlersStore = guardedWritable<ShortcutHandlers>({}, "shortcutHandlers");
+const contextStore = guardedWritable<ShortcutContext>(idleContext(), "shortcutContext");
 
 export const shortcutHandlers: Readable<ShortcutHandlers> = {
   subscribe: handlersStore.subscribe,
@@ -70,7 +71,7 @@ export function currentHandlers(): ShortcutHandlers {
 // shortcutsHelpOpen drives the `?` overlay. Lives here rather than in
 // the overlay component so any surface can open it — the Settings
 // panel's "show the cheat sheet" link does.
-export const shortcutsHelpOpen: Writable<boolean> = writable(false);
+export const shortcutsHelpOpen: Writable<boolean> = guardedWritable(false, "shortcutsHelpOpen");
 
 export function openShortcutsHelp(): void {
   shortcutsHelpOpen.set(true);

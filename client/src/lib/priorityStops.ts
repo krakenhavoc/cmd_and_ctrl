@@ -28,11 +28,12 @@
 // manual stops are a now-intent, not a preference. Cleared on page
 // reload, cleared on consume, cleared on toggle-off.
 
-import { writable, get, type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { StepID } from "./turn";
 import { NO_PRIORITY_STEPS } from "./turn";
 
-const manual = writable<Set<StepID>>(new Set());
+const manual = guardedWritable<Set<StepID>>(new Set(), "manualStops");
 
 // manualStops is the read-only view used by reactive consumers
 // (PhaseDisplay highlights, Game.svelte auto-pass override).
