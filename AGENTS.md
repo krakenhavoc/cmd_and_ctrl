@@ -1515,6 +1515,20 @@ wrappers over the batch, and `exiled` is the batch's CR 400.7 answer.
 stay the fire-and-forget form: their `nil` means "no error", never "it
 is in exile". A card that reads the move at all reaches for the `Then`.
 
+**Never call a locking accessor inside a snapshot body (#877).**
+Anything that runs inside `g.ReadSnapshot(func(){…})` or
+`g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`
+is not reentrant in either mode: a second `RLock` from the same
+goroutine blocks the moment a writer is queued between the two, and a
+second `Lock` hangs outright. Use the lock-free `*ForEffect` accessor
+(`g.PlayerByIDForEffect`, not `g.PlayerByID`) or read the fields the
+body can already see — in tests exactly as much as in the engine, since
+every instance found so far was a test helper and one of them was the
+aiseat flake that read as a slow machine (#848 / #876).
+`game/snapshot_lock_guard_test.go` is the lint: it derives the
+dangerous set from the engine's own sources and fails on any of them
+called inside a snapshot body.
+
 **A `Then` clause runs even when the prompt is never answered (#865).**
 A paused exit whose prompt is taken away — its chooser conceded, or the
 card left by another route while the question was open — reaches the

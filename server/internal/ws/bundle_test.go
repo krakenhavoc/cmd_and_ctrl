@@ -22,10 +22,20 @@ func newBundleRoom(t *testing.T) (*Room, string) {
 	return NewRoom(seedTestGame(t), slog.New(slog.NewTextHandler(io.Discard, nil)), dir), dir
 }
 
+// lifeIn reads a seat's life total under the game's read lock.
+//
+// PlayerByIDForEffect, not PlayerByID: ReadSnapshot is already holding
+// g.mu in read mode, and sync.RWMutex is not reentrant — a second
+// RLock from this goroutine blocks as soon as a writer is queued
+// between the two, because Go blocks a new reader behind a waiting
+// Lock so writers cannot starve. #877; the same recursion was #848's
+// aiseat flake. Anything called inside a snapshot body has to be a
+// *ForEffect accessor or a plain field read, and
+// game/snapshot_lock_guard_test.go now fails on anything else.
 func lifeIn(g *game.Game, seat uuid.UUID) int {
 	var life int
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(seat); p != nil {
+		if p := g.PlayerByIDForEffect(seat); p != nil {
 			life = p.Life
 		}
 	})
