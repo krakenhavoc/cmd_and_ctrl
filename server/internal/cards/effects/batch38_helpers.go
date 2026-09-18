@@ -17,7 +17,7 @@ import (
 // damageEachMatching, "N damage to each opponent" is
 // damageToEachOpponent, the tapped-dual land shapes are
 // SelfEntersTapped / SelfEntersTappedUnless(
-// b34OpponentsControlLandsAtLeast(n)) and b36DesertDual, the lord
+// b40CatchUpDualCondition()) and b36DesertDual, the lord
 // builders are TribalAnthem / TribalKeywordGrant, cascade is
 // Cascade(), "as this enters, choose a creature type" is
 // ChooseCreatureTypeAsEnters plus TribeFilter{Chosen: true},

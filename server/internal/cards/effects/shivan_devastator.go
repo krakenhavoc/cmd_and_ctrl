@@ -33,6 +33,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "b7daa74c-6142-4107-9355-be98af6ccf13",
 		Name:            "Shivan Devastator",
+		XMatters:        true,
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The X +1/+1 counters are put on the Dragon as the spell resolves, a moment before it enters, so effects that watch you put counters on a permanent may not see them."},
 		PrintedKeywords: []string{"flying", "haste"},

@@ -14,7 +14,7 @@ import (
 // What is NOT here, because the package already had it: "this
 // permanent enters" is b06SelfETB, the enters-tapped replacements are
 // SelfEntersTapped / SelfEntersTappedUnless, "your opponents control
-// N lands" is b34OpponentsControlLandsAtLeast (wrapped below so the
+// eight or more lands" is b40CatchUpDualCondition (below, so the
 // catch-up cycle's threshold is written once), "each player draws N"
 // is b05EachPlayerDraws, "N damage to each opponent" is
 // damageToEachOpponent, "this ability triggers only once each turn"
@@ -35,7 +35,15 @@ import (
 // number wrong, and five lands whose thresholds disagreed would be
 // invisible until someone played the odd one out.
 func b40CatchUpDualCondition() func(g *game.Game, controller uuid.UUID) bool {
-	return b34OpponentsControlLandsAtLeast(8)
+	return func(g *game.Game, controller uuid.UUID) bool {
+		total := 0
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Controller != controller && c.IsLand() {
+				total++
+			}
+		}
+		return total >= 8
+	}
 }
 
 // --- predicates ----------------------------------------------------

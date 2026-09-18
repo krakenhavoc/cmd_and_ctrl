@@ -93,7 +93,6 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Squirrel":                            {Name: "Squirrel", TypeLine: "Token Creature — Squirrel", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 red Dwarf":                                 {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Elemental":                             {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 1, Colors: []string{"R"}},
-	"1/1 blue Merfolk with hexproof":                {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	"1/1 red Goblin":                                {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Human":                                 {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Goblin with haste":                     {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},

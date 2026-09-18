@@ -35,7 +35,7 @@ func init() {
 		OracleID:      "2eb4da30-2600-4a7f-8e6c-6a090faa9a8d",
 		Name:          "Turbulent Moor",
 		Completeness:  CompletenessFull,
-		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b34OpponentsControlLandsAtLeast(8))},
+		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b40CatchUpDualCondition())},
 		ManaAbilities: []ManaAbility{dualManaAbility("W", "B")},
 	})
 }
