@@ -185,9 +185,12 @@ export interface GameView {
   // game UI. Added in S08.
   mulligans_open: boolean;
   // Player ID of the current monarch (Conspiracy mechanic). Empty /
-  // omitted when no monarch is set. Sandbox marker; the must-attack
-  // and combat-damage transfer rules are not enforced server-side.
-  // Added in S10.
+  // omitted when no monarch is set. Since #375 the server enforces
+  // CR 724.2 itself — the monarch's end-step draw, and the transfer
+  // to whoever deals combat damage to them — so this field moves on
+  // its own and the crown below follows it. The set_monarch action
+  // stays as the way a card (or a table fixing the board) hands the
+  // designation out in the first place. Added in S10.
   monarch?: string;
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
