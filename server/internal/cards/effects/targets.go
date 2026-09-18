@@ -573,3 +573,35 @@ func HasSubtype(sub string) CardPredicate {
 func Legendary() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLegendary() }
 }
+
+// Clauses builds a multi-clause target statement out of the ordinary
+// single-clause constructors, in printed order (#764, ADR 0065 §1):
+//
+//	Targets: Clauses(
+//		TargetCreature("target creature you control", YouControl()),
+//		Distinct(TargetCreatureOrPlaneswalker(
+//			"target creature or planeswalker you don't control", OpponentControls())),
+//	),
+//
+// The result IS the first clause with the rest hung off it, which is
+// why a one-clause card needs none of this and reads exactly as it
+// did. Nil entries are skipped; a single argument is returned
+// unchanged.
+func Clauses(first *game.TargetSpec, then ...*game.TargetSpec) *game.TargetSpec {
+	if first == nil {
+		return nil
+	}
+	return first.Then(then...)
+}
+
+// Distinct marks a clause whose picks must differ from every EARLIER
+// clause's picks in the same statement — "a SECOND target permanent
+// you control". CR 601.2c lets one object fill two different
+// instances of the word "target" unless the card says otherwise, so
+// this is opt-in.
+func Distinct(spec *game.TargetSpec) *game.TargetSpec {
+	if spec != nil {
+		spec.Distinct = true
+	}
+	return spec
+}

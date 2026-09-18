@@ -523,6 +523,13 @@ func playerName(g *game.Game, id uuid.UUID) string {
 type targetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answers (#764),
+	// so the engine validates a multi-clause or per-mode enumeration
+	// against the clause the enumerator picked it for rather than
+	// re-deriving it. Omitted at zero, which is every single-clause
+	// non-modal move.
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 func wireTargets(refs []game.TargetRef) []targetWire {
@@ -531,7 +538,7 @@ func wireTargets(refs []game.TargetRef) []targetWire {
 	}
 	out := make([]targetWire, 0, len(refs))
 	for _, r := range refs {
-		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String()})
+		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String(), Slot: r.Slot, Mode: r.Mode})
 	}
 	return out
 }

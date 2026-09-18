@@ -561,7 +561,7 @@ func TestMultiTargetPartialAndFullFizzle(t *testing.T) {
 		if !g.TargetStillLegalForEffect(item, TargetRef{Kind: TargetCard, ID: b}) {
 			t.Errorf("surviving target reported illegal")
 		}
-		if spellAllTargetsIllegalLocked(g, item, item.targetSpec) {
+		if spellAllTargetsIllegalLocked(g, item) {
 			t.Errorf("one legal target left: must not fizzle")
 		}
 		if err := g.resolveTopOfStackLocked(); err != nil {
