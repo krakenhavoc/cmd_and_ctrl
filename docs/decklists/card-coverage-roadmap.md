@@ -69,38 +69,47 @@ is a comment on its card file.
 | 37–40 | #400–#403 | 0 | 0 | — | not started |
 | 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
 
-### Where the work actually is — re-triaged 2026-09-18
+### Where the work actually is — measured 2026-09-18
 
-The Progress table above says what has been *registered*. It does not
-say what is *available*, and those two numbers have drifted a long way
-apart, because a batch only ever harvests its "no new machinery" group
-and the group was measured with detectors frozen at batch 01.
+The Progress table above says what has been *registered*. It does not say
+what is *available*, and the two have drifted apart because a batch only
+ever harvests its "no new machinery" group.
 
-Re-sorting all sixty batch issues against what is on `develop` today —
-their own card lists, re-filed, not a new detection pass:
+**Read the status comment on a batch issue, not the issue body.** Every
+one of the sixty issues carries a per-card `Status 2026-09-1x` comment
+checked against `develop`, and that comment — not the body — is the
+current triage. The bodies were written against the frozen batch-01
+detector set and still file cards under the five mechanics above; the
+status comments already correct for that, list each card's *other*
+blockers in parentheses, and carry a refutation checklist. A re-sort of
+the bodies alone overcounts, because dominant-blocker filing hides
+second blockers.
 
-| | batches 01–20 | 21–36 | 37–60 | total |
-|---|---:|---:|---:|---:|
-| registered | 591 | 404 | 0 | **995** |
-| still-advertised ready | 179 | 117 | 812 | 1,108 |
-| **blocked by a mechanic that has shipped** | **639** | **522** | **806** | **1,967** |
+**What the first six batches actually measured.** Batches 37–43 were
+worked on 2026-09-18 against today's `develop`:
 
-Roughly **2,900 cards are writable today with no new engine work** —
-somewhat fewer once the walked batches' declared skips come out of the
-"still-advertised ready" row, since a skip is a decision not a backlog.
-About 1,000 more sit in the four partly-unblocked groups.
+| Batch | Scoped as writable | Registered | Rate |
+|---|---:|---:|---:|
+| 38 | 62 | 40 | 65% |
+| 39 | 62 | 31 | 50% |
+| 40 | 59 | 33 | 56% |
+| 41 | 71 | 46 | 65% |
+| 42 | ~40 | 29 | ~72% |
+| **total** | **~294** | **179** | **~61%** |
 
-Two consequences worth stating plainly:
+**So roughly 60% of a "ready" card actually gets written, not the
+umbrella's 86%.** Every miss but two was a *hidden second blocker*
+rather than a mechanic anyone thought was missing — cards whose real
+blocker is an unimplemented keyword (level up, prowess, ninjutsu,
+persist, cycling, offspring) are the worst case, because a keyword's
+absence never surfaces in a dominant-blocker filing at all.
 
-- **The batch lane is not blocked on the engine and has not been for a
-  while.** The five mechanics that unlocked the most cards have all
-  shipped. What is left in S36–S49 is mostly rules *correctness* —
-  cards already in the catalog behaving right — which is worth doing
-  on its own merits and is not the lever for card count.
-- **The bottleneck is this document and the sixty issues under it.**
-  An agent that opens batch 43 reads "37 cards need no new machinery"
-  when the real figure is 77, writes 37, and files the rest as blocked
-  on mechanics that shipped weeks ago. That is the whole gap.
+Two cards went the other way and shipped *better* than filed: Bygone
+Colossus (warp is implemented end to end, #324) and Decoction Module
+(energy is a real player counter already).
+
+Plan against ~60%, and expect the skip list to be as useful an output as
+the cards — it is what tells you which primitive to build next.
 
 <!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
 
