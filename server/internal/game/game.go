@@ -996,8 +996,11 @@ func (g *Game) stepExistsLocked(s Step) bool {
 //     than combat_damage) lets the client keep its combat-arrow
 //     overlay visible through the entire combat_damage step instead
 //     of vanishing the moment damage is resolved.
-//   - StepCleanup (S13): auto-advance past cleanup to the next
-//     seat's turn. S13.4 will hook interactive discard in here.
+//   - StepCleanup (S13): the CR 514.1 hand-size discard pauses the
+//     cursor here (S13.4); the CR 514.2 sweep runs; then cleanup.go's
+//     one exit either ends the turn (CR 514.3) or gives the active
+//     player priority in this step and comes back for a second
+//     cleanup step (CR 514.3a, #661).
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
@@ -1239,14 +1242,14 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// player left the game, or the sandbox pass_turn verb — ends
 		// through the same code (ADR 0059 Decision 6, #766).
 		g.sweepTurnEndLocked()
-		// Auto-advance only when no player owes discard. Otherwise
-		// the cursor sits at Cleanup with PriorityHolder=NoPriority
-		// until DiscardSelection drains the pending map and re-fires
-		// this hook.
-		if len(g.DiscardPending) == 0 {
-			g.advanceCursorLocked()
-			g.runStepEntryHooksLocked()
-		}
+		// CR 514.3 / 514.3a: the turn ends here — unless a state-based
+		// action fired or a trigger is waiting, in which case the
+		// active player gets priority in this step and another cleanup
+		// step follows. The cursor also sits here, with
+		// PriorityHolder=NoPriority, while any player owes a discard;
+		// DiscardSelection calls the same exit once the pending map
+		// drains. One exit, one decision — see cleanup.go (#661).
+		g.exitCleanupStepLocked()
 	}
 }
 

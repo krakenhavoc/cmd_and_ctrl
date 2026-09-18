@@ -93,7 +93,7 @@ func runDamageScenario(t *testing.T, sc damageScenario, paused bool) *Game {
 		if len(g.PendingChoices) != 0 {
 			t.Fatalf("unpaused run queued %d choices, want 0", len(g.PendingChoices))
 		}
-		g.WithWriteLock(g.runStateChecksLocked)
+		g.WithWriteLock(func() { g.runStateChecksLocked() })
 		return g
 	}
 

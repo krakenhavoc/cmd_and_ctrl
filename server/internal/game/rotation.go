@@ -39,8 +39,8 @@ package game
 // TurnScopedGameEndGates or ADR 0045's TurnScopedBlockRules land,
 // their sweeps join this function rather than the cleanup hook.
 //
-// Idempotent: the cleanup hook runs it again after a discard pause
-// drains, and a player leaving during that pause runs it once more.
+// Idempotent: CR 514.3a's second cleanup step runs it again (#661),
+// and a player leaving during a discard pause runs it once more.
 //
 // Not safe in the middle of a state-based action pass: the lethal
 // damage and deathtouch SBAs (CR 704.5g/h) read the marks this clears.

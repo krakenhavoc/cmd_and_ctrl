@@ -1286,6 +1286,21 @@ attacking (CR 506.3c) is not declared and announces nothing. See
 [ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
 Decisions 19-21 and 22.
 
+**A trigger in the cleanup step gets priority (#661, CR 514.3a).**
+Cleanup normally grants nobody priority, so a trigger queued there —
+the hand-size discard is the usual one — used to wait for the next
+player's upkeep. It doesn't now: if a state-based action is performed
+or a trigger is waiting, the SBAs happen, the triggers go on the
+stack, the active player gets priority **in** the cleanup step, and
+once the stack is empty and everyone passes, **another cleanup step
+begins** (hand size checked again, the CR 514.2 sweep run again, so an
+"until end of turn" effect a cleanup trigger creates still ends this
+turn). One exit decides it, `exitCleanupStepLocked`
+(`server/internal/game/cleanup.go`), called from the cleanup step-entry
+hook and from `DiscardSelection`'s resume. Nothing changes for a quiet
+cleanup: it ends the turn in the same call it always did, so no new
+auto-pass stop appears.
+
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:
 `g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
