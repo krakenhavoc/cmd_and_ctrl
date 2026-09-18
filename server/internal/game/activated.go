@@ -651,7 +651,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// rather than an event of its own — the same kind a triggered
 	// ability announces with — so the notch is here rather than in
 	// turnTallyListener, which cannot tell the two apart.
-	g.notePlayerDecisionLocked()
+	//
+	// #810: every run but THIS ability's. A free, repeatable
+	// activation is a loop whose every iteration is a player
+	// decision, and clearing its own run was what kept the breaker
+	// from ever seeing it. See notePlayerActivationLocked.
+	g.notePlayerActivationLocked(TallyKey(cardID, ab.Label))
 	g.EmitEvent(Event{
 		Kind:   EventTrigger,
 		Actor:  playerID,

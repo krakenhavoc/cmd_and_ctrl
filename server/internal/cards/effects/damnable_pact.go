@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "28dd0ae4-fc56-4abf-af24-6c6c8d0a10cd",
 		Name:         "Damnable Pact",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

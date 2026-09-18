@@ -429,6 +429,31 @@ func (r *Runner) step(ctx context.Context) bool {
 			r.observe(in, out, &mv, 0, false, nil)
 			return true
 		}
+		// #810, the other shape of the same runaway. A trigger loop
+		// runs itself and the breaker stops it by suspending automatic
+		// PASSES. An activation loop is fed one activation at a time,
+		// so the move that keeps it turning is not a pass and the line
+		// above never sees it — a bot handed a free, repeatable
+		// ability took it until the wall clock ran out. A bot's
+		// activation of the permanent the notice names is as automatic
+		// as its pass, so it holds on that too, and holds on nothing
+		// else: any other move is progress and clears the notice like
+		// any other decision.
+		//
+		// The notice names a permanent and one of its abilities; this
+		// matches on the permanent. Holding a second ability of the
+		// same source for as long as the notice stands is the
+		// conservative direction — the notice means "stop feeding this
+		// card" — and it costs a bot nothing it could not do on the
+		// next turn.
+		if mv.Kind == legal.KindActivate {
+			if n := r.room.Game.CurrentLoopNotice(); n != nil && n.Source == mv.Source {
+				r.log.Warn("bot holding: the loop breaker named this permanent's ability (CR 726)",
+					"move", mv.Label, "ability", n.Label, "count", n.Count)
+				r.observe(in, out, &mv, 0, false, nil)
+				return true
+			}
+		}
 		r.pace(ctx, started)
 		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {
 			r.holdForBlockers(ctx)

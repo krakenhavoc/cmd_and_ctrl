@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b2347910-d6c6-4681-8316-7ef27056485c",
 		Name:         "Secure the Wastes",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Warrior"), N: ctx.X()}.Apply(ctx)

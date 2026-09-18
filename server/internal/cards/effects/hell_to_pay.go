@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7dc7d90d-5979-4c4a-9183-392e0e0b878a",
 		Name:         "Hell to Pay",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

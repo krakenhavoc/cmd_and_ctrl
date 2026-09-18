@@ -38,6 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1c36ed3a-c806-47e5-83f9-e44999c67fe5",
 		Name:         "Primordial Hydra",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -41,6 +41,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "82f3faa8-39fa-450b-843f-d60a4c36d8f7",
 		Name:         "Mikaeus, the Lunarch",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The X +1/+1 counters are put on Mikaeus as the spell resolves, a beat before he enters, so effects that watch you put counters on a permanent don't see them.",
