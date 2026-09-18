@@ -40,14 +40,13 @@ func init() {
 				return err
 			}
 			for _, opp := range ctx.Opponents() {
-				milled := opp
 				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 					Player:   opp,
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Vicious Rumors — discard a card, then mill a card",
 					Then: func(g *game.Game) error {
-						return g.MillNForEffect(milled, 1)
+						return g.MillNForEffect(opp, 1)
 					},
 				})
 			}
