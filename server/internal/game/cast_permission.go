@@ -252,6 +252,16 @@ type CastPermission struct {
 	AnyColor bool `json:"anyColor,omitempty"`
 
 	// --- the window ------------------------------------------------
+	//
+	// FOLLOW-UP (ADR 0066): these three fields predate ADR 0063's
+	// game.Duration, which landed on develop while this work was in
+	// flight, and they are a second duration vocabulary until they are
+	// swapped for one. Active below is the single function that reads
+	// them, which is what keeps the swap contained; it is not free
+	// because Duration expiry needs the game, so Active becomes a
+	// method on *Game and every caller moves with it. NotBeforeTurn
+	// survives either way — warp's "on a later turn" is a FLOOR, and
+	// Duration has no concept of one.
 
 	// UntilTurn is the last turn number the permission is live on.
 	// "Until end of turn" grants the turn it was created in. A turn

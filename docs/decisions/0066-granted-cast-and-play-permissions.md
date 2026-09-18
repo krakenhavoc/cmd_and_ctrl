@@ -106,16 +106,27 @@ whole of "for as long as the source remains" — there is no expiry code to get
 wrong, and a Breach that is exiled in response to the cast stops granting
 before the cast is validated, which is what CR 702.138 says.
 
-This is why the ADR does **not** grow a second duration vocabulary. #756's
+**The duration model, and a follow-up this ADR owes.** #755/#756's
 `game.Duration` (`UntilEndOfTurn`, `UntilYourNextTurn`, `ForAsLongAs`,
-`Indefinite`) is the project's duration model and lands on its own branch;
-the only durations a *stored* permission needs are "until end of turn" and
-"while the card stays in the zone", which are the two fields
-`ExilePlayPermission` already had. `castPermissionLiveLocked` is the single
-function that reads `UntilTurn` / `NotBeforeTurn` / `WhileInZone`, so when
-#755/#756 merges the migration is that one function plus a field swap, and
-Past in Flames' "until end of turn" becomes
-`g.UntilEndOfTurnDuration()` without any caller changing.
+`Indefinite`, ADR 0063) is the project's one duration vocabulary. It landed
+on `develop` *while this work was in flight*, and the permission's window is
+still the `{UntilTurn, NotBeforeTurn, WhileInZone}` triple `ExilePlayPermission`
+carried. That is a second vocabulary, it is not meant to stay, and it is
+recorded here rather than left to be discovered.
+
+Two things make it a contained debt. The stored permissions need exactly two
+of `Duration`'s four kinds — "until end of turn" (Snapcaster, Past in Flames,
+impulse exile) and "while the card stays in the zone" (airbend, warp) — and
+the standing ones need none at all, because deriving them from the battlefield
+IS `ForAsLongAs`. And `CastPermission.Active` is the single function that reads
+the triple, so the swap is that function plus its call sites.
+
+It is not free, which is why it is a follow-up rather than a line in this PR:
+`Duration` expiry needs the game (`durationExpiredLocked`), so `Active(player,
+turn)` becomes a method on `*Game` and every caller — including
+`faceForCastLocked` and about a hundred test literals — moves with it. The
+follow-up is tracked; `NotBeforeTurn` survives it either way, because warp's
+"on a later turn" is a FLOOR and `Duration` has no concept of one.
 
 ### 2. CR 400.7 is an object-identity check, not a sweep
 
@@ -301,7 +312,8 @@ Permissions are **data**, classified `carried`:
 
 - `Player.CastPermissions` — carried. Who may cast what is not derivable from
   the board, and a restore that dropped it would silently revoke a Snapcaster
-  or a cascade hit that has not been cast yet.
+  or a cascade hit that has not been cast yet. `game.Duration` is pure data
+  too, so the follow-up above does not change this classification.
 - `Card.ObjectEpoch` — carried. A restore that dropped it would reset every
   card to epoch 0 and revive every permission ever granted against it.
 - Standing permissions and library-top visibility are **not stored at all**,
@@ -359,6 +371,11 @@ Mm'menon-style "not cast from hand" restrictions will read `library` and
   validates with, so neither can advertise a cast the engine will refuse.
 
 ### Tradeoffs
+
+- The permission's window is still its own three fields rather than
+  `game.Duration`, which is a second duration vocabulary for as long as the
+  follow-up is open. It is the one thing in this ADR that is not yet the
+  single model the rest of it argues for.
 
 - `CastPermission` is a wide struct — wider than `ExilePlayPermission` was —
   and most of it is zero on most permissions. That is the price of one model;

@@ -1840,12 +1840,13 @@ func ViewOfGame(g *game.Game) GameView {
 			PendingChoices:    viewOfPendingChoices(g),
 			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
-		stampLegalTargets(g, view.Seats)
-		// ADR 0066. Gated, and the gate is load-bearing rather than
-		// tidy: these passes ask a per-card question whose answer is
-		// "nobody may play this" in almost every game, and a bot's
-		// decision loop pays for every frame it builds.
-		if g.AnyCastPermissionsForEffect() {
+		// ADR 0066. Asked ONCE per frame and threaded down, not per
+		// seat and not per card: the answer is "nobody may play this"
+		// in almost every game, it costs a walk of the battlefield,
+		// and a bot's decision loop pays for every frame it builds.
+		anyGrant := g.AnyCastPermissionsForEffect()
+		stampLegalTargets(g, view.Seats, anyGrant)
+		if anyGrant {
 			stampGrantedPermissions(g, &view.Exile, g.Exile)
 			for si := range view.Seats {
 				seat := g.PlayerByIDForEffect(mustParseSeatID(view.Seats[si].ID))
@@ -1976,7 +1977,7 @@ func capLegalMoves(moves []LegalMoveView) []LegalMoveView {
 // that pass. Everything downstream — including the alternative-cost
 // offers, which are filtered to the ones claimable from the zone the
 // card is actually in — then reads the same for all three.
-func stampLegalTargets(g *game.Game, seats []PlayerView) {
+func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 	for si := range seats {
 		seat := &seats[si]
 		caster, err := uuid.Parse(seat.ID)
@@ -1999,7 +2000,6 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 			// library the viewer may not see into.
 			{&seat.Library, game.ZoneLibrary, zoneOf(live, game.ZoneLibrary)},
 		}
-		anyGrant := g.AnyCastPermissionsForEffect()
 		for _, zone := range zones {
 			// CR 401.5: a library is a cast surface for exactly one
 			// card, the top one, and the top is the LAST element.
