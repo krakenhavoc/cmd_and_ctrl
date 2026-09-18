@@ -29,6 +29,54 @@ func IsBasicLand(c game.Card) bool {
 	return containsFoldASCII(c.TypeLine, "basic land")
 }
 
+// lookAtTargetPlayersHandThenDraw is "Look at target player's hand.
+// Draw a card." — Gitaxian Probe and Peek, which print the same two
+// sentences at different prices.
+//
+// "Look at" is not "reveal", and that is the whole body: only the
+// CASTER learns the hand, so each card is marked with the caster as a
+// knower rather than routed through RevealHandForEffect, which would
+// show the hand to the whole table — information neither printed card
+// gives the other players.
+//
+// The hand is read at resolution, so a discard or a draw in response
+// changes what is seen. A target player with no hand zone, or one who
+// has left, is skipped and the draw still happens — the draw is not
+// conditional on the look.
+func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {
+		if p := ctx.PlayerByID(item.Targets[0].ID); p != nil && p.Hand != nil {
+			for i := range p.Hand.Cards {
+				p.Hand.Cards[i].AddKnower(ctx.Controller())
+			}
+		}
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// IsBasicLandOfAnySubtype is "a basic <A>, <B>, or <C> card" — the
+// narrowed fetch predicate the multicolour fetch lands print. Shared
+// by the New Capenna Overlook cycle (b08OverlookLand) and the Alara
+// Panorama cycle (b43PanoramaFetch), which name the same clause with
+// different costs around it.
+//
+// Post-layer subtypes are irrelevant here: the card being matched is
+// in a LIBRARY, where nothing changes its type line.
+func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
+	want := append([]string(nil), subtypes...)
+	return func(c game.Card) bool {
+		if !IsBasicLand(c) {
+			return false
+		}
+		for _, s := range want {
+			if c.HasSubtype(s) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // containsFoldASCII is a zero-alloc case-insensitive substring
 // check for ASCII-only needles. The type lines we feed this come
 // straight from Scryfall and are plain ASCII; if future text goes
