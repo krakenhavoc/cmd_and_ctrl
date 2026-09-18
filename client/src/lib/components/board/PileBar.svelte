@@ -16,6 +16,7 @@
   import PileButton from "./PileButton.svelte";
   import CommandZone from "./CommandZone.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
+  import { visibleLibraryTop } from "../../libraryTop";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -28,6 +29,14 @@
   }
 
   const { seat, exile, isSelf, sendAction, onDrawCard }: Props = $props();
+
+  // S42 / CR 401.5: "you may look at the top card of your library any
+  // time" and "play with the top card of your library revealed" both
+  // reach the client as one readable card at the top of the library
+  // zone. When one arrives the pile shows it instead of a back — for
+  // its owner under a "look" clause, and for the whole table under a
+  // "revealed" one, because the server has already decided which.
+  const libraryTop = $derived(visibleLibraryTop(seat.library));
 
   // S18.5 — graveyard + exile chips open the browser modal. Always
   // available to every viewer (public-info zones). Library stays
@@ -45,7 +54,7 @@
   <PileButton
     label="library"
     zone={seat.library}
-    faceDown
+    faceDown={libraryTop === null}
     disabled={!isSelf || !onDrawCard}
     onClick={isSelf ? onDrawCard : undefined}
   />

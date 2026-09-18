@@ -667,6 +667,34 @@ download.
 
 ---
 
+### Granted cast permissions and the top of your library (S42)
+
+Three additive fields, none of them breaking (`v` unchanged):
+
+- **`cast_spell.from_zone` accepts `"library"`** — CR 401.5's "you may
+  play lands and cast spells from the top of your library". Only the
+  TOP card of the caller's own library is ever legal, and only while a
+  permanent grants both the permission and the visibility; the server
+  refuses anything else. `"hand"`, `"command"`, `"graveyard"` and
+  `"exile"` are unchanged.
+- **`castable_here` and `alternative_costs` on a graveyard or library
+  card now include GRANTED permissions**, not only the ones a card's
+  own text prints (ADR 0066). A card Snapcaster Mage gave flashback to
+  renders the same cast affordance a Faithless Looting does, with the
+  synthesised offer in its picker. The stamp is about the zone's
+  OWNER, as it has been since S29.
+- **An opponent's `library.cards` may now carry exactly one card** —
+  the top one, when "play with the top card of your library revealed"
+  (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer
+  is a knower of it. Every other library card stays hidden, `count`
+  stays public as before, and a one-shot "reveal the top two cards"
+  does NOT open the zone: it makes those cards known without making
+  them visible where they sit.
+
+`exile_play` is unchanged in name and shape. It is now projected from
+the per-player permission store rather than from a field on the card,
+which is invisible on the wire.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client

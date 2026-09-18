@@ -2286,17 +2286,65 @@ zone and the price are separate fields. `Warp("{R}")` is paid from
 **hand**, so it needs no `CastableZones` at all — the discount is now,
 the real card is later. Its constructor bundles `WarpExile`, which
 schedules a CR 603.7 delayed trigger to exile the permanent at the
-next end step and leaves an `ExilePlayPermission` behind carrying a
+next end step and leaves a `game.CastPermission` behind carrying a
 `NotBeforeTurn` floor for "on a later turn". The later cast is then an
 ordinary cast from exile for the printed cost, through the button the
 impulse-exile grant already renders.
 
-Two zones are **not** card properties and must not be declared:
-`ZoneCommand` (CR 903.4 grants that to the format) and — for the
-impulse-exile / airbend family — `ZoneExile`, whose permission belongs
-to one exiled *instance* and rides `game.ExilePlayPermission` instead.
+Three zones are **not** card properties and must not be declared:
+`ZoneCommand` (CR 903.4 grants that to the format); `ZoneExile`, whose
+permission belongs to one exiled *instance*; and `ZoneLibrary`, whose
+permission belongs to a POSITION (the top card) rather than to a card.
+All three ride a granted permission instead — see the next paragraph.
 Declare `ZoneExile` only when the card's own printed text grants the
-cast.
+cast to every copy, at any time, however it got there.
+
+**Granted permissions (S42, [ADR 0066](docs/decisions/0066-granted-cast-and-play-permissions.md)):**
+when an EFFECT rather than a card's own text opens a zone — Snapcaster
+Mage giving flashback, Underworld Breach giving escape, Bolas's Citadel
+opening the top of your library, impulse exile, airbend, warp, cascade
+— it is one type, `game.CastPermission`, and there is deliberately no
+second one. Two shapes, and which you want is decided by whether the
+permission is a permanent's static ability or an effect that resolves:
+
+```go
+// A permanent's static ability: a STANDING permission, derived from
+// the battlefield on every query, so two of them compose and one
+// leaving cannot revoke the other's. No duration to expire.
+CastPermissions: []game.CastPermission{{
+    Zone:                    game.ZoneGraveyard,
+    Filter:                  game.PermissionFilter{NonLandOnly: true},
+    AltCostKey:              "escape",
+    ExileOtherFromGraveyard: 3,
+}},                                              // Underworld Breach
+LibraryTopVisible: game.LibraryTopRevealed,      // Oracle of Mul Daya
+CastPermissions:   []game.CastPermission{PlayFromTopOfYourLibrary(
+    game.PermissionFilter{LandsOnly: true}, "Play a land from the top")},
+
+// An effect that resolves: the set of card OBJECTS is locked NOW
+// (CR 611.2c), so a card that reaches the graveyard afterwards has
+// nothing.
+GrantFlashbackToCard{Target: id}.Apply(ctx)            // Snapcaster
+GrantCastFromYourGraveyard{                            // Past in Flames
+    Filter: game.PermissionFilter{InstantOrSorceryOnly: true},
+    AltCostKey: "flashback", ExileOnResolution: true,
+}.Apply(ctx)
+```
+
+Four rules worth knowing before you write one. **The key is shared with
+the printed keyword** (`"flashback"`, `"escape"`), because CR 702.34a's
+"if the flashback cost was paid, exile it" and CR 702.138b's "escaped"
+read the key however the permission arrived — and a card that both
+prints and is granted the same key keeps its **printed** cost. **A
+permission never opens the sorcery-speed gate** unless it sets
+`Timing`; a sorcery in your graveyard is still a sorcery. **CR 400.7 is
+free**: a permission names `{instance, epoch}`, so it ends the moment
+its card leaves the zone by any route, and nothing has to clear it. **A
+library permission needs its visibility half too** (`LibraryTopVisible`
+— `LibraryTopOwner` for "you may look at the top card any time",
+`LibraryTopRevealed` for "play with the top card revealed"): a card you
+cannot see is a card you cannot play, and every printed card in the
+family carries both clauses.
 
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost
