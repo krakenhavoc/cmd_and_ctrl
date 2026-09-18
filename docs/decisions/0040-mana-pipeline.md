@@ -408,3 +408,152 @@ printed for a commanderless or colourless deck (#259's direction).
   commander's color identity", and Path of Ancestry's creature-type
   half is a declared caveat (its scry rider is unimplemented), so the
   three mana paths above are the whole reader list.
+
+## Amendment — 2026-09-18 (#787): one symbol model, and the life half
+
+**CR 107.4.** Ten hybrid Phyrexian symbols — `{W/U/P}` through
+`{G/U/P}` — were an `unknown token` to `ParseCost`. Every card
+printing one was uncastable (`legal/cast.go` dropped it under the #289
+guard, the engine refused it with `ErrUnparseableCost`) and read mana
+value **0** where CR 202.3g says each Phyrexian symbol counts as 1.
+Ajani, Sleeper Agent; Lukka, Bound to Ruin; Nahiri, the Unforgiving;
+Tamiyo, Compleated Sage — four cards in the dump, importable into any
+deck today, and every `ManaValueLE` / cascade / `SpellManaValueAtLeast`
+read of them was wrong in both directions at once.
+
+- **No fourth symbol kind.** `ColorRequirement` already carried a
+  colour-option SET and two independent flags, and the ten symbols are
+  the existing pieces composed: `Options {"W","U"}` **and**
+  `Phyrexian`. `{W}`, `{W/U}`, `{W/P}`, `{W/U/P}` and `{2/W}` are one
+  struct with different fields set, so `ManaValue` (CR 202.3f/g), the
+  pool solver, the auto-tapper, the cost-modifier splice and the
+  colour readers all needed **no change** — five lines of parser and
+  the symbol was expressible. The rule the shape encodes is that a
+  Phyrexian symbol is not a colour-count: it is an alternative
+  PAYMENT, and it composes with however many colours the symbol names.
+- **Colour is not read from the parse.** `EffectiveColors`,
+  `printedColors` and `printedIdentityOf` scan the raw cost string for
+  `W U B R G`, so `{G/W/P}` was already both colours (CR 202.2d) and a
+  two-colour identity (CR 903.4) before this change, and still is. The
+  parse fix does not touch that path; the tests pin it so a future
+  parse-based colour reader cannot quietly disagree.
+- **The life half is announced, not inferred.** CR 601.2b makes "how
+  do you intend to pay each hybrid and Phyrexian symbol" part of
+  announcing the spell, so it is `CastSpellParams.PhyrexianLife` — an
+  announce-time parameter beside `Face`, `XValue` and the alternative
+  cost, not a `PendingChoice`, for the reason `Face` is not one: the
+  choice machinery resumes replacement, search and trigger frames and
+  has no frame for a half-validated cast. On the wire it is one
+  optional integer, `cast_spell`'s `phyrexian_life`.
+- **A count, not a list of symbols.** The engine strikes out the
+  symbols a life payment can actually save first — the ones no
+  spendable token in the pool matches, then the rest in printed order
+  — so a caster who says "one" never has the engine spend the life on
+  a pip they could have paid. Choosing between two symbols the pool
+  can both pay changes nothing but which colour is left floating.
+- **2 life each, through the one cost-shaped life path.** `#806` made
+  paying life a real loss that runs the CR 614 window and settles it
+  without a prompt (CR 601.2h pays a spell's costs as one indivisible
+  step). This calls `PayLifeForEffect` and writes no life total of its
+  own. An over-claim — more symbols than the cost prints, or more life
+  than CR 119.4 allows — is `ErrInvalidParam` **before** anything is
+  paid, so a refused cast costs neither mana nor a point.
+- **The auto-tapper plans the mana half only.** A claimed symbol
+  leaves the cost before `autoTapLocked` sees it; tapping a land for a
+  pip the caster said they would pay with life is exactly the
+  stranding the unparseable-cost short-circuit already avoids.
+- **What the enumerator offers is the MANA payment.**
+  `legal.EnumerateFor` now offers these casts at all, which it could
+  not before, and it offers them priced in mana. It advertises no life
+  payment, which is deliberate: #695's complaint is life-component
+  offers shown below the life total and then rejected, and the way not
+  to widen it is not to advertise one.
+- **What changes for symbols that already parsed.** Two things, both
+  reads. A missing-symbol breakdown now spells the Phyrexian tail —
+  `{W/P}` reported as `{W}` before and reports `{W/P}` now — so the
+  payment the engine did not take is visible in the message. And
+  `cascadeHit` stops bailing on a compleated planeswalker: an
+  unreadable cost was never a cascade hit, and a mana value of 4 now
+  is one.
+- **Still the board's gap.** No client button asks the question, so a
+  player clicking Gitaxian Probe from hand pays `{U}`. The five cards
+  whose caveats said "Phyrexian mana isn't supported" now say that,
+  which is the true statement. An ACTIVATED ability's mana cost has no
+  announce to carry the claim at all (Birthing Pod's `{1}{G/P}`,
+  Solphim's `{1}{R/P}{R/P}`), and both stay declared.
+
+## Amendment — 2026-09-18 (#782): "could produce" asks the ability, now
+
+**CR 106.7.** "The type of mana a permanent could produce at any time
+includes any type of mana that an ability of that permanent would
+produce if the ability were to resolve at that time." Decision 5 above
+built that as *"the card's mana abilities unioned with
+`Card.ProducedMana`, Scryfall's `produced_mana`"*, with the recursion
+guard skipping every ability that had a `ProducedFunc`. Both halves
+broke once #742 put a whole family of chosen-colour lands in the
+catalog, and they broke in opposite directions at once:
+
+- **Too many colours.** Scryfall lists all five for every
+  chosen-colour land — checked in the dump for Thriving Isle, Sea Gate
+  and Uncharted Haven — because all five are printable outcomes. An
+  Exotic Orchard facing an opponent's Thriving Isle that **chose red**
+  could tap for white, black or green. The printed card allows blue or
+  red. That is stronger than printed, the direction #259 refuses.
+- **No colours at all.** A card built from the catalog with no
+  Scryfall record — a token, a demo seed, a test fixture — got
+  nothing, because a Thriving Isle's whole mana ability is a
+  `ProducedFunc` and the guard skipped every one of them. A Reflecting
+  Pool next to only an Uncharted Haven added no mana.
+
+**One function, `(*Game).ProducibleManaLocked`, in
+`game/producible_mana.go`.** It asks each of the permanent's mana
+abilities what it would add NOW: the `ProducedFunc` if there is one,
+then `manaPickOptions` — the same narrowing `ActivateManaAbility`,
+`AddManaForEffect`, `legal.EnumerateFor` and the auto-tapper read. So a
+chosen colour, a commander-identity narrowing (#844/#875's tri-state)
+and a plain "any colour" all answer exactly as the tap would, by
+construction rather than by a second implementation kept in step.
+`effects.producibleFrom` is gone; the three derivations share one
+`producibleAcross(g, match)` wrapper.
+
+- **The catalog answer wins; Scryfall is the fallback.**
+  `produced_mana` answers only when `ManaAbilitiesForCard` has nothing
+  at all — an imported land with no spec and no basic land type, where
+  the array is the only thing that knows anything. A card whose
+  abilities answer "nothing" answers nothing, because falling through
+  there would defeat both the chosen-colour read and the recursion
+  guard. (It did: two imported Exotic Orchards facing each other both
+  offered Scryfall's five colours straight through the guard.)
+- **The guard is declared, not inferred.**
+  `ManaAbility.DerivesFromOtherSources` marks the three abilities that
+  read what OTHER permanents could produce — Exotic Orchard, Fellwar
+  Stone, Reflecting Pool — and `ProducibleManaLocked` skips exactly
+  those. CR 106.6b answers the circular case with "no mana" and so
+  does the guard. The alternative, a re-entrancy counter, is undo
+  state on a snapshotted struct if it lives on `Game` and a data race
+  between two games in one process if it does not.
+  `TestDerivedManaAbilitiesDeclareTheGuard` holds the catalog to the
+  flag in both directions, reading the constructor's name off the
+  closure's code pointer, so a new derived card cannot forget it and
+  nothing else can claim it.
+- **Every other `ProducedFunc` is now evaluated.** The chosen-colour
+  lands (the Thriving cycle, the Gates, Uncharted Haven, Crossroads
+  Village, Mirage Mesa, Valgavoth's Lair), the scaled ones (Cabal
+  Coffers, Gaea's Cradle, Elvish Archdruid), devotion (Nyx Lotus,
+  Karametra's Acolyte), a creature's power (Marwyn), Mox Amber's
+  colours, the Urza lands' conditional {2}. **This retires one of
+  decision 5's declared simplifications:** a Reflecting Pool DOES now
+  see a Cabal Coffers' black, when there is a Swamp to make it.
+- **A land with no chosen colour yet produces nothing**, and an
+  unchosen Thriving Isle produces its printed colour alone — the same
+  "empty means the weaker outcome" rule every other reader of
+  `Card.ChosenColor` follows (#742).
+- **Costs and timing are still ignored**, which is the other half of
+  CR 106.7 and was already right: a tapped opposing Island still
+  offers {U}, a Temple of the False God its controller cannot activate
+  still offers {C}, and a Signet with an empty pool still offers its
+  two colours.
+- **Undo.** A pure read. Nothing is cached, nothing is stamped on a
+  card, and no new field is snapshotted — the one new field,
+  `DerivesFromOtherSources`, is on `ManaAbilityShape`, which is the
+  catalog's shape and not game state.

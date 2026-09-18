@@ -393,6 +393,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// which is the right answer for every single-faced card
 			// and for any client that predates the face picker.
 			Face int `json:"face,omitempty"`
+			// CR 107.4 / CR 601.2b (#787) — how many of the cost's
+			// Phyrexian symbols are being paid with 2 life each
+			// instead of mana. Absent (0) pays every symbol with its
+			// coloured half, which is what every client that predates
+			// hybrid Phyrexian mana sends.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -412,6 +418,7 @@ func Dispatch(g *game.Game, a Action) error {
 			AutoTap:         p.AutoTap,
 			AlternativeCost: p.AlternativeCost,
 			Face:            p.Face,
+			PhyrexianLife:   p.PhyrexianLife,
 		}
 		if len(p.DiscardIDs) > 0 {
 			params.DiscardIDs = make([]uuid.UUID, 0, len(p.DiscardIDs))

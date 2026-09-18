@@ -37,7 +37,11 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromOpponentLands(),
-			Label:        "Add one mana of any color an opponent's land could produce",
+			// CR 106.6b: this ability reads what OTHER permanents
+			// could produce, so CR 106.7's reader must not call back
+			// into it (#782).
+			DerivesFromOtherSources: true,
+			Label:                   "Add one mana of any color an opponent's land could produce",
 			// The printed text derives the colours from opponents'
 			// lands and says nothing about the commander. Before
 			// #352 this card was one of the ones #276 called out as

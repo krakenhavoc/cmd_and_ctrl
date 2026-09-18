@@ -1254,6 +1254,17 @@ X lives in the MANA component and nowhere else. A cost with a
 variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
 is a different seam and is still open.
 
+**A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
+hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
+`ColorRequirement` each — a set of colour options plus `Phyrexian` —
+so there is no new symbol kind to declare and nothing for a card file
+to write. The "or 2 life" half (CR 107.4c/f) is announced on the
+CAST, as `CastSpellParams.PhyrexianLife`: the number of the cost's
+Phyrexian symbols being paid with 2 life each, validated against what
+the cost prints and against CR 119.4, paid through `PayLifeForEffect`.
+An ACTIVATED ability's `ManaCost("{1}{G/P}")` has no such announce and
+pays the coloured half (Birthing Pod).
+
 **"Activate only if …" / "Activate only during your turn" (#743):**
 the ability's `Condition`, a `func(g, controller, source) bool` built
 from [activation_conditions.go](server/internal/cards/effects/activation_conditions.go)
@@ -2322,6 +2333,20 @@ Until the controller answers, the colour is empty, and every reader
 must treat that as the weaker outcome: no mana, no anthem. Never read
 an empty colour as "any colour". "A color other than blue" is just a
 shorter option list, and colorless is never a colour.
+
+**"Could produce" reads the choice (#782).** CR 106.7 is
+`(*Game).ProducibleManaLocked` — the one function Exotic Orchard,
+Reflecting Pool and Fellwar Stone ask — and it evaluates each mana
+ability's `ProducedFunc` and runs the result through the same
+`manaPickOptions` the activation does, so a chosen colour, a
+commander-identity narrowing and a plain "any colour" all read exactly
+as the tap would. Scryfall's `produced_mana` answers only for a card
+with no catalog mana ability at all. A `ProducedFunc` that reads OTHER
+permanents' producible mana must set
+`ManaAbility.DerivesFromOtherSources` — that is the CR 106.6b
+recursion guard, `TestDerivedManaAbilitiesDeclareTheGuard` enforces it
+both ways, and it is the only `ProducedFunc` shape "could produce"
+skips.
 
 **At resolution** ("Choose a color. …" inside a spell or ability) stores
 nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the

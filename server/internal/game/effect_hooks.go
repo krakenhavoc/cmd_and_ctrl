@@ -218,6 +218,23 @@ type ManaAbilityShape struct {
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
 	ProducedFunc func(g *Game, controller, source uuid.UUID) string
 
+	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
+	// permanents what THEY could produce — Exotic Orchard,
+	// Reflecting Pool, Fellwar Stone. It is the recursion guard:
+	// ProducibleManaLocked (CR 106.7) evaluates every other
+	// ProducedFunc and skips these, because two Exotic Orchards
+	// facing each other would otherwise recurse until the stack ran
+	// out. CR 106.6b answers the circular case with "no mana" and so
+	// does the guard.
+	//
+	// A declaration rather than something inferred at run time: the
+	// alternative is a re-entrancy counter, which on a snapshotted
+	// struct is undo state nobody wants and off it is a data race
+	// between two games in one process.
+	//
+	// Added in S44 (#782).
+	DerivesFromOtherSources bool
+
 	// Restrictions are the tags stamped onto every ManaToken this
 	// ability produces — "spend this mana only to cast a creature
 	// spell" (Ancient Ziggurat), "only to cast colorless Eldrazi

@@ -361,6 +361,27 @@ type CastSpellParams struct {
 	// versa.
 	Face int
 
+	// PhyrexianLife is how many of the cost's Phyrexian symbols the
+	// caster is paying with life instead of mana — 2 life each
+	// (CR 107.4c, and CR 107.4f for the ten hybrid Phyrexian symbols
+	// {W/U/P}…{G/U/P}). Zero is the ordinary answer: pay every symbol
+	// with its coloured half.
+	//
+	// A COUNT rather than a list of symbols because the count is the
+	// whole of the player's decision — the engine strikes out the
+	// symbols a life payment can actually save first (see
+	// phyrexian_mana.go), and choosing between two symbols the pool
+	// can both pay changes nothing but which colour is left floating.
+	//
+	// An announce-time parameter for the same reason Face is: CR
+	// 601.2b makes "how do you intend to pay each hybrid and
+	// Phyrexian symbol" part of announcing the spell. More than the
+	// cost prints, or more life than the caster has (CR 119.4), is
+	// REJECTED rather than clamped — silently casting for a different
+	// price than the player asked for is the worst available failure.
+	// Added in S44 (#787).
+	PhyrexianLife int
+
 	// Strict enables the S15 mana-cost gate. When set, the server
 	// parses the card's ManaCost into an effective cost (plus
 	// commander tax for casts from the command zone), checks the
@@ -1122,16 +1143,30 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		})
 		return fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
+	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
+	// they are paying with life leave the mana cost here, and the life
+	// is paid below — after the mana half is known to be payable, so a
+	// rejected cast never costs a point. Validated in every mode,
+	// because an over-claim is a malformed announce rather than a
+	// mana-gate failure.
+	cost, phyrexianLife, err := g.validatePhyrexianLifeLocked(p, card, cost, params)
+	if err != nil {
+		return err
+	}
 	if !params.Strict || params.ForceCast {
 		// Permissive default OR strict-mode override. Don't touch
 		// the pool; just emit a warning so the client can render
 		// the toast / event-log breadcrumb.
+		//
+		// The LIFE half is still paid: a life total is engine state
+		// in every mode, and permissive mode's bargain is only about
+		// the mana the player tracks on paper.
 		g.EmitEvent(Event{
 			Kind:   EventCostWarning,
 			Actor:  p.ID,
 			Source: cardID,
 		})
-		return nil
+		return g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife)
 	}
 	// S32 (#352): the spend context is what lets restricted mana pay
 	// — and what stops it paying for the wrong thing. Ancient
@@ -1140,6 +1175,18 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	spendCtx := ManaSpendForCast(card)
 	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
+	}
+	// CR 601.2h pays every component together, so the order here is
+	// an engine-safety choice, not a rules one: the FALLIBLE half
+	// goes first. PayLifeForEffect can still refuse after the life
+	// total was checked — a replacement that stops the player losing
+	// life at all (CR 119.8, #808) — and refusing after the pool was
+	// emptied would charge for a cast that did not happen. The
+	// reverse cannot bite: nothing a life-loss replacement may do
+	// under mustSettleNow reaches a mana pool, so the CanPayFor above
+	// still holds when SpendManaFor runs.
+	if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
+		return err
 	}
 	// Payable under strict mode — commit the spend.
 	p.ManaPool.SpendManaFor(cost, params.XValue, spendCtx)
@@ -1176,6 +1223,28 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 // Caller must hold g.mu (CastSpell holds the write lock).
 func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) error {
 	cost, err := g.effectiveCostLocked(p, card, params)
+	if err != nil {
+		return nil
+	}
+	// The Phyrexian symbols being paid with life are not the
+	// auto-tapper's business: tapping a land for a pip the caster
+	// announced they would pay with 2 life is exactly the stranding
+	// the unparseable-cost short-circuit above avoids. Same
+	// reduction applyCastCostLocked will make. A malformed claim
+	// short-circuits the same way a bad parse does — it rejects there,
+	// with the error, rather than here with lands already tapped.
+	//
+	// KNOWN LIMIT, declared rather than fixed: the strike order reads
+	// the pool, and here the pool is usually empty, so a cost printing
+	// two Phyrexian symbols of DIFFERENT colours has them rank equal
+	// and the first is struck. If the board could only have funded the
+	// other choice the plan fails and the cast reports insufficient
+	// mana. Letting the planner choose is a solver change; no printed
+	// card has two Phyrexian symbols of different colours, so nothing
+	// can reach it today. Once the plan exists the two agree: it funds
+	// every symbol it did not strike, so the payment's own pass ranks
+	// the struck one unpayable and strikes it again.
+	cost, _, err = g.validatePhyrexianLifeLocked(p, card, cost, params)
 	if err != nil {
 		return nil
 	}

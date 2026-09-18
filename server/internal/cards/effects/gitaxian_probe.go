@@ -14,18 +14,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // show the hand to the whole table — information the printed card
 // never gives the other two players.
 //
-// Sandbox simplification, WEAKER than printed: the Phyrexian symbol
-// is charged as {U}. ParseCost records {U/P} as a blue requirement
-// flagged Phyrexian, but no payment path consults the flag, so the
-// "or 2 life" option does not exist yet — the spell costs one blue
-// mana and cannot be cast for free. A mana-payment seam, not a card
-// file's.
+// The Phyrexian symbol's "or 2 life" half is the ENGINE's since #787:
+// a cast announcing CastSpellParams.PhyrexianLife: 1 pays 2 life
+// through the CR 119.4 cost path and owes no mana (CR 107.4c). What
+// is still missing is the BOARD's half — no button asks the question,
+// so a player clicking the card from hand pays {U}. A client seam,
+// not a card file's.
 func init() {
 	Register(Spec{
 		OracleID:     "1d67f5ff-1fce-45e5-b6a1-416c569351e2",
 		Name:         "Gitaxian Probe",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Phyrexian mana isn't supported — you must pay {U}, you can't pay 2 life instead."},
+		Caveats:      []string{"The board has no button for the Phyrexian symbol yet — casting it from hand pays {U}, not 2 life. The engine accepts the life payment."},
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {

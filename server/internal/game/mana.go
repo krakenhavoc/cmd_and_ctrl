@@ -332,16 +332,22 @@ func (g *Game) emptyAllManaPoolsLocked() {
 	}
 }
 
+// formatRequirement spells one requirement back the way it was
+// printed, for the missing-symbols breakdown: "W", "W/U", "W/P",
+// "W/U/P". The Phyrexian tail is printed because a player looking at
+// "missing {W/U/P}" can see the payment the engine did not take —
+// before #787 that symbol read as a plain "{W/U}" and the life option
+// vanished from the message.
 func formatRequirement(req ColorRequirement) string {
 	if len(req.Options) == 0 {
 		return "?"
 	}
-	if len(req.Options) == 1 {
-		return req.Options[0]
-	}
 	out := req.Options[0]
 	for _, o := range req.Options[1:] {
 		out += "/" + o
+	}
+	if req.Phyrexian {
+		out += "/P"
 	}
 	return out
 }

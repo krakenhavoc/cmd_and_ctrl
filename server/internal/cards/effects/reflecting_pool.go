@@ -32,7 +32,12 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedFromOwnLands(),
-			Label:        "Add one mana of any type a land you control could produce",
+			// CR 106.6b: this ability reads what OTHER permanents
+			// could produce, so CR 106.7's reader must not call back
+			// into it — which is also why a lone Pool makes nothing
+			// (#782).
+			DerivesFromOtherSources: true,
+			Label:                   "Add one mana of any type a land you control could produce",
 			// "any type that a land you control could produce" — no
 			// mention of the commander's identity, so
 			// NarrowToCommanderIdentity stays off.
