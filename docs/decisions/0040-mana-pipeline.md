@@ -481,3 +481,79 @@ read of them was wrong in both directions at once.
   which is the true statement. An ACTIVATED ability's mana cost has no
   announce to carry the claim at all (Birthing Pod's `{1}{G/P}`,
   Solphim's `{1}{R/P}{R/P}`), and both stay declared.
+
+## Amendment — 2026-09-18 (#782): "could produce" asks the ability, now
+
+**CR 106.7.** "The type of mana a permanent could produce at any time
+includes any type of mana that an ability of that permanent would
+produce if the ability were to resolve at that time." Decision 5 above
+built that as *"the card's mana abilities unioned with
+`Card.ProducedMana`, Scryfall's `produced_mana`"*, with the recursion
+guard skipping every ability that had a `ProducedFunc`. Both halves
+broke once #742 put a whole family of chosen-colour lands in the
+catalog, and they broke in opposite directions at once:
+
+- **Too many colours.** Scryfall lists all five for every
+  chosen-colour land — checked in the dump for Thriving Isle, Sea Gate
+  and Uncharted Haven — because all five are printable outcomes. An
+  Exotic Orchard facing an opponent's Thriving Isle that **chose red**
+  could tap for white, black or green. The printed card allows blue or
+  red. That is stronger than printed, the direction #259 refuses.
+- **No colours at all.** A card built from the catalog with no
+  Scryfall record — a token, a demo seed, a test fixture — got
+  nothing, because a Thriving Isle's whole mana ability is a
+  `ProducedFunc` and the guard skipped every one of them. A Reflecting
+  Pool next to only an Uncharted Haven added no mana.
+
+**One function, `(*Game).ProducibleManaLocked`, in
+`game/producible_mana.go`.** It asks each of the permanent's mana
+abilities what it would add NOW: the `ProducedFunc` if there is one,
+then `manaPickOptions` — the same narrowing `ActivateManaAbility`,
+`AddManaForEffect`, `legal.EnumerateFor` and the auto-tapper read. So a
+chosen colour, a commander-identity narrowing (#844/#875's tri-state)
+and a plain "any colour" all answer exactly as the tap would, by
+construction rather than by a second implementation kept in step.
+`effects.producibleFrom` is gone; the three derivations share one
+`producibleAcross(g, match)` wrapper.
+
+- **The catalog answer wins; Scryfall is the fallback.**
+  `produced_mana` answers only when `ManaAbilitiesForCard` has nothing
+  at all — an imported land with no spec and no basic land type, where
+  the array is the only thing that knows anything. A card whose
+  abilities answer "nothing" answers nothing, because falling through
+  there would defeat both the chosen-colour read and the recursion
+  guard. (It did: two imported Exotic Orchards facing each other both
+  offered Scryfall's five colours straight through the guard.)
+- **The guard is declared, not inferred.**
+  `ManaAbility.DerivesFromOtherSources` marks the three abilities that
+  read what OTHER permanents could produce — Exotic Orchard, Fellwar
+  Stone, Reflecting Pool — and `ProducibleManaLocked` skips exactly
+  those. CR 106.6b answers the circular case with "no mana" and so
+  does the guard. The alternative, a re-entrancy counter, is undo
+  state on a snapshotted struct if it lives on `Game` and a data race
+  between two games in one process if it does not.
+  `TestDerivedManaAbilitiesDeclareTheGuard` holds the catalog to the
+  flag in both directions, reading the constructor's name off the
+  closure's code pointer, so a new derived card cannot forget it and
+  nothing else can claim it.
+- **Every other `ProducedFunc` is now evaluated.** The chosen-colour
+  lands (the Thriving cycle, the Gates, Uncharted Haven, Crossroads
+  Village, Mirage Mesa, Valgavoth's Lair), the scaled ones (Cabal
+  Coffers, Gaea's Cradle, Elvish Archdruid), devotion (Nyx Lotus,
+  Karametra's Acolyte), a creature's power (Marwyn), Mox Amber's
+  colours, the Urza lands' conditional {2}. **This retires one of
+  decision 5's declared simplifications:** a Reflecting Pool DOES now
+  see a Cabal Coffers' black, when there is a Swamp to make it.
+- **A land with no chosen colour yet produces nothing**, and an
+  unchosen Thriving Isle produces its printed colour alone — the same
+  "empty means the weaker outcome" rule every other reader of
+  `Card.ChosenColor` follows (#742).
+- **Costs and timing are still ignored**, which is the other half of
+  CR 106.7 and was already right: a tapped opposing Island still
+  offers {U}, a Temple of the False God its controller cannot activate
+  still offers {C}, and a Signet with an empty pool still offers its
+  two colours.
+- **Undo.** A pure read. Nothing is cached, nothing is stamped on a
+  card, and no new field is snapshotted — the one new field,
+  `DerivesFromOtherSources`, is on `ManaAbilityShape`, which is the
+  catalog's shape and not game state.

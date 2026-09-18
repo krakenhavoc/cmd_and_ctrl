@@ -98,6 +98,7 @@ func buildDef(spec Spec) *game.CardDef {
 				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 				Condition:                 a.Condition,
 				ProducedFunc:              a.ProducedFunc,
+				DerivesFromOtherSources:   a.DerivesFromOtherSources,
 				Restrictions:              a.Restrictions,
 				RestrictionsFunc:          a.RestrictionsFunc,
 			}

@@ -27,26 +27,23 @@ import (
 // BattlefieldCardsForEffect and plain field reads; a public locking
 // mutator deadlocks.
 //
-// ## Why "could produce" is computed from two sources
+// ## Where "could produce" lives
 //
-// A land's producible mana is read from its mana abilities
-// (ManaAbilitiesForCard — catalog entry, intrinsic token ability, or
-// the synthetic basic-land shape) UNIONED with Card.ProducedMana, the
-// `produced_mana` array Scryfall stamps at deck import. Neither alone
-// is enough: the catalog has entries for 300-odd cards and a
-// decklist's other 60 lands only have the Scryfall field, while a
-// token or a demo-seed card has the ability and no Scryfall data.
+// CR 106.7 is game.ProducibleManaLocked, in
+// game/producible_mana.go — it asks each of the permanent's mana
+// abilities what it would add NOW (a chosen colour, a board count, a
+// commander-identity narrowing) through the same seam the activation
+// reads, and falls back to Scryfall's `produced_mana` only for an
+// imported card the catalog has never heard of. That file carries the
+// rule, the fallback and the recursion guard; everything below is the
+// card-side wrapper that turns its answer into a pipe string.
 //
-// ## The recursion guard
-//
-// An ability that itself has a ProducedFunc is SKIPPED when deriving.
-// Two Exotic Orchards facing each other, or an Exotic Orchard and a
-// Reflecting Pool, would otherwise recurse until the stack ran out.
-// CR 106.6b answers the circular case with "no mana", and so does
-// this: the other Orchard contributes nothing. It also means a
-// Reflecting Pool does not see a Cabal Coffers' black — a
-// simplification in the weaker-than-printed direction, declared here
-// rather than on four card files.
+// Only the guard matters here: an ability marked
+// DerivesFromOtherSources is skipped, which is exactly the three
+// abilities in this file's own family (Exotic Orchard, Reflecting
+// Pool, Fellwar Stone). Two of them facing each other would otherwise
+// recurse until the stack ran out; CR 106.6b answers the circular
+// case with "no mana" and so does the guard.
 
 // Spend-restriction tags, re-exported from the game package so a card
 // file reads `ManaRestrictSupertype("Legendary")` rather than
@@ -77,31 +74,18 @@ func ManaRestrictSubtype(t string) string { return game.ManaRestrictSubtype(t) }
 // Halfling.
 func ManaRestrictSupertype(t string) string { return game.ManaRestrictSupertype(t) }
 
-// producibleFrom returns the distinct mana symbols `c` could produce,
-// in WUBRGC order. Includes "C" — callers that mean *colours* filter
-// it out (see colorsOnly).
-func producibleFrom(c game.Card) []string {
+// producibleAcross unions CR 106.7's answer for every permanent on
+// the battlefield that `match` accepts, in canonical WUBRGC order.
+// The three derivations below differ only in their match and in
+// whether they keep {C}.
+func producibleAcross(g *game.Game, match func(game.Card) bool) []string {
 	seen := map[string]bool{}
-	for _, ab := range game.ManaAbilitiesForCard(c) {
-		// The recursion guard — see the file comment.
-		if ab.ProducedFunc != nil {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if !match(c) {
 			continue
 		}
-		slots, err := game.ParseProducedMana(ab.Produced)
-		if err != nil {
-			continue
-		}
-		for _, slot := range slots {
-			for _, opt := range slot.Options {
-				seen[opt] = true
-			}
-		}
-	}
-	for _, m := range c.ProducedMana {
-		u := strings.ToUpper(m)
-		switch u {
-		case "W", "U", "B", "R", "G", "C":
-			seen[u] = true
+		for _, m := range g.ProducibleManaLocked(c) {
+			seen[m] = true
 		}
 	}
 	return orderedManaSymbols(seen)
@@ -158,19 +142,17 @@ func pipeString(symbols []string) string {
 // legally be activated right now. A tapped opposing Island still
 // offers {U}; a Temple of the False God its controller cannot
 // activate still offers {C}, which then drops out because {C} is not
-// a colour.
+// a colour. What it does respect is the land's CURRENT choice: an
+// opposing Thriving Isle that chose red offers {U} and {R}, and one
+// with no colour chosen yet offers {U} alone (#782).
+//
+// Declare it with DerivesFromOtherSources: true — this is the
+// recursion guard's whole membership list.
 func ProducedFromOpponentLands() func(*game.Game, uuid.UUID, uuid.UUID) string {
 	return func(g *game.Game, controller, _ uuid.UUID) string {
-		seen := map[string]bool{}
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == controller || !c.IsLand() {
-				continue
-			}
-			for _, m := range producibleFrom(c) {
-				seen[m] = true
-			}
-		}
-		return pipeString(colorsOnly(orderedManaSymbols(seen)))
+		return pipeString(colorsOnly(producibleAcross(g, func(c game.Card) bool {
+			return c.Controller != controller && c.IsLand()
+		})))
 	}
 }
 
@@ -178,21 +160,14 @@ func ProducedFromOpponentLands() func(*game.Game, uuid.UUID, uuid.UUID) string {
 // that a land you control could produce" — type, so {C} counts.
 //
 // The Pool sees itself only through the recursion guard, which is to
-// say not at all: its own ability has a ProducedFunc and is skipped.
-// That matches the printed card, whose ruling is that a lone
-// Reflecting Pool produces nothing.
+// say not at all: its own ability is marked DerivesFromOtherSources
+// and is skipped. That matches the printed card, whose ruling is that
+// a lone Reflecting Pool produces nothing.
 func ProducedFromOwnLands() func(*game.Game, uuid.UUID, uuid.UUID) string {
 	return func(g *game.Game, controller, _ uuid.UUID) string {
-		seen := map[string]bool{}
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller != controller || !c.IsLand() {
-				continue
-			}
-			for _, m := range producibleFrom(c) {
-				seen[m] = true
-			}
-		}
-		return pipeString(orderedManaSymbols(seen))
+		return pipeString(producibleAcross(g, func(c game.Card) bool {
+			return c.Controller == controller && c.IsLand()
+		}))
 	}
 }
 

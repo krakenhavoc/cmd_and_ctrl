@@ -615,6 +615,27 @@ type ManaAbility struct {
 	// than by hand.
 	ProducedFunc func(g *game.Game, controller, source uuid.UUID) string
 
+	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
+	// permanents what THEY could produce — Exotic Orchard, Reflecting
+	// Pool, Fellwar Stone, and nothing else in the catalog. It is the
+	// recursion guard, and it is a declaration rather than something
+	// inferred because the alternative is a re-entrancy counter on a
+	// snapshotted struct.
+	//
+	// CR 106.7's "could produce" reader (game.ProducibleManaLocked)
+	// evaluates every OTHER ProducedFunc — a chosen colour, a board
+	// count, a devotion — and skips these, because two Exotic Orchards
+	// facing each other would otherwise recurse until the stack ran
+	// out. CR 106.6b answers the circular case with "no mana" and so
+	// does the guard.
+	//
+	// Pair it with ProducedFromOpponentLands / ProducedFromOwnLands
+	// and nothing else; TestDerivedManaAbilitiesDeclareTheGuard holds
+	// the catalog to that in both directions.
+	//
+	// Added in S44 (#782).
+	DerivesFromOtherSources bool
+
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "…three or
 	// more artifacts" (Mox Opal). Checked before any cost is

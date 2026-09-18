@@ -2318,6 +2318,20 @@ must treat that as the weaker outcome: no mana, no anthem. Never read
 an empty colour as "any colour". "A color other than blue" is just a
 shorter option list, and colorless is never a colour.
 
+**"Could produce" reads the choice (#782).** CR 106.7 is
+`(*Game).ProducibleManaLocked` — the one function Exotic Orchard,
+Reflecting Pool and Fellwar Stone ask — and it evaluates each mana
+ability's `ProducedFunc` and runs the result through the same
+`manaPickOptions` the activation does, so a chosen colour, a
+commander-identity narrowing and a plain "any colour" all read exactly
+as the tap would. Scryfall's `produced_mana` answers only for a card
+with no catalog mana ability at all. A `ProducedFunc` that reads OTHER
+permanents' producible mana must set
+`ManaAbility.DerivesFromOtherSources` — that is the CR 106.6b
+recursion guard, `TestDerivedManaAbilitiesDeclareTheGuard` enforces it
+both ways, and it is the only `ProducedFunc` shape "could produce"
+skips.
+
 **At resolution** ("Choose a color. …" inside a spell or ability) stores
 nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the
 answer to a continuation that runs the rest of the effect (Wash Out,
