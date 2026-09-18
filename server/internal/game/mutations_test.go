@@ -1276,6 +1276,73 @@ func TestChangePlayerLifeHistoryRolloverCap(t *testing.T) {
 		t.Errorf("history length: got %d, want %d (cap)",
 			len(p.LifeHistory), MaxLifeHistoryEntries)
 	}
+	// #703: the Seq stream is what the client keys its popup on, so
+	// it must keep climbing after the length stops growing — the
+	// newest entry is the Nth change, not the Nth surviving slot.
+	last := p.LifeHistory[len(p.LifeHistory)-1]
+	if want := uint64(MaxLifeHistoryEntries + 10); last.Seq != want {
+		t.Errorf("newest entry Seq after the cap: got %d, want %d", last.Seq, want)
+	}
+	first := p.LifeHistory[0]
+	if want := uint64(11); first.Seq != want {
+		t.Errorf("oldest surviving entry Seq: got %d, want %d", first.Seq, want)
+	}
+}
+
+// #703: Seq starts at 1, rises by one per recorded change, and skips
+// the zero-delta no-ops that record nothing.
+func TestChangePlayerLifeStampsMonotonicSeq(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	for _, delta := range []int{-3, 0, +1, -2} {
+		if _, err := g.ChangePlayerLife(p.ID, delta); err != nil {
+			t.Fatalf("ChangePlayerLife(%d): %v", delta, err)
+		}
+	}
+	if len(p.LifeHistory) != 3 {
+		t.Fatalf("history length: got %d, want 3", len(p.LifeHistory))
+	}
+	for i, entry := range p.LifeHistory {
+		if want := uint64(i + 1); entry.Seq != want {
+			t.Errorf("entry %d Seq: got %d, want %d", i, entry.Seq, want)
+		}
+	}
+}
+
+// #703: a restored snapshot continues the Seq stream from the log it
+// carries, so a change after a reconnect or an undo never reuses a
+// Seq the client has already shown.
+func TestLifeSeqContinuesAfterRestore(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	for i := 0; i < 3; i++ {
+		if _, err := g.ChangePlayerLife(p.ID, -1); err != nil {
+			t.Fatalf("ChangePlayerLife: %v", err)
+		}
+	}
+	snap := g.Clone()
+	// Two more changes on the live game, then rewind to the clone.
+	for i := 0; i < 2; i++ {
+		if _, err := g.ChangePlayerLife(p.ID, -1); err != nil {
+			t.Fatalf("ChangePlayerLife: %v", err)
+		}
+	}
+	g.RestoreFrom(snap)
+
+	restored := g.Seats[0]
+	if n := len(restored.LifeHistory); n != 3 {
+		t.Fatalf("restored history length: got %d, want 3", n)
+	}
+	if got := restored.LifeHistory[2].Seq; got != 3 {
+		t.Fatalf("restored newest Seq: got %d, want 3", got)
+	}
+	if _, err := g.ChangePlayerLife(restored.ID, -1); err != nil {
+		t.Fatalf("ChangePlayerLife after restore: %v", err)
+	}
+	h := g.Seats[0].LifeHistory
+	if got := h[len(h)-1].Seq; got != 4 {
+		t.Errorf("Seq after restore: got %d, want 4 (one past the restored log)", got)
+	}
 }
 
 func TestAddCounter(t *testing.T) {

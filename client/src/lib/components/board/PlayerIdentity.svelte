@@ -17,6 +17,7 @@
   import { scryfallImageURL } from "../../cardImage";
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import { settings } from "../../settings";
+  import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -136,33 +137,38 @@
     sendAction("set_initiative", undefined, isInitiative ? "" : seat.id);
   }
 
-  const POPUP_HOLD_MS = 1100;
-  let popup = $state<{ id: string; delta: number } | null>(null);
+  // --- the life-change popup (#703) ----------------------------
+  //
+  // All the deciding lives in lifePopup.ts, over the seq the server
+  // stamps on each life_history entry. This component only holds the
+  // watermark and the hold timer. It deliberately does NOT diff the
+  // log's length: a frame can carry several changes (double strike
+  // lands both combat damage steps at once), and the log stops
+  // growing at its server-side cap.
+  let tracker = emptyLifeTracker();
+  let popup = $state<{ key: number; view: LifePopupView } | null>(null);
   let popupTimer: ReturnType<typeof setTimeout> | null = null;
-  let baselineCount = -1;
   $effect(() => {
-    const count = seat.life_history?.length ?? 0;
-    if (baselineCount === -1) {
-      baselineCount = count;
-      return;
-    }
-    if (count <= baselineCount) {
-      baselineCount = count;
-      return;
-    }
-    const last = seat.life_history[count - 1];
-    if (!last || last.delta === 0) {
-      baselineCount = count;
-      return;
-    }
-    popup = { id: last.at, delta: last.delta };
-    play(last.delta < 0 ? "damage" : "heal");
+    const frame = trackLife(tracker, seat.life_history);
+    tracker = frame.tracker;
+    if (!frame.popup) return;
+    const view = lifePopupView(frame.popup);
+    popup = { key: frame.popup.key, view };
+    play(view.sound);
     if (popupTimer) clearTimeout(popupTimer);
     popupTimer = setTimeout(() => {
       popup = null;
       popupTimer = null;
-    }, POPUP_HOLD_MS);
-    baselineCount = count;
+    }, view.holdMs);
+  });
+  // Separate, dependency-free effect so the teardown runs on destroy
+  // only — putting it on the effect above would clear the timer on
+  // every frame.
+  $effect(() => {
+    return () => {
+      if (popupTimer) clearTimeout(popupTimer);
+      popupTimer = null;
+    };
   });
 
   const interactive = $derived(attackTargetable || targetableByCast);
@@ -262,17 +268,31 @@
         </span>
       {/if}
 
+      <!-- Every life change the frame brought, oldest at the top, so
+           two combat damage steps read as two numbers. Collapses to
+           the net total past LIFE_POPUP_MAX_LINES; the life chip below
+           always carries the resulting total either way. Visually
+           hidden from the a11y tree — the live region below announces
+           the whole group as one sentence, and it is always mounted so
+           the announcement is reliable (the CombatArrows pattern). -->
       {#if popup}
-        {#key popup.id}
+        {#key popup.key}
           <span
             class="dmg-popup"
-            class:loss={popup.delta < 0}
-            class:gain={popup.delta > 0}
+            class:stacked={popup.view.lines.length > 1}
             in:floatUp
             out:fadeOut
-            aria-live="polite"
+            aria-hidden="true"
           >
-            {popup.delta > 0 ? "+" : ""}{popup.delta}
+            {#each popup.view.lines as line, i (i)}
+              <span class="dmg-line {line.tone}">{line.text}</span>
+            {/each}
+            {#if popup.view.collapsed}
+              <span class="dmg-note">×{popup.view.count}</span>
+            {/if}
+            {#if popup.view.gap}
+              <span class="dmg-note" title="older changes are no longer in the log">…</span>
+            {/if}
           </span>
         {/key}
       {/if}
@@ -397,6 +417,15 @@
   {#if seat.eliminated}
     <span class="tag elim">eliminated</span>
   {/if}
+
+  <!-- The life change as words. Always mounted and empty between
+       changes, so a screen reader announces each group as it lands
+       rather than missing a region that appeared with its text
+       already in it. S11.5: this is text, not motion — it says the
+       same thing with animations off and reduce-motion on. -->
+  <span class="sr-only" role="status" aria-live="polite" aria-atomic="true"
+    >{popup ? popup.view.label : ""}</span
+  >
 </div>
 
 <style>
@@ -601,12 +630,22 @@
   }
 
   /* Damage popup floats up over the circle's top arc; heal/gain
-     intentionally also floats up (same pattern as the old header). */
+     intentionally also floats up (same pattern as the old header).
+     A column, because one frame can bring several changes (#703):
+     oldest at the top, newest nearest the life chip it just moved.
+     The stack grows upward from a fixed bottom edge so the newest
+     number never jumps. */
   .dmg-popup {
     position: absolute;
     left: 50%;
-    top: -14px;
+    /* Anchored where the old single-number popup sat (top: -14px on a
+       ~29px line), so one change looks exactly as it did. */
+    bottom: calc(100% - 15px);
     transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.05;
     font-size: 24px;
     font-weight: 800;
     pointer-events: none;
@@ -615,11 +654,36 @@
       0 1px 0 rgba(0, 0, 0, 0.85),
       0 0 8px rgba(0, 0, 0, 0.6);
   }
-  .dmg-popup.loss {
+  /* A stack steps down one size — four 24px numbers are taller than
+     the avatar they sit over — and stays one size within itself: no
+     delta in the group is more important than the others. */
+  .dmg-popup.stacked .dmg-line {
+    font-size: 19px;
+  }
+  .dmg-line.loss {
     color: #ff7a7a;
   }
-  .dmg-popup.gain {
+  .dmg-line.gain {
     color: #7aff9a;
+  }
+  /* The "×7" on a collapsed run, and the "…" that says older changes
+     have rolled off the server's log. */
+  .dmg-note {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--fg-dim);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* Horizontal arrangement: mana (left column) — avatar (center) —
