@@ -1206,6 +1206,17 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if ab == nil {
 			continue
 		}
+		// #540: CR 302.6, enforced here as well as in the planner.
+		// This executor taps `card.Tapped = true` directly rather
+		// than routing through ActivateManaAbility, so the gate that
+		// path applies does not cover it — and a plan can arrive
+		// stale (built before the creature entered) or from a caller
+		// that built it by hand. A source that has become sick since
+		// the plan was made drops silently, exactly as a gate that
+		// stopped holding does above.
+		if manaTapBlockedBySickness(card, ab) {
+			continue
+		}
 		// S32 (#352): the gate and the derived/scaled output are
 		// re-evaluated here rather than carried over from planning,
 		// so the executor and the planner can never disagree about
