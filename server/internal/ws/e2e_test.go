@@ -137,6 +137,9 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 			Delta:    c.Delta,
 			NewTotal: c.NewTotal,
 			At:       "<timestamp>",
+			// Seq is deterministic (a per-player counter), unlike the
+			// timestamp, so it goes into the golden file as-is.
+			Seq: c.Seq,
 		}
 	}
 	return out

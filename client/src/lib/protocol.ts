@@ -863,6 +863,14 @@ export interface LifeChangeView {
   delta: number;
   new_total: number;
   at: string; // RFC3339
+  // Per-player counter, starting at 1, stamped server-side on every
+  // recorded change. Monotonic and stable across frames, and it keeps
+  // climbing after `life_history` stops growing at its cap — the only
+  // field on the entry that identifies it (#703). Neither the array
+  // index nor `at` can: the array is trimmed from the front, and `at`
+  // is RFC3339 SECONDS, so two changes in one second collide. Absent
+  // (0) only on entries from a snapshot taken before #703.
+  seq: number;
 }
 
 export interface ZoneView {

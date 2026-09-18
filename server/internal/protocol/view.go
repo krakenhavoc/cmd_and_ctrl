@@ -720,10 +720,17 @@ type PlayerView struct {
 // canonical history is bounded server-side at MaxLifeHistoryEntries
 // (S08), so the wire payload stays small without per-snapshot
 // pruning here.
+//
+// Seq is game.LifeChange.Seq: a per-player counter that starts at 1
+// and only goes up, so the client can key the life-change popup on
+// something that survives the cap. Neither the array index nor At
+// can do that job — the log stops growing at the cap, and At is
+// RFC3339 SECONDS, so two changes in one second collide (#703).
 type LifeChangeView struct {
 	Delta    int    `json:"delta"`
 	NewTotal int    `json:"new_total"`
 	At       string `json:"at"` // RFC3339
+	Seq      uint64 `json:"seq"`
 }
 
 // ZoneView is the wire representation of a Zone. Count is sent
@@ -2410,6 +2417,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			Delta:    c.Delta,
 			NewTotal: c.NewTotal,
 			At:       c.At.UTC().Format(time.RFC3339),
+			Seq:      c.Seq,
 		}
 	}
 	var manaPool []string
