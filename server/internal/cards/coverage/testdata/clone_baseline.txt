@@ -22,7 +22,9 @@
 47802667a8d29368 6 2 all_will_be_one.go:closure@52
 489066695f71657c 9 2 infernal_grasp.go:closure@22
 50ec6ce2e4092bf2 6 2 grinding_station.go:closure@42
-67997cc5509c0805 6 2 deadly_rollick.go:closure@38
+5e9a2a93a49af934 7 2 animar_soul_of_elements.go:closure@52
+67997cc5509c0805 6 3 deadly_rollick.go:closure@38
+6990833235cc4f97 7 2 dark_prophecy.go:closure@41
 7621313c61d22514 7 2 pashalik_mons.go:closure@41
 7bc059f70d12ebaf 6 3 fate_unraveler.go:closure@36
 7dea5838a812ea42 6 2 azorius_chancery.go:closure@50
@@ -48,5 +50,5 @@ d46495c46dee625f 7 2 batch17_helpers.go:closure@528
 dd481c2a4e82af35 6 2 blood_seeker.go:closure@38
 ec369074573e8e94 16 2 branching_evolution.go:closure@31
 f86f8fb018c793a6 9 2 magewrights_stone.go:closure@33
-f9c60e49e144a4e4 6 2 into_the_flood_maw.go:closure@35
-fd7c4991832e1ed9 6 2 bojuka_bog.go:closure@51
+f9c60e49e144a4e4 6 3 into_the_flood_maw.go:closure@35
+fd7c4991832e1ed9 6 2 bojuka_bog.go:func exileTargetPlayersGraveyard
