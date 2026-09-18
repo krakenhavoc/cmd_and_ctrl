@@ -698,7 +698,9 @@ func (g *Game) LayerRecomputeCountForTest() uint64 {
 // (effects/tarmogoyf_test.go's regression guard for the S15→S16
 // proxy replacement). Reads the commander's effective colors via
 // the layer engine, falling back to the printed-cost proxy when
-// effective is empty.
+// effective is empty. Returns the COLOURS only; the tri-state that
+// says what an empty list means (CR 903.4f, #844) stays inside the
+// package, where the one narrowing function reads it.
 func CommanderIdentityForTest(g *Game, p *Player) []string {
-	return commanderIdentityFor(g, p)
+	return commanderIdentityFor(g, p).Colors
 }

@@ -135,6 +135,75 @@ func TestCommanderIdentityTextStillNarrows(t *testing.T) {
 	}
 }
 
+// CR 903.4f (#844), and the official rulings on all four cards: with
+// no commander, or with a commander whose colour identity is
+// colourless, "any color in your commander's color identity" adds no
+// mana. No token, and no picker to answer.
+//
+// A catalog game's seats start with no commander at all, which is the
+// first case; the second stamps an imported colourless one, the shape
+// deck.ToGameCard gives a real Kozilek.
+func TestCommanderIdentityTextAddsNothingWithNoIdentity(t *testing.T) {
+	cases := []struct {
+		name, typeLine, oracle string
+	}{
+		{"Command Tower", "Land", "0895c9b7-ae7d-4bb3-af17-3b75deb50a25"},
+		{"Arcane Signet", "Artifact", "0bc7f093-bef0-4f1a-852c-4b75ebf54838"},
+		{"Commander's Sphere", "Artifact", commandersSphereOracle},
+		{"Path of Ancestry", "Land", pathOfAncestryOracle},
+	}
+	for _, seat := range []struct {
+		name string
+		give func(g *game.Game, p *game.Player)
+	}{
+		{"no commander", func(*game.Game, *game.Player) {}},
+		{"colourless commander", func(g *game.Game, p *game.Player) {
+			riderGiveImportedCommander(g, p, "Kozilek, Butcher of Truth", "{10}", nil)
+		}},
+	} {
+		t.Run(seat.name, func(t *testing.T) {
+			for _, tc := range cases {
+				t.Run(tc.name, func(t *testing.T) {
+					g := newCatalogGame(t)
+					me := g.Seats[0]
+					seat.give(g, me)
+					src := pushCatalogPermanent(g, me.ID, tc.name, tc.typeLine, tc.oracle, false)
+					if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
+						t.Fatalf("ActivateManaAbility: %v", err)
+					}
+					if pick := riderLatestManaPick(g, me.ID); pick != nil {
+						t.Errorf("queued a pick of %v; the ability adds no mana", pick.ColorOptions)
+					}
+					if len(me.ManaPool) != 0 {
+						t.Errorf("pool = %+v, want empty", me.ManaPool)
+					}
+				})
+			}
+		})
+	}
+}
+
+// riderGiveImportedCommander pushes a commander stamped the way
+// deck.ToGameCard stamps a real card: a Scryfall printing behind it and
+// Scryfall's own color_identity, EMPTY included. An empty identity on
+// such a card is Kozilek's real answer, not a missing import.
+func riderGiveImportedCommander(g *game.Game, p *game.Player, name, manaCost string, identity []string) {
+	g.WithWriteLock(func() {
+		p.Command.PushTop(game.Card{
+			InstanceID:    uuid.New(),
+			ScryfallID:    uuid.NewString(),
+			OracleID:      uuid.NewString(),
+			Name:          name,
+			TypeLine:      "Legendary Creature — Eldrazi",
+			ManaCost:      manaCost,
+			ColorIdentity: identity,
+			Owner:         p.ID,
+			Controller:    p.ID,
+			IsCommander:   true,
+		})
+	})
+}
+
 // identityNarrowingCards is the whole list of catalog cards allowed to
 // narrow. Adding a card here needs the printed clause, which
 // TestNarrowToCommanderIdentityMatchesOracleText checks against the

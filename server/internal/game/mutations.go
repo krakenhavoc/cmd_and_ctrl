@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -1222,17 +1223,32 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if err != nil {
 			continue
 		}
+		// Mirror the activation's option list exactly —
+		// identity-first order, or the identity narrowing — so a
+		// generic-only slot defaults to an identity colour
+		// (pickColorForSlot's options[0]) and the executor never mints
+		// a colour the plan didn't have. CR 903.4f (#844): a source
+		// the narrowing leaves with nothing to add is dropped BEFORE
+		// it is tapped, the same way gatherTapSources refuses to plan
+		// it — tapping a land for no mana is worse than not tapping
+		// it.
+		live := slots[:0]
+		for _, slot := range slots {
+			slot.Options = manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
+			if len(slot.Options) == 0 {
+				continue
+			}
+			live = append(live, slot)
+		}
+		slots = live
+		if len(slots) == 0 {
+			continue
+		}
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
 		for _, slot := range slots {
-			// Mirror ActivateManaAbility's option list exactly —
-			// identity-first order, or the identity narrowing with its
-			// no-overlap fallback — so a generic-only slot defaults to
-			// an identity colour (pickColorForSlot's options[0]) and
-			// the executor never mints a colour the plan didn't have.
-			options := manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
-			color := pickColorForSlot(options, &pending)
+			color := pickColorForSlot(slot.Options, &pending)
 			if color == "" {
 				continue
 			}
@@ -3711,7 +3727,13 @@ func (g *Game) TapCard(cardID uuid.UUID, tapped bool) error {
 // controller's commander's colour identity listed first, and only an
 // ability that set NarrowToCommanderIdentity (the four cards whose text
 // says "in your commander's color identity") is intersected with it —
-// see manaPickOptionsFor.
+// see manaPickOptionsFor. CR 903.4f (#844): when that intersection is
+// empty — no commander, or a colourless one — the slot adds no mana
+// and queues no prompt. The cost is still paid, because the ability is
+// still an ability the player may activate; it simply does nothing,
+// which is what the rulings on those four cards say. Nothing OFFERS
+// such an activation (ManaAbilityAddsNoMana gates the legal-move
+// enumerator, the auto-tapper and the client's menu).
 //
 // S22 adds the last two pieces the painland / Talisman / Ancient Tomb
 // / Mana Confluence batch needed:
@@ -3962,12 +3984,31 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		})
 		return nil
 	}
+	// The commander's colour identity, read once for every slot — and
+	// only when a slot could use it, because the read walks every zone
+	// and a Forest's "{G}" has nothing to narrow or order.
+	var identity commanderIdentity
+	if ab.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
+		identity = commanderIdentityFor(g, p)
+	}
 	for _, slot := range slots {
-		options := slot.Options
+		// The printed option set, commander identity first (Birds of
+		// Paradise offers all five colours), or narrowed to the
+		// identity when the printed text says so (Command Tower,
+		// Arcane Signet: NarrowToCommanderIdentity).
+		options := manaPickOptions(slot.Options, identity, ab.NarrowToCommanderIdentity)
 		if len(options) == 0 {
+			// CR 903.4f (#844): "in your commander's color identity"
+			// with no identity — no commander, or a colourless one —
+			// adds no mana. No token, and no prompt: an empty picker
+			// is not a choice anybody can answer.
 			continue
 		}
-		if len(options) == 1 {
+		// The PRINTED width decides whether this is a pick, not the
+		// narrowed one: Command Tower under a mono-green commander
+		// still prompts, with one button, because the player is
+		// choosing a colour the card told them to choose.
+		if len(slot.Options) == 1 {
 			// Single-color slot — straight into the pool, carrying
 			// the ability's spend restrictions (Eldrazi Temple's
 			// "colorless Eldrazi only"). Copy the slice: the token
@@ -3982,12 +4023,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
 			continue
 		}
-		// Multi-option slot — the printed option set, commander
-		// identity first (Birds of Paradise offers all five colours),
-		// or narrowed to the identity when the printed text says so
-		// (Command Tower, Arcane Signet: NarrowToCommanderIdentity).
-		// See manaPickOptionsFor.
-		filtered := manaPickOptionsFor(g, options, p, ab.NarrowToCommanderIdentity)
+		// Multi-option slot — see manaPickOptions above.
 		// Queue the pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
@@ -4001,7 +4037,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			Count:            1,
 			Source:           cardID,
 			Reason:           ab.Label,
-			ColorOptions:     filtered,
+			ColorOptions:     options,
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
@@ -4216,33 +4252,55 @@ func producibleColors(abilities []ManaAbilityShape) map[string]bool {
 // `narrow` is for the four cards whose printed text says "any color
 // in your commander's color identity" — Command Tower, Arcane Signet,
 // Commander's Sphere, Path of Ancestry (NarrowToCommanderIdentity).
-// Those intersect with the identity instead, falling back to the raw
-// set when the intersection is empty so the player is never handed an
-// empty picker.
+// Those INTERSECT with the identity, and the intersection is allowed
+// to come back EMPTY. CR 903.4f: a player with no commander has no
+// such quality — "that part of the ability won't do anything" — and a
+// commander whose identity is colourless (Kozilek, Karn) leaves the
+// same nothing to add. An empty list is this seam's "adds no mana":
+// every caller skips the slot rather than prompting for a colour that
+// does not exist, and nothing OFFERS a source that would add nothing
+// (ManaAbilityAddsNoMana). The one exception is a commander whose
+// colour data is MISSING rather than colourless — a placeholder card
+// with no Scryfall record behind it — where the printed set stands,
+// because a data gap must not switch a real card off. See
+// commanderIdentityFor for that tri-state.
 //
 // The identity is the player's commander's wherever it is
-// (commanderIdentityFor, CR 903.4a). No identity (the player owns no
-// commander, or a placeholder with no colours) leaves the list as
-// printed either way; for `narrow` that is stronger than CR 903.4f,
-// tracked in #844. Always returns a fresh slice when it
-// changes anything, so a caller may keep it on a PendingChoice.
+// (commanderIdentityFor, CR 903.4a). Always returns a fresh slice
+// when it changes anything, so a caller may keep it on a
+// PendingChoice.
 func manaPickOptionsFor(g *Game, options []string, p *Player, narrow bool) []string {
 	return manaPickOptions(options, commanderIdentityFor(g, p), narrow)
 }
 
 // manaPickOptions is manaPickOptionsFor with the identity already in
-// hand — the auto-tapper computes it once per plan.
-func manaPickOptions(options, identity []string, narrow bool) []string {
-	if len(options) <= 1 || len(identity) == 0 {
-		return options
-	}
+// hand — the auto-tapper computes it once per plan. This is the one
+// narrowing function: order by the identity, or intersect with it.
+// Nothing else in the engine reads the identity to decide what a mana
+// source offers.
+func manaPickOptions(options []string, identity commanderIdentity, narrow bool) []string {
 	if narrow {
-		if narrowed := intersectColors(options, identity); len(narrowed) > 0 {
-			return narrowed
+		// A gap in the card data is not a rules state (#844): with
+		// nothing trustworthy to narrow against, the printed card
+		// stands. commanderIdentityFor has already logged it.
+		if identity.State == identityUnknown {
+			return options
 		}
+		// CR 903.4f. No commander, or a colourless identity, means
+		// there are no colours to intersect with, and a printed colour
+		// outside the identity falls away for the same reason: the
+		// ability can only add a colour the identity names. Nil, not
+		// an empty slice, so "adds nothing" has one spelling.
+		narrowed := intersectColors(options, identity.Colors)
+		if len(narrowed) == 0 {
+			return nil
+		}
+		return narrowed
+	}
+	if len(options) <= 1 || len(identity.Colors) == 0 {
 		return options
 	}
-	return identityFirst(options, identity)
+	return identityFirst(options, identity.Colors)
 }
 
 // identityFirst returns `options` reordered so the colours in
@@ -4272,9 +4330,90 @@ func containsColor(set []string, c string) bool {
 	return false
 }
 
+// ManaAbilityAddsNoMana reports CR 903.4f for one mana ability: it
+// would add no mana at all, so nothing should offer it. True only for
+// an ability whose printed text says "any color in your commander's
+// color identity" (NarrowToCommanderIdentity) activated by a player
+// who has no commander, or whose commander's colour identity is
+// colourless — the identity is undefined or empty, and "that part of
+// the ability won't do anything".
+//
+// The engine still ACCEPTS such an activation (the ability exists; it
+// just does nothing, which is what the rulings on Command Tower,
+// Arcane Signet, Commander's Sphere and Path of Ancestry say). This is
+// what keeps it from being OFFERED: the legal-move enumerator drops
+// the move, the view greys the row, and the auto-tapper skips the
+// source through the same narrowing (gatherTapSources).
+//
+// Read-only. Callers hold whatever lock their read path already holds
+// — the legal enumerator reads the battlefield the same way.
+func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilityShape) bool {
+	if g == nil || !ab.NarrowToCommanderIdentity {
+		return false
+	}
+	produced := ab.Produced
+	if ab.ProducedFunc != nil {
+		produced = ab.ProducedFunc(g, playerID, cardID)
+	}
+	slots, err := ParseProducedMana(produced)
+	if err != nil || len(slots) == 0 {
+		// A broken or empty declaration is not this rule's business.
+		return false
+	}
+	identity := commanderIdentityFor(g, g.playerByIDLocked(playerID))
+	for _, slot := range slots {
+		if len(manaPickOptions(slot.Options, identity, true)) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// identityState is what "your commander's color identity" IS for a
+// player right now, as CR 903.4f divides it. Three states, because
+// before #844 an empty colour list answered two different questions
+// and the engine could not tell them apart: a real colourless
+// commander, and a commander nobody has colour data for.
+type identityState uint8
+
+const (
+	// identityNoCommander — the player has no commander at all.
+	// CR 903.4f: the quality is undefined, and an ability that
+	// refers to it does nothing.
+	identityNoCommander identityState = iota
+	// identityKnown — the commander's colour data is authoritative.
+	// Colors MAY be empty, and that is a real answer rather than a
+	// gap: Kozilek, Butcher of Truth is a legal commander whose
+	// colour identity is colourless, so "one mana of any color in
+	// your commander's color identity" is no colour at all.
+	identityKnown
+	// identityUnknown — the player has a commander, but nothing on
+	// it says what its colour identity is: a placeholder card with
+	// no Scryfall record behind it (the demo seed, a fixture). Not a
+	// rules state but a data gap, and the narrowing falls back to
+	// the printed colours so a missing import never turns Command
+	// Tower off in a real game.
+	identityUnknown
+)
+
+// commanderIdentity is the tri-state result of the one identity
+// computation. Callers read State, never `len(Colors) == 0`, which is
+// the whole point of the type: the empty slice is ambiguous and this
+// is not.
+type commanderIdentity struct {
+	State  identityState
+	Colors []string
+}
+
+// missingIdentityOnce keeps the data-gap warning to one line per
+// process. The condition is a broken import rather than a game event
+// — it cannot change during a game, and one line is enough to find
+// it.
+var missingIdentityOnce sync.Once
+
 // commanderIdentityFor returns the colour identity of the player's
-// commander as uppercase single-character strings. Empty when the
-// player owns no commander.
+// commander as uppercase single-character strings, WITH the tri-state
+// that says what an empty list means (CR 903.4f, #844).
 //
 // The commander is found in EVERY zone, not just the command zone.
 // CR 903.4a fixes colour identity before the game begins, so it does
@@ -4285,58 +4424,41 @@ func containsColor(set []string, c string) bool {
 // not control, because a stolen commander is still its owner's.
 // Zones are read in the order a commander usually sits: command zone,
 // stack, battlefield, graveyard, exile, hand, library.
-// A copy keeps its original printed values in PrintedSelf: its colour
-// identity comes from those values, never from the creature it copied.
 //
 // Partners and backgrounds: every commander the player owns
 // contributes, and the result is their union in discovery order
-// (CR 903.4: the deck's identity is the combined identity).
+// (CR 903.4: the deck's identity is the combined identity). A pair
+// where one half's colours are known and the other's are missing is
+// KNOWN at the colours actually found — the weaker direction, and the
+// one that keeps a real deck's Command Tower working. Only when no
+// colour was found anywhere AND some commander's data is missing does
+// the answer come back unknown.
 //
-// Three sources per commander, in order:
+// The per-card read, and the "is this authoritative" question, are
+// printedIdentityOf's.
 //
-//  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
-//     copied at deck import. This is the only one of the three that
-//     is actually CR 903.4: it folds in mana symbols in rules text
-//     and BOTH faces of a double-faced card. Issue #276: a
-//     transform / modal-DFC commander has a null top-level
-//     mana_cost and colors (the real ones live on card_faces[0]),
-//     so sources 2 and 3 both returned empty and Command Tower
-//     offered all five colours to an Azorius deck.
-//  2. **Effective().Colors** (S16) — the commander's post-layer
-//     colours. Not identity, but a good proxy for any commander
-//     whose identity is fully captured by their mana cost.
-//  3. **distinctColorsInManaCost** — the original S15 proxy.
-//     Covers placeholder commanders with no stamped colours (the
-//     demo seed) and the lobby-time pre-effects-init path.
-//
-// The fallbacks can only be narrower than the truth. The result
-// feeds manaPickOptionsFor, which ORDERS an ordinary pipe by it (a
-// wrong identity only changes which colour is listed first) and
-// NARROWS only the four "in your commander's color identity" cards.
-func commanderIdentityFor(g *Game, p *Player) []string {
+// The result feeds manaPickOptions, which ORDERS an ordinary pipe by
+// it (a wrong identity only changes which colour is listed first) and
+// NARROWS the four "in your commander's color identity" cards, where
+// it can now also mean "this ability adds nothing".
+func commanderIdentityFor(g *Game, p *Player) commanderIdentity {
 	if p == nil {
-		return nil
+		return commanderIdentity{State: identityNoCommander}
 	}
-	var out []string
+	var out commanderIdentity
+	var found, missing bool
 	add := func(c *Card) {
 		if !c.IsCommander || c.Owner != p.ID {
 			return
 		}
-		colors, cost := c.ColorIdentity, c.ManaCost
-		if original := c.PrintedSelf; original != nil {
-			colors, cost = original.ColorIdentity, original.ManaCost
-			if len(colors) == 0 {
-				colors = original.Colors
-			}
-		} else if len(colors) == 0 {
-			colors = c.Effective().Colors
-		}
-		if len(colors) == 0 {
-			colors = distinctColorsInManaCost(cost)
+		found = true
+		colors, known := printedIdentityOf(c)
+		if !known {
+			missing = true
 		}
 		for _, col := range colors {
-			if !containsColor(out, col) {
-				out = append(out, col)
+			if !containsColor(out.Colors, col) {
+				out.Colors = append(out.Colors, col)
 			}
 		}
 	}
@@ -4357,7 +4479,85 @@ func commanderIdentityFor(g *Game, p *Player) []string {
 			add(&z.Cards[i])
 		}
 	}
+	switch {
+	case !found:
+		out.State = identityNoCommander
+	case missing && len(out.Colors) == 0:
+		out.State = identityUnknown
+		missingIdentityOnce.Do(func() {
+			slog.Warn("commander has no colour identity data: identity mana falls back to the printed colours",
+				"player", p.ID, "rule", "CR 903.4f", "issue", 844)
+		})
+	default:
+		out.State = identityKnown
+	}
 	return out
+}
+
+// printedIdentityOf reads one commander's colour identity and says
+// whether that answer is authoritative — the two halves #844 asks to
+// be separated, decided in one place so no caller has to infer them
+// from an empty slice.
+//
+// Four sources per commander, in order:
+//
+//  1. **Card.ColorIdentity** — Scryfall's own `color_identity`,
+//     copied at deck import. This is the only one of the four that is
+//     actually CR 903.4: it folds in mana symbols in rules text and
+//     BOTH faces of a double-faced card. Issue #276: a transform /
+//     modal-DFC commander has a null top-level mana_cost and colors
+//     (the real ones live on card_faces[0]), so sources 3 and 4 both
+//     returned empty and Command Tower offered all five colours to an
+//     Azorius deck.
+//  2. **An imported card's EMPTY ColorIdentity** — authoritative too,
+//     and the #844 fix: a card with a Scryfall printing behind it
+//     (ScryfallID / OracleID, stamped by deck.ToGameCard, the one
+//     path a real deck takes) that lists no colours really has none.
+//     Kozilek, Butcher of Truth is colourless, so "any color in your
+//     commander's color identity" adds nothing for its deck.
+//  3. **Effective().Colors** (S16) — the commander's post-layer
+//     colours. Not identity, but a good proxy for any commander whose
+//     identity is fully captured by their mana cost.
+//  4. **distinctColorsInManaCost** — the original S15 proxy. Covers
+//     placeholder commanders with no stamped colours (the demo seed)
+//     and the lobby-time pre-effects-init path.
+//
+// A copy keeps its original printed values in PrintedSelf: a copied
+// commander's colour identity comes from those, never from the
+// creature it copied (CR 707.2 changes copiable values, not the
+// identity CR 903.4a fixed before the game began).
+//
+// The colour fallbacks can only be narrower than the truth. `known`
+// is false only when nothing at all is on the card AND no Scryfall
+// printing stands behind it, which no imported deck produces.
+func printedIdentityOf(c *Card) (colors []string, known bool) {
+	cost, imported := c.ManaCost, c.fromScryfallPrinting()
+	colors = c.ColorIdentity
+	if original := c.PrintedSelf; original != nil {
+		colors, cost = original.ColorIdentity, original.ManaCost
+		imported = original.ScryfallID != "" || original.OracleID != ""
+		if len(colors) == 0 {
+			colors = original.Colors
+		}
+	} else if len(colors) == 0 {
+		colors = c.Effective().Colors
+	}
+	if len(colors) == 0 {
+		colors = distinctColorsInManaCost(cost)
+	}
+	if len(colors) > 0 {
+		return colors, true
+	}
+	return nil, imported
+}
+
+// fromScryfallPrinting reports whether this instance was stamped from
+// a real Scryfall record (deck.ToGameCard) rather than conjured as a
+// placeholder — the demo seed, a token template, a test fixture. Both
+// IDs come off the same record, so either one standing is the whole
+// answer.
+func (c Card) fromScryfallPrinting() bool {
+	return c.ScryfallID != "" || c.OracleID != ""
 }
 
 // distinctColorsInManaCost extracts the unique WUBRG letters that

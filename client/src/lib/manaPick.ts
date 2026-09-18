@@ -44,3 +44,21 @@ export function colorButtons(
     amount: amounts?.[color] ?? 1,
   }));
 }
+
+/**
+ * Whether a colour prompt can be answered at all: it has at least one
+ * button.
+ *
+ * The server never queues an empty one — CR 903.4f (#844) means a
+ * "commander's color identity" source with no identity adds no mana and
+ * prompts for nothing, rather than opening a picker with no colours in
+ * it — so this is a floor, not a workflow. A prompt nobody can answer
+ * must not open a modal that blocks the board.
+ */
+export function colorPromptAnswerable(choice: {
+  kind?: string;
+  color_options?: readonly string[];
+}): boolean {
+  if (choice.kind !== "mana_pick" && choice.kind !== "choose_color") return true;
+  return (choice.color_options?.length ?? 0) > 0;
+}

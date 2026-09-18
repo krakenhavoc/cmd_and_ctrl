@@ -46,7 +46,7 @@ func castCommanderToBattlefieldForTest(t *testing.T, g *Game, p *Player, id uuid
 	if err := g.CastSpell(p.ID, id, CastSpellParams{FromZone: "command"}); err != nil {
 		t.Fatalf("cast commander: %v", err)
 	}
-	if got := commanderIdentityFor(g, p); !reflect.DeepEqual(got, want) {
+	if got := commanderIdentityFor(g, p).Colors; !reflect.DeepEqual(got, want) {
 		t.Errorf("identity with the commander on the stack = %v, want %v", got, want)
 	}
 	resolveTop(t, g)
@@ -65,7 +65,7 @@ func TestCommanderIdentityHoldsOnTheBattlefield(t *testing.T) {
 		p := g.Seats[0]
 		id := replaceCommanderForTest(g, p, "{1}{G}")
 		castCommanderToBattlefieldForTest(t, g, p, id, []string{"G"})
-		if got := commanderIdentityFor(g, p); !reflect.DeepEqual(got, []string{"G"}) {
+		if got := commanderIdentityFor(g, p).Colors; !reflect.DeepEqual(got, []string{"G"}) {
 			t.Fatalf("identity with the commander on the battlefield = %v, want [G]", got)
 		}
 		return g, p
@@ -155,7 +155,7 @@ func TestCommanderIdentityEveryZone(t *testing.T) {
 	}
 	check := func(where string) {
 		t.Helper()
-		if got := commanderIdentityFor(g, p); !reflect.DeepEqual(got, []string{"B"}) {
+		if got := commanderIdentityFor(g, p).Colors; !reflect.DeepEqual(got, []string{"B"}) {
 			t.Errorf("identity with the commander in %s = %v, want [B]", where, got)
 		}
 	}
@@ -164,7 +164,7 @@ func TestCommanderIdentityEveryZone(t *testing.T) {
 	check("the battlefield")
 	findBattlefieldCard(g, id).Controller = opp.ID
 	check("the battlefield under an opponent's control")
-	if got := commanderIdentityFor(g, opp); !reflect.DeepEqual(got, []string{"R"}) {
+	if got := commanderIdentityFor(g, opp).Colors; !reflect.DeepEqual(got, []string{"R"}) {
 		t.Errorf("opponent's identity while controlling our commander = %v, want [R]", got)
 	}
 	move(g.Battlefield, p.Graveyard)
@@ -187,7 +187,7 @@ func TestCommanderIdentityUnionsPartners(t *testing.T) {
 	second.ManaCost = "{2}{U}"
 	second.IsCommander = true
 	g.WithWriteLock(func() { g.Battlefield.PushTop(second) })
-	if got := commanderIdentityFor(g, p); !reflect.DeepEqual(got, []string{"W", "U"}) {
+	if got := commanderIdentityFor(g, p).Colors; !reflect.DeepEqual(got, []string{"W", "U"}) {
 		t.Errorf("partner identity = %v, want [W U]", got)
 	}
 }

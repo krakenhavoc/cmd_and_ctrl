@@ -13,7 +13,7 @@
 
   import type { ActivatedAbilityView, ManaAbilityView } from "../../protocol";
   import { counterCostBlocked, type CounterCostShape } from "../../counterCost";
-  import { ACTIVATION_CONDITION_UNMET } from "../../contextMenu.logic";
+  import { ACTIVATION_CONDITION_UNMET, NO_COMMANDER_IDENTITY } from "../../contextMenu.logic";
   import { sacrificeShortfall } from "../../sacrificeCost";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -77,6 +77,10 @@
     // condition is false. Both lists carry it — Temple of the False
     // God's mana row as much as Tectonic Edge's destroy.
     condition_unmet?: boolean;
+    // #844, CR 903.4f: a "in your commander's color identity" mana
+    // ability with no identity to narrow to adds nothing. Mana
+    // abilities only; the arm below is inert for the activated list.
+    adds_no_mana?: boolean;
   } & CounterCostShape;
 
   function abilityBlocked(a: CostShaped): string {
@@ -84,6 +88,8 @@
     if (a.tap_cost && summoningSick) return "summoning sickness";
     if (a.sorcery_speed && sorcerySpeedBlocked) return sorcerySpeedBlocked;
     if (a.condition_unmet) return ACTIVATION_CONDITION_UNMET;
+    // #844: Command Tower with no commander, or a colourless one.
+    if (a.adds_no_mana) return NO_COMMANDER_IDENTITY;
     // #747: count-aware — "needs three Foods (you have 2)".
     const sacrifice = sacrificeShortfall(a.sacrifice_options, a.sacrifice_label ?? "a permanent");
     if (sacrifice) return sacrifice;

@@ -1384,6 +1384,14 @@ export interface ManaAbilityView {
   // — Temple of the False God with four lands, Mox Opal without
   // metalcraft. Same flag and meaning as ActivatedAbilityView's.
   condition_unmet?: boolean;
+  // #844, CR 903.4f: the ability says "any color in your commander's
+  // color identity" (Command Tower, Arcane Signet, Commander's Sphere,
+  // Path of Ancestry) and the controller has no commander, or one
+  // whose colour identity is colourless. The quality is undefined or
+  // empty, so the ability adds no mana at all and the row is greyed —
+  // tapping the land would just lose it. Absent for every other
+  // ability.
+  adds_no_mana?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

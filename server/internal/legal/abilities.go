@@ -421,6 +421,14 @@ func (e *enumerator) manaMoves() {
 			if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
 				continue
 			}
+			// CR 903.4f (#844): "any color in your commander's color
+			// identity" adds nothing for a seat with no commander, or
+			// a colourless one. Tapping Command Tower for no mana is
+			// legal and pointless; it is not a move worth offering,
+			// and a bot that took it would just lose a land.
+			if game.ManaAbilityAddsNoMana(g, e.seat, source.InstanceID, ab) {
+				continue
+			}
 			if ab.TapCost {
 				if source.Tapped {
 					continue

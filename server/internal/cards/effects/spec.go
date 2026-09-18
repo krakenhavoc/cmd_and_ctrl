@@ -560,6 +560,11 @@ type ManaAbility struct {
 	// leaves it off and offers its printed width, with the
 	// commander's identity listed first (owner decision 2026-09-17).
 	//
+	// CR 903.4f (#844): a narrowing ability adds NO mana for a
+	// controller with no commander, or a colourless one — the
+	// intersection is empty, no pick is offered, and nothing
+	// enumerates the activation.
+	//
 	// Replaced IgnoreCommanderIdentity (S22), its inverse, when the
 	// default flipped from narrowing to ordering.
 	NarrowToCommanderIdentity bool

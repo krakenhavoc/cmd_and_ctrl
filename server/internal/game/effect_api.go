@@ -2615,7 +2615,8 @@ type AddManaOptions struct {
 	// printed text says "any color in your commander's color
 	// identity"; no effect in the catalog does today. Replaced #742's
 	// IgnoreCommanderIdentity when the default flipped (owner decision
-	// 2026-09-17).
+	// 2026-09-17). CR 903.4f (#844): with no commander, or a colourless
+	// one, such a pick adds nothing and is not queued.
 	NarrowToCommanderIdentity bool
 }
 
@@ -2633,17 +2634,27 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if err != nil {
 		return err
 	}
+	// Read once, and only when a slot could use it: the identity read
+	// walks every zone, and Dark Ritual's three "{B}" slots have
+	// nothing to narrow or order.
+	var identity commanderIdentity
+	if opts.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
+		identity = commanderIdentityFor(g, p)
+	}
 	for _, slot := range slots {
-		options := slot.Options
-		if len(options) == 0 {
+		colorOptions := manaPickOptions(slot.Options, identity, opts.NarrowToCommanderIdentity)
+		if len(colorOptions) == 0 {
+			// CR 903.4f (#844): a "commander's color identity" effect
+			// with no identity adds nothing, and an empty picker is not
+			// a choice anybody can answer. An empty printed slot lands
+			// here too, as it always did.
 			continue
 		}
-		if len(options) == 1 {
-			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: source})
+		if len(slot.Options) == 1 {
+			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
 		}
-		colorOptions := manaPickOptionsFor(g, options, p, opts.NarrowToCommanderIdentity)
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
 			Chooser:      playerID,
