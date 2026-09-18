@@ -2570,21 +2570,36 @@ zone. Only write a file when the card does something else too
 (Irregular Cohort's token). A TOKEN declares it on the template's
 `Keywords`, since a token has no oracle ID.
 
-"Is every creature type" is ALWAYS the `game.KeywordChangeling`
-token in the ability list — for a printed changeling, for a grant
-(Maskwood Nexus, via `AllCreatureTypesGrant`), and for an
-until-end-of-turn grant (`GrantAllCreatureTypesUntilEOT`). Both of
-those declare **layer 4**, not the layer 6 an ability grant would
-normally take: the layer is the semantic claim and the keyword is
-storage. Declared in layer 6 the grant gets timestamp-ordered against
-every lord's keyword half, and a Goblin Chieftain that entered first
-grants haste before the Bear became a Goblin — while its +1/+1 lands
-correctly, because layer 7c runs after all of layer 6. Half a working
-card. Do not
-append the ~345 entries of `game.AllCreatureTypes` to
+"Is every creature type" is a **layer-4 TYPE FACT**, not a keyword:
+`Characteristic.AllCreatureTypes`, set by a grant (Maskwood Nexus, via
+`AllCreatureTypesGrant`), by an until-end-of-turn grant
+(`GrantAllCreatureTypesUntilEOT`), and by a printed changeling through
+the one keyword→layer-4 projection in `printedCharacteristic`
+(CR 702.73a is a characteristic-defining ability, so CR 613.2 applies
+it before every other layer-4 effect). Read it with
+`game.HasAllCreatureTypes`. The `changeling` keyword stays in
+`Characteristic.Abilities` as the PRINTED source of the fact and as
+the client's badge, and nothing else reads it.
+
+It used to be the keyword alone, which put a layer-4 type where layer
+6 could delete it — a creature that lost all its abilities stopped
+being every creature type, against Maskwood Nexus' own 2021-02-05
+ruling, and a later "is an Elk" left the keyword behind (#670, ADR
+0067 §4). A grant declares **layer 4**, not the layer 6 an ability
+grant would normally take: declared in layer 6 it gets
+timestamp-ordered against every lord's keyword half, and a Goblin
+Chieftain that entered first grants haste before the Bear became a
+Goblin — while its +1/+1 lands correctly, because layer 7c runs after
+all of layer 6. Half a working card.
+
+Replace a subtype list with `Characteristic.SetSubtypes`, never by
+assigning `c.Subtypes` — that helper is what clears the
+every-creature-type fact, which is what "is an Elk" has to do
+(CR 205.1b). An ADD (`c.Subtypes = append(c.Subtypes, "Swamp")`)
+stays a bare append, because adding a type takes nothing away. And do
+not append the ~345 entries of `game.AllCreatureTypes` to
 `Characteristic.Subtypes`: it makes the wire type line unreadable
-and every subtype loop quadratic, for a property one map lookup
-answers.
+and every subtype loop quadratic, for a property one flag answers.
 
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
@@ -2753,30 +2768,31 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
 - **Cost-replacement effects** (Trinisphere, Thalia, Spellshift, Kambal)
   touch the S15 cost engine rather than the S17 event pipeline. They
   land with S28.
-- **Cards that add a layer dependency, or that ability removal gets
-  wrong: hold them.** The layer engine applies each layer in timestamp
-  order and has no CR 613.8 dependency ordering, and it silences a
-  source that lost its abilities in every layer, which breaks
-  CR 613.6. The catalog already has pairs that come out wrong in one
-  entry order (Urborg + Song of the Dryads, Maskwood Nexus + a crewed
-  Vehicle; [ADR 0043](docs/decisions/0043-copy-effects.md) §5's
-  amendment lists them). Don't add more until the fix lands:
-  - **Magus of the Moon** (#394): wait for
-    [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669)
-    (which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675)).
-    Under Kenrith's Transformation or Darksteel Mutation it would stop
-    making Mountains, and its ruling says it keeps making them. Magus +
-    Urborg already comes out right.
-  - **Arcane Adaptation** (#401), **Leyline of Transformation** (#396),
-    **Encroaching Mycosynth** (#401), **Yavimaya, Cradle of Growth**
-    (#294) and **Prismatic Omen** (#396): wait for
-    [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
-    Each is a type-add that reads a type other layer-4 effects write
-    (creatures, nonland permanents, lands), so each adds a new pair.
+- ~~**Cards that add a layer dependency, or that ability removal gets
+  wrong**~~ — no longer a blocker, and the hold list is released
+  (2026-09-18, [ADR 0067](docs/decisions/0067-layer-dependency-ordering.md),
+  [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668) /
+  [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) /
+  [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670)). The
+  layer engine orders layer 4 by CR 613.8 dependency, an ability
+  removal applies in its own layer and reaches forwards only
+  (CR 613.6), and a "becomes a basic land type" effect removes only
+  the land's own rules text in layer 4 (CR 305.7,
+  `effects.SetsBasicLandType`). **Magus of the Moon** shipped with
+  that change. **Arcane Adaptation** (#401), **Leyline of
+  Transformation** (#396), **Encroaching Mycosynth** (#401),
+  **Yavimaya, Cradle of Growth** (#294) and **Prismatic Omen** (#396)
+  are unblocked: a layer-4 type-add whose "applies to" reads a card
+  type or subtype is the resolved case now, not the broken one.
 
-  The same shape applies to any other card: a layer-4 type-add whose
-  "applies to" reads a card type or subtype, or a static that should
-  keep applying after its source loses its abilities.
+  Two things a card in that shape still has to get right. A layer-4
+  effect that REPLACES the subtype list calls
+  `Characteristic.SetSubtypes`; a static that spans layers and should
+  survive its own source being silenced declares
+  `ContinuesAfterRemoval` on the later-layer halves (ADR 0067 §2).
+  Adding a dependency-ordered bucket other than layer 4 needs a
+  catalogued pair that wants it and a benchmark — the ADR has the
+  numbers.
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:

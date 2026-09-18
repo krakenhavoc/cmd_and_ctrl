@@ -3321,7 +3321,7 @@ func viewOfCard(c game.Card) CardView {
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(&c),
-		Abilities:     eff.Abilities,
+		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
 		knowers:       knowers,
 		Layout:        c.Layout,
@@ -3721,6 +3721,28 @@ func viewOfFaces(c game.Card) []CardFaceView {
 		out = append(out, v)
 	}
 	return out
+}
+
+// viewOfAbilityBadges is the keyword row the client renders: the
+// effective ability list, plus `changeling` whenever the permanent is
+// every creature type and does not already carry the keyword.
+//
+// Since #670 "is every creature type" is a layer-4 fact on the
+// Characteristic and not a keyword, so a Maskwood Nexus grant no
+// longer writes anything into Abilities. The badge is worth keeping —
+// a player looking at a Bear that is suddenly a legal Goblin
+// Chieftain target deserves to be told why — so the wire PROJECTS it
+// from the fact rather than the engine storing it twice.
+func viewOfAbilityBadges(eff game.Characteristic) []string {
+	if !eff.AllCreatureTypes {
+		return eff.Abilities
+	}
+	for _, a := range eff.Abilities {
+		if a == game.KeywordChangeling {
+			return eff.Abilities
+		}
+	}
+	return append(append([]string(nil), eff.Abilities...), game.KeywordChangeling)
 }
 
 func viewOfManaAbilities(c game.Card) []ManaAbilityView {

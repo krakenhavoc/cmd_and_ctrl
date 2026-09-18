@@ -168,20 +168,29 @@ func lowerASCII(s string) string {
 // HasAllCreatureTypes reports whether the card is every creature type
 // right now (CR 702.73a).
 //
-// The engine carries "is every creature type" as the `changeling`
-// keyword in the ability list — for printed changeling because that is
-// literally what the card says, and for a GRANT of the same property
-// (Maskwood Nexus) because expressing it as ~345 entries appended to
-// Characteristic.Subtypes would make the wire type line unreadable and
-// every subtype loop in the engine quadratic for no gain.
+// On the battlefield the answer is `Characteristic.AllCreatureTypes`,
+// the LAYER 4 type fact the pass computes (#670). It is a fact and not
+// the `changeling` keyword because layer 6 empties the keyword list
+// and layer 6 must not be able to take a layer-4 type away: Maskwood
+// Nexus' 2021-02-05 ruling is that a changeling under a "loses all
+// abilities" effect is still every creature type. Expressing the fact
+// as ~345 entries appended to Characteristic.Subtypes would make the
+// wire type line unreadable and every subtype loop in the engine
+// quadratic, which is why it is one flag rather than the vocabulary.
 //
-// The consequence worth knowing: this is true in EVERY zone for a
-// printed changeling, because HasKeyword falls back to the card's own
-// Keywords off the battlefield, and only on the battlefield for a
-// granted one, because CR 113.6 says a static ability's continuous
-// effect applies only while its source is on the battlefield. Both are
-// the correct answer, for different reasons.
+// Off the battlefield there is no layered characteristic, so the
+// printed keyword answers directly — CR 702.73a is a
+// characteristic-defining ability and applies in every zone. A GRANT
+// (Maskwood Nexus) does not, because CR 113.6 says a static ability's
+// continuous effect applies only while its source is on the
+// battlefield. Both are the correct answer, for different reasons.
 func HasAllCreatureTypes(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	if c.effective != nil {
+		return c.effective.AllCreatureTypes
+	}
 	return HasKeyword(c, KeywordChangeling)
 }
 

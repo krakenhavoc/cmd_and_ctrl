@@ -42,35 +42,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the layer engine to compute a characteristic for non-battlefield
 // cards, which is a real engine change and not a card change.
 //
-// DECLARED GAPS, CR 613.8. "Creatures you control" reads the Creature
-// type, which other layer-4 effects add and remove, so the Nexus
-// depends on them and should apply after them whatever the
-// timestamps. The layer engine orders layer 4 by timestamp only, so:
+// "Creatures you control" reads the Creature type, which other
+// layer-4 effects add and remove, so the Nexus DEPENDS on them under
+// CR 613.8a and applies after them whichever entered first. A Vehicle
+// crewed while the Nexus was already out is every creature type; a
+// permanent that switches its own creature type off (The Warring
+// Triad under eight graveyard cards, a slumbering Arixmethes) is not,
+// whenever it arrived. Both orders of both pairs are pinned in
+// layer_dependency_pairs_test.go.
 //
-//   - a permanent that becomes a creature AFTER the Nexus entered is
-//     not every creature type. Crew is the common case: the crew
-//     effect is stamped when the ability resolves, so a Vehicle
-//     crewed with a Nexus already out misses every lord. Every
-//     turn-scoped "becomes a creature" effect has the same shape.
-//   - a permanent that switches its own creature type off and entered
-//     AFTER the Nexus (The Warring Triad under eight graveyard cards,
-//     a slumbering Arixmethes) keeps the every-type marker, because
-//     the marker rides the ability list the self type-strip does not
-//     clear.
-//
-// Those pairs are pinned, skipped, in layer_dependency_pairs_test.go.
-//
-// DECLARED GAP, not ordering: the every-type marker is stored as the
-// changeling keyword (AllCreatureTypesGrant), so layer-6 ability
-// removal wipes it. A creature you control that has lost all its
-// abilities (Kenrith's Transformation attached before the Nexus
-// entered) is not every creature type, although the Nexus's effect
-// comes from the Nexus and the rules keep it. Only that order is
-// wrong. Both ability-loss Auras on a creature here (Kenrith's
-// Transformation, Darksteel Mutation) also set the creature types in
-// layer 4, independently of the Nexus, so timestamps decide: an Aura
-// attached AFTER the Nexus entered leaves an Elk (or Insect) and
-// nothing else, which is the rules answer and what the engine gives.
+// The property itself is a layer-4 FACT on the Characteristic, not
+// the changeling keyword in the ability list (#670), which is what
+// makes a creature that lost all its abilities in layer 6 still every
+// creature type — the Nexus' own 2021-02-05 ruling. A layer-4 subtype
+// SET newer than the Nexus still overwrites it, because setting the
+// subtypes is what "is an Elk" means: an Aura attached AFTER the
+// Nexus entered leaves an Elk (or an Insect) and nothing else.
 func init() {
 	Register(Spec{
 		OracleID:     "9b2cdbed-c733-409b-b0e4-2c8960c25111",
@@ -78,9 +65,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Creature spells you cast and creature cards you own outside the battlefield aren't every creature type — only creatures you control on the battlefield are.",
-			"A permanent that becomes a creature after Maskwood Nexus is on the battlefield, such as a Vehicle you crew, isn't every creature type.",
-			"The Warring Triad or a sleeping Arixmethes, Slumbering Isle that entered after Maskwood Nexus still counts as every creature type while it isn't a creature.",
-			"A creature you control that lost all its abilities before Maskwood Nexus entered, such as one already enchanted by Kenrith's Transformation, isn't every creature type.",
 		},
 		Static: []game.StaticAbility{
 			AllCreatureTypesGrant(TribeFilter{YoursOnly: true}),

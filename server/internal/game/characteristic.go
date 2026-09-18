@@ -40,6 +40,39 @@ type Characteristic struct {
 	Abilities  []string
 	Name       string
 
+	// AllCreatureTypes records that this object is every creature
+	// type (CR 702.73a). It is a LAYER 4 TYPE FACT and it lives here,
+	// next to Subtypes, rather than as the `changeling` keyword in
+	// Abilities, which is where it used to live.
+	//
+	// The keyword was only ever storage — "every creature type" as
+	// ~345 entries in Subtypes would make the wire type line
+	// unreadable and every subtype loop quadratic — but storage in
+	// the ability list leaked into the rules answer in both
+	// directions (#670):
+	//
+	//   - a layer-6 ability removal emptied Abilities and with it
+	//     deleted a layer-4 type fact, which is exactly what
+	//     Maskwood Nexus' 2021-02-05 ruling says must NOT happen
+	//     ("If an effect causes a creature with changeling to lose
+	//     all abilities, it will remain all creature types … because
+	//     changeling applies before the effect that removes it");
+	//   - a later layer-4 subtype SET left the keyword behind, so a
+	//     Kenrith's Transformation newer than the Nexus produced an
+	//     Elk that was still every creature type.
+	//
+	// Both fall out for free now: the flag is cleared and re-set
+	// inside layer 4 in timestamp order (SetSubtypes clears it, a
+	// grant sets it), and layer 6 cannot see it.
+	//
+	// Printed changeling seeds it in printedCharacteristic — CR
+	// 702.73a is a characteristic-defining ability, so CR 613.2
+	// applies it before any other layer-4 effect, which is what
+	// seeding the layer-0 baseline means in this engine. The keyword
+	// stays in Abilities as the PRINTED source of the flag and as the
+	// client's badge; nothing but the projection reads it.
+	AllCreatureTypes bool
+
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
 	// Forest land") applied to this object in layer 6.
@@ -168,10 +201,48 @@ func (c Card) printedCharacteristic() Characteristic {
 		Colors:     printedColors(c),
 		Name:       c.Name,
 		Abilities:  abilities,
+		// CR 702.73a is a characteristic-defining ability, and
+		// CR 613.2 applies CDAs before every other effect in their
+		// layer — so the keyword→layer-4 projection belongs in the
+		// baseline the layer pass starts from, and this is the ONE
+		// place a printed changeling becomes the type fact (#670).
+		// A layer-4 subtype SET clears it (Characteristic.SetSubtypes)
+		// and a layer-4 grant re-sets it, in timestamp order.
+		AllCreatureTypes: containsKeyword(abilities, KeywordChangeling),
 		// The layer-0 baseline for control (CR 613.1b): who controls
 		// this object absent any control-changing continuous effect.
 		Controller: c.baseController(),
 	}
+}
+
+// SetSubtypes is "is a Forest land" / "is an Elk creature" / "isn't a
+// creature" — a layer-4 effect that REPLACES the subtype list rather
+// than adding to it (CR 205.1b, CR 613.1d).
+//
+// Every layer-4 subtype replacement in the engine goes through here,
+// because replacing the subtypes is also what takes "is every
+// creature type" away: a creature that is set to be an Elk is an Elk
+// and nothing else, whatever a Maskwood Nexus said earlier in the same
+// layer (#670, and the second Maskwood ruling). An ADD —
+// `c.Subtypes = append(c.Subtypes, "Swamp")` — deliberately does not
+// go through here, because adding a type takes nothing away.
+func (c *Characteristic) SetSubtypes(subtypes []string) {
+	c.Subtypes = append([]string(nil), subtypes...)
+	c.AllCreatureTypes = false
+}
+
+// clone returns a deep copy — the slices too, so a caller can mutate
+// it without reaching back into the original. The layer engine's
+// CR 613.8 dependency probe needs it (layer_dependency.go): a trial
+// application must not leave a fingerprint on the real pass.
+func (c Characteristic) clone() Characteristic {
+	out := c
+	out.Types = append([]string(nil), c.Types...)
+	out.Subtypes = append([]string(nil), c.Subtypes...)
+	out.Supertypes = append([]string(nil), c.Supertypes...)
+	out.Colors = append([]string(nil), c.Colors...)
+	out.Abilities = append([]string(nil), c.Abilities...)
+	return out
 }
 
 // baseController is the controller a permanent reverts to when every

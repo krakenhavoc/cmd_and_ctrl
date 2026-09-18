@@ -184,18 +184,27 @@ func RemoveFromAttached(keywords ...string) game.StaticAbility {
 //
 // The engine does the removing. This helper only declares
 // RemovesAbilities and appends the keeps, because the removal has to
-// be visible to the recompute (it drops the silenced permanent's
-// contributions from every other layer) and to
+// be visible to the recompute (it is what stops the source's effects
+// STARTING in any later layer, CR 613.6) and to
 // game.CatalogAbilityKey (it is what stops the catalogued activated,
 // triggered, mana, static and replacement abilities from answering).
 // Clearing c.Abilities by hand would remove the keyword badges and
 // leave the card fully functional underneath them, which was the
 // exact shape of the gap this closes.
+//
+// NOT for "is a Forest land". That loss is CR 305.7's, it is part of
+// the type change, and it belongs in layer 4 — see SetsBasicLandType.
 func LoseAllAbilities(keep ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:            game.Layer6Ability,
 		RemovesAbilities: true,
-		AppliesTo:        AttachedToSource,
+		// Every catalogued user of this helper prints it as one
+		// sentence with a layer-4 type change ("loses all abilities
+		// and is a green Elk creature"), so CR 613.6 keeps this half
+		// applying if something silences the AURA part-way through
+		// the pass.
+		ContinuesAfterRemoval: true,
+		AppliesTo:             AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range keep {
 				if !keywordSliceContains(c.Abilities, kw) {
@@ -218,13 +227,18 @@ func LoseAllAbilities(keep ...string) game.StaticAbility {
 // reason the card is a Commander staple and not a worse Pacifism.
 // Nothing here is Mycosynth Lattice's additive shape; use
 // game.Layer4Type directly for that.
+//
+// The subtype half goes through Characteristic.SetSubtypes, which is
+// also what takes "is every creature type" away: a creature a
+// Maskwood Nexus made every type earlier in layer 4 and a Kenrith's
+// Transformation then set to Elk is an Elk (#670).
 func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Types = append([]string(nil), types...)
-			c.Subtypes = append([]string(nil), subtypes...)
+			c.SetSubtypes(subtypes)
 		},
 	}
 }
@@ -239,8 +253,14 @@ func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 // colourless is how it dodges a colour-restricted removal spell.
 func SetAttachedColors(colors ...string) game.StaticAbility {
 	return game.StaticAbility{
-		Layer:     game.Layer5Color,
-		AppliesTo: AttachedToSource,
+		Layer: game.Layer5Color,
+		// CR 613.6: "is a colorless Forest land" is ONE continuous
+		// effect that starts in layer 4, so the colour half keeps
+		// applying even if something takes the Aura's abilities away
+		// part-way through the pass. Same for the base-P/T half
+		// below. See game.StaticAbility.ContinuesAfterRemoval.
+		ContinuesAfterRemoval: true,
+		AppliesTo:             AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Colors = append([]string(nil), colors...)
 		},
@@ -259,9 +279,10 @@ func SetAttachedColors(colors ...string) game.StaticAbility {
 // on it a real (bad) decision rather than a no-op.
 func SetAttachedBasePT(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7B_Set,
-		AppliesTo: AttachedToSource,
+		Layer:                 game.Layer7PT,
+		SubLayer:              game.SubLayer7B_Set,
+		ContinuesAfterRemoval: true,
+		AppliesTo:             AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power = power
 			c.Toughness = toughness
@@ -385,4 +406,52 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 		}
 	}
 	return nil
+}
+
+// SetsBasicLandType is CR 305.7 — "an effect that sets a land's
+// subtype to one or more of the basic land types" — as one layer-4
+// static. Song of the Dryads' "enchanted permanent is a colorless
+// Forest land" is the catalog's first; Magus of the Moon's "nonbasic
+// lands are Mountains" is the second, and it is not an attachment,
+// which is why `applies` is an argument rather than AttachedToSource.
+//
+// CR 305.7 is three clauses and this is all three:
+//
+//   - the permanent's old land types go and the named basic land
+//     types replace them — the type SET, so game.SetSubtypes;
+//   - it loses the abilities generated from its rules text —
+//     RemovesAbilities, and crucially in LAYER 4, because that is
+//     where the type change is;
+//   - it gains the basic land type's intrinsic mana ability. That
+//     one is not here at all: game.ManaAbilitiesForCard derives it
+//     from the EFFECTIVE subtypes (CR 305.6), so it arrives with the
+//     type and survives the same effect's removal, which is what the
+//     rule says happens.
+//
+// The layer is the whole point, and it is the difference between this
+// helper and LoseAllAbilities. A removal in layer 4 cannot touch a
+// grant that lands in layer 6, so an ability another effect gave the
+// permanent survives whenever it was given — which is CR 305.7's last
+// sentence ("this doesn't remove any abilities that were granted to
+// the land by other effects") and Song's 2014-11-07 ruling ("it will
+// still have any abilities it gained from other effects"). Modelling
+// the loss as a layer-6 wipe took Boros Charm's indestructible off a
+// Song'd Sol Ring and let a wrath destroy a Forest (#669).
+//
+// `types` is the whole card-type line the effect writes ("Land" for
+// Song, which replaces artifact, creature and planeswalker; nil for
+// Magus of the Moon, which changes only the subtypes of permanents
+// that are lands already).
+func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *game.Card) bool, types []string, subtypes []string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:            game.Layer4Type,
+		RemovesAbilities: true,
+		AppliesTo:        applies,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			if len(types) > 0 {
+				c.Types = append([]string(nil), types...)
+			}
+			c.SetSubtypes(subtypes)
+		},
+	}
 }
