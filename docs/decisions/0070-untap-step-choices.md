@@ -2,15 +2,23 @@
 
 **Status:** Accepted · 2026-09-18 · S41 — Turn machinery and per-turn accounting (tracker [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884))
 **Issue:** [#826](https://github.com/krakenhavoc/cmd_and_ctrl/issues/826)
-**Numbering:** on 2026-09-18, after `git fetch origin "+refs/heads/*:refs/remotes/origin/*"`
-(275 remote heads), every `docs/decisions/` path ever touched on any remote ref
-was listed with `git log --remotes=origin --name-only --pretty=format: --
-docs/decisions/`. The highest number claimed anywhere is **0067**; 0061–0067 are
-on parallel branches not yet merged to `develop`, and 0066 is unclaimed but is
-being drafted by a parallel agent today, so it is left alone. **0070** is taken
-here to stay clear of the 0061–0069 block today's agents were told to reserve.
-Re-checked immediately before the push. 0005, 0024, 0029 and 0030 stay
-permanently unused per AGENTS.md §4.
+**Numbering:** re-checked immediately before the push on 2026-09-18, after a
+full `+refs/heads/*` fetch (280 remote heads). Every `docs/decisions/` path ever
+touched on any remote ref was listed from the log, and every branch TIP with
+`ls-tree`. `develop` carries up to 0065 plus 0069; 0062, 0066, 0067 and 0068 are
+on parallel branches not yet merged. **0070** is free at every branch tip and is
+taken here.
+
+One thing the history scan turns up and the tip scan does not:
+`docs/decisions/0070-the-mana-spent-on-a-spell.md` exists in the *history* of
+`feat/789-761-counter-costs-and-mana-spent`
+([PR #958](https://github.com/krakenhavoc/cmd_and_ctrl/pull/958)), which
+renumbered that ADR **down to 0068** before this check. So 0070 was vacated
+rather than claimed, no head holds it, and
+`TestADRNumbersAreUniqueAndMatchTheirHeading` is green. AGENTS.md §4's "numbers
+are not reused" rule is about an ADR that was published and then renumbered; its
+four permanently-unused numbers are 0005, 0024, 0029 and 0030, which stay
+unused.
 **Builds on:** [ADR 0058](0058-doesnt-untap.md) (untap-step restrictions, the
 next-untap-step marker, stun counters — its Decision 8 left this shape out on
 purpose, and question 3 decided Winter Orb waits for this ADR),
