@@ -774,13 +774,14 @@ func TestB17ArwenGivesOtherCreaturesCountersEqualToHerToughness(t *testing.T) {
 	if counterCount(g, rock, "+1/+1") != 0 {
 		t.Error("a noncreature gets nothing")
 	}
-	// Declared: a token skips the entry pipeline.
+	// #762: a created token takes the same entry pipeline, so it gets
+	// Arwen's toughness in counters like every other creature.
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
-	if counterCount(g, findBattlefieldByName(g, "Goblin"), "+1/+1") != 0 {
-		t.Error("a token gets nothing — the declared gap; if this flips, drop the caveat")
+	if got := counterCount(g, findBattlefieldByName(g, "Goblin"), "+1/+1"); got != 3 {
+		t.Errorf("a token: %d +1/+1 counters, want 3 (Arwen's toughness)", got)
 	}
-	if spec, _ := Lookup(b17ArwenOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	if spec, _ := Lookup(b17ArwenOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 

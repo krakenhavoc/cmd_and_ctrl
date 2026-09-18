@@ -20,18 +20,20 @@ import (
 // through the CR 616 order prompt exactly as they compose with each
 // other.
 //
-// Sandbox simplification, declared — Doubling Season's own posture:
-// the TOKEN half is not implemented. There is no replacement-event
-// kind for token creation (the Academy Manufactor / Anointed
-// Procession gap), so tokens are made at their printed count. Weaker
-// than printed for everyone at the table, never stronger.
+// The token half is symmetrical too, and it is the reason Primal
+// Vigor is not simply a worse Doubling Season in a four-player game:
+// every player's tokens double, so the Saproling deck across the
+// table doubles as well. One event per creation instruction
+// (CR 701.7b, #762), so "create two Saprolings" is one event that
+// becomes four.
+//
+// No simplifications.
 func init() {
 	Register(Spec{
 		OracleID:     "c665544f-557b-4631-a1dc-39571470ca2e",
 		Name:         "Primal Vigor",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Token doubling isn't implemented — only the +1/+1 counter half works."},
-		Replacements: []game.ReplacementEffect{{
+		Completeness: CompletenessFull,
+		Replacements: []game.ReplacementEffect{AnyPlayersTokensDoubled("Primal Vigor: double tokens"), {
 			Watches: []game.EventKind{game.EventCounterPlaced},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
 				if ev.Kind != game.RepEventCounter || ev.CounterName != "+1/+1" || ev.CounterDelta <= 0 {

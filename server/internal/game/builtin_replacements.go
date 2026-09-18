@@ -38,11 +38,14 @@ import "github.com/google/uuid"
 // yes/no prompt and the CR 616 multi-replacement order prompt if
 // other commander-zone-touching replacements ever join).
 var commanderZoneReplacement = ReplacementEffect{
-	Watches:        []EventKind{EventZoneMove},
+	// Two kinds, because #650 split the discard off: "from anywhere"
+	// has to include a discarded commander, and a discard no longer
+	// arrives as a zone move.
+	Watches:        []EventKind{EventZoneMove, EventDiscardCard},
 	Optional:       true,
 	PromptQuestion: "Send commander to command zone instead?",
 	AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
-		if ev.Kind != RepEventMove {
+		if !isExitMove(ev.Kind) {
 			return false
 		}
 		switch ev.NewZone {

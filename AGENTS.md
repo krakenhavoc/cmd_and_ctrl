@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0060 leaving the game) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0061 token creation and discard as replaceable events) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -772,14 +772,31 @@ goes in `game.TuckOptions` so it rides the route and survives the
 prompt — never reposition the card yourself on the next line. See
 [ADR 0013 §5n](docs/decisions/0013-replacement-effects.md).
 
-**A discard still can't be replaced *as a discard*.** What the window
-sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
-(effect, cost or turn-based action), so the cause-sensitive family —
-Library of Leng, madness, the Obstinate Baloth shape — still has
-nothing to key on. Don't ship one of them with the replacement omitted;
-they wait on
-[#650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/650). See
-[ADR 0013 §10a](docs/decisions/0013-replacement-effects.md).
+**A discard is its own replaceable event** (#650,
+[ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+The route opens `RepEventDiscard`, not a plain move, because what a
+discard replacement watches for is the discard — so declare
+`Watches: []game.EventKind{game.EventDiscardCard}` and check
+`ev.Kind == game.RepEventDiscard`. It carries `DiscardPlayer`,
+`DiscardCause` (`"effect"` / `"cost"` / `"cleanup"`) and the causing
+`Source`, alongside the move payload your `Replace` rewrites
+(`ev.NewZone`, `ev.NewZoneOwner`).
+
+The CAUSE is the clause the rules draw, not "voluntary": an effect's
+instruction, a cost (CR 601.2h, 602.2b, and the CR 118.12 "unless you
+discard" branch), or the cleanup step's turn-based action (CR 514.1).
+Library of Leng replaces `DiscardCauseEffect` only; madness replaces
+every cause; the Obstinate Baloth shape reads the cause plus the
+controller of `Source`. Build one with `DiscardBecomes{…}.Build()`
+(`cards/effects/discard_replacements.go`) rather than by hand.
+
+`EventDiscardCard` still fires wherever the card ends up (CR 701.8a
+defines a discard by the move OUT of the hand), so a discard your
+replacement redirects is still a discard for Megrim and friends, and a
+discarded commander still gets the CR 903.9 offer. A COST discard
+settles without asking, so an `Optional` replacement on one is skipped
+un-applied — which is also the right answer, since costs are not
+effects.
 
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
@@ -828,6 +845,8 @@ func init() {
 | Card draw | `RepEventDraw` | `DrawPlayer` |
 | Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
+| Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
+| Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **`AppliesTo` patterns:**
@@ -843,6 +862,34 @@ func init() {
 - Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+
+**A token creation is a replaceable event** (#762,
+[ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+`RepEventCreateTokens` is opened once per creation **instruction**
+(CR 701.7b), so "create two Treasures" is one event a doubler turns
+into four Treasures. It carries GROUPS — a template, a count and the
+creation's entry clause per KIND — because Academy Manufactor changes
+*which* tokens are made and a bare count could not say so. Write a
+doubler as `TokensDoubled(label)` (or `AnyPlayersTokensDoubled` for
+Primal Vigor's symmetrical one); write anything else with
+`ev.MultiplyTokens(n)`, `ev.ReplaceTokenKindsWhere(pred, templates…)`
+and `ev.TokenTemplatesMatch(pred)` — never by reading `ev.TokenGroups`
+directly.
+
+Once that window settles, every token it makes goes through
+`enterBattlefieldThroughPipelineLocked` — **the same entry primitive a
+library search, an exile return and a reanimation use** (#478) — as a
+`RepEventMove` into `ZoneBattlefield` with an empty `OldZone` (a token
+comes from no zone, CR 111.1). So an
+enters-tapped or enters-with-counters replacement you write for cards
+covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation CAN PAUSE — two different effects in the window is a CR 616
+ordering prompt — and so can a single token's entry, so
+`CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
+your card's sentence continues past the tokens ("create a Treasure,
+then sacrifice it"), hand that over as
+`CreateTokensThenForEffect(spec, then)` rather than reading the slice
+on the next line.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog

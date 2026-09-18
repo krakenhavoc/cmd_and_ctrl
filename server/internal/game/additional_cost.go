@@ -188,6 +188,6 @@ func (g *Game) payAdditionalCostLocked(playerID uuid.UUID, discardIDs, sacrifice
 	// a discard is a discard, but CR 601.2h pays a spell's costs as
 	// one indivisible step, so this one may not pause.
 	return g.discardCardsLocked(playerID, discardIDs, discardOptions{
-		cause: discardCauseCost,
+		cause: DiscardCauseCost,
 	})
 }
