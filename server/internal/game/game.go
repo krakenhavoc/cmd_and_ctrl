@@ -284,6 +284,12 @@ type Game struct {
 	// key is already recorded against the live batch declines, and
 	// anything else fires.
 	//
+	// The ability key carries a SECOND dimension when the printed
+	// clause quantifies over something (#784, CR 603.2c) — "deal
+	// combat damage to A PLAYER" is once per player, not once per
+	// step — appended by TriggeredAbility.BatchKey. No extra state:
+	// the same map, a longer key. See event_batch.go.
+	//
 	// Both survive Clone / RestoreFrom together, for the reason
 	// TurnTally does: an undo that rewound the counter but kept the
 	// marks (or the reverse) would either double-fire a trigger or

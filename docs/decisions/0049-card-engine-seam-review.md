@@ -146,3 +146,73 @@ SANDBOX-MANUAL mutations in a row, with nothing resolving and no step
 change between them, share a batch. The old check behaved the same
 way, and hand-shoving cards between zones has no rules occurrence to
 count.
+
+## Amendment (2026-09-18, #784): the key gets its second dimension, and the helper is gone
+
+The amendment above closed WHEN a batch is and left open WHAT the
+guard counts within one. CR 603.2c has both halves: "an ability
+triggers only once each time its trigger event occurs. However, it
+can trigger repeatedly if one event contains multiple occurrences."
+A clause that NAMES AN OBJECT contains one occurrence per object, and
+the object the catalog keeps meeting is a player — "whenever one or
+more creatures you control deal combat damage to **a player**"
+(Keeper of Fables' ruling, 2019-10-04: "if non-Human creatures you
+control deal combat damage to two or more players at the same time,
+Keeper of Fables's ability triggers for each of those players"), and
+"whenever you attack **a player**" (Horizon Explorer: "will trigger
+once for each player you attack"; Neyali: "triggers for each player
+you are attacking with one or more tokens").
+
+`TallyKey(source, key)` could not say that: `TriggeredAbility.Key` is
+static catalog data and the player is only known from the event. So
+three creatures hitting three opponents in one damage step made ONE
+Treasure, and the two cards that needed the player dimension had
+hand-rolled it out of `TriggerInFlightForEffect`.
+
+- **`TriggeredAbility.BatchKey func(ev, source, g) string`** — the
+  second dimension, read off the event. `oncePerBatchKeyLocked`
+  appends it to `Key` and the guard is unchanged underneath:
+  `oncePerBatchAllowsLocked(batch, source, key)` is still one
+  test-and-set against one map. One key, two dimensions, one guard —
+  **no second dedupe path**, which is the constraint this whole area
+  is held to.
+- **One reading in the catalog.** `effects.OncePerBatchPerPlayer`
+  sets `BatchKey` to `effects.PerPlayer`: the damaged player for a
+  damage event, the defending player for an attack declaration (read
+  through `b17DefendingPlayer`, so a planeswalker or battle counts as
+  its controller and not as a second player). Cards take it through
+  `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer` or,
+  when they build the item from the event, by setting the two fields.
+- **The other batch boundary the rules ask for.** CR 510.4 gives a
+  combat with first strike in it TWO combat damage steps. The engine
+  runs both inside the cursor's single `combat_damage` step, so
+  `resolveCombatDamageLocked` now opens a batch between them: a
+  first-striker and a regular attacker connecting with the same
+  player are two triggers, as in paper. The boundary rule is still
+  one sentence — "a stack item begins to resolve, or the cursor
+  enters a new step" — with the one step the cursor does not see
+  named beside it.
+- **`Game.TriggerInFlightForEffect` and its doc are deleted.** Breena
+  (per attacked opponent) and Nature's Will (per damaged player) were
+  its only callers and both now carry a static `Key` plus
+  `BatchKey`; their stack labels stay per player, because that is
+  what tells two simultaneous triggers apart on the stack and what
+  the once-per-turn tally reads. Breena's declared retreat — a second
+  opponent swallowed while the first opponent's creature pick was
+  open — goes with the helper.
+- **No new state.** The dimension rides the existing
+  `Game.oncePerBatchFired` key, so `clone.go`, `snapshot.go` and
+  `snapshot_drift_test.go` are untouched: the same map, a longer
+  string.
+
+Cards moved onto the per-player key: Professional Face-Breaker,
+Keeper of Fables, Grazilaxx, Rapacious Guest, Thopter Spy Network,
+Olivia (caveat retired, now `full`), Alela (her per-player target
+clause works as printed), Nature's Will, Breena, Horizon Explorer
+(caveat retired) and Neyali. Every other `OncePerBatch` user was
+re-read: "whenever you attack with N creatures" (Aurelia, Chivalric
+Alliance, Firemane Commando), "whenever you attack" (Adeline,
+Hermes, Mavren Fein, The Earth King), "is attacked" (Curse of
+Opulence) and the zone-move family (Dour Port-Mage, Laelia, Teval,
+Tormod, Satoru, Sidisi, On Wings of Gold) name no second object and
+keep the plain guard.

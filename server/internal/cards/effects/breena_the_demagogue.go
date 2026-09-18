@@ -22,12 +22,15 @@ import (
 // planeswalker or battle counts (S27) — and the attacker may be
 // anyone, Breena's controller included. The ability triggers ONCE
 // PER OPPONENT ATTACKED per combat, not once per creature: the
-// engine emits EventAttack per creature, so the label carries the
-// attacked player's name and the dedup is the engine's
-// TriggerInFlightForEffect — the per-event-key leftover, not the
-// OncePerBatch batch guard, until #784. It declines the later
-// creatures aimed at the same opponent while a split attack on two
-// opponents still triggers twice.
+// engine emits EventAttack per creature, so the guard is the
+// engine's own once-per-batch key with its PLAYER dimension
+// (OncePerBatchPerPlayer, CR 603.2c / #784, reading the attack
+// through the defending player). One declaration is one batch, so
+// the later creatures aimed at the same opponent are declined while
+// a split attack on two opponents still triggers twice. The stack
+// label carries the attacked player's name, which is what tells two
+// simultaneous triggers apart and what the once-per-turn tally below
+// keys on.
 //
 // The intervening if (CR 603.4) — the attacked opponent has more
 // life than at least one OTHER opponent of Breena's controller — is
@@ -42,15 +45,13 @@ import (
 // or shroud cannot be picked. Breena herself is always a legal
 // choice, so the trigger is never dropped for want of a target.
 //
-// Two more declared retreats, both weaker: with an extra combat in
+// One more declared retreat, also weaker: with an extra combat in
 // the same turn the ability would not fire again for the same
-// opponent (Aurelia's note — the engine has no extra combats); and
-// while the creature pick for one attacked opponent is still
-// unanswered, a creature declared at a SECOND opponent does not
-// trigger, because a targeted trigger waiting on its pick is in
-// neither queue the "one or more" dedup reads and the prompt does
-// not say which opponent it is for. Answer the pick, then declare
-// the next attacker, and both trigger.
+// opponent (Aurelia's note — the engine has no extra combats). The
+// retreat that used to sit beside it is gone with #784: an open
+// creature pick for one attacked opponent no longer swallows a
+// second opponent's trigger, because the guard is keyed on the batch
+// and the opponent rather than on what is in flight.
 func init() {
 	Register(Spec{
 		OracleID:     "d11e627b-8a48-411d-a261-2c9a02a758ba",
@@ -61,17 +62,19 @@ func init() {
 		},
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
+			OncePerBatch: true,
+			BatchKey:     PerPlayer,
+			Key:          b17BreenaKey,
+			Watches:      []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				opp := b17DefendingPlayer(g, ev)
 				if opp == uuid.Nil || !b17OpponentHasMoreLifeThanAnother(g, source.Controller, opp) {
 					return false
 				}
-				label := b17BreenaLabel(g, opp)
-				// The label is per opponent, so the once-per-batch check is the
-				// engine's directly rather than OncePerBatch's static Key.
-				return !g.TriggerInFlightForEffect(source.InstanceID, label) &&
-					!b11TriggeredThisTurn(g, source.InstanceID, label)
+				// The once-per-combat half is the engine's batch guard,
+				// keyed per attacked opponent; this is the extra-combat
+				// retreat below, keyed on the same opponent's label.
+				return !b11TriggeredThisTurn(g, source.InstanceID, b17BreenaLabel(g, opp))
 			},
 			Targets: TargetCreature("a creature you control", YouControl()),
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {

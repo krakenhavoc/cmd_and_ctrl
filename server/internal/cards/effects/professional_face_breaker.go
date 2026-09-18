@@ -15,16 +15,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a card. Three abilities, all real:
 //
 //   - Menace rides PrintedKeywords; the combat engine enforces it.
-//   - "ONE OR MORE creatures … deal combat damage" is one trigger
-//     per combat damage step, not one per creature. The engine
-//     emits one EventDealDamage per creature, so the AppliesTo
-//     declines every later event of the SAME batch — see
-//     OncePerBatch and AGENTS.md §7 for what a batch is and why that
-//     is exactly "once per batch". Without it the card would be
-//     STRONGER than printed (three attackers, three Treasures),
-//     which is the #259 direction and not shippable. First-strike
-//     and regular damage are two batches and two triggers, as in
-//     paper.
+//   - "ONE OR MORE creatures … deal combat damage TO A PLAYER" is
+//     one trigger per PLAYER connected with, not one per creature
+//     and not one per damage step (CR 603.2c, #784). The engine
+//     emits one EventDealDamage per creature, so the guard is
+//     OncePerBatchPerPlayer: the later creatures hitting the same
+//     player are declined as later events of the same batch, and a
+//     creature hitting a second opponent is its own occurrence and
+//     its own Treasure. Without the batch half the card would be
+//     STRONGER than printed (three attackers on one player, three
+//     Treasures), which is the #259 direction; without the player
+//     half it would be weaker. First-strike and regular damage are
+//     two damage steps and two batches (CR 510.4), so a Treasure for
+//     each (step, player) pair, as in paper.
 //   - The impulse draw is Ragavan's ExileTopWithPermission with the
 //     "play" grant (lands included — it says play, not cast), paid
 //     for by sacrificing any permanent with the Treasure subtype,
@@ -39,12 +42,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g)
-			}, "Professional Face-Breaker — create a Treasure", Do(CreateToken{
-				Template: TreasureToken(),
-				N:        1,
-			}))),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(nil,
+				"Professional Face-Breaker — create a Treasure", Do(CreateToken{
+					Template: TreasureToken(),
+					N:        1,
+				})),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.",

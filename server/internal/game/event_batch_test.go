@@ -347,3 +347,100 @@ func TestEventBatchSurvivesThePersistedSnapshot(t *testing.T) {
 		t.Errorf("%d triggers after the restore, want 1 — the batch's mark must survive the restart", n)
 	}
 }
+
+// --- #784: the key's second dimension -------------------------------
+//
+// A batch is WHEN; the key is WHAT. CR 603.2c fires one trigger per
+// occurrence, and a clause that names an object — "deal combat damage
+// to A PLAYER" — has one occurrence per object. BatchKey reads that
+// object off the event, so the guard is "(source, key, object) once
+// per batch".
+
+// seedPerTargetBatchProbe is seedBatchProbe with a BatchKey: the
+// ability collapses per Event.Target rather than per batch, which is
+// the catalog's per-damaged-player reading with the card plumbing
+// left out.
+func seedPerTargetBatchProbe(t *testing.T, g *Game) uuid.UUID {
+	t.Helper()
+	owner := g.Seats[0]
+	id := uuid.New()
+	g.Battlefield.PushTop(Card{
+		InstanceID: id,
+		Name:       "Per-Target Batch Probe",
+		OracleID:   batchProbeOracleID,
+		TypeLine:   "Enchantment",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+	})
+	withCatalogTriggers(t, func(oracle string) []TriggeredAbility {
+		if oracle != batchProbeOracleID {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches:      []EventKind{EventETB},
+			Key:          batchProbeLabel,
+			OncePerBatch: true,
+			BatchKey:     func(ev Event, _ *Card, _ *Game) string { return ev.Target.String() },
+			AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+				return ev.CardID != source.InstanceID
+			},
+			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+				return NewTriggeredItem(source, batchProbeLabel, func(*Game, *StackItem) error { return nil })
+			},
+		}}
+	})
+	return id
+}
+
+// emitProbeEventFor is emitProbeEvent aimed at a player — the
+// dimension the probe keys on.
+func emitProbeEventFor(g *Game, target uuid.UUID) {
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, Actor: g.Seats[0].ID, CardID: uuid.New(), Target: target})
+	})
+}
+
+// TestOncePerBatchKeyedPerObjectFiresOncePerObject is #784's probe:
+// three events of ONE batch naming three different players are three
+// triggers, and a second event naming a player already covered is the
+// same occurrence.
+func TestOncePerBatchKeyedPerObjectFiresOncePerObject(t *testing.T) {
+	g := newActiveGameWithSeats(t, 4)
+	probe := seedPerTargetBatchProbe(t, g)
+
+	g.WithWriteLock(func() { g.beginEventBatchLocked() })
+	emitProbeEventFor(g, g.Seats[1].ID)
+	emitProbeEventFor(g, g.Seats[2].ID)
+	emitProbeEventFor(g, g.Seats[3].ID)
+	if n := probeItems(g, probe); n != 3 {
+		t.Fatalf("%d triggers for three players named in one batch, want 3 (CR 603.2c)", n)
+	}
+
+	emitProbeEventFor(g, g.Seats[1].ID)
+	if n := probeItems(g, probe); n != 3 {
+		t.Fatalf("%d triggers after a second event for a player already named, want 3", n)
+	}
+
+	// The next batch is a new occurrence for every player again.
+	g.WithWriteLock(func() { g.beginEventBatchLocked() })
+	emitProbeEventFor(g, g.Seats[1].ID)
+	if n := probeItems(g, probe); n != 4 {
+		t.Errorf("%d triggers after a second batch, want 4", n)
+	}
+}
+
+// TestOncePerBatchWithoutAKeyDimensionIsUnchanged pins the other
+// half: an ability with no BatchKey — every "one or more creatures
+// leave the battlefield" card — still collapses the whole batch,
+// whatever the events name.
+func TestOncePerBatchWithoutAKeyDimensionIsUnchanged(t *testing.T) {
+	g := newActiveGameWithSeats(t, 4)
+	probe := seedBatchProbe(t, g, false)
+
+	g.WithWriteLock(func() { g.beginEventBatchLocked() })
+	emitProbeEventFor(g, g.Seats[1].ID)
+	emitProbeEventFor(g, g.Seats[2].ID)
+	if n := probeItems(g, probe); n != 1 {
+		t.Errorf("%d triggers for one batch naming two players, want 1 — no BatchKey, no dimension", n)
+	}
+}

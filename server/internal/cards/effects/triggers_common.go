@@ -125,6 +125,58 @@ func OncePerBatch(t game.TriggeredAbility) game.TriggeredAbility {
 	return t
 }
 
+// OncePerBatchPerPlayer is OncePerBatch for a clause that names A
+// PLAYER (#784, CR 603.2c): the batch collapses per player rather
+// than per batch, so three creatures connecting with three opponents
+// in one damage step are three triggers and two creatures hitting one
+// opponent are one. Keeper of Fables' ruling (2019-10-04) states it
+// for the damage wording; Horizon Explorer's and Neyali's state it
+// for "attack a player".
+//
+// The extra dimension is PerPlayer below, appended to the ability's
+// Key by the engine's own guard — one key, one guard, no second
+// dedupe path.
+func OncePerBatchPerPlayer(t game.TriggeredAbility) game.TriggeredAbility {
+	t.OncePerBatch = true
+	t.BatchKey = PerPlayer
+	return t
+}
+
+// PerPlayer is the TriggeredAbility.BatchKey reading for "… to a
+// player" / "… attack a player": the player the event names. That is
+// the damaged player for a damage event, and the defending player an
+// attack ends on for an attack declaration — read through
+// b17DefendingPlayer, so an attack at that player's planeswalker or
+// battle counts as the same player and not a second one.
+func PerPlayer(ev game.Event, _ *game.Card, g *game.Game) string {
+	if ev.Kind == game.EventAttack {
+		return b17DefendingPlayer(g, ev).String()
+	}
+	return ev.Target.String()
+}
+
+// WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer is
+// the printed shape of Professional Face-Breaker, Keeper of Fables,
+// Grazilaxx, Rapacious Guest, Thopter Spy Network and Olivia: one
+// trigger per player the controller's creatures connect with in a
+// combat damage step (CR 603.2c), whatever their number.
+//
+// `creature` narrows which of the controller's creatures count —
+// non-Human, artifact, Faerie, outlaw — read off the damage SOURCE
+// post-layer. Nil counts every creature they control.
+func WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature CardPredicate, label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		if !combatDamageToPlayerBy(ev, source.Controller, g) {
+			return false
+		}
+		if creature == nil {
+			return true
+		}
+		c, ok := g.LookupCardForEffect(ev.Source)
+		return ok && creature(g, source.Controller, c)
+	}, label, effect))
+}
+
 // Targeting gives a trigger a target clause (CR 603.3d — chosen as
 // the ability goes on the stack, re-checked on resolution). The
 // Effect reads the pick from item.Targets[0]; the constructors'

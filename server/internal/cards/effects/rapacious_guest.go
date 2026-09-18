@@ -18,12 +18,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // PrintedKeywords. Three triggers:
 //
 //   - "One or more creatures you control deal combat damage to a
-//     player" is ONE trigger per damage step. The engine emits one
-//     damage event per creature, so the AppliesTo declines every
-//     later event of the same batch (OncePerBatch, see AGENTS.md
-//     §7), keyed by label because the other two abilities must not
-//     swallow it. Without the dedup a three-creature alpha strike
-//     would make three Foods, the #259 direction.
+//     player" is ONE trigger per PLAYER connected with (CR 603.2c,
+//     #784). The engine emits one damage event per creature, so a
+//     later event naming the same player is declined as a later
+//     event of the same batch, keyed by label and damaged player —
+//     by label because the other two abilities must not swallow it,
+//     by player because a Guest whose creatures hit two opponents
+//     makes two Foods. Without the batch half a three-creature alpha
+//     strike on one player would make three Foods, the #259
+//     direction.
 //   - "You sacrifice a Food" is the sacrifice event by the
 //     controller, the Food read while it is still on the battlefield
 //     (b31YouSacrificedAFood).
@@ -43,9 +46,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g)
-			}, b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1}))),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(nil,
+				b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1})),
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b31YouSacrificedAFood(ev, source, g)
 			}, "Rapacious Guest — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
@@ -71,5 +73,6 @@ func init() {
 }
 
 // b31RapaciousGuestFoodLabel is the stack label of the Guest's
-// combat-damage trigger, which the "one or more" dedup keys on.
+// combat-damage trigger, which the "one or more" guard keys on
+// alongside the damaged player.
 const b31RapaciousGuestFoodLabel = "Rapacious Guest — create a Food"

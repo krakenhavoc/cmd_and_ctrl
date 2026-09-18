@@ -12,10 +12,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Boros token commander. Both printed abilities ride ONE
 // triggered ability, "whenever one or more creature tokens you
-// control attack" — one declaration is one batch and OncePerBatch
-// declines every later event of it (see AGENTS.md §7), so a wide
-// attack fires it once — whose body (b32NeyaliAttack) does both
-// sentences:
+// control attack A PLAYER" — one declaration is one batch and the
+// guard declines every later event of it aimed at the same player
+// (see AGENTS.md §7), so a wide attack on one player fires it once,
+// while "it triggers for each player you are attacking with one or
+// more tokens" (ruling) is the guard's player dimension
+// (OncePerBatchPerPlayer, CR 603.2c / #784) — whose body
+// (b32NeyaliAttack) does both sentences:
 //
 //   - The static, as an until-end-of-turn grant of double strike to
 //     every attacking token the controller controls, snapshotted as
@@ -56,7 +59,7 @@ func init() {
 			"A card exiled with Neyali can be played on a later turn only when her trigger resolves that turn — tokens must attack a player while she is on the battlefield.",
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OncePerBatchPerPlayer(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b32TokenYouControlAttacked(ev, source, g)
 			}, b32NeyaliLabel, b32NeyaliAttack)),
 		},

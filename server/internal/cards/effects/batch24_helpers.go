@@ -87,6 +87,13 @@ func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 	return ok && isLegendary(&dealer)
 }
 
+// b24NaturesWillKey names Nature's Will's ability for the
+// once-per-batch guard (#784). The stack LABEL below names the
+// damaged player and so cannot be the key; the player is the guard's
+// own second dimension (OncePerBatchPerPlayer), and this names the
+// ability the dimension hangs off.
+const b24NaturesWillKey = "Nature's Will — tap their lands, untap yours"
+
 // b24NaturesWillLabel is Nature's Will's stack label for one damaged
 // player — the player's name is what makes two players' triggers two
 // labels.

@@ -1980,7 +1980,8 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever an opponent draws a card" | `EventDrawCard` | `ev.Actor != uuid.Nil && ev.Actor != source.Controller` — fires once per card |
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
-| "Whenever **one or more** creatures you control deal combat damage to a player" / attack / enter | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed. A label computed per event (Breena, Nature's Will) calls `g.TriggerInFlightForEffect(source, label)` directly; that helper is the per-event-key leftover, not the batch guard (#784) |
+| "Whenever **one or more** creatures you control attack / enter / leave" (no object named) | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed |
+| "Whenever **one or more** creatures you control deal combat damage to **a player**" / "whenever you attack **a player**" | the same kind as the per-creature wording | `OncePerBatchPerPlayer(...)`, or the ready-made `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature, label, effect)` — once per **player**, not once per step (#784, CR 603.2c). The clause names an object, so the guard keys on it: three creatures hitting three opponents are three triggers, two hitting one opponent are one. A card whose stack label is computed per player (Breena, Nature's Will) sets a static `Key` and lets the guard supply the player |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
@@ -1994,12 +1995,27 @@ turn-based action is one batch however many engine calls the sandbox
 splits it across (three `DeclareAttacker` clicks are one declaration
 and one Adeline trigger), and the NEXT resolution is a new batch
 however much of the last one is still on the stack (two Unsummons in
-one turn draw two cards). The batch id is stamped on `Event.Batch`
-and the guard is `oncePerBatchAllowsLocked`
+one turn draw two cards). One step the RULES split and the cursor
+does not counts too: the first-strike and regular combat damage
+steps are two batches (CR 510.4, #784), so a first-striker and a
+regular attacker connecting with the same player are two triggers.
+The batch id is stamped on `Event.Batch` and the guard is
+`oncePerBatchAllowsLocked`
 ([event_batch.go](server/internal/game/event_batch.go)) — one
 counter, one guard, no per-card special cases. Known gap: two
 SANDBOX-MANUAL mutations in a row with nothing resolving in between
 share a batch.
+
+**What the key counts** (#784, CR 603.2c's other half) — a batch is
+WHEN; the ability's key is WHAT. A clause that NAMES AN OBJECT
+triggers once for each of them in the batch: "deal combat damage to
+**a player**", "attack **a player**". `TriggeredAbility.BatchKey`
+reads that object off the event and the guard appends it to the
+key, so the check is "(source, key, player) once per batch" —
+`effects.OncePerBatchPerPlayer` is the one reading the catalog
+uses. One key with two dimensions, one guard, no second dedupe path;
+the last hand-rolled one (`TriggerInFlightForEffect`) is gone with
+it.
 
 **The two rules that matter:**
 
