@@ -15,19 +15,23 @@ package effects
 // accepts. A token's mana value is zero, so sacrificing one fetches
 // a one-drop, as printed; the fetched creature enters untapped.
 //
-// Sandbox simplification, weaker than printed: the Phyrexian symbol
-// in the ACTIVATION is charged as {G}. #787 put the "or 2 life" half
-// on the cast (CastSpellParams.PhyrexianLife, CR 107.4c), so the
-// spell's own {3}{G/P} can be paid with life by an engine caller;
-// AbilityCost has no such announce, so the ability costs {1}{G},
-// never {1} and two life. A cost-engine seam, not a card file's — and
-// the board has no button for either half yet.
+// Both Phyrexian symbols are payable with 2 life now. #787 put the
+// announce on the cast (CastSpellParams.PhyrexianLife, CR 107.4c) and
+// #917 gave the ACTIVATION the same one
+// (ActivateAbilityParams.PhyrexianLife, CR 602.2b) through the same
+// strike-and-pay helper, so "{1}{G/P}" really is {1} and two life for
+// a player without green. Nothing about it lives in this file, which
+// is the point: a Phyrexian symbol is the cost engine's business, not
+// a card's.
+//
+// Declared simplification: the board has no button for the CAST
+// cost's {G/P} yet, so clicking this from hand still pays the {G}.
 func init() {
 	Register(Spec{
 		OracleID:     "f8b9dd54-0837-47f4-ad14-7a0322d46d5f",
 		Name:         "Birthing Pod",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The {G/P} in the activation must be paid with {G}, not with 2 life; an activated ability has no life-payment announce. The {G/P} in the cast cost is engine-payable with 2 life, but the board has no button for it."},
+		Caveats:      []string{"The board has no button for the {G/P} in the casting cost yet — casting it from hand pays {G}, not 2 life. The activated ability's {G/P} can be paid either way."},
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{G/P}, {T}, Sacrifice a creature: Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put it onto the battlefield, then shuffle.",
 			Cost:         Plus(ManaCost("{1}{G/P}"), TapCost(), SacrificeACreature()),

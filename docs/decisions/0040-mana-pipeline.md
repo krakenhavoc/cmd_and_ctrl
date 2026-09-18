@@ -480,7 +480,8 @@ read of them was wrong in both directions at once.
   whose caveats said "Phyrexian mana isn't supported" now say that,
   which is the true statement. An ACTIVATED ability's mana cost has no
   announce to carry the claim at all (Birthing Pod's `{1}{G/P}`,
-  Solphim's `{1}{R/P}{R/P}`), and both stay declared.
+  Solphim's `{1}{R/P}{R/P}`), and both stay declared. *(Closed by the
+  2026-09-18 (#917, #916) amendment below.)*
 
 ## Amendment — 2026-09-18 (#782): "could produce" asks the ability, now
 
@@ -557,3 +558,65 @@ construction rather than by a second implementation kept in step.
   card, and no new field is snapshotted — the one new field,
   `DerivesFromOtherSources`, is on `ManaAbilityShape`, which is the
   catalog's shape and not game state.
+
+
+## Amendment — 2026-09-18 (#917, #916): the same announce for an activation, and a board control for both
+
+The #787 amendment above left two gaps open on purpose and named
+them. This closes both.
+
+### #917 — an activated ability announces the life half too
+
+**CR 602.2b** asks the activator exactly what CR 601.2b asks the
+caster: "how do you intend to pay each hybrid and Phyrexian symbol",
+in one indivisible announcement, before any cost is paid. So the
+answer has the same shape and the same name —
+`ActivateAbilityParams.PhyrexianLife`, wire `phyrexian_life`, a count
+of symbols paid with 2 life each — and it is not a `PendingChoice`
+for the same reason the cast's is not.
+
+- **One strike-and-pay helper, two callers.** `phyrexian_mana.go` now
+  holds the pair `(*Game).strikePhyrexianLifeLocked` (validate the
+  claim, reduce the cost, price it, stamp `PaidCost.LifePaid`) and
+  `(*Game).payPhyrexianLifeLocked` (hand the life to
+  `PayLifeForEffect`). `applyCastCostLocked` and
+  `payAbilityManaCostLocked` call them in that order with the pool
+  spend between, and nothing about a Phyrexian symbol is decided
+  anywhere else. The cast path's old private
+  `validatePhyrexianLifeLocked` took a `CastSpellParams`, which is why
+  it could not be shared; the shared one takes the parsed cost, the
+  spend context, the count, the payer and the `PaidCost` — everything
+  both announcements have and nothing either one alone does.
+- **The rules are unchanged because the code is the same code.**
+  2 life per symbol (CR 107.4f); the symbols a life payment can save
+  struck first (`PhyrexianLifePlan`, unchanged, now exported so the
+  read-only preview can share it too); an over-claim or a CR 119.4
+  breach refused **before** anything is paid; the life paid before the
+  pool is spent, because the fallible half goes first (CR 119.8 can
+  still refuse it). Permissive mode waives the mana and still pays the
+  life, as it does for a cast.
+- **`PaidCost.LifePaid` sums.** ADR 0020's #958 addendum made it the
+  record of what an announcement paid, so an ability printing both a
+  `Life` component and a Phyrexian symbol records the total rather
+  than the printed component alone.
+- **The auto-tapper plans the mana half**, free: the strike happens
+  before the auto-tap branch inside `payAbilityManaCostLocked` — the
+  same ordering `applyAutoTapLocked` makes for a cast, for the same
+  reason. Tapping a land for a pip the activator said they would pay
+  with life is stranding it.
+- **The enumerator offers the life option, and the cast list still
+  does not.** `legal.affordablePayment` solves an ability's mana
+  component for the (X, symbols-by-life) pair: mana first, always, and
+  life only when the mana half alone cannot pay, taking the first —
+  cheapest — count that works. That is a deliberate asymmetry with the
+  cast list, and what makes it safe is what #695 asked for: the offer
+  is bounded by the life total (CR 119.4) and by the ability's own
+  printed `Life` component, so an offered activation is one the engine
+  accepts (#544). Without it Birthing Pod is simply never offered to a
+  seat with no green source, which is the gap #917 names.
+- **A claim against an ability with no mana component is refused**,
+  not dropped, exactly as an `x_value` on a costless ability is: it
+  means the client is firing the wrong ability.
+- **Cards.** Birthing Pod's caveat loses its activation half and keeps
+  only the board-button one. Solphim's names the one reason left —
+  `AbilityCost` still has no discard component — rather than two.

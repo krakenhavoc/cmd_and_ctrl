@@ -522,6 +522,15 @@ type AlternativeCostView struct {
 	// statement and the picker cannot disagree with the announce
 	// gate that would reject what it collected. Added for #831.
 	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
+
+	// PhyrexianSymbols is CR 107.4's "or 2 life" count for THIS
+	// offer's cost, the same field CardView carries for the printed
+	// one (#916): claiming the offer replaces the mana cost, so it
+	// replaces the ceiling on `phyrexian_life` too. Absent for every
+	// offer that prints no Phyrexian symbol, which is all of them
+	// today — shipped because the field the client reads must not
+	// depend on which cost is being paid.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1125,6 +1134,28 @@ type CardView struct {
 	// the overwhelming majority of cards. Optional like the
 	// alternative costs — tapping nothing is always a legal cast.
 	TapCost *TapCostView `json:"tap_cost,omitempty"`
+	// PhyrexianSymbols is how many symbols in the cost this card is
+	// being offered at carry CR 107.4's "or 2 life" option — {U/P}
+	// on Gitaxian Probe, {B/P}{B/P} on Dismember, {G/W/P} on a
+	// compleated planeswalker. It is the CEILING on the
+	// `phyrexian_life` the client may send with the cast, and the
+	// only reason the client knows to offer the stepper at all
+	// (#916).
+	//
+	// Shipped as a COUNT rather than left to the client, for the
+	// reason `demands_x` is: a client that re-derived it would be a
+	// second parser of the mana-cost syntax, and the two would drift
+	// the day a new symbol family is printed — which is exactly what
+	// #787 was. It counts the effective cast cost, so a commander
+	// tax or a cost modifier cannot change it and does not.
+	// `alternative_costs[i].phyrexian_symbols` answers the same
+	// question for an offer that replaces the printed cost.
+	//
+	// Stamped with the other cast clauses on cards in the viewer's
+	// own hand, command zone and castable graveyard, and stripped
+	// with them. Absent — which is nearly every card — means there
+	// is no life half to offer.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
 	// TargetCostNotes are the printed clauses of this card's own cost
 	// modifiers whose price depends on its targets — Fireball's "This
 	// spell costs {1} more to cast for each target beyond the first",
@@ -1423,6 +1454,17 @@ type ActivatedAbilityView struct {
 	DemandsX bool `json:"demands_x,omitempty"`
 	MinX     int  `json:"min_x,omitempty"`
 	XSlots   int  `json:"x_slots,omitempty"`
+	// PhyrexianSymbols is how many symbols in this ability's mana
+	// component carry CR 107.4's "or 2 life" option — 1 for Birthing
+	// Pod's "{1}{G/P}", 2 for Solphim's "{1}{R/P}{R/P}". The client
+	// offers a stepper bounded by it and by the activator's life
+	// total, and sends the answer as `phyrexian_life` (#917, #916).
+	//
+	// Derived from ManaCost rather than declared, exactly as
+	// DemandsX is, and shipped explicitly for the same reason: a
+	// client that re-parsed the cost string to find out would be a
+	// second parser of the same syntax.
+	PhyrexianSymbols int `json:"phyrexian_symbols,omitempty"`
 	// TargetMode / LegalTargets mirror the cast-time targeting
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
@@ -1880,6 +1922,12 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				// #746: the printed clauses of a per-target price, for
 				// the X picker's note.
 				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
+				// #916: the ceiling on the cast's `phyrexian_life`.
+				// Read off the EFFECTIVE cost — the commander tax is
+				// generic and cost modifiers add generic, so the two
+				// agree today, and reading the effective one keeps
+				// them agreeing if that ever stops being true.
+				c.PhyrexianSymbols = phyrexianSymbolsIn(c.ManaCost)
 				spec := game.TargetSpecFor(c.oracleID)
 				// S22: the alternative costs are stamped before the
 				// early-out below, because a card can offer one
@@ -1900,6 +1948,27 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 			}
 		}
 	}
+}
+
+// phyrexianSymbolsIn counts CR 107.4's "or 2 life" symbols in a cost
+// string — the ceiling on the `phyrexian_life` an announcement may
+// claim (#916). One parse, three readers: a castable card, an
+// alternative cost offer and an activated ability, so the client is
+// never handed two different answers to the same question.
+//
+// An unparseable cost counts zero rather than erroring: the cast or
+// activation is refused with ErrUnparseableCost long before any
+// payment is announced (#289), so there is no life half to offer and
+// nothing for the view to say about it.
+func phyrexianSymbolsIn(costStr string) int {
+	if costStr == "" {
+		return 0
+	}
+	cost, err := game.ParseCost(costStr)
+	if err != nil {
+		return 0
+	}
+	return cost.PhyrexianSymbols()
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
@@ -1983,6 +2052,10 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base
 			// grant can be in play on a card in hand, command or
 			// graveyard, which are the only zones that carry offers.
 			XLockedAtZero: game.CastCost{Printed: card.ManaCost, Paid: ac.ManaCost}.LocksXAtZero(),
+			// #916: the offer replaces the mana cost, so it replaces
+			// the "or 2 life" count the client's stepper is bounded
+			// by.
+			PhyrexianSymbols: phyrexianSymbolsIn(ac.ManaCost),
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
@@ -3184,6 +3257,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
 	out.TapCost = nil
+	// #916: derived from the mana cost, which is cleared above, so
+	// it goes with it — "two Phyrexian symbols" on a face-down card
+	// would name Dismember out loud.
+	out.PhyrexianSymbols = 0
 	// #746: a quoted cost clause names the card like its mana cost.
 	out.TargetCostNotes = nil
 	// S29: "castable from where it sits" is only ever set on cards
@@ -3354,6 +3431,9 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
+			// #916: stamped for the owner's cost prompts with the
+			// other cast clauses, so it goes with them.
+			c.PhyrexianSymbols = 0
 			// #746: stamped for the owner's X picker with the other
 			// cast clauses, so it goes with them. Printed text, so
 			// nothing leaks; this keeps the field's documented scope
@@ -3627,6 +3707,8 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.MinX = a.Cost.FloorX()
 			v.XSlots = a.Cost.XSlots()
 		}
+		// #917 / #916: the "or 2 life" half of the announcement.
+		v.PhyrexianSymbols = phyrexianSymbolsIn(a.Cost.Mana)
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)

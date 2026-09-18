@@ -1596,8 +1596,10 @@ to write. The "or 2 life" half (CR 107.4c/f) is announced on the
 CAST, as `CastSpellParams.PhyrexianLife`: the number of the cost's
 Phyrexian symbols being paid with 2 life each, validated against what
 the cost prints and against CR 119.4, paid through `PayLifeForEffect`.
-An ACTIVATED ability's `ManaCost("{1}{G/P}")` has no such announce and
-pays the coloured half (Birthing Pod).
+An ACTIVATED ability announces the same thing the same way (#917):
+`ActivateAbilityParams.PhyrexianLife`, the same wire name
+`phyrexian_life`, through the same strike-and-pay helper, so Birthing
+Pod's `{1}{G/P}` is `{1}` and two life for a player with no green.
 
 **"Activate only if …" / "Activate only during your turn" (#743):**
 the ability's `Condition`, a `func(g, controller, source) bool` built

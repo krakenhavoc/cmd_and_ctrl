@@ -939,8 +939,16 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
-			Strict           bool     `json:"strict,omitempty"`
-			AutoTap          bool     `json:"auto_tap,omitempty"`
+			// CR 107.4f / CR 602.2b (#917) — how many of the mana
+			// component's Phyrexian symbols are being paid with 2
+			// life each instead of mana (Birthing Pod's {1}{G/P}).
+			// The SAME field name cast_spell uses, because it is the
+			// same announcement one rule number over. Absent (0)
+			// pays every symbol with its coloured half, which is
+			// what every client that predates it sends.
+			PhyrexianLife int  `json:"phyrexian_life,omitempty"`
+			Strict        bool `json:"strict,omitempty"`
+			AutoTap       bool `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1003,9 +1011,12 @@ func Dispatch(g *game.Game, a Action) error {
 				// CR 602 path: an ability whose cost carries {X}
 				// announces a value here and the engine charges
 				// XSlots·X generic for it.
-				XValue:  p.XValue,
-				Strict:  p.Strict,
-				AutoTap: p.AutoTap,
+				XValue: p.XValue,
+				// CR 107.4f: the life half of the announcement, routed
+				// through the same strike-and-pay helper a cast's is.
+				PhyrexianLife: p.PhyrexianLife,
+				Strict:        p.Strict,
+				AutoTap:       p.AutoTap,
 			})
 		}
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)

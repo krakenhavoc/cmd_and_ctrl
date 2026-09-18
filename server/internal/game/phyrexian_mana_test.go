@@ -203,7 +203,7 @@ func TestPhyrexianLifePlanStrikesTheUnpayableSymbolFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	pool := ManaPool{{Color: "W"}}
-	reduced, life := phyrexianLifePlan(cost, pool, ManaSpendContext{}, 1)
+	reduced, life := PhyrexianLifePlan(cost, pool, ManaSpendContext{}, 1)
 	if life != 2 {
 		t.Fatalf("life = %d, want 2 (CR 107.4f)", life)
 	}
@@ -215,12 +215,12 @@ func TestPhyrexianLifePlanStrikesTheUnpayableSymbolFirst(t *testing.T) {
 	}
 	// A caster who wants the free cast with mana available still gets
 	// it: the second pass takes a payable symbol.
-	free, freeLife := phyrexianLifePlan(cost, ManaPool{{Color: "G"}, {Color: "W"}}, ManaSpendContext{}, 2)
+	free, freeLife := PhyrexianLifePlan(cost, ManaPool{{Color: "G"}, {Color: "W"}}, ManaSpendContext{}, 2)
 	if freeLife != 4 || len(free.Required) != 0 {
 		t.Errorf("two symbols by life = %d life, %d requirements left; want 4 and 0", freeLife, len(free.Required))
 	}
 	// Nothing claimed changes nothing.
-	same, none := phyrexianLifePlan(cost, pool, ManaSpendContext{}, 0)
+	same, none := PhyrexianLifePlan(cost, pool, ManaSpendContext{}, 0)
 	if none != 0 || len(same.Required) != 2 {
 		t.Errorf("claiming nothing changed the cost: %+v, %d life", same, none)
 	}
