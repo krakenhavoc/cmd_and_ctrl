@@ -690,6 +690,28 @@ splice and not a second cursor design:
 If #717 lands first, it builds the plan as described here, and this
 ADR's sub-PR 1 builds on it.
 
+**Superseded on the shape (2026-09-18): #717 landed first and did not
+build the plan.** None of `PlannedStep`, `TurnPlan` or
+`AddStepAfterCurrentForEffect` existed yet, and building them was the
+whole of this ADR rather than a combat fix. #717 instead added a
+thirteenth entry to the fixed `turnSequence` —
+`StepFirstStrikeDamage` (`first_strike_damage`), before
+`StepCombatDamage` — and a predicate, `Game.stepExistsLocked`, that
+makes the cursor walk through a step this turn does not have, reusing
+the skip move a replacement-cancelled step already made. See
+[ADR 0045](0045-combat-restrictions.md)'s 2026-09-18 amendment,
+Decision 24.
+
+What that means for this ADR: the seam the plan has to absorb is
+"present or absent", not "spliced with a `Sub` tag" — when the plan
+lands, `first_strike_damage` is a plan entry and `stepExistsLocked` is
+what decides whether the plan includes it. Everything else in this
+decision stands: both damage steps count toward `combat_damage`'s
+ordinal is now simply "they are two different steps", no card reads
+that ordinal, `PhaseOrdinal` / `PhaseID` are unaffected, and the
+client's per-step stops treat the pair as one (the first-strike step
+reads the `combat_damage` stop and has no grid row of its own).
+
 ## Decision 13 — Enumerator, bots and the catalog soak
 
 - **Enumerator** (`internal/legal`): nothing counts combats or turns.

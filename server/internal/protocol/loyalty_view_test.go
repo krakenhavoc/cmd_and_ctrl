@@ -115,3 +115,40 @@ func TestCardViewReportsLoyaltyActivatedThisTurn(t *testing.T) {
 		t.Error("loyalty_activated not reported after an activation")
 	}
 }
+
+// #630 / CR 400.7: the flag belongs to the permanent, not to the
+// card. A planeswalker that leaves the battlefield and comes back the
+// same turn is a new object, and the row the client greys on has to
+// come back with it — this is the wire half of the reported bug,
+// where the recast walker's snapshot still carried
+// loyalty_activated: true.
+func TestLoyaltyActivatedClearsWhenTheWalkerLeavesAndReturns(t *testing.T) {
+	g := buildActiveGame(t)
+	id, owner := seatLoyaltyWalker(g, 4)
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.ActivateCatalogAbility(owner, id, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	if !walkerView(t, g, id).LoyaltyActivated {
+		t.Fatalf("setup: loyalty_activated not reported after the activation")
+	}
+
+	var back uuid.UUID
+	g.WithWriteLock(func() {
+		if err := g.BounceToHandForEffect(id); err != nil {
+			t.Fatalf("BounceToHandForEffect: %v", err)
+		}
+		var err error
+		back, err = g.PutFromHandOntoBattlefieldForEffect(id, game.HandEntryOptions{Controller: owner})
+		if err != nil {
+			t.Fatalf("PutFromHandOntoBattlefieldForEffect: %v", err)
+		}
+	})
+	if walkerView(t, g, back).LoyaltyActivated {
+		t.Error("the returning planeswalker still reports loyalty_activated — the client greys both rows")
+	}
+}

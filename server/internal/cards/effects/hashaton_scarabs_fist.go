@@ -40,16 +40,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     response to the trigger would be copied out of exile instead
 //     of failing over to LKI. There is no LKI store reachable from
 //     an ability's Effect.
-//   - The token's ETB *triggers* fire, but a copied card whose ETB
-//     lives in Spec.AsEnters rather than Spec.Triggered does not get
-//     that clause, because CreateTokenForEffect does not call
-//     fireETBHookLocked. See the note on CreateTokenCopy.
+//
+// The second simplification this card used to declare is gone: since
+// #762 a created token runs the ordinary entry pipeline, so a copied
+// card's Spec.AsEnters clause fires on the token along with its ETB
+// triggers.
 func init() {
 	Register(Spec{
 		OracleID:     "db266661-f783-4907-9e52-6963eec05431",
 		Name:         "Hashaton, Scarab's Fist",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Token copies skip the enters-the-battlefield effect on some cards, and a discarded card exiled in response is still copied."},
+		Caveats:      []string{"A discarded card exiled in response is still copied."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

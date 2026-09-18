@@ -22,7 +22,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
-  import type { StepID } from "../lib/turn";
+  import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import {
@@ -252,7 +252,11 @@
       holdPriority: $holdPriority,
       autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
       ownsEveryStackItem: ownsEveryStackItem(view, viewerID),
-      stepStop: step ? $settings.gameplay.stepStops[step] : undefined,
+      // The two combat damage steps share one stop (turn.ts
+      // `stopKeyFor`): a stop on combat damage stops on the
+      // first-strike step too, which is the window a player who asked
+      // to see damage most wants.
+      stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
       smartAutoPass: $settings.gameplay.smartAutoPass,
       hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
     });
@@ -497,7 +501,9 @@
       if (step === "untap") {
         play("turn_change");
         play("untap_all");
-      } else if (step === "combat_damage") {
+      } else if (step === "first_strike_damage" || step === "combat_damage") {
+        // Both combat damage steps get the cue (CR 510.4): a combat
+        // with first strike in it is heard twice, which is what it is.
         play("combat_resolve");
       }
     }

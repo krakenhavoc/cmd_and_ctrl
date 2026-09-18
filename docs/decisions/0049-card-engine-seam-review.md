@@ -192,6 +192,15 @@ hand-rolled it out of `TriggerInFlightForEffect`.
   one sentence — "a stack item begins to resolve, or the cursor
   enters a new step" — with the one step the cursor does not see
   named beside it.
+
+  **Superseded in part (2026-09-18, [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717)):**
+  the cursor now sees it. `first_strike_damage` is a real step (see
+  ADR 0045's 2026-09-18 amendment), so the ordinary "the cursor
+  enters a new step" boundary produces both batches and the
+  hand-rolled `beginEventBatchLocked` between the passes is deleted.
+  The outcome is unchanged — a first-striker and a regular attacker
+  hitting the same player are still two triggers — and the boundary
+  rule is now one sentence with nothing named beside it.
 - **`Game.TriggerInFlightForEffect` and its doc are deleted.** Breena
   (per attacked opponent) and Nature's Will (per damaged player) were
   its only callers and both now carry a static `Key` plus

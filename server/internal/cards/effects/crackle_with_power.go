@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "273f5483-b67e-4dd6-bba8-c0a047fa34d7",
 		Name:         "Crackle with Power",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"You must choose exactly X targets rather than up to X."},
 		Targets:      b10CrackleTargets(),

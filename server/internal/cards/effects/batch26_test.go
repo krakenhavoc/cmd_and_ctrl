@@ -277,16 +277,19 @@ func TestB26BiteDownBitesWithACreatureYouControl(t *testing.T) {
 	if got := loyaltyOf(g, walker); got != 1 {
 		t.Errorf("the walker takes 4: loyalty %d, want 1", got)
 	}
-	// The per-slot clauses are checked at resolution: their Wall in
-	// the first slot bites nothing.
-	castCatalogSpell(t, g, "Bite Down", "Instant", b26BiteDownOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: wall}, {Kind: game.TargetCard, ID: mine}})
-	passPriorityAroundTable(t, g)
-	if damageMarkedOn(g, mine) != 0 {
-		t.Error("their Wall is not a creature you control — nothing is dealt")
+	// #764: each slot is its own CLAUSE, so a pair that fits the
+	// wrong slots is refused at ANNOUNCE (CR 601.2c) — their Wall
+	// cannot fill "target creature you control", and my Beast cannot
+	// fill "target creature or planeswalker you don't control".
+	if err := castCatalogSpellErr(t, g, "Bite Down", "Instant", b26BiteDownOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: wall}, {Kind: game.TargetCard, ID: mine}}); err != game.ErrIllegalTarget {
+		t.Errorf("wrong-slot pair: err %v, want ErrIllegalTarget", err)
 	}
-	if spec, _ := Lookup(b26BiteDownOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the resolution-time slot check is a declared gap")
+	if damageMarkedOn(g, mine) != 0 {
+		t.Error("a refused announcement deals nothing")
+	}
+	if spec, _ := Lookup(b26BiteDownOracle); spec.Completeness != CompletenessFull {
+		t.Error("per-slot clauses landed in #764 — the caveat is gone")
 	}
 }
 

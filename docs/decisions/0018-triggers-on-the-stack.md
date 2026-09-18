@@ -244,6 +244,97 @@ silent failures a new kind used to be able to ship with — a gate
 decision nobody made, and an empty move list for the seat that owes it
 (the #499 / #618 wedge).
 
+**Amendment (2026-09-18, #796 / #568): a resolving effect may ask a
+question, and it may ask it of somebody else.**
+
+This section shipped the one prompt a resolving ability could put in
+front of another player, and welded it to a *mana payment*. Three
+shapes were left with nowhere to go, and each blocked real cards:
+
+- **A free yes/no for the effect's own controller.** "Mill two cards.
+  Then you may sacrifice this land" (Eden, Seat of the Sanctum). A
+  trigger's CR 603.5 "you may" is asked before the ability goes on the
+  stack and is over by the time anything resolves; `pay_unless` speaks
+  about mana; search / scry / put-from-hand each carry their own
+  decline because declining is part of that instruction.
+- **The same yes/no, addressed to an opponent.** "Target opponent may
+  have you draw three cards" (Combustible Gearhulk), "they may tap
+  that permanent" (Charismatic Conqueror), "loses 5 life unless they
+  discard a card" (Painful Quandary).
+- **A choice among three or more consequences, addressed to an
+  opponent.** "Each opponent loses 3 life unless that player
+  sacrifices a nonland permanent of their choice or discards a card"
+  (Torment of Hailfire), and the two piles of a Fact or Fiction split.
+
+**One primitive, one new kind, and no new yes/no kind.**
+
+`effects.MayChoice{Player, Question, YesLabel, NoLabel, LifeCost,
+OnYes, OnNo}` (`server/internal/cards/effects/may_choice.go`) is the
+yes/no, and it is built on the existing `PendingChoiceConfirm` — the
+chained-choice two-way prompt from #552, which is already a question
+whose branches are plain continuations supplied by the card, already
+addressed by `Chooser`, already classified here, already enumerated,
+already rendered. A `may` kind would have been a fourth spelling of a
+question the queue can ask, and every consumer would have needed a case
+for it. `Player` defaults to the effect's controller, which is what
+"you may" means; #568's cards set it to another seat and the prompt is
+otherwise identical.
+
+`PendingChoiceOptionPick` (`option_pick`,
+`server/internal/game/option_pick.go`) is the new kind: "choose one of
+the following", addressed to any seat, answered with the INDEX of the
+chosen option (`{option_index: N}`, routed by kind because zero is the
+commonest answer). Its options are plain data — a label, a life cost,
+and optionally the cards the option is about — and what an option MEANS
+lives in the frame the queuing effect supplies, which is what keeps it
+reusable rather than a second modal-spell system. A modal spell's
+"choose one —" is NOT this kind: that choice is made at announce
+(CR 601.2b) and lives on `Spec.Modes`.
+
+**A pile split needs no kind at all.** It is two chained prompts to two
+different seats (#552): a `choose_cards` addressed to the splitter with
+a floor of zero, and an `option_pick` addressed back to the controller
+whose two options each carry a pile. `Game.QueuePileSplitForEffect` /
+`effects.PileSplit` is that composition and nothing more.
+
+**Legality lives at queue time.** `ResolveOptionPick` validates the
+index and nothing else, exactly as `ResolveConfirm` validates nothing
+about the board. An effect builds its option list out of what the
+chooser can actually do (CR 608.2's "as much as possible") — Torment
+drops "sacrifice a nonland permanent" for a player who controls none —
+and must put a branch that always works FIRST, because that is the one
+`legal.choiceMoves` marks `AlwaysLegal`. A prompt whose every branch
+could fail is a seat that can be stuck (#544).
+
+**`option_pick` blocks the table**, like every other resolution-time
+decision: the effect that asked it is paused mid-resolution and its
+continuation is the rest of the card. `pay_unless` remains the only
+kind that does not block, and the reason is unchanged — it is asked
+*after* its trigger has left the stack.
+
+**Redaction: one function, in the projection.** A prompt addressed to
+seat B over seat A's cards is new, and `PendingChoiceView` shipping
+cards a viewer should not see is the leak PR #513 fixed. All of it is
+now `protocol.redactChoiceCards`, the only answer to "which of a
+prompt's cards may this viewer see", applied to `Options` and to every
+option's own `cards`:
+
+1. A viewer who is not a knower of a card does not get it — dropped,
+   not redacted to a back, because these lists come out of hidden
+   zones and a stable instance ID is a correlation handle.
+2. The CHOOSER keeps their whole list as answerable backs only when
+   the pool is their OWN material, or when it is another player's
+   HAND — a hand's size is public (CR 400.2), and a coercive discard
+   that revealed nothing still has to be answerable by picking one of
+   the backs. A pool that is neither (Fact or Fiction's five cards off
+   the top of a LIBRARY) shows the chooser only what was revealed.
+
+Rule 2 is therefore also a contract on the card: a cross-seat prompt
+over a non-hand zone must reveal what it asks about (#549), or its
+chooser is handed an empty list. That is the right failure — the
+alternative leaks a hidden zone, and every printed card of this family
+reveals first.
+
 Two more drains fell out of the sub-PR 6 cards: `CastSpell` (the
 caster gets priority right after casting, CR 117.3c — Rhystic's
 trigger must be on the stack by then) and the sandbox `draw_card`

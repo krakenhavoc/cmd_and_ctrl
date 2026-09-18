@@ -86,8 +86,10 @@ func (c *Context) Opponents() []uuid.UUID {
 	return out
 }
 
-// Modes returns the announce-time mode indexes of a modal spell
-// (empty for non-modal cards). Added in S20 sub-PR 4.
+// Modes returns the announce-time mode indexes of a modal spell or
+// ability (empty for non-modal cards), in announce order and with
+// repeats when the card allows them (CR 700.2d). Added in S20 sub-PR
+// 4; a multiset since #764.
 func (c *Context) Modes() []int {
 	if c.Item == nil {
 		return nil
@@ -106,6 +108,70 @@ func (c *Context) HasMode(i int) bool {
 		}
 	}
 	return false
+}
+
+// ModeCount is how many times option i was chosen (CR 700.2d). 0
+// when the option was not chosen, 1 for the ordinary modal card, and
+// more only for a Repeatable ModeSpec — Mystic Confluence's draw
+// mode taken three times is 3. Added by #764.
+func (c *Context) ModeCount(i int) int {
+	return game.ModeCount(c.Modes(), i)
+}
+
+// Mode is the OPTION index chosen at occurrence `n` of the announced
+// mode list, or -1 when there is no such occurrence. Modes resolve in
+// announce order (CR 700.2c), so a card that walks its occurrences
+// walks this. Added by #764.
+func (c *Context) Mode(n int) int {
+	modes := c.Modes()
+	if n < 0 || n >= len(modes) {
+		return -1
+	}
+	return modes[n]
+}
+
+// ModeTargets is the target group announced for occurrence `n` — the
+// picks that answered THAT occurrence's clauses, in clause order.
+// A repeated mode's two occurrences have two groups, which is what
+// makes CR 700.2d work. Added by #764.
+func (c *Context) ModeTargets(n int) []game.TargetRef {
+	var out []game.TargetRef
+	for _, t := range c.Targets() {
+		if t.Mode == n {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ClauseTargets is the picks that answered clause `slot` of the
+// announcement — slot 0 is "target creature you control", slot 1 is
+// "target creature or planeswalker you don't control". For a modal
+// item, narrow to one occurrence with ModeTargets first. Added by
+// #764.
+func (c *Context) ClauseTargets(slot int) []game.TargetRef {
+	var out []game.TargetRef
+	for _, t := range c.Targets() {
+		if t.Slot == slot {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ClauseTarget is the single pick that answered clause `slot`, and
+// whether there is one and it is still legal (CR 608.2b). The read a
+// two-slot positional card wants: "the creature I control" is
+// ClauseTarget(0), "the thing it hits" is ClauseTarget(1). Added by
+// #764.
+func (c *Context) ClauseTarget(slot int) (game.TargetRef, bool) {
+	for _, t := range c.Targets() {
+		if t.Slot != slot {
+			continue
+		}
+		return t, c.IsTargetLegal(t)
+	}
+	return game.TargetRef{}, false
 }
 
 // PaidAltCost reports whether the spell was cast for the named

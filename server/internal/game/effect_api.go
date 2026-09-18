@@ -52,7 +52,12 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 	z := g.findCardZoneLocked(cardID)
 	if z == nil {
-		return Card{}, false
+		// #762: a token whose entry window is open is in no zone at
+		// all — it is minted and not yet pushed. An entry replacement
+		// reads the entering permanent through this function
+		// (Urabrask the Hidden, Kismet, Thalia), so it has to be able
+		// to see one. See Game.enteringTokens.
+		return g.enteringTokenLocked(cardID)
 	}
 	for _, c := range z.Cards {
 		if c.InstanceID == cardID {
@@ -200,7 +205,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
 	discarder := p.Player
-	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
+	opts := discardOptions{cause: DiscardCauseEffect, source: p.Source, then: p.Then}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -770,7 +775,7 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 		ids[i] = c.InstanceID
 	}
 	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
-	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the
@@ -1023,8 +1028,12 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // Exile is a public zone, so the ordinary path marks every seat a
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
-// the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set. An empty knowledge set is what
+// the player who exiled it — so its knowledge set is set to the
+// FaceDownExiled row of ADR 0069's viewers table, which is nobody,
+// and Card.FaceDown is set. (FaceDownForetold is the row foretell
+// uses, and its answer is the owner; the route takes the kind so the
+// two cannot be told apart by anything but the rule.) An empty
+// knowledge set is what
 // the wire keys on: protocol.redactCardForViewer strips every
 // identifying field (name, costs, abilities, catalog flags) for a
 // non-knower. Card.FaceDown is what the client keys on to draw a
@@ -1070,7 +1079,7 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 			CardID:   top,
 			Dst:      ZoneExile,
 			Actor:    playerID,
-			FaceDown: true,
+			FaceDown: FaceDownExiled,
 		})
 		if err != nil {
 			return out, err
@@ -2031,13 +2040,16 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 	return nil
 }
 
-// CreateTokenForEffect puts n freshly-minted tokens onto the
-// battlefield under `controller`'s control. Each token has a new
-// InstanceID, empty ScryfallID (tokens aren't in the Scryfall-
-// printing index), and KnownBy pre-populated with every seated
-// player (tokens are always public). The emitted EventTokenCreated
-// references the first token ID — callers loop for the others via
-// the event stream.
+// CreateTokenForEffect creates n tokens under `controller`'s control
+// from `template` (CR 701.7b). The common shape, and the one nearly
+// every catalog card wants: no entry clause, nothing to do
+// afterwards.
+//
+// Since #762 it is one call on the shared creation path — the CR
+// 701.7b replacement window, then an ordinary battlefield entry per
+// token. See token_create.go.
+//
+// Caller must hold g.mu.
 func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) error {
 	_, err := g.CreateTokensForEffect(controller, template, n, TokenEntryOptions{})
 	return err
@@ -2056,154 +2068,88 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 type TokenEntryOptions struct {
 	// Tapped enters the tokens tapped — "create a TAPPED Powerstone
 	// token" (Stern Lesson), "create a 1/1 Goblin tapped and
-	// attacking" minus the attacking half, which needs combat state
-	// this struct deliberately does not touch.
+	// attacking" minus the attacking half, which the creation's own
+	// Attacking field carries.
+	//
+	// Since #762 it is SEEDED onto the entry event rather than
+	// stamped and forgotten, the way ZoneEntryOptions.Tapped is: the
+	// creation's clause and whatever an enters-tapped replacement
+	// (Urabrask, Kismet, Thalia) adds on top settle in one field, and
+	// no reader downstream can lose one of the two.
 	Tapped bool
 
 	// Counters are the counters each token enters with, keyed by
 	// counter name. Applied before EventETB fires, so an ETB watcher
 	// and the P/T recompute both see the finished object.
 	//
-	// Declared gap: these do NOT run the CR 614 counter replacement
-	// pipeline, so a Doubling Season does not double them. Token
-	// creation does not go through the zone-move pipeline at all
-	// (the token has no previous zone to move from), which is the
-	// same reason Tapped is a field here rather than the
-	// RepEventMove.EntersTapped an ordinary permanent uses.
+	// They ride the entry event as EntersWithCounters (#762), which
+	// is what puts them through the CR 614 counter pipeline: a
+	// Doubling Season doubles them, Renata and Arwen add to them, and
+	// All Will Be One sees them placed.
 	Counters map[string]int
 
 	// Keywords are granted on top of the template's printed ones —
-	// the "…with haste" half of a card that pumps the token it
-	// makes. Additive: the template's own keywords are kept.
+	// the "…with haste" half of a card that pumps the token it makes.
+	// Additive: the template's own keywords are kept.
 	Keywords []string
 }
 
 // CreateTokensForEffect is CreateTokenForEffect with entry options,
-// returning the instance IDs of the tokens it made in creation
-// order. The IDs are what a card needs when the token is not the end
-// of the sentence — "create a token, then sacrifice it", "…then put
-// a counter on it".
+// returning the instance IDs of the tokens it made in creation order.
+// The IDs are what a card needs when the token is not the end of the
+// sentence — "create a token, then sacrifice it", "…then put a
+// counter on it".
+//
+// THE RETURNED SLICE IS EMPTY WHEN THE CREATION PAUSED. Since #762 a
+// creation goes through the CR 701.7b replacement window, and a
+// window with two DIFFERENT applicable effects in it (a Doubling
+// Season and an Academy Manufactor) queues a CR 616 ordering prompt;
+// the tokens are made when it is answered, an action later, and there
+// is nothing to return here. A caller whose sentence continues past
+// the tokens must hand that continuation to
+// CreateTokensThenForEffect rather than read this slice on the next
+// line — the same contract MillToZoneThenForEffect and
+// discardCardsLocked carry.
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
-	if n <= 0 {
-		return nil, nil
-	}
-	ids := make([]uuid.UUID, 0, n)
-	for i := 0; i < n; i++ {
-		tok := template
-		tok.InstanceID = uuid.New()
-		tok.Owner = controller
-		tok.Controller = controller
-		tok.Counters = nil
-		tok.LostLastCounter = false
-		tok.KnownBy = nil
-		if opts.Tapped {
-			// Additive, not an assignment: a caller that pre-stamped
-			// Tapped on the template (the older idiom — Mary Read's
-			// Treasure, Hashaton's Zombie) must keep entering tapped.
-			tok.Tapped = true
-		}
-		if len(opts.Counters) > 0 {
-			tok.Counters = make(map[string]int, len(opts.Counters))
-			for name, count := range opts.Counters {
-				if count > 0 {
-					tok.Counters[name] = count
-				}
-			}
-		}
-		if len(opts.Keywords) > 0 {
-			// Fresh slice: the template's Keywords slice is shared by
-			// every token minted from it, so appending in place would
-			// leak the grant onto the next one.
-			kw := make([]string, 0, len(template.Keywords)+len(opts.Keywords))
-			kw = append(kw, template.Keywords...)
-			kw = append(kw, opts.Keywords...)
-			tok.Keywords = kw
-		}
-		for _, seat := range g.Seats {
-			tok.AddKnower(seat.ID)
-		}
-		// CR 506.3c / #859: a template that arrives already attacking
-		// (Adeline's "tapped and attacking Human") was PUT onto the
-		// battlefield attacking, not declared, so it announces no
-		// EventAttack — and the attack declaration's lock-in must not
-		// mistake its AttackingTarget for a staged declaration.
-		if tok.AttackingTarget != uuid.Nil {
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
-		}
-		g.Battlefield.PushTop(tok)
-		ids = append(ids, tok.InstanceID)
-		g.EmitEvent(Event{
-			Kind:   EventTokenCreated,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-	}
-	return ids, nil
+	var made []uuid.UUID
+	err := g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n, Entry: opts}},
+	}, func(_ *Game, created []uuid.UUID) error {
+		made = created
+		return nil
+	})
+	return made, err
 }
 
-// CreateTokensAttackingForEffect is CreateTokenForEffect for
-// "create N tokens … that are attacking" (Parhelion II, Hanweir
-// Garrison): the tokens are put onto the battlefield already
-// attacking `defender`.
+// CreateTokensAttackingForEffect is CreateTokenForEffect for "create
+// N tokens … that are attacking" (Parhelion II, Hanweir Garrison):
+// the tokens are put onto the battlefield already attacking
+// `defender`.
 //
-// CR 506.3c is the reason this is a separate entry point rather than
-// a flag: a permanent PUT onto the battlefield attacking was never
-// DECLARED as an attacker, so it fires no "whenever ~ attacks"
-// trigger and nothing that watches attack declarations sees it.
-// Setting AttackingTarget directly and emitting no EventAttack is
-// exactly that rule, and routing through DeclareAttacker — which
-// emits the event, checks summoning sickness and taps — would be
-// wrong on all four counts.
+// CR 506.3c is why the attacking-ness is part of the CREATION rather
+// than something done to the tokens afterwards: a permanent PUT onto
+// the battlefield attacking was never DECLARED as an attacker, so it
+// fires no "whenever ~ attacks" trigger and nothing that watches
+// attack declarations sees it. Setting AttackingTarget as the token
+// is minted and emitting no EventAttack is exactly that rule, and
+// routing through DeclareAttacker — which emits the event, checks
+// summoning sickness and taps — would be wrong on all four counts.
 //
 // A zero `defender`, or a defender that is not a seated player,
-// creates the tokens untapped and not attacking rather than
-// erroring: the ability that called this has already resolved, and
-// the tokens are the part of it that can still be delivered.
+// creates the tokens untapped and not attacking rather than erroring:
+// the ability that called this has already resolved, and the tokens
+// are the part of it that can still be delivered.
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Card, n int, defender uuid.UUID) error {
-	if n <= 0 {
-		return nil
-	}
-	attacking := defender != uuid.Nil && g.playerByIDLocked(defender) != nil
-	for i := 0; i < n; i++ {
-		tok := template
-		tok.InstanceID = uuid.New()
-		tok.Owner = controller
-		tok.Controller = controller
-		tok.Counters = nil
-		tok.LostLastCounter = false
-		tok.KnownBy = nil
-		if attacking {
-			tok.AttackingTarget = defender
-			// CR 506.3c, again: never declared, so the lock-in
-			// (attackers.go) skips it rather than announcing it at
-			// the next priority boundary.
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
-		}
-		for _, seat := range g.Seats {
-			tok.AddKnower(seat.ID)
-		}
-		g.Battlefield.PushTop(tok)
-		g.EmitEvent(Event{
-			Kind:   EventTokenCreated,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-	}
-	return nil
+	return g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n}},
+		Attacking:  defender,
+	}, nil)
 }
 
 // ScryForEffect performs a scry N (CR 701.22): the player looks at the

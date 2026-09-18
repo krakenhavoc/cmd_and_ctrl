@@ -220,16 +220,19 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 }
 
 // activeStaticAbilitiesLocked collects every continuous effect in
-// play from its two sources and returns them as
+// play from its three sources and returns them as
 // `ContinuousEffect`s bound to source pointers + timestamps:
 //
 //  1. Battlefield permanents — walks g.Battlefield and looks each
 //     card's catalog static abilities up via the
 //     CatalogStaticAbilities hook. These live exactly as long as
 //     the source permanent does (CR 113.6).
-//  2. Turn-scoped statics — the S32 floating "until end of turn"
-//     registry (turn_scoped_statics.go), which has no battlefield
-//     source and expires on a clock instead (CR 514.2).
+//  2. Scoped statics — the floating continuous-effect registry
+//     (scoped_statics.go), whose entries have no battlefield source
+//     and end on a duration instead (CR 611.2).
+//  3. Emblems — the S40 command-zone objects (emblem.go, #623),
+//     whose abilities function where they are (CR 114.3) and which
+//     nothing can remove short of their owner leaving the game.
 //
 // Caller must hold g.mu in write mode.
 //
@@ -254,18 +257,23 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 // Song'd Control Magic stays attached and only this silence hands
 // the creature back today.
 //
-// Turn-scoped statics are never silenced. They have no battlefield
-// source to take abilities away from: the effect outlived its source
-// by construction (CR 611.2b), so nothing on the board can switch it
-// off.
+// Scoped statics and emblems are never silenced. Neither has a
+// battlefield source to take abilities away from: a scoped static
+// outlived its source by construction (CR 611.2b), and nothing in the
+// game can name an emblem at all (CR 114), so nothing on the board
+// can switch either off.
 func (g *Game) activeStaticAbilitiesLocked(silenced map[uuid.UUID]bool) []ContinuousEffect {
-	// S32: floating "until end of turn" effects first. They are
+	// S32/S38: floating effects with a duration first. They are
 	// gathered unconditionally — they outlive their source card, so
 	// neither an empty battlefield nor a missing catalog hook can
 	// switch them off. Order within this slice is irrelevant: the
 	// per-bucket sort in applyLayerLocked re-orders everything by
 	// timestamp (CR 613.7) before applying.
-	out := g.turnScopedContinuousEffectsLocked()
+	out := g.scopedContinuousEffectsLocked()
+	// #623 / CR 114.3: an emblem's abilities function in the command
+	// zone. One more source list into the same gather, never a second
+	// pass — see emblem.go.
+	out = append(out, g.emblemContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
@@ -515,6 +523,16 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 // test can assert it ran exactly once.
 func (g *Game) recomputeLayersLocked() {
 	g.recomputeCount.Add(1)
+	// S38 (ADR 0063): a "for as long as ~" duration is a condition
+	// the board can falsify at any moment — the source dies, it is
+	// flickered into a new object (CR 400.7), its controller changes
+	// — and every one of those bumps the layer version, so the top of
+	// the recompute is the one place that is guaranteed to run
+	// afterwards. The sweep bumps the version again when it drops
+	// anything, and the store at the end of this function picks that
+	// up, so a pass that ends an effect settles in one go rather than
+	// looping.
+	g.ClearExpiredScopedStaticsLocked()
 	// S24: the ability-removal fixed point. The first pass is the
 	// discovery pass — it runs with nothing silenced and learns
 	// which permanents a layer-6 ability-removing effect applied to.
@@ -648,7 +666,10 @@ func (g *Game) silencedSetLocked() map[uuid.UUID]bool {
 //     cleared, so a hasty creature is still hasty (HasSummoningSickness
 //     reads the keyword at read time).
 //   - CR 506.4 — a permanent that changes control is removed from
-//     combat.
+//     combat. Declaration AND announcement, through
+//     `removeFromCombatLocked`: clearing `AttackingTarget` alone left
+//     the creature marked as already-announced for this combat, so
+//     its next attack declaration fired no trigger (#871).
 //
 // Both fire only on an actual delta, so a recompute that changes
 // nothing touches nothing.
@@ -671,8 +692,7 @@ func (g *Game) materialiseControlLocked() {
 		}
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
-		c.AttackingTarget = uuid.Nil
-		c.BlockingTarget = uuid.Nil
+		g.removeFromCombatLocked(c)
 	}
 }
 

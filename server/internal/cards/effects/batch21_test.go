@@ -692,8 +692,14 @@ func TestB21ManglehornMayDestroyAnArtifactAndTapsTheirs(t *testing.T) {
 	if !g.Battlefield.Contains(myRock) || !g.Battlefield.Contains(mine) {
 		t.Error("declining destroys nothing")
 	}
-	if spec, _ := Lookup(b21ManglehornOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	// #762: an opponent's artifact TOKEN — a Treasure — enters tapped
+	// too, because token creation now runs the entry pipeline.
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TreasureToken(), 1) })
+	if !b16Tapped(t, g, findBattlefieldByName(g, "Treasure")) {
+		t.Error("an opponent's artifact TOKEN enters tapped")
+	}
+	if spec, _ := Lookup(b21ManglehornOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 

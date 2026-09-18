@@ -93,11 +93,21 @@ desired semantics) but it means a future "until your next turn"
 duration cannot be expressed by bumping this field alone; it would
 need the active seat alongside it.
 
-**Known simplification:** an effect created *during* a cleanup step,
-after the sweep has already run, survives into the following turn.
-CR 514.3a would give an extra cleanup step to catch it. Nothing in
-the catalog can create an effect during cleanup — no player gets
-priority there — so this is unreachable today.
+**Amendment (2026-09-18, #661): the known simplification is gone.** It
+read: "an effect created *during* a cleanup step, after the sweep has
+already run, survives into the following turn. CR 514.3a would give an
+extra cleanup step to catch it. Nothing in the catalog can create an
+effect during cleanup — no player gets priority there — so this is
+unreachable today." Both halves have changed. A trigger or a
+state-based action in the cleanup step now gives the active player
+priority there, so a player CAN create an effect during cleanup; and
+the extra cleanup step CR 514.3a asks for is built, so the sweep runs
+again and catches it in its own turn. No extra bookkeeping was needed
+for that: the effect is registered with an ordinary "until end of
+turn" duration, and the very next cleanup step it meets — the same
+turn's second one — is the sweep that ends it. See
+[ADR 0006's 2026-09-18 amendment](0006-priority-foundation.md#amendment-2026-09-18-661-cleanup-grants-priority-when-something-happens-there-cr-5143a)
+and `server/internal/game/cleanup.go`.
 
 ### 4. The sweep allocates; it never compacts in place
 

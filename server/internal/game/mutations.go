@@ -707,27 +707,33 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// free-form behaviour (any ID the client sent is accepted),
 	// except that a modal card whose chosen modes take no target
 	// must arrive with none.
-	spec, err := castTargetSpec(CatalogKey(card), params.Modes)
-	if err != nil {
-		return err
-	}
+	spec, _ := castClauseSources(CatalogKey(card))
 	// S22: the alternative cost gets the last word on the clause —
-	// overload deletes it, cleave swaps a wider one in. Applied after
-	// the modal derivation so a modal card with an alternative cost
-	// would compose rather than conflict.
+	// overload deletes it, cleave swaps a wider one in. Applied to
+	// the card-level clause list; no card offers an alternative cost
+	// AND modes, and the two would compose rather than conflict.
 	spec = TargetSpecUnderAlternativeCost(spec, alt)
+	// #764: the announcement's target STEPS — one per clause of the
+	// card-level list, or one per clause of each chosen mode
+	// occurrence (CR 700.2c). A card with neither keeps the S13.1
+	// free-form behaviour; a modal card whose chosen modes take no
+	// target must arrive with none.
+	steps := AnnouncedClauses(spec, modeSpec, params.Modes)
+	if len(steps) == 0 && modeSpec != nil && len(params.Targets) > 0 {
+		return ErrInvalidParam
+	}
 	// S22: "Exile X target creatures you control" — the clause's
 	// count is the X announced at 601.2b, so resolve it into a
-	// concrete Min / Max before anything validates against it. The
-	// copy (rather than a mutation) matters: the catalog's TargetSpec
-	// is shared by every cast of the card.
-	if spec != nil && spec.CountFromX {
-		// Max 0 means "unbounded" everywhere else in TargetSpec, so
-		// an X of zero has to be rejected here rather than left to
-		// the count check below — otherwise announcing X=0 would buy
-		// an unbounded clause for free, which is the exact shape of
-		// the bug this field exists to close.
-		if n := countRealTargets(params.Targets); n != params.XValue {
+	// concrete Min / Max before anything validates against it. Over
+	// the STEPS rather than the card-level spec because the clause
+	// may belong to a MODE (Heliod's Intervention); the steps hold
+	// clause copies, so nothing mutates the shared catalog entry.
+	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	params.Targets = assignAnnouncedSlots(steps, params.Targets)
+	for _, i := range xSteps {
+		// Max 0 reads as "unbounded" to the ordinary count check, so
+		// an X-counted step is checked for an EXACT count of X here.
+		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
 			slog.Warn("cast_spell rejected: X-defined target count mismatch",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -736,24 +742,16 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			)
 			return ErrInvalidParam
 		}
-		resolved := *spec
-		resolved.Min, resolved.Max = params.XValue, params.XValue
-		resolved.CountFromX = false
-		spec = &resolved
 	}
-	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
-		return ErrInvalidParam
-	}
-	if spec != nil {
-		if err := g.validateTargetsLocked(playerID, spec, params.Targets); err != nil {
-			slog.Warn("cast_spell rejected: illegal target",
-				"card_name", card.Name,
-				"oracle_id", card.OracleID,
-				"targets_received", len(params.Targets),
-				"err", err,
-			)
-			return err
-		}
+	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+		slog.Warn("cast_spell rejected: illegal target",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"targets_received", len(params.Targets),
+			"x_value", params.XValue,
+			"err", err,
+		)
+		return err
 	}
 	// S21 sub-PR 5: additional costs (CR 601.2f). Validated here,
 	// with the rest of the announce-time choices, and paid further
@@ -1008,7 +1006,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		Seq:          g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
+		// #764: and the ModeSpec, so a per-mode target group can be
+		// resolved back to the clause it answered.
 		targetSpec: spec,
+		modeSpec:   modeSpec,
 	}
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
@@ -1704,7 +1705,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(CatalogKey(top), item)) {
+	if spellAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -1740,6 +1741,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 700.2c / 700.2d: each chosen bullet's own body, in announce
+	// order, once per occurrence. A modal card that branches inside
+	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
+	// this is a no-op for it (#764).
+	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
 	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
 	// token. This engine has no token-from-stack-item path, and
 	// letting the copy fall through to the battlefield branch below
@@ -1902,7 +1908,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 // re-check).
 //
 // Caller must hold g.mu.
-func spellAllTargetsIllegalLocked(g *Game, item *StackItem, spec *TargetSpec) bool {
+func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 	if item == nil || len(item.Targets) == 0 {
 		return false
 	}
@@ -1917,13 +1923,10 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem, spec *TargetSpec) bo
 			continue
 		case TargetPlayer, TargetCard:
 			hadTargeted = true
-			legal := false
-			if spec != nil {
-				legal = g.targetLegalLocked(item.Controller, spec, t)
-			} else {
-				legal = targetStillExistsLocked(g, t)
-			}
-			if legal {
+			// #764: each ref is re-checked against the clause it was
+			// announced under, which for a multi-clause or modal item
+			// is not the item's first clause.
+			if g.TargetStillLegalForEffect(item, t) {
 				anyLegal = true
 			}
 		}
@@ -1987,7 +1990,7 @@ func (g *Game) resolveTopAbilityLocked() {
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
-	if spellAllTargetsIllegalLocked(g, top, top.targetSpec) {
+	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{
 			Kind:   EventFizzle,
 			Actor:  top.Controller,
@@ -2012,6 +2015,10 @@ func (g *Game) resolveTopAbilityLocked() {
 			})
 		}
 	}
+	// CR 700.2c: a modal triggered or activated ability resolves its
+	// chosen bullets in announce order, after whatever body the item
+	// itself carries (#764).
+	g.runChosenModeEffectsLocked(top, top.modeSpec)
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
@@ -2665,8 +2672,16 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 // announced trigger followed by any state check overflowed the
 // stack.)
 //
+// Reports whether any state-based action was PERFORMED (CR 704.3's
+// "as a result of the check"), across every pass of the loop. Almost
+// every caller ignores it — the answer only matters where a rule asks
+// the question, and today that is CR 514.3a, which grants priority in
+// the cleanup step when an SBA fired even if nothing reached the
+// stack (cleanupGrantsPriorityLocked, cleanup.go). One body rather
+// than a reporting copy, so the two can never drift.
+//
 // Caller must hold g.mu.
-func (g *Game) runStateChecksLocked() {
+func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -2693,6 +2708,7 @@ func (g *Game) runStateChecksLocked() {
 		// which is nearly every call. See trigger_target_timing.go.
 		g.refreshTargetChoicesLocked()
 		fired, left := g.stateBasedActionsLocked()
+		sbaFired = sbaFired || fired
 		// #864: belt-and-braces backstop, run every pass so nothing can
 		// leave this function about to hand a seat priority while a
 		// choice sits pending for a chooser this same pass (or an
@@ -2714,14 +2730,15 @@ func (g *Game) runStateChecksLocked() {
 		}
 		hasPending := len(g.PendingTriggers) > 0
 		if !fired && !hasPending {
-			return
+			return sbaFired
 		}
 		if hasPending && !g.drainPendingTriggersAPNAPLocked() && !fired {
 			// Held behind a CR 603.3b ordering prompt and SBAs are
 			// quiet — nothing more to do until the chooser answers.
-			return
+			return sbaFired
 		}
 	}
+	return sbaFired
 }
 
 // eliminatePlayerLocked is one player leaving the game on their own:
@@ -3276,12 +3293,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
-	// The LKI snapshot is taken here, while the permanent is still on
-	// the battlefield with everything that was true of it — including
-	// the damage that killed it, which MoveCard's exit cleanup zeroes
-	// a line later (#816). CR 603.10: an LTB trigger is judged on what
-	// the permanent looked like while it was still there.
-	g.snapshotLKILocked(cardID)
+	// The exit runs here, while the permanent is still on the
+	// battlefield with everything that was true of it: the CR 603.10
+	// LKI snapshot an LTB trigger is judged on — including the damage
+	// that killed it, which MoveCard's exit cleanup zeroes a line
+	// later (#816) — and the Game-side forget of what this object did
+	// this turn (#630, CR 400.7). See battlefield_exit.go.
+	g.battlefieldExitLocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
@@ -3518,8 +3536,11 @@ func (g *Game) hasTriggerOrderPromptLocked(chooser uuid.UUID) bool {
 // hand, and that the count exactly matches the over-max amount the
 // engine recorded at cleanup entry. On success, moves each card to
 // the caller's graveyard and clears their pending entry. When the
-// pending map drains, re-fires the cleanup hook so the cursor
-// resumes its auto-advance.
+// pending map drains, the cleanup step's turn-based actions are
+// finished, so it takes the one cleanup exit (exitCleanupStepLocked,
+// cleanup.go) — which either ends the turn or, if this discard put a
+// trigger on the queue, gives the active player priority right here
+// (CR 514.3a).
 //
 // Returns ErrInvalidParam for wrong count, ErrCardNotFound for IDs
 // not in the caller's hand. Returns nil and a no-op for callers not
@@ -3558,19 +3579,24 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 	// hand-size bookkeeping is this site's own and runs once the whole
 	// batch has landed.
 	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
-		cause: discardCauseCleanup,
+		cause: DiscardCauseCleanup,
 		then: func(g *Game) error {
 			delete(g.DiscardPending, playerID)
 			if len(g.DiscardPending) == 0 {
 				g.DiscardPending = nil
 			}
-			// Resume the cleanup auto-advance if the pending map is
-			// now empty. Re-fires runStepEntryHooksLocked which
-			// rechecks DiscardPending; with the map empty, the
-			// auto-advance branch runs and the cursor walks on to the
-			// next seat's Untap.
-			if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
-				g.runStepEntryHooksLocked()
+			// The cleanup step's turn-based actions are finished now
+			// that the discard has landed, so take the one cleanup
+			// exit (cleanup.go): with the pending map empty it runs
+			// the CR 514.3a check and then either ends the turn or
+			// gives the active player priority here. This is where a
+			// trigger watching the hand-size discard gets onto the
+			// stack in the turn it belongs to (#661) — before, this
+			// re-fired the whole step entry, which advanced straight
+			// out of the turn and left the trigger waiting for the
+			// next player's upkeep.
+			if g.Turn.Step == StepCleanup {
+				g.exitCleanupStepLocked()
 			}
 			return nil
 		},
@@ -3845,7 +3871,11 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		return nil
 	}
 	if srcZone.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
+		// LKI, and the CR 400.7 forget — battlefield_exit.go. The
+		// sandbox move is a battlefield exit like any other: a
+		// planeswalker shoved to hand from the context menu is as new
+		// an object when it comes back as one Venser bounced.
+		g.battlefieldExitLocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err
@@ -4894,6 +4924,11 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 // skipped during the rotation so a 4-player game with one dead seat
 // still terminates the priority loop on the survivors' wrap.
 //
+// #661 / CR 514.3a is cleanup's exception, on both halves: the step
+// DOES grant priority when a state-based action fired or a trigger
+// was waiting there, and the wrap that ends that window begins
+// another cleanup step instead of the next turn.
+//
 // Stack-aware semantics (priority resets to active seat whenever a
 // spell resolves) are deferred to the S13+ rules graft.
 func (g *Game) PassPriority() error {
@@ -4981,6 +5016,16 @@ func (g *Game) PassPriority() error {
 		// Priority returns to the active player after a resolution
 		// (CR 117.3b). The step doesn't change.
 		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		return nil
+	}
+	// CR 514.3a (#661): the pass that closes a priority window in the
+	// CLEANUP step does not end the turn. "Once the stack is empty and
+	// all players pass in succession, another cleanup step begins" —
+	// hand size is checked again and the CR 514.2 sweep runs again,
+	// which is how an effect created during cleanup still ends this
+	// turn. See cleanup.go.
+	if g.Turn.Step == StepCleanup {
+		g.repeatCleanupStepLocked()
 		return nil
 	}
 	g.advanceCursorLocked()
@@ -5312,8 +5357,11 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 // when the cursor moves on to end_combat, which is what actually
 // retracts the arrows.
 //
-// Trample, deathtouch, double strike, lifelink, and other combat
-// keywords are NOT modeled — those land with rules enforcement.
+// This is the REGULAR combat damage step only. First-strike damage is
+// its own step's turn-based action (CR 510.4, #717) and the cursor
+// runs it on entry to StepFirstStrikeDamage; a caller that reaches
+// past the cursor and invokes this directly gets the single-step
+// combat a board with no first or double strike would have had.
 //
 // Auto-invoked by AdvanceStep when entering the combat_damage step,
 // so under normal play this never needs to be called explicitly.
@@ -5323,112 +5371,164 @@ func (g *Game) ResolveCombatDamage() {
 	g.resolveCombatDamageLocked()
 }
 
-// resolveCombatDamageLocked runs combat damage as two substeps
-// (CR 510.4: a combat with a first-strike or double-strike creature has
-// two combat damage steps). First-strike and double-strike creatures
-// assign in the first substep; SBA fires between; regular +
-// double-strike creatures assign in the second. A creature that died in
-// the first substep does not participate in the second —
-// collectCombatants re-reads live battlefield state each call.
+// resolveCombatDamageLocked is the REGULAR combat damage step's
+// turn-based action (CR 510.4) — the second of the two combat damage
+// steps when StepFirstStrikeDamage happened, and the only one when it
+// did not. runStepEntryHooksLocked calls it on entry to
+// StepCombatDamage.
+//
+// Who deals damage here is read off g.firstStrikeStepParticipants, the
+// record taken as the FIRST step began, never off the creatures'
+// keywords now (#716, CR 702.7c): the second step includes every
+// combatant that had neither first strike nor double strike then, plus
+// the ones that have double strike right now. Between the two steps
+// sits a real priority window, so those two questions genuinely have
+// different answers — see participatesInStepLocked.
 //
 // Combat step tag (#187, ADR 0053 Decision 1): when the first-strike
-// substep runs, every combat damage event of this step is stamped with
-// Event.CombatStep — CombatStepFirstStrike for the first pass,
-// CombatStepRegular for the second. When it does not run, the step is
-// "" and nothing is tagged, so the tag's presence alone says there
-// were two beats. The value is passed down as an argument, never kept
-// on Game.
+// step ran, every combat damage event of both steps is stamped with
+// Event.CombatStep — CombatStepFirstStrike there, CombatStepRegular
+// here. When it did not, the step is "" and nothing is tagged, so the
+// tag's presence alone still says there were two beats. The value is
+// passed down as an argument, never kept on Game.
 //
-// Each substep delegates to assignAndDealCombatDamageLocked which
-// handles unblocked straight-to-player damage, single-blocker damage
-// with trample overflow, multi-blocker via CR 510.1c
-// damage-assignment prompt, menace close-out validation, and the
-// lifelink / deathtouch hooks.
+// The pass delegates to assignAndDealCombatDamageLocked, which handles
+// unblocked straight-to-player damage, single-blocker damage with
+// trample overflow, multi-blocker via the CR 510.1c damage-assignment
+// prompt, menace close-out validation, and the lifelink / deathtouch
+// hooks.
 func (g *Game) resolveCombatDamageLocked() {
 	if g.State != StateActive {
 		return
 	}
 	// Ensure post-layer effective P/T + Abilities are current before
 	// reading CurrentPower / HasKeyword. The fast-path no-ops when
-	// no relevant event has fired since the last recompute.
+	// no relevant event has fired since the last recompute — but
+	// after a first-strike step it rarely does, because something
+	// died or was cast in the window.
 	g.RecomputeLayersIfStaleLocked()
 
-	// Untagged unless the first-strike substep runs.
-	regularStep := ""
-
-	// Substep 1 — first-strike damage (CR 510.4). Creatures with
-	// first strike or double strike participate.
-	if g.hasAnyFirstStrikeCombatants() {
-		g.assignAndDealCombatDamageLocked(CombatStepFirstStrike)
-		// SBA + trigger drain between substeps so creatures that
-		// died to first-strike damage exit before the regular pass.
-		g.runStateChecksLocked()
-		// Re-recompute in case something died that had a static
-		// ability (anthem off the field, etc.) and its absence
-		// affects the regular-substep attackers/blockers.
-		g.RecomputeLayersIfStaleLocked()
-		// #784 / CR 510.4: this substep IS a combat damage step of
-		// its own, and the regular pass below is a second one. The
-		// engine runs both inside one turn cursor step, so the step
-		// entry's batch covers only the first — the regular pass
-		// opens its own, and "whenever one or more creatures you
-		// control deal combat damage to a player" triggers once for
-		// each, as in paper. The event_batch.go boundary rule reads
-		// "the cursor enters a new step"; this is the one step the
-		// rules split in two and the cursor does not.
-		g.beginEventBatchLocked()
-		regularStep = CombatStepRegular
+	// Untagged unless the first-strike step ran, which is exactly
+	// "the participation record is non-empty": the step exists only
+	// when at least one combatant is in it (stepExistsLocked).
+	step := ""
+	if len(g.firstStrikeStepParticipants) > 0 {
+		step = CombatStepRegular
 	}
-
-	// Substep 2 — regular damage (CR 510.4). Creatures with
-	// double strike (re-hit) OR without first strike.
-	g.assignAndDealCombatDamageLocked(regularStep)
+	g.assignAndDealCombatDamageLocked(step)
 	g.runStateChecksLocked()
 
 	// Combat state is intentionally left in place. AdvanceStep's
 	// transition into end_combat invokes clearCombatLocked, which
-	// clears AttackingTarget / BlockingTarget. Deferring the clear
-	// lets the client keep combat arrows drawn for the full duration
-	// of the combat_damage step.
+	// clears AttackingTarget / BlockingTarget — and with them the
+	// participation record. Deferring the clear lets the client keep
+	// combat arrows drawn for the full duration of the damage steps.
 }
 
-// hasAnyFirstStrikeCombatants reports whether at least one attacker
-// or blocker currently on the battlefield has first strike or
-// double strike. When zero, the first-strike substep is skipped.
+// resolveFirstStrikeCombatDamageLocked is the FIRST combat damage
+// step's turn-based action (CR 510.4, #717). runStepEntryHooksLocked
+// calls it on entry to StepFirstStrikeDamage — a step that exists only
+// when this pass has someone to deal damage for.
+//
+// It does two things, in this order:
+//
+//  1. RECORDS the participation set, which is what "as the first
+//     combat damage step began" means (CR 702.7c, #716). Both steps
+//     read it; nothing re-reads the keywords afterwards.
+//  2. Deals this step's damage and runs the SBA + trigger drain, so
+//     creatures that died are gone and the triggers the damage caused
+//     are on the stack before the active player receives priority.
+//
+// The priority window itself is not here: it is what the step BEING a
+// step gives, the same way every other step grants priority on entry.
+//
 // Caller must hold g.mu.
-func (g *Game) hasAnyFirstStrikeCombatants() bool {
+func (g *Game) resolveFirstStrikeCombatDamageLocked() {
+	if g.State != StateActive {
+		return
+	}
+	// Same recompute the regular step does, and for the same reason:
+	// the record below and the damage pass both read effective
+	// keywords and power.
+	g.RecomputeLayersIfStaleLocked()
+	g.firstStrikeStepParticipants = g.firstStrikeStepParticipantSetLocked()
+	g.assignAndDealCombatDamageLocked(CombatStepFirstStrike)
+	// SBA + trigger drain so creatures that died to first-strike
+	// damage exit, and the triggers that damage caused go on the
+	// stack, BEFORE priority (CR 510.3 puts them there first).
+	g.runStateChecksLocked()
+}
+
+// firstStrikeStepParticipantSetLocked is the CR 510.4 / 702.7c scan:
+// the attacking and blocking creatures that have first strike or
+// double strike RIGHT NOW. Read at one moment only — the instant the
+// first combat damage step would begin — where it answers two
+// questions at once:
+//
+//   - whether that step exists at all (CR 506.1: it does when the set
+//     is non-empty), asked by stepExistsLocked; and
+//   - who deals damage in it, and by elimination who is left for the
+//     second step, recorded on Game.firstStrikeStepParticipants.
+//
+// One scan, one record, no per-card special cases.
+//
+// Caller must hold g.mu, and should have recomputed layers — granted
+// first strike is a Layer 6 ability like any other.
+func (g *Game) firstStrikeStepParticipantSetLocked() map[uuid.UUID]bool {
+	var out map[uuid.UUID]bool
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget == uuid.Nil && c.BlockingTarget == uuid.Nil {
 			continue
 		}
-		if HasKeyword(c, "first strike") || HasKeyword(c, "double strike") {
-			return true
+		if !HasKeyword(c, "first strike") && !HasKeyword(c, "double strike") {
+			continue
 		}
+		if out == nil {
+			out = map[uuid.UUID]bool{}
+		}
+		out[c.InstanceID] = true
 	}
-	return false
+	return out
 }
 
-// participatesInSubstep reports whether a combatant deals damage in
-// the given substep. Per CR 702.4 / 702.7:
-//   - First-strike substep: creatures with first strike OR double strike
-//   - Regular substep: creatures with double strike OR without first strike
-func participatesInSubstep(c *Card, firstStrike bool) bool {
-	fs := HasKeyword(c, "first strike")
-	ds := HasKeyword(c, "double strike")
+// participatesInStepLocked reports whether a combatant deals damage in
+// the given combat damage step. Per CR 510.4 and CR 702.7c, read off
+// the ONE participation record taken as the first step began:
+//
+//   - First combat damage step: the creatures in the record — the
+//     ones that had first strike or double strike then.
+//   - Second combat damage step: the creatures NOT in the record —
+//     the ones that had neither — plus any that have double strike
+//     now.
+//
+// Reading live keywords for the second step is the bug in #716: a
+// creature whose granted first strike died with its lord in the first
+// step would look like a non-first-striker and deal damage twice, and
+// one that gained first strike in the priority window between the
+// steps would be skipped by a step it never dealt damage in.
+//
+// An empty record means the first step did not happen, so every
+// combatant participates in the single combat damage step — which is
+// the same answer the old keyword read gave for a combat with no first
+// strike anywhere.
+//
+// Caller must hold g.mu.
+func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	if firstStrike {
-		return fs || ds
+		return g.firstStrikeStepParticipants[c.InstanceID]
 	}
-	return ds || !fs
+	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
 // assignAndDealCombatDamageLocked assigns and applies damage for one
-// substep. step is the substep's Event.CombatStep value:
-// CombatStepFirstStrike selects the first-strike substep, and anything
-// else ("" or CombatStepRegular) is the regular substep, tagged only
-// when a first-strike substep ran before it. Builds per-attacker
-// blocker lists (filtered to substep-participating blockers),
-// snapshots power, then iterates attackers:
+// combat damage step. step is that step's Event.CombatStep value:
+// CombatStepFirstStrike selects the first-strike step, and anything
+// else ("" or CombatStepRegular) is the regular step, tagged only
+// when a first-strike step ran before it. Builds per-attacker blocker
+// lists (filtered to the step's participants per
+// participatesInStepLocked), snapshots power, then iterates
+// attackers:
 //
 //   - Unblocked → straight to AttackingTarget via
 //     markCombatDamageToPlayerLocked.
@@ -5509,14 +5609,14 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	for _, atkID := range attackerIDs {
 		atk := findBattlefieldCard(g, atkID)
 		if atk == nil {
-			continue // died during this substep's iteration
+			continue // died during this step's iteration
 		}
-		atkParticipates := participatesInSubstep(atk, firstStrike)
+		atkParticipates := g.participatesInStepLocked(atk, firstStrike)
 		atkPower := power[atkID]
 		// Blocker list for this attacker — taken as the live (not
-		// reverted) set. Per-substep participation is checked later
+		// reverted) set. Per-step participation is checked later
 		// per-blocker so a first-strike blocker can still hit a
-		// vanilla attacker in the first-strike substep even when the
+		// vanilla attacker in the first-strike step even when the
 		// attacker itself doesn't participate (CR 510.2; blocker
 		// damage is independent of the attacker's keywords).
 		blkIdxs := blockersByAttacker[atkID]
@@ -5524,15 +5624,15 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		for _, bi := range blkIdxs {
 			blk := &g.Battlefield.Cards[bi]
 			if blk.BlockingTarget != atkID {
-				continue // reverted earlier in this substep
+				continue // reverted earlier in this step
 			}
 			liveBlockers = append(liveBlockers, blk.InstanceID)
 		}
 
 		// Attacker's damage — gated on the attacker participating
-		// in this substep. When it doesn't (e.g. a vanilla attacker
-		// in the first-strike substep), skip the whole attacker-
-		// side branch but fall through to blocker damage below.
+		// in this step. When it doesn't (e.g. a vanilla attacker in
+		// the first-strike step), skip the whole attacker-side
+		// branch but fall through to blocker damage below.
 		if atkParticipates {
 			if len(liveBlockers) == 0 {
 				if atkPower > 0 {
@@ -5568,8 +5668,13 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 			} else {
 				// Multi-blocker → queue damage-assignment prompt.
 				// Server pauses here; the resume path fires the actual
-				// marks. Until resume, the attacker's damage is NOT
-				// applied. Blocker damage still flows (simultaneous)
+				// marks. The prompt blocks the table
+				// (choice_gate.go), so the cursor cannot leave this
+				// damage step until it is answered — which is what
+				// stops a first-strike assignment being overtaken by
+				// the regular step (#702). Until resume, the
+				// attacker's damage is NOT applied. Blocker damage
+				// still flows (simultaneous)
 				// because blockers deal power back regardless of
 				// attacker's assignment (CR 510.1d).
 				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, step)
@@ -5579,12 +5684,12 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// Blockers assign damage to the attacker simultaneously
 		// (CR 510.1d). Each blocker's damage flows independently of
 		// the attacker's split — and independently of whether the
-		// attacker itself participates in this substep, so a first-
+		// attacker itself participates in this step, so a first-
 		// strike blocker can still hit a vanilla attacker in the
-		// first-strike substep (CR 510.2).
+		// first-strike step (CR 510.2).
 		for _, blkID := range liveBlockers {
 			blk := findBattlefieldCard(g, blkID)
-			if blk == nil || !participatesInSubstep(blk, firstStrike) {
+			if blk == nil || !g.participatesInStepLocked(blk, firstStrike) {
 				continue
 			}
 			blkPower := power[blkID]
@@ -5605,10 +5710,11 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 // the same pipeline helpers so lifelink / deathtouch / Fog-style
 // replacement all fire uniformly.
 //
-// step is the queuing substep's Event.CombatStep value. It is stored on
-// the frame as-is ("" when no first-strike substep ran) so the resume
-// tags the assigned damage the way the same substep's direct paths are
-// tagged; FirstStrike is kept alongside it for #702.
+// step is the queuing step's Event.CombatStep value. It is stored on
+// the frame as-is ("" when no first-strike step ran) so the resume
+// tags the assigned damage the way the same step's direct paths are
+// tagged; FirstStrike is kept alongside it as the frame's own record
+// of which of the two steps queued it.
 //
 // Caller must hold g.mu.
 func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) {
@@ -5645,7 +5751,7 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 // IsCombatDamage=true so Fog-class prevention effects intercept.
 // Damage can be modified (reduced) or canceled entirely.
 //
-// step is the substep's Event.CombatStep value (#187). It rides the
+// step is the damage step's Event.CombatStep value (#187). It rides the
 // damage tail, so a CR 616 pause keeps it.
 func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source uuid.UUID, step string) {
 	if amount <= 0 {
@@ -5686,7 +5792,7 @@ func (g *Game) markCombatDamageOnCardLocked(cardID uuid.UUID, amount int, source
 // and lifelink keyword state from the prompt's DamageAssignmentFrame
 // instead of looking up the attacker via findBattlefieldCard —
 // critical because the attacker may have died to blocker damage
-// that resolved in the same substep before the prompt fires.
+// that resolved in the same damage step before the prompt fires.
 //
 // Caller must hold g.mu.
 func (g *Game) markCombatDamageFromFrameLocked(cardID uuid.UUID, amount int, frame *DamageAssignmentFrame) {
@@ -5745,7 +5851,7 @@ func (g *Game) markCombatDamageToPlayerFromFrameLocked(playerID uuid.UUID, amoun
 // lifelink / redirect hooks). Zeroes out if canceled. Caller must
 // hold g.mu. Added in S17 sub-PR 5.
 //
-// step is the substep's Event.CombatStep value (#187). It rides the
+// step is the damage step's Event.CombatStep value (#187). It rides the
 // damage tail, so a CR 616 pause keeps it.
 func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount int, step string) {
 	if amount <= 0 {
@@ -5797,6 +5903,9 @@ func (g *Game) clearCombatLocked() {
 	// the declarations being wiped here, so they go with them.
 	g.clearBlockAnnouncementsLocked()
 	g.clearAttackAnnouncementsLocked()
+	// #716: and so does the combat damage steps' participation
+	// record — it describes these same attackers and blockers.
+	g.firstStrikeStepParticipants = nil
 }
 
 // Concede marks the given player as eliminated. If exactly one

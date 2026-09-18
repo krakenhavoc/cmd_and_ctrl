@@ -19,19 +19,16 @@ import (
 // Urabrask's. A cast, reanimated, fetched or flickered creature runs
 // the entry pipeline and arrives tapped, as printed.
 //
-// Sandbox simplification, declared: an opponent's creature TOKEN
-// enters untapped. Token creation does not go through the CR 614
-// zone-move pipeline at all — a token has no previous zone to move
-// from, and CreateTokensForEffect pushes it straight onto the
-// battlefield (the TokenEntryOptions comment says so) — so no
-// enters-tapped replacement in the catalog sees one; Kismet and
-// Thalia have the same gap. Weaker than printed, never stronger.
+// An opponent's creature TOKEN enters tapped too, since #762: a
+// created token now runs the same battlefield-entry pipeline every
+// other permanent runs, so this replacement sees it exactly as it
+// sees a cast creature. Kismet and Thalia gained the same reach in
+// the same change.
 func init() {
 	Register(Spec{
 		OracleID:     "5b2ffb53-86b7-4665-a5c7-b85b035b6c81",
 		Name:         "Urabrask the Hidden",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An opponent's creature token enters untapped — only cast, reanimated or returned creatures enter tapped."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			b16GrantKeywords(b16CreaturesYouControl, "haste"),
 		},

@@ -373,6 +373,24 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
+	// exactly when FaceDown is false; the two are written only by
+	// SetFaceDown / ClearFaceDown, so "face down with no rule
+	// attached" is unrepresentable.
+	//
+	// It sits here with the other strings rather than beside FaceDown
+	// in the bool block: a 16-byte string dropped into that block
+	// strands a bool and fails TestCardHasNoInteriorPadding (#620 /
+	// #633).
+	//
+	// The kind, not the zone, is what every face-down question is
+	// answered from — who may look (faceDownViewersLocked), whether
+	// there is a CR 708.2 body (FaceDownIsPermanent), whether the
+	// catalog is silent (CatalogKey). A Card knows nothing about
+	// where it is, and keeping the answers on the kind is what lets
+	// them live on Card methods with no *Game in reach.
+	FaceDownKind FaceDownKind
+
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent
@@ -481,13 +499,19 @@ type Card struct {
 	// Commanders live in the command zone at game start.
 	IsCommander bool
 
-	// FaceDown is the visual face-down flag (CR 708) — morph,
-	// manifest, mutate-bottom, set face-down by an effect. Distinct
-	// from the KnownBy knowledge set: a face-down creature is
-	// face-down to everyone visually, but the morph caster (and
-	// anyone who saw it via Frantic Search-style reveal) still has
-	// the card in their KnownBy set so the hover-reveal works on
-	// their client. Added in S13.5.
+	// FaceDown is the visual face-down flag (CR 406.3a / CR 708) —
+	// "is there a back showing". Distinct from the KnownBy knowledge
+	// set: a face-down creature is face-down to everyone visually,
+	// but the player the rules let look at it (its controller for a
+	// CR 708.5 permanent, its owner for a foretold card) is still in
+	// its KnownBy set, so the hover-reveal works on their client.
+	//
+	// WHY it is face down is FaceDownKind, up with the other strings.
+	// Set only through SetFaceDown / ClearFaceDown, never directly;
+	// cleared by MoveCard on every zone change (CR 400.7, ADR 0069
+	// decision 5) and set again by the destination if the
+	// destination is itself a face-down state. Added in S13.5;
+	// given a kind by ADR 0069.
 	FaceDown bool
 
 	// SummonedThisTurn is the summoning-sickness flag (CR 302.6).
@@ -760,8 +784,18 @@ func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 // searching for a substring, which is strictly more accurate —
 // "Island" no longer contains a "land" type by accident of
 // spelling.
+// The face-down guard on the printed branch (and on the three
+// accessors below) is ADR 0069 decision 3's stated cost: the VALUE of
+// the CR 708.2 body has one definition, faceDownCharacteristic, but
+// the READS are where they always were, because these accessors take
+// a deliberate fast path off the printed fields when the layer cache
+// is cold. Without it a manifested Forest still answers "land" to
+// every predicate that runs before the first recompute.
 func (c Card) HasCardType(lowerType string) bool {
 	if c.effective == nil {
+		if c.FaceDownIsPermanent() {
+			return typeListHas(faceDownCharacteristic(c).Types, lowerType)
+		}
 		return typeLineHas(c.TypeLine, lowerType)
 	}
 	return typeListHas(c.effective.Types, lowerType)
@@ -781,6 +815,12 @@ func (c Card) HasCardType(lowerType string) bool {
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
+	// CR 708.2: a face-down permanent has NO subtypes, so it is not a
+	// Human, not an Elf, and — the reason this guard precedes the
+	// changeling check below — not every creature type either.
+	if c.FaceDownIsPermanent() {
+		return false
+	}
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)
 		if typeListHas(printed, subtype) {
@@ -803,6 +843,12 @@ func (c Card) HasSubtype(subtype string) bool {
 // the one supertype the legend rule asks about.
 func (c Card) HasSupertype(supertype string) bool {
 	if c.effective == nil {
+		// CR 708.2: no supertypes either — a face-down legendary
+		// permanent is not legendary, which is why two face-down
+		// copies of the same legend can coexist.
+		if c.FaceDownIsPermanent() {
+			return false
+		}
 		super, _, _ := ParseTypeLine(c.TypeLine)
 		return typeListHas(super, supertype)
 	}
@@ -914,6 +960,13 @@ func NewCommander(name string, owner uuid.UUID) Card {
 func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
+	}
+	// CR 708.2: a face-down permanent is COLOURLESS, whatever the
+	// card underneath costs or Scryfall stamped. Guarded on the
+	// printed branch only; the layered branch above already reads the
+	// projection through printedCharacteristic.
+	if c.FaceDownIsPermanent() {
+		return nil
 	}
 	if len(c.Colors) > 0 {
 		return c.Colors

@@ -71,9 +71,13 @@ func TestEnumeratorPricesAffinity(t *testing.T) {
 	dispatchAll(t, g, active.ID, moves)
 }
 
-// Fireball off two Mountains: zero or one target at X=1, two targets
-// at X=0, three targets never. The unaffordable three-target sets
-// spend no expansion budget, and every offered cast is accepted.
+// Fireball off two Mountains: zero or one target at X=1, and no
+// two-target cast at all — the surcharge leaves only X=0 for the
+// second target, and #810 does not offer a Fireball that deals no
+// damage. Add a third Mountain and the two-target set arrives at X=1,
+// which is what proves the set was being priced rather than skipped.
+// The unaffordable sets spend no expansion budget either way, and
+// every offered cast is accepted.
 func TestEnumeratorPricesFireballPerTargetSet(t *testing.T) {
 	g := newTable(t)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -91,10 +95,11 @@ func TestEnumeratorPricesFireballPerTargetSet(t *testing.T) {
 	byCount := map[int]int{}
 	for _, c := range casts {
 		byCount[c.targets]++
-		want := map[int]int{0: 1, 1: 1, 2: 0}
+		want := map[int]int{0: 1, 1: 1}
 		x, ok := want[c.targets]
 		if !ok {
-			t.Errorf("Fireball offered at %d targets off two Mountains", c.targets)
+			t.Errorf("Fireball offered at %d targets off two Mountains: the only announcement "+
+				"that pays for it is X=0, which deals nothing (#810)", c.targets)
 			continue
 		}
 		if c.x != x {
@@ -104,8 +109,24 @@ func TestEnumeratorPricesFireballPerTargetSet(t *testing.T) {
 	if byCount[1] != 4 {
 		t.Errorf("Fireball single-target casts = %d, want one per player (4)", byCount[1])
 	}
-	if byCount[2] == 0 {
-		t.Errorf("Fireball two-target casts at X=0 are affordable and missing: %v", labels(moves))
+	dispatchAll(t, g, active.ID, moves)
+
+	// A third Mountain pays the surcharge AND an X of 1, so the
+	// two-target set is priced, affordable and offered.
+	battlefieldCard(g, active, basic("Mountain", "Mountain"))
+	moves = legal.EnumerateFor(g, active.ID)
+	pairs := 0
+	for _, c := range castsOf(t, moves, fireball) {
+		if c.targets != 2 {
+			continue
+		}
+		pairs++
+		if c.x != 1 {
+			t.Errorf("Fireball at two targets off three Mountains offered X=%d, want 1", c.x)
+		}
+	}
+	if pairs == 0 {
+		t.Errorf("Fireball two-target casts are affordable at X=1 off three Mountains and missing: %v", labels(moves))
 	}
 	dispatchAll(t, g, active.ID, moves)
 }

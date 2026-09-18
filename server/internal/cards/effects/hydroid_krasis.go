@@ -38,6 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "6bd872b2-5c40-4e11-9a7f-0136a51b0642",
 		Name:            "Hydroid Krasis",
+		XMatters:        true,
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The X +1/+1 counters are put on the Krasis as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		PrintedKeywords: []string{"flying", "trample"},

@@ -29,10 +29,19 @@ import "github.com/google/uuid"
 //
 //   - a stack item begins to resolve (resolveTopOfStackLocked), and
 //   - the turn cursor enters a new step (advanceCursorLocked), plus
-//     the one step the RULES split in two and the cursor does not:
-//     the first-strike and regular combat damage steps (CR 510.4),
-//     which resolveCombatDamageLocked runs back to back inside the
-//     cursor's single combat_damage step (#784).
+//     the one step the RULES begin again where the cursor does not
+//     move: the extra cleanup step CR 514.3a asks for, which
+//     repeatCleanupStepLocked opens (#661, cleanup.go).
+//
+// The step half used to carry a second exception. The first-strike
+// and regular combat damage steps are TWO combat damage steps
+// (CR 510.4), so a first-striker and a regular attacker connecting
+// with the same player are two occurrences — and #784 had to open a
+// batch by hand between the two passes because both ran inside the
+// cursor's single combat_damage step. Since #717 the cursor really
+// does enter two steps, so the ordinary boundary produces the two
+// batches and that hand-rolled one is gone with the step it worked
+// around.
 //
 // Nothing else opens a batch. That is deliberate, and the two
 // consequences are the ones the rules want:
@@ -76,9 +85,11 @@ import "github.com/google/uuid"
 // OncePerBatch ability that already fired for an earlier batch fires
 // again for this one.
 //
-// Called from exactly two places — resolveTopOfStackLocked and
-// advanceCursorLocked — which together are "play moved on". See the
-// file comment for why those two and nothing else.
+// Called from resolveTopOfStackLocked, advanceCursorLocked and
+// repeatCleanupStepLocked — a resolution beginning, the cursor
+// entering a step, and the one step that begins again without the
+// cursor moving (CR 514.3a). Together they are "play moved on". See
+// the file comment for why those and nothing else.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) beginEventBatchLocked() {

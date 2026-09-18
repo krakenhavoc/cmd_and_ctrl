@@ -174,9 +174,24 @@ func TribalScalingAnthem(f TribeFilter, per func(source *game.Card, g *game.Game
 // (game/keywords.go). Granting anything else appends a string nothing
 // reads.
 func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
+	return KeywordGrant(f.Matches, keyword)
+}
+
+// KeywordGrant is the shared shape of every layer-6 keyword grant:
+// "<these permanents> have <keyword>". `applies` is the ordinary
+// StaticAbility predicate, so the caller decides who gets it — a
+// tribe, "creatures you control", an emblem's owner's creatures.
+//
+// The dedupe is the whole reason this is one function and not one
+// closure per card. Characteristic.Abilities is a flat []string that
+// several grants append to in CR 613.7 timestamp order, and a
+// duplicate entry would render as two keyword badges and be counted
+// twice by anything that tallies. Three copies of the same eight-line
+// append-if-absent loop were in the tree before this existed.
+func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
-		AppliesTo: f.Matches,
+		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, k := range c.Abilities {
 				if k == keyword {
@@ -252,11 +267,12 @@ func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
 	if set == nil {
 		return nil
 	}
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: set.appliesTo(),
 		Apply:     applyAllCreatureTypes,
-	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"))
+	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
 

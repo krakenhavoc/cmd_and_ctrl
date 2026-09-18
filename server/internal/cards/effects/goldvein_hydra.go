@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "2b62543f-a475-457a-a96b-b5d070383d3c",
 		Name:            "Goldvein Hydra",
+		XMatters:        true,
 		Completeness:    CompletenessCaveats,
 		Caveats:         []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		PrintedKeywords: []string{"vigilance", "trample", "haste"},

@@ -15,9 +15,13 @@ const (
 // one phase; the phase field on Turn is derivable from the step via
 // PhaseOf below, but stored for convenience and wire-format clarity.
 //
-// The twelve-step sequence at S02 is the complete MTG turn structure.
-// Rules automation is not in scope here — advancing the step is a pure
-// cursor move that the client drives via AdvanceStep.
+// The sequence below is the complete MTG turn structure. Every step
+// is in it, but not every step happens in every turn: a step the turn
+// does not have is SKIPPED, which the cursor models by walking
+// straight through it (Game.stepExistsLocked, game.go). Today the
+// first-strike combat damage step is the only one of those — CR 506.1
+// gives a combat two combat damage steps only when a combatant has
+// first or double strike as the first one would begin.
 type Step string
 
 const (
@@ -28,11 +32,30 @@ const (
 	StepBeginCombat      Step = "begin_combat"
 	StepDeclareAttackers Step = "declare_attackers"
 	StepDeclareBlockers  Step = "declare_blockers"
-	StepCombatDamage     Step = "combat_damage"
-	StepEndCombat        Step = "end_combat"
-	StepPostcombatMain   Step = "postcombat_main"
-	StepEnd              Step = "end"
-	StepCleanup          Step = "cleanup"
+
+	// StepFirstStrikeDamage is the FIRST of the two combat damage
+	// steps CR 510.4 gives a combat in which any attacking or
+	// blocking creature has first strike or double strike as the
+	// combat damage step begins. It is a step like any other: its
+	// turn-based action is the first-strike damage pass, the triggers
+	// that damage causes go on the stack, and the active player then
+	// receives priority (CR 510.3) — which is the window that makes
+	// "respond after first strike" possible at all (#717).
+	//
+	// When no combatant has either keyword the step does not exist
+	// and the cursor walks through it without entering it, so an
+	// ordinary combat is one combat damage step exactly as before.
+	StepFirstStrikeDamage Step = "first_strike_damage"
+
+	// StepCombatDamage is the regular combat damage step — the
+	// SECOND one when StepFirstStrikeDamage happened, and the only
+	// one when it did not. Its name and wire value are unchanged:
+	// every combat still has this step.
+	StepCombatDamage   Step = "combat_damage"
+	StepEndCombat      Step = "end_combat"
+	StepPostcombatMain Step = "postcombat_main"
+	StepEnd            Step = "end"
+	StepCleanup        Step = "cleanup"
 )
 
 // turnSequence is the canonical order in which steps occur within a
@@ -46,6 +69,7 @@ var turnSequence = []Step{
 	StepBeginCombat,
 	StepDeclareAttackers,
 	StepDeclareBlockers,
+	StepFirstStrikeDamage,
 	StepCombatDamage,
 	StepEndCombat,
 	StepPostcombatMain,
@@ -63,18 +87,19 @@ func TurnSequence() []Step {
 
 // stepPhase is the (step → phase) lookup built once at init time.
 var stepPhase = map[Step]Phase{
-	StepUntap:            PhaseBeginning,
-	StepUpkeep:           PhaseBeginning,
-	StepDraw:             PhaseBeginning,
-	StepPrecombatMain:    PhasePrecombatMain,
-	StepBeginCombat:      PhaseCombat,
-	StepDeclareAttackers: PhaseCombat,
-	StepDeclareBlockers:  PhaseCombat,
-	StepCombatDamage:     PhaseCombat,
-	StepEndCombat:        PhaseCombat,
-	StepPostcombatMain:   PhasePostcombatMain,
-	StepEnd:              PhaseEnding,
-	StepCleanup:          PhaseEnding,
+	StepUntap:             PhaseBeginning,
+	StepUpkeep:            PhaseBeginning,
+	StepDraw:              PhaseBeginning,
+	StepPrecombatMain:     PhasePrecombatMain,
+	StepBeginCombat:       PhaseCombat,
+	StepDeclareAttackers:  PhaseCombat,
+	StepDeclareBlockers:   PhaseCombat,
+	StepFirstStrikeDamage: PhaseCombat,
+	StepCombatDamage:      PhaseCombat,
+	StepEndCombat:         PhaseCombat,
+	StepPostcombatMain:    PhasePostcombatMain,
+	StepEnd:               PhaseEnding,
+	StepCleanup:           PhaseEnding,
 }
 
 // PhaseOf returns the phase that contains a given step.

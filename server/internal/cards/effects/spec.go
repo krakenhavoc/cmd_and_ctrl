@@ -491,6 +491,18 @@ type Spec struct {
 	// Set it when you add or change a card. Leaving it unset is
 	// permitted and is not a failure — it publishes the card as
 	// unaudited, which is true.
+	// Emblem is the emblem this card's abilities create (CR 114) —
+	// "You get an emblem with [ability]". Nil for every card that
+	// makes none, which is nearly all of them.
+	//
+	// Declared once here, next to the ability that creates it; the
+	// ability itself is `CreateEmblem{}.Apply(ctx)` and names
+	// nothing, because the emblem it makes is this one. Register
+	// files the emblem's own CardDef under game.EmblemKey(OracleID),
+	// which is how its statics reach the layer pass and its triggers
+	// reach the harvester. See emblem.go and ADR 0064.
+	Emblem *EmblemSpec
+
 	Completeness Completeness
 
 	// Caveats names the printed clauses this spec does NOT model,
@@ -515,15 +527,50 @@ type Spec struct {
 	//
 	// Added in S27.
 	Battle *BattleSpec
+
+	// XMatters declares that everything this card does scales with
+	// the announced X (CR 601.2b / 602.2b), so an announcement of
+	// X=0 does nothing at all: Fireball deals no damage, Soothsaying
+	// looks at no cards, Treasure Vault makes no Treasures.
+	//
+	// It is read by ONE rule, in `internal/legal` (the bot's legal
+	// enumerator, ADR 0033 §1): a move whose whole effect is X is
+	// not offered at X=0. The engine is unaffected — CR 602.2b makes
+	// X=0 a legal announcement and the engine still accepts it; what
+	// changes is that the enumerator stops OFFERING an action that
+	// does nothing, because a free repeatable no-op is a loop the
+	// game does not let run forever (CR 732.2a, #810).
+	//
+	// Declare it on any card whose resolution reads ctx.X(), and
+	// x_matters_guard_test.go fails the build when one does not.
+	// The exception it is written to allow is a card with a fixed
+	// RIDER — an effect that happens whatever X is — which should
+	// leave this unset and say so in its doc comment, because for
+	// such a card X=0 is a real move. No card in the catalog is that
+	// shape today.
+	//
+	// Card-level rather than per-ability on purpose: the rule only
+	// fires for a cost that actually carries an {X} slot, so the
+	// abilities of a card that has both (Soothsaying's {3}{U}{U}
+	// shuffle and its {X} look) are never confused by one flag.
+	XMatters bool
 }
 
 // ActivatedAbility is one activated ability on a permanent. Mirrors
 // game.ActivatedAbilityShape; the wire hook converts. Added in S21
 // sub-PR 2.
 type ActivatedAbility struct {
-	Label        string
-	Cost         game.AbilityCost
-	Targets      *game.TargetSpec
+	Label   string
+	Cost    game.AbilityCost
+	Targets *game.TargetSpec
+	// Modes is the CR 700.2 mode clause of a modal activated ability
+	// ("{4}, {T}: Choose one —"). The same game.ModeSpec a modal
+	// spell declares in Spec.Modes, built with the same ChooseOne /
+	// ChooseN constructors (#764, ADR 0065 §3). Modes and targets are
+	// announced together at activation (CR 602.2b); each chosen
+	// bullet's ModeOption.Effect runs at resolution in announce
+	// order. Declare the target clause on the OPTION, not here.
+	Modes        *game.ModeSpec
 	SorcerySpeed bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as

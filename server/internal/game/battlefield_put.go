@@ -52,6 +52,28 @@ type ZoneEntryOptions struct {
 	// and whatever CR 614 adds on top then settle in one field, and no
 	// reader downstream can lose one of the two.
 	Tapped bool
+
+	// FaceDown enters the permanent FACE DOWN in this state (CR 708,
+	// ADR 0069) — FaceDownManifested for manifest, and later
+	// FaceDownCloaked for cloak. The zero value is an ordinary face-up
+	// entry, which is every other caller.
+	//
+	// It changes three things about the entry, and all three are the
+	// point of it:
+	//
+	//   - the CR 110.4 nonpermanent refusal is lifted. Manifest puts
+	//     ANY card onto the battlefield face down (CR 701.40a); the
+	//     object that arrives is a creature whatever the card is.
+	//   - the entry sets the face-down state and its viewers instead
+	//     of clearing the flag and marking every seat a knower. Exile
+	//     and the battlefield are both PUBLIC zones; this is the one
+	//     line that separates a public zone from a public object.
+	//   - because the state is set before phase 3 announces,
+	//     CatalogKey answers "" for the permanent by the time EventETB
+	//     fires and the AsEnters hook runs — so a face-down entry
+	//     runs no ETB trigger and no "as enters" choice, which is
+	//     CR 708.2a falling out rather than being special-cased.
+	FaceDown FaceDownKind
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named
@@ -152,6 +174,55 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldForEffect(ids []uuid.UUID, opts
 	return g.putOntoBattlefieldFromZoneLocked(ids, ZoneLibrary, opts)
 }
 
+// ManifestForEffect is CR 701.40a: put the top card of playerID's
+// library onto the battlefield face down as a 2/2 creature, under
+// playerID's control. Returns the manifested permanent's ID, or
+// uuid.Nil with a nil error when the library is empty or a
+// replacement canceled, redirected or paused the entry.
+//
+// It is the ordinary library→battlefield entry with
+// ZoneEntryOptions.FaceDown set, which is the whole of manifest that
+// is not a card: the CR 614 replacement window, the entry pipeline,
+// the events and the undo path all come from
+// putOntoBattlefieldFromZoneLocked unchanged. What the face-down
+// option adds is on that field's doc comment.
+//
+// The card it manifests need not be a permanent card (CR 701.40a),
+// and it is NOT revealed on the way — the controller becomes its only
+// knower (CR 708.5), which is why this cannot go through the reveal
+// helpers a search uses.
+//
+// MANIFEST THE MECHANIC IS NOT SHIPPED. This is the primitive that
+// proves ADR 0069's object model — the 2/2 projection, the catalog
+// suppression, the CR 708.5 viewers rule and the CR 708.9 reveal —
+// and the one morph, megamorph, disguise and cloak build on (#95).
+// No catalog card calls it yet; the turn-face-up special action
+// (CR 116.2g) and the face-down CAST (CR 708.4) are #95's.
+//
+// Caller must hold g.mu.
+func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return uuid.Nil, ErrPlayerNotFound
+	}
+	if p.Library.Size() == 0 {
+		// An empty library is not an error and is not a draw, the
+		// same posture ExileTopFaceDownForEffect takes.
+		return uuid.Nil, nil
+	}
+	// The library's top is the LAST element — the same read PopTop
+	// and ExileTopFaceDownForEffect use.
+	top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
+	entered, err := g.putOntoBattlefieldFromZoneLocked([]uuid.UUID{top}, ZoneLibrary, ZoneEntryOptions{
+		Controller: playerID,
+		FaceDown:   FaceDownManifested,
+	})
+	if err != nil || len(entered) == 0 {
+		return uuid.Nil, err
+	}
+	return entered[0], nil
+}
+
 // pendingPut is one card of a putOntoBattlefieldFromZoneLocked batch
 // between its pipeline (phase 1) and its announcement (phase 3).
 type pendingPut struct {
@@ -189,7 +260,12 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		if !ok {
 			return nil, ErrCardNotFound
 		}
-		if !c.IsPermanent() {
+		// CR 110.4: only a permanent card can be put onto the
+		// battlefield — unless it is going there FACE DOWN, in which
+		// case the object that arrives is a 2/2 creature whatever the
+		// card says (CR 701.40a, CR 708.2). Manifesting an instant is
+		// legal and common.
+		if !c.IsPermanent() && opts.FaceDown == FaceDownNone {
 			return nil, ErrInvalidParam
 		}
 		if c.IsToken() {
@@ -300,11 +376,22 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			// this card (a scry, a look) is superseded: the
 			// battlefield is public, and markCardKnownInZoneLocked
 			// below makes every seat a knower.
+			//
+			// MoveCard has already cleared the face-down state
+			// (CR 400.7, ADR 0069 decision 5), so the former
+			// `FaceDown = false` here is gone; a FACE-DOWN entry sets
+			// it back, below, instead of marking the table.
 			g.Battlefield.Cards[i].ClearKnown()
-			g.Battlefield.Cards[i].FaceDown = false
 			break
 		}
-		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		if opts.FaceDown != FaceDownNone {
+			// CR 708.5: the controller of a face-down permanent may
+			// look at it, and nobody else may — so this replaces the
+			// public-zone marking rather than adding to it.
+			g.applyFaceDownLandingLocked(g.Battlefield, moved.InstanceID, opts.FaceDown)
+		} else {
+			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
+		}
 		for name, n := range p.out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}

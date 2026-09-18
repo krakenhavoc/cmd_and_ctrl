@@ -127,6 +127,13 @@ var gameFields = plan(
 	// that has already attacked, and one that invented it would
 	// swallow a declaration the battlefield is still carrying.
 	"announcedAttacks", carried, "",
+	// #716 combat damage step participation. Carried for the reason
+	// the three above are, and for one more: the window between the
+	// two combat damage steps is a priority window, so an undo or a
+	// deploy restore can land inside it. A restore that dropped the
+	// record would let every first-striker deal its damage again in
+	// the regular step.
+	"firstStrikeStepParticipants", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
@@ -144,11 +151,12 @@ var gameFields = plan(
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
-	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
+	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
+	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
@@ -187,6 +195,12 @@ var cardFields = plan(
 	"GoadedBy", carried, "",
 	"DamageMarked", carried, "",
 	"FaceDown", carried, "",
+	// ADR 0069: carried — the kind is the rule. A restore that
+	// dropped it would bring back a face-down object with no viewers
+	// row, no CR 708.2 answer and no catalog suppression. restoreCard
+	// reads an ABSENT kind on a face-down card as FaceDownExiled, the
+	// only face-down object that could exist before the field did.
+	"FaceDownKind", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
 	"SummonedThisTurn", carried, "",
@@ -251,8 +265,18 @@ var playerFields = plan(
 	"Hand", carried, "",
 	"Graveyard", carried, "",
 	"Command", carried, "",
+	// #623 / CR 114: the other half of the command zone. Carried, and
+	// it has to be — which emblems a player has is not derivable from
+	// anything else on the board, and a restore that dropped them
+	// would quietly un-ultimate a planeswalker.
+	"Emblems", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
+	// The seat-turn counter "until your next turn" durations end on
+	// (ADR 0063). Carried: a restore that dropped it would restart
+	// every such effect's clock, and a departed seat's skipped turns
+	// are not derivable from the board.
+	"TurnsBegun", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulligansTaken", carried, "",
@@ -274,6 +298,21 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
+)
+
+// scopedStaticFields classifies game.ScopedStatic — the floating
+// continuous-effect registry's entry type. It was not classified
+// before S38, so a field added to it used to vanish across a restore
+// with nothing complaining. The whole entry is dropped and censused;
+// `Duration` is the half of it that is plain data and could be
+// carried the day #515 makes the ability re-derivable, which is why
+// it is classified `carried` rather than sharing the closure's fate.
+var scopedStaticFields = plan(
+	"Ability", dropped, "two closures; counted by ContinuationCensus.ScopedStatics",
+	"Source", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Timestamp", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Duration", carried, "plain data (duration.go); carried by Clone and ready for #515",
+	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
 var zoneFields = plan(
@@ -314,6 +353,13 @@ var stackItemFields = plan(
 	"Ordered", carried, "",
 
 	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	// #764: the ModeSpec an item was announced under, so the CR
+	// 608.2b re-check can find the clause of the mode occurrence a
+	// TargetRef names. Same disposition as targetSpec and for the
+	// same reason: catalog data, keyed by oracle ID for a spell and
+	// unreachable for an ability, which is why an ability carrying
+	// one is counted in ContinuationCensus.StackTargetSpecs.
+	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID; an ability's is censused",
 	"Effect", dropped, "a closure; counted in ContinuationCensus.StackEffects (spells need none — they dispatch via EffectResolver)",
 )
 
@@ -358,6 +404,16 @@ var pendingChoiceFields = plan(
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
+	// #764 mode_pick. Carried for the same reason ChooseCards is:
+	// the offered options ARE the prompt, and a restored game that
+	// forgot them would put a question with no answers in front of a
+	// seat. The bounds travel with them because the answer is
+	// validated against them.
+	"ModeOptionIndex", carried, "",
+	"ModeOptionLabel", carried, "",
+	"ModeMin", carried, "",
+	"ModeMax", carried, "",
+	"ModeRepeatable", carried, "",
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
@@ -382,6 +438,11 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	// #568's option pick: the branches of "choose one of the
+	// following", carried for the same reason ChooseCards is — the
+	// options ARE the prompt, and a restored game that forgot them
+	// would put a question with no answers in front of a seat.
+	"PickOptions", carried, "",
 	// #804's CR 726 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
@@ -393,11 +454,13 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -419,6 +482,7 @@ func TestSnapshotCoversEveryDomainField(t *testing.T) {
 		{StackItem{}, stackItemFields},
 		{DelayedTrigger{}, delayedTriggerFields},
 		{PendingChoice{}, pendingChoiceFields},
+		{ScopedStatic{}, scopedStaticFields},
 	}
 
 	for _, tc := range cases {
@@ -475,6 +539,7 @@ func TestDroppedFieldsAreAllCensused(t *testing.T) {
 		"StackItem":      stackItemFields,
 		"DelayedTrigger": delayedTriggerFields,
 		"PendingChoice":  pendingChoiceFields,
+		"ScopedStatic":   scopedStaticFields,
 	}
 	censusFields := map[string]bool{}
 	ct := reflect.TypeOf(ContinuationCensus{})

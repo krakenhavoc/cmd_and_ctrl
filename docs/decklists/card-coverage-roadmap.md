@@ -63,11 +63,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1718** |
-| — whole cards (bare `oracle_id`) | **1654** |
+| Registry keys (`len(effects.All())`) | **1737** |
+| — whole cards (bare `oracle_id`) | **1673** |
 | — back faces (`<oracle_id>#1`) | 64 |
-| Declared `full` | 1259 |
-| Declared `caveats` | 387 |
+| Declared `full` | 1288 |
+| Declared `caveats` | 377 |
 | Declared `unreviewed` | 72 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -958,13 +958,15 @@ tables below.
 ³ *Update 2026-09-17:* this row used to say #76, the S24 attachments
 tracker, which is closed. S24 shipped layer 2 for a control Aura only
 (Mind Control, [ADR 0036](../decisions/0036-attachments.md) decision
-17); no other spell or ability can gain or exchange control yet. That
-work is [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756),
-filed from the card-coverage audit, and it builds on the
-permanent-duration registry,
-[#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755). The
-counts are from the original pass and are unchanged. The same footnote
-applies to the two tables below.
+17). *Update 2026-09-18:* [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756)
+and its prerequisite [#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755)
+shipped ([ADR 0063](../decisions/0063-durations-and-control.md)): any
+spell or ability can now gain control of a permanent for any CR 611.2
+duration, and exchange control (CR 701.12). The cards in this row are
+unblocked and still have to be written one at a time — Act of Treason,
+Agent of Treachery, Sower of Temptation and Switcheroo landed with the
+engine work. The counts are from the original pass and are unchanged.
+The same footnote applies to the two tables below.
 
 **769 of the 2000 (38%) need no new machinery at all.** That is the most
 actionable number in this document: there is more than a sprint of

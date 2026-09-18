@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "aa7714b0-2bfb-458a-8ebf-37ec2c53383e",
 		Name:         "Fireball",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Targets:      TargetAny().WithCount(0, 0),
 		SelfCostModifiers: []game.CostModifier{

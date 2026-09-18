@@ -93,6 +93,32 @@ func castCatalogSpell(t *testing.T, g *game.Game, name, typeLine, oracleID strin
 	return id
 }
 
+// castCatalogSpellErr is castCatalogSpell for the casts that are
+// SUPPOSED to be refused: same setup, but the announce error comes
+// back instead of failing the test. The #764 per-clause gate is the
+// first thing that needed it — "this pair fits the wrong slots" is
+// now an announce refusal rather than a resolution no-op, and that
+// is the assertion.
+func castCatalogSpellErr(t *testing.T, g *game.Game, name, typeLine, oracleID string, targets []game.TargetRef) error {
+	t.Helper()
+	active := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id,
+		Name:       name,
+		TypeLine:   typeLine,
+		OracleID:   oracleID,
+		Owner:      active.ID,
+		Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	return g.CastSpell(active.ID, id, game.CastSpellParams{Targets: targets})
+}
+
 // passPriorityAroundTable passes priority until the stack is empty
 // — no spell cards on Game.Stack, no ability items in StackMeta,
 // and no triggers waiting in PendingTriggers to be drained onto it

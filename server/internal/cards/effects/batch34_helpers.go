@@ -306,18 +306,7 @@ func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 // b34ZombiesAndTokensYouControlHaveFlying is the flying half of On
 // Wings of Gold — layer 6, deduped.
 func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
-	return game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: b34ZombieOrTokenYouControl,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, k := range c.Abilities {
-				if k == "flying" {
-					return
-				}
-			}
-			c.Abilities = append(c.Abilities, "flying")
-		},
-	}
+	return KeywordGrant(b34ZombieOrTokenYouControl, "flying")
 }
 
 // --- replacements --------------------------------------------------
@@ -521,29 +510,6 @@ func b34ThatPlayerLosesLifeAndDraws(player uuid.UUID, life, draw int) func(g *ga
 			return err
 		}
 		return DrawCards{Player: player, N: draw}.Apply(NewContext(g, item))
-	}
-}
-
-// b34PayLifeToDraw is Crossway Troublemakers' dies body: the
-// controller pays `life` life and draws a card. The "you may" was
-// answered when the trigger fired; a controller who can no longer
-// pay (CR 119.4 — a life payment needs at least that much life)
-// neither pays nor draws.
-func b34PayLifeToDraw(life int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		p := g.PlayerByIDForEffect(item.Controller)
-		if p == nil || p.Eliminated || p.Life < life {
-			return nil
-		}
-		// "Pay N life. If you do, draw a card" — a COST (CR 118.3),
-		// so the cost path: the CR 614 window still runs on it
-		// (CR 119.4 makes a payment a life loss) but settles in one
-		// step, because "if you do" has to know the payment finished
-		// before the draw happens (#793).
-		if err := g.PayLifeForEffect(item.SourceCardID, item.Controller, life); err != nil {
-			return err
-		}
-		return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 	}
 }
 

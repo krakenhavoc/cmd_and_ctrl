@@ -129,6 +129,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 // spent, which is exactly what a cost that removes it does.
 const genericCounterValue = 0.25
 
+// zeroXActivation prices an activation of an {X} ability announced at
+// X=0 (#810). Below passing, which scores 0, because the X-sized half
+// of what the ability does is nothing at X=0 — and a repeatable
+// no-op the policy keeps picking is a loop the game does not let run
+// (CR 732.2a).
+const zeroXActivation = -1.0
+
 // counterRemovalValue prices removing n counters of `kind` from `c`,
 // as a positive cost.
 //
@@ -181,6 +188,19 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 
 	case legal.KindActivate:
 		cp := decode[activateParams](m.Params)
+		// #810, belt and braces. The enumerator no longer offers an
+		// {X} ability at X=0 when X is the whole of what it does, so
+		// this should not be reachable for such a card — but the
+		// policy is the other half of the pair that kept a table
+		// spinning, and a move that buys nothing has to rank below
+		// passing wherever it comes from. A card with a fixed rider
+		// is still offered at X=0 and still lands here; the rider is
+		// worth having, so the score is a small negative rather than
+		// a refusal, and a bot takes it only when there is nothing
+		// better on the list.
+		if cp.XValue == 0 && st.abilityDemandsX(cp.SourceCardID, cp.AbilityIndex) {
+			return zeroXActivation, "activate for X=0"
+		}
 		v := p.cfg.ActivateBase
 		v += st.targetsValue(p.cfg, cp.Targets)
 		for _, id := range cp.SacrificeIDs {
@@ -295,6 +315,23 @@ func isPermanentSpell(c *protocol.CardView) bool {
 		}
 	}
 	return false
+}
+
+// abilityDemandsX reports whether the named ability of the named
+// permanent carries an {X} in its mana component (#810).
+//
+// Read off the filtered view's own `demands_x`, which the server
+// derives from the ability's cost string and ships so the client's X
+// picker does not have to re-parse it (protocol.ActivatedAbilityView).
+// A policy may not import internal/game (ADR 0033 §3), and this is
+// what that rule looks like in practice: the fact is already on the
+// wire, so the policy reads it rather than reaching for the engine.
+func (st *state) abilityDemandsX(sourceID string, index int) bool {
+	c := st.bf[sourceID]
+	if c == nil || index < 0 || index >= len(c.ActivatedAbilities) {
+		return false
+	}
+	return c.ActivatedAbilities[index].DemandsX
 }
 
 // targetsValue prices a target list. The sign convention is the

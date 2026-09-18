@@ -40,6 +40,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CantBeCountered:       spec.CantBeCountered,
 		NoMaxHandSize:         spec.NoMaxHandSize,
 		AdditionalLandPlays:   spec.AdditionalLandPlays,
+		XMatters:              spec.XMatters,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
@@ -77,6 +78,7 @@ func buildDef(spec Spec) *game.CardDef {
 				Label:        a.Label,
 				Cost:         a.Cost,
 				Targets:      a.Targets,
+				Modes:        a.Modes,
 				SorcerySpeed: a.SorcerySpeed,
 				Condition:    a.Condition,
 				Effect:       a.Effect,

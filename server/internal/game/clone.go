@@ -176,6 +176,15 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.PickTargetCards) > 0 {
 				cloned.PickTargetCards = append([]uuid.UUID(nil), c.PickTargetCards...)
 			}
+			// #764 mode_pick: the offered options and their labels.
+			// Own backing arrays for the same reason every other slice
+			// here gets one.
+			if len(c.ModeOptionIndex) > 0 {
+				cloned.ModeOptionIndex = append([]int(nil), c.ModeOptionIndex...)
+			}
+			if len(c.ModeOptionLabel) > 0 {
+				cloned.ModeOptionLabel = append([]string(nil), c.ModeOptionLabel...)
+			}
 			// S22 search chooser: the candidate list is a slice, so
 			// it needs its own backing array for the same reason
 			// every other slice here does — an undo that shared it
@@ -193,6 +202,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ChooseCards) > 0 {
 				cloned.ChooseCards = append([]uuid.UUID(nil), c.ChooseCards...)
 			}
+			// #568: the branches of an option pick. A slice of
+			// structs each holding a card slice, so the deep copy
+			// goes one level further than every other field here —
+			// a shallow copy would share the pile arrays with the
+			// undo snapshot.
+			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
@@ -265,6 +280,11 @@ func (g *Game) cloneLocked() *Game {
 	// the same reason — an undo across a re-point that kept them
 	// would swallow the re-done attack trigger.
 	out.announcedAttacks = copyBoolMap(g.announcedAttacks)
+	// #716: and the combat damage steps' participation record rewinds
+	// with the combat it belongs to. An undo back into the priority
+	// window between the two steps that dropped it would let every
+	// first-striker deal its damage a second time in the regular step.
+	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -282,17 +302,17 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
 		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
 	}
-	// S32 turn-scoped statics — the layer-engine twin of the slice
+	// S32/S38 scoped statics — the layer-engine twin of the slice
 	// above, and the same reasoning: a ScopedStatic is written once
 	// at registration and never mutated (see the immutability
 	// contract on the type), so a fresh backing array is enough.
 	// What must not be shared is the array itself — the cleanup-step
-	// sweep replaces the slice rather than compacting in place
+	// sweeps replace the slice rather than compacting in place
 	// precisely so an undo snapshot taken mid-turn still holds the
 	// grants that were live when it was taken.
-	if len(g.TurnScopedStatics) > 0 {
-		out.TurnScopedStatics = make([]ScopedStatic, len(g.TurnScopedStatics))
-		copy(out.TurnScopedStatics, g.TurnScopedStatics)
+	if len(g.ScopedStatics) > 0 {
+		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
+		copy(out.ScopedStatics, g.ScopedStatics)
 	}
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
@@ -320,6 +340,13 @@ func (g *Game) cloneLocked() *Game {
 	// answer with the mark gone — and the effect would fire a second
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
+	if len(g.enteringTokens) > 0 {
+		// #762: a token whose entry paused on a replacement prompt is
+		// here and nowhere else. An undo across that prompt has to
+		// bring it back, exactly as it brings back the once-per-event
+		// marks the same paused window is holding.
+		out.enteringTokens = append([]Card(nil), g.enteringTokens...)
+	}
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -423,6 +450,7 @@ func clonePlayer(p *Player) *Player {
 		Life:              p.Life,
 		Poison:            p.Poison,
 		Energy:            p.Energy,
+		TurnsBegun:        p.TurnsBegun,
 		Eliminated:        p.Eliminated,
 		HandKept:          p.HandKept,
 		MulligansTaken:    p.MulligansTaken,
@@ -439,6 +467,7 @@ func clonePlayer(p *Player) *Player {
 	out.Hand = cloneZone(p.Hand)
 	out.Graveyard = cloneZone(p.Graveyard)
 	out.Command = cloneZone(p.Command)
+	out.Emblems = cloneZone(p.Emblems)
 	if len(p.CommanderDamage) > 0 {
 		out.CommanderDamage = make(map[uuid.UUID]int, len(p.CommanderDamage))
 		for k, v := range p.CommanderDamage {
@@ -513,6 +542,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Effect:     s.Effect,
 		Ordered:    s.Ordered,
 		targetSpec: s.targetSpec,
+		// #764: catalog data, read-never-written, so the undo clone
+		// shares the pointer exactly as it shares targetSpec.
+		modeSpec: s.modeSpec,
 	}
 	if len(s.Targets) > 0 {
 		out.Targets = make([]TargetRef, len(s.Targets))
@@ -587,6 +619,22 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.damageTail != nil {
 			t := *f.ev.damageTail
 			ev.damageTail = &t
+		}
+		if f.ev.tokenTail != nil {
+			// #762, the same reason as the two below: the token tail is
+			// cleared THROUGH the pointer as it runs, so sharing it
+			// would let the live game's run consume the snapshot's
+			// continuation and an undone-then-redone answer would make
+			// the tokens and skip the rest of the card.
+			t := *f.ev.tokenTail
+			ev.tokenTail = &t
+		}
+		if len(f.ev.TokenGroups) > 0 {
+			// The settled creation itself — how many of which kinds —
+			// is what the resume is holding. Its own slice, so a
+			// doubler applied on the live game cannot reach back into
+			// the snapshot's copy of the event.
+			ev.TokenGroups = append([]TokenGroup(nil), f.ev.TokenGroups...)
 		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
@@ -703,16 +751,18 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.announcedBlocks = src.announcedBlocks
 	g.announcedBecameBlocked = src.announcedBecameBlocked
 	g.announcedAttacks = src.announcedAttacks
+	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
-	g.TurnScopedStatics = src.TurnScopedStatics
+	g.ScopedStatics = src.ScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
+	g.enteringTokens = src.enteringTokens
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

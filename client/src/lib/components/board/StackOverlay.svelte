@@ -38,6 +38,7 @@
   import { settings } from "../../settings";
   import { holdPriority, toggleHoldPriority } from "../../holdPriority";
   import { doubledTriggerLabel } from "../../triggerDoubling";
+  import { previewableCard } from "../../stackPreview";
 
   interface Props {
     stack: ZoneView;
@@ -182,12 +183,15 @@
 
   // previewCardFor is the card the overlay should show for an item:
   // the spell itself, or an ability's source permanent. Returns null
-  // for anything the viewer isn't allowed to read — same redaction
-  // rule Card.svelte applies before writing the store.
+  // for anything the viewer isn't allowed to read — the same rule
+  // Card.svelte applies before writing the store, shared through
+  // stackPreview.ts so the two cannot disagree.
+  //
+  // #697: this used to test `known_by_you === false`, which the server
+  // never sends (the field is omitempty), so the guard never fired and
+  // an unreadable card opened a blank zoom panel.
   function previewCardFor(item: StackItemView): CardView | null {
-    const c = artCardFor(item);
-    if (!c || c.known_by_you === false) return null;
-    return c;
+    return previewableCard(artCardFor(item));
   }
 
   // clearPreview drops our own write to the shared store, never
@@ -368,7 +372,17 @@
                 {#if item.alt_cost}
                   <span class="chip flag">{item.alt_cost}</span>
                 {/if}
-                {#if item.modes && item.modes.length > 0}
+                <!-- #764: the chosen bullets, in announce order (CR
+                     700.2c) and with repeats (CR 700.2d). This used to
+                     print the raw indexes ("modes: 0, 2"), which nobody
+                     at the table could read: the caster's hand card is
+                     gone once the spell is on the stack, so the labels
+                     have to travel with the item. -->
+                {#if item.mode_labels && item.mode_labels.length > 0}
+                  {#each item.mode_labels as modeLabel, mi (mi)}
+                    <span class="chip">{modeLabel}</span>
+                  {/each}
+                {:else if item.modes && item.modes.length > 0}
                   <span class="chip">modes: {item.modes.join(", ")}</span>
                 {/if}
                 {#if item.split_second}

@@ -612,6 +612,17 @@ type Event struct {
 	OldZone ZoneKind `json:"old_zone,omitempty"`
 	NewZone ZoneKind `json:"new_zone,omitempty"`
 
+	// DiscardCause is why a discard happened, on EventDiscardCard: an
+	// effect's instruction, a cost, or the cleanup step's turn-based
+	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.
+	//
+	// It is the distinction the rules draw — ADR 0013 §10a withdrew
+	// the voluntary/involuntary framing — and it rides the public event
+	// so the log can say why a card was pitched and a payoff that
+	// cares reads it beside Source, which names the card that asked.
+	// Added with #650.
+	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
+
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
 

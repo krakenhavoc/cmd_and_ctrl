@@ -987,6 +987,9 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterSourceIDs: counterIDs,
 				CounterKind:      p.CounterKind,
 				Targets:          refs,
+				// #764, CR 602.2b: a modal activated ability announces
+				// its modes with its targets, in one indivisible step.
+				Modes: append([]int(nil), p.Modes...),
 				// The same `x_value` the free-form branch below
 				// hands to buildAbilityParams, now reaching the real
 				// CR 602 path: an ability whose cost carries {X}
@@ -1129,6 +1132,21 @@ func Dispatch(g *game.Game, a Action) error {
 			// is "stop here", which is why this branch is routed by
 			// the choice's KIND and not by the field's presence.
 			Iterations int `json:"iterations"`
+			// OptionIndex answers a PendingChoiceOptionPick (#568):
+			// which of the prompt's branches the chooser took.
+			// Zero — the field's own zero value — is the FIRST
+			// option and the commonest answer, which is why this
+			// branch is routed by the choice's KIND and not by the
+			// field's presence, exactly as Iterations above is.
+			OptionIndex int `json:"option_index"`
+			// Modes answers a PendingChoiceModePick (#764, CR
+			// 603.3c): the chosen OPTION indexes in the order
+			// chosen. Routed by the choice's KIND, for the same
+			// reason Iterations is — an index list of zeroes
+			// ([0, 0, 0] is Mystic Confluence drawing three cards) is
+			// an ordinary answer, and so is the empty list on a
+			// "choose up to one".
+			Modes []int `json:"modes"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1146,6 +1164,19 @@ func Dispatch(g *game.Game, a Action) error {
 		// presence to route on.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
 			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
+		}
+		// #568, CR 608.2: "choose one of the following", addressed to
+		// any seat. Routed by kind for the same reason the shortcut
+		// above is — the whole payload is an integer whose most
+		// meaningful value is zero.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOptionPick {
+			return g.ResolveOptionPick(choiceID, a.Player, p.OptionIndex)
+		}
+		// #764, CR 603.3c: the mode of a modal triggered ability,
+		// chosen as the ability is put on the stack. Routed by kind
+		// for the same reason the two above are.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceModePick {
+			return g.ResolveModePick(choiceID, a.Player, p.Modes)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to
@@ -1519,6 +1550,15 @@ type zoneRefWire struct {
 type castTargetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answers (#764,
+	// ADR 0065 §2): the clause index within the clause list, and the
+	// index into the announced `modes` whose clause list that is.
+	// Both optional and both defaulting to 0, which is what every
+	// single-clause non-modal cast has always meant — a client that
+	// never sends them keeps working, and the server fills them in
+	// by walking the clauses in order.
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 // damageAssignmentParam is one {blocker_id, amount} pair from a
@@ -1565,7 +1605,10 @@ func buildAbilityParams(label string, targets []castTargetWire, modes []int, xVa
 }
 
 func (t castTargetWire) toRef() (game.TargetRef, error) {
-	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind)}
+	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Slot: t.Slot, Mode: t.Mode}
+	if ref.Slot < 0 || ref.Mode < 0 {
+		return game.TargetRef{}, fmt.Errorf("slot / mode must not be negative")
+	}
 	switch ref.Kind {
 	case game.TargetSelf, game.TargetNone:
 		// ID is meaningless / allowed-empty for these kinds. Drop

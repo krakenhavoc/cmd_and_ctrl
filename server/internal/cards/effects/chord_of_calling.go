@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6789a170-f2c5-4fc0-8a45-2b2361e67410",
 		Name:         "Chord of Calling",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		TapCost:      Convoke(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

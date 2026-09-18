@@ -98,10 +98,11 @@ func b35CountersOnArtifactsAndCreaturesYouControl(g *game.Game, controller uuid.
 // no attack of its own, so it reads as not attacking, as printed.
 func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool {
 	inCombat := map[string]bool{
-		string(game.StepDeclareAttackers): true,
-		string(game.StepDeclareBlockers):  true,
-		string(game.StepCombatDamage):     true,
-		string(game.StepEndCombat):        true,
+		string(game.StepDeclareAttackers):  true,
+		string(game.StepDeclareBlockers):   true,
+		string(game.StepFirstStrikeDamage): true,
+		string(game.StepCombatDamage):      true,
+		string(game.StepEndCombat):         true,
 	}
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]
@@ -459,25 +460,6 @@ func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.
 			return b35DreadSummonsMillStep(ctx, item, rest, x, found)
 		},
 	}.Apply(ctx)
-}
-
-// b35MillTwoThenReturnChosen is Eden, Seat of the Sanctum's
-// sacrifice body: the controller mills two, then the announced
-// permanent card, if it is still in the controller's graveyard,
-// returns to their hand. The target was picked at announce, before
-// the mill, so the two cards just milled are never it — declared on
-// the card.
-func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	return b34ReturnChosenGraveyardCardToHand(ctx)
-}
-
-// b35MillTwo is Eden's plain body: the controller mills two.
-func b35MillTwo(g *game.Game, item *game.StackItem) error {
-	return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 }
 
 // b35GainLifeEqualToToughness is Ikra Shidiqi's body: life equal to

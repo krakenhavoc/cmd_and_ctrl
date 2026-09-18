@@ -225,6 +225,14 @@ func HasKeyword(c *Card, kw string) bool {
 		}
 		return false
 	}
+	// CR 708.2a, ADR 0069: a face-down permanent has no text and so
+	// no keywords. CatalogKey already answers "" for it, but
+	// Card.Keywords is the deck importer's own road and bypasses the
+	// catalog entirely — without this guard a face-down Ambush Viper
+	// would still have flash.
+	if c.FaceDownIsPermanent() {
+		return false
+	}
 	// Off-battlefield path: the card's own printed keywords first
 	// (S21 sub-PR 1 — token templates carry them on the Card, since
 	// a token has no oracle ID for the catalog to key on), then the

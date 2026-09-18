@@ -4,8 +4,11 @@ import "testing"
 
 func TestTurnSequenceLength(t *testing.T) {
 	seq := TurnSequence()
-	if len(seq) != 12 {
-		t.Errorf("turn sequence: got %d steps, want 12", len(seq))
+	// Thirteen since #717: the first-strike combat damage step
+	// (CR 510.4) is in the sequence like any other, and is skipped in
+	// the turns that do not have it.
+	if len(seq) != 13 {
+		t.Errorf("turn sequence: got %d steps, want 13", len(seq))
 	}
 }
 
@@ -18,6 +21,7 @@ func TestTurnSequenceExactOrder(t *testing.T) {
 		StepBeginCombat,
 		StepDeclareAttackers,
 		StepDeclareBlockers,
+		StepFirstStrikeDamage,
 		StepCombatDamage,
 		StepEndCombat,
 		StepPostcombatMain,
@@ -56,6 +60,7 @@ func TestPhaseOfMapping(t *testing.T) {
 		{StepBeginCombat, PhaseCombat},
 		{StepDeclareAttackers, PhaseCombat},
 		{StepDeclareBlockers, PhaseCombat},
+		{StepFirstStrikeDamage, PhaseCombat},
 		{StepCombatDamage, PhaseCombat},
 		{StepEndCombat, PhaseCombat},
 		{StepPostcombatMain, PhasePostcombatMain},
@@ -152,7 +157,8 @@ func TestTurnAdvanceIntoPriorityStepsSetsActiveSeat(t *testing.T) {
 		{StepPrecombatMain, StepBeginCombat},
 		{StepBeginCombat, StepDeclareAttackers},
 		{StepDeclareAttackers, StepDeclareBlockers},
-		{StepDeclareBlockers, StepCombatDamage},
+		{StepDeclareBlockers, StepFirstStrikeDamage},
+		{StepFirstStrikeDamage, StepCombatDamage},
 		{StepCombatDamage, StepEndCombat},
 		{StepEndCombat, StepPostcombatMain},
 		{StepPostcombatMain, StepEnd},

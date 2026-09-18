@@ -333,6 +333,36 @@ type Game struct {
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
 
+	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
+	// participation record: the attacking and blocking creatures that
+	// had first strike or double strike as the FIRST combat damage
+	// step began (#716). It is recorded once, at that step's entry,
+	// and both damage steps read it instead of re-reading keywords:
+	//
+	//   - the first-strike step deals damage for exactly this set;
+	//   - the regular step deals damage for every combatant NOT in
+	//     it, plus the ones that have double strike right now.
+	//
+	// Re-reading the keywords in the second step is the bug #716
+	// reports. Between the two steps there is a real priority window
+	// (#717), so a lord granting first strike can die to first-strike
+	// damage, or be Murdered in the window: the creature it pumped
+	// has already dealt its damage and must not deal it again, and
+	// one that GAINS first strike in the window is owed its ordinary
+	// damage in the second step rather than a first-strike hit it
+	// missed.
+	//
+	// Empty means the first-strike step did not happen, so every
+	// combatant deals damage in the single combat damage step — which
+	// is also what the zero value gives a combat that never had one.
+	// Cleared by clearCombatLocked alongside the declarations it
+	// describes, and carried by Clone / RestoreFrom and the persisted
+	// snapshot for the reason announcedBlocks is: the window between
+	// the steps is a priority window, so an undo or a restore can land
+	// inside it, and a record that was dropped there would let a
+	// first-striker hit twice.
+	firstStrikeStepParticipants map[uuid.UUID]bool
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -365,6 +395,25 @@ type Game struct {
 	// construction, so Clone / RestoreFrom do not carry it: no
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
+
+	// enteringTokens holds the tokens whose CR 614 battlefield-entry
+	// window is open and which are therefore in NO zone yet: minted,
+	// not pushed. A card entering the battlefield sits in the zone it
+	// is leaving while its entry replacements are consulted; a token
+	// has no such zone (CR 111.1 — it is created on the battlefield),
+	// and an entry replacement still has to be able to read it.
+	// Urabrask the Hidden asks whether the entering permanent is a
+	// creature an opponent controls, and it asks through
+	// LookupCardForEffect, which is why that function looks here when
+	// no zone holds the card.
+	//
+	// Non-empty only for the duration of one token's entry — normally
+	// a few statements, and across a prompt when that entry pauses on
+	// a CR 616 ordering question. Clone copies it so an undo across
+	// such a prompt still has the token; the persisted snapshot does
+	// not carry it, exactly as it does not carry the once-per-event
+	// map the same paused window is holding. See token_create.go.
+	enteringTokens []Card
 
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
@@ -440,15 +489,16 @@ type Game struct {
 	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
 	TurnScopedReplacements []ReplacementEffect
 
-	// TurnScopedStatics is the per-turn CONTINUOUS-EFFECT slot —
-	// the layer-engine twin of TurnScopedReplacements. Entries are
-	// floating static abilities with a duration rather than a
-	// battlefield source: Giant Growth's +3/+3, Overrun's mass pump
-	// and trample grant, a loyalty ability's "+2/+2 and first strike
-	// until end of turn". Consulted by activeStaticAbilitiesLocked
-	// alongside the battlefield walk and swept at StepCleanup
-	// (CR 514.2). See turn_scoped_statics.go. Added in S32.
-	TurnScopedStatics []ScopedStatic
+	// ScopedStatics is the CONTINUOUS-EFFECT slot for effects whose
+	// lifetime is a duration rather than a battlefield source: Giant
+	// Growth's +3/+3, Overrun's mass pump and trample grant, Act of
+	// Treason's theft, Agent of Treachery's. Consulted by
+	// activeStaticAbilitiesLocked alongside the battlefield walk and
+	// swept by the one duration sweep (CR 611.2). See
+	// scoped_statics.go and duration.go. Added in S32 as
+	// TurnScopedStatics; renamed in S38 when it stopped being
+	// turn-scoped (ADR 0063).
+	ScopedStatics []ScopedStatic
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -715,6 +765,9 @@ func (g *Game) start(key *[32]byte) error {
 	}
 	g.Turn = newStartingTurn()
 	g.StartingSeat = g.Turn.ActiveSeat
+	// The one turn that does not begin through the rotation seam
+	// still counts as a turn begun (ADR 0063 Decision 3).
+	g.noteTurnBegunLocked(g.StartingSeat)
 	g.State = StateActive
 	g.MulligansOpen = true
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
@@ -750,6 +803,10 @@ func (g *Game) End() {
 // the turn number increments. Returns the new Turn.
 //
 // Side effects on step transitions:
+//   - Entering first_strike_damage: the first-strike damage pass
+//     runs (CR 510.4). The step exists only when a combatant has
+//     first or double strike as it would begin; otherwise the cursor
+//     walks through it without entering it.
 //   - Entering combat_damage: ResolveCombatDamage runs (S08 —
 //     auto-applies unblocked attacker damage to defending players'
 //     life totals). Combat declarations (AttackingTarget /
@@ -879,6 +936,32 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 	return g.SpellsCastThisTurn[playerID]
 }
 
+// stepExistsLocked reports whether the step the cursor has landed on
+// is one THIS turn actually has. A step that does not exist is walked
+// through by runStepEntryHooksLocked without being entered: nothing
+// announces, no turn-based action runs, and no player receives
+// priority in it.
+//
+// One step answers false today. CR 506.1 / 510.4: a combat phase has
+// TWO combat damage steps, the first of them for first strike, only
+// "if at least one attacking or blocking creature has first strike or
+// double strike as the combat damage step begins". The cursor is at
+// that moment right now, so the check is the live board — which is
+// also why it is a predicate here rather than a flag set when blockers
+// were declared: a creature can gain or lose first strike during the
+// declare-blockers step's own priority window.
+//
+// The regular combat damage step always exists (every combat has one),
+// and so does every other step in turnSequence.
+//
+// Caller must hold g.mu.
+func (g *Game) stepExistsLocked(s Step) bool {
+	if s != StepFirstStrikeDamage {
+		return true
+	}
+	return len(g.firstStrikeStepParticipantSetLocked()) > 0
+}
+
 // runStepEntryHooksLocked dispatches the per-step side effects that
 // fire on entering certain steps. Called from every code path that
 // changes Turn.Step (AdvanceStep, PassPriority's wrap-and-advance
@@ -913,8 +996,11 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //     than combat_damage) lets the client keep its combat-arrow
 //     overlay visible through the entire combat_damage step instead
 //     of vanishing the moment damage is resolved.
-//   - StepCleanup (S13): auto-advance past cleanup to the next
-//     seat's turn. S13.4 will hook interactive discard in here.
+//   - StepCleanup (S13): the CR 514.1 hand-size discard pauses the
+//     cursor here (S13.4); the CR 514.2 sweep runs; then cleanup.go's
+//     one exit either ends the turn (CR 514.3) or gives the active
+//     player priority in this step and comes back for a second
+//     cleanup step (CR 514.3a, #661).
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
@@ -929,6 +1015,17 @@ func (g *Game) runStepEntryHooksLocked() {
 	// untap step's own untaps bump it again on the way into upkeep.
 	// Fast-path no-op when nothing changed.
 	g.RecomputeLayersIfStaleLocked()
+	// #717 / CR 506.1: not every turn has every step. A step this
+	// turn does not have never begins — no announcement, no turn-based
+	// action, no priority — so the cursor walks straight through it,
+	// which is the same move a step CANCELLED by a replacement makes
+	// below (CR 500.11). Checked before the replacement window because
+	// a step that does not exist is not a step anything can replace.
+	if !g.stepExistsLocked(g.Turn.Step) {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -1121,6 +1218,14 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			Kind:  EventBeginDrawStep,
 			Actor: g.Seats[g.Turn.ActiveSeat].ID,
 		})
+	case StepFirstStrikeDamage:
+		// CR 510.4: the first combat damage step's turn-based action.
+		// It grants priority like any other step, so there is no
+		// auto-advance — the triggers this damage causes go on the
+		// stack at the boundary resolveFirstStrikeCombatDamageLocked
+		// runs, and the active player gets to respond before the
+		// second step's damage is dealt (CR 510.3).
+		g.resolveFirstStrikeCombatDamageLocked()
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
 	case StepEndCombat:
@@ -1137,14 +1242,14 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// player left the game, or the sandbox pass_turn verb — ends
 		// through the same code (ADR 0059 Decision 6, #766).
 		g.sweepTurnEndLocked()
-		// Auto-advance only when no player owes discard. Otherwise
-		// the cursor sits at Cleanup with PriorityHolder=NoPriority
-		// until DiscardSelection drains the pending map and re-fires
-		// this hook.
-		if len(g.DiscardPending) == 0 {
-			g.advanceCursorLocked()
-			g.runStepEntryHooksLocked()
-		}
+		// CR 514.3 / 514.3a: the turn ends here — unless a state-based
+		// action fired or a trigger is waiting, in which case the
+		// active player gets priority in this step and another cleanup
+		// step follows. The cursor also sits here, with
+		// PriorityHolder=NoPriority, while any player owes a discard;
+		// DiscardSelection calls the same exit once the pending map
+		// drains. One exit, one decision — see cleanup.go (#661).
+		g.exitCleanupStepLocked()
 	}
 }
 

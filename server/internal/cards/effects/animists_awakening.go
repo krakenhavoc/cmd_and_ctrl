@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6f1bfe50-b61a-4fdd-963c-40d59117bdf4",
 		Name:         "Animist's Awakening",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			revealed := ctx.Game.RevealTopOfLibraryForEffect(item.Controller, ctx.Source(), ctx.X(),
