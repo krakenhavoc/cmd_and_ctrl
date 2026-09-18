@@ -544,3 +544,38 @@ func TestUntapChoiceSurvivesAClone(t *testing.T) {
 		t.Error("the original answered independently of the clone")
 	}
 }
+
+// CR 800.4a/h: the active player leaving during their own paused untap
+// step takes the question and the permanents with them, and the turn
+// ends. Dropping the prompt must not leave the cursor parked on a step
+// nobody can finish (#902's table classifies this kind `false`).
+func TestUntapChoiceDroppedWhenItsChooserLeaves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	const orb = "winter-orb"
+	seat1 := g.Seats[1].ID
+	pushTappedPermanent(g, seat1, "Forest", "", "Land", true)
+	pushTappedPermanent(g, seat1, "Island", "", "Land", true)
+	pushTappedPermanent(g, seat1, "Orb", orb, "Artifact", false)
+	withCatalogUntapCaps(t, capOverLands(orb, 1))
+
+	advanceUntil(t, g, 30, func() bool { return len(g.PendingChoices) > 0 })
+	openUntapChoice(t, g)
+	if g.Turn.Step != StepUntap || g.Turn.ActiveSeat != 1 {
+		t.Fatalf("cursor = seat %d %s, want seat 1 untap", g.Turn.ActiveSeat, g.Turn.Step)
+	}
+
+	if err := g.Concede(seat1); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceUntapChoice {
+			t.Fatal("the departed player's untap determination is still queued")
+		}
+	}
+	if g.Turn.ActiveSeat == 1 {
+		t.Fatalf("the turn did not move on: still seat 1 at %s", g.Turn.Step)
+	}
+	if g.Turn.Step == StepUntap {
+		t.Fatalf("the cursor is parked on an untap step nobody can finish (seat %d)", g.Turn.ActiveSeat)
+	}
+}
