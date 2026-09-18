@@ -209,6 +209,20 @@ func YouOwn() CardPredicate {
 	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool { return c.Owner == caster }
 }
 
+// OtherThan passes for every card but the one named — the "another"
+// in "return another target permanent card from your graveyard to
+// your hand" (Eden, Seat of the Sanctum).
+//
+// It takes an instance ID rather than reading the source off the
+// Context, because a target clause is built once and evaluated many
+// times, in the enumerator and at resolution, against whichever game
+// is in front of it. The ID is a scalar the clause's author captures
+// when the clause is made, which is the same rule every other
+// continuation in the catalog follows.
+func OtherThan(id uuid.UUID) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != id }
+}
+
 // --- stack-origin predicates -------------------------------------
 
 // CastFromOwnersHand passes for a spell on the stack that was cast

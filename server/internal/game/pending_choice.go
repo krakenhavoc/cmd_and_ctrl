@@ -573,6 +573,19 @@ type PendingChoice struct {
 	// chained_choice.go.
 	chooseCardsResume *chooseCardsFrame
 
+	// PickOptions are the branches of a PendingChoiceOptionPick — the
+	// card's own words for each, plus the cards it is about (a pile,
+	// or nothing). Wire-serialised via PendingChoiceView.PickOptions,
+	// with each option's card list projected through the same
+	// per-viewer redaction as every other Options-bearing kind. See
+	// option_pick.go.
+	PickOptions []ChoiceOption
+
+	// optionPickResume is the server-only continuation for a
+	// PendingChoiceOptionPick: what the chosen index means. Not
+	// serialised. See option_pick.go.
+	optionPickResume *optionPickFrame
+
 	// chooseColorResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is

@@ -318,11 +318,34 @@ type PendingChoiceView struct {
 	// `{choice_id, iterations}`, where 0 means "stop here".
 	LoopCount         int `json:"loop_count,omitempty"`
 	LoopMaxIterations int `json:"loop_max_iterations,omitempty"`
+	// PickOptions populates the #568 "option_pick" kind: one entry
+	// per branch of "choose one of the following", in the card's
+	// printed order. The client renders a button per option and
+	// answers with `{option_index: N}` — the INDEX, not a card list,
+	// because an option is a consequence and not always a set of
+	// cards. Each option's own Cards ride through the same per-viewer
+	// redaction as Options above. Absent for other kinds.
+	PickOptions []PickOptionView `json:"pick_options,omitempty"`
+
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+}
+
+// PickOptionView is one branch of an "option_pick" prompt (#568):
+// the card's own words for it, the cards it is about (a Fact or
+// Fiction pile, or nothing at all), and the life it charges.
+//
+// Cards is projected per viewer exactly like PendingChoiceView.Options
+// — see redactChoiceCards. An option over a pool the chooser does not
+// own shows that chooser only the cards they are entitled to see,
+// which on every printed card of this family means the revealed ones.
+type PickOptionView struct {
+	Label    string     `json:"label"`
+	Cards    []CardView `json:"cards,omitempty"`
+	LifeCost int        `json:"life_cost,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -2132,6 +2155,24 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceOptionPick — #568's "choose one of the
+		// following", addressed to any seat. The labels are the
+		// card's own words; an option's cards (a pile) are inlined so
+		// the client renders faces rather than quoting names into a
+		// sentence, and they go through the same per-viewer redaction
+		// as every other Options list in filterPendingChoices.
+		if c.Kind == game.PendingChoiceOptionPick && len(c.PickOptions) > 0 {
+			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
+			for _, opt := range c.PickOptions {
+				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
+				for _, id := range opt.Cards {
+					if card, ok := g.LookupCardForEffect(id); ok {
+						out.Cards = append(out.Cards, viewOfCard(card))
+					}
+				}
+				v.PickOptions = append(v.PickOptions, out)
+			}
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
@@ -2733,17 +2774,86 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			continue
 		}
 		if len(c.Options) > 0 {
-			chooser := c.Chooser == viewerID
-			opts := make([]CardView, 0, len(c.Options))
-			for _, card := range c.Options {
-				known := isKnower(card)
-				if !known && !chooser {
-					continue
-				}
-				opts = append(opts, redactCardForViewer(card, known))
-			}
-			out[i].Options = opts
+			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)
 		}
+		// #568: an option's pile rides the SAME pass. A second card
+		// list on a prompt that the filter did not know about would
+		// be raw identity on every seat's wire, which is the leak PR
+		// #513 fixed pointed at a new field.
+		if len(c.PickOptions) > 0 {
+			opts := make([]PickOptionView, len(c.PickOptions))
+			for j, opt := range c.PickOptions {
+				opts[j] = opt
+				opts[j].Cards = redactChoiceCards(c, opt.Cards, isKnower, viewerID)
+			}
+			out[i].PickOptions = opts
+		}
+	}
+	return out
+}
+
+// redactChoiceCards is THE answer to "which of a prompt's cards may
+// this viewer see", and the only place it is answered: every card
+// list on a PendingChoiceView — Options and each option's pile —
+// goes through it.
+//
+// Two rules, and the second is what #568 added.
+//
+//  1. A viewer who is not a knower of a card does not get it. Not a
+//     back either: the card is DROPPED, because these lists come out
+//     of hidden zones that FilterViewFor strips for this same viewer
+//     a few lines up, and shipping N stable instance IDs back hands
+//     the table a handle it can correlate the moment one of them is
+//     cast. Redaction-to-a-back is the right trade for a card in a
+//     public zone and the wrong one here (PR #513).
+//
+//  2. The CHOOSER keeps their whole list — unknown cards included, as
+//     answerable backs — when the pool is their OWN material, or when
+//     it is another player's HAND. A hand's SIZE is public (CR 400.2),
+//     so handing the chooser N anonymous backs out of one tells them
+//     nothing the rest of the table does not already have, and a
+//     coercive discard that revealed nothing still has to be
+//     answerable by picking one of them (#513's own conclusion, and
+//     TestChooserKeepsUnknownOptions).
+//
+//     A pool that is neither is different, and that difference is
+//     #568. Fact or Fiction asks an opponent to separate five cards
+//     off the top of your LIBRARY, whose depth and contents nobody
+//     else is entitled to; the only thing that lets that opponent look
+//     is that the card revealed them first (#549). Cards they were not
+//     made a knower of are dropped from their copy too — no backs, so
+//     not even the instance IDs, which are the correlation handle PR
+//     #513 was about.
+//
+// Rule 2 is therefore also a contract on the effect: a prompt
+// addressed to a seat over another seat's non-hand cards must reveal
+// them, or its chooser is handed an empty list. That is the right
+// failure — an engine that leaked the library instead would be the
+// bug, and the cards a card like this asks about are public by
+// construction.
+//
+// discard_from_hand is named explicitly because its pool IS a hand,
+// definitionally: the kind means "pick from FromPlayer's hand", and
+// viewOfPendingChoices inlines exactly that zone. Thoughtseize is
+// unaffected for a second reason as well — QueueDiscardFromRevealedHand
+// marks the caster a knower of every card first, so nothing is a back
+// to begin with.
+func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(CardView) bool, viewerID string) []CardView {
+	if len(cards) == 0 {
+		return nil
+	}
+	// The pool is the chooser's own when no other seat is named, or
+	// when the named seat IS the chooser.
+	ownPool := c.FromPlayer == "" || c.FromPlayer == c.Chooser
+	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand)
+	keepUnknown := c.Chooser == viewerID && (ownPool || handPool)
+	out := make([]CardView, 0, len(cards))
+	for _, card := range cards {
+		known := isKnower(card)
+		if !known && !keepUnknown {
+			continue
+		}
+		out = append(out, redactCardForViewer(card, known))
 	}
 	return out
 }

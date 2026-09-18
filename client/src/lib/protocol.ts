@@ -655,6 +655,19 @@ export interface PendingChoiceView {
   // #74: populated for kind "confirm" — the card's own words for the
   // accept and decline branches. Absent means the client renders Yes /
   // No, which is right for a prompt that really is a yes/no.
+  /**
+   * pick_options populates the "option_pick" kind (#568): one entry
+   * per branch of "choose one of the following", in the card's
+   * printed order. Answered with `{option_index: N}` — the INDEX,
+   * because an option is a consequence and not always a set of cards.
+   *
+   * An option's own `cards` are context the client renders beside the
+   * label (a Fact or Fiction pile); they are already redacted
+   * per-viewer by the server, and an option over cards this seat may
+   * not see arrives with the label and no cards at all.
+   */
+  pick_options?: PickOptionView[];
+
   accept_label?: string;
   decline_label?: string;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
@@ -692,6 +705,17 @@ export interface PendingChoiceView {
 // ("Doubling Season: double counters"); source_card_id is the card
 // hosting the effect (empty for engine built-ins like commander-
 // zone replacement). Added in S17 sub-PR 2.
+/**
+ * PickOptionView is one branch of an "option_pick" prompt (#568):
+ * the card's own words for it, the cards it is about (a pile, or
+ * nothing), and the life it charges.
+ */
+export interface PickOptionView {
+  label: string;
+  cards?: CardView[];
+  life_cost?: number;
+}
+
 export interface ReplacementOptionView {
   id: string;
   label?: string;

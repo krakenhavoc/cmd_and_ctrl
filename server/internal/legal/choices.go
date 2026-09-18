@@ -40,6 +40,13 @@ type choiceParams struct {
 	// and the value that goes missing — zero — is the one the
 	// resolver reads as "stop here" anyway.
 	Iterations int `json:"iterations,omitempty"`
+	// OptionIndex answers an option_pick prompt (#568): which of the
+	// prompt's branches the chooser took. A POINTER, for the reason
+	// Apply is one — the meaningful value is zero (the first option),
+	// so an int field with omitempty would erase the commonest answer
+	// and a plain int would be sent on every other kind. The
+	// dispatcher still routes this kind by KIND, not by presence.
+	OptionIndex *int `json:"option_index,omitempty"`
 	// CreatureType answers a choose_creature_type prompt (CR 614.12).
 	// omitempty because the dispatcher routes on its PRESENCE: an
 	// empty string sent on every other kind would be read as "this is
@@ -361,6 +368,50 @@ func (e *enumerator) choiceMoves() bool {
 					continue
 				}
 				e.addAlwaysLegalChoice(c, reason+": "+verb, p)
+			}
+
+		case game.PendingChoiceOptionPick:
+			// #568. "Choose one of the following", addressed to any
+			// seat — Torment of Hailfire's three-way question, and
+			// the pile a Fact or Fiction chooser takes.
+			//
+			// ResolveOptionPick validates the INDEX and nothing else,
+			// so every offered option is an answer the engine will
+			// accept. The legality lives at queue time: an effect
+			// builds the list out of what this seat can actually do.
+			// So every option is offered, in the card's printed order,
+			// and the FIRST is the always-legal way out — the kind's
+			// contract is that a queuing effect puts a branch that
+			// always works there ("lose 3 life" on Torment, which needs
+			// no permanent and no card in hand).
+			//
+			// Each answer carries the branch's declared life cost as
+			// MoveCost, for #547's reason: a policy holding only the
+			// wire payload otherwise prices "lose 3 life" exactly like
+			// "discard a card", and a bot at 3 life answers with the
+			// life and dies. Cheapest-by-cost is then the policy's
+			// decision, not the enumerator's. See docs/bot.md.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "option " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.add(Move{
+					Type:   TypeResolveChoice,
+					Player: e.seat,
+					Kind:   KindChoice,
+					Label:  reason + ": " + label,
+					Source: c.Source,
+					Params: mustJSON(p),
+					Cost:   moveCost(opt.LifeCost, 0),
+				})
 			}
 
 		case game.PendingChoiceChooseCards:
