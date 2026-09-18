@@ -195,11 +195,12 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		if c.IsToken() {
 			// CR 111.8: a token that has left the battlefield can't
 			// move to another zone or come back onto the battlefield,
-			// and CR 108.2: it is not a "card" at all. The engine has
-			// no CR 704.5d sweep, so a token tucked into a library
-			// (Chaos Warp) is still sitting there; putting it back
-			// would undo the removal that tucked it. Refused like a
-			// nonpermanent.
+			// and CR 108.2: it is not a "card" at all. Since #596 the
+			// CR 704.5d sweep removes it at the next state-based
+			// check, so a token tucked into a library (Chaos Warp) is
+			// only there for the window before that; putting it back
+			// inside that window would undo the removal that tucked
+			// it. Refused like a nonpermanent.
 			return nil, ErrInvalidParam
 		}
 		controller := opts.Controller

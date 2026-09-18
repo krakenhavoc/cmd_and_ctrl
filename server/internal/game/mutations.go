@@ -2261,6 +2261,10 @@ func clearKnownInZoneLocked(zone *Zone) {
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
+// Existence SBAs (#596):
+//   - 704.5d: a token in any zone other than the battlefield ceases
+//     to exist — see token_existence.go
+//
 // Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
 // the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
 // 1 marked damage doesn't die — the counters cancel first, leaving
@@ -2498,13 +2502,25 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		}
 	}
 
-	// 704.5j (S27) — the legend rule. Last, because it is the one
-	// state-based action whose outcome is a CHOICE rather than a
-	// consequence: running it after the destruction and sacrifice
-	// passes means a player is never asked to pick between two
-	// legends when one of them was about to leave anyway. See
-	// legend_rule.go.
+	// 704.5j (S27) — the legend rule. Last of the choosing SBAs,
+	// because it is the one state-based action whose outcome is a
+	// CHOICE rather than a consequence: running it after the
+	// destruction and sacrifice passes means a player is never asked
+	// to pick between two legends when one of them was about to leave
+	// anyway. See legend_rule.go.
 	if g.queueLegendRuleChoicesLocked() {
+		fired = true
+	}
+
+	// 704.5d (#596) — a token in any zone but the battlefield ceases
+	// to exist. Last of all, and deliberately after the destruction
+	// and sacrifice passes above: a token that died in THIS pass has
+	// already landed in its owner's graveyard and already had its
+	// dies / leaves-the-battlefield triggers harvested off that move
+	// (the harvest is synchronous, inside EmitEvent), so sweeping it
+	// now costs those triggers nothing and saves the loop a pass.
+	// See token_existence.go.
+	if g.tokenCeaseToExistSBALocked() {
 		fired = true
 	}
 
