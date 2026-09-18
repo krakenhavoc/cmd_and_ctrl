@@ -357,3 +357,29 @@ func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
 	}
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
 }
+
+// tapChosenPermanent is the whole Effect of an activated ability whose
+// printed text is "Tap target <permanent>." — Staff of Domination's
+// fourth ability and Ring of the Lucii's second. Named because two
+// cards shipping the same six lines is one helper waiting to exist
+// (#583).
+func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+}
+
+// plusOneCounterOnChosen is "put a +1/+1 counter on target creature" as
+// a trigger or ability Effect — Triumph of Gerrard's first two chapters
+// and Pridemalkin's enters trigger.
+func plusOneCounterOnChosen(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return AddCounter{
+		Target: item.Targets[0].ID,
+		Kind:   game.CounterPlusOne,
+		N:      1,
+	}.Apply(NewContext(g, item))
+}
