@@ -1976,24 +1976,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
 	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
-	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
-	// token. This engine has no token-from-stack-item path, and
-	// letting the copy fall through to the battlefield branch below
-	// would be worse than doing nothing — it would put a second
-	// card-shaped object carrying the original's oracle ID into
-	// play, which a bounce spell then duplicates into a hand. Every
-	// S30 copy card targets an instant or sorcery, so this is
-	// unreachable today; it is written out because it is where the
-	// token rule lands (#666).
+	// CR 608.3f / CR 111.13 (also CR 707.10f): a resolving copy of a
+	// PERMANENT spell does not put a permanent card onto the
+	// battlefield — it becomes a TOKEN that is a copy of the spell,
+	// and the copy ceases to exist. The branch below is for cards;
+	// this one is for the object that is not one. See
+	// resolvePermanentSpellCopyLocked (#666).
 	if item.IsCopy && top.IsPermanent() {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Actor:    item.Controller,
-			CardID:   top.InstanceID,
-			ErrorMsg: "copying a permanent spell is not implemented (CR 608.3f token)",
-		})
-		g.ceaseToExistLocked(top.InstanceID)
-		return nil
+		return g.resolvePermanentSpellCopyLocked(top, item)
 	}
 	if top.IsPermanent() {
 		// ADR 0034: settle which face the PERMANENT keeps before the

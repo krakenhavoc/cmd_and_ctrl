@@ -401,3 +401,111 @@ engine reads mana abilities off the card object as well as the
 catalog, which would be a second seam. A granted ability's TEXT is
 not projected onto the wire, so the client shows the copy's abilities
 without it.
+
+## Amendment 2026-09-18 — a copy of a permanent spell becomes a token as it resolves (CR 608.3f, CR 111.13) · Accepted · S45
+
+A spell-copy rule (CR 707.10, `game/spell_copy.go`) rather than an
+entry-copy one, but what it settles is a copiable-values question, so
+it lands here with the rest of CR 707.
+`resolveTopOfStackLocked` used to meet a resolving copy of a
+permanent spell with an `EventEffectError` and cease it to exist:
+"copying a permanent spell is not implemented". No catalog card
+reached the guard, because every copy card in the S30 batch targets
+an instant or sorcery. Double Major does.
+[#666](https://github.com/krakenhavoc/cmd_and_ctrl/issues/666)
+replaces the refusal with the rule.
+
+### Decision 9. The copy becomes a created TOKEN, through the one creation path
+
+CR 608.3f: a resolving copy of a permanent spell does not put a
+permanent card onto the battlefield — a token that is a copy of the
+spell enters instead, and the copy ceases to exist (CR 111.13). The
+old guard's reasoning was sound as far as it went: a second
+card-shaped object carrying the original's oracle ID on the
+battlefield is worse than nothing, because a bounce spell turns it
+into a card in somebody's hand. A token is what makes it neither.
+
+`resolvePermanentSpellCopyLocked` (`game/spell_copy.go`) takes the
+copy off the stack FIRST — the creation can pause on a CR 616
+ordering prompt, and a copy left on the stack whose `StackMeta` the
+resolver has already deleted is an object nothing can resolve — and
+then calls `CreateTokensThenForEffect`, [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+/ #923's ONE token-creation path. Everything that makes a token a
+token follows from that and from nothing this change wrote:
+
+- the CR 701.7b creation window opens, so **Doubling Season doubles
+  it** and Academy Manufactor could rewrite it;
+- the token then takes the ordinary battlefield entry
+  (`enterBattlefieldThroughPipelineLocked`), so enters-tapped,
+  enters-with-counters, `EventETB` and `fireETBHookLocked` all reach
+  it and the entry can pause and resume;
+- `Card.IsToken` is true because the template carries the Token
+  supertype (`PrintedValues.MakeToken`), so CR 704.5d removes it from
+  any zone but the battlefield and a bounce cannot make it a card.
+
+The template is the spell's copiable values with the face settled the
+way the ordinary permanent branch settles it, so CR 707.10g falls out:
+a copy of a double-faced permanent spell is double-faced.
+
+### Decision 10. The spell copy carries an "except" clause too, and it is the same one
+
+`CopySpellForEffect` gains an `except func(*PrintedValues)`, and
+`effects.CopySpell` an `Except` field — the SAME `PrintedValues` an
+entering permanent's except clause edits (Decision 3). Double Major's
+"except it isn't legendary if the spell is legendary" is
+`v.RemoveSupertype("Legendary")` with no condition of its own,
+because removing an absent supertype is a no-op.
+
+It is applied where the copy is CREATED, before anything is queued,
+rather than carried into the CR 707.10c re-target prompt: that
+continuation crosses a snapshot and a closure cannot, so what the
+frame carries is the already-edited card. The modification is
+therefore on the copy from the moment it exists, is what the copy's
+own copiable values say, and is still there on the token it becomes.
+
+### Decision 11. What travels with the token, and what does not (CR 707.2)
+
+The token is built from the copiable values and the Token supertype,
+so three things that arrived alongside this work stay out of
+`PrintedValues` on purpose:
+
+- **`StackItem.Foretold`** (#987) — how the spell was CAST.
+  `createSpellCopyLocked` builds the copy's meta field by field and
+  does not carry it, which is right: a copy is created, not cast, so
+  it was never cast from a foretold card.
+- **`Card.FaceDownKind`** (#987) — an exile status, not a permanent's.
+  It is not a `PrintedValues` field, so no copy and no token can be
+  born face down. CR 707.2's face-down clause is the PERMANENT case,
+  already handled by `printedCharacteristic`'s
+  [ADR 0069](0069-face-down-objects.md) early return, and
+  `FaceDownIsPermanent` is false for the exile kinds.
+- **`PaidCost.OptionalCosts`** (#988) — what was PAID. Not a
+  characteristic, and not on `PrintedValues`. But it does reach the
+  token, because CR 707.10b copies the choices made when casting and
+  CR 400.7d carries them onto the permanent: #988 puts them on the
+  copy's stack item, and `resolvePermanentSpellCopyLocked` stamps
+  `Card.PaidOptionalCosts` onto the template the way the ordinary
+  permanent branch stamps it onto the entering card. A Double Major on
+  a Wolfbriar Elemental kicked twice therefore makes a token that
+  creates its own two Wolves. Without the stamp the copy silently
+  makes none, which is the failure this decision exists to prevent.
+
+`spell_copy_token_test.go` pins all three, and
+`TestDoubleMajorsTokenCountsTheKicksTheCopyInherited` pins the third
+end to end.
+
+### Cards
+
+**Double Major**, Full. It is the first card in the catalog to copy a
+permanent spell at all.
+
+### Still not covered
+
+Copying an ABILITY (Lithoform Engine's other halves, Strionic
+Resonator) is a different shape and still open. A token copy of an
+AURA spell would enter attached to nothing and be put into the
+graveyard by CR 704.5m — correct by accident rather than by design,
+and no printed card in the catalog reaches it. X is not re-derived
+for the token: the copy's `XValue` reaches its `OnResolve`, but a
+creature whose printed P/T is defined by X has no characteristic-
+defining ability in this engine to read it back.

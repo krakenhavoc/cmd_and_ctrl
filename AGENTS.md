@@ -1244,12 +1244,13 @@ resolution-time effect that mints a new object, not a replacement of
 something's own entry.
 
 **Copying a SPELL is `CopySpell{StackID, Controller, Count,
-ChooseNewTargets}`** ([spell_copy.go](server/internal/cards/effects/spell_copy.go)),
-CR 707.10 — and `StackID` may be **this spell**, `ctx.Item.ID`. "That
-player may copy this spell and may choose a new target for that copy"
-(the Chain cycle) is a spell copying itself from inside its own
-resolution, which works because the engine keeps the resolving item's
-metadata reachable for the whole occurrence
+ChooseNewTargets, Except}`** ([spell_copy.go](server/internal/cards/effects/spell_copy.go)),
+CR 707.10 — Reverberate, Twincast, the Chain cycle, Double Major — and
+`StackID` may be **this spell**, `ctx.Item.ID`. "That player may copy
+this spell and may choose a new target for that copy" (the Chain
+cycle) is a spell copying itself from inside its own resolution, which
+works because the engine keeps the resolving item's metadata reachable
+for the whole occurrence
 ([resolving_item.go](server/internal/game/resolving_item.go), #920) —
 the item's `StackMeta` entry is deleted before `OnResolve` runs, and by
 the time the copy question is answered the spell is already in a
@@ -1257,6 +1258,25 @@ graveyard, so the copy is built from last-known information. Set
 `Controller` to the player the card says makes the copy (CR 707.10b);
 it is **not** the copied spell's controller, and on the Chain cycle
 that asymmetry is the card.
+
+`Except` is the copy's "except …" clause (CR 707.10a) and takes the
+same `*game.PrintedValues` an entering permanent's except clause does:
+Double Major's "except it isn't legendary if the spell is legendary"
+is `v.RemoveSupertype("Legendary")`, with no condition, because
+removing an absent supertype does nothing. It is applied where the
+copy is created, so the copy's characteristics are already edited when
+protection and the CR 707.10c re-target prompt read them.
+
+**A copy of a PERMANENT spell becomes a token as it resolves**
+(CR 608.3f, CR 111.13), through #923's one token-creation path, so a
+doubler doubles it, the creature's own enters abilities fire, and a
+bounce cannot turn it into a card. Nothing on the card declares that —
+a card that copies a creature spell needs no more than the target
+clause. What is NOT copiable, and must stay off `PrintedValues`: the
+costs paid (`PaidCost.OptionalCosts` — kicker rides the STACK ITEM
+under CR 707.10b, not the characteristics), and whether the spell was
+foretold (`StackItem.Foretold`, `Card.FaceDownKind`) — a copy was
+never cast. A copy of an ABILITY is still unbuilt.
 
 **Tests** — see
 [copy_effects_test.go](server/internal/cards/effects/copy_effects_test.go).

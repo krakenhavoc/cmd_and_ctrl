@@ -139,7 +139,7 @@ func TestASpellCopyRecordsNothing(t *testing.T) {
 	}
 
 	g.mu.Lock()
-	_ = g.CopySpellForEffect(item.ID, me.ID, false)
+	_ = g.CopySpellForEffect(item.ID, me.ID, false, nil)
 	var copyItem *StackItem
 	for id, it := range g.StackMeta {
 		if id != item.ID {

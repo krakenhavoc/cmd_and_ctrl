@@ -347,6 +347,31 @@ func (v *PrintedValues) GrantAbility(name string) {
 	v.GrantedAbilities = append(v.GrantedAbilities, key)
 }
 
+// MakeToken stamps the "Token" supertype on the copiable values —
+// what CR 111.13 and CR 608.3f ask for when a copy of a permanent
+// spell becomes a token as it resolves.
+//
+// "Token" is a supertype in this engine's parser (`isSupertype`) and
+// `Card.IsToken` is the printed type line, so this one edit is what
+// makes the object a token to the CR 704.5d existence check, the
+// bounce path and the client. It is PREPENDED rather than appended,
+// because that is how a token's type line is printed and how the
+// catalog's own `tokenTypeLine` builds one: "Token Legendary
+// Creature — Human Advisor". Idempotent, so a copy of a token stays
+// one Token, and it goes through setTypeLine so the multi-face
+// invariant survives (CR 707.10g — a copy of a double-faced
+// permanent spell is double-faced too).
+func (v *PrintedValues) MakeToken() {
+	supers, types, subs := ParseTypeLine(v.TypeLine)
+	for _, existing := range supers {
+		if existing == "Token" {
+			return
+		}
+	}
+	supers = append([]string{"Token"}, supers...)
+	v.setTypeLine(supers, types, subs)
+}
+
 // HasCardType reports whether the copied values carry card type `t`
 // (case-sensitive, Scryfall capitalisation). Card files branch on
 // it for the "if it's a creature / if it's a planeswalker" halves of
@@ -434,6 +459,19 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 		own := CopiableValuesOf(*c)
 		c.PrintedSelf = &own
 	}
+	c.setPrintedValues(v)
+	c.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
+	c.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
+}
+
+// setPrintedValues writes `v` into the flat printed fields and
+// nothing else — no PrintedSelf stash, no card-carried ability
+// slices. applyCopy is this plus the two things a PERMANENT copy
+// needs; the spell-copy path (spell_copy.go) uses it bare, because a
+// copy of a spell has no printed self to revert to (it is not a card
+// and never leaves the stack for a zone), and so does the token a
+// resolving copy of a permanent spell becomes (CR 608.3f).
+func (c *Card) setPrintedValues(v PrintedValues) {
 	v = v.Clone()
 	c.OracleID = v.OracleID
 	c.ScryfallID = v.ScryfallID
@@ -452,8 +490,6 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
-	c.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
-	c.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
 	// The printed baseline just changed underneath the layer
 	// engine's cache. Callers are on a battlefield-entry path that
 	// bumps layerVersion via the zone-move listener, but clearing
