@@ -1410,6 +1410,26 @@ adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
 
+**Triggers in other zones (#925, CR 113.6):** a trigger watches from
+the battlefield unless it says otherwise, and the ones that say
+otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,
+`WhenThisIsPutIntoYourGraveyardFromYourLibrary(...)` is Narcomoeba,
+`InExile(AtYourUpkeep(...))` is suspend's countdown (#659). The
+wrapper sets `game.TriggeredAbility.Zones`, which REPLACES the default
+rather than adding to it — an ability printed to work from the
+graveyard does not also fire from play, and that is the whole point:
+"return this card from your graveyard" off a permanent has nothing to
+return. "You" inside such a trigger is the card's **owner** (CR
+108.4), because a card outside the battlefield has no controller; the
+harvest stamps it, so `ByYou`, `Self` and `Landfall` all read as
+printed and the stack item goes to the owner. Only the graveyard and
+exile are walked — `effects.Register` panics at boot on any other
+zone, and `ZoneStack` is `FromStack` (cascade). The per-event cost of
+the battlefield walk is unchanged: `game.IndexTriggerZones` builds a
+per-event-kind index at `Register`
+([trigger_zones.go](server/internal/game/trigger_zones.go)), so an
+event kind nothing declares costs one map lookup and no walk.
+
 An effect that needs the item (targets, X, the source ID) or must
 capture something off the event is a closure with the `Effect`
 signature, exactly as before:

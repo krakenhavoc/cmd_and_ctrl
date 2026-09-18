@@ -192,6 +192,21 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Zones is WHERE this ability watches from (CR 113.6, #925). Nil
+	// — the answer for all but a handful of cards — means the
+	// battlefield, which is where abilities live. {ZoneGraveyard} is
+	// "when you cycle this card" (CR 702.29c) and Bloodghast's
+	// landfall; {ZoneExile} is suspend's upkeep countdown (CR
+	// 702.62b).
+	//
+	// A declared zone list IS the list: an ability that names the
+	// graveyard does not also fire from the battlefield. The same
+	// default and the same rule as ActivatedAbilityShape.Zones (ADR
+	// 0062 Decision 1) and CastableZones, read through TriggerZones /
+	// TriggerWatchesFromZone in trigger_zones.go, which is also where
+	// the per-zone index and the one extra harvest live.
+	Zones []ZoneKind
+
 	// Key names this ability for the OncePerBatch check: the stack
 	// label it announces with. The effects constructors stamp it from
 	// the label they are given; a hand-written ability may set it, or
@@ -309,6 +324,12 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// #623 / CR 114.3: an emblem's triggered abilities function in the
 	// command zone. One more zone into the same walk — see emblem.go.
 	g.harvestFromEmblemsLocked(&pass)
+	// #925: abilities that declared another zone (CR 113.6) — a
+	// graveyard card's "when you cycle this card", suspend's exile
+	// countdown. Indexed at Register, so an event kind nothing
+	// watches from another zone costs one map lookup and no walk.
+	// See trigger_zones.go.
+	g.harvestFromDeclaredZones(&pass)
 	// S28: "When you cast this spell, ..." — cascade. The source is
 	// the spell that was just announced, which is on the stack and
 	// invisible to the battlefield scan above. Narrow on purpose:
@@ -368,6 +389,11 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 		}
 		lki := source.Effective()
 		for _, t := range triggers {
+			// #925: an ability that declared another zone does not
+			// fire from the battlefield as well.
+			if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+				continue
+			}
 			if !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
@@ -566,6 +592,15 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 		})
 	}
 	for _, t := range triggers {
+		// #925: an LTB trigger is a BATTLEFIELD ability read off the
+		// permanent that just left (CR 603.10). An ability that
+		// declared the graveyard is a graveyard ability, and the
+		// declared-zone walk is the one that fires it — from the same
+		// card, one event later in the same harvest, without the
+		// battlefield LKI.
+		if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+			continue
+		}
 		if !triggerWatches(t.Watches, ev.Kind) {
 			continue
 		}

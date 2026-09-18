@@ -194,9 +194,23 @@ func Register(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q declares %d replacement effects — the ID scheme reserves %d slots per card (game.MaxCatalogReplacementSlots)",
 			spec.Name, n, game.MaxCatalogReplacementSlots))
 	}
+	// #925: a triggered ability may declare the zone it watches from
+	// (CR 113.6). A zone the harvest does not walk would be a
+	// declaration the engine silently ignored — the card would
+	// register, look complete on the catalog page, and never fire —
+	// so it fails at boot with the reason, exactly as an
+	// unclaimable alternative cost does above. An emblem's triggers
+	// are checked too: they are harvested from the command zone by
+	// their own walk (#623), so a Zones on one of them would be
+	// ignored just as silently.
+	checkTriggerZones(spec.Name, "trigger", spec.Triggered)
+	if spec.Emblem != nil {
+		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
+	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
 	registry[spec.OracleID] = spec
 	defs[spec.OracleID] = buildDef(spec)
+	game.IndexTriggerZones(spec.OracleID, spec.Triggered)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -205,6 +219,21 @@ func Register(spec Spec) {
 	// (CR 114.4). See emblem.go and ADR 0064.
 	if spec.Emblem != nil {
 		defs[game.EmblemKey(spec.OracleID)] = buildEmblemDef(*spec.Emblem)
+	}
+}
+
+// checkTriggerZones is #925's registration guard: every zone a
+// triggered ability declares has to be one the harvest actually
+// walks, or the ability is dead text the catalog page would still
+// call complete.
+func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
+	for i, t := range triggers {
+		for _, zone := range t.Zones {
+			if why := game.TriggerZoneUnsupported(zone); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q %s %d watches from %s — %s",
+					card, what, i, zone, why))
+			}
+		}
 	}
 }
 

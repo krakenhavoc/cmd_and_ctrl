@@ -189,6 +189,13 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 		}
 		lki := card.Effective()
 		for _, t := range triggers {
+			// #925: same rule the battlefield walk and harvestLTB
+			// apply — this pass is about permanents that were on the
+			// battlefield when the batch opened, so an ability that
+			// declared another zone is not one of them.
+			if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+				continue
+			}
 			if !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}

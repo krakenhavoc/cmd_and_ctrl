@@ -494,3 +494,15 @@ func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error 
 	}
 	return DestroyTarget{Target: item.Targets[0].ID, CantBeRegenerated: true}.Apply(ctx)
 }
+
+// returnThisCardFromYourGraveyard is the whole effect of a graveyard
+// trigger that brings its own card back — Bloodghast's landfall,
+// Narcomoeba's arrival (#925). The card is its own payload, so it
+// reads the ID off item.SourceCardID rather than out of a closure,
+// which is what lets both cards share one package-level func.
+func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
+	return ReturnFromGraveyard{
+		Target: item.SourceCardID,
+		Dest:   game.ZoneBattlefield,
+	}.Apply(NewContext(g, item))
+}
