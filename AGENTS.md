@@ -2385,11 +2385,22 @@ that does not (ADR 0018 §6). **Two:** a case in `choiceMoves`
 offered no answer *and* no pass — the #499 / #618 wedge that stopped
 real tables on Door of Destinies and Cavern of Souls.
 
+**Three (#902):** a row in `choiceReassignDecisions`
+(`server/internal/game/leave_game.go`) — when the seat that owes this
+prompt leaves the game, is the prompt **reassigned** to another player
+(CR 800.4g: an object's choice that is not a cost) or **dropped** (its
+own material, or a cost CR 800.4f says is simply not paid)? Deny by
+default here, the opposite way round from the gate: an unclassified kind
+is dropped, which is the pre-#902 behaviour and cannot wedge. The table
+and its reasoning are printed in the ADR 0060 amendment.
+
 `TestEveryChoiceKindIsClassifiedAndEnumerated`
 (`server/internal/legal/choice_gate_test.go`) reads the kind constants
-out of `internal/game` and fails until both are done, naming the kind
-and the file. If it goes red on a kind you just added, that is the
-gate working.
+out of `internal/game` and fails until the first two are done, naming
+the kind and the file; `TestEveryChoiceKindHasAReassignmentDecision`
+(`server/internal/game/leave_game_choices_test.go`) fails until the
+third is. If either goes red on a kind you just added, that is the gate
+working.
 
 ### The CR 726 loop breaker (#628)
 

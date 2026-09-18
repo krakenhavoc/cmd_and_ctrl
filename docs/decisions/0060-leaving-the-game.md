@@ -1,6 +1,11 @@
 # ADR 0060 — Leaving the game (CR 800.4): a departed player's objects leave with them
 
 **Status:** Accepted · 2026-09-18 · S36 — Tables that wedge: the engine's dead ends
+**Amended:** 2026-09-18 — the CR 800.4 remainder
+([#902](https://github.com/krakenhavoc/cmd_and_ctrl/issues/902)): reassigning
+a departed player's choice (800.4g/h), last known information (800.4i), and
+"until that player's next turn" (800.4m). See the amendment at the end of this
+file; Decision 8's "Still open" list is now empty.
 **Issue:** [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769)
 **Numbering:** on 2026-09-18, after `git fetch --all --prune`, every remote
 branch was listed with `git ls-tree docs/decisions/`. The highest number
@@ -199,7 +204,9 @@ declared simplification: the departed active player's turn ends at once
 rather than continuing without an active player), **800.4k** (their turns
 are skipped).
 
-Still open, and deliberately not folded in here:
+Still open, and deliberately not folded in here — **all three closed on
+2026-09-18 by the amendment at the end of this file (#902); the list
+below is what this ADR shipped with:**
 
 - **800.4g/h — a choice owed by a departed player on somebody ELSE's
   object.** `cleanupStackForEliminatedLocked` drops every prompt whose
@@ -246,3 +253,277 @@ Still open, and deliberately not folded in here:
 - In a two-player game none of this is observable (Decision 5). Every test
   of CR 800.4a needs a four-seat table, which is a trap worth knowing about
   before writing the next one.
+
+---
+
+## Amendment — 2026-09-18: the CR 800.4 remainder (#902)
+
+**Status:** Accepted · 2026-09-18 · S36 — Tables that wedge: the engine's
+dead ends
+**Issue:** [#902](https://github.com/krakenhavoc/cmd_and_ctrl/issues/902)
+(split out of [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769))
+**Related:** [#864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/864) /
+PR #868 (`EventPendingChoiceDropped` — the wedge this replaces for one
+case and keeps for the rest),
+[ADR 0063](0063-durations-and-control.md) (`Player.TurnsBegun`, which is
+what makes 800.4m already true)
+
+This amendment closes the three items Decision 8 left open. Two of them
+were already true and needed a test and a sentence; one is new code.
+
+### Amendment 1 — CR 800.4g/h: a departed player's choice on somebody else's object is reassigned
+
+**The rules, quoted, because the gap is in the detail:**
+
+> **800.4f** If an object requires a player who has left the game to pay
+> a cost or choose whether to pay a cost, that cost is not paid.
+>
+> **800.4g** If an object requires a player who has left the game to make
+> a choice other than whether to pay a cost, the controller of the object
+> chooses another player to make that choice. If the original choice was
+> to be made by an opponent of the controller of the object, that player
+> chooses another opponent if possible.
+>
+> **800.4h** If a rule requires a player who has left the game to make a
+> choice, the next player in turn order makes that choice.
+
+**The inheritor policy.** One function, `choiceInheritorLocked`
+(`leave_game.go`), and one walk: the seats in turn order starting after
+the seat that left.
+
+1. **The first surviving opponent of the object's controller inherits.**
+   That is 800.4g's *second* sentence, and it is the sentence that always
+   fires. A choice the controller themselves owed cannot reach the policy
+   at all: CR 800.4a would have taken the object out of the game along
+   with them, and the policy refuses a prompt whose object is gone.
+2. **The controller is the "if possible" fallback**, taken only when no
+   other opponent is still in the game — 800.4g's first sentence, read
+   plainly: the controller chooses another player, and the only other
+   player left is themselves.
+3. **Nobody left ⇒ dropped**, with `EventPendingChoiceDropped`, exactly
+   as before this amendment.
+
+The engine does **not** prompt the controller to nominate somebody,
+which is what 800.4g literally describes. Turn order from the departed
+seat is the deterministic stand-in, for the reason every other "choose a
+player" default here is APNAP: four bots have to reach the same answer
+four humans would, and a prompt to decide who answers a prompt is a
+second place the table can wedge.
+
+**CR 800.4h reassigns nothing today**, and that is a statement about the
+engine rather than about the rule. Every rule-required prompt it has —
+the legend rule, a cleanup discard, a mulligan — is a choice about the
+asked player's own permanents or hand, so all of them are already in the
+never-reassign table below for the *material* reason.
+
+**Three gates, in order** (`reassignDepartedChoiceLocked`):
+
+1. **The kind** — the table below.
+2. **The object** — the prompt's `Source` must still be findable in a
+   zone and controlled by a player still in the game. 800.4g reassigns a
+   choice an *object* requires, so there has to still be one.
+3. **The material** — a prompt whose `FromPlayer` is the departed chooser
+   themselves is about their own pool, which CR 800.4a took out of the
+   game a moment ago. Every answer is a no-op, so it is dropped.
+   `FromPlayer` is already the engine's name for whose material a prompt
+   is about; protocol's `redactChoiceCards` reads the same field for the
+   same meaning.
+
+**Torment of Hailfire is the worked example of gate 3.** "Each opponent
+loses 3 life unless that player sacrifices a nonland permanent of their
+choice or discards a card" is an `option_pick` addressed to each
+opponent, and read literally 800.4g would hand a departed opponent's
+copy to another opponent. Every branch of it acts on the player who
+left — their life, their permanents, their hand — and all three are gone
+under 800.4a, so the reassignment would be a question with no answer
+that does anything. It is dropped. The *kind* stays reassignable,
+because the second half of a Fact or Fiction pile split is the same kind
+over a living player's cards; the discriminator is the material, not the
+card.
+
+#### The never-reassign table
+
+Every `PendingChoiceKind`, with the reason. Enforced by one predicate
+(`choiceReassignDecisions` + `reassignDepartedChoiceLocked`) and by
+`TestEveryChoiceKindHasAReassignmentDecision`, which fails until a new
+kind has a row — the same mechanism `choiceGateDecisions` uses, with the
+opposite default: **an unclassified kind is dropped**, which is the
+pre-#902 behaviour and is safe.
+
+| Kind | Reassigned? | Why |
+|---|---|---|
+| `pick_target` | **yes** | CR 800.4g — a CR 603.3d target pick over the whole board. |
+| `trigger_prompt` | **yes** | CR 800.4g — a CR 603.5 "you may" pointed at another seat (`TriggerOptionalPrompt.Chooser`; Edric, Spymaster of Trest). |
+| `choose_cards` | **yes** | CR 800.4g — a pile split's first half, over cards the splitter does not own. |
+| `discard_from_hand` | **yes** | CR 800.4g — Thoughtseize-shaped, chooser ≠ the hand. |
+| `option_pick` | **yes** | CR 800.4g — a pile split's second half. Torment's own-material ask is stopped by gate 3. |
+| `pay_unless` | no | CR 800.4f — that cost is not paid. |
+| `entry_pay_life` | no | CR 800.4f. |
+| `mana_pick` | no | The mana would enter a pool that left the game. |
+| `sacrifice_choice` | no | Their permanents left with them (800.4a). |
+| `legend_rule` | no | Their permanents. |
+| `scry` / `surveil` / `look_at_top` / `search_library` | no | Their library left with them. |
+| `may_cast` | no | The offered card, and the free-cast permission, are theirs. |
+| `copy_target` | no | The copy is theirs. |
+| `choose_creature_type` / `choose_color` | no | CR 614.12-style choices about their own permanent or resolving effect. |
+| `damage_assignment` | no | The attacker was theirs. |
+| `trigger_order` | no | Their triggers are dropped (CR 800.4d). |
+| `mode_pick` | no | CR 800.4d — the trigger is not put on the stack at all, so there is no mode left to choose. |
+| `choose_protector` | no | CR 310.9, chosen as their battle enters. |
+| `coin_call` | no | The flip belongs to its flipper, whom the untouched frame names. |
+| `loop_shortcut` | no | CR 726 — the allowance is on their loop's tally key. |
+| `confirm` | no | The prompt carries no record of whose material it is about (see Consequences). |
+| `replacement_order` / `optional_replacement` | no | The CR 616 pair settles its own drop through `finishDroppedReplacementLocked` (#808). |
+
+#### What the reassignment does, and what it does not
+
+`reassignChoiceLocked` (`pending_choice.go`) is the only code that
+rewrites a queued `PendingChoice.Chooser`. It:
+
+- **prunes the candidates leaving with the old chooser** — a card they
+  own, or one already out of every zone, and the departed player as a
+  target. If that empties the question the prompt is **not** moved and
+  is dropped instead: handing a seat a prompt with no answers is the
+  #544 wedge. `ChooseMin` / `ChooseMax` / `Count` are clamped with the
+  list so every answer the enumerator offers is one the resolver takes;
+- **rewrites `Chooser`, which IS the re-redaction.** Redaction is
+  computed per viewer at VIEW time from `PendingChoiceView.Chooser` and
+  `.FromPlayer` (#918's `redactChoiceCards`), so the next snapshot
+  already shows the new chooser exactly what that seat may see of a pool
+  that is not theirs, and shows the departed seat nothing. There is no
+  stored redaction to re-run;
+- **emits `EventPendingChoiceReassigned`** — `Actor` the departed
+  chooser, `Target` the inheritor, `Source` the object, `Label` the kind
+  — the twin of #868's `EventPendingChoiceDropped`, so a stall dump says
+  where a prompt went rather than going quiet;
+- **leaves the continuation untouched.** Every resume frame is the rest
+  of the *card*, and the card did not change because the player
+  answering it did.
+
+**The enumerator and the client needed nothing.** `legal.choiceMoves`
+already keys on `PendingChoice.Chooser`, and so does the client's
+picker, so one field moving re-addresses the prompt for both. Pinned by
+`legal.TestReassignedPromptIsEnumeratedForItsNewChooser` (the inheritor
+is offered the prompt's answers and nothing else, and every one of them
+dispatches) and by
+`aiseat.TestConcedeMidPromptLeavesTheBotTablePlaying` (a bot table with
+a concede mid-prompt clears the inherited prompt and plays on).
+
+**Undo and the snapshot owe nothing new.** `Chooser`, the candidate
+lists and the bounds were already cloned and snapshotted, so an undo
+puts the prompt back in front of the player who left and a replayed
+departure moves it again.
+
+### Amendment 2 — CR 800.4i is true for a player's own information, and deviates for their board
+
+> **800.4i** If an effect requires information about a specific player,
+> the effect uses the current information about that player if they are
+> still in the game; otherwise, the effect uses the last known
+> information about that player before they left the game. …
+
+**Verified, no code.** A departed seat stays in `g.Seats` with
+`Eliminated` set and every scalar as it was — life total, poison,
+commander damage, energy — and nothing zeroes a conceding player's life.
+So every effect that reads a player through `PlayerByID` reads last
+known information by construction. The event log is append-only and
+`SpellsCastThisTurn` is keyed by player, so 800.4i's second sentence
+("the effect can find actions that were taken by a player who has left
+the game") holds too. Both are now pinned by tests rather than left to
+luck.
+
+**The deviation, stated so it is a decision.** The engine keeps a
+departed player's SCALARS and does **not** keep a pre-departure copy of
+their BOARD, because CR 800.4a removed it. So "the number of creatures
+that player controls", asked after they left, reads zero rather than
+what they had. Closing that means a per-player LKI snapshot taken at the
+moment of departure — a new field, a clone leg, a snapshot leg and a
+census row — and no card in the catalog asks the question. Out of scope,
+pinned by `TestDepartedPlayersObjectsAreGoneNotLastKnown` so a future
+change has to come here and say so.
+
+800.4i's third sentence — "actions taken during their *last turn*" can
+be found "only until that player's next turn after leaving the game
+would have begun" — has nothing to be true or false about: the engine
+has no effect that reads another player's last turn.
+
+### Amendment 3 — CR 800.4m is complete, by #921
+
+> **800.4m** When a player leaves the game, any continuous effects with
+> durations that last until that player's next turn or until a specific
+> point in that turn will last until that turn would have begun. They
+> neither expire immediately nor last indefinitely.
+
+**No code.** [ADR 0063](0063-durations-and-control.md) Decision 3 already
+made this true: `beginNextTurnLocked` bumps `Player.TurnsBegun` for a
+seat the rotation *steps over* because that player has left, and
+`UntilYourNextTurn` expires on `TurnsBegun >= ExpiresAtTurnsBegun`. So
+the effect ends when the departed player's turn *would* have begun —
+neither at the moment they leave nor never.
+
+Proven by `TestUntilYourNextTurnEndsWhenADepartedPlayersTurnWouldHaveBegun`
+(#921, four seats, the leaver at seat 2) and, added here for the boundary
+#921 did not cover, `TestUntilThatPlayersNextTurnWhenTheyLeaveOnTheirOwnTurn` — the effect is created during the departing player's *own* turn,
+that turn then ends early because its active player left (ADR 0059
+Decision 6), and the duration still waits a full round for the
+never-taken turn.
+
+The engine has no "until a specific point in that turn" duration, so
+that half of the rule has nothing to implement.
+
+### Consequences of this amendment
+
+**Good**
+
+- A prompt a living player's card pointed at a seat that then conceded
+  is answered by somebody instead of vanishing. The rule is enforced
+  rather than approximated, and the table still cannot wedge: every path
+  out of the departure sweep either moves the prompt to a seat that can
+  answer it or drops it with the event #868 added.
+- One reassignment function, one inheritor policy, one never-reassign
+  predicate, all rules-named. No card is special-cased and nothing reads
+  a card name.
+- The bots and the client inherited the behaviour for free, which is the
+  #794 property holding: the enumerator and the engine read the same
+  field for the same question.
+
+**Tradeoffs**
+
+- **`confirm` is never reassigned**, including the cross-table kind
+  (Combustible Gearhulk's question to its target). `QueueConfirmForEffect`
+  sets `FromPlayer` to the chooser unconditionally, so gate 3 cannot tell
+  a self-question from one asked across the table, and the safe answer is
+  the pre-#902 drop. Lifting it is one field — a `From` on
+  `ConfirmPrompt`, carried into the `PendingChoice` the way
+  `ChooseCardsPrompt.FromPlayer` already is — and deliberately not done
+  in the PR that decides the policy.
+- **`pick_target`, `trigger_prompt` and `discard_from_hand` are
+  classified reassignable but are not reachable from the harvester
+  today**, because `queuePickTargetLocked` and
+  `QueueDiscardFromRevealedHand` address the prompt to the object's own
+  controller and a controller who leaves takes the object with them. The
+  rows are decisions about the *rule*, kept so that a card addressing one
+  of those prompts across the table (#918 already allows it) does not
+  land on a silent wrong default. `trigger_prompt` *is* reachable, via
+  `TriggerOptionalPrompt.Chooser`, which is why it is the headline test.
+- **CR 800.4f's consequence is not run when a `pay_unless` is dropped.**
+  The rule says the cost is not paid, which should run the prompt's
+  "unless" branch — Rhystic Study still draws. Today the branch is
+  discarded with the prompt. It is a real gap, it is one rule away from
+  this one, and it is left out of scope on purpose: the fix is to run a
+  continuation from inside the elimination sweep, which is the class of
+  change #808 had to be careful about. See
+  `pending_choice.go`'s `payUnlessFrame`.
+
+### Decision 8's "Still open" list, updated
+
+- **800.4g/h** — done, Amendment 1.
+- **800.4i** — verified and tested, Amendment 2; one documented deviation
+  (a departed player's board is not kept as last known information).
+- **800.4m** — complete by #921 / ADR 0063 Decision 3, Amendment 3.
+- **800.4b** (an object that would change to a departed player's control
+  doesn't; no token is created), **800.4n** (the ante zone) and
+  **800.4p** (Planechase) remain unimplemented and unfiled. 800.4n and
+  800.4p are variants this sandbox does not play. 800.4b is partly true
+  by consequence — `QueueChoiceForEffect` refuses a departed chooser and
+  the trigger queue drops a departed controller's abilities — and has no
+  test of its own.
