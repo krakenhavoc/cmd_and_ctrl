@@ -33,6 +33,7 @@ const (
 	b31GemstoneMineOracle         = "0c828f10-4775-492f-9224-1e2814ad2cad"
 	b31FlagstonesOfTrokairOracle  = "f73979bb-91a5-4388-b70b-0cd7a4e14291"
 	b31WeaponsManufacturingOracle = "e48a8160-cffe-4e00-a3e9-a59d7fc7b3a2"
+	b31MagusOfTheMoonOracle       = "6800d01c-345d-4932-a2a4-8df0fb1902f2"
 	// Already on main from the S26 tribal work (tribal_lords.go).
 	b31GoblinKingAlreadyOracle = "d236b3fc-0d3f-4d99-875d-e32a33fe5767"
 )
@@ -114,10 +115,11 @@ func TestBatch31CardsAreRegistered(t *testing.T) {
 		b31GemstoneMineOracle:         "Gemstone Mine",
 		b31FlagstonesOfTrokairOracle:  "Flagstones of Trokair",
 		b31WeaponsManufacturingOracle: "Weapons Manufacturing",
+		b31MagusOfTheMoonOracle:       "Magus of the Moon",
 		b31GoblinKingAlreadyOracle:    "Goblin King",
 	}
-	if len(want) != 18 {
-		t.Fatalf("the batch registers 17 cards plus one already on main, the table lists %d", len(want))
+	if len(want) != 19 {
+		t.Fatalf("the batch registers 18 cards plus one already on main, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
