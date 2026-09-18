@@ -95,9 +95,10 @@ worked on 2026-09-18 against today's `develop`:
 | 40 | 59 | 33 | 56% |
 | 41 | 71 | 46 | 65% |
 | 42 | ~40 | 29 | ~72% |
-| **total** | **~294** | **179** | **~61%** |
+| 43 | 66 | 47 | 71% |
+| **total** | **~360** | **226** | **~63%** |
 
-**So roughly 60% of a "ready" card actually gets written, not the
+**So roughly 63% of a "ready" card actually gets written, not the
 umbrella's 86%.** Every miss but two was a *hidden second blocker*
 rather than a mechanic anyone thought was missing — cards whose real
 blocker is an unimplemented keyword (level up, prowess, ninjutsu,
@@ -109,7 +110,21 @@ Colossus (warp is implemented end to end, #324) and Decoction Module
 (energy is a real player counter already).
 
 Plan against ~60%, and expect the skip list to be as useful an output as
-the cards — it is what tells you which primitive to build next.
+the cards — it is what tells you which primitive to build next. Batch 43
+named three mechanics the detector set has no blocker tag for at all
+(`floating-triggers`, `constrained-mana-production`,
+`conditional-alternative-costs`), plus `attack-requirements`: CR 508.1d
+"attacks each combat if able" has no home, because `game.Restriction`
+carries prohibition bits only. Goblin Rabblemaster is a skip rather than
+a caveat for that reason — dropping a requirement removes a DRAWBACK,
+which is the #259 direction.
+
+**A batch worked after a mechanic lands is worth more than the same batch
+worked before it.** #937 (modal and multi-target clauses) merged while
+batch 43 was in flight and converted three planned skips into the
+catalog's first modal triggered ability, first multi-predicate trigger
+and first modal activated ability. Other batches holding cards filed
+under modal / multi-target are worth a re-look now.
 
 <!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
 
