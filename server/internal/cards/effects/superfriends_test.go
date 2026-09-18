@@ -126,37 +126,65 @@ func TestElspethMinusThreeSweepsBigCreaturesOnly(t *testing.T) {
 	_ = small
 }
 
-// TestElspethDeclaresItsOmittedUltimate pins the −7 as omitted AND
-// published. The two halves fail differently: an emblem stub would
-// grow the ability list, and a spec back at the zero Completeness
-// hides the omission from the catalog page, which is what #418
-// shipped.
-func TestElspethDeclaresItsOmittedUltimate(t *testing.T) {
+// TestElspethsUltimateIsWholeAndDeclaresItself replaces
+// TestElspethDeclaresItsOmittedUltimate, which pinned the −7 as
+// OMITTED from #621 until emblems landed (#623). Every assertion in
+// it has inverted: the card now declares three abilities, the third
+// is the −7, the emblem it makes is registered with both halves of
+// its printed text, and the catalog page publishes the card as whole
+// rather than caveated.
+//
+// The Caveats check is the half that would have failed silently:
+// effects.Register panics on Caveats without CompletenessCaveats, so
+// a stale caveat could not survive — but a caveat that became untrue
+// while the declaration stayed at CompletenessCaveats would.
+func TestElspethsUltimateIsWholeAndDeclaresItself(t *testing.T) {
 	spec, ok := Lookup(elspethSunsChampionOracle)
 	if !ok {
 		t.Fatal("Elspeth, Sun's Champion is not registered")
 	}
-	if len(spec.Activated) != 2 {
-		t.Fatalf("Elspeth declares %d abilities, want 2 (+1 and −3)", len(spec.Activated))
+	if len(spec.Activated) != 3 {
+		t.Fatalf("Elspeth declares %d abilities, want 3 (+1, −3 and −7)", len(spec.Activated))
 	}
+	var ultimate bool
 	for i, ab := range spec.Activated {
-		if ab.Cost.Loyalty == nil || *ab.Cost.Loyalty <= -7 {
-			t.Errorf("ability %d (%q) is not the +1 or the −3", i, ab.Label)
+		if ab.Cost.Loyalty == nil {
+			t.Errorf("ability %d (%q) has no loyalty cost", i, ab.Label)
+			continue
+		}
+		if *ab.Cost.Loyalty == -7 {
+			ultimate = true
 		}
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("Completeness = %v, want CompletenessCaveats", spec.Completeness)
+	if !ultimate {
+		t.Error("no −7 among Elspeth's abilities")
 	}
-	if len(spec.Caveats) == 0 {
-		t.Error("no caveat names the missing −7")
+	if spec.Emblem == nil {
+		t.Fatal("Elspeth declares no Emblem — the −7 has nothing to create")
+	}
+	if spec.Emblem.Label == "" || spec.Emblem.Text == "" {
+		t.Errorf("emblem is missing its label or text: %+v", *spec.Emblem)
+	}
+	// Two statics, because CR 613 applies the ability grant (layer 6)
+	// before the P/T modification (layer 7c) and one StaticAbility
+	// declares one layer.
+	if len(spec.Emblem.Static) != 2 {
+		t.Errorf("emblem declares %d statics, want 2 (+2/+2 and flying)", len(spec.Emblem.Static))
+	}
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %v, want CompletenessFull", spec.Completeness)
+	}
+	if len(spec.Caveats) != 0 {
+		t.Errorf("Elspeth still lists caveats: %v", spec.Caveats)
 	}
 }
 
 // TestEveryPlaneswalkerDeclaresItsCompleteness is the catalog-wide
-// form of the test above. Omitting an ultimate is the ordinary shape
-// of a planeswalker here (ADR 0032), so a spec with a loyalty ability
-// left at CompletenessUnreviewed is almost certainly an omission the
-// catalog page is not telling anyone about.
+// guard. Omitting an ultimate is still an ordinary shape for a
+// planeswalker here (ADR 0032) — Wrenn and Six's −7 waits on retrace
+// and #652 even now that emblems exist — so a spec with a loyalty
+// ability left at CompletenessUnreviewed is almost certainly an
+// omission the catalog page is not telling anyone about.
 func TestEveryPlaneswalkerDeclaresItsCompleteness(t *testing.T) {
 	for _, spec := range All() {
 		for _, ab := range spec.Activated {

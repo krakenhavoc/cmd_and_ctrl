@@ -12,36 +12,53 @@ import (
 //	 −7: You get an emblem with 'Creatures you control get +2/+2 and
 //	     have flying.'"
 //
-// Both of the abilities anybody activates are wired in full. The
-// ultimate is NOT REGISTERED, and that is a deliberate omission
-// rather than a stub: emblems have no shape in the engine — they are
-// an object in no zone with a continuous effect and no permanent to
-// hang it on — and an ability whose label promised an emblem and
-// delivered a loyalty payment would be a worse lie than an ability
-// that isn't offered. The loyalty still accrues past 7; the day
-// emblems land, this card gains one entry and nothing else changes.
+// COMPLETE since S40 (#623). The −7 was the catalog's first emblem and
+// the worked example for ADR 0064: the whole card-side declaration is
+// an `Emblem` slot holding two ordinary `game.StaticAbility` values —
+// layer 7c for the +2/+2, layer 6 for the flying — and an ability
+// whose Effect is `CreateEmblem{}`, which names nothing because the
+// emblem it makes is this card's. The emblem object then reaches the
+// layer pass through the same source gather a Glorious Anthem does.
+//
+// The two statics are separate because the layers are: CR 613 applies
+// ability grants (6) before power/toughness modifications (7c), and
+// one StaticAbility declares one layer. This is the same split
+// Craterhoof Behemoth's file describes.
 //
 // The −3 reads CurrentPower, so it catches a 2/2 wearing +1/+1
 // counters and an anthem, and spares a 6/6 that something shrank.
 // That is the printed card: "power 4 or greater" is the power it has
 // when the ability resolves.
 //
-// Declared CompletenessCaveats, not left at the zero value. #418
-// shipped the card without a declaration, so the catalog page
-// published it as "unreviewed" while the omission above sat in this
-// comment where no player reads it — the only planeswalker in the
-// catalog in that state. Wrenn and Six and Teferi, Hero of Dominaria
-// omit their emblem ultimates the same way and say so in Caveats.
+// History: #418 shipped this card with no `Completeness` declaration,
+// so the catalog page published it as "unreviewed" while the omitted
+// ultimate sat in a comment where no player reads it; #621 declared it
+// `caveats`. Both are now moot — the card is whole.
 func init() {
 	Register(Spec{
 		OracleID:     "05e6b243-48a6-4a42-bc5f-413441de9c33",
 		Name:         "Elspeth, Sun's Champion",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The -7 ultimate isn't offered — emblems don't exist yet."},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
 		StartingLoyalty: 4,
+		Emblem: &EmblemSpec{
+			Label: "Elspeth, Sun's Champion emblem",
+			Text:  "Creatures you control get +2/+2 and have flying.",
+			Static: []game.StaticAbility{
+				{
+					Layer:     game.Layer7PT,
+					SubLayer:  game.SubLayer7C_Modify,
+					AppliesTo: creaturesTheEmblemsOwnerControls,
+					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+						c.Power += 2
+						c.Toughness += 2
+					},
+				},
+				KeywordGrant(creaturesTheEmblemsOwnerControls, "flying"),
+			},
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Create three 1/1 white Soldier creature tokens.",
@@ -77,6 +94,22 @@ func init() {
 					return nil
 				},
 			},
+			{
+				Label: "−7: You get an emblem with \"Creatures you control get +2/+2 and have flying.\"",
+				Cost:  LoyaltyCost(-7),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateEmblem{}.Apply(NewContext(g, item))
+				},
+			},
 		},
 	})
+}
+
+// creaturesTheEmblemsOwnerControls is "creatures you control" read
+// from an emblem: the emblem's controller is its owner (CR 114.5) and
+// never changes, so this is the same predicate an anthem uses with the
+// same meaning. Shared by the emblem's two statics so the layer-6 half
+// and the layer-7c half can never drift apart.
+func creaturesTheEmblemsOwnerControls(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return target.IsCreature() && target.Controller == source.Controller
 }
