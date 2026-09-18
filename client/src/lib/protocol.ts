@@ -799,6 +799,20 @@ export interface StackItemView {
   // ability created by a trigger-doubling permanent.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #761: what paid for this spell — how many mana, and the distinct
+  // COLOURS among them in WUBRG order (colourless is not a colour, so
+  // it never appears here even though it counts in mana_spent). Mana
+  // is spent face up, so this is public, and a responder to a
+  // converge spell needs to see how wide it converged.
+  //
+  // mana_spent_unknown means the cast went through permissive mode or
+  // a strict-mode override: the engine never took the mana and has no
+  // record of what it was. Render that as unknown, never as zero —
+  // "nothing was spent" is a different and much stronger claim, and
+  // the one Vexing Bauble punishes.
+  mana_spent?: number;
+  colors_spent?: string[];
+  mana_spent_unknown?: boolean;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a

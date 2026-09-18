@@ -93,8 +93,51 @@ func (p ManaPool) CanPay(cost ParsedCost, xValue int) bool {
 // comment described an intent the code never had — every token
 // compared equal because nothing ever set Restrictions.
 func (p ManaPool) CanPayFor(cost ParsedCost, xValue int, ctx ManaSpendContext) bool {
-	_, ok := p.attemptSpend(cost, xValue, ctx)
+	_, _, ok := p.attemptSpend(cost, xValue, ctx, SpendPreserveColors)
 	return ok
+}
+
+// ManaSpendStrategy chooses HOW the solver pays the generic half of a
+// cost when it has a choice (#761). It never changes WHETHER a cost is
+// payable: the coloured-requirement pass is identical under both
+// strategies, and the generic pass walks every colour bucket either
+// way — only the order within it differs. A solver whose preferences
+// could make a payable cost unpayable is one nobody can reason about.
+type ManaSpendStrategy uint8
+
+const (
+	// SpendPreserveColors is the default and the behaviour every
+	// payment had before #761: colourless first, then W U B R G, so
+	// the coloured mana survives for the next spell. It is the right
+	// instinct for almost every cast.
+	SpendPreserveColors ManaSpendStrategy = iota
+
+	// SpendDistinctColors pays the generic half with a colour it has
+	// not spent yet whenever it can. Converge (CR 702.86) and
+	// sunburst (CR 702.44) count the COLOURS spent, so the ordinary
+	// instinct is exactly backwards for them: a Painful Truths paid
+	// out of a five-colour pool should spend five colours, not three
+	// colourless and a Swamp.
+	//
+	// Chosen by the SPELL — effects.Spec.WantsDistinctColors, read
+	// through CatalogWantsDistinctColors — and not by the player, so
+	// CR 601.2h's "the player chooses which mana to spend" is still
+	// the engine choosing well rather than a prompt.
+	SpendDistinctColors
+)
+
+// SpendManaForWith is SpendManaFor with an explicit strategy, and
+// returns the tokens it spent (#761). The tokens are the record every
+// converge, sunburst and adamant card reads; they are returned rather
+// than stamped anywhere here, because the pool does not know what it
+// is paying for.
+func (p *ManaPool) SpendManaForWith(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) ([]ManaToken, bool) {
+	remaining, spent, ok := p.attemptSpend(cost, xValue, ctx, strategy)
+	if !ok {
+		return nil, false
+	}
+	*p = remaining
+	return spent, true
 }
 
 // SpendMana attempts to deduct `cost` from the pool using only
@@ -106,26 +149,34 @@ func (p ManaPool) CanPayFor(cost ParsedCost, xValue int, ctx ManaSpendContext) b
 //
 // Prefer SpendManaFor — same reasoning as CanPay vs CanPayFor.
 func (p *ManaPool) SpendMana(cost ParsedCost, xValue int) bool {
-	return p.SpendManaFor(cost, xValue, ManaSpendContext{})
+	_, ok := p.SpendManaFor(cost, xValue, ManaSpendContext{})
+	return ok
 }
 
 // SpendManaFor is SpendMana with a spend context. Pair it with the
 // CanPayFor that gated the payment: calling CanPayFor with one
 // context and SpendManaFor with another would let a restricted token
 // pay for something it was checked against differently.
-func (p *ManaPool) SpendManaFor(cost ParsedCost, xValue int, ctx ManaSpendContext) bool {
-	remaining, ok := p.attemptSpend(cost, xValue, ctx)
-	if !ok {
-		return false
-	}
-	*p = remaining
-	return true
+//
+// Since #761 it returns the TOKENS it spent alongside the bool. The
+// pool is where that fact exists and nowhere else — a moment later the
+// tokens are gone and the Treasure that made one may be in a graveyard
+// — so every payment path records what it gets back on the
+// announcement's PaidCost.
+func (p *ManaPool) SpendManaFor(cost ParsedCost, xValue int, ctx ManaSpendContext) ([]ManaToken, bool) {
+	return p.SpendManaForWith(cost, xValue, ctx, SpendPreserveColors)
 }
 
 // attemptSpend is the shared core of CanPayFor + SpendManaFor.
-// Returns (remaining-pool, true) on success, (nil, false) on failure.
-// Operates on a copy so the caller's slice is never aliased.
-func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext) (ManaPool, bool) {
+// Returns (remaining-pool, spent-tokens, true) on success, (nil, nil,
+// false) on failure. Operates on a copy so the caller's slice is
+// never aliased.
+//
+// #761: the SPENT half is the point of the second return value. The
+// pool is the only place the fact exists — a moment later the tokens
+// are gone — and converge, sunburst, adamant and "if no mana was
+// spent" all read it off the announcement's PaidCost.
+func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (ManaPool, []ManaToken, bool) {
 	// Copy so we can mark spends without disturbing the caller.
 	work := make(ManaPool, len(p))
 	copy(work, p)
@@ -143,6 +194,11 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// two). Pick the first available token whose color matches.
 	// Phyrexian / numeric-alt requirements pay the color half in
 	// S15 (life self-pay is S17).
+	//
+	// UNTOUCHED by the spend strategy (#761), deliberately: this is
+	// the pass that decides whether a cost can be paid at all, and a
+	// colour preference that could steer it into a dead end would
+	// make payability depend on what the spell happens to read.
 	for _, req := range cost.Required {
 		idx := -1
 		for _, i := range order {
@@ -155,17 +211,42 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 			}
 		}
 		if idx < 0 {
-			return nil, false
+			return nil, nil, false
 		}
 		used[idx] = true
 	}
 
 	// Step 2 — generic requirement. Total = explicit Generic +
-	// XSlots * xValue. Take colorless first (Sol Ring output, snow
-	// generics) to preserve colored for the next cast; then drop
-	// colored mana onto the rest.
+	// XSlots * xValue. The COLOUR ORDER is the strategy's one job:
+	// colourless first to preserve colored for the next cast, or —
+	// for a converge / sunburst spell — a colour this payment has
+	// not spent yet, because those cards count colours rather than
+	// mana. Every bucket is walked either way, so the answer to
+	// "payable?" is the same under both.
 	need := cost.Generic + cost.XSlots*xValue
-	if need > 0 {
+	if need > 0 && strategy == SpendDistinctColors {
+		// One token at a time, because the question is about the SET
+		// of colours: a bucket loop that emptied {W} before touching
+		// {U} would pay a two-generic cost out of two Plains and
+		// converge for one.
+		spentColors := make(map[string]bool, 5)
+		for i, tok := range work {
+			if used[i] && isColorSymbol(tok.Color) {
+				spentColors[tok.Color] = true
+			}
+		}
+		for need > 0 {
+			idx := pickDistinctColor(work, used, order, spentColors)
+			if idx < 0 {
+				return nil, nil, false
+			}
+			used[idx] = true
+			if isColorSymbol(work[idx].Color) {
+				spentColors[work[idx].Color] = true
+			}
+			need--
+		}
+	} else if need > 0 {
 		for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
 			if need == 0 {
 				break
@@ -185,7 +266,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 			}
 		}
 		if need > 0 {
-			return nil, false
+			return nil, nil, false
 		}
 	}
 
@@ -194,16 +275,65 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// and survive here, which is what has to happen: refusing to
 	// spend restricted mana on this cast must not delete it.
 	out := make(ManaPool, 0, len(work))
+	var spent []ManaToken
 	for i, tok := range work {
 		if used[i] {
+			spent = append(spent, tok)
 			continue
 		}
 		out = append(out, tok)
 	}
 	if len(out) == 0 {
-		return nil, true
+		return nil, spent, true
 	}
-	return out, true
+	return out, spent, true
+}
+
+// pickDistinctColor chooses the next token to pay one generic mana
+// under SpendDistinctColors (#761), or -1 when nothing spendable is
+// left. Three tiers, in order:
+//
+//  1. a COLOUR this payment has not spent yet — the whole point;
+//  2. colourless, which never widens the count and is the cheapest
+//     thing to give up;
+//  3. a colour already spent, which is the ordinary "any mana will
+//     do" case.
+//
+// Within a tier it walks `order`, the restriction-first sequence
+// every other pass uses, so the pick is deterministic and a
+// restricted token is still burned before an unrestricted one.
+//
+// It always returns a token when one is available, in every tier, so
+// this strategy can never fail a payment the default would have made:
+// generic mana accepts any colour, so payability is a question of
+// COUNT and nothing else.
+func pickDistinctColor(work ManaPool, used []bool, order []int, spentColors map[string]bool) int {
+	fresh, colorless, repeat := -1, -1, -1
+	for _, i := range order {
+		if used[i] {
+			continue
+		}
+		switch {
+		case isColorSymbol(work[i].Color) && !spentColors[work[i].Color]:
+			if fresh < 0 {
+				fresh = i
+			}
+		case work[i].Color == "C":
+			if colorless < 0 {
+				colorless = i
+			}
+		default:
+			if repeat < 0 {
+				repeat = i
+			}
+		}
+	}
+	for _, idx := range []int{fresh, colorless, repeat} {
+		if idx >= 0 {
+			return idx
+		}
+	}
+	return -1
 }
 
 // spendOrder returns the indices of the tokens in `pool` that `ctx`
@@ -311,6 +441,28 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 		need--
 	}
 	return missing
+}
+
+// manaSpentEvent builds the EventManaSpent breadcrumb for a payment
+// (#761). Before this the event carried an Actor and a Source and
+// nothing about the mana — so the log said "mana was spent", which is
+// the one thing everybody watching already knew. It now carries the
+// amount and the distinct colours, in WUBRG order, which is what a
+// player watching a converge spell resolve actually wants to see.
+//
+// An empty payment still emits: "this cast cost nothing" is a fact,
+// and a reader that had to infer it from a missing event would be
+// making exactly the "no record means nothing was spent" mistake
+// PaidCost.OnPaper exists to prevent.
+func manaSpentEvent(actor, source uuid.UUID, spent []ManaToken) Event {
+	rec := PaidCost{Mana: spent}
+	return Event{
+		Kind:   EventManaSpent,
+		Actor:  actor,
+		Source: source,
+		Amount: len(spent),
+		Colors: rec.ColorsSpent(),
+	}
 }
 
 // emptyAllManaPoolsLocked clears every seated player's mana pool

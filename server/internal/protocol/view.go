@@ -630,6 +630,24 @@ type StackItemView struct {
 	// effect caused this additional trigger (CR 603.2d).
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+
+	// ManaSpent / ColorsSpent are what paid for this spell (#761):
+	// how many mana, and the distinct COLOURS among them in WUBRG
+	// order. Public information — mana is spent face up — and
+	// load-bearing for the table: a responder looking at a converge
+	// spell on the stack needs to see how wide it converged before
+	// deciding whether to answer it.
+	//
+	// ManaSpentUnknown is PaidCost.OnPaper: the cast went through
+	// permissive mode or a strict-mode override, so the engine did
+	// not take the mana and has no record of what it was. The client
+	// greys the pill rather than rendering "0 mana", which would be
+	// a claim nobody made. Absent on an ability item and on a copy
+	// (CR 707.10 — nothing was spent to cast a copy, and that zero
+	// is real).
+	ManaSpent        int      `json:"mana_spent,omitempty"`
+	ColorsSpent      []string `json:"colors_spent,omitempty"`
+	ManaSpentUnknown bool     `json:"mana_spent_unknown,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -2619,6 +2637,11 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		SplitSecond:  it.SplitSecond,
 		AltCost:      it.AltCost,
 		IsCopy:       it.IsCopy,
+		// #761: what paid for it. Mana is spent face up, so this is
+		// public, and a responder to a converge spell needs it.
+		ManaSpent:        it.Paid.ManaSpentCount(),
+		ColorsSpent:      it.Paid.ColorsSpent(),
+		ManaSpentUnknown: !it.Paid.Known(),
 	}
 	if it.DoubledBy != uuid.Nil {
 		view.DoubledBy = it.DoubledBy.String()

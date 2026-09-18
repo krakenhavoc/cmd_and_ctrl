@@ -425,6 +425,31 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// WantsDistinctColors declares a spell that READS the colours of
+	// the mana that paid for it: converge (CR 702.86 — Painful
+	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
+	// Oracle). Nothing else in the game does (#761).
+	//
+	// What it changes is the PAYMENT, not the effect: the cast gate
+	// pays the generic half of the cost with colours it has not spent
+	// yet instead of the usual colourless-first order, so a Painful
+	// Truths cast out of a five-colour pool converges for five rather
+	// than for two. The effect itself reads ctx.ColorsSpent() and
+	// does not care how the mana got there.
+	//
+	// A DECLARATION rather than something inferred from the oracle
+	// text, for the reason DerivesFromOtherSources is one: a text
+	// scan quietly stops matching when a card words the clause
+	// differently, and a converge spell that counts one colour fails
+	// silently.
+	//
+	// Adamant (CR 207.2c — "at least three red mana") deliberately
+	// does NOT set it. Spreading colours is the opposite of what
+	// adamant wants, and concentrating them is a different strategy
+	// again; the honest answer for now is that adamant reads what the
+	// player happened to spend.
+	WantsDistinctColors bool
+
 	// AdditionalLandPlays declares the printed static "you may play
 	// an additional land on each of your turns" — 1 for Exploration,
 	// 2 for Azusa, Lost but Seeking. Counted while the permanent is

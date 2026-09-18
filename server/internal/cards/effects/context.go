@@ -70,6 +70,78 @@ func (c *Context) X() int {
 	return c.Item.XValue
 }
 
+// Paid is what the announcement that put this item on the stack
+// actually cost (#789 / #761): the mana tokens that left the pool,
+// the counters removed or added, the life paid — and whether the
+// engine charged at all (PaidCost.OnPaper).
+//
+// The accessors below are the readable half; this is here for a card
+// that needs more than one fact about the payment.
+func (c *Context) Paid() game.PaidCost {
+	if c.Item == nil {
+		return game.PaidCost{}
+	}
+	return c.Item.Paid
+}
+
+// CountersRemoved is how many counters the ability's cost removed —
+// "for each counter removed this way". A fact about the ANNOUNCEMENT,
+// read back the way X is: the counters are off the board by
+// resolution, so nothing here could recompute it. Added in #789.
+func (c *Context) CountersRemoved() int {
+	return c.Paid().CountersRemoved
+}
+
+// ManaSpent is the tokens that paid for this spell, in the order the
+// solver spent them. Empty for an ability item, for a copy (CR
+// 707.10) and for a payment the engine waived — use ManaSpentKnown
+// to tell the last case apart. Added in #761.
+func (c *Context) ManaSpent() []game.ManaToken {
+	return c.Paid().ManaSpent()
+}
+
+// ColorsSpent is the distinct COLOURS of mana spent to cast this
+// spell, in WUBRG order — converge's X (CR 702.86) and sunburst's
+// counter count (CR 702.44). Colourless is not a colour, so {C} never
+// appears. Empty when the payment was not recorded, which is the
+// weaker-than-printed answer. Added in #761.
+func (c *Context) ColorsSpent() []string {
+	return c.Paid().ColorsSpent()
+}
+
+// ColorsSpentCount is len(ColorsSpent) — the number converge and
+// sunburst actually want. Added in #761.
+func (c *Context) ColorsSpentCount() int {
+	return c.Paid().ColorsSpentCount()
+}
+
+// ManaSpentOfColor is how many mana of one colour paid for this
+// spell: adamant's "if at least three red mana was spent to cast
+// this spell" is ManaSpentOfColor("R") >= 3. Added in #761.
+func (c *Context) ManaSpentOfColor(color string) int {
+	return c.Paid().SpentOfColor(color)
+}
+
+// NoManaSpent reports "if no mana was spent to cast it" (Vexing
+// Bauble, Satoru, the Infiltrator).
+//
+// True only when the engine KNOWS nothing was spent — a free cast, a
+// {0} alternative cost, a copy of a spell. A payment the engine
+// waived (permissive mode, ForceCast) answers false: the player paid
+// something we did not see, and a punisher that fired on it would
+// counter half the spells cast at a permissive table. Added in #761.
+func (c *Context) NoManaSpent() bool {
+	return c.Paid().NoManaSpent()
+}
+
+// ManaSpentKnown reports whether the mana half of the record is a
+// fact rather than a waived charge. For a card that wants to say
+// "unknown" out loud instead of folding it into the weaker answer.
+// Added in #761.
+func (c *Context) ManaSpentKnown() bool {
+	return c.Paid().Known()
+}
+
 // Opponents returns the IDs of every seated, non-eliminated player
 // other than the current item's controller, in seat order. "Each
 // opponent" effects (Exsanguinate) iterate this. Added in S20

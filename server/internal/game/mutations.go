@@ -962,7 +962,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// an EventCostWarning and proceeds without touching the pool
 	// (sandbox posture — paper tracking remains valid). A cost the
 	// parser can't read rejects in every mode (#289).
-	if err := g.applyCastCostLocked(p, card, params, cardID); err != nil {
+	paid, err := g.applyCastCostLocked(p, card, params, cardID)
+	if err != nil {
 		return err
 	}
 	// Non-land: route through the stack. The card lives in
@@ -1003,7 +1004,13 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		SplitSecond:  params.SplitSecond,
 		AltCost:      params.AlternativeCost,
 		CastFromZone: src.Kind,
-		Seq:          g.nextStackSeqLocked(),
+		// #761: the mana that actually paid, or the fact that the
+		// engine waived the charge. Stamped here for the reason
+		// XValue is: by resolution the tokens are gone from the pool
+		// and the Treasure that made one may be in a graveyard, so
+		// nothing downstream could recompute it.
+		Paid: paid,
+		Seq:  g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
 		// #764: and the ModeSpec, so a per-mode target group can be
@@ -1127,7 +1134,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 // paying: CastSpell refuses that earlier with ErrNoManaCost (CR
 // 118.6). An UNPARSEABLE cost rejects the cast outright, before any
 // of the three outcomes above. Caller must hold g.mu.
-func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) error {
+func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) (PaidCost, error) {
+	var paid PaidCost
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
 		// #289: this used to return nil, silently making the card
@@ -1148,7 +1156,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
-		return fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
+		return paid, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
@@ -1158,8 +1166,9 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// mana-gate failure.
 	cost, phyrexianLife, err := g.validatePhyrexianLifeLocked(p, card, cost, params)
 	if err != nil {
-		return err
+		return paid, err
 	}
+	paid.LifePaid = phyrexianLife
 	if !params.Strict || params.ForceCast {
 		// Permissive default OR strict-mode override. Don't touch
 		// the pool; just emit a warning so the client can render
@@ -1173,7 +1182,14 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 			Actor:  p.ID,
 			Source: cardID,
 		})
-		return g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife)
+		// #761: the engine did not charge, so it has no record of
+		// WHAT was paid — and says so, rather than leaving an empty
+		// record that reads as "nothing was spent". Every reader
+		// treats OnPaper as the weaker-than-printed answer: a Vexing
+		// Bauble does not counter this spell, and a converge spell
+		// counts no colours.
+		paid.OnPaper = true
+		return paid, g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife)
 	}
 	// S32 (#352): the spend context is what lets restricted mana pay
 	// — and what stops it paying for the wrong thing. Ancient
@@ -1181,7 +1197,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// a Lightning Bolt.
 	spendCtx := ManaSpendForCast(card)
 	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
+		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// CR 601.2h pays every component together, so the order here is
 	// an engine-safety choice, not a rules one: the FALLIBLE half
@@ -1193,16 +1209,39 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// under mustSettleNow reaches a mana pool, so the CanPayFor above
 	// still holds when SpendManaFor runs.
 	if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
-		return err
+		return paid, err
 	}
 	// Payable under strict mode — commit the spend.
-	p.ManaPool.SpendManaFor(cost, params.XValue, spendCtx)
-	g.EmitEvent(Event{
-		Kind:   EventManaSpent,
-		Actor:  p.ID,
-		Source: cardID,
-	})
-	return nil
+	//
+	// #761: which tokens pay is the spell's business when it reads
+	// them back. A converge or sunburst card declares
+	// WantsDistinctColors and the solver spreads the generic half
+	// across colours it has not spent; everything else keeps the
+	// colourless-first order that saves coloured mana for the next
+	// cast. The strategy can never change whether the cost is
+	// payable — see attemptSpend.
+	spent, _ := p.ManaPool.SpendManaForWith(cost, params.XValue, spendCtx, spendStrategyForCast(card))
+	paid.Mana = spent
+	g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+	return paid, nil
+}
+
+// spendStrategyForCast asks the catalog whether this spell reads the
+// colours that paid for it (#761). Converge (CR 702.86) and sunburst
+// (CR 702.44) do; everything else keeps the default order.
+//
+// A DECLARATION on the spec rather than something inferred from the
+// oracle text, for the reason DerivesFromOtherSources is one: the
+// alternative is a text scan that quietly stops matching when a card
+// words the clause differently.
+func spendStrategyForCast(card Card) ManaSpendStrategy {
+	if CatalogWantsDistinctColors == nil {
+		return SpendPreserveColors
+	}
+	if CatalogWantsDistinctColors(CatalogKey(card)) {
+		return SpendDistinctColors
+	}
+	return SpendPreserveColors
 }
 
 // applyAutoTapLocked plans + executes the S15 sub-PR 5 auto-tap
@@ -4228,10 +4267,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// Same context the validation above used. Spending under a
 		// different context than the check would let a restricted
 		// token pay for something it was never cleared for.
-		if !p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card)) {
+		spent, ok := p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card))
+		if !ok {
 			return &InsufficientManaError{Missing: []string{ab.ManaCost}}
 		}
-		g.EmitEvent(Event{Kind: EventManaSpent, Actor: playerID, Source: cardID})
+		paid.Mana = spent
+		g.EmitEvent(manaSpentEvent(playerID, cardID, spent))
 	}
 	if ab.TapCost {
 		card.Tapped = true

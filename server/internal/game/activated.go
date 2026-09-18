@@ -628,9 +628,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if ab.Cost.Tap {
 			excluded = map[uuid.UUID]bool{cardID: true}
 		}
-		if err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded); err != nil {
+		spent, err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded)
+		if err != nil {
 			return err
 		}
+		paid.Mana = spent.Mana
+		paid.OnPaper = spent.OnPaper
 	}
 	if ab.Cost.Tap {
 		source.Tapped = true
@@ -892,10 +895,17 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // `spendCtx` describes the ability's SOURCE permanent, which is what
 // a restricted token is matched against when the restriction says
 // "activate abilities of …" (#352).
-func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) error {
+// It returns the PaidCost's mana half (#761): the tokens that left
+// the pool, or OnPaper when permissive mode waived the charge. An
+// ability item records the same fact a spell does, so a "for each
+// colour of mana spent" ability would read it the same way — and
+// Jeweled Amulet's "spend this mana only to cast" rider will, when
+// the rider half lands.
+func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
+	var paid PaidCost
 	cost, err := ParseCost(costStr)
 	if err != nil {
-		return ErrInvalidParam
+		return paid, ErrInvalidParam
 	}
 	// The announced X multiplies into the generic demand exactly as
 	// it does for a cast: cost.Generic + cost.XSlots*x. Treasure
@@ -908,21 +918,28 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr s
 				Actor:  p.ID,
 				Source: sourceID,
 			})
-			return nil
+			// #761: the charge was waived, and the record says so
+			// rather than reading as "nothing was spent".
+			paid.OnPaper = true
+			return paid, nil
 		}
-		p.ManaPool.SpendManaFor(cost, x, spendCtx)
-		return nil
+		spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
+		paid.Mana = spent
+		g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
+		return paid, nil
 	}
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		plan, ok := g.autoTapLocked(p.ID, cost, x, excluded)
 		if !ok {
-			return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
+			return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanLocked(p, plan, cost)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
-		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
+		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 	}
-	p.ManaPool.SpendManaFor(cost, x, spendCtx)
-	return nil
+	spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
+	paid.Mana = spent
+	g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
+	return paid, nil
 }

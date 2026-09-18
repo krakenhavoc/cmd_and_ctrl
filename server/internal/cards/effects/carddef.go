@@ -39,6 +39,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapStepRestrictions: spec.UntapStepRestrictions,
 		CantBeCountered:       spec.CantBeCountered,
 		NoMaxHandSize:         spec.NoMaxHandSize,
+		WantsDistinctColors:   spec.WantsDistinctColors,
 		AdditionalLandPlays:   spec.AdditionalLandPlays,
 		XMatters:              spec.XMatters,
 	}
