@@ -389,6 +389,8 @@
         hand={seat.hand}
         {isSelf}
         onPlayCard={isSelf ? onPlayCard : undefined}
+        onActivateAbility={isSelf ? onActivateAbility : undefined}
+        {sorcerySpeedBlocked}
         snap={view}
         {viewerID}
       />

@@ -25,12 +25,27 @@
     options: CardView[];
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
+    // #660: how many cards and what the clause says, for a payment
+    // whose count does not live on `additional_cost`. An activated
+    // ability's "Discard a creature card" (Fauna Shaman) is the same
+    // question one cost site over, so it opens this modal with the
+    // count and label from `discard_cost_n` / `discard_cost_label`
+    // rather than growing a second picker.
+    need?: number;
+    label?: string;
   }
 
-  const { card, options, onConfirm, onCancel }: Props = $props();
+  const {
+    card,
+    options,
+    onConfirm,
+    onCancel,
+    need: needOverride,
+    label: labelOverride,
+  }: Props = $props();
 
-  const need = $derived(card?.additional_cost?.discard_cards ?? 0);
-  const label = $derived(card?.additional_cost?.label ?? "Discard a card");
+  const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
+  const label = $derived(labelOverride ?? card?.additional_cost?.label ?? "Discard a card");
 
   let chosen = $state<string[]>([]);
 

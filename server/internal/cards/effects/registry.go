@@ -174,6 +174,35 @@ func Register(spec Spec) {
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther)
+		// #660: a discard clause that discards nothing would make
+		// the ability free, the way a zero-counter cost would.
+		if dc := ab.Cost.DiscardCards; dc != nil && dc.N <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q ability %d discards %d cards — a discard cost discards at least one",
+				spec.Name, i, dc.N))
+		}
+		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
+		// somewhere other than the battlefield has no permanent to
+		// tap, sacrifice, crew or put loyalty counters on. Such a
+		// cost could never be paid, so it fails at boot naming the
+		// component rather than as a mysteriously-refused activation
+		// mid-game — the treatment MinX-without-{X} already gets.
+		for _, z := range ab.Zones {
+			if z == game.ZoneBattlefield {
+				continue
+			}
+			if why := game.AbilityNeedsPermanentSource(ab.Cost); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q ability %d functions from the %s but declares %s — that component needs a permanent on the battlefield",
+					spec.Name, i, z, why))
+			}
+		}
+		// DiscardSelf is cycling's component (CR 702.29a) and it
+		// discards the source, so the source has to be a card in a
+		// hand. A battlefield ability that declared it would have
+		// nothing to discard.
+		if ab.Cost.DiscardSelf && !zoneDeclared(ab.Zones, game.ZoneHand) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d declares a discard-this cost but does not function from the hand — build it with Cycling / Typecycling",
+				spec.Name, i))
+		}
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))

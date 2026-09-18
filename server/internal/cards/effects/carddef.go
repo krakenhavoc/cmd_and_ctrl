@@ -83,6 +83,8 @@ func buildDef(spec Spec) *game.CardDef {
 				Targets:      a.Targets,
 				Modes:        a.Modes,
 				SorcerySpeed: a.SorcerySpeed,
+				Zones:        a.Zones,
+				Cycling:      a.Cycling,
 				Condition:    a.Condition,
 				ActiveWhen:   a.ActiveWhen,
 				Effect:       a.Effect,

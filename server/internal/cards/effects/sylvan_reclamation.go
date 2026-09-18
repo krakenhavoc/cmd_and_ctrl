@@ -8,14 +8,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Basic landcycling {2}"
 //
 // S20 sub-PR 5's "up to N" card: Min 0, so it can be cast with no
-// targets at all (and then does nothing). Basic landcycling isn't
-// modelled, so the card is castable only. It is an activated ability
-// from hand (typecycling, CR 702.29e), not a cast, and waits on a
-// discard cost and activation from hand (#660).
+// targets at all (and then does nothing).
+//
+// Basic landcycling arrived with #660. Typecycling (CR 702.29e) is a
+// cycling ability whose effect searches instead of drawing: "{2},
+// Discard this card: Search your library for a basic land card,
+// reveal it, put it into your hand, then shuffle." It is an activated
+// ability from hand, not a cast, and it is a cycling ability — so a
+// "whenever you cycle a card" watcher on the battlefield sees it.
 func init() {
 	Register(Spec{
-		OracleID: "aeec8e85-6571-4da6-8a48-f5d3985ca10b",
-		Name:     "Sylvan Reclamation",
+		OracleID:     "aeec8e85-6571-4da6-8a48-f5d3985ca10b",
+		Name:         "Sylvan Reclamation",
+		Completeness: CompletenessFull,
 		Targets: TargetPermanent("up to two target artifacts and/or enchantments",
 			Or(Artifact(), Enchantment())).WithCount(0, 2),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
@@ -26,5 +31,6 @@ func init() {
 			}
 			return nil
 		},
+		Activated: []ActivatedAbility{BasicLandcycling("{2}")},
 	})
 }

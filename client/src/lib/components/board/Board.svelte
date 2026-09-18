@@ -676,6 +676,10 @@
         ability_index: state.ability.index,
         sacrifice_ids: state.ability.sacrificeIDs,
         crew_ids: state.ability.crewIDs,
+        // #660: the discard picks were made at announce, before the
+        // targeting step, and ride the one activate_ability with the
+        // rest of the cost.
+        discard_ids: abilityDiscardIDs,
         ...state.ability.counter,
         targets,
       };
@@ -684,6 +688,7 @@
       // these targets, and sent in the same message.
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
+      abilityDiscardIDs = [];
       sendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
@@ -768,9 +773,66 @@
     sacrificeIDs?: string[];
   } | null>(null);
 
+  // #660: the "Discard a creature card" component of an activated
+  // ability's cost (CR 602.2b), and cycling's "Discard this card",
+  // which needs no picker at all. Carried on the side rather than
+  // threaded through every hop of the announce chain, which already
+  // takes five arguments.
+  let abilityDiscardPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityDiscardIDs: string[] = [];
+
+  // The cards the clause admits, resolved out of the seat's hand. The
+  // server already filtered them — a cost does not target, so nothing
+  // narrows them further here.
+  const abilityDiscardOptions = $derived.by(() => {
+    const p = abilityDiscardPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.discard_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  // #660: a card in hand projects its abilities on `hand_abilities`
+  // and a permanent on `activated_abilities` — never both, because
+  // the server filters by the zone the card is in (CR 113.6). One
+  // lookup reads whichever is there; `index` means the same thing on
+  // the wire either way.
+  function abilitiesOf(card: CardView): ActivatedAbilityView[] {
+    return card.activated_abilities ?? card.hand_abilities ?? [];
+  }
+
   function handleActivateAbility(card: CardView, index: number): void {
-    const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
+    const ability = abilitiesOf(card).find((a) => a.index === index);
     if (!ability) return;
+    // #660: the discard payment is asked FIRST, as the cast flow asks
+    // its own — it is the cost most likely to make a player back out.
+    // Skipped when the hand holds exactly the cards the clause
+    // demands: a modal with one possible answer is a worse version of
+    // no modal.
+    if (ability.discard_cost_n) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > ability.discard_cost_n) {
+        abilityDiscardPrompt = { card, ability };
+        return;
+      }
+      afterAbilityDiscardCost(card, ability, options);
+      return;
+    }
+    afterAbilityDiscardCost(card, ability, []);
+  }
+
+  // afterAbilityDiscardCost is the rest of the announce chain with the
+  // discard picks in hand: the sacrifice picker, the crew picker, the
+  // counter cost, then X and targeting.
+  function afterAbilityDiscardCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    discardIDs: string[],
+  ): void {
+    abilityDiscardIDs = discardIDs;
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -780,6 +842,13 @@
       return;
     }
     askCounterCost(card, ability, [], []);
+  }
+
+  function confirmAbilityDiscardCost(ids: string[]): void {
+    const p = abilityDiscardPrompt;
+    abilityDiscardPrompt = null;
+    if (!p) return;
+    afterAbilityDiscardCost(p.card, p.ability, ids);
   }
 
   function askCounterCost(
@@ -994,12 +1063,14 @@
       ability_index: ability.index,
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
+      discard_ids: abilityDiscardIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
     // #916: omitted at 0, which is the server default.
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
+    abilityDiscardIDs = [];
     sendAction("activate_ability", params, viewerID ?? undefined);
   }
 
@@ -1318,6 +1389,19 @@
     onCancel={() => {
       discardPromptCard = null;
       discardPromptChoices = {};
+    }}
+  />
+  <!-- #660: the same picker, one cost site over — an activated
+       ability's "Discard a creature card" (CR 602.2b). -->
+  <DiscardCostModal
+    card={abilityDiscardPrompt?.card ?? null}
+    options={abilityDiscardOptions}
+    need={abilityDiscardPrompt?.ability.discard_cost_n}
+    label={abilityDiscardPrompt?.ability.discard_cost_label}
+    onConfirm={confirmAbilityDiscardCost}
+    onCancel={() => {
+      abilityDiscardPrompt = null;
+      abilityDiscardIDs = [];
     }}
   />
   <SacrificeCostModal

@@ -96,6 +96,24 @@ var canonicalKeywords = map[string]bool{
 	"shadow":            true,
 	"horsemanship":      true,
 	"skulk":             true,
+	// cycling (CR 702.29) joins with #660, in the same change that
+	// teaches the engine to honour it: a cycling ability is a real
+	// CR 602 activation from hand now (effects.Cycling,
+	// ActivatedAbilityShape.Zones), and cycling a card emits
+	// EventCycle. Unlike the combat keywords above it has no
+	// consumer IN the engine's rules paths — the ability is on the
+	// card, not in a table — so the token's job is the badge and
+	// the ADR 0037 coverage signal, which is exactly what it was
+	// being withheld for.
+	//
+	// Typecycling's printed keywords ("basic landcycling",
+	// "plainscycling", "slivercycling") are separate Scryfall tokens
+	// and stay OUT. They are one per creature type and one per land
+	// type — dozens of strings for a badge that would say less than
+	// the cycling row the hand card now shows — and the one card
+	// that prints one today (Sylvan Reclamation) is an instant,
+	// which has no badge row at all.
+	"cycling": true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

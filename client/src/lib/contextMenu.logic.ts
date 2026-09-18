@@ -524,7 +524,12 @@ function abilityItems(card: CardView, view: GameView, viewerID: string | null): 
       activate: { kind: "mana", index: a.index },
     });
   }
-  for (const a of card.activated_abilities ?? []) {
+  // #660: a card projects EITHER the battlefield list or the hand
+  // list, never both — the server filters by the zone the card is in
+  // (CR 113.6) — so one loop covers a permanent's abilities and a
+  // hand card's cycling, and the index means the same thing to the
+  // engine either way.
+  for (const a of card.activated_abilities ?? card.hand_abilities ?? []) {
     const blocked = restricted || abilityBlocked(a, tapped, sick, loyalty);
     items.push({
       id: `ability-${a.index}`,

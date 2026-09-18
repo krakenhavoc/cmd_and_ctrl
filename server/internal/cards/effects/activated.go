@@ -133,8 +133,46 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.MinX != 0 {
 			out.MinX = c.MinX
 		}
+		// #660: without these two a composed "{2}, Discard this card"
+		// silently loses its discard and cycling becomes a free draw
+		// — the same failure mode the counter component above had.
+		if c.DiscardSelf {
+			out.DiscardSelf = true
+		}
+		if c.DiscardCards != nil {
+			out.DiscardCards = c.DiscardCards
+		}
 	}
 	return out
+}
+
+// DiscardThis is cycling's "Discard this card" cost component
+// (CR 702.29a). It only means anything on an ability that functions
+// from the hand, and Register refuses it anywhere else — build the
+// ability with Cycling / Typecycling rather than composing this by
+// hand.
+func DiscardThis() game.AbilityCost { return game.AbilityCost{DiscardSelf: true} }
+
+// DiscardACard is "Discard a card" as a cost — Cryptbreaker's
+// "{1}{B}, {T}, Discard a card:". The activator picks from hand at
+// announce (CR 602.2b).
+func DiscardACard() game.AbilityCost {
+	return DiscardN(1, "a card")
+}
+
+// DiscardCardsMatching is "Discard a <kind> card" — Fauna Shaman's
+// "{G}, {T}, Discard a creature card:", Survival of the Fittest's
+// "{G}, Discard a creature card:", Tortured Existence's "{B},
+// Discard a creature card:". The label is the clause as printed,
+// without the verb; the client shows it in the picker.
+func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: n, Label: label, Match: match}}
+}
+
+// DiscardN is "Discard N cards" with no restriction on which —
+// DiscardN(2, "two cards").
+func DiscardN(n int, label string) game.AbilityCost {
+	return DiscardCardsMatching(n, label, nil)
 }
 
 // sacrificeSpec builds the "what may I sacrifice" clause. It reuses

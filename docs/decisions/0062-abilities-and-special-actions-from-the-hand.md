@@ -19,7 +19,7 @@ FROM), [ADR 0048](0048-cost-modification.md) (cost modification, #873),
 [ADR 0018](0018-triggers-on-the-stack.md) (triggers and the harvester),
 [ADR 0037](0037-unimplemented-card-signal.md) (the keyword table and the
 coverage signal), and #799 / #853 (`server/internal/game/discard.go`, the
-ONE discard path and its `discardCauseCost`).
+ONE discard path and its `DiscardCauseCost`).
 **Implements:** cycling and typecycling (CR 702.29) on
 [#660](https://github.com/krakenhavoc/cmd_and_ctrl/issues/660).
 **Designs, does not implement:** foretell
@@ -199,7 +199,7 @@ target anyway (CR 601.2h). `func(Card) bool` is the shape
 over.
 
 **One discard helper.** Both components pay through
-`discardCardsLocked(..., discardOptions{cause: discardCauseCost, source: …})`
+`discardCardsLocked(..., discardOptions{cause: DiscardCauseCost, source: …})`
 — the one discard path from #799, with the cause #856 gave it. Nothing
 in this ADR writes a second discard loop, and that buys three things for
 free:
@@ -210,7 +210,7 @@ free:
 - The discard goes through `routeCardToZoneLocked`, so the CR 614
   replacement window runs over it (#853) and a future madness (#657) or
   Library of Leng sees a cost discard as a discard.
-- `discardCauseCost` sets `zoneRoute.MustSettleNow`, which is what makes
+- `DiscardCauseCost` sets `zoneRoute.MustSettleNow`, which is what makes
   Decision 3 true.
 
 **Order of payment.** The discard components are paid LAST — after the
@@ -240,7 +240,7 @@ omission.
 
 CR 602.2b activates an ability in one indivisible step. The engine has
 one place where that is expressed, and it is a bit on the event rather
-than a policy in the cost code: `discardCauseCost` →
+than a policy in the cost code: `DiscardCauseCost` →
 `zoneRoute.MustSettleNow`. The CR 614 window still runs, so a
 replacement effect still SEES the discard; it settles without asking, so
 the payment cannot stop halfway with an ability half-announced.
