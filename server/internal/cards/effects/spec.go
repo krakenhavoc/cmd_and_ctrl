@@ -425,6 +425,27 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// AdditionalLandPlays declares the printed static "you may play
+	// an additional land on each of your turns" — 1 for Exploration,
+	// 2 for Azusa, Lost but Seeking. Counted while the permanent is
+	// on the battlefield; its controller's land-play allowance rises
+	// by this much (CR 305.2).
+	//
+	// Deliberately NOT a `Static` entry, for exactly the reasons
+	// NoMaxHandSize above is not: it modifies a PLAYER, not an
+	// object, so the CR 613 layer engine has no characteristic for
+	// it and no layer for it to sit at. The engine DERIVES it
+	// instead — game.Game.EffectiveLandDropsLocked sums this over the
+	// permanents a player controls, through the
+	// game.CatalogAdditionalLandPlays hook — so two Explorations
+	// compose and one of them leaving does not take the other's
+	// grant with it.
+	//
+	// Added by #500, which made the land-drop limit enforceable at
+	// all. No card sets it yet; Exploration and Azusa are now a
+	// one-line Spec each rather than an engine change.
+	AdditionalLandPlays int
+
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding
 	// Clock, Drumbellower, Bender's Waterskin, and the second half

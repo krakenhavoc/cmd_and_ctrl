@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0059 turn machinery) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0060 leaving the game) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -1538,6 +1538,19 @@ list; it will always run exactly once, and "the batch stalled" is not
 one of the things that can happen to it. See
 [ADR 0013 §5j](docs/decisions/0013-replacement-effects.md).
 
+**A player who leaves takes their objects with them (#769, CR 800.4a).**
+Conceding or losing removes every card that player OWNS from every zone —
+battlefield, command zone, hand, library, graveyard, exile and the stack —
+ends the control effects they were the source of, and exiles anything of
+somebody else's they were still controlling. It is not a zone change: no
+`EventZoneMove`, no `EventLTB`, no dies trigger. So an effect that stashed
+an instance ID and looks it up later must handle `LookupCardForEffect`
+returning `ok == false`, and a "for each creature you control" predicate
+must not assume a player named earlier in the same resolution still has a
+board. The one exception is the departure that ENDS the game, which keeps
+the final board on purpose. See
+[ADR 0060](docs/decisions/0060-leaving-the-game.md).
+
 **And EVERY battlefield exit clears it, not just a destruction
 (#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup
 (`clearBattlefieldDamage`, permanent_damage.go), so a creature that is
@@ -2014,6 +2027,28 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Adding a `PendingChoiceKind` (#730, #794)
+
+A new prompt kind owes two answers, and neither has a compiler behind
+it. **One:** does an unanswered prompt of this kind stop the table?
+Say so with a row in `choiceGateDecisions`
+(`server/internal/game/choice_gate.go`), whose exported reader
+`game.ChoiceBlocksTable(kind)` is the *only* predicate in the tree for
+that question — the gated verbs ask it and so does `internal/legal`,
+which is what keeps the bots and the engine from disagreeing the way
+they did for the whole life of the allowlist (#794). Deny by default:
+an unclassified kind blocks, and `pay_unless` is still the one kind
+that does not (ADR 0018 §6). **Two:** a case in `choiceMoves`
+(`server/internal/legal/choices.go`), or every seat owing one is
+offered no answer *and* no pass — the #499 / #618 wedge that stopped
+real tables on Door of Destinies and Cavern of Souls.
+
+`TestEveryChoiceKindIsClassifiedAndEnumerated`
+(`server/internal/legal/choice_gate_test.go`) reads the kind constants
+out of `internal/game` and fails until both are done, naming the kind
+and the file. If it goes red on a kind you just added, that is the
+gate working.
+
 ### The CR 726 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
@@ -2053,10 +2088,20 @@ Three things to know if you touch priority, prompts or the tally:
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.
 
-The CR 726 shortcut prompt ("resolve it K more times and stop?") and
-CR 726.4's draw are not built. A new `PendingChoiceKind` would need a
-case in `internal/legal/choices.go` first — see the choice-gate note
-above and #618.
+**The shortcut prompt (#804).** Raising the notice also asks the
+repeating ability's controller "resolve it K more times, then stop?" —
+`PendingChoiceLoopShortcut`, answered with a number. The answer is an
+allowance on the tally (`TurnTally.LoopAllowance[key]`), spent one per
+resolution; while it lasts the notice is down, so the client and the
+bots pass normally with no code of their own, and the K-th resolution
+raises the notice again and re-asks. `K = 0` is "stop here" and leaves
+the table paused where the breaker put it. Two things to know if you
+touch it: answering is a player decision, so the run is cleared and
+`grantLoopShortcutLocked` puts *this key's* run back where the notice
+found it — without that re-arm, "3 more" would mean 3 + the threshold;
+and this prompt **blocks the table**, which the notice deliberately does
+not, so `notePlayerDecisionLocked` withdraws a stale one rather than
+leaving a wedge. CR 726.4's draw is still not built.
 
 ### Untapping in another player's untap step (#74)
 

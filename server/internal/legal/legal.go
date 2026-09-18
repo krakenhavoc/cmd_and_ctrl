@@ -272,14 +272,19 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 	}
 
 	// Pending choices come first and, when one is owed by this seat,
-	// they are the ONLY moves: the engine refuses pass_priority while
-	// any choice is open (the client mirrors this in canPassPriority),
-	// and a cast while a damage-assignment prompt is up is not a
-	// decision anyone should be offered.
+	// they are the ONLY moves: the engine refuses pass_priority while a
+	// blocking choice is open (the client mirrors this in
+	// canPassPriority), and a cast while a damage-assignment prompt is
+	// up is not a decision anyone should be offered. A seat owing a
+	// NON-blocking prompt — a Rhystic tax — is still asked it first:
+	// the question is already in front of them, and answering it is one
+	// dispatch, after which the next window offers everything else.
 	if e.choiceMoves() {
 		return e.out
 	}
-	if anyChoiceOpen(g) {
+	// Somebody else's prompt. Only a blocking one empties this seat's
+	// list, because only a blocking one stops the table (#794).
+	if anyBlockingChoiceOpen(g) {
 		return e.out
 	}
 	// Cleanup-step discard (CR 514.1): the cursor parks at Cleanup with
@@ -377,9 +382,22 @@ func sorcerySpeedOpen(g *game.Game, seat uuid.UUID) bool {
 	return isMainPhase(g) && stackEmpty(g) && isActiveSeat(g, seat)
 }
 
-func anyChoiceOpen(g *game.Game) bool {
+// anyBlockingChoiceOpen reports whether a prompt that stops the whole
+// table is outstanding — the enumerator's half of the engine's choice
+// gate, asking the engine's own predicate rather than keeping a list.
+//
+// #794. This used to be `anyChoiceOpen`, true for ANY entry in the
+// queue, and it was stricter than the engine it was mirroring:
+// `blockingChoiceLocked` lets the table play on through a `pay_unless`
+// (ADR 0018 §6 — a Rhystic tax is a different player's question, asked
+// after the trigger has already resolved), and this said nobody may do
+// anything. A bot seat therefore idled until a human answered the tax,
+// which is the opposite of what the ADR decided and of what a human at
+// the same table may do. Both sides now read game.ChoiceBlocksTable, so
+// they cannot disagree again.
+func anyBlockingChoiceOpen(g *game.Game) bool {
 	for _, c := range g.PendingChoices {
-		if c != nil {
+		if c != nil && game.ChoiceBlocksTable(c.Kind) {
 			return true
 		}
 	}

@@ -1115,6 +1115,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// []) on a surveil and must not send it on a scry.
 			// Added in S22.
 			Graveyard []string `json:"graveyard"`
+			// Iterations answers a PendingChoiceLoopShortcut (#804,
+			// CR 726): how many more times the loop's controller
+			// wants the repeating ability to resolve before the
+			// engine asks again. Zero — the field's own zero value —
+			// is "stop here", which is why this branch is routed by
+			// the choice's KIND and not by the field's presence.
+			Iterations int `json:"iterations"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1125,6 +1132,13 @@ func Dispatch(g *game.Game, a Action) error {
 		}
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceCoinCall {
 			return g.ResolveCoinCall(choiceID, a.Player, p.Call)
+		}
+		// #804, CR 726: "resolve it K more times, then stop?" Routed by
+		// kind like the coin call above, because its whole payload is
+		// an integer whose most meaningful value is zero — there is no
+		// presence to route on.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
+			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to

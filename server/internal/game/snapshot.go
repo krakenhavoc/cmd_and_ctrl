@@ -154,6 +154,7 @@ type GameSnapshot struct {
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
+	ExtraLandDropsThisTurn   map[uuid.UUID]int         `json:"extraLandDropsThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
@@ -265,7 +266,12 @@ type playerSnapshot struct {
 	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
 	Counters           map[string]int    `json:"counters,omitempty"`
 	MaxHandSize        int               `json:"maxHandSize"`
-	ManaPool           ManaPool          `json:"manaPool,omitempty"`
+	// LandDropsPerTurn is the player's base land-play allowance
+	// (#500). Absent from every pre-#500 snapshot, which would
+	// restore as 0 — "may never play a land" — so restorePlayer maps
+	// a non-positive value back to DefaultLandDropsPerTurn.
+	LandDropsPerTurn int      `json:"landDropsPerTurn,omitempty"`
+	ManaPool         ManaPool `json:"manaPool,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -442,6 +448,12 @@ type pendingChoiceSnapshot struct {
 	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
 	ChooseMin            int                    `json:"chooseMin,omitempty"`
 	ChooseMax            int                    `json:"chooseMax,omitempty"`
+	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// to, how many resolutions had happened when it was asked, and
+	// whether this is the turn's second ask.
+	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
+	LoopShortcutCount  int    `json:"loopShortcutCount,omitempty"`
+	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -677,6 +689,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
+	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
@@ -877,6 +890,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderCasts:     copyIntMap(p.CommanderCasts),
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -1014,6 +1028,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -1166,6 +1183,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
+	g.ExtraLandDropsThisTurn = copyIntMap(s.ExtraLandDropsThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)
 
@@ -1364,6 +1382,15 @@ func restorePlayer(p *playerSnapshot) *Player {
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
+	}
+	// #500: a snapshot written before the field existed carries no
+	// value for it, and restoring 0 would seat a player who may never
+	// play a land again. Nothing in the catalog sets an allowance of
+	// zero, so a non-positive restored value is an old snapshot and
+	// means the default.
+	if out.LandDropsPerTurn <= 0 {
+		out.LandDropsPerTurn = DefaultLandDropsPerTurn
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.
@@ -1477,6 +1504,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

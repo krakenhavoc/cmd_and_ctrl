@@ -220,6 +220,18 @@ type Player struct {
 	// will write to it via the S16 layer pipeline. Added in S13.4.
 	MaxHandSize int
 
+	// LandDropsPerTurn is the player's BASE land-play allowance
+	// (CR 305.2). DefaultLandDropsPerTurn (1) on every freshly seated
+	// player. Permanents that grant additional land plays are NOT
+	// written here — they are derived from the battlefield, so two of
+	// them compose and one leaving doesn't strand the other's grant;
+	// see land_drops.go. Added in #500.
+	//
+	// A pre-#500 snapshot has no value for this, and 0 would restore
+	// a table where nobody may ever play a land, so restorePlayer
+	// treats a non-positive restored value as the default.
+	LandDropsPerTurn int
+
 	// ManaPool holds the player's currently-floating mana tokens.
 	// Slice (not multiset) to preserve insertion order for the S15
 	// auto-tapper preview + S17+ filter-land sub-payment routing.
@@ -234,13 +246,14 @@ type Player struct {
 func newPlayer(name string, seat int) *Player {
 	id := uuid.New()
 	p := &Player{
-		ID:              id,
-		Name:            name,
-		Seat:            seat,
-		Life:            StartingLife,
-		CommanderDamage: make(map[uuid.UUID]int),
-		CommanderCasts:  make(map[uuid.UUID]int),
-		MaxHandSize:     DefaultMaxHandSize,
+		ID:               id,
+		Name:             name,
+		Seat:             seat,
+		Life:             StartingLife,
+		CommanderDamage:  make(map[uuid.UUID]int),
+		CommanderCasts:   make(map[uuid.UUID]int),
+		MaxHandSize:      DefaultMaxHandSize,
+		LandDropsPerTurn: DefaultLandDropsPerTurn,
 	}
 	p.Library = newZone(ZoneLibrary, id)
 	p.Hand = newZone(ZoneHand, id)

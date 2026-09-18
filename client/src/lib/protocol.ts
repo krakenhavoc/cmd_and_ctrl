@@ -185,9 +185,12 @@ export interface GameView {
   // game UI. Added in S08.
   mulligans_open: boolean;
   // Player ID of the current monarch (Conspiracy mechanic). Empty /
-  // omitted when no monarch is set. Sandbox marker; the must-attack
-  // and combat-damage transfer rules are not enforced server-side.
-  // Added in S10.
+  // omitted when no monarch is set. Since #375 the server enforces
+  // CR 724.2 itself — the monarch's end-step draw, and the transfer
+  // to whoever deals combat damage to them — so this field moves on
+  // its own and the crown below follows it. The set_monarch action
+  // stays as the way a card (or a table fixing the board) hands the
+  // designation out in the first place. Added in S10.
   monarch?: string;
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
@@ -572,6 +575,14 @@ export interface PendingChoiceView {
     // S30 coin call: choose heads or tails for the pending flip. A
     // stop answer is offered only when allow_stop is true.
     | "coin_call"
+    // #804 CR 726: the loop breaker has fired and the repeating
+    // ability's controller is asked how many more times it should
+    // resolve. Answered with resolve_choice { iterations }, where 0
+    // means "stop here" and leaves the table paused exactly where the
+    // breaker put it. loop_count is how many times it has already
+    // resolved this turn; loop_max_iterations is the ceiling the
+    // engine will accept.
+    | "loop_shortcut"
     | string;
   chooser: string;
   from_player: string;
@@ -668,6 +679,11 @@ export interface PendingChoiceView {
   coins?: number;
   max_useful_wins?: number;
   wins?: number;
+  // #804: populated for kind "loop_shortcut" — how many times the
+  // repeating ability has already resolved this turn, and the largest
+  // answer the engine accepts. `reason` carries "<card> — <ability>".
+  loop_count?: number;
+  loop_max_iterations?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -826,6 +842,15 @@ export interface PlayerView {
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;
+  // #500 (CR 305.2): how many lands this seat may play this turn,
+  // and how many it already has. The engine REFUSES a land play past
+  // the allowance, so a client should grey out the hand's lands when
+  // lands_played_this_turn >= land_drops_per_turn rather than only
+  // explain the rejection afterwards. land_drops_per_turn is the
+  // EFFECTIVE allowance — a controlled Exploration or a one-turn
+  // grant is already summed in. Normally 1 / 0.
+  land_drops_per_turn?: number;
+  lands_played_this_turn?: number;
   // S15: per-player mana pool. Each entry is an uppercase mana
   // letter ("W", "U", "B", "R", "G", "C") — order reflects
   // insertion order so the UI can highlight the most recent add.

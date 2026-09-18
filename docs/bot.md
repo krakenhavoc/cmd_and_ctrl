@@ -740,3 +740,16 @@ every surviving window and a wider candidate list.
 **Bots do not concede lightly.** The concede heuristic is deliberately
 conservative, on the grounds that a human playing a bot generally
 wants the finish.
+
+**A bot takes one CR 726 shortcut per loop per turn, then stops.** When
+the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
+repeating ability's controller is asked how many more times it should
+resolve. `internal/legal` offers a bot seat 10 first — and a bot takes
+the first offer — then 100, then "stop here"; on the turn's **second**
+ask for the same loop it offers nothing but stop. So a bot-only table
+that finds a real loop runs the threshold's worth of iterations, then
+ten more, and comes to rest with the notice naming the ability. The
+guarantee is in the enumerator rather than in a policy on purpose: a
+policy that can rank "100 more" top can rank it top every time, and a
+random one eventually will. A human at the same prompt types any
+number up to 1000 into the client's field.

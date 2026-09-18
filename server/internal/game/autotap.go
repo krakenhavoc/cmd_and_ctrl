@@ -195,6 +195,15 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if picked == nil {
 			continue
 		}
+		// #540: CR 302.6. A mana creature that entered this turn
+		// cannot pay a {T} cost, and the auto-tapper is not a way
+		// around the rule the hand-click path enforces — a Delighted
+		// Halfling played this turn is not a mana source, and
+		// planning it would produce a plan the executor now refuses,
+		// stranding whatever it had already tapped.
+		if manaTapBlockedBySickness(&c, picked) {
+			continue
+		}
 		// S32 (#352): a gated ability is only a source while its
 		// gate holds. Temple of the False God with four lands out
 		// is not a mana source, and planning it would produce a
@@ -322,6 +331,33 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 		return &a
 	}
 	return nil
+}
+
+// manaTapBlockedBySickness reports whether CR 302.6 forbids tapping
+// this permanent for the given mana ability right now. The one copy
+// of the rule the auto-tapper's two halves share — the planner
+// (gatherTapSources) and the executor (materializePlanLocked) — for
+// the same reason autoTapAbilityFor is shared: two copies of a
+// legality rule drift, and when the planner's copy is the laxer one
+// the executor strands whatever the plan had already tapped.
+//
+// Only a {T} cost is gated: an ability with no tap symbol (a
+// sacrifice or mana cost) is unaffected by summoning sickness, and
+// CR 302.6 is about CREATURES — a Sol Ring, a Treasure and a
+// fetchland all tap the turn they arrive. Haste is the read-time
+// bypass, handled inside HasSummoningSickness. The IsCreature prefix
+// is redundant since #530 and stays as documentation, matching
+// ActivateManaAbility's copy of the same gate.
+//
+// Layers must be fresh: both creature-hood and haste are effective
+// characteristics. The planner enters through ReadSnapshot and the
+// executor's callers already owe the same freshness for
+// ManaAbilitiesForCard.
+func manaTapBlockedBySickness(c *Card, ab *ManaAbilityShape) bool {
+	if c == nil || ab == nil || !ab.TapCost {
+		return false
+	}
+	return c.IsCreature() && HasSummoningSickness(c)
 }
 
 // restrictivenessScore lower = more restrictive (better picked

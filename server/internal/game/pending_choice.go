@@ -506,6 +506,25 @@ type PendingChoice struct {
 	// serialised. Added in S28.
 	mayCastResume *mayCastFrame
 
+	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
+	// PendingChoiceLoopShortcut's question (#804, CR 726).
+	//
+	// Key is the TallyKey(source, label) the answer's allowance
+	// attaches to — the ability that is repeating, named the way the
+	// tally names everything. Count is how many times it had resolved
+	// when the notice went up, which is the N in "has resolved N times
+	// this turn". Repeat marks the SECOND ask of the turn for the same
+	// loop: a shortcut ran to its end and the question came back, which
+	// is what tells `internal/legal` to offer a bot seat nothing but
+	// "stop" and so guarantees a bot-only table terminates.
+	//
+	// All three are plain data, carried by the clone and the snapshot:
+	// the prompt has to mean the same thing after an undo, and the key
+	// is the only way back to the run the answer is about.
+	LoopShortcutKey    string
+	LoopShortcutCount  int
+	LoopShortcutRepeat bool
+
 	// AcceptLabel / DeclineLabel are the two branch names a
 	// PendingChoiceConfirm renders on its buttons — the card's own
 	// words ("Pay 4 life" / "Put it on top"), because a chained
@@ -746,7 +765,43 @@ type replacementResumeFrame struct {
 // QueueChoiceForEffect appends a PendingChoice to the game's queue.
 // Caller must hold g.mu. Returns the generated ID so the caller
 // can reference the choice downstream if needed.
+//
+// #864: a choice whose Chooser is not seated, or is seated but
+// already Eliminated, is refused rather than queued. This is the
+// generic backstop underneath the per-kind guards that already
+// existed (QueuePayUnlessForEffect and friends) — every append to
+// g.PendingChoices runs through here, so this is the one place that
+// can promise the queue never holds an unanswerable prompt at the
+// moment it's created. It does not by itself protect against a LIVE
+// chooser who is eliminated later while their choice sits open —
+// that's sweepEliminatedChoicesLocked's job (mutations.go), run at
+// every runStateChecksLocked pass.
+//
+// Returns uuid.Nil on refusal, the same sentinel
+// QueueDiscardChoiceForEffect already returns for its own
+// zero-count short-circuit, so every caller in this codebase already
+// treats "no choice, nothing to reference" as an ignorable return —
+// audited caller by caller for #864. The one caller that needed more
+// than "ignore the zero value" (drainPendingTriggersAPNAPLocked,
+// which would otherwise treat the refusal as a still-open CR 603.3b
+// ordering prompt and hold the whole APNAP drain forever) is fixed at
+// its own call site to stop asking before it gets here.
+//
+// A dropped choice emits EventPendingChoiceDropped rather than
+// failing silently, so a stalled table's event log shows why a seat
+// never got prompted, and rather than EventEffectError because
+// nothing failed — CR 800.4a means there was never anyone left to
+// ask.
 func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
+	if p := g.playerByIDLocked(choice.Chooser); p == nil || p.Eliminated {
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  choice.Chooser,
+			Source: choice.Source,
+			Label:  string(choice.Kind),
+		})
+		return uuid.Nil
+	}
 	if choice.ID == uuid.Nil {
 		choice.ID = uuid.New()
 	}
@@ -910,12 +965,16 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 // that queues and prunes a prompt each iteration run forever.
 //
 // Caller must hold g.mu.
+// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 726
+// shortcut prompt (#804) as part of clearing the loop notice, which
+// rewrites g.PendingChoices — and an index into that slice taken
+// before it ran would then name the wrong entry.
 func (g *Game) dequeueChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
-	g.notePlayerDecisionLocked()
 	g.dropChoiceLocked(idx)
+	g.notePlayerDecisionLocked()
 }
 
 // dropChoiceLocked removes the choice at index idx without recording
@@ -1871,13 +1930,23 @@ func (g *Game) queueTriggerPromptLocked(
 }
 
 // queuePickTargetLocked queues the CR 603.3d target choice for a
-// targeted trigger. The legal set is computed now (the caller
-// already confirmed it's non-empty) and frozen onto the prompt;
-// ResolvePickTarget re-validates the pick against the spec anyway,
-// since the board can change while the prompt is open. Caller must
-// hold g.mu. Added in S20 sub-PR 2.
+// targeted trigger. The legal set is computed now and frozen onto the
+// prompt; ResolvePickTarget re-validates the pick against the spec
+// anyway, since the board can change while the prompt is open, and
+// refreshTargetChoicesLocked re-reads the frozen set at the next
+// priority-grant boundary (#809). Caller must hold g.mu. Added in S20
+// sub-PR 2.
 func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
 	lt := g.legalTargetsLocked(source.Controller, t.Targets)
+	// CR 603.3d: no legal target ⇒ the ability is removed from the
+	// stack and does nothing. dispatchTriggerInstanceLocked already
+	// checked this at harvest time, but the OPTIONAL path comes back
+	// through here from ResolveTriggerPrompt, an arbitrary time later,
+	// and a prompt with an empty option list is a prompt nobody can
+	// answer — which since #791 is a table that cannot move.
+	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+		return
+	}
 	label := t.Targets.Label
 	if label == "" {
 		label = "Choose a target"

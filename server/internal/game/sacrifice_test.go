@@ -118,11 +118,19 @@ func TestSacrificeCostManaAbilityCracksThePermanent(t *testing.T) {
 	if g.Battlefield.Contains(id) {
 		t.Errorf("a cracked Treasure should leave the battlefield")
 	}
-	if !me.Graveyard.Contains(id) {
-		t.Errorf("cracked Treasure should be in the graveyard")
+	// #596 / CR 704.5d: a Treasure is a TOKEN. It reaches the
+	// graveyard — EventSacrifice and the dies triggers below are
+	// judged on that — and the state-based check that the sacrifice
+	// runs on its way out then removes it. It does not sit in the
+	// graveyard as a card anyone can reanimate.
+	if me.Graveyard.Contains(id) {
+		t.Errorf("a cracked Treasure token must cease to exist, not stay in the graveyard")
 	}
 	if !hasEvent(g, EventSacrifice, id) {
 		t.Errorf("no EventSacrifice from the mana ability's cost")
+	}
+	if !hasEvent(g, EventLTB, id) {
+		t.Errorf("the cracked Treasure's dies event went missing — a token still dies before it ceases to exist")
 	}
 	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "B" {
 		t.Errorf("mana pool = %+v, want one {B}", me.ManaPool)
