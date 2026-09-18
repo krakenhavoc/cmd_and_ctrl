@@ -38,9 +38,13 @@ redesign it ([Decision 8](#decision-8--the-random-order-bottom-is-745s-and-draws
    still prompts once per flip.
 5. **The first card wave includes Fiery Gambit, Game of Chaos and Yusri**
    alongside the cards the seam fully unblocks.
+6. **Game of Chaos: the controller always flips.** The other player only
+   decides whether to flip again, after a flip the controller lost
+   ([Decision 6](#decision-6--a-wonlost-flip-prompts-for-a-call-owner)).
 
 Items 3–5 were answered on 2026-09-17; the options considered are kept in
-[Owner decisions, second round](#owner-decisions-second-round).
+[Owner decisions, second round](#owner-decisions-second-round). Item 6
+was confirmed by the owner on 2026-09-17, as Decision 6 already read.
 
 Line references are to `origin/develop` at `bcac391`.
 
@@ -189,7 +193,7 @@ object, and "player" is the player whose library, hand or cards it is
 | `finishSearchLocked`, the shuffle after a search (`effect_api.go`) | `("shuffle", library owner, uuid.Nil)` |
 | `ShuffleLibraryForEffect` (`effect_api.go`) | `("shuffle", library owner, uuid.Nil)` |
 | `DiscardRandomForEffect` (`effect_api.go`) | `("pick", discarding player, uuid.Nil)`: one pick of n cards |
-| `bottomInRandomOrderLocked` (`cascade.go`), later #745's `PutOnBottomInRandomOrderForEffect` | `("random_order", player whose cards go to the bottom, uuid.Nil)` |
+| `bottomInRandomOrderLocked` (`cascade.go`), later #745's `PutOnBottomInRandomOrderForEffect` | `("random_order", actor: the player the effect belongs to, uuid.Nil)` |
 
 All five shuffles share one stream per player. Each shuffle is one
 operation on it, so the counter tells them apart.
@@ -471,7 +475,8 @@ type CoinFlipResult struct {
   text and CR 705.2 ("Only the player who flips the coin wins or loses
   the flip"). "If you win the flip" is only meaningful when "you", the
   controller, flip. So **the controller is the `Flipper` of every flip,
-  and only the decision to flip again moves to the opponent**:
+  and only the decision to flip again moves to the opponent**. This
+  reading is **owner-decided (2026-09-17)**:
   - After a won flip, the controller decides. The next flip's
     `coin_call` goes to the controller with `AllowStop: true`, so that
     flip costs one prompt, as for Fiery Gambit.
@@ -483,9 +488,9 @@ type CoinFlipResult struct {
   - The first flip is not optional (`AllowStop: false`).
 
   **For the card PR, check:** (1) look again for newer rulings or a
-  Gatherer ruling on who flips after a loss, and if one says the
-  opponent flips, change `Flipper` and invert which life change the
-  result applies; (2) the chain has no natural end, because state-based
+  Gatherer ruling on who flips after a loss. The flipper is
+  owner-decided, so a ruling that says the opponent flips is raised
+  with the owner before `Flipper` or the life changes are touched; (2) the chain has no natural end, because state-based
   actions aren't checked while the spell resolves (CR 704.3), so life
   totals can go below 0 mid-chain. The stake must not overflow `int`,
   and the bot hint must stop the chain (for example, stop once the
@@ -589,10 +594,11 @@ mirrors the types. The board also shows a reveal-strip cue for each roll or flip
 ## Decision 8 — The random-order bottom is #745's, and draws from a stream
 
 [#745](https://github.com/krakenhavoc/cmd_and_ctrl/issues/745) builds
-`PutOnBottomInRandomOrderForEffect(player, ids)`: any source zone,
-moved through `routeCardToZoneLocked` (`zone_route.go:132`, `ToBottom`),
-with cascade switched to call it. This ADR changes one thing about it:
-**the permutation is drawn from `randForLocked(rngStream{"random_order", player, uuid.Nil})`**.
+`PutOnBottomInRandomOrderForEffect(actor, from, ids)`: only the cards
+in `ids` still in a zone of kind `from` move (PR #814), each through
+`routeCardToZoneLocked` (`zone_route.go:132`, `ToBottom`), with cascade
+switched to call it. This ADR changes one thing about it:
+**the permutation is drawn from `randForLocked(rngStream{"random_order", actor, uuid.Nil})`**.
 
 - If #745 merges first, sub-PR 1 changes that one draw together with the other
   call sites in the Decision 1 table.
@@ -600,6 +606,20 @@ with cascade switched to call it. This ADR changes one thing about it:
 
 The signature, the zone handling, the CR 903.9 commander offer and the
 knower clearing are all #745's, and none of them change here.
+
+*Corrected 2026-09-17:* the signature as merged is
+`PutOnBottomInRandomOrderForEffect(actor uuid.UUID, from ZoneKind, ids []uuid.UUID) error`
+(`game/random_bottom.go`), after
+[PR #814](https://github.com/krakenhavoc/cmd_and_ctrl/pull/814).
+`actor` is the player the effect belongs to: it is stamped on the zone
+move events and keys the stream, `("random_order", actor, uuid.Nil)`.
+Only cards **still in a zone of kind `from`** move (`ZoneExile` for
+cascade's pile, `ZoneLibrary` for "the rest" of a reveal or a look). A
+card that has since left that kind of zone is a new object (CR 400.7)
+and is skipped. The first draft of this decision said `(player, ids)`
+and "any source zone". The shuffle is still one draw over `ids` as
+given, taken before any card is looked up, so the skip never changes how
+much the stream advances.
 
 ## Decision 9 — Determinism and replay
 
@@ -867,6 +887,8 @@ Answered 2026-09-17. The chosen option is marked **(chosen)**; the recommendatio
    *Note added 2026-09-17:* in Game of Chaos the player who **decides**
    whether to flip again changes, but the flipper does not
    ([Decision 6](#decision-6--a-wonlost-flip-prompts-for-a-call-owner)).
+   The owner confirmed this on 2026-09-17: the controller always flips,
+   and the other player only decides whether to flip again.
 
 ## Addendum (2026-09-17): sub-PR 1 readings (PR #775)
 
@@ -944,3 +966,31 @@ different line with real game actions, like rolling for a different
 card (Decision 2). It never applies to cards from a deck. Sub-PR 2 adds
 a test that runs the same seeded game twice and gets the same
 `RollDiceForEffect` results for a sourced roll, next to Test plan item 2.
+
+
+## Implementation checkpoint (2026-09-17): effect APIs and first cards
+
+The #744 implementation supplies sub-PRs 2–4 together: random-effect
+APIs, public batch events/logs, source ordinals, coin-call continuations,
+legal enumeration, bot policy and client prompts/cues. Open coin
+continuations clone for undo but, like other closure-backed choices,
+make a durable snapshot non-restorable; the continuation census records
+that explicitly. Stable snapshots carry RNG counters and source ordinals.
+
+`WheneverYouRollDice` selects the first event of each `BatchSeq`, then
+sums that batch at trigger resolution. It deliberately does not use an
+in-flight `OncePerBatch` guard: a second dice instruction must trigger
+again even while the first ability is still waiting on the stack.
+
+Eight first cards exercise the seam: Ancient Copper Dragon, Ancient Gold
+Dragon, Hoarding Ogre, Reckless Endeavor, Vexing Puzzlebox, The Gold
+Saucer, Deadbridge Chant and Exalted Flamer of Tzeentch. Urza's Bauble
+also moves from its old approximation to the keyed random-pick API.
+
+This checkpoint does not close #744's additional card wave. Goblin
+Archaeologist and Fiery Gambit still need compositions and tests; Game
+of Chaos needs chained life-change/continuation ordering; Yusri needs a
+temporary free-cast permission; Clown Car needs its cast X retained for
+its ETB trigger; Ancient Silver Dragon needs a lasting hand-size grant.
+Wyll's Reversal also needs spell retargeting. None is declared fully
+automated by this change.

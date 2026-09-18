@@ -58,6 +58,13 @@
 //	                             hosted model, 20s when a local endpoint is
 //	                             configured, because a model that overruns
 //	                             the deadline plays the heuristic's move.
+//	CMDCTRL_BOT_DECISION_LOG   — directory for the per-game bot decision log
+//	                             (prompt, reply, ranking, fallback per
+//	                             window). Empty (the default) is OFF. The
+//	                             file aggregates every bot seat's own view of
+//	                             one table, so it is operator-only: never
+//	                             served, never attached to a bug report.
+//	CMDCTRL_BOT_DECISION_LOG_MODE — escalated (default) | all | model.
 package main
 
 import (
@@ -76,6 +83,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
@@ -195,6 +203,24 @@ func main() {
 	// RestoreFromDisk because a restored bot seat relaunches its
 	// runner and must get the policy its tier names.
 	bots.SetPolicyFactory(botFactory(log, cfg, cardIdx))
+	// The decision log, when an operator asked for one. Off by
+	// default; a failure to open the directory is logged and the
+	// server boots without it, because a diagnostic is never worth a
+	// refused boot.
+	if cfg.BotDecisionLog != "" {
+		dl, err := decisionlog.New(decisionlog.Options{
+			Dir:  cfg.BotDecisionLog,
+			Mode: cfg.BotDecisionLogMode,
+			Log:  log,
+		})
+		if err != nil {
+			log.Error("bot decision log could not be started; bots play without one", "err", err)
+		} else {
+			bots.SetDecisionLogger(dl.DecisionLogger())
+			log.Warn("BOT DECISION LOG IS ON: every bot seat's own view of every game is written to disk. Operator-only — it is never served and must never be attached to a bug report.",
+				"dir", dl.Dir(), "mode", string(dl.Mode()))
+		}
+	}
 
 	// Restore games that were live when the previous process exited.
 	// This is the read half of persistence — see internal/game/
@@ -417,6 +443,12 @@ type config struct {
 	// needs at least BotModel, and the two may name the same model.
 	BotModel         string
 	BotFrontierModel string
+	// BotDecisionLog is the directory the per-game bot decision log
+	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
+	// is the default: the file holds every bot seat's view of one
+	// table and is operator-only. BotDecisionLogMode is its fullness.
+	BotDecisionLog     string
+	BotDecisionLogMode decisionlog.Mode
 	// Env is the deployment identity from CMDCTRL_ENV. Unset means
 	// production — a forgotten variable fails closed.
 	Env appenv.Env
@@ -444,6 +476,7 @@ func loadConfig(log *slog.Logger) config {
 		AdminToken:       os.Getenv("CMDCTRL_ADMIN_TOKEN"),
 		SeedDemo:         os.Getenv("CMDCTRL_SEED_DEMO") == "1",
 		SessionTTL:       12 * time.Hour,
+		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
 		Env:              env,
@@ -466,6 +499,27 @@ func loadConfig(log *slog.Logger) config {
 			os.Exit(1)
 		}
 		c.BotMaxThink = d
+	}
+
+	// The mode only matters when the log is ON, and it fails the boot
+	// only then. Same posture as CMDCTRL_BOT_MAX_THINK for a
+	// deployment that asked for a log — silently getting a mode it
+	// did not ask for means discovering it after a night of games —
+	// but a stale CMDCTRL_BOT_DECISION_LOG_MODE left in an env file
+	// beside an unset log is refusing to start over a variable that
+	// changes nothing. That is a warning, not a dead server.
+	rawMode := os.Getenv("CMDCTRL_BOT_DECISION_LOG_MODE")
+	mode, merr := decisionlog.ParseMode(rawMode)
+	switch {
+	case merr == nil:
+		c.BotDecisionLogMode = mode
+	case c.BotDecisionLog != "":
+		log.Error("CMDCTRL_BOT_DECISION_LOG_MODE invalid", "value", rawMode, "err", merr)
+		os.Exit(1)
+	default:
+		log.Warn("CMDCTRL_BOT_DECISION_LOG_MODE is not a mode this build knows, and is being ignored because CMDCTRL_BOT_DECISION_LOG is unset (the bot decision log is off)",
+			"value", rawMode, "err", merr)
+		c.BotDecisionLogMode = decisionlog.ModeEscalated
 	}
 
 	if raw := os.Getenv("CMDCTRL_SESSION_TTL"); raw != "" {

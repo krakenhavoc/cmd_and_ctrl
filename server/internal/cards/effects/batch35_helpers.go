@@ -16,7 +16,7 @@ import (
 // b33LandYouControlEntered, "an opponent cast a spell" is
 // b15OpponentCastSpell, "a creature you control dealt combat damage
 // to a player" is combatDamageToPlayerBy, "another creature died" is
-// diedCreature, the bounded mill is b31MillAtMost, the per-event
+// diedCreature, the per-event
 // counter delta is b33CountersPlacedDelta, "lands with different
 // names" is b04LandNamesControlled, "exile all graveyards" is
 // b02ExileAllGraveyards, "each opponent loses N life" is
@@ -219,28 +219,6 @@ func b35EndStepAndThirtyCounters(ev game.Event, source *game.Card, g *game.Game)
 
 // --- effect bodies -----------------------------------------------
 
-// b35MillAtMostCollect mills `n` cards from `player`'s library, or
-// the whole library when it holds fewer, and returns the IDs that
-// moved top-first — b31MillAtMost with the milled batch kept, for a
-// body that reads what was milled. A mill does not lose a player the
-// game (CR 704.5b); the engine's mill flags the loss when it runs a
-// library out, so the count is bounded here.
-func b35MillAtMostCollect(ctx *Context, player uuid.UUID, n int) ([]uuid.UUID, error) {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil {
-		return nil, nil
-	}
-	if size := p.Library.Size(); n > size {
-		n = size
-	}
-	if n <= 0 {
-		return nil, nil
-	}
-	var milled []uuid.UUID
-	err := MillToZone{Player: player, N: n, Milled: &milled}.Apply(ctx)
-	return milled, err
-}
-
 // b35DrawTwoThenEachPlayerLosesTwo is Risky Shortcut's body: the
 // controller draws two, then every live player — the controller
 // first, then the opponents in seat order — loses 2 life. A loss,
@@ -319,7 +297,7 @@ func b35ThatPlayerMillsTwo(caster uuid.UUID) func(g *game.Game, item *game.Stack
 		if g.PlayerByIDForEffect(caster) == nil {
 			return nil
 		}
-		return b31MillAtMost(NewContext(g, item), caster, 2)
+		return MillCards{Player: caster, N: 2}.Apply(NewContext(g, item))
 	}
 }
 
@@ -340,18 +318,34 @@ func b35TutelageMill(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetPlayer {
 			continue
 		}
-		for guard := 0; guard < 200; guard++ {
-			milled, err := b35MillAtMostCollect(ctx, t.ID, 2)
-			if err != nil {
-				return err
-			}
-			if !b35TwoNonlandCardsShareAColor(g, milled) {
-				return nil
-			}
-		}
-		return nil
+		return b35TutelageMillPass(ctx, t.ID, 0)
 	}
 	return nil
+}
+
+// b35TutelageMillPass is one pass of that repeat, and the repeat is
+// recursion through the mill's continuation rather than a loop.
+//
+// #893: the pair to test is the cards that were PUT INTO THE GRAVEYARD
+// this way (CR 400.7), and a commander coming off the top stops to
+// answer CR 903.9 — so the pass that decides whether to repeat cannot
+// read its own result on the next line. `guard` is carried by value,
+// which keeps the bound honest across an undo that rewinds into the
+// prompt and replays the answer.
+func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
+	if guard >= 200 {
+		return nil
+	}
+	return MillToZone{
+		Player: victim,
+		N:      2,
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
+				return nil
+			}
+			return b35TutelageMillPass(ctx, victim, guard+1)
+		},
+	}.Apply(ctx)
 }
 
 // b35LootOne is "draw a card, then discard a card" as an activated
@@ -426,26 +420,44 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 // each creature card that landed in a graveyard that way, all the
 // Zombies after all the mills as the printed "for each" reads.
 func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
-	x := ctx.X()
-	creatures := 0
-	for _, id := range tablePlayers(ctx) {
-		milled, err := b35MillAtMostCollect(ctx, id, x)
-		if err != nil {
-			return err
+	return b35DreadSummonsMillStep(ctx, item, tablePlayers(ctx), ctx.X(), 0)
+}
+
+// b35DreadSummonsMillStep mills the head of `players` and continues
+// with the tail from that mill's continuation; the empty list is the
+// base case, where the Zombies are created.
+//
+// #893: "each creature card put into a graveyard this way" is what
+// LANDED in a graveyard (CR 400.7), and any seat's mill can stop to
+// ask its owner about CR 903.9, so the tally cannot be read on the line
+// after the mill and the seats cannot all be milled on one line either.
+// The running count is carried forward BY VALUE, which is what makes an
+// undo across the prompt replay identically rather than counting the
+// first run's creatures twice.
+func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.UUID, x, creatures int) error {
+	if len(players) == 0 {
+		if creatures == 0 {
+			return nil
 		}
-		for _, cardID := range milled {
-			if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
-				creatures++
+		return CreateTokenAdvanced{
+			Controller: item.Controller,
+			Spec:       Token(BlackZombieToken()).EntersTapped(),
+			N:          creatures,
+		}.Apply(ctx)
+	}
+	next, rest := players[0], players[1:]
+	return MillToZone{
+		Player: next,
+		N:      x,
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			found := creatures
+			for _, cardID := range milled {
+				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
+					found++
+				}
 			}
-		}
-	}
-	if creatures == 0 {
-		return nil
-	}
-	return CreateTokenAdvanced{
-		Controller: item.Controller,
-		Spec:       Token(BlackZombieToken()).EntersTapped(),
-		N:          creatures,
+			return b35DreadSummonsMillStep(ctx, item, rest, x, found)
+		},
 	}.Apply(ctx)
 }
 
@@ -457,7 +469,7 @@ func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Contex
 // the card.
 func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := b31MillAtMost(ctx, item.Controller, 2); err != nil {
+	if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 		return err
 	}
 	return b34ReturnChosenGraveyardCardToHand(ctx)
@@ -465,7 +477,7 @@ func b35MillTwoThenReturnChosen(g *game.Game, item *game.StackItem) error {
 
 // b35MillTwo is Eden's plain body: the controller mills two.
 func b35MillTwo(g *game.Game, item *game.StackItem) error {
-	return b31MillAtMost(NewContext(g, item), item.Controller, 2)
+	return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 }
 
 // b35GainLifeEqualToToughness is Ikra Shidiqi's body: life equal to
@@ -609,19 +621,29 @@ func b35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) erro
 // and nothing returns. A Greenwarden chosen as its own target is
 // exiled first and is then no longer in the graveyard, so nothing
 // returns either — as printed.
+//
+// #870: the "if you do" reads the exile's CONTINUATION rather than the
+// exile zone on the next line. The Greenwarden is a commander often
+// enough to matter, and a graveyard is a CR 903.9 zone: the old
+// read-back ran while the owner's prompt was still open, found the
+// card not in exile and returned nothing — and then the owner said
+// "exile it" and the card sat in exile with the second half of its own
+// trigger already skipped.
 func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
-	if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {
-		return err
-	}
-	if !g.Exile.Contains(item.SourceCardID) {
-		return nil
-	}
-	return b34ReturnChosenGraveyardCardToHand(ctx)
+	return ExileTarget{
+		Target: item.SourceCardID,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				return nil
+			}
+			return b34ReturnChosenGraveyardCardToHand(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // b35TenDamageToEachOpponentIfThirtyCounters is Lux Artillery's body:

@@ -52,6 +52,7 @@ type CardDef struct {
 	Replacements    []ReplacementEffect
 	PrintedKeywords []string
 	Triggered       []TriggeredAbility
+	TriggerDoublers []TriggerDoubler
 
 	AdditionalCost   *AdditionalCost
 	AlternativeCosts []AlternativeCost
@@ -60,12 +61,18 @@ type CardDef struct {
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
-	SelfCostModifiers []CostModifier
-	CastableZones     []ZoneKind
-	UntapStep         []UntapStepPermission
+	SelfCostModifiers     []CostModifier
+	CastableZones         []ZoneKind
+	UntapStep             []UntapStepPermission
+	UntapStepRestrictions []UntapStepRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// AdditionalLandPlays is how many EXTRA lands per turn this
+	// permanent lets its controller play while it is on the
+	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
+	// through CatalogAdditionalLandPlays; see land_drops.go.
+	AdditionalLandPlays int
 }
 
 // CatalogLookup is the one production hook: the catalog's definition
@@ -163,6 +170,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogTriggerDoublers = func(key string) []TriggerDoubler {
+		if d := catalogDef(key); d != nil {
+			return d.TriggerDoublers
+		}
+		return nil
+	}
 	CatalogAdditionalCost = func(key string) *AdditionalCost {
 		if d := catalogDef(key); d != nil {
 			return d.AdditionalCost
@@ -199,6 +212,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.UntapStepRestrictions
+		}
+		return nil
+	}
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
@@ -206,5 +225,11 @@ func init() {
 	CatalogNoMaxHandSize = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.NoMaxHandSize
+	}
+	CatalogAdditionalLandPlays = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.AdditionalLandPlays
+		}
+		return 0
 	}
 }

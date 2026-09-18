@@ -10,7 +10,8 @@
 // /\bland\b/. Cards without a type_line (placeholder / unresolved
 // demo cards) fall through every predicate as false.
 
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { CardView, PlayerView } from "./protocol";
 
 export function isCreature(c: CardView): boolean {
@@ -125,4 +126,4 @@ export function seatPlacements(seats: PlayerView[], viewerID: string | null): Se
 // props) because every Card writes to it and only one overlay
 // reads, so prop-drilling would be noisy and the global state is
 // genuinely scene-wide.
-export const hoveredCard: Writable<CardView | null> = writable(null);
+export const hoveredCard: Writable<CardView | null> = guardedWritable(null, "hoveredCard");

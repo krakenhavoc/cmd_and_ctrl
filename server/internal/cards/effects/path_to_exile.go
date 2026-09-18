@@ -22,6 +22,10 @@ import (
 // S17 sub-PR 4: fetched land enters TAPPED via
 // SearchLibrary.TappedOnEntry. Closes the S14 "enters untapped"
 // deferral; matches the card text.
+//
+// #894: the search runs from the exile's continuation, so the table
+// answers the CR 903.9 command-zone question first and is offered the
+// basic-land search afterwards.
 func init() {
 	Register(Spec{
 		OracleID:     "d683d985-9888-4d21-8b5f-69e69ce4a03b",
@@ -46,20 +50,31 @@ func init() {
 				return errors.New("Path to Exile: target card not found in any zone")
 			}
 			controller := card.Controller
-			if err := (ExileTarget{Target: targetID}).Apply(ctx); err != nil {
-				return err
-			}
-			// Search the controller's library for any basic land.
-			return SearchLibrary{
-				Player:        controller,
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         1,
-				Reveal:        true,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Optional:      true,
-				Reason:        "Path to Exile — you may search for a basic land",
+			return ExileTarget{
+				Target: targetID,
+				// #894: the search is the exile's continuation, not the
+				// next line. Exiling a commander opens the CR 903.9
+				// window, and the search used to be offered while that
+				// question was still on the table — two prompts at
+				// once, in the wrong order. The `exiled` answer is
+				// deliberately ignored: "its controller may search" is
+				// a separate sentence rather than an "if you do", so
+				// the search happens either way and only its ORDER
+				// changes.
+				Then: func(ctx *Context, _ bool) error {
+					// Search the controller's library for any basic land.
+					return SearchLibrary{
+						Player:        controller,
+						Predicate:     IsBasicLand,
+						Dest:          game.ZoneBattlefield,
+						Limit:         1,
+						Reveal:        true,
+						Shuffle:       true,
+						TappedOnEntry: true,
+						Optional:      true,
+						Reason:        "Path to Exile — you may search for a basic land",
+					}.Apply(ctx)
+				},
 			}.Apply(ctx)
 		},
 	})

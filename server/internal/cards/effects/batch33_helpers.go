@@ -135,8 +135,16 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 // subtype where that reads a name. Alela's goad clause narrows
 // "target creature THAT PLAYER controls" through it, because a target
 // predicate is not handed the trigger's event. The dealing creature
-// is read wherever it now is: a Faerie token that traded in combat
-// persists as a card, so its printed subtype is still there.
+// is read wherever it now is, and one that can no longer be found
+// does not count, which errs weaker.
+//
+// #596 widened that gap: a Faerie TOKEN that traded in combat used to
+// persist in the graveyard with its type line intact, and CR 704.5d
+// now removes it at the next state-based check, so the player it hit
+// drops out of this set. Alela's goad simply reaches fewer players
+// than printed in that case. Closing it properly wants the sacrifice
+// tally's treatment — record the subtype at the damage, not at the
+// read — which is a bigger change than the bug it fixes.
 func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
 	for _, ev := range g.EventsThisTurn() {
@@ -266,7 +274,8 @@ func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game
 // owns was milled into their graveyard (Colossal Grave-Reaver's
 // read). The engine emits one EventMill per card, so the first
 // creature card of a mill fires the trigger and the rest are
-// declined while it is queued or on the stack.
+// declined as later events of the same batch (OncePerBatch; see
+// AGENTS.md §7).
 func b33CreatureCardMilledIntoYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventMill || ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
 		return false

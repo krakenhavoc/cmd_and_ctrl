@@ -258,6 +258,10 @@ func b29DamageEachPlayerHalfTheirLife(g *game.Game, item *game.StackItem) error 
 // and put them onto the battlefield tapped. The search is theirs —
 // their library, their prompt — and "may" means they can decline
 // the whole thing; zero exiled is no search at all.
+//
+// `exiled` is what LANDED in exile (#866), and the clause runs from
+// the sweep's continuation, so it may run an action later than the
+// sweep — see the card's file.
 func b29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error {
 	return ExileAllMatching{
 		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {

@@ -114,6 +114,10 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 		HandKept:       p.HandKept,
 		MulligansTaken: p.MulligansTaken,
 		MaxHandSize:    p.MaxHandSize,
+		// #500: carried through so the golden pins the real per-seat
+		// land-drop numbers rather than a normalizer zero.
+		LandDropsPerTurn:    p.LandDropsPerTurn,
+		LandsPlayedThisTurn: p.LandsPlayedThisTurn,
 	}
 	// Always initialise (possibly empty) — matches the wire shape
 	// emitted by protocol.viewOfPlayer, which always allocates the
@@ -133,6 +137,9 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 			Delta:    c.Delta,
 			NewTotal: c.NewTotal,
 			At:       "<timestamp>",
+			// Seq is deterministic (a per-player counter), unlike the
+			// timestamp, so it goes into the golden file as-is.
+			Seq: c.Seq,
 		}
 	}
 	return out

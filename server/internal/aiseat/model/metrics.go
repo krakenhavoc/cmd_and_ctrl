@@ -203,6 +203,7 @@ func (r *recorder) record(rec DecisionRecord) {
 	r.stats.Usage.OutputTokens += rec.Usage.OutputTokens
 	r.stats.Usage.CacheReadTokens += rec.Usage.CacheReadTokens
 	r.stats.Usage.CacheWriteTokens += rec.Usage.CacheWriteTokens
+	r.stats.Usage.CachedPromptTokens += rec.Usage.CachedPromptTokens
 
 	r.ring[r.nextIdx] = rec
 	r.nextIdx = (r.nextIdx + 1) % r.keep

@@ -27,6 +27,8 @@
     type ChoiceSubmission,
     type ServerErrorLike,
   } from "../../choiceRejection";
+  import { doubledTriggerLabel } from "../../triggerDoubling";
+  import { colorButtons, colorPromptAnswerable } from "../../manaPick";
 
   interface Props {
     snap: GameView;
@@ -51,6 +53,12 @@
       // S20 sub-PR 2: pick_target is answered by clicking the board
       // (Board.svelte drives the targeting store), not by a modal.
       if (c.kind === "pick_target") continue;
+      // #844, CR 903.4f: a colour prompt with no colours on offer is
+      // not a choice anybody can answer, and an empty picker modal
+      // would block the board. The server stopped queueing one when a
+      // "commander's color identity" source has no identity; this is
+      // the floor under that.
+      if (!colorPromptAnswerable(c)) continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
@@ -181,20 +189,18 @@
   const optionCards = $derived<CardView[]>(active?.options ?? []);
 
   // S15 mana_pick branch — a color-pick choice from Arcane Signet /
-  // Birds of Paradise. `active.color_options` is the server-filtered
-  // legal button list. Submits via resolve_choice with `{choice_id,
+  // Birds of Paradise. `active.color_options` is the server's legal
+  // button list, already ordered commander identity first; it renders
+  // in that order. Submits via resolve_choice with `{choice_id,
   // color}` (card_ids absent).
   const isManaPick = $derived(active?.kind === "mana_pick");
-  const colorOptions = $derived<string[]>(active?.color_options ?? []);
   // #742: "N mana of any one color" (Gilded Lotus) is one pick that
   // adds several tokens of the picked colour; the amount can differ
   // per colour (Nyx Lotus's devotion). A colour missing from the map
-  // adds one.
+  // adds one. colorButtons keeps the server's order.
   const colorAmounts = $derived<Record<string, number>>(active?.color_amounts ?? {});
   const hasColorAmounts = $derived(Object.keys(colorAmounts).length > 0);
-  function amountFor(color: string): number {
-    return colorAmounts[color] ?? 1;
-  }
+  const buttons = $derived(colorButtons(active?.color_options, colorAmounts));
 
   // #742 choose_color branch — "choose a color" (CR 105.4), either as
   // a permanent enters (Coldsteel Heart; the answer is remembered) or
@@ -202,15 +208,6 @@
   // `{choice_id, color}` answer as a mana pick; the server routes the
   // two by kind.
   const isColorChoice = $derived(active?.kind === "choose_color");
-
-  const COLOR_META: Record<string, { label: string; fill: string }> = {
-    W: { label: "White", fill: "#f4ead5" },
-    U: { label: "Blue", fill: "#aad4ff" },
-    B: { label: "Black", fill: "#2b2b3d" },
-    R: { label: "Red", fill: "#ff9a85" },
-    G: { label: "Green", fill: "#92c493" },
-    C: { label: "Colorless", fill: "#c6cfdd" },
-  };
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
@@ -353,6 +350,50 @@
   const confirmAccept = $derived(active?.accept_label || "Yes");
   const confirmDecline = $derived(active?.decline_label || "No");
 
+  // #804 loop_shortcut — CR 726. The loop breaker has fired and this
+  // viewer controls the ability that is repeating, so they get the
+  // question paper asks: how many more times? A number, not a yes/no,
+  // because that is what CR 726 lets a player propose — and 0 is a
+  // real answer ("stop here"), which leaves the table paused exactly
+  // where the breaker put it, banner and all.
+  const isLoopShortcut = $derived(active?.kind === "loop_shortcut");
+  const loopCount = $derived(active?.loop_count ?? 0);
+  const loopMax = $derived(active?.loop_max_iterations ?? 1000);
+  let loopIterations = $state(10);
+  // Re-seed the field whenever a shortcut prompt opens, so a second
+  // ask does not arrive holding the first ask's number.
+  let lastLoopID: string | null = null;
+  $effect(() => {
+    if (!isLoopShortcut || !active) {
+      lastLoopID = null;
+      return;
+    }
+    if (active.id === lastLoopID) return;
+    lastLoopID = active.id;
+    loopIterations = 10;
+  });
+  const loopAnswerable = $derived(
+    Number.isFinite(loopIterations) && loopIterations >= 0 && loopIterations <= loopMax,
+  );
+
+  function submitLoopShortcut(iterations: number): void {
+    if (!active || !viewerID) return;
+    if (iterations < 0 || iterations > loopMax) return;
+    answer({ iterations });
+  }
+
+  // #744 coin_call — one heads/tails answer covers the number of coins
+  // in this instruction. A stop button is shown only for effects such
+  // as Fiery Gambit that explicitly allow ending a winning chain.
+  const isCoinCall = $derived(active?.kind === "coin_call");
+  const coinCount = $derived(active?.coins ?? 1);
+  const coinWins = $derived(active?.wins ?? 0);
+  const coinAllowStop = $derived(active?.allow_stop === true);
+
+  function answerCoin(call: "heads" | "tails" | "stop"): void {
+    answer({ call });
+  }
+
   // S21 sacrifice_choice branch — "each player sacrifices a creature
   // of their choice" (Grave Pact, Fleshbag Marauder). Reuses the
   // generic card grid and its {choice_id, card_ids} payload; only the
@@ -467,6 +508,7 @@
   // picker lands, the auto-targeter silently no-ops in that case —
   // which reads as a bug. Warn the chooser and relabel "Yes".
   const noLegalTarget = $derived(active?.no_legal_target === true);
+  const doubledLabel = $derived(doubledTriggerLabel(active?.doubled_by, active?.doubled_by_name));
 
   // Y / N answer the yes-no prompts (optional replacement, may-
   // trigger, pay-unless) from the keyboard; the footer shows the
@@ -480,9 +522,23 @@
       isConfirm,
   );
   function handleKey(e: KeyboardEvent): void {
-    if (!open || !isYesNo) return;
+    if (!open) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    if (isCoinCall) {
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        answerCoin("heads");
+      } else if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        answerCoin("tails");
+      } else if (coinAllowStop && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        answerCoin("stop");
+      }
+      return;
+    }
+    if (!isYesNo) return;
     if (e.key === "y" || e.key === "Y") {
       e.preventDefault();
       answerOptional(true);
@@ -723,19 +779,17 @@
           {/if}
         </p>
         <div class="color-row">
-          {#each colorOptions as color (color)}
-            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
-            {@const n = amountFor(color)}
+          {#each buttons as b (b.color)}
             <button
               type="button"
               class="color-pick"
-              style:--fill={meta.fill}
-              title={meta.label}
-              aria-label={n > 1 ? `add ${n} ${meta.label} mana` : `add ${meta.label} mana`}
-              onclick={() => pickColor(color)}
+              style:--fill={b.fill}
+              title={b.label}
+              aria-label={b.amount > 1 ? `add ${b.amount} ${b.label} mana` : `add ${b.label} mana`}
+              onclick={() => pickColor(b.color)}
             >
-              <span class="color-letter">{n > 1 ? `${n}×${color}` : color}</span>
-              <span class="color-name">{meta.label}</span>
+              <span class="color-letter">{b.amount > 1 ? `${b.amount}×${b.color}` : b.color}</span>
+              <span class="color-name">{b.label}</span>
             </button>
           {/each}
         </div>
@@ -750,20 +804,78 @@
              say which. -->
         <p class="prompt-hint">Pick exactly one color. The card's text says how it is used.</p>
         <div class="color-row">
-          {#each colorOptions as color (color)}
-            {@const meta = COLOR_META[color] ?? { label: color, fill: "#ccc" }}
+          {#each buttons as b (b.color)}
             <button
               type="button"
               class="color-pick"
-              style:--fill={meta.fill}
-              title={meta.label}
-              aria-label={`choose ${meta.label}`}
-              onclick={() => pickColor(color)}
+              style:--fill={b.fill}
+              title={b.label}
+              aria-label={`choose ${b.label}`}
+              onclick={() => pickColor(b.color)}
             >
-              <span class="color-letter">{color}</span>
-              <span class="color-name">{meta.label}</span>
+              <span class="color-letter">{b.color}</span>
+              <span class="color-name">{b.label}</span>
             </button>
           {/each}
+        </div>
+      {:else if isCoinCall}
+        <h2 id="choice-title">
+          {active.reason || "Call the flip"}
+          <span class="prompt-src" aria-hidden="true">coin flip</span>
+        </h2>
+        <p class="prompt-hint">
+          Call heads or tails for {coinCount}
+          {coinCount === 1 ? "coin" : "coins"}.
+          {#if coinWins > 0}
+            You have won {coinWins} {coinWins === 1 ? "flip" : "flips"} so far.
+          {/if}
+        </p>
+        <div class="prompt-foot">
+          <span class="prompt-count">
+            <span class="kbd">H</span> heads · <span class="kbd">T</span> tails
+            {#if coinAllowStop}
+              · <span class="kbd">S</span> stop{/if}
+          </span>
+          <button type="button" onclick={() => answerCoin("heads")}>Heads</button>
+          <button type="button" class="primary" onclick={() => answerCoin("tails")}>Tails</button>
+          {#if coinAllowStop}
+            <button type="button" class="ghost" onclick={() => answerCoin("stop")}>Stop</button>
+          {/if}
+        </div>
+      {:else if isLoopShortcut}
+        <h2 id="choice-title">
+          {active.reason || "This ability keeps resolving"}
+          <span class="prompt-src" aria-hidden="true">shortcut · CR 726</span>
+        </h2>
+        <p class="prompt-hint">
+          It has resolved {loopCount}
+          {loopCount === 1 ? "time" : "times"} this turn with nobody doing anything in between. Say how
+          many more times it should resolve and the table will run them without stopping; stop here leaves
+          auto-pass paused so you can step through by hand.
+        </p>
+        <div class="prompt-foot">
+          <label class="loop-iterations">
+            <span>More times</span>
+            <input
+              type="number"
+              min="0"
+              max={loopMax}
+              step="1"
+              bind:value={loopIterations}
+              aria-label="How many more times to resolve it"
+            />
+          </label>
+          <button type="button" class="ghost" onclick={() => submitLoopShortcut(0)}
+            >Stop here</button
+          >
+          <button
+            type="button"
+            class="primary"
+            disabled={!loopAnswerable}
+            onclick={() => submitLoopShortcut(loopIterations)}
+          >
+            Resolve {loopIterations} more
+          </button>
         </div>
       {:else if isCreatureTypePick}
         <h2 id="choice-title">
@@ -807,6 +919,9 @@
         <h2 id="choice-title">
           {active.reason || `${triggerSourceName(active.source)} triggered`}
           <span class="prompt-src" aria-hidden="true">may trigger · CR 603.5</span>
+          {#if doubledLabel}
+            <span class="prompt-src">{doubledLabel}</span>
+          {/if}
         </h2>
         {#if noLegalTarget}
           <p class="prompt-hint warn">
@@ -1282,6 +1397,26 @@
     max-height: 46vh;
     overflow-y: auto;
     padding: 4px 2px;
+  }
+  /* #804 CR 726 shortcut. One number, sitting in the button row with
+     the two answers it feeds, because the question is "how many" and
+     everything else about the prompt is already said above it. */
+  .loop-iterations {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+  .loop-iterations input {
+    width: 88px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
+    background: rgba(0, 0, 0, 0.22);
+    color: inherit;
+    font-size: 14px;
   }
   .type-pick {
     padding: 6px 12px;

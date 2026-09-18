@@ -30,9 +30,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // to a decline server-side, which is exactly the printed outcome: if
 // you don't pay, you lose.
 //
-// Losing is routed through LosesAtNextSBA rather than an immediate
-// elimination, so it lands at the next state-based check alongside
-// the zero-life and empty-library losses (CR 104.3).
+// Losing goes through LoseTheGameForEffect, which today borrows the
+// AttemptedEmptyDraw flag so the loss lands at the next state-based
+// check. ADR 0057 sub-PR 2 makes an effect loss immediate (CR 104.3e)
+// and rewrites this comment.
 func init() {
 	Register(Spec{
 		OracleID:     "f3e213a4-ba5a-468a-93b3-c0a34e1bd725",

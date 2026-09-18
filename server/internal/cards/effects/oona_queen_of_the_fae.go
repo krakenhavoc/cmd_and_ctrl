@@ -27,6 +27,15 @@ import (
 // The colour is chosen before any card is exiled, as printed, so the
 // choice cannot be made knowing what was exiled.
 //
+// #893: "exiled this way" is the cards that ARRIVED in exile
+// (CR 400.7), so the Faeries come from the continuation rather than
+// from the line after the exile. An opponent whose commander comes off
+// the top of their library is asked whether it goes to the command
+// zone instead (CR 903.9); until they answer, nothing has moved, and
+// if they accept, that card was not exiled this way and pays for no
+// Faerie. Both halves used to be wrong in the same direction — one
+// Faerie too many, handed over before the question was answered.
+//
 // No simplification.
 func init() {
 	const label = "{X}{U/B}: Choose a color. Target opponent exiles the top X cards of their library. " +
@@ -62,22 +71,25 @@ func init() {
 }
 
 func oonaExileAndMakeFaeries(ctx *Context, victim uuid.UUID, x int, color string) error {
-	var exiled []uuid.UUID
-	if err := (MillToZone{Player: victim, N: x, To: game.ZoneExile, Milled: &exiled}).Apply(ctx); err != nil {
-		return err
-	}
-	n := 0
-	for _, id := range exiled {
-		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
-			n++
-		}
-	}
-	if n == 0 {
-		return nil
-	}
-	return CreateToken{
-		Controller: ctx.Controller(),
-		Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
-		N:          n,
+	return MillToZone{
+		Player: victim,
+		N:      x,
+		To:     game.ZoneExile,
+		Then: func(ctx *Context, exiled []uuid.UUID) error {
+			n := 0
+			for _, id := range exiled {
+				if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
+					n++
+				}
+			}
+			if n == 0 {
+				return nil
+			}
+			return CreateToken{
+				Controller: ctx.Controller(),
+				Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
+				N:          n,
+			}.Apply(ctx)
+		},
 	}.Apply(ctx)
 }

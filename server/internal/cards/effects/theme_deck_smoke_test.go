@@ -319,6 +319,11 @@ func TestThemeDeckPlaysFourTurns(t *testing.T) {
 	if err := g.DeclareAttacker(copter, opponent.ID); err != nil {
 		t.Fatalf("a Vehicle crewed the turn after it entered could not attack (CR 302.6): %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
+
 	// "Whenever this Vehicle attacks ... you may draw a card. If you
 	// do, discard a card." The draw is immediate; the discard is a
 	// prompt the controller answers, and since #651 the table waits

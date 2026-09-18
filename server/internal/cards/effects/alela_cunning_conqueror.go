@@ -17,10 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (b22FirstSpellOnAnOpponentsTurn) making the Faerie Rogue. The
 // damage trigger is "one or more": the engine emits one
 // EventDealDamage per creature, so the first Faerie to connect fires
-// it and the rest of that combat step's Faeries are declined while
-// it is queued, on the stack, or waiting on its target pick
-// (OncePerBatch + b17PickTargetPendingFrom). Alela
-// herself is a Faerie and counts.
+// it and the rest of that combat step's Faeries are declined as
+// later events of the same batch (OncePerBatch — see AGENTS.md §7),
+// with b17PickTargetPendingFrom covering the window while its target
+// pick is still open. Alela herself is a Faerie and counts.
 //
 // The goad is the engine's goad. The sandbox has carried a goad
 // marker since S10 — the client badges the creature and the context

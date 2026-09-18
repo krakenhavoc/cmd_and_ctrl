@@ -717,7 +717,7 @@ func seedHiddenMaterial(t *testing.T, g *game.Game, botIdx int) material {
 func visibleTo(g *game.Game, bot uuid.UUID) []secret {
 	var out []secret
 	g.ReadSnapshot(func() {
-		p := g.PlayerByID(bot)
+		p := g.PlayerByIDForEffect(bot)
 		if p == nil {
 			return
 		}

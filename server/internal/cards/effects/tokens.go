@@ -71,9 +71,9 @@ func PhyrexianWurmLifelinkToken() game.Card {
 // Added in S19 sub-PR 6 for Smothering Tithe; the sac-for-mana
 // ability went live in S21 sub-PR 1, closing the S19 deferral.
 //
-// The five-colour pipe runs through the same commander-identity
-// filter Arcane Signet uses, so cracking a Treasure in a mono-red
-// deck offers {R} rather than a five-way prompt.
+// The five-colour pipe offers all five colours, the commander's
+// identity listed first, so cracking a Treasure in a mono-red deck
+// offers {R} first and the other four after it, as printed.
 func TreasureToken() game.Card {
 	return game.Card{
 		Name:     "Treasure",
@@ -93,9 +93,8 @@ func TreasureToken() game.Card {
 // is the whole point of Curse of Opulence handing them out in the
 // middle of somebody else's attack.
 //
-// Same five-colour pipe as Treasure, so it runs through the same
-// commander-identity filter rather than offering a five-way prompt in
-// a mono-coloured deck.
+// Same five-colour pipe as Treasure: all five colours, commander
+// identity first.
 //
 // Cheaper than a Treasure by a tap: the printed cost is the sacrifice
 // alone, so a Gold made this turn is spendable this turn and a tapped

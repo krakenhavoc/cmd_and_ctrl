@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -109,7 +108,7 @@ func handCardOf(t *testing.T, g *game.Game, seat uuid.UUID) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
 	g.ReadSnapshot(func() {
-		p := g.PlayerByID(seat)
+		p := g.PlayerByIDForEffect(seat)
 		if p == nil || len(p.Hand.Cards) == 0 {
 			return
 		}
@@ -124,7 +123,7 @@ func handCardOf(t *testing.T, g *game.Game, seat uuid.UUID) uuid.UUID {
 func lifeOf(g *game.Game, seat uuid.UUID) int {
 	var life int
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(seat); p != nil {
+		if p := g.PlayerByIDForEffect(seat); p != nil {
 			life = p.Life
 		}
 	})
@@ -133,7 +132,7 @@ func lifeOf(g *game.Game, seat uuid.UUID) int {
 
 func zoneSizes(g *game.Game, seat uuid.UUID) (hand, graveyard int) {
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(seat); p != nil {
+		if p := g.PlayerByIDForEffect(seat); p != nil {
 			hand, graveyard = len(p.Hand.Cards), len(p.Graveyard.Cards)
 		}
 	})
@@ -269,7 +268,7 @@ func TestRunnerAppliesAnnouncesAndTagsAnImprovisation(t *testing.T) {
 	pol := &improviser{im: grimTutor(t, bot, human, card)}
 	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
 
-	waitFor(t, "the improvisation to apply", 2*time.Second, func() bool {
+	waitFor(t, "the improvisation to apply", func() bool {
 		return r.Stats().Improvisations == 1
 	})
 	cancel()
@@ -342,7 +341,7 @@ func TestHumanUndoOfBotImprovisationRevertsTheWholeBundle(t *testing.T) {
 	defer cancel()
 	pol := &improviser{im: grimTutor(t, bot, human, card)}
 	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, nil, testLogger())
-	waitFor(t, "the improvisation to apply", 2*time.Second, func() bool {
+	waitFor(t, "the improvisation to apply", func() bool {
 		return r.Stats().Improvisations == 1
 	})
 	// Stop the bot before undoing so it cannot act between the undo
@@ -411,7 +410,7 @@ func TestImprovisationBundleIsAtomic(t *testing.T) {
 	bc := &chatBroadcaster{}
 	pol := &improviser{im: im}
 	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
-	waitFor(t, "the improvisation to be refused", 2*time.Second, func() bool {
+	waitFor(t, "the improvisation to be refused", func() bool {
 		return r.Stats().ImprovRefused == 1
 	})
 	cancel()
@@ -459,7 +458,7 @@ func TestUnannouncedImprovisationIsRefused(t *testing.T) {
 	defer cancel()
 	bc := &chatBroadcaster{}
 	r := aiseat.Start(ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
-	waitFor(t, "the improvisation to be refused", 2*time.Second, func() bool {
+	waitFor(t, "the improvisation to be refused", func() bool {
 		return r.Stats().ImprovRefused == 1
 	})
 	cancel()
@@ -493,7 +492,7 @@ func TestBotReasoningIsNarratedOnlyWhenAsked(t *testing.T) {
 			bc := &chatBroadcaster{}
 			pol := &scripted{prefer: []string{"Keep hand"}}
 			r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{Narrate: narrate}, bc, testLogger())
-			waitFor(t, "the bot to act", 2*time.Second, func() bool { return r.Stats().Applied > 0 })
+			waitFor(t, "the bot to act", func() bool { return r.Stats().Applied > 0 })
 			cancel()
 			<-r.Done()
 
@@ -576,7 +575,7 @@ func replayAnnotations(t *testing.T, dumpDir string, id uuid.UUID) []protocol.Re
 func undosRemaining(g *game.Game, seat uuid.UUID) int {
 	var n int
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(seat); p != nil {
+		if p := g.PlayerByIDForEffect(seat); p != nil {
 			n = p.UndosRemaining
 		}
 	})

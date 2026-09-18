@@ -41,19 +41,8 @@ func init() {
 		TapCost:      Waterbend("{X}"),
 		Targets:      targetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			exiled, err := exileTargetsForDelayedReturn(ctx)
-			if err != nil {
-				return err
-			}
-			if len(exiled) == 0 {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				At:     game.StepEnd,
-				Label:  "Waterbender's Restoration — return the exiled creatures",
-				Cards:  exiled,
-				Effect: returnExiledCardsToOwners,
-			}.Apply(ctx)
+			return exileTargetsThenScheduleReturn(ctx,
+				"Waterbender's Restoration — return the exiled creatures")
 		},
 	})
 }

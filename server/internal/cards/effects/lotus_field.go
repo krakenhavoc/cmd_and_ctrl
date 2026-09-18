@@ -23,12 +23,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // second prompt cannot name the first land (ResolveSacrificeChoice
 // refuses a card no longer on the battlefield), so the difference is
 // only in batching: the lands leave in two events instead of one. A
-// "whenever one or more" watcher still fires once (OncePerBatch
-// declines the second event while the first trigger is pending, and
-// both prompts are answered before anyone gets priority), and a
-// per-land watcher fires twice either way. Neither direction is
-// stronger than printed; it is declared because it is not the printed
-// timing. The multi-select sacrifice-N picker (#747) removes it.
+// "whenever one or more" watcher still fires once (both sacrifices
+// fall in one batch — nothing resolves and no step begins between
+// them, see AGENTS.md §7 — so OncePerBatch declines the second),
+// and a per-land watcher fires twice either way. Neither direction
+// is stronger than printed; it is declared because it is not the
+// printed timing. The multi-select sacrifice-N picker (#747) removes it.
 func init() {
 	Register(Spec{
 		OracleID:     "134d5b82-7940-4b33-a922-7f9d1f403e50",
@@ -48,10 +48,9 @@ func init() {
 			}),
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                OneColorOfAmount(3),
-			Label:                   "Add three mana of any one color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: OneColorOfAmount(3),
+			Label:    "Add three mana of any one color",
 		}},
 	})
 }

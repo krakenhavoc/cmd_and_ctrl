@@ -34,9 +34,12 @@
     // compact — one card size down (PlayerPanel's --card-w-sm). Used
     // for the middle band: non-creature permanents and lands.
     compact?: boolean;
-    // strip — overlapped horizontal strip instead of a wrapping grid.
-    // Lands: seven of them fit in half a panel, and tapped ones sort
-    // to the right so the untapped count reads at a glance.
+    // strip — piles instead of a wrapping grid. Lands: untapped
+    // copies of the same name stack into one pile with a count
+    // badge (four Forests take the width of one), tapped lands sort
+    // to the right of every pile so the untapped count reads at a
+    // glance, and hovering a pile spreads it so each copy can be
+    // clicked on its own.
     strip?: boolean;
     // S24: the Equipment and Auras attached to each host, keyed by
     // the host's instance ID. Derived by PlayerPanel from the
@@ -73,6 +76,42 @@
     // Stable partition: untapped first, tapped after, order kept within each.
     return [...byX.filter((c) => !c.tapped), ...byX.filter((c) => c.tapped)];
   });
+
+  // Piles (strip only). One pile per NAME among the untapped lands,
+  // in first-appearance order, then one single-card pile per tapped
+  // land. A card that carries an attachment (an enchanted land) or is
+  // a commander keeps a pile of its own: stacking it under identical
+  // basics would hide the very thing that makes it different. The
+  // non-strip rows render `sorted` as one pile each so the markup
+  // has a single shape.
+  interface Pile {
+    key: string;
+    tapped: boolean;
+    cards: CardView[];
+  }
+  const piles = $derived.by((): Pile[] => {
+    if (!strip) return sorted.map((c) => ({ key: c.instance_id, tapped: !!c.tapped, cards: [c] }));
+    const out: Pile[] = [];
+    const byName = new Map<string, Pile>();
+    for (const c of sorted) {
+      const solo =
+        !!c.tapped || !!c.is_commander || (attachmentsByHost[c.instance_id] ?? []).length > 0;
+      if (solo) {
+        out.push({ key: c.instance_id, tapped: !!c.tapped, cards: [c] });
+        continue;
+      }
+      const name = c.name || c.instance_id;
+      const hit = byName.get(name);
+      if (hit) {
+        hit.cards.push(c);
+        continue;
+      }
+      const p: Pile = { key: `pile:${name}`, tapped: false, cards: [c] };
+      byName.set(name, p);
+      out.push(p);
+    }
+    return out;
+  });
 </script>
 
 <div class="row" class:compact class:strip data-zone={label}>
@@ -81,42 +120,56 @@
     {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
   </span>
   <div class="row-cards" role="list" aria-label={label}>
-    {#each sorted as c (c.instance_id)}
-      <div role="listitem" class:tapped={!!c.tapped} use:etbPulse>
-        <div
-          class="host-stack"
-          class:has-attachments={(attachmentsByHost[c.instance_id] ?? []).length > 0}
-        >
-          {#each attachmentsByHost[c.instance_id] ?? [] as a (a.instance_id)}
-            <div class="attachment">
+    {#each piles as p (p.key)}
+      <div
+        class="pile"
+        class:tapped={p.tapped}
+        class:multi={p.cards.length > 1}
+        title={p.cards.length > 1 ? `${p.cards.length} × ${p.cards[0].name}` : undefined}
+      >
+        {#each p.cards as c, i (c.instance_id)}
+          <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
+            <div
+              class="host-stack"
+              class:has-attachments={(attachmentsByHost[c.instance_id] ?? []).length > 0}
+            >
+              {#each attachmentsByHost[c.instance_id] ?? [] as a (a.instance_id)}
+                <div class="attachment">
+                  <Card
+                    card={a}
+                    enchantedPlayer={curseTargets[a.instance_id]}
+                    onClick={onCardClick}
+                    onActivateManaAbility={onActivateManaAbility
+                      ? (idx) => onActivateManaAbility(a, idx)
+                      : undefined}
+                    onActivateAbility={onActivateAbility
+                      ? (idx) => onActivateAbility(a, idx)
+                      : undefined}
+                    {sorcerySpeedBlocked}
+                  />
+                </div>
+              {/each}
               <Card
-                card={a}
-                enchantedPlayer={curseTargets[a.instance_id]}
+                card={c}
+                enchantedPlayer={curseTargets[c.instance_id]}
+                selected={selectedCombatCardID === c.instance_id}
+                attacking={!!c.attacking_target}
+                blocking={!!c.blocking_target}
                 onClick={onCardClick}
                 onActivateManaAbility={onActivateManaAbility
-                  ? (idx) => onActivateManaAbility(a, idx)
+                  ? (idx) => onActivateManaAbility(c, idx)
                   : undefined}
                 onActivateAbility={onActivateAbility
-                  ? (idx) => onActivateAbility(a, idx)
+                  ? (idx) => onActivateAbility(c, idx)
                   : undefined}
                 {sorcerySpeedBlocked}
               />
             </div>
-          {/each}
-          <Card
-            card={c}
-            enchantedPlayer={curseTargets[c.instance_id]}
-            selected={selectedCombatCardID === c.instance_id}
-            attacking={!!c.attacking_target}
-            blocking={!!c.blocking_target}
-            onClick={onCardClick}
-            onActivateManaAbility={onActivateManaAbility
-              ? (idx) => onActivateManaAbility(c, idx)
-              : undefined}
-            onActivateAbility={onActivateAbility ? (idx) => onActivateAbility(c, idx) : undefined}
-            {sorcerySpeedBlocked}
-          />
-        </div>
+          </div>
+        {/each}
+        {#if p.cards.length > 1}
+          <span class="pile-count" aria-hidden="true">{p.cards.length}</span>
+        {/if}
       </div>
     {/each}
   </div>
@@ -195,34 +248,55 @@
     --art-error-top: calc(100% - 16px);
     --art-error-left: 0px;
   }
+  /* Rows grow from the middle of the table: cards centre in the row
+     rather than piling up in the top-left corner, so a two-creature
+     board reads as a board and not as a corner. */
   .row-cards {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
     align-content: flex-start;
     align-items: flex-start;
     height: 100%;
   }
-  /* Land strip: no wrap, each card overlaps the previous so the name
-     band stays readable; tapped cards (rotated by Card.svelte) are
-     sorted to the end and given room for their rotated width. */
+  /* Outside the strip a pile is one card and nothing more; the
+     wrapper exists so the markup has one shape. */
+  .pile {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    flex: 0 0 auto;
+  }
+  /* Land strip: no wrap. Between piles each overlaps the previous so
+     the name band stays readable; tapped piles (rotated by
+     Card.svelte) are sorted to the end and given room for their
+     rotated width. The margin rules below are read by
+     boardArtPip.test.ts, which resolves their cascade by hand — keep
+     each on its own `.row.strip .pile…` selector. */
+  .row.strip {
+    /* Room for the pile count badges, which sit 6px above the tiles,
+       under the row label. */
+    padding-top: 26px;
+  }
   .row.strip .row-cards {
     flex-wrap: nowrap;
+    justify-content: flex-start;
     gap: 0;
     padding-right: calc(var(--card-h, 123px) * 0.2);
   }
-  .row.strip .row-cards > [role="listitem"] {
-    flex: 0 0 auto;
+  .row.strip .pile {
     margin-left: calc(var(--card-w, 88px) * -0.6);
   }
-  .row.strip .row-cards > [role="listitem"]:first-child {
+  .row.strip .pile:first-child {
     margin-left: 0;
   }
-  .row.strip .row-cards > [role="listitem"].tapped {
+  .row.strip .pile.tapped {
     margin-left: calc(var(--card-w, 88px) * -0.35);
   }
-  .row.strip .row-cards > [role="listitem"]:not(.tapped) + [role="listitem"].tapped {
+  .row.strip .pile:not(.tapped) + .pile.tapped {
     margin-left: calc(var(--card-h, 123px) * 0.2);
   }
   /* Every land tapped: the first is tapped too. Without this rule the
@@ -230,10 +304,51 @@
      won, and pushed the first land a third of its turned width out of
      the row's clip, its failed-art pip (#33) with it. The turned tile
      overhangs its box by (h - w) / 2 on each side; that is its room. */
-  .row.strip .row-cards > [role="listitem"].tapped:first-child {
+  .row.strip .pile.tapped:first-child {
     margin-left: calc((var(--card-h, 123px) - var(--card-w, 88px)) / 2);
   }
-  .row.strip .row-cards > [role="listitem"]:hover {
+  .row.strip .pile:hover {
     z-index: 6;
+  }
+  /* Inside a pile every copy after the first sits 4px right and 3px
+     up of the one before, so the pile reads as a stack and takes the
+     width of one card plus a sliver per copy. The top copy is the
+     last in the DOM and paints over the rest, which is where the
+     count badge and the pip live. */
+  .row.strip .pile > [role="listitem"] {
+    position: relative;
+    top: calc(var(--i, 0) * -3px);
+    transition: margin-left 140ms var(--ease);
+  }
+  .row.strip .pile > [role="listitem"] + [role="listitem"] {
+    margin-left: calc(var(--card-w, 88px) * -1 + 4px);
+  }
+  /* Hovering a pile spreads it to the between-pile overlap so each
+     copy can be told apart, hovered and clicked (a specific Forest
+     for a fetch, say) — the same 40% of each card the strip already
+     leaves visible between names. */
+  .row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"] {
+    margin-left: calc(var(--card-w, 88px) * -0.6);
+  }
+  .pile-count {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    z-index: 8;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gold);
+    background: var(--surface, #0b0a09);
+    border: 1px solid rgba(217, 180, 92, 0.6);
+    pointer-events: none;
   }
 </style>

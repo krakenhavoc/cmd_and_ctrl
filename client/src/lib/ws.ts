@@ -1,5 +1,6 @@
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
+import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
 import {
   PROTOCOL_VERSION,
@@ -112,60 +113,12 @@ export function reconnectDelayMs(attempt: number, rand: () => number = Math.rand
   return Math.floor(nominal / 2 + rand() * (nominal / 2));
 }
 
-// describeThrown renders whatever a subscriber threw. Subscribers can
-// throw anything at all, and this runs inside the failure path, so it
-// must not be able to throw itself.
-function describeThrown(err: unknown): string {
-  if (err instanceof Error) return `${err.name}: ${err.message}`;
-  if (typeof err === "string") return err;
-  try {
-    return JSON.stringify(err) ?? String(err);
-  } catch {
-    return "unknown error";
-  }
-}
-
-// guardedWritable is a `writable` whose subscribers cannot escape.
-//
-// #266: svelte/store keeps ONE module-global `subscriber_queue` shared
-// by every store in the app. `set()` drains it with a bare loop and
-// clears it only after the loop finishes:
-//
-//     for (let i = 0; i < subscriber_queue.length; i += 2) {
-//       subscriber_queue[i][0](subscriber_queue[i + 1]);
-//     }
-//     subscriber_queue.length = 0;
-//
-// A subscriber that throws skips both the remaining subscribers AND
-// the reset, so the queue stays permanently non-empty. From then on
-// every `set()` on every store — snapshot, status, log, settings,
-// targeting — sees a non-empty queue, enqueues its value, and returns
-// without flushing. The socket stays green, handleMessage keeps
-// running, seq keeps advancing, and nothing ever reaches the DOM
-// again. That is the reported "state freeze", and it lasts for the
-// life of the page.
-//
-// Containing the throw at the subscriber boundary means one component
-// blowing up costs that component's update and a recorded error,
-// instead of the whole application. It does NOT make the component
-// correct — the recorded entry is the point, so the next bug report
-// names the thing that threw instead of arriving empty.
-function guardedWritable<T>(initial: T, label: string): Writable<T> {
-  const inner = writable(initial);
-  return {
-    set: inner.set,
-    update: inner.update,
-    subscribe(run, invalidate) {
-      return inner.subscribe((value) => {
-        try {
-          run(value);
-        } catch (err) {
-          recordClientError(`subscriber threw on ${label}: ${describeThrown(err)}`);
-        }
-      }, invalidate);
-    },
-  };
-}
+// guardedWritable / describeThrown moved to guardedStore.ts (#720).
+// svelte/store's `subscriber_queue` is module-GLOBAL, so guarding only
+// GameClient's stores — which is all #284 did — protects nothing: a
+// throw from a subscriber on `settings`, `targeting` or any other
+// store stalls these guarded stores just as thoroughly. The guard
+// belongs to every store in the app, so it lives in one place now.
 
 // GameClient wraps a WebSocket with the v0 protocol and exposes reactive
 // Svelte stores for UI binding. As of S03 it understands `ping`/`pong`,

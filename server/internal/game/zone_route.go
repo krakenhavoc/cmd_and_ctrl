@@ -32,12 +32,20 @@ import (
 // enters-with-counters, enters-as-a-copy and the ETB fire, none of
 // which an exit has any use for. This file is the exit half.
 //
-// What this deliberately does not do:
+// #707 folded the sandbox move in. MoveCardByIDAsCommander used to
+// keep its own pipeline call, on the grounds that it accepts an
+// arbitrary source AND destination — the battlefield included — which
+// an exit primitive has no business expressing. True of half of it:
+// the half whose destination is the battlefield or the stack is an
+// ENTRY and still runs inline over there. The other half IS an exit,
+// and keeping its own pipeline call meant keeping its own resume,
+// which it never had — a commander moved out of a graveyard, a hand,
+// a library or the stack by hand paused on the CR 903.9 prompt and
+// the move was simply lost, both answers alike. The exit primitive's
+// resume finishes a move from whatever zone the card was in when the
+// window opened, so folding the admin exit in gave it one for free.
 //
-//   - MoveCardByIDAsCommander keeps its own pipeline call. It is the
-//     admin / sandbox move and accepts an arbitrary source AND
-//     destination, the battlefield included, which an exit primitive
-//     has no business expressing.
+// What this deliberately does not do:
 //
 //   - routeBattlefieldCardToOwnerGraveyardLocked keeps its own. The
 //     destroy / sacrifice / SBA route zeroes battlefield-only state
@@ -56,6 +64,24 @@ import (
 //     continuation frame the engine does not have yet (#478); a
 //     commander that is asked one beat late is a far smaller
 //     deviation than a commander that is never asked at all.
+//
+// #853 folded the DISCARD in — the last exit that still moved a card
+// with a raw MoveCard, and therefore the last one that never opened
+// the window. It brought the other half of a pausable move with it:
+// zoneRoute.then, the continuation a caller with more to do hands over
+// instead of writing it on the next line. A multi-card discard
+// sequences itself through it rather than looping, and discard.go says
+// why.
+//
+// #866 made that sequencing ONE body (routeAllThenLocked,
+// simultaneous.go) shared by every batched exit, and #893 put the mill
+// on it too. The mill above is therefore both shapes at once, on one
+// implementation: MillToZoneThenForEffect sequences through the
+// continuation, because a caller that reads what was milled cannot be
+// told while a commander's prompt is open, and the fire-and-forget
+// MillToZoneForEffect keeps the loop that proceeds AROUND a paused
+// card, because nothing is waiting on its answer and a mill must not
+// re-read the top of the library.
 
 // zoneRoute describes one card's motion into a zone, together with
 // the bookkeeping that particular route owes beyond the physical
@@ -108,12 +134,180 @@ type zoneRoute struct {
 	// never milled, and no mill payoff should see it.
 	Mill bool
 
+	// Discard flags a discard (CR 701.8a) so the completed move emits
+	// EventDiscardCard rather than EventZoneMove — the single event
+	// every "whenever you discard a card" payoff keys on, and the one
+	// Syr Konrad's "put into a graveyard from anywhere other than the
+	// battlefield" clause counts a hand card by.
+	//
+	// Unlike Mill it is honoured WHEREVER the card lands (#853). A
+	// commander whose owner takes CR 903.9's offer was still moved out
+	// of their hand by a discard, so the discard happened and its
+	// payoffs see it; what changed is only where the card ended up.
+	// A mill is the other way round because CR 701.17a defines the
+	// keyword action by its destination ("puts the top N cards of
+	// their library into their graveyard") while CR 701.8a defines a
+	// discard by its SOURCE ("move it from its owner's hand").
+	Discard bool
+
+	// Source is the card whose effect asked for the move, stamped on
+	// the emitted event. Read only by the Discard leg today, which is
+	// the only route whose event has ever carried one; uuid.Nil
+	// everywhere else leaves the event exactly as it was.
+	Source uuid.UUID
+
+	// MustSettleNow forbids this move from pausing on a player prompt:
+	// the pipeline applies what it gathered and skips anything that
+	// would ask a question rather than queueing one (see
+	// ReplacementEvent.mustSettleNow).
+	//
+	// One thing sets it today: a discard paid as a COST (CR 601.2h /
+	// CR 602.2b). Costs are paid as one indivisible step, so a
+	// CR 903.9 prompt in the middle would leave a spell on the stack
+	// with its cost half paid — the argument payLifeAsCostLocked makes
+	// for the other half of the same cost line. A cost discard of a
+	// commander therefore goes to the graveyard without asking:
+	// CR 903.9 is a "may", and a cost that cannot ask falls back to
+	// the ordinary result.
+	MustSettleNow bool
+
 	// Countered flags a counterspell, whose completed move emits
 	// EventCounterSpell INSTEAD of EventZoneMove (the historic shape
 	// — counter watchers key on it and a zone move would double-
 	// count). DropStackMeta additionally retires the stack item.
 	Countered     bool
 	DropStackMeta bool
+
+	// ViaBattlefieldLeave says the physical move belongs to
+	// executeBattlefieldLeaveLocked rather than to
+	// executeZoneRouteLocked — the destroy / sacrifice / SBA exit,
+	// which keeps its own mover for the reasons listed at the top of
+	// this file and is the one exit in the engine that does.
+	//
+	// Such a route carries no destination of its own (the event's
+	// NewZone is authoritative there, as it is everywhere else); it
+	// rides along for `then`, so a caller that has to know what the
+	// destruction actually DID gets the same continuation every other
+	// exit already had. #815.
+	ViaBattlefieldLeave bool
+
+	// simultaneousExit carries the pre-move copies for a destroy batch
+	// whose current leg may pause. The snapshot has to be active around
+	// the physical move on BOTH paths: the inline path and the later
+	// replacement-prompt resume. Keeping it only on the caller's stack
+	// loses it while the prompt is open, so a watcher that died earlier
+	// in the wipe cannot see the resumed leg leave (#815).
+	//
+	// Read-only after construction. Unexported engine plumbing.
+	simultaneousExit []Card
+
+	// AsCommander is the sandbox move_card action's "yes, send this
+	// commander back to the command zone" flavour flag (#707). It is
+	// NOT a gate on the CR 903.9 built-in — that gate was dropped in
+	// #171 and the replacement has been destination-only ever since —
+	// and it rides the route only so the breadcrumb on the event
+	// (ReplacementEvent.asCommanderMove) survives a pause along with
+	// everything else the move was asked for.
+	AsCommander bool
+
+	// then is the rest of whatever asked for the move, run once this
+	// one has reached a TERMINAL outcome — landed, replaced away
+	// (CR 614.10), or asked for a move that was not one. A pause is
+	// not terminal: the resume reaches it later, through
+	// executeZoneRouteLocked.
+	//
+	// #853: it exists because a move can PAUSE, and a caller with more
+	// to do cannot just do it on the next line. A multi-card discard
+	// sequences itself through here — each card's continuation starts
+	// the next one and the last one runs the discard's own "then draw
+	// two" — so the batch is a value carried forward rather than a
+	// shared accumulator, which is what makes an undo across the
+	// prompt land where a clean run would. The same idiom lifeTail and
+	// damageTail use, and for the same reason.
+	//
+	// It takes the live *Game rather than capturing one, on the undo-
+	// safety contract every other continuation in the engine follows:
+	// an undo restores this game's fields in place, so a *Game
+	// argument is always the right game and a captured *Player would
+	// not be. It runs with g.mu held, so it may start the next move or
+	// queue the next prompt itself.
+	//
+	// Unexported engine plumbing — the catalog never sets one. Cleared
+	// THROUGH the pointer as it runs (runRouteTailLocked), which is
+	// why cloneReplacementResume gives an undo snapshot its own copy
+	// of the route.
+	then func(g *Game) error
+}
+
+// runRouteTailLocked runs a settled route's continuation exactly once.
+// The continuation is cleared before it runs, so a tail that re-enters
+// the pipeline on the same route value cannot run itself twice.
+//
+// Every TERMINAL outcome of a routed move goes through here — landed,
+// cancelled, or never a move at all — because a caller sequencing a
+// batch through the tail has to be told even when the answer is
+// "nothing happened", or it waits forever. A PAUSE is not terminal:
+// the resume reaches this function later, through
+// executeZoneRouteLocked.
+//
+// Caller must hold g.mu.
+func (g *Game) runRouteTailLocked(r *zoneRoute) error {
+	if r == nil || r.then == nil {
+		return nil
+	}
+	then := r.then
+	r.then = nil
+	return then(g)
+}
+
+// abandonZoneRouteLocked is the terminal outcome a paused route reaches
+// when its prompt is taken AWAY rather than answered. Two things do
+// that, and before #865 both simply discarded the frame:
+//
+//   - the prompt is DROPPED because its chooser left the game
+//     (cleanupStackForEliminatedLocked, CR 800.4a);
+//   - the prompt is PRUNED because the card moved by some other route
+//     while the question was open, so the move it is asking about can
+//     never happen (pruneStaleZoneChangeChoicesLocked / #605, and its
+//     answer-path twin dropStaleReplacementResumeLocked).
+//
+// NOTHING MOVES and no event is emitted. A paused route has moved
+// nothing (see routeCardToZoneLocked), so the card is still in its old
+// zone and the route's own bookkeeping never happened — which is the
+// same shape a CR 614.10 cancellation has, and the reason a discard
+// abandoned here fires no EventDiscardCard: CR 701.8a defines a
+// discard as the move OUT of the hand, and there was none.
+//
+// WHAT IT OWES IS THE CONTINUATION. #808 made "the player left" a
+// terminal outcome of the life and damage tails for exactly this
+// reason: a caller sequencing a batch through a continuation has to be
+// told even when the answer is "nothing happened", or it waits
+// forever. Without this a two-card discard stopped after the first
+// card and a wipe stopped after the commander — the rest of the batch,
+// and the caller's own "then draw two" / "for each creature destroyed
+// this way", were dropped on the floor with the frame.
+//
+// The leg is reported as NOT LANDED, and it reports itself: every
+// reader of a route's outcome reads the live board rather than being
+// handed a verdict (destroyedThisWayLocked, landedInZoneLocked), and
+// the board still has the card where it was. So an abandoned leg is
+// not counted as destroyed, exiled, bounced or discarded, and needs no
+// flag to say so.
+//
+// Caller must hold g.mu, and must already have taken the prompt out of
+// g.PendingChoices.
+func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
+	if frame == nil || frame.ev == nil {
+		return nil
+	}
+	ev := frame.ev
+	// The CR 614.5 once-per-event bookkeeping the abandoned event was
+	// holding: nothing else will release it now.
+	g.clearReplacementEventLocked(ev.ID)
+	if ev.Kind != RepEventMove {
+		return nil
+	}
+	return g.runRouteTailLocked(ev.zoneRoute)
 }
 
 // routeCardToZoneLocked opens the CR 614 replacement window for a
@@ -125,11 +319,34 @@ type zoneRoute struct {
 // zone, no event has been emitted, and the move completes from
 // applyResolvedReplacementEventLocked when the player answers. Every
 // caller has to be able to tolerate that, which is why the bool is
-// returned rather than swallowed — the mill loop in particular has to
-// know not to pop the same card again.
+// returned rather than swallowed — ExileTopFaceDownForEffect in
+// particular has to know not to read the same top card again.
+//
+// A caller with something to do AFTER the move hands it over as
+// r.then rather than writing it on the next line, and then ignores the
+// bool: the continuation runs from the landing either way, inline when
+// nothing paused and from the resume when something did. That is how
+// a multi-card discard sequences itself (#853).
 //
 // Caller must hold g.mu.
 func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
+	// #865: every exit of this function but the PAUSE is terminal for
+	// the route — it landed, it was cancelled, it was never a move, or
+	// it was refused — so the caller's continuation runs from all of
+	// them, from here, rather than from each branch remembering to. A
+	// pause is not terminal: the resume reaches the tail later, through
+	// executeZoneRouteLocked. The landing path has already run the tail
+	// through this same pointer by the time this defer fires, and
+	// runRouteTailLocked clears the continuation as it runs, so it
+	// cannot run twice.
+	defer func() {
+		if paused {
+			return
+		}
+		if tailErr := g.runRouteTailLocked(&r); tailErr != nil && err == nil {
+			err = tailErr
+		}
+	}()
 	src := g.findCardZoneLocked(r.CardID)
 	if src == nil {
 		return false, ErrCardNotFound
@@ -141,18 +358,22 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	if dstZone == src {
 		// Already there. Historically each mover short-circuited this
 		// itself (exile-an-exiled-card, bounce-a-card-in-hand); the
-		// pipeline must not fire for a move that isn't one.
+		// pipeline must not fire for a move that isn't one. The
+		// caller's continuation still runs: "nothing to do" is an
+		// answer, and a batch sequenced through the tail needs it.
 		return false, nil
 	}
 
 	ev := &ReplacementEvent{
-		Kind:         RepEventMove,
-		Actor:        r.Actor,
-		CardID:       r.CardID,
-		OldZone:      src.Kind,
-		NewZone:      r.Dst,
-		NewZoneOwner: dstZone.Owner,
-		zoneRoute:    &r,
+		Kind:            RepEventMove,
+		Actor:           r.Actor,
+		CardID:          r.CardID,
+		OldZone:         src.Kind,
+		NewZone:         r.Dst,
+		NewZoneOwner:    dstZone.Owner,
+		zoneRoute:       &r,
+		asCommanderMove: r.AsCommander,
+		mustSettleNow:   r.MustSettleNow,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -167,6 +388,9 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled {
+		// CR 614.10 with a null replacement: the move simply does not
+		// happen. The caller's continuation still runs — see
+		// runRouteTailLocked.
 		return false, nil
 	}
 	return false, g.executeZoneRouteLocked(out)
@@ -185,10 +409,31 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 // re-read against the SETTLED destination, not the requested one.
 //
 // Caller must hold g.mu.
-func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
+func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if ev == nil || ev.zoneRoute == nil {
 		return ErrInvalidParam
 	}
+	// #865: this function is only ever reached for a route that is
+	// going to settle here, so EVERY exit of it is terminal — the move
+	// landed, it was not a move at all, or it was refused — and the
+	// caller's continuation runs from all of them. A refused move is as
+	// terminal as a completed one, and a batch waiting on the tail must
+	// not be left waiting; finishBattlefieldLeaveLocked makes the same
+	// call for the other exit.
+	//
+	// #866: a sequenced batch carries its pre-move copies on the route
+	// so the leg that runs on the far side of a CR 903.9 prompt is
+	// still part of the same simultaneous exit — the same thing
+	// finishBattlefieldLeaveLocked does for the destroy route. It is
+	// registered FIRST so LIFO runs it LAST: the continuation, like
+	// that one's, runs with the batch still open. Empty for every
+	// unbatched move, where publishing is a no-op.
+	defer g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)()
+	defer func() {
+		if tailErr := g.runRouteTailLocked(ev.zoneRoute); tailErr != nil && err == nil {
+			err = tailErr
+		}
+	}()
 	r := *ev.zoneRoute
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
@@ -262,14 +507,32 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 	}
 
 	// Events. A counterspell keeps its historic single-event shape;
-	// everything else emits a zone move, promoted to EventMill when
-	// the card really did land in a graveyard off a mill.
+	// so does a discard; everything else emits a zone move, promoted
+	// to EventMill when the card really did land in a graveyard off a
+	// mill. One event per route, never two — Syr Konrad and Bloodchief
+	// Ascension both watch the whole family and would double-count a
+	// move that emitted its own kind AND a zone move.
 	switch {
 	case r.Countered:
 		g.EmitEvent(Event{
 			Kind:   EventCounterSpell,
 			Target: ev.CardID,
 			CardID: ev.CardID,
+		})
+	case r.Discard:
+		// CR 701.8a: the discard is the move OUT of the hand, so it
+		// happened whatever the CR 903.9 window did with the
+		// destination — a commander put into the command zone instead
+		// was still discarded, and Megrim, Containment Construct and
+		// the rest of the family still see it. NewZone is where the
+		// card really went, so a listener that cares can tell.
+		g.EmitEvent(Event{
+			Kind:    EventDiscardCard,
+			Actor:   actor,
+			Source:  r.Source,
+			CardID:  ev.CardID,
+			OldZone: src.Kind,
+			NewZone: dstZone.Kind,
 		})
 	default:
 		kind := EventZoneMove
@@ -303,6 +566,12 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) error {
 	// a graveyard can strand a sibling prompt just as a battlefield
 	// one can.
 	g.pruneStaleZoneChangeChoicesLocked()
+	// #853: and now the rest of whatever asked for this move, with the
+	// card already where it is going and its event already emitted, so
+	// a continuation that starts the next move or reads the log sees
+	// this one finished. Last, because it may queue the next prompt —
+	// which is why it is the deferred terminal outcome above rather
+	// than a line here.
 	return nil
 }
 

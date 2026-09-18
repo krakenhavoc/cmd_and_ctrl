@@ -1,6 +1,7 @@
 package legal_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -170,10 +171,10 @@ func TestRestrictedBlocksAreNeverOffered(t *testing.T) {
 	}
 
 	// Both refusals are real.
-	if err := g.DeclareBlocker(feeder, plain); err != game.ErrIllegalBlock {
+	if err := g.DeclareBlocker(feeder, plain); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("engine accepted a block by a can't-block creature: %v", err)
 	}
-	if err := g.DeclareBlocker(wall, cloaked); err != game.ErrIllegalBlock {
+	if err := g.DeclareBlocker(wall, cloaked); !errors.Is(err, game.ErrIllegalBlock) {
 		t.Errorf("engine accepted a block against an unblockable attacker: %v", err)
 	}
 }

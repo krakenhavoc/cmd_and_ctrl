@@ -2,6 +2,7 @@ package heuristic
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -218,7 +219,7 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 	for _, a := range attackers {
 		n := 0
 		for _, b := range blockers {
-			if couldBlock(a, b) {
+			if couldBlock(st, def.ID, a, b) {
 				n++
 			}
 		}
@@ -251,7 +252,7 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 	// against a flier, is an open door.
 	var blockers []*protocol.CardView
 	for _, c := range defenderBlockers(st, def.ID) {
-		if couldBlock(atk, c) {
+		if couldBlock(st, def.ID, atk, c) {
 			blockers = append(blockers, c)
 		}
 	}
@@ -294,16 +295,119 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 // couldBlock is the evasion check the defender has to beat. The
 // enumerator already applies the real CR 509.1b test to the blocks it
 // OFFERS; this is the attacker's side of the same question, where
-// there is no move list to read it off, so it re-derives the two
-// restrictions that matter at this catalog's level.
-func couldBlock(atk, blk *protocol.CardView) bool {
+// there is no move list to read it off, so it re-derives the
+// restrictions that matter at this catalog's level. It is an estimate
+// (ADR 0045 addendum Decision 17): it only ranks moves the enumerator
+// has already made legal, so being wrong costs a worse attack, never
+// an illegal one.
+//
+// `defender` is the seat the attack would hit; landwalk reads that
+// seat's lands off the public view. Fear, intimidate, shadow,
+// horsemanship, skulk, and restriction tokens read the same effective
+// public characteristics the engine projects.
+func couldBlock(st *state, defender string, atk, blk *protocol.CardView) bool {
 	if hasKeyword(atk, "flying") && !hasKeyword(blk, "flying") && !hasKeyword(blk, "reach") {
 		return false
 	}
-	if hasKeyword(blk, "can't block") {
+	if hasRestriction(blk, "cant_block") || hasRestriction(atk, "cant_be_blocked") {
+		return false
+	}
+	if landwalkBites(st, defender, atk) {
+		return false
+	}
+	if hasKeyword(atk, "fear") && !isArtifact(blk) && !hasColor(blk, "B") {
+		return false
+	}
+	if hasKeyword(atk, "intimidate") && !isArtifact(blk) && !sharesColor(atk, blk) {
+		return false
+	}
+	if hasKeyword(atk, "shadow") != hasKeyword(blk, "shadow") {
+		return false
+	}
+	if hasKeyword(atk, "horsemanship") && !hasKeyword(blk, "horsemanship") {
+		return false
+	}
+	if hasKeyword(atk, "skulk") && powerForComparison(blk) > powerForComparison(atk) {
 		return false
 	}
 	return true
+}
+
+func powerForComparison(c *protocol.CardView) int {
+	if c.NegativePower < 0 {
+		return c.NegativePower
+	}
+	return c.Power
+}
+
+// hasRestriction reads the server-projected restriction set. Restrictions
+// are effects on a card, not keywords in its ability list.
+func hasRestriction(c *protocol.CardView, want string) bool {
+	return c != nil && slices.Contains(c.Restrictions, want)
+}
+
+func hasColor(c *protocol.CardView, want string) bool {
+	return c != nil && slices.Contains(c.Colors, want)
+}
+
+func sharesColor(a, b *protocol.CardView) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	for _, color := range a.Colors {
+		if hasColor(b, color) {
+			return true
+		}
+	}
+	return false
+}
+
+func isArtifact(c *protocol.CardView) bool { return isType(c, "artifact") }
+
+// landwalkLand is what one landwalk keyword asks of a land (CR
+// 702.14c): a land subtype, or, for nonbasic landwalk, the absence of
+// the basic supertype. The engine's own table is game/landwalk.go;
+// this package may not import it (ADR 0033 §3), so the estimate keeps
+// the six tokens it knows.
+var landwalkLand = []struct {
+	keyword  string
+	subtype  string
+	nonbasic bool
+}{
+	{"plainswalk", "plains", false},
+	{"islandwalk", "island", false},
+	{"swampwalk", "swamp", false},
+	{"mountainwalk", "mountain", false},
+	{"forestwalk", "forest", false},
+	{"nonbasic landwalk", "", true},
+}
+
+// landwalkBites reports whether `atk` has a landwalk keyword that a
+// land `defender` controls switches on, reading each land's effective
+// type line from the view ("Basic Land — Island").
+func landwalkBites(st *state, defender string, atk *protocol.CardView) bool {
+	for _, lw := range landwalkLand {
+		if !hasKeyword(atk, lw.keyword) {
+			continue
+		}
+		for i := range st.view.Battlefield.Cards {
+			c := &st.view.Battlefield.Cards[i]
+			if c.Controller != defender || !isLand(c) {
+				continue
+			}
+			left, right, _ := strings.Cut(strings.ToLower(c.TypeLine), "—")
+			if lw.nonbasic {
+				if !slices.Contains(strings.Fields(left), "basic") {
+					return true
+				}
+				continue
+			}
+			if slices.Contains(strings.Fields(right), lw.subtype) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // --- blocks --------------------------------------------------------

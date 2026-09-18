@@ -21,6 +21,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // after the sweep, or counting creatures in graveyards, both give
 // the wrong answer the moment a token is involved.
 //
+// #815: `swept` is narrowed to the creatures that were actually
+// destroyed, so a player whose creature the CR 614 window saved
+// mid-sweep is not charged for it — and the losses happen from the
+// sweep's continuation, so a commander in the wipe is charged for
+// when its owner answers CR 903.9 rather than before.
+//
 // Life LOSS, not damage: no prevention, no lifelink, no source
 // dealing it, and a player at 3 who controlled five creatures is
 // dead on the state-based-action check.

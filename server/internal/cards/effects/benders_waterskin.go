@@ -23,10 +23,9 @@ func init() {
 		Name:         "Bender's Waterskin",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		UntapStep: []game.UntapStepPermission{
 			untapSelfDuringEachOtherPlayersUntapStep(

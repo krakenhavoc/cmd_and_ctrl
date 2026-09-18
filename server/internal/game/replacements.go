@@ -70,10 +70,39 @@ type ReplacementEventID uint64
 // InstanceID, index into the card's Replacements slice).
 type ReplacementEffectID uint64
 
-// builtinReplacementIDBase is the offset subtracted from a built-in's
-// engine-assigned ID. Built-ins' IDs live in the top uint64 half so
-// they never collide with catalog-assigned IDs.
-const builtinReplacementIDBase ReplacementEffectID = 1 << 62
+// The ReplacementEffectID space, low to high. Each registry the
+// gather pass walks gets a disjoint range, so an ID names both the
+// registry it came from and the entry within it. The catalog's range
+// is the bottom one and is the only one with two coordinates packed
+// into it — see encodeCatalogReplacementID.
+//
+//	1                     .. selfReplacementIDBase  catalog (battlefield card × slot)
+//	selfReplacementIDBase .. turnScopedIDBase       a card replacing its own entry, by slot
+//	turnScopedIDBase      .. testReplacementIDBase  turn-scoped (Fog), by index
+//	testReplacementIDBase .. builtinReplacementIDBase  test-injected, by index
+//	builtinReplacementIDBase ..                     built-ins (commander zone), by index
+//
+// They were three `const` declarations inside the two functions that
+// read them, declared twice over; #801 moved them here so the scheme
+// is written down once.
+const (
+	selfReplacementIDBase    ReplacementEffectID = 1 << 45
+	turnScopedIDBase         ReplacementEffectID = 1 << 50
+	testReplacementIDBase    ReplacementEffectID = 1 << 55
+	builtinReplacementIDBase ReplacementEffectID = 1 << 62
+)
+
+// MaxCatalogReplacementSlots is the number of Replacements one
+// catalog entry may declare. It is the stride of the catalog ID
+// encoding (see encodeCatalogReplacementID), so a card that declared
+// more would mint IDs belonging to the next card along and silently
+// replace the wrong permanent's effect in a CR 616 prompt.
+//
+// effects.Register rejects a Spec over the budget at boot, the way it
+// rejects every other unrepresentable declaration. No printed card is
+// anywhere near it: the fullest entry in the catalog today (Uncivil
+// Unrest) declares two.
+const MaxCatalogReplacementSlots = 256
 
 // ReplacementEvent is the mutable pre-event value passed through
 // the replacement pipeline. Tagged-union shape (discriminated by
@@ -192,9 +221,10 @@ type ReplacementEvent struct {
 
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
-	// down in exile, this was a mill, this was a counterspell) that a
-	// paused move has to carry across the pause so the resume can
-	// finish it exactly as the mover asked. Set by
+	// down in exile, this was a mill, this was a counterspell, this
+	// was a discard) that a paused move has to carry across the pause
+	// so the resume can finish it exactly as the mover asked — plus,
+	// since #853, the rest of the effect that asked for it. Set by
 	// routeCardToZoneLocked and read by executeZoneRouteLocked; a
 	// non-nil value is what makes a RepEventMove resumable on the
 	// EXIT side, the way entryResumable does on the entry side.
@@ -280,12 +310,15 @@ type ReplacementEvent struct {
 	// returns, because the caller has no resume and no way to be
 	// rewound once it has.
 	//
-	// One thing sets it today: paying life as a cost (CR 118.3).
-	// CR 601.2h pays a spell's costs as one indivisible step of
-	// casting it and CR 601.2 rewinds the announcement if they cannot
-	// all be paid, so a CR 616 ordering prompt in the middle leaves a
-	// spell on the stack with its cost half paid. See
-	// payLifeAsCostLocked in life_tail.go for the full argument.
+	// Two things set it today, and they are the two halves of one cost
+	// line: paying life as a cost (CR 118.3, payLifeAsCostLocked in
+	// life_tail.go, which carries the full argument) and discarding a
+	// card as a cost (CR 701.8a, discard.go, which sets it through
+	// zoneRoute.MustSettleNow). CR 601.2h pays a spell's costs as one
+	// indivisible step of casting it and CR 601.2 rewinds the
+	// announcement if they cannot all be paid, so a CR 616 ordering
+	// prompt — or a CR 903.9 "may" — in the middle leaves a spell on
+	// the stack with its cost half paid.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
 	// and any CR 614.10 "may" on the event: the apply-loop applies the
@@ -461,13 +494,14 @@ type activeReplacement struct {
 // contributing it.
 //
 // It is the engine's existing key for a catalog replacement with the
-// object dropped. `ReplacementEffectID` is minted as
-// `battlefieldIndex*256 + slot`, so it says "the Doubling Season in
-// slot 3 of the battlefield"; this says "Doubling Season's counter-
-// doubling replacement, controlled by Ian" — the same for every copy
-// on the board. That is the whole point: two Rhox Faithmenders are
-// two objects contributing ONE effect, and #792 is about not asking
-// which of two identical modifications happened first.
+// object dropped. `ReplacementEffectID` packs the battlefield index
+// and the slot (encodeCatalogReplacementID), so it says "the Doubling
+// Season in slot 3 of the battlefield"; this says "Doubling Season's
+// counter-doubling replacement, controlled by Ian" — the same for
+// every copy on the board. That is the whole point: two Rhox
+// Faithmenders are two objects contributing ONE effect, and #792 is
+// about not asking which of two identical modifications happened
+// first.
 //
 // The zero value means "no stable identity, never interchangeable
 // with anything". Built-in, turn-scoped and test replacements take
@@ -506,6 +540,57 @@ type replacementIdentity struct {
 // is "unidentified", which never matches anything — including
 // another zero value.
 func (r replacementIdentity) known() bool { return r.card != "" }
+
+// encodeCatalogReplacementID mints the per-instance ID for slot
+// `slot` of the catalog card at battlefield index `cardIdx`: the two
+// coordinates packed into one ReplacementEffectID with
+// MaxCatalogReplacementSlots as the stride, offset by one so no live
+// ID is zero (the zero value means "no ID").
+//
+// ok is false for anything the scheme cannot represent — a negative
+// index, a slot past the budget, or a card index far enough along the
+// battlefield to run into the self-replacement range above. A Spec
+// over the budget is refused by effects.Register at boot, so a false
+// here means a test stub or a battlefield nobody could reach; the
+// gather pass skips the entry rather than mint an ID that names a
+// different card's effect.
+//
+// decodeCatalogReplacementID is the exact inverse. The pair is the
+// only place the packing is written (#801) — it used to be a literal
+// in the gather pass and a second, hand-rolled literal in
+// ReplacementOptionMetaForEffect, two sites that had to change
+// together and no check that they did.
+func encodeCatalogReplacementID(cardIdx, slot int) (ReplacementEffectID, bool) {
+	if cardIdx < 0 || slot < 0 || slot >= MaxCatalogReplacementSlots {
+		return 0, false
+	}
+	id := ReplacementEffectID(cardIdx)*MaxCatalogReplacementSlots + ReplacementEffectID(slot) + 1
+	if id >= selfReplacementIDBase || id < 1 {
+		return 0, false
+	}
+	return id, true
+}
+
+// decodeCatalogReplacementID unpacks a catalog ReplacementEffectID
+// back into the battlefield index and slot it was minted from.
+//
+// ok is false for an ID outside the catalog range — zero, or one
+// belonging to a self-replacement, a turn-scoped effect, a test
+// injection or a built-in. Callers that handle those ranges check
+// them first; this is the defensive floor for a stale or malformed ID
+// off the wire, which decodes to nothing rather than to whatever card
+// happens to sit at that battlefield index.
+//
+// The returned cardIdx is NOT bounds-checked against the battlefield:
+// the ID space is far larger than any battlefield, so only the caller
+// holding the slice can say whether the index is live.
+func decodeCatalogReplacementID(id ReplacementEffectID) (cardIdx, slot int, ok bool) {
+	if id < 1 || id >= selfReplacementIDBase {
+		return 0, 0, false
+	}
+	raw := id - 1
+	return int(raw / MaxCatalogReplacementSlots), int(raw % MaxCatalogReplacementSlots), true
+}
 
 // errReplacementPending is a sentinel returned by
 // applyReplacementsLocked when a CR 616 order-choose prompt was
@@ -585,8 +670,9 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
-			// applying — with three exceptions, all of which apply
-			// the gathered order inline instead.
+			// applying — with four exceptions, all of which apply
+			// the gathered order inline instead, one effect per pass
+			// round this loop (CR 616.1f; applyFirstGatheredLocked).
 			//
 			// #710: every applicable effect is a PURE CANCEL, so
 			// every ordering produces the same event. Two "skip your
@@ -594,7 +680,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// skipped draw step, and asking which of them skipped it
 			// is a prompt with a single answer.
 			if allPureCancels(applicable) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, applicable)
 				continue
 			}
 			// #792: every applicable effect is the SAME declared
@@ -603,14 +689,23 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// order N copies of one modification, so again there is
 			// only one answer.
 			if sameModification(applicable) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, applicable)
 				continue
 			}
 			// Nobody is left to answer the prompt: the gathered
 			// order stands (an eliminated player's prompt would
 			// block the table forever; S31 fuzzer finding).
+			//
+			// #847: through skipQuestionsLocked, exactly as the
+			// mustSettleNow branch below does. An effect that asks its
+			// own question cannot ride an order nobody chose either —
+			// firing a CR 614.10 "may" or a copy selector here would
+			// answer it blind, in the direction that favours it, on
+			// an event whose affected player is no longer at the
+			// table. Skipped un-applied is the weaker branch, which is
+			// the posture every other un-prompted path takes.
 			if chooser := affectedPlayerForEvent(ev, applicable, g); g.chooserGoneLocked(chooser) {
-				g.applyGatheredInOrderLocked(ev, applicable)
+				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			// #793: the event cannot pause — a life payment is a COST
@@ -619,7 +714,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 			// reason it does above: a prompt nobody can answer here is
 			// a spell stuck on the stack with a half-paid cost.
 			if ev.mustSettleNow {
-				g.applyGatheredInOrderLocked(ev, g.skipQuestionsLocked(ev, applicable))
+				g.applyFirstGatheredLocked(ev, g.skipQuestionsLocked(ev, applicable))
 				continue
 			}
 			g.queueReplacementOrderPromptLocked(ev, applicable)
@@ -663,33 +758,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if chosen.effect.Optional {
 			// CR 614.10 "may" — owner decides each time. Queue a
 			// yes/no prompt; the resume path either fires Replace
-			// (yes) or marks applied and skips (no). A chooser who
-			// has left the game gets the "no" inline: the commander
-			// of an eliminated player going to the graveyard rather
-			// than the command zone changes nothing for anyone.
-			//
-			// #359: so does an event with nothing to resume it. This
-			// branch used to queue unconditionally while the
-			// EntryLifeCost branch below has checked entryResumable
-			// since #268, so an Optional self-replacement on a
-			// permanent entering by an unresumable route would pause
-			// with no way to finish — the card stranded in its old
-			// zone and the prompt answerable to no effect. Taking the
-			// un-applied branch is weaker than printed and never
-			// stranded, which is the posture #268 chose and #272
-			// reaffirmed. It is also what blocked the six reveal-
-			// lands ("as this enters, you may reveal a land from your
-			// hand") from shipping.
-			if !g.optionalReplacementResumableLocked(ev) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
+			// (yes) or marks applied and skips (no). The two cases
+			// that decline it inline instead — a chooser who has left
+			// the game, an event with nothing to resume it (#359) —
+			// live in the helper with the prompt, because
+			// ResolveReplacementOrder's chosen-order loop needs the
+			// same three answers and used to have none of them
+			// (#847). A queued prompt bails; a decline falls through
+			// to the next iteration.
+			if g.offerOptionalReplacementLocked(ev, chosen) {
+				return ev, errReplacementPending
 			}
-			if g.chooserGoneLocked(g.optionalReplacementChooserLocked(ev, chosen)) {
-				g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-				continue
-			}
-			g.queueOptionalReplacementPromptLocked(ev, chosen)
-			return ev, errReplacementPending
+			continue
 		}
 		// Mandatory: fire Replace inline and iterate.
 		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
@@ -795,26 +875,40 @@ func asksItsOwnQuestion(e ReplacementEffect) bool {
 	return e.Optional || e.EntryLifeCost > 0 || e.CopySelector != nil
 }
 
-// applyGatheredInOrderLocked fires the gathered replacements in the
-// order the gather pass produced, marking each applied, and stops at
-// the first one that cancels the event. The un-prompted sibling of
-// ResolveReplacementOrder's chosen-order loop, used when the CR 616
-// prompt is skipped — because nobody could answer it (an eliminated
-// chooser) or because every ordering gives the same answer
-// (allPureCancels).
+// applyFirstGatheredLocked fires the FIRST gathered replacement and
+// marks it applied. The un-prompted sibling of ResolveReplacementOrder's
+// chosen-order loop, used when the CR 616 prompt is skipped — because
+// nobody could answer it (an eliminated chooser), because every
+// ordering gives the same answer (allPureCancels, sameModification), or
+// because the event cannot pause (mustSettleNow).
+//
+// Only the first, and the caller goes round the apply-loop again, which
+// re-gathers. CR 616.1f: "Once the chosen effect has been applied, this
+// process is repeated (taking into account only replacement or
+// prevention effects that would now be applicable)". This used to fire
+// the whole gathered list back to back, so an effect whose AppliesTo
+// the first one had just made false — a "lose life greater than 3"
+// gate after a halving, say — fired anyway on a stale gather (#808).
+// Going round again also lets an effect the first one ENABLED join in
+// at its proper place instead of after the rest of the list. The
+// orderings the skipped prompt would have offered are still not
+// offered — the gather order stands — which is the declared
+// simplification those branches already carry.
+//
+// An empty list is a no-op: skipQuestionsLocked can drop every entry,
+// and the next gather then finds them marked.
 //
 // Caller must hold g.mu, and must have allocated the once-per-event
 // map entry for ev.ID.
-func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []activeReplacement) {
-	for _, chosen := range applicable {
-		if ev.Canceled {
-			break
-		}
-		g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-		if chosen.effect.Replace != nil {
-			if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
-				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
-			}
+func (g *Game) applyFirstGatheredLocked(ev *ReplacementEvent, applicable []activeReplacement) {
+	if len(applicable) == 0 || ev.Canceled {
+		return
+	}
+	chosen := applicable[0]
+	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
+	if chosen.effect.Replace != nil {
+		if err := chosen.effect.Replace(ev, g, chosen.source); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 		}
 	}
 }
@@ -824,10 +918,12 @@ func (g *Game) applyGatheredInOrderLocked(ev *ReplacementEvent, applicable []act
 // pay-life, a copy selector — marking each applied so the apply-loop
 // does not gather it again, and returns the rest in gather order.
 //
-// Only an event that cannot pause (mustSettleNow) uses it: on every
-// other event the question is asked. Skipping is the weaker branch of
-// a "may" and the un-copied branch of a selector, which is what "never
-// stronger than printed" means here.
+// Two windows use it, and both are windows in which the question
+// could not be put to anybody anyway: an event that cannot pause
+// (mustSettleNow), and an ordering window whose affected player has
+// left the game (#847). Everywhere else the question is asked.
+// Skipping is the weaker branch of a "may" and the un-copied branch of
+// a selector, which is what "never stronger than printed" means here.
 //
 // Caller must hold g.mu, and must have allocated the once-per-event
 // map entry for ev.ID.
@@ -873,6 +969,34 @@ func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
 		return true
 	}
 	return ev.entryResumable
+}
+
+// stillAppliesLocked reports whether a gathered replacement would
+// still be gathered for ev as the effects applied so far have left it:
+// it has not fired for this event, and its Watches filter and AppliesTo
+// predicate still pass.
+//
+// CR 616.1f re-checks applicability after every applied effect ("taking
+// into account only replacement or prevention effects that would now be
+// applicable"). The CR 616 ordering answer fires the whole chosen order
+// in one go, so it asks this before each effect rather than trusting
+// the gather the prompt was built from (#808).
+//
+// It tests the entry the frame is holding rather than re-gathering and
+// looking the ID up, because a catalog effect's ID is its battlefield
+// index: a permanent leaving between the prompt and the answer shifts
+// every ID after it, and a lookup would then answer for a different
+// effect.
+//
+// Caller must hold g.mu.
+func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) bool {
+	if ev == nil || g.replacementsAppliedThisEvent[ev.ID][a.id] {
+		return false
+	}
+	if !eventKindMatches(a.effect.Watches, ev.Kind) {
+		return false
+	}
+	return a.effect.AppliesTo == nil || a.effect.AppliesTo(ev, g, a.source)
 }
 
 // clearReplacementEventLocked drops the per-event tracking map
@@ -924,9 +1048,8 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 
 	// Catalog — walk battlefield cards, look up each card's
 	// replacements via CatalogReplacements, gather applicable ones.
-	// IDs are minted as (battlefieldIndex * 256 + replacementIndex)
-	// — small enough that catalog IDs never collide with the
-	// built-in base range.
+	// IDs are minted by encodeCatalogReplacementID, which packs the
+	// battlefield index and the slot into the bottom of the ID space.
 	if CatalogReplacements != nil {
 		for cardIdx := range g.Battlefield.Cards {
 			card := &g.Battlefield.Cards[cardIdx]
@@ -939,7 +1062,14 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 				continue
 			}
 			for repIdx := range reps {
-				id := ReplacementEffectID(cardIdx*256 + repIdx + 1)
+				id, ok := encodeCatalogReplacementID(cardIdx, repIdx)
+				if !ok {
+					// Unrepresentable — a slot past the budget, which
+					// effects.Register refuses at boot. Skipping is
+					// the only safe answer: a minted-anyway ID would
+					// name another card's effect.
+					continue
+				}
 				if applied[id] {
 					continue
 				}
@@ -975,11 +1105,17 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// battlefield, so a permanent already in play can never match here
 	// as well as in the walk above and apply the same effect twice.
 	if CatalogReplacements != nil && ev.CardID != uuid.Nil && !g.Battlefield.Contains(ev.CardID) {
-		const selfReplacementIDBase ReplacementEffectID = 1 << 45
 		if entering, ok := g.LookupCardForEffect(ev.CardID); ok {
 			key := CatalogKey(entering)
 			reps := CatalogReplacements(key)
 			for repIdx := range reps {
+				if repIdx >= MaxCatalogReplacementSlots {
+					// The same budget the packed catalog IDs are
+					// bounded by, for the same reason: slot
+					// MaxCatalogReplacementSlots would be the first
+					// turn-scoped effect's ID.
+					break
+				}
 				id := selfReplacementIDBase + ReplacementEffectID(repIdx)
 				if applied[id] {
 					continue
@@ -1010,7 +1146,6 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// RegisterTurnScopedReplacement. Live until StepCleanup clears
 	// the slice. IDs in a dedicated range between catalog space
 	// and test space.
-	const turnScopedIDBase ReplacementEffectID = 1 << 50
 	for i := range g.TurnScopedReplacements {
 		id := turnScopedIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -1028,7 +1163,6 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 
 	// Test replacements. IDs live in a dedicated range above the
 	// catalog + turn-scoped spaces and below the built-in base.
-	const testReplacementIDBase ReplacementEffectID = 1 << 55
 	for i := range g.testReplacements {
 		id := testReplacementIDBase + ReplacementEffectID(i)
 		if applied[id] {
@@ -1082,8 +1216,6 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	const testReplacementIDBase ReplacementEffectID = 1 << 55
-	const turnScopedIDBase ReplacementEffectID = 1 << 50
 	// Test replacements.
 	if id >= testReplacementIDBase {
 		i := int(id - testReplacementIDBase)
@@ -1100,19 +1232,24 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	// Catalog. ID = cardIdx*256 + repIdx + 1, so decode accordingly.
+	// Catalog — the packed (battlefield index, slot) range, unpacked
+	// by the same pair the gather pass mints with.
 	if CatalogReplacements == nil {
 		return "", uuid.UUID{}
 	}
-	raw := int(id) - 1
-	cardIdx := raw / 256
-	repIdx := raw % 256
-	if cardIdx < 0 || cardIdx >= len(g.Battlefield.Cards) {
+	cardIdx, repIdx, ok := decodeCatalogReplacementID(id)
+	if !ok {
+		// Below the catalog range (zero) or in the self-replacement
+		// range, which names a card that is not on the battlefield
+		// and so has no slot to look up here.
+		return "", uuid.UUID{}
+	}
+	if cardIdx >= len(g.Battlefield.Cards) {
 		return "", uuid.UUID{}
 	}
 	card := &g.Battlefield.Cards[cardIdx]
 	reps := CatalogReplacements(CatalogAbilityKey(*card))
-	if repIdx < 0 || repIdx >= len(reps) {
+	if repIdx >= len(reps) {
 		return "", card.InstanceID
 	}
 	return reps[repIdx].Label, card.InstanceID

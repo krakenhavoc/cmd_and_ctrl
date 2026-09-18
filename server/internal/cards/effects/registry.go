@@ -162,6 +162,17 @@ func Register(spec Spec) {
 	if spec.AdditionalCost != nil {
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
 	}
+	// #801: a replacement's per-instance ReplacementEffectID packs the
+	// source's battlefield index and its slot in this slice into one
+	// number, with game.MaxCatalogReplacementSlots as the stride. A
+	// Spec over the budget would mint IDs belonging to the next
+	// permanent along — a CR 616 prompt ordering some other card's
+	// effect — so it fails at boot rather than aliasing in play. The
+	// fullest entry in the catalog today declares two slots.
+	if n := len(spec.Replacements); n > game.MaxCatalogReplacementSlots {
+		panic(fmt.Sprintf("effects.Register: %q declares %d replacement effects — the ID scheme reserves %d slots per card (game.MaxCatalogReplacementSlots)",
+			spec.Name, n, game.MaxCatalogReplacementSlots))
+	}
 	registry[spec.OracleID] = spec
 	defs[spec.OracleID] = buildDef(spec)
 }

@@ -133,21 +133,19 @@ func b34NoOpponentHasMoreLifeThan(g *game.Game, controller, player uuid.UUID) bo
 }
 
 // b34YouSacrificedAFoodThisTurn is Elanor Gardner's end-step
-// condition, walked off the event log back to the turn's upkeep
-// (b06EnteredThisTurn's boundary): a sacrifice by `controller` of a
-// permanent that is a Food. The sacrificed card is read wherever it
-// now sits — a Food token in a graveyard keeps its type line — and
-// one that can no longer be found does not count, which errs weaker.
+// condition: `controller` sacrificed a Food this turn.
+//
+// Read off the per-turn tally, which records what a permanent was at
+// the moment it was sacrificed. This used to walk the event log and
+// look the sacrificed card up wherever it had landed, on the grounds
+// that "a Food token in a graveyard keeps its type line". Since #596
+// it does not keep anything: a Food IS a token, and CR 704.5d removes
+// it from the graveyard at the next state-based check — so by the end
+// step the lookup found nothing and the commonest case the card is
+// printed for (eat the Food Elanor herself made) silently stopped
+// counting.
 func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventSacrifice || ev.Actor != controller || ev.CardID == uuid.Nil {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.HasSubtype("Food") {
-			return true
-		}
-	}
-	return false
+	return g.SacrificedWithSubtypeThisTurn(controller, "Food") > 0
 }
 
 // b34GoblinsEnteredUnderYourControlThisTurn is Hobgoblin Bandit

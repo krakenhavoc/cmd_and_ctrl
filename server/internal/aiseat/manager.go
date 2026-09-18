@@ -52,6 +52,12 @@ type Manager struct {
 	// PolicyFactory.
 	factory PolicyFactory
 
+	// decisionLog, when set, opens one decision log per game and
+	// installs it as every bot seat's observer. Nil is off, which is
+	// the default and what production runs unless an operator asked
+	// for it — see aiseat/decisionlog for why.
+	decisionLog DecisionLogger
+
 	mu    sync.Mutex
 	games map[uuid.UUID]*botGame
 }
@@ -59,6 +65,26 @@ type Manager struct {
 type botGame struct {
 	cancel  context.CancelFunc
 	runners []*Runner
+	// dlog is this game's decision log, nil when logging is off. It
+	// is closed exactly once: by StopBots, or by the watcher
+	// goroutine when every runner has exited on its own (a game that
+	// simply ENDS is never stopped — the runners see the state leave
+	// StateActive and return), or when a second StartBots replaces
+	// this set.
+	dlog     GameDecisionLog
+	closeLog sync.Once
+}
+
+// finishLog closes the game's decision log, once.
+func (b *botGame) finishLog(log *slog.Logger) {
+	if b.dlog == nil {
+		return
+	}
+	b.closeLog.Do(func() {
+		if err := b.dlog.Close(); err != nil {
+			log.Error("closing the bot decision log failed", "err", err)
+		}
+	})
 }
 
 // NewManager builds a Manager that paces each runner by its tier —
@@ -94,6 +120,19 @@ func (m *Manager) SetPolicyFactory(f PolicyFactory) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.factory = f
+}
+
+// SetDecisionLogger turns the per-game decision log on. Call it once
+// at boot, beside SetPolicyFactory: a game already running keeps the
+// observer (or the absence of one) its runners were started with.
+//
+// Nil turns it off. The log is OFF by default and that is deliberate
+// — the file aggregates every bot seat's view of one table, so it is
+// operator-only. See aiseat/decisionlog.
+func (m *Manager) SetDecisionLogger(dl DecisionLogger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.decisionLog = dl
 }
 
 // policyFactory is the injected factory, or the builtin one.
@@ -165,6 +204,31 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		return
 	}
 	gameID := room.Game.ID
+
+	// Opening the decision log creates a file, so it happens BEFORE
+	// the manager lock is taken. Every StartBots and StopBots on the
+	// server queues behind that one mutex; a slow, full or unwritable
+	// disk must not be able to stall a game starting in another
+	// lobby. The log is discarded on the one early return below.
+	var glog GameDecisionLog
+	m.mu.Lock()
+	dl := m.decisionLog
+	m.mu.Unlock()
+	if dl != nil {
+		// One log per GAME, shared by every seat: a decision log is a
+		// record of a table, and four per-seat files would have to be
+		// merged by hand to read one.
+		g, err := dl.OpenGame(gameID)
+		if err != nil {
+			// A diagnostic that cannot open its file must not stop a
+			// game from being played.
+			m.log.Error("bot decision log could not be opened; the game plays without one",
+				"game", gameID.String(), "err", err)
+		} else {
+			glog = g
+		}
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if old, ok := m.games[gameID]; ok {
@@ -172,13 +236,14 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		for _, r := range old.runners {
 			<-r.Done()
 		}
+		old.finishLog(m.log)
 	}
 	factory := m.factory // holding m.mu; see policyFactory
 	if factory == nil {
 		factory = builtinFactory{}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	bg := &botGame{cancel: cancel}
+	bg := &botGame{cancel: cancel, dlog: glog}
 	for _, seat := range seats {
 		tier, ok := LookupTier(seat.Tier)
 		if !ok {
@@ -192,7 +257,11 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier, "err", err)
 			continue
 		}
-		r := Start(ctx, room, seat.PlayerID, policy, m.configFor(factory, tier), m.bc, m.log.With("game", gameID.String()))
+		rcfg := m.configFor(factory, tier)
+		if bg.dlog != nil {
+			rcfg.Observer = bg.dlog
+		}
+		r := Start(ctx, room, seat.PlayerID, policy, rcfg, m.bc, m.log.With("game", gameID.String()))
 		bg.runners = append(bg.runners, r)
 		// The policy NAME is logged next to the tier on purpose. A
 		// seat labelled "assisted" that is actually running the
@@ -205,9 +274,23 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 	}
 	if len(bg.runners) == 0 {
 		cancel()
+		bg.finishLog(m.log)
 		return
 	}
 	m.games[gameID] = bg
+	// A game that ENDS is never stopped: the runners watch the room,
+	// see the state leave StateActive and return on their own. So the
+	// log's normal close is here rather than in StopBots — which
+	// closes it too, for the game that is deleted or the process that
+	// is going away, hence the sync.Once.
+	if bg.dlog != nil {
+		go func(bg *botGame, log *slog.Logger) {
+			for _, r := range bg.runners {
+				<-r.Done()
+			}
+			bg.finishLog(log)
+		}(bg, m.log)
+	}
 	m.log.Info("bot runners started", "game", gameID.String(), "seats", len(bg.runners))
 }
 
@@ -225,6 +308,7 @@ func (m *Manager) StopBots(gameID uuid.UUID) {
 		for _, r := range bg.runners {
 			<-r.Done()
 		}
+		bg.finishLog(m.log)
 		m.log.Info("bot runners stopped", "game", gameID.String())
 	}
 }

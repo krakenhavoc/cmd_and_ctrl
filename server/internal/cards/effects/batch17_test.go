@@ -276,8 +276,12 @@ func TestB17BattleOfBywaterKillsBigCreaturesAndFeedsTheRest(t *testing.T) {
 // A commander of yours with power 3 or more is destroyed by The Battle
 // of Bywater, so it is not a creature you control when the Foods are
 // counted. The engine keeps it on the battlefield until its owner
-// answers the CR 903.9 prompt, which happens after the Foods are
-// made, so a plain board count would pay for it.
+// answers the CR 903.9 prompt, so a plain board count would pay for it.
+//
+// #815: the Foods are made from the destruction's continuation, so
+// nothing is counted until that answer arrives — and then the
+// commander is not among the creatures its controller still has,
+// whichever answer it was.
 func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
@@ -294,8 +298,9 @@ func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
 			if !g.Battlefield.Contains(hobbit) {
 				t.Fatal("the Hobbit is too small to be destroyed")
 			}
-			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
-				t.Errorf("only the Hobbit is still a creature you control: %d Foods, want 1", n)
+			if n := len(battlefieldIDsNamed(g, "Food")); n != 0 {
+				t.Errorf("%d Foods while the CR 903.9 prompt is still open, want 0 — "+
+					"the sweep is not finished until it is answered", n)
 			}
 
 			if tc.commandZone {
@@ -310,7 +315,7 @@ func TestB17BattleOfBywaterDoesNotFeedADestroyedCommander(t *testing.T) {
 				}
 			}
 			if n := len(battlefieldIDsNamed(g, "Food")); n != 1 {
-				t.Errorf("after the CR 903.9 answer: %d Foods, want 1", n)
+				t.Errorf("after the CR 903.9 answer: %d Foods, want 1 (only the Hobbit)", n)
 			}
 		})
 	}
@@ -927,10 +932,17 @@ func TestB17FiremaneCommandoDrawsForWideAttacksAimedElsewhere(t *testing.T) {
 	// Next turn cycle: one of the two comes at you — no card for them.
 	advanceToMainOf(t, g, 1)
 	theirHand = opp.Hand.Size()
-	declareAttack(t, g, other.ID, theirs[0])
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(theirs[0], other.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err := g.DeclareAttacker(theirs[1], me.ID); err != nil {
 		t.Fatal(err)
 	}
+	// One declaration, two defenders — the lock-in harvests off the
+	// whole of it (#859), which is what "if none of those creatures
+	// attacked you" is asking about.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	if opp.Hand.Size() != theirHand {
 		t.Errorf("one of the attackers came at you: no draw, drew %d", opp.Hand.Size()-theirHand)

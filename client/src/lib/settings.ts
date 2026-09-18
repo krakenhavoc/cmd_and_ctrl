@@ -1,4 +1,5 @@
-import { writable, get, type Writable } from "svelte/store";
+import { get, type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import { setMuted, setVolumeMultiplier } from "./sounds";
 import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
@@ -489,7 +490,7 @@ function saveSettings(s: Settings): void {
   }
 }
 
-export const settings: Writable<Settings> = writable(loadSettings());
+export const settings: Writable<Settings> = guardedWritable(loadSettings(), "settings");
 
 // Persist on every mutation. Subscribe rather than wrapping every
 // setter because .update() / .set() fire here too.
@@ -603,7 +604,7 @@ export function resetSettings(): void {
 // (header gear, keyboard shortcut, chat slash-command later) can
 // toggle it without the modal needing prop drilling. Settings.svelte
 // subscribes and renders itself when this is true.
-export const settingsOpen: Writable<boolean> = writable(false);
+export const settingsOpen: Writable<boolean> = guardedWritable(false, "settingsOpen");
 
 // SettingsTab names the panel's sidebar entries. Lives here rather
 // than in Settings.svelte so a caller can ask for a specific tab
@@ -622,7 +623,7 @@ export type SettingsTab =
 // with no argument keeps landing on the first tab the way it always
 // has; the shortcuts overlay's "Customise" link is what needs the
 // deep link.
-export const settingsTab: Writable<SettingsTab> = writable("audio");
+export const settingsTab: Writable<SettingsTab> = guardedWritable("audio", "settingsTab");
 
 export function openSettings(tab: SettingsTab = "audio"): void {
   settingsTab.set(tab);

@@ -37,9 +37,12 @@ type GameView struct {
 	// keep / mulligan dialog while open. Added in S08.
 	MulligansOpen bool `json:"mulligans_open"`
 	// Monarch is the player ID currently designated as the monarch,
-	// or empty string if no monarch is set. Sandbox marker; the must-
-	// attack-when-able and combat-damage-transfer rules are not
-	// enforced. Added in S10.
+	// or empty string if no monarch is set. Since #375 the engine
+	// moves this itself: CR 724.2's two inherent triggered abilities
+	// (the end-step draw, and the transfer to whoever deals combat
+	// damage to the monarch) are enforced server-side, so a client
+	// that renders this field renders a crown that moves on its own.
+	// Added in S10.
 	Monarch string `json:"monarch,omitempty"`
 	// Initiative is the player ID currently holding the initiative
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
@@ -209,9 +212,11 @@ type PendingChoiceView struct {
 	// ColorOptions populates the S15 "mana_pick" kind: one entry per
 	// legal color button the chooser's picker modal should render.
 	// Uppercase single-character values ("W", "U", "B", "R", "G",
-	// "C"). Absent for non-mana choices. Server-side filtered
-	// against commander identity before the wire leaves the engine.
-	// Added in S15 sub-PR 2.
+	// "C"). Absent for non-mana choices. Ordered server-side: the
+	// commander's colour identity first, then the rest; only a source
+	// whose printed text says "in your commander's color identity"
+	// (Command Tower, Arcane Signet) is narrowed to it. Render in the
+	// order given. Added in S15 sub-PR 2.
 	ColorOptions []string `json:"color_options,omitempty"`
 
 	// ColorAmounts populates a "mana_pick" that adds more than one mana
@@ -286,6 +291,12 @@ type PendingChoiceView struct {
 	// library".
 	LifeCost int `json:"life_cost,omitempty"`
 
+	// Coin-call answers and the public progress of a flip chain.
+	AllowStop     bool `json:"allow_stop,omitempty"`
+	Coins         int  `json:"coins,omitempty"`
+	MaxUsefulWins int  `json:"max_useful_wins,omitempty"`
+	Wins          int  `json:"wins,omitempty"`
+
 	// ChooseMin / ChooseMax populate the "choose_cards" kind: how few
 	// and how many of Options the chooser must pick. Both are sent —
 	// including a zero Min, which is why the client reads Max to tell
@@ -299,6 +310,19 @@ type PendingChoiceView struct {
 	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
+	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
+	// kind (CR 726): how many times the repeating ability has already
+	// resolved this turn, and the ceiling the engine will accept on
+	// the answer. The client renders a number field between 0 and the
+	// max; `reason` carries "<card> — <ability>". Answered with
+	// `{choice_id, iterations}`, where 0 means "stop here".
+	LoopCount         int `json:"loop_count,omitempty"`
+	LoopMaxIterations int `json:"loop_max_iterations,omitempty"`
+	// DoubledBy / DoubledByName identify the public permanent that
+	// caused this additional trigger (CR 603.2d). They are
+	// present only on trigger_prompt and pick_target choices.
+	DoubledBy     string `json:"doubled_by,omitempty"`
+	DoubledByName string `json:"doubled_by_name,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -423,6 +447,17 @@ type AlternativeCostView struct {
 	// card", "an Island you control"). Absent when there is nothing
 	// to pick.
 	PayLabel string `json:"pay_label,omitempty"`
+
+	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
+	// {X} in its mana cost and this cost does not, so claiming it
+	// fixes X at 0 and the client must not open its X picker. Absent
+	// — the overwhelming majority — means X is announced as usual.
+	//
+	// Server-computed (game.CastCost.LocksXAtZero) rather than
+	// re-derived from `mana_cost` on the client, so the rule has one
+	// statement and the picker cannot disagree with the announce
+	// gate that would reject what it collected. Added for #831.
+	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -521,6 +556,10 @@ type StackItemView struct {
 	// original; countering the original leaves the copy, because a
 	// copy is independent of its source once created).
 	IsCopy bool `json:"is_copy,omitempty"`
+	// DoubledBy / DoubledByName identify the public permanent whose
+	// effect caused this additional trigger (CR 603.2d).
+	DoubledBy     string `json:"doubled_by,omitempty"`
+	DoubledByName string `json:"doubled_by_name,omitempty"`
 }
 
 // DelayedTriggerView is the wire shape of one queued CR 603.7
@@ -652,6 +691,20 @@ type PlayerView struct {
 	// is (correctly) never going to prompt (#338).
 	MaxHandSize int `json:"max_hand_size"`
 
+	// LandDropsPerTurn / LandsPlayedThisTurn are the two halves of
+	// the land-drop badge (#500, CR 305.2): how many lands this seat
+	// may play this turn, and how many it already has. The engine
+	// REFUSES a land play past the allowance since #500, so the
+	// client needs both numbers to grey the hand's lands out before
+	// the player clicks rather than only explain the error after.
+	//
+	// LandDropsPerTurn is the EFFECTIVE allowance, not the raw
+	// Player.LandDropsPerTurn: a controlled Exploration or a
+	// one-turn grant is already summed in, exactly as MaxHandSize
+	// above reports the effective cap. Normally 1 / 0.
+	LandDropsPerTurn    int `json:"land_drops_per_turn"`
+	LandsPlayedThisTurn int `json:"lands_played_this_turn"`
+
 	// ManaPool is the player's current mana pool projection — one
 	// entry per floating mana token, in insertion order. Entries
 	// are uppercase single-character mana letters ("W", "U", "B",
@@ -667,10 +720,17 @@ type PlayerView struct {
 // canonical history is bounded server-side at MaxLifeHistoryEntries
 // (S08), so the wire payload stays small without per-snapshot
 // pruning here.
+//
+// Seq is game.LifeChange.Seq: a per-player counter that starts at 1
+// and only goes up, so the client can key the life-change popup on
+// something that survives the cap. Neither the array index nor At
+// can do that job — the log stops growing at the cap, and At is
+// RFC3339 SECONDS, so two changes in one second collide (#703).
 type LifeChangeView struct {
 	Delta    int    `json:"delta"`
 	NewTotal int    `json:"new_total"`
 	At       string `json:"at"` // RFC3339
+	Seq      uint64 `json:"seq"`
 }
 
 // ZoneView is the wire representation of a Zone. Count is sent
@@ -700,15 +760,25 @@ type CardView struct {
 	// Omitted for placeholder demo cards that have no resolved type.
 	// Added in S08.
 	TypeLine string `json:"type_line,omitempty"`
+	// Colors is the effective color list (W/U/B/R/G), including layer-5
+	// changes. Absent means colorless; mana cost is not a color fallback.
+	Colors []string `json:"colors,omitempty"`
 	// Power and Toughness are the parsed printed stats. Zero for
 	// non-creatures and for any card with non-numeric printed stats
 	// ("*", "1+*"). The client uses Power to label combat-panel
 	// creature rows; ResolveCombatDamage uses CurrentPower (base +
 	// counter modifiers) on the server side. Both omitempty for
 	// non-creatures. Added in S08.
-	Power       int            `json:"power,omitempty"`
-	Toughness   int            `json:"toughness,omitempty"`
-	Tapped      bool           `json:"tapped,omitempty"`
+	Power int `json:"power,omitempty"`
+	// NegativePower preserves signed power for comparisons such as skulk.
+	// Present only below zero; Power retains its combat-damage zero clamp.
+	NegativePower int  `json:"negative_power,omitempty"`
+	Toughness     int  `json:"toughness,omitempty"`
+	Tapped        bool `json:"tapped,omitempty"`
+	// NoUntap describes an untap-step restriction or one-shot marker on
+	// this battlefield permanent. Static is hidden for face-down cards;
+	// Next is public state and survives the face-down identity redaction.
+	NoUntap     *NoUntapView   `json:"no_untap,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
@@ -1012,6 +1082,15 @@ type CardView struct {
 	ActiveFace int `json:"active_face,omitempty"`
 }
 
+// NoUntapView is the public projection of a permanent's untap-step
+// restrictions. A controller-keyed marker is represented by the current
+// controller's player ID in Next; duplicate and eliminated players are
+// omitted by stampNoUntap.
+type NoUntapView struct {
+	Static bool     `json:"static,omitempty"`
+	Next   []string `json:"next,omitempty"`
+}
+
 // CardFaceView is one printed face on the wire (ADR 0034). Enough
 // to render a picker row and a hover panel: what it is called, what
 // it costs, what it is, and where its art lives.
@@ -1082,6 +1161,18 @@ type ExilePlayView struct {
 	// does not cast the wrong thing, because the server settles the
 	// face from the grant rather than from the request.
 	Face int `json:"face,omitempty"`
+
+	// XLockedAtZero is CR 107.3b for a cast taken under this grant:
+	// the card prints an {X} in its mana cost and `cost_override`
+	// does not, so the only legal X is 0 and the client must not open
+	// its X picker. This is what a cascade hit carries. Absent — the
+	// overwhelming majority, including every impulse grant that
+	// charges the printed cost — means X is announced as usual.
+	//
+	// Server-computed (game.CastCost.LocksXAtZero), the same field
+	// and the same rule an alternative-cost offer carries. Added for
+	// #831.
+	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -1259,6 +1350,18 @@ type ManaAbilityView struct {
 	// stampActivatedAbilities (the pass with a game handle). Added
 	// with #743 on the owner's decision to grey both kinds of row.
 	ConditionUnmet bool `json:"condition_unmet,omitempty"`
+	// AddsNoMana is CR 903.4f (#844): this ability's printed text
+	// says "any color in your commander's color identity" and the
+	// controller has no commander, or a commander whose colour
+	// identity is colourless (Kozilek, Karn). The quality is
+	// undefined or empty, so the ability adds no mana at all —
+	// Command Tower taps for nothing. The client greys the row with
+	// its own reason, the same way it greys ConditionUnmet; the
+	// server does not refuse the activation (the ability exists, it
+	// just does nothing), it simply stops offering it. Absent for
+	// every other ability, which is all but four cards. Stamped by
+	// stampManaIdentity, the pass with a game handle.
+	AddsNoMana bool `json:"adds_no_mana,omitempty"`
 	// Restrictions are the "spend this mana only on …" tags the
 	// produced tokens will carry — Ancient Ziggurat, Eldrazi
 	// Temple, the coloured half of Delighted Halfling. Present so
@@ -1398,6 +1501,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampCombatTargets(g, &view)
+		stampNoUntap(g, &view.Battlefield)
 		view.legalBySeat = enumerateLegalMoves(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
@@ -1577,7 +1681,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				// disjoint sets, and showing the wrong one produces a
 				// button the server will reject.
 				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
-					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c.InstanceID, spec, alts)
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c, spec, alts)
 				}
 				if spec == nil {
 					continue
@@ -1647,7 +1751,8 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // 601.2a moved it to the stack before the cost is paid), but a
 // picker that offers a card the cast will be rejected for choosing
 // is a trap rather than an affordance.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+	self := card.InstanceID
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
@@ -1662,6 +1767,12 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *g
 		v := AlternativeCostView{
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
 			Life: ac.Life, PayLabel: ac.PayLabel,
+			// CR 107.3b (#831). An offer is a cost; the rule asks
+			// only whether the printed {X} survives into it, so the
+			// pair of strings IS the whole question here — no exile
+			// grant can be in play on a card in hand, command or
+			// graveyard, which are the only zones that carry offers.
+			XLockedAtZero: game.CastCost{Printed: card.ManaCost, Paid: ac.ManaCost}.LocksXAtZero(),
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
@@ -1742,6 +1853,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
+		stampManaIdentity(g, card, controller, c.ManaAbilities)
 	}
 }
 
@@ -1758,6 +1870,24 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 			continue
 		}
 		views[i].ConditionUnmet = !raw[i].Condition(g, controller, card.InstanceID)
+	}
+}
+
+// stampManaIdentity sets ManaAbilityView.AddsNoMana for every mana
+// ability that CR 903.4f leaves with nothing to add (#844): Command
+// Tower, Arcane Signet, Commander's Sphere or Path of Ancestry under a
+// controller with no commander or a colourless one. Same question the
+// engine answers when the ability fires, asked here so the client can
+// grey the row instead of letting a player tap a land for no mana.
+// Split from viewOfManaAbilities for the reason the conditions are:
+// that projection has no game handle. Caller must hold g's read lock.
+func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) {
+			continue
+		}
+		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
 	}
 }
 
@@ -1802,6 +1932,60 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 	}
 }
 
+// stampNoUntap projects the untap-step state that needs the game handle.
+// Caller holds g's read lock. The view and battlefield slices are kept in
+// the same order by viewOfZone, so this pass can use the card index without
+// exposing the internal marker representation.
+func stampNoUntap(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		static := !card.FaceDown && g.UntapStepRestrictedLocked(card)
+		next := projectedUntapSkipPlayers(g, card)
+		if !static && len(next) == 0 {
+			continue
+		}
+		view.Cards[i].NoUntap = &NoUntapView{Static: static, Next: next}
+	}
+}
+
+func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
+	if card == nil || len(card.NextUntapSkips) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
+	players := make([]string, 0, len(card.NextUntapSkips))
+	for _, skip := range card.NextUntapSkips {
+		playerID := skip.Player
+		if playerID == uuid.Nil {
+			playerID = card.Controller
+		}
+		if playerID == uuid.Nil || !livePlayer(g, playerID) {
+			continue
+		}
+		if _, ok := seen[playerID]; ok {
+			continue
+		}
+		seen[playerID] = struct{}{}
+		players = append(players, playerID.String())
+	}
+	return players
+}
+
+func livePlayer(g *game.Game, id uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p != nil && p.ID == id {
+			return !p.Eliminated
+		}
+	}
+	return false
+}
+
 // stampManaSacrificeOptions fills the sacrifice clause on a
 // permanent's MANA abilities (Ashnod's Altar, Phyrexian Altar).
 //
@@ -1843,6 +2027,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
 			PayCost:       c.PayCost,
+		}
+		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
+			doubledBy, doubledByName := c.TriggerDoubler()
+			if doubledBy != uuid.Nil {
+				v.DoubledBy = doubledBy.String()
+				v.DoubledByName = doubledByName
+			}
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
@@ -1903,10 +2094,26 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceConfirm — the chained-choice two-way prompt.
 		// Only the branch labels travel; everything else about the
 		// question is already in Reason.
+		if c.Kind == game.PendingChoiceCoinCall {
+			v.AllowStop = c.CoinAllowStop
+			v.Coins = c.CoinCount
+			v.MaxUsefulWins = c.CoinMaxUsefulWins
+			v.Wins = c.CoinWins
+		}
 		if c.Kind == game.PendingChoiceConfirm {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+		}
+		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
+		// count is the N in "has resolved N times this turn" and the
+		// max is the ceiling on the client's number field; Reason
+		// already carries "<card> — <ability>". Public, like the
+		// loop_notice beside it: a loop is something the whole table
+		// can see running, and everyone can see whose question it is.
+		if c.Kind == game.PendingChoiceLoopShortcut {
+			v.LoopCount = c.LoopShortcutCount
+			v.LoopMaxIterations = game.MaxLoopShortcutIterations
 		}
 		// PendingChoiceChooseCards — the chained-choice card-set pick.
 		// The candidates are frequently cards in a hand, so they go
@@ -2162,6 +2369,10 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		AltCost:      it.AltCost,
 		IsCopy:       it.IsCopy,
 	}
+	if it.DoubledBy != uuid.Nil {
+		view.DoubledBy = it.DoubledBy.String()
+		view.DoubledByName = it.DoubledByName
+	}
 	if len(it.Targets) > 0 {
 		view.Targets = make([]TargetRefView, len(it.Targets))
 		for i, t := range it.Targets {
@@ -2206,6 +2417,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			Delta:    c.Delta,
 			NewTotal: c.NewTotal,
 			At:       c.At.UTC().Format(time.RFC3339),
+			Seq:      c.Seq,
 		}
 	}
 	var manaPool []string
@@ -2242,7 +2454,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
-		ManaPool:          manaPool,
+		// Locked variants: this builder already runs under the
+		// game's read lock (see legal.EnumerateFor's note), and the
+		// public accessors would take it a second time.
+		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
+		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
+		ManaPool:            manaPool,
 	}
 }
 
@@ -2566,8 +2783,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	}
 	out.Name = ""
 	out.TypeLine = ""
+	out.Colors = nil
 	out.ScryfallID = ""
 	out.Power = 0
+	out.NegativePower = 0
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
@@ -2711,6 +2930,7 @@ func viewOfCard(c game.Card) CardView {
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
 		TypeLine:   effectiveTypeLine(c, eff),
+		Colors:     append([]string(nil), eff.Colors...),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
@@ -2719,11 +2939,12 @@ func viewOfCard(c game.Card) CardView {
 		// renders. Prior code sent eff.Power / eff.Toughness only,
 		// which missed counter deltas — the on-card P/T pip would
 		// stay at printed even after +1/+1 counters landed.
-		Power:       c.CurrentPower(),
-		Toughness:   c.CurrentToughness(),
-		Tapped:      c.Tapped,
-		Counters:    counters,
-		IsCommander: c.IsCommander,
+		Power:         c.CurrentPower(),
+		NegativePower: min(0, c.PowerForComparison()),
+		Toughness:     c.CurrentToughness(),
+		Tapped:        c.Tapped,
+		Counters:      counters,
+		IsCommander:   c.IsCommander,
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the
@@ -2784,9 +3005,29 @@ func viewOfCard(c game.Card) CardView {
 			CostOverride:  c.ExilePlay.CostOverride,
 			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
 			Face:          c.ExilePlay.Face,
+			// CR 107.3b (#831): a cascade hit is granted at {0}, so
+			// its printed {X} is not being paid and the only legal
+			// announcement is 0. Through CastCostFor rather than a
+			// read of CostOverride, because an unpriced grant pays
+			// the PRINTED cost and locks nothing. Against the face
+			// the grant opens, because that is the cost the cast path
+			// will read (ADR 0034).
+			XLockedAtZero: game.CastCostFor(grantedFace(c), "", c.ExilePlay, true).LocksXAtZero(),
 		}
 	}
 	return view
+}
+
+// grantedFace materialises the face an exile grant opens on a copy
+// of the card, the way the cast path does before it prices anything
+// (ADR 0034). A grant that names no face — every impulse, airbend,
+// warp and cascade grant — gets the card back untouched.
+func grantedFace(c game.Card) game.Card {
+	if c.ExilePlay.Face <= 0 {
+		return c
+	}
+	c.SetFace(c.ExilePlay.Face)
+	return c
 }
 
 // effectiveTypeLine renders the wire `type_line` string from the

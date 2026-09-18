@@ -341,7 +341,7 @@ func TestB32DidntSayPleaseCountersAndTheControllerMillsThree(t *testing.T) {
 	if opp.Graveyard.Size() != graveyard+4 {
 		t.Errorf("graveyard grew by %d, want 4 (the Bolt and three milled)", opp.Graveyard.Size()-graveyard)
 	}
-	if opp.LosesAtNextSBA {
+	if opp.AttemptedEmptyDraw {
 		t.Error("a mill never loses the game")
 	}
 }
@@ -599,6 +599,10 @@ func TestB32QuestForRenewalCountsTapsAndUntapsDuringOtherPlayersUntapSteps(t *te
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	prompts := 0
 	for latestTriggerPrompt(g, me.ID) != nil {
 		prompts++

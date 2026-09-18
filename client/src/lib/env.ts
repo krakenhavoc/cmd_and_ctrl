@@ -13,7 +13,9 @@
 // the new client before its reverse proxy learns to route /config,
 // and the only consequence is that the (correct) prod defaults apply.
 
-import { writable, derived, type Readable } from "svelte/store";
+import { type Readable } from "svelte/store";
+
+import { guardedDerived, guardedWritable } from "./guardedStore";
 
 export type EnvName = "prod" | "dev";
 
@@ -42,14 +44,22 @@ export const NO_FEATURES: DevFeatures = {
 // path resolves to.
 export const PROD_CONFIG: AppConfig = { env: "prod", features: NO_FEATURES };
 
-const store = writable<AppConfig>(PROD_CONFIG);
+const store = guardedWritable<AppConfig>(PROD_CONFIG, "appConfig");
 
 // appConfig is the live deployment config. Read-only to consumers —
 // only loadAppConfig writes it.
 export const appConfig: Readable<AppConfig> = { subscribe: store.subscribe };
 
 // isDev is true only on a dev deployment. Drives the env banner.
-export const isDev: Readable<boolean> = derived(store, ($c) => $c.env === "dev");
+// The `false` fallback is the same promise PROD_CONFIG makes: every
+// failure path here resolves to production, which is the answer that
+// hides dev-only surfaces rather than exposing them.
+export const isDev: Readable<boolean> = guardedDerived(
+  store,
+  ($c) => $c.env === "dev",
+  "isDev",
+  false,
+);
 
 // devFeature returns a store for one flag. Components should prefer
 // this over reading appConfig directly so the call site names the
@@ -58,7 +68,7 @@ export const isDev: Readable<boolean> = derived(store, ($c) => $c.env === "dev")
 //   const showInspector = devFeature("frame_inspector");
 //   {#if $showInspector} <FrameInspector /> {/if}
 export function devFeature(name: keyof DevFeatures): Readable<boolean> {
-  return derived(store, ($c) => $c.features[name] === true);
+  return guardedDerived(store, ($c) => $c.features[name] === true, `devFeature:${name}`, false);
 }
 
 // parseConfig narrows an untrusted JSON body onto AppConfig. Anything

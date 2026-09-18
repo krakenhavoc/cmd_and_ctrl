@@ -23,6 +23,13 @@ import (
 // card is in exile and its controller field is stale for a creature
 // that had changed hands (Beast Within's note).
 //
+// #870: "for each creature exiled this way" is the batch's
+// CONTINUATION, and it counts what ARRIVED in exile (CR 400.7). A
+// Boar per exile call that returned no error paid out for a leg that
+// had only PAUSED on the CR 903.9 prompt — a commander's controller
+// got their 2/2 while the commander was still on the battlefield, and
+// a second one if they then chose the command zone.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -30,12 +37,9 @@ func init() {
 		Name:         "Curse of the Swine",
 		Completeness: CompletenessFull,
 		Targets:      targetsCountedByX(TargetCreature("X target creatures")),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			type victim struct {
-				id         uuid.UUID
-				controller uuid.UUID
-			}
-			var victims []victim
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			controllers := map[uuid.UUID]uuid.UUID{}
+			var ids []uuid.UUID
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind != game.TargetCard {
 					continue
@@ -44,19 +48,20 @@ func init() {
 				if !ok {
 					continue
 				}
-				victims = append(victims, victim{t.ID, controller})
+				ids = append(ids, t.ID)
+				controllers[t.ID] = controller
 			}
-			for _, v := range victims {
-				if err := (ExileTarget{Target: v.id}).Apply(ctx); err != nil {
-					return err
+			// The context is rebuilt inside the continuation from the
+			// live *Game, the contract massEffect.apply explains.
+			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
+				ctx := NewContext(g, item)
+				for _, id := range exiled {
+					if err := (CreateToken{Controller: controllers[id], Template: TokenCard("2/2 green Boar"), N: 1}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			for _, v := range victims {
-				if err := (CreateToken{Controller: v.controller, Template: TokenCard("2/2 green Boar"), N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

@@ -94,6 +94,7 @@ func (g *Game) SpawnCardsForDev(controller uuid.UUID, zone ZoneKind, template Ca
 	for i := 0; i < n; i++ {
 		c := template
 		c.InstanceID = uuid.New()
+		g.noteCreatedSourceLocked(c.InstanceID)
 		c.Owner = controller
 		c.Controller = controller
 		// Never inherit the template's per-instance state.

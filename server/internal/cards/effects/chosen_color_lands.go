@@ -60,10 +60,9 @@ func init() {
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			AsEnters:     ChooseColorOtherThanAsEnters(l.name, l.color),
 			ManaAbilities: []ManaAbility{{
-				Cost:                    ManaAbilityCost{Tap: true},
-				ProducedFunc:            ProducedColorOrChosen(l.color),
-				Label:                   "Add {" + l.color + "} or one mana of the chosen color",
-				IgnoreCommanderIdentity: true,
+				Cost:         ManaAbilityCost{Tap: true},
+				ProducedFunc: ProducedColorOrChosen(l.color),
+				Label:        "Add {" + l.color + "} or one mana of the chosen color",
 			}},
 		})
 	}

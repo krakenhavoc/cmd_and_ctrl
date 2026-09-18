@@ -170,8 +170,8 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 // in game/targets.go, shipped in S23.
 //
 // Granting a token OUTSIDE the canonical set — protection, ward,
-// landwalk — still appends a string that nothing reads, so such a
-// card ships weaker than printed and MUST say so in its comment.
+// wither, infect — still appends a string that nothing reads, so such
+// a card ships weaker than printed and MUST say so in its comment.
 // This primitive deliberately does not reject unknown tokens: a
 // declared-but-inert grant is how The Wandering Rescuer was written,
 // so that the day the keyword lands in its consumer the card starts

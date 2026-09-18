@@ -252,8 +252,8 @@ already exists:
   triggers, the shape Consecrated Sphinx already uses.
 - **Sheoldred, Whispering One** — an upkeep reanimation trigger and an
   each-opponent-sacrifices trigger; both primitives exist, and the
-  reanimation half now controls correctly. (Swampwalk is cosmetic
-  until evasion grows.)
+  reanimation half now controls correctly. (Swampwalk is enforced
+  since #705.)
 - **Ashen Rider** — flying, plus one ETB and one dies trigger sharing
   a targeted exile.
 - **Loran of the Third Path** — vigilance, a targeted ETB destroy

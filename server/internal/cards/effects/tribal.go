@@ -21,16 +21,13 @@ import (
 // ("other") and the controller-scope bug ("you control") each have
 // one place to be wrong, and one place to be fixed.
 //
-// LANDWALK IS NOT MODELLED, and no card here grants it. Goblin King
-// really does say "and have mountainwalk", but CanBlock receives the
-// attacker and the blocker and never the defending player's lands, so
-// there is nowhere to enforce it. Appending the string anyway would
-// render a badge that promises an evasion the engine does not
-// provide — the exact failure keywords.go's closed table exists to
-// prevent — so these lords ship with the +1/+1 half only, and say so
-// in their own comments. (Lord of Atlantis has granted an inert
-// "islandwalk" since S16; it is left alone here rather than quietly
-// changed in a sprint about something else.)
+// LANDWALK IS A KEYWORD GRANT LIKE ANY OTHER since #705. Until then
+// the block check could not see the defending player's lands, so
+// Goblin King and Elvish Champion shipped without their landwalk and
+// Lord of Atlantis's islandwalk was inert. The landwalk tokens
+// ("islandwalk", "forestwalk", "nonbasic landwalk", …) are canonical
+// now and read by game/landwalk.go, so TribalKeywordGrant grants them
+// with the same call it uses for haste.
 
 // ChooseCreatureTypeAsEnters builds the `Spec.AsEnters` for a permanent
 // whose text opens "As this permanent enters, choose a creature
@@ -175,7 +172,7 @@ func TribalScalingAnthem(f TribeFilter, per func(source *game.Card, g *game.Game
 //
 // `keyword` must be one of the engine's canonical lowercase tokens
 // (game/keywords.go). Granting anything else appends a string nothing
-// reads — see the landwalk note at the top of this file.
+// reads.
 func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,

@@ -135,6 +135,22 @@ var (
 	// S13.1.
 	ErrSorcerySpeedRequired = errors.New("game: sorcery speed required")
 
+	// ErrLandDropUnavailable is returned by cast_spell when a player
+	// plays a land having already used every land play they get this
+	// turn (CR 305.2). The allowance is not always one — a controlled
+	// Exploration or a one-turn grant raises it — so the message says
+	// "no land plays left", not "one land per turn"; the client pairs
+	// it with the per-seat count on the wire
+	// (PlayerView.LandDropsPerTurn / LandsPlayedThisTurn).
+	//
+	// Its own sentinel rather than ErrSorcerySpeedRequired or
+	// ErrInvalidParam: the player's timing was fine and their payload
+	// was fine — they are simply out of land plays, which is a
+	// different sentence and a different fix. Added for #500, the
+	// first refusal in the engine's move away from the sandbox
+	// posture on land drops.
+	ErrLandDropUnavailable = errors.New("game: no land plays left this turn")
+
 	// ErrNoPlayPermission is returned when a player tries to play a
 	// card from exile without a live impulse-exile grant — the grant
 	// belongs to someone else, has expired, was never made, or is
@@ -292,13 +308,15 @@ var (
 	// Added in S24.
 	ErrCantActivate = errors.New("game: an effect prevents activating this permanent's abilities")
 
-	// ErrIllegalBlock is returned by DeclareBlocker when evasion
-	// keywords on the attacker (flying, menace, fear, shadow, etc.)
-	// or a CR 509.1b restriction on either card ("~ can't block", "~
-	// can't be blocked") rule out the proposed blocker. The CanBlock
-	// helper is the single source of truth. Post-S18 fix for the
-	// missing gate at the DeclareBlocker call site; restrictions
-	// joined it in S24.
+	// ErrIllegalBlock is what DeclareBlocker's refusal wraps when an
+	// evasion keyword on the attacker (flying, landwalk) or a CR
+	// 509.1b restriction on either card ("~ can't block", "~ can't
+	// be blocked") rules out the proposed blocker. The error actually
+	// returned is a *BlockRefusedError carrying the reason; test with
+	// errors.Is. Game.BlockPairRefusalLocked is the single source of
+	// truth (ADR 0045 addendum). Post-S18 fix for the missing gate at
+	// the DeclareBlocker call site; restrictions joined it in S24,
+	// landwalk and the reason in #705.
 	ErrIllegalBlock = errors.New("game: blocker cannot legally block this attacker")
 
 	// ErrNoLegalAttackers is returned by DeclareAttackers when every

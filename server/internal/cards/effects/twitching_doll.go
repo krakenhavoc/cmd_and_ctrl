@@ -36,10 +36,9 @@ func init() {
 		Name:         "Twitching Doll",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "{T}: Add one mana of any color. Put a nest counter on this creature.",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "{T}: Add one mana of any color. Put a nest counter on this creature.",
 			Rider: func(g *game.Game, _ uuid.UUID, source uuid.UUID) error {
 				return g.AddCounterForEffect(source, "nest", 1)
 			},

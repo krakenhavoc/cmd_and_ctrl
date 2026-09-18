@@ -154,6 +154,7 @@ type GameSnapshot struct {
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool        `json:"loyaltyActivatedThisTurn,omitempty"`
 	SpellsCastThisTurn       map[uuid.UUID]CastTally   `json:"spellsCastThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
+	ExtraLandDropsThisTurn   map[uuid.UUID]int         `json:"extraLandDropsThisTurn,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
@@ -178,12 +179,47 @@ type GameSnapshot struct {
 	Events   []Event `json:"events,omitempty"`
 	EventSeq uint64  `json:"eventSeq"`
 
+	// EventBatch is the live Event.Batch counter and OncePerBatchFired
+	// the per-ability record of the batch each "whenever one or more …"
+	// ability last fired for (#829, event_batch.go). Both restore as
+	// zero / empty from a file written before them, which reads as
+	// "no batch has fired yet" — the safe direction: the first event
+	// after the restore opens a fresh batch and every OncePerBatch
+	// ability is free to fire for it. No schema bump.
+	EventBatch        uint64            `json:"eventBatch,omitempty"`
+	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
+
+	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
+	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// blocker has had its EventBlock announced against which
+	// attacker, and which attackers have had their one
+	// EventBecomesBlocked. Both are empty outside a combat with
+	// blockers declared, and a file written before them restores as
+	// empty — which reads as "nothing announced yet", so the next
+	// lock-in announces the declaration the battlefield already
+	// carries. No schema bump.
+	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+
+	// AnnouncedAttacks is the attack declaration's half of the same
+	// bookkeeping (#859, attackers.go): the creatures that have had
+	// their one EventAttack this combat, plus the permanents put onto
+	// the battlefield already attacking, which never get one
+	// (CR 506.3c). Empty outside combat, and a file written before it
+	// restores as empty — which reads as "nothing announced yet", so
+	// the next lock-in announces the declaration the battlefield
+	// already carries. No schema bump.
+	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
-	LastKnownBattlefield map[uuid.UUID]Characteristic `json:"lastKnownBattlefield,omitempty"`
+	LastKnownBattlefield     map[uuid.UUID]Characteristic     `json:"lastKnownBattlefield,omitempty"`
+	LastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI `json:"lastKnownTriggerIdentity,omitempty"`
 
-	RNG rngSnapshot `json:"rng"`
+	RNG               rngSnapshot          `json:"rng"`
+	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
+	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
 
 	LayerVersion        uint64 `json:"layerVersion"`
 	LastResolvedVersion uint64 `json:"lastResolvedVersion"`
@@ -213,24 +249,29 @@ type playerSnapshot struct {
 	// player-ID keys, which read as damage from commanders that do
 	// not exist: harmless (they render nowhere and can never reach
 	// 21 again) but not migrated.
-	CommanderDamage   map[uuid.UUID]int `json:"commanderDamage,omitempty"`
-	LifeHistory       []LifeChange      `json:"lifeHistory,omitempty"`
-	Eliminated        bool              `json:"eliminated"`
-	HandKept          bool              `json:"handKept"`
-	MulligansTaken    int               `json:"mulligansTaken"`
-	DeckImported      bool              `json:"deckImported"`
-	UndosRemaining    int               `json:"undosRemaining"`
-	DiscordID         string            `json:"discordId,omitempty"`
-	DiscordAvatarHash string            `json:"discordAvatarHash,omitempty"`
-	DisplayName       string            `json:"displayName,omitempty"`
-	IsBot             bool              `json:"isBot,omitempty"`
-	BotTier           string            `json:"botTier,omitempty"`
-	BotDeck           string            `json:"botDeck,omitempty"`
-	LosesAtNextSBA    bool              `json:"losesAtNextSba"`
-	CommanderCasts    map[uuid.UUID]int `json:"commanderCasts,omitempty"`
-	Counters          map[string]int    `json:"counters,omitempty"`
-	MaxHandSize       int               `json:"maxHandSize"`
-	ManaPool          ManaPool          `json:"manaPool,omitempty"`
+	CommanderDamage    map[uuid.UUID]int `json:"commanderDamage,omitempty"`
+	LifeHistory        []LifeChange      `json:"lifeHistory,omitempty"`
+	Eliminated         bool              `json:"eliminated"`
+	HandKept           bool              `json:"handKept"`
+	MulligansTaken     int               `json:"mulligansTaken"`
+	DeckImported       bool              `json:"deckImported"`
+	UndosRemaining     int               `json:"undosRemaining"`
+	DiscordID          string            `json:"discordId,omitempty"`
+	DiscordAvatarHash  string            `json:"discordAvatarHash,omitempty"`
+	DisplayName        string            `json:"displayName,omitempty"`
+	IsBot              bool              `json:"isBot,omitempty"`
+	BotTier            string            `json:"botTier,omitempty"`
+	BotDeck            string            `json:"botDeck,omitempty"`
+	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters           map[string]int    `json:"counters,omitempty"`
+	MaxHandSize        int               `json:"maxHandSize"`
+	// LandDropsPerTurn is the player's base land-play allowance
+	// (#500). Absent from every pre-#500 snapshot, which would
+	// restore as 0 — "may never play a land" — so restorePlayer maps
+	// a non-positive value back to DefaultLandDropsPerTurn.
+	LandDropsPerTurn int      `json:"landDropsPerTurn,omitempty"`
+	ManaPool         ManaPool `json:"manaPool,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -279,6 +320,7 @@ type cardSnapshot struct {
 	Owner                    uuid.UUID           `json:"owner"`
 	Controller               uuid.UUID           `json:"controller"`
 	Tapped                   bool                `json:"tapped"`
+	NextUntapSkips           []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
 	BattleX                  float64             `json:"battleX"`
 	BattleY                  float64             `json:"battleY"`
 	Counters                 map[string]int      `json:"counters,omitempty"`
@@ -321,24 +363,26 @@ type cardSnapshot struct {
 // stackItemSnapshot mirrors StackItem. Effect and targetSpec are both
 // func-bearing; see rehydrateStackItem for which ones come back.
 type stackItemSnapshot struct {
-	ID           uuid.UUID         `json:"id"`
-	Kind         StackItemKind     `json:"kind"`
-	Controller   uuid.UUID         `json:"controller"`
-	Owner        uuid.UUID         `json:"owner"`
-	SourceCardID uuid.UUID         `json:"sourceCardId"`
-	Label        string            `json:"label,omitempty"`
-	Targets      []TargetRef       `json:"targets,omitempty"`
-	Payload      []TargetRef       `json:"payload,omitempty"`
-	Modes        []int             `json:"modes,omitempty"`
-	XValue       int               `json:"xValue"`
-	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
-	HoldPriority bool              `json:"holdPriority"`
-	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
-	AltCost      string            `json:"altCost,omitempty"`
-	SplitSecond  bool              `json:"splitSecond"`
-	IsCopy       bool              `json:"isCopy,omitempty"`
-	Seq          uint64            `json:"seq"`
-	Ordered      bool              `json:"ordered"`
+	ID            uuid.UUID         `json:"id"`
+	Kind          StackItemKind     `json:"kind"`
+	Controller    uuid.UUID         `json:"controller"`
+	Owner         uuid.UUID         `json:"owner"`
+	SourceCardID  uuid.UUID         `json:"sourceCardId"`
+	Label         string            `json:"label,omitempty"`
+	DoubledBy     uuid.UUID         `json:"doubledBy,omitempty"`
+	DoubledByName string            `json:"doubledByName,omitempty"`
+	Targets       []TargetRef       `json:"targets,omitempty"`
+	Payload       []TargetRef       `json:"payload,omitempty"`
+	Modes         []int             `json:"modes,omitempty"`
+	XValue        int               `json:"xValue"`
+	Distribution  map[uuid.UUID]int `json:"distribution,omitempty"`
+	HoldPriority  bool              `json:"holdPriority"`
+	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
+	AltCost       string            `json:"altCost,omitempty"`
+	SplitSecond   bool              `json:"splitSecond"`
+	IsCopy        bool              `json:"isCopy,omitempty"`
+	Seq           uint64            `json:"seq"`
+	Ordered       bool              `json:"ordered"`
 
 	// HasEffect / HasTargetSpec record the two closure slots so the
 	// census can count what restore had to drop.
@@ -376,6 +420,10 @@ type pendingChoiceSnapshot struct {
 	Count                int                    `json:"count"`
 	Source               uuid.UUID              `json:"source"`
 	Reason               string                 `json:"reason,omitempty"`
+	CoinAllowStop        bool                   `json:"coinAllowStop,omitempty"`
+	CoinCount            int                    `json:"coinCount,omitempty"`
+	CoinMaxUsefulWins    int                    `json:"coinMaxUsefulWins,omitempty"`
+	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
@@ -400,6 +448,12 @@ type pendingChoiceSnapshot struct {
 	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
 	ChooseMin            int                    `json:"chooseMin,omitempty"`
 	ChooseMax            int                    `json:"chooseMax,omitempty"`
+	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// to, how many resolutions had happened when it was asked, and
+	// whether this is the turn's second ask.
+	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
+	LoopShortcutCount  int    `json:"loopShortcutCount,omitempty"`
+	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -585,7 +639,12 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
+		EventBatch:        g.eventBatch,
 	}
+	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -630,6 +689,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
+	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
@@ -674,6 +734,12 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.LastKnownBattlefield[k] = v
 		}
 	}
+	if len(g.lastKnownTriggerIdentity) > 0 {
+		s.LastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(g.lastKnownTriggerIdentity))
+		for k, v := range g.lastKnownTriggerIdentity {
+			s.LastKnownTriggerIdentity[k] = v
+		}
+	}
 
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
@@ -691,6 +757,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// the new binary rebuilds them itself. See restoreGame.
 
 	s.RNG = snapshotRNG(g)
+	s.SourceOrdinals = cloneSourceOrdinals(g.sourceOrdinals)
+	s.SourceOrdinalNext = g.sourceOrdinalNext
 	s.LayerVersion = g.layerVersion.Load()
 	s.LastResolvedVersion = g.lastResolvedVersion.Load()
 	return s
@@ -757,6 +825,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -795,32 +864,33 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 
 func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	out := playerSnapshot{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           snapshotZone(p.Library, cen),
-		Hand:              snapshotZone(p.Hand, cen),
-		Graveyard:         snapshotZone(p.Graveyard, cen),
-		Command:           snapshotZone(p.Command, cen),
-		CommanderDamage:   copyIntMap(p.CommanderDamage),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		CommanderCasts:    copyIntMap(p.CommanderCasts),
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            snapshotZone(p.Library, cen),
+		Hand:               snapshotZone(p.Hand, cen),
+		Graveyard:          snapshotZone(p.Graveyard, cen),
+		Command:            snapshotZone(p.Command, cen),
+		CommanderDamage:    copyIntMap(p.CommanderDamage),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		CommanderCasts:     copyIntMap(p.CommanderCasts),
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
@@ -848,6 +918,8 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
 		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
 		Targets:       copyTargetRefs(s.Targets),
 		Payload:       copyTargetRefs(s.Payload),
 		Modes:         copyInts(s.Modes),
@@ -929,6 +1001,10 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		Count:                c.Count,
 		Source:               c.Source,
 		Reason:               c.Reason,
+		CoinAllowStop:        c.CoinAllowStop,
+		CoinCount:            c.CoinCount,
+		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
+		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
@@ -952,6 +1028,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -978,6 +1057,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"chooseCardsResume": c.chooseCardsResume != nil,
 		// #742's resolution-time "choose a color".
 		"chooseColorResume": c.chooseColorResume != nil,
+		"coinFlipResume":    c.coinFlipResume != nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -1062,6 +1142,11 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
+	g.eventBatch = s.EventBatch
+	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
+	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
+	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
+	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1098,6 +1183,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
+	g.ExtraLandDropsThisTurn = copyIntMap(s.ExtraLandDropsThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
 	g.DiscardPending = copyIntMap(s.DiscardPending)
 
@@ -1130,8 +1216,16 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.lastKnownBattlefield[k] = v
 		}
 	}
+	if len(s.LastKnownTriggerIdentity) > 0 {
+		g.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(s.LastKnownTriggerIdentity))
+		for k, v := range s.LastKnownTriggerIdentity {
+			g.lastKnownTriggerIdentity[k] = v
+		}
+	}
 
 	restoreRNG(g, s.RNG)
+	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
+	g.sourceOrdinalNext = s.SourceOrdinalNext
 
 	// Layer-engine counters, handled exactly as RestoreFrom does
 	// after an undo and for the same reason: every restored Card
@@ -1211,6 +1305,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
 		Counters:                 copyStringIntMap(c.Counters),
@@ -1263,30 +1358,39 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                p.ID,
-		Name:              p.Name,
-		Seat:              p.Seat,
-		Life:              p.Life,
-		Poison:            p.Poison,
-		Energy:            p.Energy,
-		Library:           restoreZone(p.Library, ZoneLibrary),
-		Hand:              restoreZone(p.Hand, ZoneHand),
-		Graveyard:         restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:           restoreZone(p.Command, ZoneCommand),
-		Eliminated:        p.Eliminated,
-		HandKept:          p.HandKept,
-		MulligansTaken:    p.MulligansTaken,
-		DeckImported:      p.DeckImported,
-		UndosRemaining:    p.UndosRemaining,
-		DiscordID:         p.DiscordID,
-		DiscordAvatarHash: p.DiscordAvatarHash,
-		DisplayName:       p.DisplayName,
-		IsBot:             p.IsBot,
-		BotTier:           p.BotTier,
-		BotDeck:           p.BotDeck,
-		LosesAtNextSBA:    p.LosesAtNextSBA,
-		Counters:          copyStringIntMap(p.Counters),
-		MaxHandSize:       p.MaxHandSize,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            restoreZone(p.Library, ZoneLibrary),
+		Hand:               restoreZone(p.Hand, ZoneHand),
+		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:            restoreZone(p.Command, ZoneCommand),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
+	}
+	// #500: a snapshot written before the field existed carries no
+	// value for it, and restoring 0 would seat a player who may never
+	// play a land again. Nothing in the catalog sets an allowance of
+	// zero, so a non-positive restored value is an old snapshot and
+	// means the default.
+	if out.LandDropsPerTurn <= 0 {
+		out.LandDropsPerTurn = DefaultLandDropsPerTurn
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.
@@ -1315,24 +1419,26 @@ func restorePlayer(p *playerSnapshot) *Player {
 
 func restoreStackItem(s *stackItemSnapshot) *StackItem {
 	out := &StackItem{
-		ID:           s.ID,
-		Kind:         s.Kind,
-		Controller:   s.Controller,
-		Owner:        s.Owner,
-		SourceCardID: s.SourceCardID,
-		Label:        s.Label,
-		Targets:      copyTargetRefs(s.Targets),
-		Payload:      copyTargetRefs(s.Payload),
-		Modes:        copyInts(s.Modes),
-		XValue:       s.XValue,
-		Distribution: copyIntMap(s.Distribution),
-		HoldPriority: s.HoldPriority,
-		CastFromZone: s.CastFromZone,
-		AltCost:      s.AltCost,
-		SplitSecond:  s.SplitSecond,
-		IsCopy:       s.IsCopy,
-		Seq:          s.Seq,
-		Ordered:      s.Ordered,
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Controller:    s.Controller,
+		Owner:         s.Owner,
+		SourceCardID:  s.SourceCardID,
+		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
+		Targets:       copyTargetRefs(s.Targets),
+		Payload:       copyTargetRefs(s.Payload),
+		Modes:         copyInts(s.Modes),
+		XValue:        s.XValue,
+		Distribution:  copyIntMap(s.Distribution),
+		HoldPriority:  s.HoldPriority,
+		CastFromZone:  s.CastFromZone,
+		AltCost:       s.AltCost,
+		SplitSecond:   s.SplitSecond,
+		IsCopy:        s.IsCopy,
+		Seq:           s.Seq,
+		Ordered:       s.Ordered,
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
 		// ability does, which is why a stack item with an Effect is
@@ -1371,6 +1477,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		Count:                c.Count,
 		Source:               c.Source,
 		Reason:               c.Reason,
+		CoinAllowStop:        c.CoinAllowStop,
+		CoinCount:            c.CoinCount,
+		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
+		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
@@ -1394,6 +1504,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
@@ -1489,6 +1602,20 @@ func copyUUIDListMap(in map[uuid.UUID][]uuid.UUID) map[uuid.UUID][]uuid.UUID {
 	return out
 }
 
+// copyUUIDPairMap is copyBoolMap for a card-to-card map —
+// Game.announcedBlocks, blocker to the attacker its EventBlock named
+// (#830).
+func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uuid.UUID, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
 func copyBoolMap(in map[uuid.UUID]bool) map[uuid.UUID]bool {
 	if len(in) == 0 {
 		return nil
@@ -1505,6 +1632,19 @@ func copyStringIntMap(in map[string]int) map[string]int {
 		return nil
 	}
 	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// copyStringUint64Map is copyStringIntMap for Game.oncePerBatchFired,
+// whose values are batch ids (#829).
+func copyStringUint64Map(in map[string]uint64) map[string]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]uint64, len(in))
 	for k, v := range in {
 		out[k] = v
 	}

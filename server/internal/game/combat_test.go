@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -439,7 +440,7 @@ func TestDeclareBlockerFlyingRejectsGroundBlocker(t *testing.T) {
 	advanceIntoStep(t, g, StepDeclareAttackers)
 	g.DeclareAttacker(flyer, g.Seats[1].ID)
 	advanceIntoStep(t, g, StepDeclareBlockers)
-	if err := g.DeclareBlocker(ground, flyer); err != ErrIllegalBlock {
+	if err := g.DeclareBlocker(ground, flyer); !errors.Is(err, ErrIllegalBlock) {
 		t.Errorf("ground vs flying: got %v, want ErrIllegalBlock", err)
 	}
 }

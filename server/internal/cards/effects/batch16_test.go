@@ -903,27 +903,22 @@ func TestB16AureliaFiresOncePerDeclarationAtThreeAndFive(t *testing.T) {
 		bears = append(bears, b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G"))
 	}
 	hand := me.Hand.Size()
-	declareAttack(t, g, opp.ID, bears[0], bears[1])
-	if n := triggersOnStackFrom(g, aurelia); n != 0 {
-		t.Fatalf("two attackers: %d triggers, want 0", n)
+	// #859: the declaration is one turn-based action announced at its
+	// lock-in, so the five clicks are ONE declaration however they are
+	// spread. Each ability fires once for it — never once per
+	// attacker past the threshold, which is what the dedupe is for.
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range bears {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := g.DeclareAttacker(bears[2], opp.ID); err != nil {
-		t.Fatal(err)
-	}
-	if n := triggersOnStackFrom(g, aurelia); n != 1 {
-		t.Fatalf("three attackers: %d triggers, want 1 (draw)", n)
-	}
-	if err := g.DeclareAttacker(bears[3], opp.ID); err != nil {
-		t.Fatal(err)
-	}
-	if n := triggersOnStackFrom(g, aurelia); n != 1 {
-		t.Fatalf("four attackers: %d triggers, want still 1", n)
-	}
-	if err := g.DeclareAttacker(bears[4], opp.ID); err != nil {
-		t.Fatal(err)
-	}
+	lockInAttacks(t, g)
+	// Two DIFFERING triggers from one controller stop on the CR
+	// 603.3b order prompt before they reach the stack.
+	answerTriggerOrderInOfferedOrder(t, g)
 	if n := triggersOnStackFrom(g, aurelia); n != 2 {
-		t.Fatalf("five attackers: %d triggers, want 2 (draw + drain)", n)
+		t.Fatalf("five attackers: %d triggers, want 2 (draw + drain, one each)", n)
 	}
 	lives := b15Lives(g)
 	life := me.Life

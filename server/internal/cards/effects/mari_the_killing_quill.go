@@ -64,11 +64,23 @@ func init() {
 							if z := g.FindCardZoneForEffect(dead); z == nil || z.Kind != game.ZoneGraveyard {
 								return nil
 							}
-							ctx := NewContext(g, item)
-							if err := (ExileTarget{Target: dead}).Apply(ctx); err != nil {
-								return err
-							}
-							return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
+							// #870: "with a hit counter on it" is a
+							// clause on the exile, not the next line —
+							// a graveyard is a CR 903.9 zone, so an
+							// opponent's commander stops to be asked
+							// about the command zone and the counter
+							// must wait for the answer. A commander
+							// that takes the offer is not exiled and
+							// gets nothing.
+							return ExileTarget{
+								Target: dead,
+								Then: func(ctx *Context, exiled bool) error {
+									if !exiled {
+										return nil
+									}
+									return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
+								},
+							}.Apply(NewContext(g, item))
 						})
 				},
 			},

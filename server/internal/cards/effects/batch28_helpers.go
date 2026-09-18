@@ -121,8 +121,9 @@ func b28YouSacrificedArtifactOrCreature(ev game.Event, source *game.Card, g *gam
 
 // b28SelfBlocked is "whenever this creature blocks a creature" —
 // Brimaz's second trigger. EventBlock names the blocker in CardID and
-// the attacker in Target, and is emitted only on a blocker's first
-// declaration against a given attacker.
+// the attacker in Target, and is emitted once per pair of the FINAL
+// block declaration (#830): a blocker re-pointed before the lock-in
+// blocks once, against the attacker it ends on.
 func b28SelfBlocked(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventBlock && ev.CardID == source.InstanceID && ev.Target != uuid.Nil
 }

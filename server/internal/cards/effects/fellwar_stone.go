@@ -42,8 +42,8 @@ func init() {
 			// lands and says nothing about the commander. Before
 			// #352 this card was one of the ones #276 called out as
 			// wrongly narrowed by commander identity; now the
-			// derivation IS the narrowing.
-			IgnoreCommanderIdentity: true,
+			// derivation IS the narrowing, and
+			// NarrowToCommanderIdentity stays off.
 		}},
 	})
 }

@@ -275,8 +275,9 @@ func TestLoseLifeEachThenSkipsPlayersWhoAreGone(t *testing.T) {
 // --- (c) paying life as a cost ---------------------------------------
 
 // TestPayLifeRunsTheLifeLossWindow — the rule #793 guessed wrong and
-// the CR settles. CR 119.4: "paying an amount of life is the same as
-// losing that much life", so a life-LOSS replacement sees a cost being
+// the CR settles. CR 119.4: "If a player pays life, the payment is
+// subtracted from their life total; in other words, the player loses
+// that much life", so a life-LOSS replacement sees a cost being
 // paid and a Thoughtseize under Bloodletter of Aclazotz really does
 // cost four.
 func TestPayLifeRunsTheLifeLossWindow(t *testing.T) {

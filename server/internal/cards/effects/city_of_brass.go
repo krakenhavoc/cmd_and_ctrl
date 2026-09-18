@@ -30,8 +30,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damage still happens, because materializePlanLocked emits
 // EventTapCard the same way. That is correct rather than a leak.
 //
-// "Any color" opts out of commander-identity narrowing — see
-// mana_confluence.go for why that matters.
+// "Any color" offers all five colours, commander identity first —
+// see mana_confluence.go for why that matters.
 //
 // No simplification.
 func init() {
@@ -40,10 +40,9 @@ func init() {
 		Name:         "City of Brass",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:                    ManaAbilityCost{Tap: true},
-			Produced:                "{W|U|B|R|G}",
-			Label:                   "Add one mana of any color",
-			IgnoreCommanderIdentity: true,
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Add one mana of any color",
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventTapCard, Self, "City of Brass — 1 damage to you", func(g *game.Game, item *game.StackItem) error {

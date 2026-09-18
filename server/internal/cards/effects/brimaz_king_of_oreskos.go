@@ -27,10 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // blocking. Two things in the way, both engine-side: there is no
 // enter-the-battlefield-blocking path (CreateTokensAttackingForEffect
 // has no blocking twin, and a block is a player declaration the
-// engine validates), and DeclareBlocker runs no state checks (#492 —
-// Cyberman Patrol's note), so the trigger drains only after combat
-// damage has been dealt, by which point a blocking token would block
-// nothing anyway. The token arrives as an ordinary untapped Cat
+// engine validates), and the block declaration is locked in when it
+// is complete (#830), so a token that arrived after it could not
+// join the declaration even if there were such a path. The token
+// arrives as an ordinary untapped Cat
 // Soldier. Never stronger: the printed token would have blocked and
 // this one merely exists.
 //

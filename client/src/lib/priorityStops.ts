@@ -8,9 +8,12 @@
 //
 // Semantics in order of precedence (strongest first):
 //   1. Manual stop set on this step → cursor holds. Overrides
-//      autoPassPriority, stepStops, and smartAutoPass. This is the
-//      "fake a game action" case: the viewer wants to think /
-//      respond / bluff even though the engine sees nothing to do.
+//      autoPassPriority, stepStops, smartAutoPass, and the session
+//      autopass toggle (#526 — it used to lose to the toggle, which
+//      made the pin dead in the one state a player most needs it).
+//      This is the "fake a game action" case: the viewer wants to
+//      think / respond / bluff even though the engine sees nothing
+//      to do. The full chain is autopassDecision.ts.
 //   2. stepStops[step] === true  → cursor holds, subject to
 //      smartAutoPass (S13.6) which skips when no legal response.
 //   3. stepStops[step] === false → cursor auto-passes.
@@ -25,11 +28,12 @@
 // manual stops are a now-intent, not a preference. Cleared on page
 // reload, cleared on consume, cleared on toggle-off.
 
-import { writable, get, type Readable } from "svelte/store";
+import { get, type Readable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { StepID } from "./turn";
 import { NO_PRIORITY_STEPS } from "./turn";
 
-const manual = writable<Set<StepID>>(new Set());
+const manual = guardedWritable<Set<StepID>>(new Set(), "manualStops");
 
 // manualStops is the read-only view used by reactive consumers
 // (PhaseDisplay highlights, Game.svelte auto-pass override).

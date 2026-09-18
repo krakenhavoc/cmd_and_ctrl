@@ -15,10 +15,13 @@ import (
 // action redone draws the same result. Room needs no RNG code for
 // this; the pre-action clone carries the key and the counters.
 
+// libraryOrder reads a seat's library order under the game's read
+// lock. PlayerByIDForEffect for the reason lifeIn gives (#877): a
+// locking accessor inside a snapshot body is a recursive RLock.
 func libraryOrder(g *game.Game, seat uuid.UUID) []string {
 	var out []string
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(seat); p != nil {
+		if p := g.PlayerByIDForEffect(seat); p != nil {
 			for _, c := range p.Library.Cards {
 				out = append(out, c.Name)
 			}

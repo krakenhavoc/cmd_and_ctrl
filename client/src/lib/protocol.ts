@@ -17,6 +17,11 @@ export const ErrorCode = {
   // the client can render an "Override strict mode for this cast"
   // toast that re-fires the action with `force_cast: true`.
   InsufficientMana: "insufficient_mana",
+  // #705 (ADR 0045 addendum Decision 8): a declare_blocker was refused
+  // by the server's block-legality check. `message` is a server-built
+  // sentence to show verbatim, `reason` the stable token and `card_id`
+  // the blocker. The client never re-derives the rule.
+  IllegalBlock: "illegal_block",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -45,9 +50,26 @@ export interface ErrorPayload {
   missing?: string[];
   // S15: instance ID of the card whose cast was rejected. Lets the
   // client correlate the toast with the cast UI without keeping an
-  // in-flight map.
+  // in-flight map. #705: the refused blocker on an illegal_block frame.
   card_id?: string;
+  // #705: why a block was refused, populated when
+  // code === "illegal_block". One of BlockRefusalReason.
+  reason?: BlockRefusalReason;
 }
+
+// BlockRefusalReason mirrors game.BlockReason (server/internal/game/
+// block_legality.go): the tokens the server sends today. Stable once
+// shipped; new ones join in the change that first sends them.
+export type BlockRefusalReason =
+  | "cant_block"
+  | "cant_be_blocked"
+  | "flying"
+  | "landwalk"
+  | "fear"
+  | "intimidate"
+  | "shadow"
+  | "horsemanship"
+  | "skulk";
 
 // ActionType is the string-literal union of every action name this
 // client sends. Each literal is validated against the server's
@@ -163,9 +185,12 @@ export interface GameView {
   // game UI. Added in S08.
   mulligans_open: boolean;
   // Player ID of the current monarch (Conspiracy mechanic). Empty /
-  // omitted when no monarch is set. Sandbox marker; the must-attack
-  // and combat-damage transfer rules are not enforced server-side.
-  // Added in S10.
+  // omitted when no monarch is set. Since #375 the server enforces
+  // CR 724.2 itself — the monarch's end-step draw, and the transfer
+  // to whoever deals combat damage to them — so this field moves on
+  // its own and the crown below follows it. The set_monarch action
+  // stays as the way a card (or a table fixing the board) hands the
+  // designation out in the first place. Added in S10.
   monarch?: string;
   // Player ID currently holding the initiative (BG3 mechanic). Empty
   // when unassigned. Same sandbox posture as monarch. Added in S10.
@@ -388,7 +413,12 @@ export type LogKind =
   // count, `old_zone` where they were revealed from, and `target_seat`
   // is set when the reveal was to one player only, in which case the
   // text names no card for anyone.
-  | "reveal";
+  | "reveal"
+  // S30 random effects: the server-rendered public outcome of a die
+  // roll or coin flip. The event text is already redacted and ready
+  // for both the log and the attention strip.
+  | "roll"
+  | "flip";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -433,6 +463,13 @@ export interface LogEvent {
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
+  // Random-effect details. These are optional so older log entries
+  // and future effect families remain wire-compatible.
+  sides?: number;
+  results?: number[];
+  faces?: string[];
+  call?: "heads" | "tails";
+  wins?: number;
 }
 
 // PendingChoiceView mirrors `protocol.PendingChoiceView` server-side.
@@ -535,6 +572,17 @@ export interface PendingChoiceView {
     // than blue" is four). Answered with the same {choice_id, color}
     // payload a mana_pick uses; the server routes the two by kind.
     | "choose_color"
+    // S30 coin call: choose heads or tails for the pending flip. A
+    // stop answer is offered only when allow_stop is true.
+    | "coin_call"
+    // #804 CR 726: the loop breaker has fired and the repeating
+    // ability's controller is asked how many more times it should
+    // resolve. Answered with resolve_choice { iterations }, where 0
+    // means "stop here" and leaves the table paused exactly where the
+    // breaker put it. loop_count is how many times it has already
+    // resolved this turn; loop_max_iterations is the ceiling the
+    // engine will accept.
+    | "loop_shortcut"
     | string;
   chooser: string;
   from_player: string;
@@ -544,9 +592,12 @@ export interface PendingChoiceView {
   options?: CardView[];
   // S15: populated for kind "mana_pick" — the legal color buttons
   // the chooser's picker modal should render. Uppercase single-
-  // character values ("W", "U", "B", "R", "G", "C"). Server-filtered
-  // against commander identity for Arcane Signet; full 5-color for
-  // Birds of Paradise.
+  // character values ("W", "U", "B", "R", "G", "C"). Ordered server-
+  // side with the chooser's commander colour identity first; render in
+  // the order sent. Full 5-color for Birds of Paradise ("G" first in a
+  // mono-green deck); narrowed to the identity only for Arcane Signet
+  // and the other cards whose text says "in your commander's color
+  // identity".
   color_options?: string[];
   // #742: on a "mana_pick" that adds more than one mana of the picked
   // colour ("{T}: Add three mana of any one color") — colour letter to
@@ -617,6 +668,22 @@ export interface PendingChoiceView {
   // choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // CR 603.2d: when this is a trigger_prompt or pick_target choice,
+  // the public permanent that caused the additional trigger. The
+  // server omits both fields for ordinary choices.
+  doubled_by?: string;
+  doubled_by_name?: string;
+  // S30 coin call prompt metadata. `coins` is the number of coins
+  // covered by one call; wins tracks an ongoing chain.
+  allow_stop?: boolean;
+  coins?: number;
+  max_useful_wins?: number;
+  wins?: number;
+  // #804: populated for kind "loop_shortcut" — how many times the
+  // repeating ability has already resolved this turn, and the largest
+  // answer the engine accepts. `reason` carries "<card> — <ability>".
+  loop_count?: number;
+  loop_max_iterations?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -683,6 +750,10 @@ export interface StackItemView {
   // and its source look identical on the stack, and which is which
   // decides what countering one leaves behind.
   is_copy?: boolean;
+  // CR 603.2d: public attribution for an additional triggered
+  // ability created by a trigger-doubling permanent.
+  doubled_by?: string;
+  doubled_by_name?: string;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a
@@ -771,6 +842,15 @@ export interface PlayerView {
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;
+  // #500 (CR 305.2): how many lands this seat may play this turn,
+  // and how many it already has. The engine REFUSES a land play past
+  // the allowance, so a client should grey out the hand's lands when
+  // lands_played_this_turn >= land_drops_per_turn rather than only
+  // explain the rejection afterwards. land_drops_per_turn is the
+  // EFFECTIVE allowance — a controlled Exploration or a one-turn
+  // grant is already summed in. Normally 1 / 0.
+  land_drops_per_turn?: number;
+  lands_played_this_turn?: number;
   // S15: per-player mana pool. Each entry is an uppercase mana
   // letter ("W", "U", "B", "R", "G", "C") — order reflects
   // insertion order so the UI can highlight the most recent add.
@@ -783,6 +863,14 @@ export interface LifeChangeView {
   delta: number;
   new_total: number;
   at: string; // RFC3339
+  // Per-player counter, starting at 1, stamped server-side on every
+  // recorded change. Monotonic and stable across frames, and it keeps
+  // climbing after `life_history` stops growing at its cap — the only
+  // field on the entry that identifies it (#703). Neither the array
+  // index nor `at` can: the array is trimmed from the front, and `at`
+  // is RFC3339 SECONDS, so two changes in one second collide. Absent
+  // (0) only on entries from a snapshot taken before #703.
+  seq: number;
 }
 
 export interface ZoneView {
@@ -853,6 +941,11 @@ export interface AlternativeCostView {
   pay_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card").
   pay_label?: string;
+  // CR 107.3b (#831): the card prints an {X} in its mana cost and
+  // this offer does not, so claiming it fixes X at 0 — the cast flow
+  // skips the X picker and sends nothing. Absent for nearly every
+  // offer, including one priced with an {X} of its own.
+  x_locked_at_zero?: boolean;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -917,6 +1010,12 @@ export interface ExilePlayView {
   // than from the request, so a client that ignores this labels the
   // button with the wrong name but cannot cast the wrong half.
   face?: number;
+  // CR 107.3b (#831): the card prints an {X} in its mana cost and
+  // this grant's price does not, so casting under it fixes X at 0 —
+  // what a cascade hit carries. The cast flow skips the X picker.
+  // Absent for a grant that charges the printed cost, which still
+  // asks.
+  x_locked_at_zero?: boolean;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -1051,6 +1150,11 @@ export interface CardFaceView {
   image?: string;
 }
 
+export interface NoUntapView {
+  static?: boolean;
+  next?: string[];
+}
+
 export interface CardView {
   instance_id: string;
   /**
@@ -1067,11 +1171,20 @@ export interface CardView {
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
   type_line?: string;
+  // Effective colors (W/U/B/R/G), including layer-5 changes. Omitted
+  // means colorless; clients must never infer colors from mana_cost.
+  colors?: string[];
+  // Signed power when below zero, for comparisons such as skulk.
+  // Otherwise use power, which retains its combat-damage zero clamp.
+  negative_power?: number;
   // Parsed printed creature stats. Omitted (zero) for non-creatures
   // and for cards with non-numeric printed stats. S08.
   power?: number;
   toughness?: number;
   tapped?: boolean;
+  // Untap-step restriction / one-shot marker state. `static` is omitted
+  // for face-down cards; `next` contains player IDs and is public state.
+  no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
@@ -1304,6 +1417,14 @@ export interface ManaAbilityView {
   // — Temple of the False God with four lands, Mox Opal without
   // metalcraft. Same flag and meaning as ActivatedAbilityView's.
   condition_unmet?: boolean;
+  // #844, CR 903.4f: the ability says "any color in your commander's
+  // color identity" (Command Tower, Arcane Signet, Commander's Sphere,
+  // Path of Ancestry) and the controller has no commander, or one
+  // whose colour identity is colourless. The quality is undefined or
+  // empty, so the ability adds no mana at all and the row is greyed —
+  // tapping the land would just lose it. Absent for every other
+  // ability.
+  adds_no_mana?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

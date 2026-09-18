@@ -1,4 +1,6 @@
-import { writable, type Readable } from "svelte/store";
+import { type Readable } from "svelte/store";
+
+import { guardedWritable } from "./guardedStore";
 
 // Service-worker registration and the update handshake.
 //
@@ -19,7 +21,7 @@ const UPDATE_POLL_MS = 30 * 60 * 1000;
 // play, where focus changes constantly.
 const FOCUS_CHECK_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
-const updateReadyStore = writable(false);
+const updateReadyStore = guardedWritable(false, "updateReady");
 
 /** True when a new build has installed and is waiting for the player. */
 export const updateReady: Readable<boolean> = { subscribe: updateReadyStore.subscribe };

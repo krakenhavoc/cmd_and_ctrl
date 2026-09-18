@@ -23,8 +23,12 @@ const (
 	krenkoKingpinOrcl = "e8065e1d-e937-4b56-8011-78f0d07328a0"
 )
 
-// declareAttack advances to the declare-attackers step and declares
-// each creature against defender, leaving the cursor there.
+// declareAttack advances to the declare-attackers step, declares each
+// creature against defender, and locks the declaration in — the
+// priority wrap where the engine announces it and harvests the attack
+// triggers off the final assignment (#859). The cursor stays in the
+// step whenever the declaration produced a trigger; a declaration
+// with none wraps on, exactly as an uneventful attack does.
 func declareAttack(t *testing.T, g *game.Game, defender uuid.UUID, attackers ...uuid.UUID) {
 	t.Helper()
 	advanceTo(t, g, game.StepDeclareAttackers)
@@ -33,6 +37,7 @@ func declareAttack(t *testing.T, g *game.Game, defender uuid.UUID, attackers ...
 			t.Fatalf("DeclareAttacker %s: %v", id, err)
 		}
 	}
+	lockInAttacks(t, g)
 }
 
 // triggersOnStackFrom counts the triggered-ability items in
@@ -117,6 +122,10 @@ func TestHellriderFollowsEachAttackersOwnDefender(t *testing.T) {
 	if err := g.DeclareAttacker(b, second.ID); err != nil {
 		t.Fatalf("DeclareAttacker b: %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 
 	if got := firstBefore - first.Life; got != 1 {

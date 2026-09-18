@@ -507,8 +507,17 @@ func TestB24NaturesWillTapsTheirLandsUntapsYoursOncePerPlayer(t *testing.T) {
 	bearA := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
 	bearB := b12Creature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
 	bearC := b12Creature(g, me.ID, "Bear C", "Creature — Bear", 2, 2)
-	declareAttack(t, g, a.ID, bearA, bearB)
-	declareAttack(t, g, b.ID, bearC)
+	// One declaration split across two defenders (CR 508.1): the
+	// lock-in announces all three together (#859).
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, d := range []struct {
+		attacker uuid.UUID
+		defender uuid.UUID
+	}{{bearA, a.ID}, {bearB, a.ID}, {bearC, b.ID}} {
+		if err := g.DeclareAttacker(d.attacker, d.defender); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
 	advanceTo(t, g, game.StepCombatDamage)
 	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, will); n != 2 {
 		t.Fatalf("two bears on A and one on B: one trigger per player, got %d", n)

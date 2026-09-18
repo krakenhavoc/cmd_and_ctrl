@@ -1,4 +1,5 @@
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type {
   ActivatedAbilityView,
   AlternativeCostView,
@@ -140,6 +141,10 @@ export interface TargetingState {
   // cast_spell, and the prompt can't be cancelled — the trigger
   // needs a target.
   choiceID?: string;
+  // CR 603.2d: attribution for an additional trigger awaiting its
+  // target. The server supplies the public doubler metadata.
+  doubledBy?: string;
+  doubledByName?: string;
   // S22: the announce-time payments and choices collected before
   // this prompt opened — X, additional-cost picks, the alternative
   // cost being paid. They ride the cast_spell payload verbatim via
@@ -180,7 +185,7 @@ export interface TargetRef {
   id: string;
 }
 
-export const targeting: Writable<TargetingState | null> = writable(null);
+export const targeting: Writable<TargetingState | null> = guardedWritable(null, "targeting");
 
 // begin enters a targeting prompt. Overwrites any existing prompt
 // — the last cast wins. The caller has already verified the
@@ -412,6 +417,27 @@ export function hasXCost(card: CardView): boolean {
   return (card.mana_cost ?? "").includes("{X}");
 }
 
+// castLocksXAtZero reports CR 107.3b: a spell with {X} in its mana
+// cost, cast while paying neither that cost nor an alternative cost
+// that includes X, has 0 as its only legal X — so there is nothing to
+// ask and the picker must not open.
+//
+// The rule is NOT re-derived here from the cost strings. The server
+// computes it with the same predicate it will judge the cast by
+// (game.CastCost.LocksXAtZero) and ships the answer per offer:
+// `exile_play.x_locked_at_zero` for a cascade hit or a Siege's free
+// cast, `alternative_costs[].x_locked_at_zero` for an offer. Asking
+// twice in two languages is how a picker ends up collecting a value
+// the announce gate rejects.
+//
+// The grant wins over the offer, because that is the order the server
+// prices a cast in: an exile grant's own price replaces whatever cost
+// was chosen.
+export function castLocksXAtZero(card: CardView, altCost: string | undefined): boolean {
+  if (card.exile_play?.x_locked_at_zero) return true;
+  return alternativeCostByKey(card, altCost)?.x_locked_at_zero === true;
+}
+
 // beginForAbility enters a targeting prompt for an activated
 // ability's target clause. `card` is the source permanent; the
 // legal set comes from the ability, not the card.
@@ -477,6 +503,8 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
     legal: { players: new Set(pt.players ?? []), cards: new Set(pt.cards ?? []) },
     choiceID: choice.id,
     label: choice.reason,
+    doubledBy: choice.doubled_by,
+    doubledByName: choice.doubled_by_name,
     ...countOf(pt),
     picked: [],
   });

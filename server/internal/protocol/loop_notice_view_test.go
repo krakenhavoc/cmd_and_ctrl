@@ -87,3 +87,72 @@ func TestLoopNoticeReachesEverySeat(t *testing.T) {
 		t.Errorf("round-tripped notice = %+v, want %+v", decoded.LoopNotice, v.LoopNotice)
 	}
 }
+
+// TestLoopShortcutPromptReachesTheWire — #804. The CR 726 prompt rides
+// the same queue as every other prompt; what is new on the wire is the
+// count it quotes and the ceiling the client's number field needs.
+// Public like the notice beside it: whose question it is, and how long
+// the loop has been running, are things the whole table can see.
+func TestLoopShortcutPromptReachesTheWire(t *testing.T) {
+	g := buildActiveGame(t)
+	source := uuid.New()
+	controller := g.Seats[0].ID
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:              game.PendingChoiceLoopShortcut,
+			Chooser:           controller,
+			Count:             1,
+			Source:            source,
+			Reason:            "Mirror Engine — create a Spark",
+			LoopShortcutKey:   "key",
+			LoopShortcutCount: 25,
+		})
+	})
+
+	v := ViewOfGame(g)
+	if len(v.PendingChoices) != 1 {
+		t.Fatalf("pending choices on the wire = %d, want 1", len(v.PendingChoices))
+	}
+	pc := v.PendingChoices[0]
+	if pc.Kind != "loop_shortcut" {
+		t.Errorf("kind = %q, want loop_shortcut", pc.Kind)
+	}
+	if pc.Chooser != controller.String() {
+		t.Errorf("chooser = %q, want the loop's controller %q", pc.Chooser, controller)
+	}
+	if pc.Reason != "Mirror Engine — create a Spark" {
+		t.Errorf("reason = %q, want the ability's label", pc.Reason)
+	}
+	if pc.LoopCount != 25 {
+		t.Errorf("loop_count = %d, want 25", pc.LoopCount)
+	}
+	if pc.LoopMaxIterations != game.MaxLoopShortcutIterations {
+		t.Errorf("loop_max_iterations = %d, want %d", pc.LoopMaxIterations, game.MaxLoopShortcutIterations)
+	}
+
+	// The whole table sees the question, and it survives the wire.
+	for _, viewerID := range []string{g.Seats[0].ID.String(), g.Seats[1].ID.String(), ""} {
+		filtered := FilterViewFor(v, viewerID)
+		if len(filtered.PendingChoices) != 1 {
+			t.Errorf("viewer %q lost the CR 726 prompt", viewerID)
+			continue
+		}
+		if got := filtered.PendingChoices[0]; got.LoopCount != 25 || got.LoopMaxIterations != game.MaxLoopShortcutIterations {
+			t.Errorf("viewer %q prompt = %+v, want the counts intact", viewerID, got)
+		}
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !bytes.Contains(raw, []byte(`"loop_count":25`)) {
+		t.Errorf("loop_count missing from the wire frame: %s", raw)
+	}
+	var decoded GameView
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if len(decoded.PendingChoices) != 1 || decoded.PendingChoices[0].LoopCount != 25 {
+		t.Errorf("round-tripped prompt = %+v", decoded.PendingChoices)
+	}
+}

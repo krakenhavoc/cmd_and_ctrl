@@ -20,7 +20,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the S24 restriction vocabulary is the hook that comment was
 // waiting for. It is a restriction on the DEFENDER's options
 // (CR 509.1b) carried on the attacker, which is why it is read
-// inside CanBlock rather than anywhere on the attacking side.
+// inside the block-pair check (Game.BlockPairRefusalLocked) rather
+// than anywhere on the attacking side.
 //
 // The Cloak is now complete, and the two halves are the same card
 // again: unblockable carries the commander damage, shroud keeps the

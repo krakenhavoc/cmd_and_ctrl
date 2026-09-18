@@ -19,6 +19,7 @@ type choiceParams struct {
 	ChoiceID    string        `json:"choice_id"`
 	CardIDs     []string      `json:"card_ids,omitempty"`
 	Color       string        `json:"color,omitempty"`
+	Call        string        `json:"call,omitempty"`
 	Order       []string      `json:"order,omitempty"`
 	Apply       *bool         `json:"apply,omitempty"`
 	Assignments []assignParam `json:"assignments,omitempty"`
@@ -32,6 +33,13 @@ type choiceParams struct {
 	// is the empty slice, and omitempty would erase it into absent,
 	// which is how the dispatcher tells a surveil from a scry.
 	Graveyard []string `json:"graveyard"`
+	// Iterations answers a loop_shortcut prompt (CR 726): how many
+	// more times the loop's controller wants the repeating ability to
+	// resolve. omitempty is safe here where it would be wrong on the
+	// scry keys: the dispatcher routes this kind by the choice's KIND,
+	// and the value that goes missing — zero — is the one the
+	// resolver reads as "stop here" anyway.
+	Iterations int `json:"iterations,omitempty"`
 	// CreatureType answers a choose_creature_type prompt (CR 614.12).
 	// omitempty because the dispatcher routes on its PRESENCE: an
 	// empty string sent on every other kind would be read as "this is
@@ -47,7 +55,11 @@ type assignParam struct {
 // choiceMoves enumerates answers to every pending choice owed by
 // this seat. Returns true when at least one choice is owed — the
 // caller then offers nothing else, because the engine refuses
-// pass_priority while any choice is open.
+// pass_priority while a blocking choice is open, and because a
+// question already in front of a seat is the one thing it should be
+// answering. That holds for a NON-blocking prompt too (#794): a bot
+// owing a Rhystic tax is offered pay / decline, not the rest of its
+// turn — one dispatch clears it and the next window has everything.
 //
 // Ordering choices (replacement_order, trigger_order) and scry are
 // permutation-shaped; they are offered as a small canonical set
@@ -289,6 +301,22 @@ func (e *enumerator) choiceMoves() bool {
 					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
+			}
+
+		case game.PendingChoiceCoinCall:
+			for _, call := range []string{"heads", "tails"} {
+				p := base()
+				p.Call = call
+				if call == "heads" {
+					e.addAlwaysLegalChoice(c, reason+": call "+call, p)
+				} else {
+					e.addChoice(c, reason+": call "+call, p)
+				}
+			}
+			if c.CoinAllowStop {
+				p := base()
+				p.Call = "stop"
+				e.addChoice(c, reason+": stop flipping", p)
 			}
 
 		case game.PendingChoiceConfirm:
@@ -536,6 +564,50 @@ func (e *enumerator) choiceMoves() bool {
 				p := base()
 				p.CreatureType = t
 				e.addAlwaysLegalChoice(c, reason+": "+t, p)
+			}
+
+		case game.PendingChoiceLoopShortcut:
+			// #804, CR 726. "<card> — <ability> has resolved N times
+			// this turn. Resolve it K more times, then stop?" The
+			// answer is a number, so the enumerator's job is to pick
+			// the handful of numbers worth offering a policy — a human
+			// types whatever they like into the client's field.
+			//
+			// The list is also where a bot-only table is made to
+			// terminate, and it is here rather than in a policy on
+			// purpose. A policy that ranks answers can rank "100 more"
+			// top every time, and a random policy will eventually; the
+			// loop then runs for as long as anything is willing to
+			// keep saying yes. So the SECOND ask of a turn for the
+			// same loop (LoopShortcutRepeat) offers one answer, stop,
+			// and every policy at the table terminates because there
+			// is nothing else to pick. A human is never in this list:
+			// their client renders the number field from the prompt.
+			//
+			// First ask: 10, then 100, then stop. A bot takes the
+			// first offer, which is why 10 leads. See docs/bot.md.
+			offers := []int{
+				game.DefaultLoopShortcutIterations,
+				100,
+				0,
+			}
+			if c.LoopShortcutRepeat {
+				offers = []int{0}
+			}
+			for _, k := range offers {
+				if k > game.MaxLoopShortcutIterations {
+					continue
+				}
+				p := base()
+				p.Iterations = k
+				if k == 0 {
+					// Stop is the always-legal way out: it commits the
+					// seat to nothing and leaves the table exactly
+					// where the breaker put it.
+					e.addAlwaysLegalChoice(c, reason+": stop here", p)
+					continue
+				}
+				e.addChoice(c, fmt.Sprintf("%s: resolve %d more times", reason, k), p)
 			}
 
 		default:

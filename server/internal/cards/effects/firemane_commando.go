@@ -19,10 +19,11 @@ const (
 // draws for going wide somewhere other than at you. Both triggers
 // are b16PlayerAttackedWithAtLeast (Aurelia's shape): the engine
 // emits EventAttack per creature, so the ability fires on the
-// declaration that brings the attacking player to two and the
-// per-label dedup (queued, on the stack, already fired this turn)
-// declines every later one. The second ability's "if none of those
-// creatures attacked you" is not an intervening if — it is checked
+// declaration that brings the attacking player to two, and the
+// dedup — every later event of the same batch (OncePerBatch, see
+// AGENTS.md §7), then the rest of the turn — declines every later
+// one. The second ability's "if none of those creatures attacked
+// you" is not an intervening if — it is checked
 // as the trigger resolves, against every creature that player has
 // attacking at that moment, with an attack at your planeswalker or
 // battle counting as an attack at you (S27).

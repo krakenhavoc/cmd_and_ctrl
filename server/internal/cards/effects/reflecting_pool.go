@@ -34,8 +34,8 @@ func init() {
 			ProducedFunc: ProducedFromOwnLands(),
 			Label:        "Add one mana of any type a land you control could produce",
 			// "any type that a land you control could produce" — no
-			// mention of the commander's identity, so no narrowing.
-			IgnoreCommanderIdentity: true,
+			// mention of the commander's identity, so
+			// NarrowToCommanderIdentity stays off.
 		}},
 	})
 }

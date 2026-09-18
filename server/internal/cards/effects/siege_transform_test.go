@@ -475,6 +475,10 @@ func TestDefiantThundermawDragonAttackTrigger(t *testing.T) {
 	if err := g.DeclareAttacker(maw, victimSeat.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	answerPickTargetPlayer(t, g, victimSeat.ID)
 	passPriorityAroundTable(t, g)
 

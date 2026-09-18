@@ -129,19 +129,17 @@ func TestBatch31CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The six declared skips must stay out until their seam lands: a
+	// The five remaining declared skips must stay out until their seam lands: a
 	// mana ability granted to OTHER permanents by a static (Manaweft
 	// Sliver), a put-a-card-from-hand-onto-the-battlefield prompt
 	// (Oviya), casting from the top of the library (Conspicuous
-	// Snoop), a filtered pick from a revealed hand (Duress), a random
-	// choice reachable from an effect (Deadbridge Chant), and a
+	// Snoop), a filtered pick from a revealed hand (Duress), and a
 	// continuous effect with no duration (Tree of Redemption).
 	for oracle, name := range map[string]string{
 		"bd47398d-da35-4a09-8754-771af91b14f4": "Manaweft Sliver",
 		"b01649b8-b0b5-4cf6-aea7-291f3407859e": "Oviya, Automech Artisan",
 		"f5d1bd3c-0e65-4999-a810-881b2389b40e": "Conspicuous Snoop",
 		"33d405ea-7a9a-4970-b70f-9c05d90dd6f0": "Duress",
-		"506667b1-7922-4959-a5b3-0f8abe8c3615": "Deadbridge Chant",
 		"1372dd15-cdb9-470c-b3e8-3423697e46e8": "Tree of Redemption",
 	} {
 		if _, ok := Lookup(oracle); ok {
@@ -659,7 +657,7 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	}
 }
 
-func TestB31BlossomingTortoiseMillIsBoundedByTheLibrary(t *testing.T) {
+func TestB31BlossomingTortoiseMillPastTheLibraryNeverLoses(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	for me.Library.Size() > 1 {
@@ -670,7 +668,7 @@ func TestB31BlossomingTortoiseMillIsBoundedByTheLibrary(t *testing.T) {
 	if me.Library.Size() != 0 {
 		t.Error("the one card is milled")
 	}
-	if me.LosesAtNextSBA {
+	if me.AttemptedEmptyDraw {
 		t.Error("a mill does not lose the game")
 	}
 }
@@ -723,7 +721,7 @@ func TestB31NephaliaDrownyardMillsATargetPlayer(t *testing.T) {
 	}
 	b31AddMana(me, "C", "U", "B")
 	b16Activate(t, g, me.ID, yard, 0, game.ActivateAbilityParams{Targets: b16TargetPlayer(opp.ID)})
-	if opp.Library.Size() != 0 || opp.LosesAtNextSBA {
+	if opp.Library.Size() != 0 || opp.AttemptedEmptyDraw {
 		t.Error("two cards milled, no loss flagged")
 	}
 }

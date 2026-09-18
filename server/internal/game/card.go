@@ -428,6 +428,10 @@ type Card struct {
 	// Added in S27.
 	ProtectorPlayerID uuid.UUID
 
+	// NextUntapSkips records one-shot next-untap-step effects on this
+	// permanent. It is battlefield state, not a copiable value.
+	NextUntapSkips []UntapSkip
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since
@@ -605,13 +609,20 @@ func (c *Card) IsKnownTo(viewerID uuid.UUID) bool {
 // Effective() reflects the new state. Combat damage and the SBA
 // loop both do this at their top.
 func (c Card) CurrentPower() int {
+	p := c.PowerForComparison()
+	if p < 0 {
+		return 0
+	}
+	return p
+}
+
+// PowerForComparison includes layers and counters without clamping negative
+// values. Skulk compares actual power; CurrentPower clamps damage to zero.
+func (c Card) PowerForComparison() int {
 	p := c.Effective().Power
 	if c.Counters != nil {
 		p += c.Counters["+1/+1"]
 		p -= c.Counters["-1/-1"]
-	}
-	if p < 0 {
-		return 0
 	}
 	return p
 }
@@ -729,10 +740,12 @@ func (c Card) IsPermanent() bool {
 //
 // A token is not a card (CR 108.2), and a token that has left the
 // battlefield can't move to another zone or come back onto the
-// battlefield (CR 111.8). The engine has no CR 704.5d sweep, so a
-// token tucked into a library (Chaos Warp) is still sitting there as
-// an object; a move that promises "a permanent card" out of a hidden
-// zone refuses it with this.
+// battlefield (CR 111.8). Since #596 this is also what the CR 704.5d
+// state-based action reads — a token in any zone but the battlefield
+// ceases to exist at the next state check (token_existence.go). Until
+// that check runs, a token tucked into a library (Chaos Warp) is
+// still sitting there as an object, and a move that promises "a
+// permanent card" out of a hidden zone refuses it with this.
 func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 
 // HasCardType reports whether the card's effective card types
@@ -777,6 +790,23 @@ func (c Card) HasSubtype(subtype string) bool {
 		return true
 	}
 	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
+}
+
+// HasSupertype reports whether the card's effective supertypes
+// include `supertype` ("basic", "legendary", "snow"),
+// case-insensitively. Effective, not printed, so a supertype an effect
+// adds or removes is visible here — the reader landwalk's "nonbasic"
+// needs (CR 205.4c: a land without the basic supertype is nonbasic,
+// whatever land types it has).
+//
+// Added for nonbasic landwalk (#705); IsLegendary is the same read for
+// the one supertype the legend rule asks about.
+func (c Card) HasSupertype(supertype string) bool {
+	if c.effective == nil {
+		super, _, _ := ParseTypeLine(c.TypeLine)
+		return typeListHas(super, supertype)
+	}
+	return typeListHas(c.effective.Supertypes, supertype)
 }
 
 // --- printed card-type predicates -----------------------------
@@ -877,12 +907,14 @@ func NewCommander(name string, owner uuid.UUID) Card {
 	return c
 }
 
-// EffectiveColors returns the card's colors: the stamped Colors list
-// when present, otherwise the colored symbols found in ManaCost
-// (hybrid "{W/U}" contributes both). Layer 5 color-changing effects
-// aren't modelled yet; when they are, this is the seam. Added in
-// S20 sub-PR 1.
+// EffectiveColors returns the card's colors after continuous effects: the
+// layer-5 result on the battlefield, otherwise the stamped Colors list when
+// present, then the colored symbols found in ManaCost (hybrid "{W/U}"
+// contributes both). Added in S20 sub-PR 1.
 func (c Card) EffectiveColors() []string {
+	if c.effective != nil {
+		return c.effective.Colors
+	}
 	if len(c.Colors) > 0 {
 		return c.Colors
 	}

@@ -345,6 +345,10 @@ func TestB11MagdaPumpsOtherDwarvesAndPaysATreasurePerTappedDwarf(t *testing.T) {
 			t.Fatalf("DeclareAttacker: %v", err)
 		}
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	if n := countBattlefieldNamed(g, me.ID, "Treasure"); n != 2 {
 		t.Fatalf("three attackers, two of them Dwarves, made %d Treasures, want 2", n)

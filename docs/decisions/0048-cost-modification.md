@@ -2,6 +2,7 @@
 
 **Status:** accepted (S28)
 **Amended:** 2026-09-17 · PR #776 — §15's `cost_notes` ship on the snapshot as `CardView.target_cost_notes` (see the amendment under §15)
+**Amended:** 2026-09-17 · #831 — CR 107.3b fixes X at 0 on a cast that pays neither the mana cost nor an alternative cost that includes X (see the amendment at the end)
 **Extends:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the cost
 computation engine), [ADR 0021](0021-additional-costs.md) and
 [ADR 0025](0025-alternative-costs.md) (the two cost slots that came
@@ -846,3 +847,95 @@ the record.
 
    Applied in §16, §17, *Consequences*, the implementation plan and the
    test plan.
+
+---
+
+## Amendment (2026-09-17): the value of X on a free cast (#831)
+
+**Status:** Accepted · 2026-09-17 · tracked on
+[#831](https://github.com/krakenhavoc/cmd_and_ctrl/issues/831). This
+amendment covers this section only; §1–§10 and the #746 addendum are
+unchanged.
+
+§7 and §9 built the free-spell family — an `AlternativeCost` with no
+price, and cascade's exile grant priced `{0}` — and both replace the
+cost being paid before anything reads it. Neither said anything about
+the `{X}` that may have been in the cost they replaced, and the
+announce path's only check on X was that it was not negative
+(`mutations.go`, CR 601.2b). So a cascade into an `{X}{U}` sorcery was
+cast at whatever X the client asked for, free, and since #788 that
+inflated X was also what every mana-value read of the stack saw:
+Imoti's grant, Sanctum of Ugin, the cascade limit, `ManaValueLE`.
+
+**The rule.** CR 107.3b: *"If a player is casting a spell that has an
+{X} in its mana cost, the value of X isn't defined by the text of that
+spell, and an effect lets that player cast that spell while paying
+neither its mana cost nor an alternative cost that includes X, then the
+only legal choice for X is 0. This doesn't apply to effects that only
+reduce a cost, even if they reduce it to zero."*
+
+**The predicate.** `game.CastCost.LocksXAtZero`
+(`server/internal/game/cast_cost.go`). `CastCost` is the pair of cost
+STRINGS a cast already commits to — `Printed`, the card's printed mana
+cost for the face being cast, and `Paid`, the cost this cast actually
+owes — and `CastCostFor` chooses `Paid` in the order §7 and §9 already
+established: the claimed alternative cost replaces the printed cost
+(CR 118.9), and a live exile grant's own price replaces whatever was
+chosen. `printedCostLocked` was rewritten to go through the same
+chooser, so there is one statement of "which cost is this cast paying"
+rather than two that can drift.
+
+`LocksXAtZero` is then two reads of that pair: the printed cost has an
+`{X}` slot, and the cost being paid does not. Every free-cast path
+falls out of it, and so do both exceptions:
+
+- **Cascade, a Siege, "cast it without paying its mana cost"** — all
+  reach the engine as a cost string with no `{X}` in it. One answer.
+- **An alternative cost that INCLUDES X** (`{X}{R}`) still asks. The
+  rule is written about the cost, not about the keyword granting it.
+- **A cost reduction** is outside by construction, with no clause of
+  its own: a modifier subtracts from the cost `CastCostFor` chose and
+  never replaces it, so the `{X}` slot survives Ghalta's discount all
+  the way down to `{0}` and the caster still announces X.
+- **An X that is not in the mana cost** — Toxic Deluge's `PayLifeX`
+  additional cost, Waterbender's Restoration's waterbend `{X}` — is
+  untouched, because the first read is about the printed mana cost.
+
+**Where it is applied.** Once, at CR 601.2b in `CastSpell`, beside the
+existing `XValue < 0` check and after the claimed alternative cost and
+the exile grant are both settled. A non-zero X on such a cast is
+**refused** with `ErrInvalidParam` and a `slog.Warn`, rather than
+silently clamped, for the reason the X-defined target count next to it
+is: a client announcing X=5 on a free Stroke of Genius is wrong about
+what it is casting, and casting a different spell quietly hides that.
+
+**CR 107.3c** — a spell whose own text defines X — has no third clause
+here, deliberately. No catalog card defines the X in its mana cost from
+its text and the engine has no seam that could express one; if it ever
+gains one, that is a change to the predicate's FIRST read (the printed
+`{X}` stops being an announcement), not a new special case beside it.
+
+**How the client and the bots learn it.** The server computes the
+predicate and ships the answer per offer, rather than having either
+re-derive it from the cost strings: `alternative_costs[].x_locked_at_zero`
+on a `CardView`, and `exile_play.x_locked_at_zero` on a grant. The
+Board's cast chain skips the X picker when
+`castLocksXAtZero(card, choices.altCost)` says so. Asking the same
+question twice in two languages is how a picker ends up collecting a
+value the announce gate rejects.
+
+`internal/legal` enumerates casts from hand and the command zone only,
+so it pays the printed cost and its X is always legal today; the
+invariant is pinned by a test rather than by that fact, so it keeps
+holding when exile joins the sources.
+
+### Consequences
+
+- A cascade into an X spell resolves at X=0, and the cascade limit,
+  Imoti and `ManaValueLE` read the spell at its printed mana value
+  again.
+- `AlternativeCostView` and `ExilePlayView` each gain one boolean. No
+  game-state struct changed, so `clone.go` / `snapshot.go` are
+  untouched.
+- Nothing in a card file changes. `Spec` and the keyword constructors
+  are as they were.

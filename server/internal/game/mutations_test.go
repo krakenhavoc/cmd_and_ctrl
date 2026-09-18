@@ -1276,6 +1276,73 @@ func TestChangePlayerLifeHistoryRolloverCap(t *testing.T) {
 		t.Errorf("history length: got %d, want %d (cap)",
 			len(p.LifeHistory), MaxLifeHistoryEntries)
 	}
+	// #703: the Seq stream is what the client keys its popup on, so
+	// it must keep climbing after the length stops growing — the
+	// newest entry is the Nth change, not the Nth surviving slot.
+	last := p.LifeHistory[len(p.LifeHistory)-1]
+	if want := uint64(MaxLifeHistoryEntries + 10); last.Seq != want {
+		t.Errorf("newest entry Seq after the cap: got %d, want %d", last.Seq, want)
+	}
+	first := p.LifeHistory[0]
+	if want := uint64(11); first.Seq != want {
+		t.Errorf("oldest surviving entry Seq: got %d, want %d", first.Seq, want)
+	}
+}
+
+// #703: Seq starts at 1, rises by one per recorded change, and skips
+// the zero-delta no-ops that record nothing.
+func TestChangePlayerLifeStampsMonotonicSeq(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	for _, delta := range []int{-3, 0, +1, -2} {
+		if _, err := g.ChangePlayerLife(p.ID, delta); err != nil {
+			t.Fatalf("ChangePlayerLife(%d): %v", delta, err)
+		}
+	}
+	if len(p.LifeHistory) != 3 {
+		t.Fatalf("history length: got %d, want 3", len(p.LifeHistory))
+	}
+	for i, entry := range p.LifeHistory {
+		if want := uint64(i + 1); entry.Seq != want {
+			t.Errorf("entry %d Seq: got %d, want %d", i, entry.Seq, want)
+		}
+	}
+}
+
+// #703: a restored snapshot continues the Seq stream from the log it
+// carries, so a change after a reconnect or an undo never reuses a
+// Seq the client has already shown.
+func TestLifeSeqContinuesAfterRestore(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	for i := 0; i < 3; i++ {
+		if _, err := g.ChangePlayerLife(p.ID, -1); err != nil {
+			t.Fatalf("ChangePlayerLife: %v", err)
+		}
+	}
+	snap := g.Clone()
+	// Two more changes on the live game, then rewind to the clone.
+	for i := 0; i < 2; i++ {
+		if _, err := g.ChangePlayerLife(p.ID, -1); err != nil {
+			t.Fatalf("ChangePlayerLife: %v", err)
+		}
+	}
+	g.RestoreFrom(snap)
+
+	restored := g.Seats[0]
+	if n := len(restored.LifeHistory); n != 3 {
+		t.Fatalf("restored history length: got %d, want 3", n)
+	}
+	if got := restored.LifeHistory[2].Seq; got != 3 {
+		t.Fatalf("restored newest Seq: got %d, want 3", got)
+	}
+	if _, err := g.ChangePlayerLife(restored.ID, -1); err != nil {
+		t.Fatalf("ChangePlayerLife after restore: %v", err)
+	}
+	h := g.Seats[0].LifeHistory
+	if got := h[len(h)-1].Seq; got != 4 {
+		t.Errorf("Seq after restore: got %d, want 4 (one past the restored log)", got)
+	}
 }
 
 func TestAddCounter(t *testing.T) {
@@ -2295,8 +2362,8 @@ func TestS131SBAEmptyLibraryDrawEliminates(t *testing.T) {
 	if err := g.DrawCard(target.ID); err != ErrZoneEmpty {
 		t.Fatalf("expected ErrZoneEmpty, got %v", err)
 	}
-	if !target.LosesAtNextSBA {
-		t.Errorf("LosesAtNextSBA flag not set after empty-library draw")
+	if !target.AttemptedEmptyDraw {
+		t.Errorf("AttemptedEmptyDraw flag not set after empty-library draw")
 	}
 	g.WithWriteLock(func() { g.runStateChecksLocked() })
 	if !target.Eliminated {
@@ -2433,9 +2500,11 @@ func TestS131CommanderZoneReplacementOnlyForCommanders(t *testing.T) {
 
 // TestS131ConcedeClearsStackItems covers CR 800.4a — when a player
 // leaves the game, every spell + ability they control on the stack
-// ceases to exist. Spell items move to exile (closest sandbox
-// analogue to "cease to exist"); ability items + pending triggers
-// disappear from StackMeta / PendingTriggers.
+// ceases to exist. Ability items + pending triggers disappear from
+// StackMeta / PendingTriggers, and a spell card the departed player
+// OWNS leaves the game with the rest of what they own (#769): S13.1
+// exiled it as the closest analogue to "cease to exist", and since
+// the CR 800.4a sweep landed it does not stop in exile either.
 func TestS131ConcedeClearsStackItems(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
@@ -2465,12 +2534,16 @@ func TestS131ConcedeClearsStackItems(t *testing.T) {
 		t.Fatalf("Concede: %v", err)
 	}
 
-	// Leaver's spell should be exiled; other's spell should still be on stack.
+	// Leaver's spell should be out of the game entirely; other's spell
+	// should still be on the stack.
 	if g.Stack.Contains(leaverSpell) {
 		t.Errorf("leaver's spell still on stack after concede")
 	}
-	if !g.Exile.Contains(leaverSpell) {
-		t.Errorf("leaver's spell did not move to exile (cease-to-exist analogue)")
+	if g.Exile.Contains(leaverSpell) {
+		t.Errorf("leaver's spell stopped in exile: a card its owner owns leaves the game (CR 800.4a)")
+	}
+	if zone := zoneHoldingCard(g, leaverSpell); zone != "" {
+		t.Errorf("leaver's spell survived in %s", zone)
 	}
 	if !g.Stack.Contains(otherSpell) {
 		t.Errorf("other's spell wrongly removed by concede")

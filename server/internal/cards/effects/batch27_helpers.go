@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"hash/fnv"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -84,13 +83,18 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
 // Ugin's condition: the controller cast a colorless spell whose mana
-// value is at least n. The spell is read off the stack.
+// value is at least n. The spell is read off the stack, X included
+// (CR 202.3e), so a Walking Ballista cast with X=4 is mana value 8.
 func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.Card, g *game.Game, n int) bool {
 	if !b11ColorlessSpellCastByYou(ev, source, g) {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.ManaValue() >= n
+	if !ok {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(spell)
+	return ok && mv >= n
 }
 
 // b27AnotherElfYouControlEntered is Wolverine Riders' second
@@ -243,23 +247,6 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
 	return out
 }
 
-// b27PseudoRandomIndex picks an index in [0, n) from the game's own
-// state — the newest event's sequence number and a per-effect salt
-// — for "at random" clauses that only choose what to LOOK at (Urza's
-// Bauble). The engine's seeded RNG is not reachable from an effect,
-// and a fixed index would always show the most recently drawn card,
-// which is a different card from a random one. Deterministic for a
-// given log, so a clone and its original agree.
-func b27PseudoRandomIndex(g *game.Game, salt uuid.UUID, n int) int {
-	if n <= 1 {
-		return 0
-	}
-	h := fnv.New64a()
-	_, _ = h.Write(salt[:])
-	_, _ = h.Write([]byte(strconv.FormatUint(b25LastEventSeq(g), 10)))
-	return int(h.Sum64() % uint64(n))
-}
-
 // b27DamageDealtToAfter is the damage `target` actually took from
 // `source` in events logged after `after` — post-prevention, which
 // is what the event carries. Zero when nothing landed.
@@ -299,7 +286,7 @@ func b27DrawOne(g *game.Game, item *game.StackItem) error {
 }
 
 // b27LookAtRandomCardInHand marks `viewer` as a knower of one card
-// in `player`'s hand, chosen by b27PseudoRandomIndex. "Look at" is
+// in `player`'s hand, chosen by the engine's keyed random stream. "Look at" is
 // not "reveal": only the viewer learns the card. An empty hand shows
 // nothing.
 func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
@@ -307,8 +294,20 @@ func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
 	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 		return
 	}
-	idx := b27PseudoRandomIndex(ctx.Game, ctx.Source(), p.Hand.Size())
-	p.Hand.Cards[idx].AddKnower(viewer)
+	ids := make([]uuid.UUID, 0, p.Hand.Size())
+	for _, c := range p.Hand.Cards {
+		ids = append(ids, c.InstanceID)
+	}
+	pick := randomPick(ctx, ids, 1)
+	if len(pick) == 0 {
+		return
+	}
+	for i := range p.Hand.Cards {
+		if p.Hand.Cards[i].InstanceID == pick[0] {
+			p.Hand.Cards[i].AddKnower(viewer)
+			return
+		}
+	}
 }
 
 // b27DealDamageWithExcess is Hell to Pay's damage: `amount` from the
@@ -339,19 +338,17 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 
 // b27ExileTopUntilTotalManaValue is Tasha's Hideous Laughter for one
 // player: exile cards from the top of their library until the exiled
-// cards' total mana value reaches `threshold`. Bounded by the
-// library's size rather than left unbounded, because the unbounded
-// mill path flags a player whose library runs out as losing — a
-// draw's rule, not an exile's — and the printed card just stops.
+// cards' total mana value reaches `threshold`. An unbounded run (N
+// left 0 with an Until): a library that totals less than the
+// threshold is exiled whole and the run just stops — running out is
+// not a draw, so nobody loses for it (CR 701.17b, CR 704.5b).
 func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil || p.Library.Size() == 0 {
+	if ctx.PlayerByID(player) == nil {
 		return nil
 	}
 	total := 0
 	return MillToZone{
 		Player: player,
-		N:      p.Library.Size(),
 		To:     game.ZoneExile,
 		Until: func(c game.Card) bool {
 			total += c.ManaValue()

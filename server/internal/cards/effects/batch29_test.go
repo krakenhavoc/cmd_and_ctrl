@@ -877,6 +877,67 @@ func TestB29SettleTheWreckageExilesAttackersAndTheyFetchBasics(t *testing.T) {
 	}
 }
 
+// TestB29SettleTheWreckageSearchesForWhatLandedInExile pins #866 on
+// the card that reads the count. An attacking COMMANDER stops the
+// sweep to answer CR 903.9; the search waits for that answer, and when
+// the owner takes the command zone the commander buys no basic land —
+// it left the battlefield, but it was not exiled (CR 400.7).
+func TestB29SettleTheWreckageSearchesForWhatLandedInExile(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := pushVanillaCreature(g, me.ID, "Attacker", 2, 2)
+	cmd := b21Commander(g, me.ID, "Their Commander", "Legendary Creature — Human", 3, 3)
+	f1 := pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	f2 := pushLibraryCardForTest(me, game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"})
+	declareAttack(t, g, opp.ID, bear, cmd)
+	b29CastAs(t, g, opp, "Settle the Wreckage", "Instant", b29SettleTheWreckageOracle, "{2}{W}{W}", game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}},
+	})
+	passPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(bear) {
+		t.Fatal("the plain attacker is exiled")
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("the search must wait for the CR 903.9 answer — the number is not known yet (#866)")
+	}
+	b29AnswerCommandZone(t, g, me.ID, true)
+
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the search runs once the paused leg has landed")
+	}
+	if c.SearchMax != 1 {
+		t.Errorf("the search is for %d basics, want 1 — only the bear reached exile; the commander "+
+			"went to the command zone and was not exiled this way (#866)", c.SearchMax)
+	}
+	answerSearchByID(t, g, me.ID, f1)
+	if !g.Battlefield.Contains(f1) {
+		t.Fatal("the chosen basic is put onto the battlefield")
+	}
+	if g.Battlefield.Contains(f2) {
+		t.Error("only as many as were exiled")
+	}
+	if !me.Command.Contains(cmd) {
+		t.Error("the commander is in its owner's command zone")
+	}
+}
+
+// b29AnswerCommandZone answers the CR 903.9 "put it into the command
+// zone instead?" prompt for `owner`.
+func b29AnswerCommandZone(t *testing.T, g *game.Game, owner uuid.UUID, apply bool) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceOptionalReplacement && c.Chooser == owner {
+			if err := g.ResolveOptionalReplacement(c.ID, owner, apply); err != nil {
+				t.Fatalf("ResolveOptionalReplacement: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no command-zone prompt for %s", owner)
+}
+
 func TestB29ElvishPromenadeMakesAnElfWarriorPerElf(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

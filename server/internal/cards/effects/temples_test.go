@@ -40,6 +40,14 @@ func playLandFromHand(t *testing.T, g *game.Game, name, oracleID string) uuid.UU
 			t.Fatalf("AdvanceStep: %v", err)
 		}
 	}
+	// #500: the engine now enforces CR 305.2's land-play allowance.
+	// These are CARD-behaviour fixtures — a fastland wants three
+	// lands on the board, Field of the Dead wants eight — not tests
+	// of the land-drop rule, and they build their board inside a
+	// single main phase. Raising this seat's base allowance buys each
+	// helper call its own land play, which is the fixture saying "and
+	// another turn's land drop" without spending real turns.
+	active.LandDropsPerTurn++
 	if err := g.CastSpell(active.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("play %s: %v", name, err)
 	}

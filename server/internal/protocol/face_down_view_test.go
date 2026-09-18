@@ -47,6 +47,7 @@ var redactedCardKeys = map[string]bool{
 	"blocking_target":       true,
 	"goaded_by":             true,
 	"attached_to":           true,
+	"no_untap":              true,
 }
 
 // assertRedacted fails on any key outside redactedCardKeys and on a
@@ -178,6 +179,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Controller:          owner,
 		ScryfallID:          "scryfall",
 		TypeLine:            "Legendary Creature — Test",
+		Colors:              []string{"B", "R"},
+		NegativePower:       -2,
 		Power:               3,
 		Toughness:           3,
 		Tapped:              true,
@@ -197,6 +200,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		BlockingTarget:      "attacker",
 		GoadedBy:            "goader",
 		AttachedTo:          &TargetRefView{Kind: "card", ID: "host"},
+		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
 		Auto:                true,
 		Unimplemented:       true,
 		TargetMode:          "creature",

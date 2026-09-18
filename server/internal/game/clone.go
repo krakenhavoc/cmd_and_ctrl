@@ -55,9 +55,11 @@ func (g *Game) cloneLocked() *Game {
 		// RestoreFrom puts that back — undo rewinds randomness, the
 		// same way a snapshot restore resumes it (ADR 0054
 		// Decisions 3-4).
-		rngKey:      g.rngKey,
-		rngCounters: cloneRNGCounters(g.rngCounters),
-		rngTurn:     g.rngTurn,
+		rngKey:            g.rngKey,
+		rngCounters:       cloneRNGCounters(g.rngCounters),
+		rngTurn:           g.rngTurn,
+		sourceOrdinals:    cloneSourceOrdinals(g.sourceOrdinals),
+		sourceOrdinalNext: g.sourceOrdinalNext,
 	}
 	if len(g.StackMeta) > 0 {
 		out.StackMeta = make(map[uuid.UUID]*StackItem, len(g.StackMeta))
@@ -98,6 +100,12 @@ func (g *Game) cloneLocked() *Game {
 		out.LandsPlayedThisTurn = make(map[uuid.UUID]int, len(g.LandsPlayedThisTurn))
 		for k, v := range g.LandsPlayedThisTurn {
 			out.LandsPlayedThisTurn[k] = v
+		}
+	}
+	if len(g.ExtraLandDropsThisTurn) > 0 {
+		out.ExtraLandDropsThisTurn = make(map[uuid.UUID]int, len(g.ExtraLandDropsThisTurn))
+		for k, v := range g.ExtraLandDropsThisTurn {
+			out.ExtraLandDropsThisTurn[k] = v
 		}
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
@@ -200,6 +208,10 @@ func (g *Game) cloneLocked() *Game {
 			// other server-only frame on a PendingChoice: a resume
 			// reads it and never writes it.
 			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
+			if c.coinFlipResume != nil {
+				frame := *c.coinFlipResume
+				cloned.coinFlipResume = &frame
+			}
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -236,6 +248,23 @@ func (g *Game) cloneLocked() *Game {
 	// original did.
 	out.Events = g.Events[:len(g.Events):len(g.Events)]
 	out.eventSeq = g.eventSeq
+	// #829: the batch counter rewinds with the log, and the
+	// once-per-batch marks rewind with it. Carrying one without the
+	// other is the whole bug class: the counter alone would let an
+	// undone trigger fire twice for one batch, the marks alone would
+	// swallow the re-done one.
+	out.eventBatch = g.eventBatch
+	out.oncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
+	// #830: the block declaration's announcements rewind with the
+	// declaration. An undo across a re-point that kept them would
+	// swallow the re-done "becomes blocked"; dropping them would
+	// announce the same attacker twice.
+	out.announcedBlocks = copyUUIDPairMap(g.announcedBlocks)
+	out.announcedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	// #859: the attack declaration's announcements rewind with it for
+	// the same reason — an undo across a re-point that kept them
+	// would swallow the re-done attack trigger.
+	out.announcedAttacks = copyBoolMap(g.announcedAttacks)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -273,6 +302,32 @@ func (g *Game) cloneLocked() *Game {
 		out.lastKnownBattlefield = make(map[uuid.UUID]Characteristic, len(g.lastKnownBattlefield))
 		for k, v := range g.lastKnownBattlefield {
 			out.lastKnownBattlefield[k] = v
+		}
+	}
+	if len(g.lastKnownTriggerIdentity) > 0 {
+		out.lastKnownTriggerIdentity = make(map[uuid.UUID]triggerIdentityLKI, len(g.lastKnownTriggerIdentity))
+		for k, v := range g.lastKnownTriggerIdentity {
+			out.lastKnownTriggerIdentity[k] = v
+		}
+	}
+	// CR 614.5 once-per-event marks for events PAUSED on a CR 616 /
+	// CR 614.10 prompt (#808). Between actions the map holds an entry
+	// only for an event whose prompt is still open, and that entry is
+	// part of the prompt's state: an effect that applied on its own
+	// before the prompt was queued is marked there, and nowhere else.
+	// Answering the prompt deletes the entry when the event settles, so
+	// an undo snapshot that did not carry its own copy would replay the
+	// answer with the mark gone — and the effect would fire a second
+	// time. Deep-copied, because the live pipeline writes the inner
+	// sets in place.
+	if len(g.replacementsAppliedThisEvent) > 0 {
+		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
+		for evID, set := range g.replacementsAppliedThisEvent {
+			cp := make(map[ReplacementEffectID]bool, len(set))
+			for k, v := range set {
+				cp[k] = v
+			}
+			out.replacementsAppliedThisEvent[evID] = cp
 		}
 	}
 	// S16 layer-engine version counters. Atomics can't be struct-
@@ -341,6 +396,11 @@ func cloneCard(c Card) Card {
 	} else {
 		out.Counters = nil
 	}
+	if len(c.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	} else {
+		out.NextUntapSkips = nil
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -402,6 +462,7 @@ func clonePlayer(p *Player) *Player {
 		}
 	}
 	out.MaxHandSize = p.MaxHandSize
+	out.LandDropsPerTurn = p.LandDropsPerTurn
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
@@ -430,19 +491,21 @@ func cloneStackItem(s *StackItem) *StackItem {
 		return nil
 	}
 	out := &StackItem{
-		ID:           s.ID,
-		Kind:         s.Kind,
-		Controller:   s.Controller,
-		Owner:        s.Owner,
-		SourceCardID: s.SourceCardID,
-		Label:        s.Label,
-		XValue:       s.XValue,
-		HoldPriority: s.HoldPriority,
-		SplitSecond:  s.SplitSecond,
-		AltCost:      s.AltCost,
-		CastFromZone: s.CastFromZone,
-		IsCopy:       s.IsCopy,
-		Seq:          s.Seq,
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Controller:    s.Controller,
+		Owner:         s.Owner,
+		SourceCardID:  s.SourceCardID,
+		Label:         s.Label,
+		DoubledBy:     s.DoubledBy,
+		DoubledByName: s.DoubledByName,
+		XValue:        s.XValue,
+		HoldPriority:  s.HoldPriority,
+		SplitSecond:   s.SplitSecond,
+		AltCost:       s.AltCost,
+		CastFromZone:  s.CastFromZone,
+		IsCopy:        s.IsCopy,
+		Seq:           s.Seq,
 		// Effect takes the live *Game at resolve time rather than
 		// capturing one, so sharing the func between original and
 		// snapshot is safe — an undo that restores this item
@@ -479,27 +542,35 @@ func cloneStackItem(s *StackItem) *StackItem {
 // in-flight ReplacementEvent a paused CR 614 pipeline is sitting on.
 //
 // Only the EVENT is copied. The gathered `applicable` list is shared:
-// a resume reads it to decide what to fire and never writes it, and its
-// entries point at battlefield cards that the snapshot has its own
-// copies of anyway — the same shallow sharing every other server-only
-// resume frame on a PendingChoice already has.
+// a resume reads it to decide what to fire and never writes it. Its
+// entries' `source` pointers point into the LIVE battlefield the gather
+// walked, not into the snapshot's copy of it — harmless, because the
+// resume only ever reads through them — which is the same shallow
+// sharing every other server-only resume frame on a PendingChoice
+// already has.
 //
-// The event's zoneRoute is shared: it is written once by the entry
-// point before the pipeline runs and only ever read afterwards. What
-// the resume DOES write is the event's scalar payload — the counter
+// The event's once-per-event marks (CR 614.5) are not on the frame:
+// they live in Game.replacementsAppliedThisEvent, which cloneLocked
+// deep-copies and RestoreFrom puts back, so a replayed answer skips
+// exactly the effects the first answer skipped (#808).
+//
+// What the resume writes is the event's scalar payload — the counter
 // delta, the life delta, Canceled — and the lifeTail POINTER, which a
 // continuation clears as it runs. Both live in the struct this copies,
 // so the snapshot keeps the values the prompt was queued with. #793.
 //
-// The damageTail is the exception, and it is why it gets a copy of its
-// own (#807). Its continuation is cleared THROUGH the pointer —
-// runDamageTailLocked nils `then` on the tail rather than the tail on
-// the event, because the rest of the tail (the CR 120.3 target kind,
-// the deathtouch / lifelink / commander snapshot) is what
-// applyResolvedDamageLocked is still reading when it runs. Sharing the
-// struct would let the live game's run consume the snapshot's
-// continuation, so undoing the answer to a CR 616 prompt and answering
-// it again would land the damage and skip the rest of the card.
+// The damageTail and the zoneRoute are the exceptions, and it is why
+// they each get a copy of their own (#807, #853). Their continuations
+// are cleared THROUGH the pointer — runDamageTailLocked and
+// runRouteTailLocked nil `then` on the tail rather than the tail on the
+// event, because the REST of what they carry (the CR 120.3 target
+// kind, the deathtouch / lifelink / commander snapshot; the
+// destination, the to-the-bottom instruction, the discard flag) is
+// what applyResolvedDamageLocked and executeZoneRouteLocked are still
+// reading when it runs. Sharing the struct would let the live game's
+// run consume the snapshot's continuation, so undoing the answer to a
+// CR 903.9 prompt and answering it again would move the card and skip
+// the rest of the discard.
 func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 	if f == nil {
 		return nil
@@ -516,6 +587,13 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		if f.ev.damageTail != nil {
 			t := *f.ev.damageTail
 			ev.damageTail = &t
+		}
+		if f.ev.zoneRoute != nil {
+			r := *f.ev.zoneRoute
+			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
+				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
+			}
+			ev.zoneRoute = &r
 		}
 		out.ev = &ev
 	}
@@ -575,8 +653,19 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
+	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
+	// #628's loop breaker, missed by this list when it landed: the
+	// clone carries the notice (cloneLocked, above) and the persisted
+	// snapshot carries it, but the undo path did not put it back, so
+	// an undo across the moment the breaker fired left the live notice
+	// exactly as it was — stale in one direction or absent in the
+	// other. #804 makes that visible rather than merely wrong: the
+	// CR 726 prompt rewinds with PendingChoices, and a prompt without
+	// the notice it is asking about is a question about nothing.
+	g.LoopNotice = src.LoopNotice
+	g.LoopThreshold = src.LoopThreshold
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
@@ -591,18 +680,34 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restored end.
 	g.Events = src.Events
 	g.eventSeq = src.eventSeq
+	// #829: batch identity rewinds with the log it is stamped into,
+	// and the once-per-batch marks rewind with the counter — see
+	// cloneLocked.
+	g.eventBatch = src.eventBatch
+	g.oncePerBatchFired = src.oncePerBatchFired
+	// #830 / #859: see cloneLocked — the announcements rewind with
+	// the declarations they describe.
+	g.announcedBlocks = src.announcedBlocks
+	g.announcedBecameBlocked = src.announcedBecameBlocked
+	g.announcedAttacks = src.announcedAttacks
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
 	g.TurnScopedStatics = src.TurnScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
+	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
+	// #808: the paused events' once-per-event marks rewind with the
+	// prompts that own them — see cloneLocked.
+	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.
 	g.rngKey = src.rngKey
 	g.rngCounters = src.rngCounters
 	g.rngTurn = src.rngTurn
+	g.sourceOrdinals = src.sourceOrdinals
+	g.sourceOrdinalNext = src.sourceOrdinalNext
 	// S16 layer-engine counters: adopt the snapshot's values via
 	// Store/Load (atomics can't be field-copied), then bump
 	// layerVersion past lastResolvedVersion so the next snapshot
@@ -611,4 +716,15 @@ func (g *Game) RestoreFrom(src *Game) {
 	// snapshot-time state and must not be served as-is.
 	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
 	g.layerVersion.Store(src.layerVersion.Load() + 1)
+}
+
+func cloneSourceOrdinals(in map[uuid.UUID]uint64) map[uuid.UUID]uint64 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]uint64, len(in))
+	for id, ordinal := range in {
+		out[id] = ordinal
+	}
+	return out
 }

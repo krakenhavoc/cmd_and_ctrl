@@ -122,6 +122,52 @@ func passPriorityAroundTable(t *testing.T, g *game.Game) {
 	t.Fatalf("stack did not empty after 32 priority passes")
 }
 
+// lockInBlocks completes the block declaration the way play does:
+// priority passes around the table, and the wrap is the lock-in
+// (CR 509.1 / 509.2a, #830) — the point where the engine announces
+// the final assignment and harvests the "becomes blocked" / "blocks"
+// triggers off it. Nothing is announced by DeclareBlocker itself, so
+// a test that asserts on those triggers has to come through here.
+//
+// Stops as soon as the lock-in produced something (an item on the
+// stack or a trigger prompt) or the step advanced — a declaration
+// with no triggers wraps on through to combat damage, exactly as an
+// unblocked combat does.
+func lockInBlocks(t *testing.T, g *game.Game) {
+	t.Helper()
+	lockInCombatDeclaration(t, g)
+}
+
+// lockInAttacks is lockInBlocks for the ATTACK declaration (#859,
+// CR 508.1 / 508.2): DeclareAttacker stages the attack and announces
+// nothing either, so a test that asserts on "whenever ~ attacks"
+// triggers has to reach the lock-in — the first priority boundary of
+// the declare-attackers step — the way play does.
+func lockInAttacks(t *testing.T, g *game.Game) {
+	t.Helper()
+	lockInCombatDeclaration(t, g)
+}
+
+// lockInCombatDeclaration is the loop both of the above are: priority
+// passes around the table until the wrap locks the step's staged
+// declaration in. One implementation because it is one boundary —
+// PassPriority commits whichever declaration is staged.
+func lockInCombatDeclaration(t *testing.T, g *game.Game) {
+	t.Helper()
+	step := g.Turn.Step
+	for i := 0; i < len(g.Seats)+1; i++ {
+		if err := g.PassPriority(); err != nil {
+			if errors.Is(err, game.ErrChoicePending) {
+				return
+			}
+			t.Fatalf("PassPriority iter %d: %v", i, err)
+		}
+		if !stackFullyEmpty(g) || g.Turn.Step != step {
+			return
+		}
+	}
+}
+
 // stackFullyEmpty reports whether nothing is on or headed for the
 // stack: Game.Stack, StackMeta, and PendingTriggers are all empty.
 func stackFullyEmpty(g *game.Game) bool {
@@ -566,6 +612,46 @@ func TestGlimpseMillsTen(t *testing.T) {
 	}
 	if got := target.Graveyard.Size() - gyBefore; got != 10 {
 		t.Errorf("graveyard delta: got %d, want 10", got)
+	}
+}
+
+// #767: Glimpse on a five-card library mills the five and the target
+// stays in the game (CR 701.17b) — through the state checks at every
+// priority pass — until their own draw step draws from the empty
+// library (CR 704.5b).
+func TestGlimpseOnAShortLibraryLosesOnlyAtTheDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	target := g.Seats[1]
+	target.Library.Cards = target.Library.Cards[len(target.Library.Cards)-5:]
+
+	castCatalogSpell(t, g, "Glimpse the Unthinkable", "Sorcery",
+		"552f0163-a19d-4671-888f-044fc0354875",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: target.ID}},
+	)
+	passPriorityAroundTable(t, g)
+
+	if n := target.Library.Size(); n != 0 {
+		t.Fatalf("library holds %d, want the five milled", n)
+	}
+	if target.AttemptedEmptyDraw || target.Eliminated {
+		t.Fatal("milling out is not losing: the target survives the state checks")
+	}
+	for i := 0; i < 400 && !(g.Turn.ActiveSeat == 1 && g.Turn.Step == game.StepUpkeep); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		if target.Eliminated {
+			t.Fatalf("eliminated at seat %d's %s, before the target's own draw", g.Turn.ActiveSeat, g.Turn.Step)
+		}
+	}
+	if g.Turn.ActiveSeat != 1 || g.Turn.Step != game.StepUpkeep {
+		t.Fatal("never reached the target's upkeep")
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if !target.Eliminated {
+		t.Error("the target's draw step draws from the empty library and loses (CR 704.5b)")
 	}
 }
 

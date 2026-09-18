@@ -451,12 +451,19 @@ func TestMinasTirithNeedsTwoAttackers(t *testing.T) {
 	a := acPermanent(g, me.ID, "Soldier A", "Creature — Soldier", 2, 2)
 	b := acPermanent(g, me.ID, "Soldier B", "Creature — Soldier", 2, 2)
 
-	declareAttack(t, g, opp.ID, a)
+	// #859: an attack declaration is announced at its lock-in, so the
+	// condition — which reads this turn's attack events — is not met
+	// until the whole declaration is in.
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(a, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
 	b06AddMana(me, "C", "W")
 	acRefused(t, g, me.ID, tirith, 0, game.ActivateAbilityParams{})
 	if err := g.DeclareAttacker(b, opp.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	lockInAttacks(t, g)
 	handBefore := me.Hand.Size()
 	b16Activate(t, g, me.ID, tirith, 0, game.ActivateAbilityParams{})
 	if me.Hand.Size() != handBefore+1 {

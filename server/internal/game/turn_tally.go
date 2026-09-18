@@ -20,7 +20,7 @@ import (
 // LoyaltyActivatedThisTurn); this is the rest of them, in one place.
 //
 // One built-in listener (turnTallyListener) bumps the counters from
-// the same events every other consumer reads, and onTurnAdvanceLocked
+// the same events every other consumer reads, and onTurnBeganLocked
 // resets the whole thing where the other three reset. Nothing at an
 // emit site changes. For the filtered long tail ("you sacrificed a
 // FOOD this turn") EventsThisTurn returns the bounded slice of this
@@ -72,7 +72,7 @@ type TurnTally struct {
 	Triggered map[string]int `json:"triggered,omitempty"`
 	// EnteredSubtypes counts the permanents that entered the
 	// battlefield this turn, per the player they entered under and per
-	// subtype they had as they entered, keyed by enteredSubtypeKey. A
+	// subtype they had as they entered, keyed by subtypeTallyKey. A
 	// permanent with every creature type (changeling, CR 702.73a) is
 	// counted once under enteredAllCreatureTypes instead of once per
 	// creature type. Read through Game.EnteredWithSubtypeThisTurn.
@@ -80,6 +80,21 @@ type TurnTally struct {
 	// as it entered: one that has since died, or since gained or lost
 	// a type, answers as it was then (#743, Lilypad Village).
 	EnteredSubtypes map[string]int `json:"enteredSubtypes,omitempty"`
+	// SacrificedSubtypes is the same tally for the other end of a
+	// permanent's life: the permanents each player SACRIFICED this
+	// turn, per subtype they had as they were sacrificed. Read
+	// through Game.SacrificedWithSubtypeThisTurn.
+	//
+	// Recorded at the sacrifice for the same reason (#596): the
+	// object is read while it is still on the battlefield, because by
+	// the time anything asks, it may not be anywhere. "You sacrificed
+	// a Food this turn" used to be answered by walking the event log
+	// and looking the sacrificed card up wherever it had landed, and
+	// a Food is a TOKEN — CR 704.5d removes it from the graveyard at
+	// the next state-based check, so the lookup found nothing and the
+	// condition silently stopped being true for the commonest case
+	// the card was printed for.
+	SacrificedSubtypes map[string]int `json:"sacrificedSubtypes,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 726 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -87,6 +102,18 @@ type TurnTally struct {
 	// notePlayerDecisionLocked; read by loopSuspectedLocked and
 	// nothing else. See loop_breaker.go (#628).
 	LoopRun map[string]int `json:"loopRun,omitempty"`
+	// LoopAllowance is the CR 726 shortcut the loop's controller
+	// agreed to, keyed like LoopRun: how many more resolutions of
+	// that ability the table runs before the breaker asks again.
+	// Written by ResolveLoopShortcut, decremented by
+	// noteResolutionForLoopLocked, cleared by
+	// notePlayerDecisionLocked with everything else. Nil is the
+	// ordinary state: nobody has taken a shortcut this turn.
+	//
+	// It is the ONLY counter #804 adds. The detector is still
+	// loopSuspectedLocked over LoopRun; this says whether the answer
+	// it gives is news. See loop_breaker.go (#804).
+	LoopAllowance map[string]int `json:"loopAllowance,omitempty"`
 	// FirstEvent is the index into Game.Events at which this turn
 	// began; EventsThisTurn slices from it.
 	FirstEvent int `json:"firstEvent,omitempty"`
@@ -137,10 +164,10 @@ func sumTally(m map[string]int, source uuid.UUID, label string) int {
 // anyone can print, so it never collides with a real one.
 const enteredAllCreatureTypes = "*"
 
-// enteredSubtypeKey names one (player, subtype) cell of
-// TurnTally.EnteredSubtypes. Subtypes are compared case-insensitively,
-// as everywhere else in the engine.
-func enteredSubtypeKey(player uuid.UUID, subtype string) string {
+// subtypeTallyKey names one (player, subtype) cell of
+// TurnTally.EnteredSubtypes or TurnTally.SacrificedSubtypes. Subtypes
+// are compared case-insensitively, as everywhere else in the engine.
+func subtypeTallyKey(player uuid.UUID, subtype string) string {
 	return player.String() + "|" + strings.ToLower(subtype)
 }
 
@@ -172,9 +199,35 @@ func (g *Game) EnteredWithSubtypeThisTurn(playerID uuid.UUID, subtype string) in
 	if playerID == uuid.Nil || subtype == "" {
 		return 0
 	}
-	n := g.TurnTally.EnteredSubtypes[enteredSubtypeKey(playerID, subtype)]
+	return subtypeTallyCount(g.TurnTally.EnteredSubtypes, playerID, subtype)
+}
+
+// SacrificedWithSubtypeThisTurn reports how many permanents playerID
+// sacrificed this turn having `subtype` as they were sacrificed — "if
+// you sacrificed a Food this turn" (Elanor Gardner), "for each
+// Treasure you sacrificed this turn". A permanent that had every
+// creature type counts for any creature type.
+//
+// "As they were sacrificed" is the reading its EnteredSubtypes twin
+// documents, and the reason this is a tally rather than an event-log
+// walk is #596: a sacrificed TOKEN — which is what most of the cards
+// asking this question sacrifice — does not survive in the graveyard
+// for a later lookup to read.
+//
+// Caller must hold g.mu.
+func (g *Game) SacrificedWithSubtypeThisTurn(playerID uuid.UUID, subtype string) int {
+	if playerID == uuid.Nil || subtype == "" {
+		return 0
+	}
+	return subtypeTallyCount(g.TurnTally.SacrificedSubtypes, playerID, subtype)
+}
+
+// subtypeTallyCount reads one (player, subtype) cell, folding in the
+// changeling bucket for a creature type.
+func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int {
+	n := m[subtypeTallyKey(playerID, subtype)]
 	if IsCreatureType(subtype) {
-		n += g.TurnTally.EnteredSubtypes[enteredSubtypeKey(playerID, enteredAllCreatureTypes)]
+		n += m[subtypeTallyKey(playerID, enteredAllCreatureTypes)]
 	}
 	return n
 }
@@ -182,15 +235,30 @@ func (g *Game) EnteredWithSubtypeThisTurn(playerID uuid.UUID, subtype string) in
 // recordEnteredSubtypesLocked adds one entering permanent to
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
-	if controller == uuid.Nil {
+	recordSubtypeTally(&g.TurnTally.EnteredSubtypes, controller, c)
+}
+
+// recordSacrificedSubtypesLocked adds one sacrificed permanent to
+// TurnTally.SacrificedSubtypes under `actor`, the player who
+// sacrificed it.
+func (g *Game) recordSacrificedSubtypesLocked(actor uuid.UUID, c *Card) {
+	recordSubtypeTally(&g.TurnTally.SacrificedSubtypes, actor, c)
+}
+
+// recordSubtypeTally bumps one cell per subtype the permanent has
+// right now, allocating the map on first use. A permanent with every
+// creature type (changeling, CR 702.73a) is counted once under
+// enteredAllCreatureTypes instead of once per creature type.
+func recordSubtypeTally(m *map[string]int, playerID uuid.UUID, c *Card) {
+	if playerID == uuid.Nil || c == nil {
 		return
 	}
 	all := HasAllCreatureTypes(c)
 	bump := func(subtype string) {
-		if g.TurnTally.EnteredSubtypes == nil {
-			g.TurnTally.EnteredSubtypes = map[string]int{}
+		if *m == nil {
+			*m = map[string]int{}
 		}
-		g.TurnTally.EnteredSubtypes[enteredSubtypeKey(controller, subtype)]++
+		(*m)[subtypeTallyKey(playerID, subtype)]++
 	}
 	for _, s := range c.Effective().Subtypes {
 		if all && IsCreatureType(s) {
@@ -239,8 +307,10 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
+	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
+	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	return out
 }
 
@@ -280,6 +350,16 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.PermanentsSacrificed++ })
+		// #596: EventSacrifice fires while the permanent is still on
+		// the battlefield (sacrifice.go), which is the only moment a
+		// sacrificed TOKEN can be read — CR 704.5d takes it out of
+		// the graveyard at the next state-based check. Record what it
+		// was now; "you sacrificed a Food this turn" is asked later.
+		if ev.CardID != uuid.Nil && ev.Actor != uuid.Nil {
+			if c := g.findCardByIDLocked(ev.CardID); c != nil {
+				g.recordSacrificedSubtypesLocked(ev.Actor, c)
+			}
+		}
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
 		g.notePlayerDecisionLocked()

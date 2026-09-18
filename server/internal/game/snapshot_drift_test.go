@@ -84,6 +84,7 @@ var gameFields = plan(
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
+	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
 	// this turn"). Carried for the same reason the other per-turn
 	// tallies are: a restore mid-turn that forgot it would offer the
@@ -107,13 +108,35 @@ var gameFields = plan(
 	// what "carried" means here.
 	"Events", carried, "shared with the live log by Clone, copied by the persisted snapshot",
 	"eventSeq", carried, "",
+	// #829 event batches. Carried for the same reason the per-turn
+	// tallies are, and carried TOGETHER: the counter names the batch
+	// the marks are recorded against, so a restore that kept one and
+	// not the other would either double-fire a "whenever one or more"
+	// trigger or swallow it.
+	"eventBatch", carried, "",
+	"oncePerBatchFired", carried, "",
+	// #830 block-declaration lock-in. Carried for the same reason and
+	// in the same pair-wise way: the map of announced pairings names
+	// what the "became blocked" marks were recorded for, so a restore
+	// that kept one and not the other would either re-announce an
+	// attacker that is already blocked or swallow a real block.
+	"announcedBlocks", carried, "",
+	"announcedBecameBlocked", carried, "",
+	// #859 attack-declaration lock-in. Carried for the reason the two
+	// above are: a restore that dropped it would announce an attacker
+	// that has already attacked, and one that invented it would
+	// swallow a declaration the battlefield is still carrying.
+	"announcedAttacks", carried, "",
 	"lastKnownBattlefield", carried, "",
+	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
 	// randomness. Clone copies them (undo rewinds) and rngSnapshot
 	// carries them (a restore continues every stream).
 	"rngKey", carried, "rngSnapshot.Key",
 	"rngCounters", carried, "rngSnapshot.Counters",
 	"rngTurn", carried, "rngSnapshot.Turn",
+	"sourceOrdinals", carried, "GameSnapshot.SourceOrdinals",
+	"sourceOrdinalNext", carried, "GameSnapshot.SourceOrdinalNext",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 
@@ -124,7 +147,7 @@ var gameFields = plan(
 	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
-	"replacementsAppliedThisEvent", dropped, "per-pipeline-call scope, defer-cleared; always empty between Applies",
+	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
@@ -154,6 +177,7 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",
 	"Counters", carried, "",
@@ -244,10 +268,11 @@ var playerFields = plan(
 	"IsBot", carried, "",
 	"BotTier", carried, "",
 	"BotDeck", carried, "",
-	"LosesAtNextSBA", carried, "",
+	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
+	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 )
 
@@ -264,6 +289,8 @@ var stackItemFields = plan(
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
 	"Label", carried, "",
+	"DoubledBy", carried, "",
+	"DoubledByName", carried, "",
 	"Targets", carried, "",
 	// #636 reflexive triggers: a pending trigger's payload is what
 	// the resolution that created it told it (the cards revealed,
@@ -311,6 +338,10 @@ var pendingChoiceFields = plan(
 	"Count", carried, "",
 	"Source", carried, "",
 	"Reason", carried, "",
+	"CoinAllowStop", carried, "",
+	"CoinCount", carried, "",
+	"CoinMaxUsefulWins", carried, "",
+	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	// Added by the mana pipeline (#352/#356). A restricted mana token
 	// is game state that survives undo — clone.go deep-copies it at
@@ -351,6 +382,15 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	// #804's CR 726 shortcut prompt. Carried for the reason
+	// LoopNotice is: the key is the only way back to the run the
+	// answer is about, and a restored game that forgot it would put a
+	// question about nothing in front of the loop's controller — or,
+	// worse, take an answer and attach the allowance to no run at all,
+	// which is a table that starts spinning again.
+	"LoopShortcutKey", carried, "",
+	"LoopShortcutCount", carried, "",
+	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -363,6 +403,7 @@ var pendingChoiceFields = plan(
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 
 // TestSnapshotCoversEveryDomainField is the drift guard.

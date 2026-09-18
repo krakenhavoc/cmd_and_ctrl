@@ -66,10 +66,12 @@ type Game struct {
 	MulligansOpen bool
 
 	// Monarch is the player ID currently designated as the monarch
-	// (Conspiracy mechanic; player draws an extra card at end of their
-	// turn). uuid.Nil means "no monarch currently". Set manually via
-	// the set_monarch action — sandbox doesn't enforce the combat-damage
-	// transfer rule. Added in S10.
+	// (CR 724). uuid.Nil means "no monarch currently". Handed out by
+	// the set_monarch action or by a card effect; from #375 onward the
+	// engine then enforces the designation's two inherent triggered
+	// abilities — the monarch's end-step draw and the transfer to
+	// whoever deals combat damage to them — in monarch.go. Added in
+	// S10.
 	Monarch uuid.UUID
 
 	// Initiative is the player ID currently designated as having taken
@@ -153,13 +155,23 @@ type Game struct {
 	SpellsCastThisTurn map[uuid.UUID]CastTally
 
 	// LandsPlayedThisTurn counts, per player, the lands that player
-	// has played this turn via CastSpell's land branch. The engine
-	// does NOT enforce the one-land-per-turn rule (CR 305.2) — that
-	// stays a sandbox affordance — but the S31 legal-move enumerator
-	// needs the count to offer a land drop only when one is still
-	// owed. Cleared on Turn.advance to a new turn. Keyed by player
-	// ID. Added in S31 sub-PR 1.
+	// has played this turn via CastSpell's land branch. Cleared on
+	// Turn.advance to a new turn. Keyed by player ID. Added in S31
+	// sub-PR 1.
+	//
+	// #500: this is now the ENFORCED side of CR 305.2, not just
+	// bookkeeping for the legal-move enumerator. CastSpell refuses a
+	// land play once the count reaches the player's allowance —
+	// EffectiveLandDropsLocked, see land_drops.go.
 	LandsPlayedThisTurn map[uuid.UUID]int
+
+	// ExtraLandDropsThisTurn holds one-turn grants of additional land
+	// plays ("you may play an additional land this turn"), per player.
+	// Added to the player's base allowance and to any static grant
+	// from a controlled permanent; see land_drops.go. Written by
+	// GrantAdditionalLandPlayForEffect and cleared on Turn.advance to
+	// a new turn with the rest of the per-turn state. Added in #500.
+	ExtraLandDropsThisTurn map[uuid.UUID]int
 
 	// DrawnThisTurn records, per player, the card instance IDs that
 	// player has DRAWN this turn, in draw order. Appended by
@@ -259,6 +271,62 @@ type Game struct {
 	// the sequence rather than restarting at 1.
 	eventSeq uint64
 
+	// eventBatch is the monotonic counter stamped into Event.Batch on
+	// each EmitEvent: the identity of the run of events the engine is
+	// emitting as ONE occurrence (CR 603.2c). It advances at exactly
+	// one boundary — beginEventBatchLocked, called when a stack item
+	// begins to resolve and when the turn cursor enters a new step.
+	// See event_batch.go (#829).
+	//
+	// oncePerBatchFired records, per TallyKey(source, ability key),
+	// the batch a OncePerBatch ability last fired for. That is the
+	// whole of the "whenever one or more …" guard: an ability whose
+	// key is already recorded against the live batch declines, and
+	// anything else fires.
+	//
+	// Both survive Clone / RestoreFrom together, for the reason
+	// TurnTally does: an undo that rewound the counter but kept the
+	// marks (or the reverse) would either double-fire a trigger or
+	// swallow one.
+	eventBatch        uint64
+	oncePerBatchFired map[string]uint64
+
+	// announcedBlocks and announcedBecameBlocked are what the block
+	// declaration has already announced this combat (#830).
+	// announcedBlocks maps blocker -> the attacker its EventBlock
+	// named; announcedBecameBlocked records the attackers that have
+	// had their one EventBecomesBlocked (CR 506.4).
+	//
+	// They exist because the declaration is announced at LOCK-IN and
+	// the sandbox lets the defender keep clicking afterwards: the
+	// commit emits events only for what has changed since, so a
+	// second blocker added to an already-blocked attacker announces
+	// its own block and no second "becomes blocked", and a blocker
+	// re-pointed after the lock-in does not re-announce the attacker
+	// it left. Both are cleared by clearCombatLocked, which is also
+	// what clears BlockingTarget — they are one combat's bookkeeping.
+	//
+	// Carried by Clone / RestoreFrom together for the reason
+	// eventBatch and oncePerBatchFired are: an undo that rewound the
+	// declaration but kept the announcements would swallow the
+	// re-done trigger, and the reverse would double-fire it.
+	announcedBlocks        map[uuid.UUID]uuid.UUID
+	announcedBecameBlocked map[uuid.UUID]bool
+
+	// announcedAttacks is the same bookkeeping for the ATTACK
+	// declaration (#859, attackers.go): the creatures that have had
+	// their one EventAttack this combat. Presence, not a pairing,
+	// because CR 508.1 declares a creature as an attacker once — a
+	// re-point is a correction to a declaration that is already
+	// announced, never a second attack. It doubles as the marker for
+	// a permanent PUT onto the battlefield attacking (CR 506.3c),
+	// which is never announced at all.
+	//
+	// Cleared by clearCombatLocked, and carried by Clone /
+	// RestoreFrom and the persisted snapshot, for the reasons the two
+	// block maps above are.
+	announcedAttacks map[uuid.UUID]bool
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero
@@ -276,6 +344,11 @@ type Game struct {
 	// of one mutation that emits LTB. See triggers.go. Added in S19
 	// sub-PR 1.
 	lastKnownBattlefield map[uuid.UUID]Characteristic
+
+	// lastKnownTriggerIdentity retains the small part of a leaving card that
+	// CR 400.7 cleanup removes before the move-form event is harvested. It is
+	// paired with lastKnownBattlefield and cleared at the same boundary.
+	lastKnownTriggerIdentity map[uuid.UUID]triggerIdentityLKI
 
 	// simultaneousExit holds copies of the permanents currently
 	// leaving the battlefield as ONE event — a board wipe, or one
@@ -310,6 +383,13 @@ type Game struct {
 	rngKey      [32]byte
 	rngCounters map[string]uint64
 	rngTurn     int
+
+	// sourceOrdinals makes an object's random-effect stream stable across
+	// independently seeded runs. Deck cards use class 0 (seat/index); objects
+	// created while playing use class 1 and the monotonically increasing
+	// sourceOrdinalNext. See ADR 0054 addendum.
+	sourceOrdinals    map[uuid.UUID]uint64
+	sourceOrdinalNext uint64
 
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change
@@ -378,6 +458,12 @@ type Game struct {
 	// for ev.ID at their outermost frame so CR 616 prompt pauses
 	// don't lose the entry mid-event. See replacements.go.
 	// Added in S17 sub-PR 2.
+	//
+	// So between actions it holds an entry only for an event paused
+	// on a prompt, and that entry is part of the prompt's state:
+	// Clone deep-copies it and RestoreFrom puts it back, or an undo
+	// into the open prompt would replay the answer without the marks
+	// and fire an already-applied effect twice (#808).
 	replacementsAppliedThisEvent map[ReplacementEventID]map[ReplacementEffectID]bool
 
 	// nextReplacementEventID mints the per-event keys stored in
@@ -417,6 +503,14 @@ func NewGame() *Game {
 	// emit, queues matching catalog-declared TriggeredAbility
 	// entries onto PendingTriggers. See triggers.go.
 	g.Listeners = append(g.Listeners, triggerHarvester{})
+	// #375: the two inherent triggered abilities of the monarch
+	// (CR 724.2) have no source card for the harvester above to find
+	// them on, so they ride the listener registry instead. Registered
+	// AFTER the harvester so that when a card trigger and a monarch
+	// trigger watch the same event, the card's lands on
+	// PendingTriggers first — CR 603.3b reorders anything that
+	// actually matters. See monarch.go.
+	g.Listeners = append(g.Listeners, monarchTriggers{})
 	// S17 sub-PR 2: install the CR 903.9 commander-zone built-in
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See
@@ -455,9 +549,10 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	// Stamp every card with its owner (overwriting whatever the caller
 	// set) and route commanders vs. library cards.
-	for _, c := range deck {
+	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
+		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
 		if c.IsCommander {
 			p.Command.PushTop(c)
 		} else {
@@ -502,9 +597,10 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Library.Cards = p.Library.Cards[:0]
 	p.Command.Cards = p.Command.Cards[:0]
 
-	for _, c := range deck {
+	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
+		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
 		if c.IsCommander {
 			p.Command.PushTop(c)
 		} else {
@@ -665,6 +761,19 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	// #830 / CR 509.2a, and #859 / CR 508.2: leaving a step completes
+	// whatever turn-based action was staged in it. A combat
+	// declaration still staged here — attackers or blockers — is
+	// locked in BEFORE the cursor moves, so its triggers are
+	// harvested inside the declaring step and off the final
+	// assignment. Placed above the prompt gate on purpose: an
+	// optional declaration trigger (Grazilaxx's "you may return it",
+	// Legion Loyalty's myriad) queues its yes/no here, and the gate
+	// then holds the cursor until it is answered rather than walking
+	// the table past it. No-op whenever nothing is staged.
+	if g.blockDeclarationPendingLocked() || g.attackDeclarationPendingLocked() {
+		g.runStateChecksLocked()
+	}
 	// #730: an unanswered prompt gates the table. Checked before the
 	// cursor moves, so a choice queued by THIS advance's step-entry
 	// hooks (a CR 616 ordering pause, say) is not mistaken for one
@@ -685,73 +794,28 @@ func (g *Game) AdvanceStep() (Turn, error) {
 }
 
 // advanceCursorLocked moves the step cursor forward by one — the
-// single seam every step transition goes through. On a turn wrap it
-// skips seats that have left the game (CR 800.4a: an eliminated
-// player's turns are skipped) and fires onTurnAdvanceLocked so the
-// per-turn caches clear.
+// single seam every step transition goes through. Past cleanup it
+// hands over to beginNextTurnLocked (rotation.go), which skips seats
+// that have left the game (CR 800.4a / 800.4k) and runs the
+// turn-began hook so the per-turn caches clear.
 //
 // Both halves fix bugs the S31 bot fuzzer found on its first run:
 // Turn.advance rotated into eliminated seats, handing priority to a
 // player who could not act (humans had been escaping with
-// advance_step), and the cleanup hook's wrap never called
-// onTurnAdvanceLocked, so SpellsCastThisTurn / LoyaltyActivatedThisTurn
-// survived every ordinary turn change. Caller must hold g.mu.
+// advance_step), and the cleanup hook's wrap never reset the per-turn
+// caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
+// every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
-	prev := g.Turn
-	n := len(g.Seats)
-	g.Turn = g.Turn.advance(n)
-	if prev.IsNewTurn(g.Turn) {
-		for i := 0; i < n && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < n && g.Seats[g.Turn.ActiveSeat].Eliminated; i++ {
-			// Wrap again from this seat's (never-taken) cleanup.
-			skipped := g.Turn
-			skipped.Step = StepCleanup
-			g.Turn = skipped.advance(n)
-		}
-	}
-	g.onTurnAdvanceLocked(prev, g.Turn)
-}
-
-// onTurnAdvanceLocked clears any per-turn caches whenever the
-// active seat changes. Currently flushes
-// `LoyaltyActivatedThisTurn` (CR 606.3 — once per turn per
-// planeswalker), but the same hook is the natural home for any
-// other "reset on new turn" caches the engine grows. Caller must
-// hold g.mu.
-func (g *Game) onTurnAdvanceLocked(prev, next Turn) {
-	if !prev.IsNewTurn(next) {
+	// #829: entering a step is one of the two points where play moves
+	// on, so the events this step emits are a new occurrence — first
+	// strike damage and regular damage are two batches, as in paper.
+	// See event_batch.go.
+	g.beginEventBatchLocked()
+	if g.Turn.Step == StepCleanup {
+		g.beginNextTurnLocked()
 		return
 	}
-	// S25 (#77): invalidate the layer cache. A continuous effect
-	// whose AppliesTo reads the TURN rather than the battlefield —
-	// Zurgo Helmsmasher's "during your turn, ~ has indestructible" is
-	// the first in the catalog — changes its answer here and nowhere
-	// else, so nothing would otherwise mark the cached
-	// characteristics stale and the keyword would stick around on the
-	// wrong player's turn.
-	//
-	// This is the bump layer_listener.go's header predicted and
-	// deliberately deferred ("Step / phase advance … when they
-	// arrive in a later sprint, advance the version inside the
-	// step-advance helper directly — no event for it today"). It
-	// lands here rather than in the listener for the reason that note
-	// gives: there is no event for a turn change to listen to.
-	//
-	// Cost is one recompute per turn, against a cache that is already
-	// invalidated by every zone move and every counter placed.
-	g.layerVersion.Add(1)
-	if g.LoyaltyActivatedThisTurn != nil {
-		g.LoyaltyActivatedThisTurn = nil
-	}
-	if g.SpellsCastThisTurn != nil {
-		g.SpellsCastThisTurn = nil
-	}
-	if g.LandsPlayedThisTurn != nil {
-		g.LandsPlayedThisTurn = nil
-	}
-	if g.DrawnThisTurn != nil {
-		g.DrawnThisTurn = nil
-	}
-	g.resetTurnTallyLocked()
+	g.Turn = g.Turn.advance(len(g.Seats))
 }
 
 // CardsDrawnThisTurnFor returns the instance IDs playerID has drawn
@@ -848,6 +912,17 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// The step entry reads the layered board before anything else:
+	// the skip-step replacement window below, the untap step's set
+	// (CatalogAbilityKey on an UntapStepPermission source, the
+	// layer-2 Controller) and every trigger the step announcement
+	// harvests. The previous step can leave the cache stale with no
+	// priority boundary in between — cleanup's "until end of turn"
+	// sweep and the turn wrap both bump the layer version and then
+	// recurse straight into the next seat's untap and upkeep, and the
+	// untap step's own untaps bump it again on the way into upkeep.
+	// Fast-path no-op when nothing changed.
+	g.RecomputeLayersIfStaleLocked()
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -902,6 +977,9 @@ func (g *Game) runStepEntryHooksLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) finishStepEntryLocked(canceled bool) {
+	// Also reached from a CR 616 prompt's resume, which is not a path
+	// through runStepEntryHooksLocked's recompute.
+	g.RecomputeLayersIfStaleLocked()
 	if canceled {
 		// Step canceled — advance past and recurse so the
 		// cursor hits the next step's entry hook.
@@ -1047,39 +1125,12 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// cleanup until every entry is drained via discard_selection
 		// (S13.4 — the interactive discard pathway).
 		g.populateDiscardPendingLocked()
-		// CR 514.2: damage marked on permanents is removed at the
-		// start of cleanup, regardless of whether the discard pause
-		// fires. The lethal-damage SBA from S13.1 reads DamageMarked,
-		// so clearing it here means the per-turn damage doesn't
-		// carry over into the next turn.
-		//
-		// S18 sub-PR 3: MarkedLethalByDeathtouch is the companion
-		// flag (CR 702.2c) set by combat damage from deathtouch
-		// sources. Same per-turn scope as DamageMarked, cleared at
-		// the same site.
-		for i := range g.Battlefield.Cards {
-			g.Battlefield.Cards[i].DamageMarked = 0
-			g.Battlefield.Cards[i].MarkedLethalByDeathtouch = false
-		}
-		// S17 sub-PR 5: "until end of turn" replacement effects
-		// (Fog's prevent-all-combat-damage, future prevention
-		// shields with a per-turn duration) clear at cleanup so
-		// next turn starts with a clean slate.
-		g.ClearTurnScopedReplacementsLocked()
-		// S32: "until end of turn" CONTINUOUS effects (Giant
-		// Growth's +3/+3, Overrun's trample grant) expire here for
-		// the same reason and by the same rule — CR 514.2 ends them
-		// during the cleanup step, before the turn-based discard.
-		// This is also what makes a grant created during the END
-		// step end this turn rather than next: the sweep keys on the
-		// turn number stamped at registration, not on "the next
-		// cleanup after the one I saw".
-		g.ClearExpiredTurnScopedStaticsLocked()
-		// S21 sub-PR 6: impulse-exile permissions ("you may play it
-		// this turn") lapse here for the same reason — the turn they
-		// were granted for is over. The exiled card stays exiled; it
-		// just stops being playable.
-		g.clearExpiredExilePlayLocked()
+		// CR 514.2: marked damage is removed and "until end of turn"
+		// and "this turn" effects end. The sweep is its own function
+		// (rotation.go) because a turn that ends early — its active
+		// player left the game, or the sandbox pass_turn verb — ends
+		// through the same code (ADR 0059 Decision 6, #766).
+		g.sweepTurnEndLocked()
 		// Auto-advance only when no player owes discard. Otherwise
 		// the cursor sits at Cleanup with PriorityHolder=NoPriority
 		// until DiscardSelection drains the pending map and re-fires

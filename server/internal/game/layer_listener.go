@@ -30,7 +30,7 @@ import (
 //
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
-//     `onTurnAdvanceLocked` (game.go) exactly as this note used to
+//     `onTurnBeganLocked` (rotation.go) exactly as this note used to
 //     prescribe, because there is no event for a turn change to
 //     listen to. Zurgo Helmsmasher's "during your turn, ~ has
 //     indestructible" is the forcing function — a static whose

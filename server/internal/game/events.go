@@ -211,20 +211,28 @@ const (
 	// gap EventETB already has, and no card in the catalog has that
 	// wording.
 	//
-	// Emitted from DeclareAttacker at the moment the creature is
-	// stamped — inside the declare-attackers step, before blockers
-	// exist — and only on a creature's FIRST declaration. The sandbox
-	// lets a player re-point an already-attacking creature at a
-	// different defender (paper does not); re-pointing is not a second
-	// attack and must not fire the trigger twice.
+	// Emitted from commitAttackDeclarationLocked — the lock-in, not
+	// the click (#859). CR 508.1 makes declaring attackers ONE
+	// turn-based action, so the sandbox's per-creature
+	// DeclareAttacker verb only stages the attack; nothing is
+	// announced until the declaration is complete, which is the first
+	// priority boundary of the declare-attackers step — still inside
+	// that step and still before blockers exist. A creature
+	// re-pointed at a different defender before that boundary
+	// therefore announces ONCE, naming the defender it ends on, and a
+	// creature re-pointed after it is not announced again at all
+	// (CR 508.1: a creature is declared as an attacker once).
 	//
-	// Target is always a player. DeclareAttacker takes a player ID and
-	// validates it against the seats — the engine has no
-	// attack-a-planeswalker path at all — so "the player or
-	// planeswalker it's attacking" collapses to the player. When
-	// planeswalker defenders land, Target widens to "player or
-	// permanent" the way EventDealDamage's already is, and existing
-	// consumers keep working because they read Target as an opaque ID.
+	// A permanent PUT onto the battlefield attacking (CR 506.3c —
+	// Parhelion II's Angels, Adeline's Humans, Legion Loyalty's
+	// myriad copies) was never declared and gets no event; see
+	// CreateTokensAttackingForEffect.
+	//
+	// Target is the DEFENDER: a player since S22, and since S27 a
+	// planeswalker or a battle too (CR 506.2, 508.1d) —
+	// classifyAttackTargetLocked is what widened it. Consumers that
+	// want "the defending player" behind a planeswalker or battle go
+	// through DefendingPlayerForAttackForEffect.
 	//
 	// Combat STATE is older and separate: DeclareAttacker stamps
 	// Card.AttackingTarget and ClearCombat wipes it, so a spell that
@@ -275,6 +283,17 @@ const (
 	// to apply. Caller logs + keeps moving; the event is the
 	// debugging breadcrumb. ErrorMsg carries the reason.
 	EventEffectError EventKind = "effect_error"
+
+	// EventPendingChoiceDropped — a choice was NOT queued (or was
+	// swept from the queue) because its chooser has left the game.
+	// Deliberately not EventEffectError: nothing failed — CR 800.4a
+	// says the eliminated player's objects, and any decision left
+	// for them, cease to exist along with them, so declining to ask
+	// is the correct outcome, not a bug. Actor is the would-be
+	// chooser, Source is the choice's card (when known), and Label
+	// carries the PendingChoiceKind so a stall dump can tell a
+	// dropped "pick_target" from a dropped "trigger_prompt". #864.
+	EventPendingChoiceDropped EventKind = "pending_choice_dropped"
 
 	// EventStepTransition is an engine-internal sentinel used only
 	// by the S17 replacement-effect pipeline. Fired from the top of
@@ -408,14 +427,52 @@ const (
 	// Added in S31 sub-PR 0; opened to the harvester in #588.
 	EventStepBegan EventKind = "step_began"
 
-	// EventBlock — CardID was declared as a blocker. Actor is the
-	// blocking creature's controller, Target the attacker it is
-	// blocking. The other half of EventAttack, and emitted under the
-	// same rule: only on a creature's FIRST declaration against a
-	// given attacker, so re-pointing a blocker in the sandbox does
-	// not announce twice. Added in S31 sub-PR 0 for the public game
-	// log — no card in the catalog reads "becomes blocked by" yet.
+	// EventBlock — CardID blocks Target. Actor is the blocking
+	// creature's controller, Target the attacker it is blocking. One
+	// event per (blocker, attacker) pair of the FINAL block
+	// declaration: this is "whenever this creature blocks"
+	// (CR 509.3a) and "becomes blocked by a creature", and it is the
+	// public game log's block entry.
+	//
+	// Emitted from commitBlockDeclarationLocked — the lock-in, not
+	// the click (#830). CR 509.1 makes declaring blockers ONE
+	// turn-based action, so the sandbox's per-pair DeclareBlocker
+	// verb only stages the pairing; nothing is announced until the
+	// declaration is complete, which is the first priority boundary
+	// of the declare-blockers step. A blocker re-pointed from one
+	// attacker to another before that boundary therefore announces
+	// once, against the attacker it ends on, and the attacker it
+	// left is never announced as blocked at all.
+	//
+	// Added in S31 sub-PR 0 for the public game log; moved to the
+	// lock-in in #830.
 	EventBlock EventKind = "block"
+
+	// EventBecomesBlocked — the attacker named by Source / CardID /
+	// Target became a blocked creature (CR 509.1h). Actor is the
+	// defending player (the controller of its blockers).
+	//
+	// ONE event per blocked attacker, however many creatures block
+	// it: CR 506.4 says an attacking creature is blocked once, at the
+	// moment the declaration is complete, so a double block is one
+	// "whenever this creature becomes blocked" and one afflict
+	// trigger (CR 702.131). That is the whole reason this kind is
+	// separate from EventBlock, which is per BLOCKER — before #830
+	// each card that wanted the per-attacker reading deduplicated by
+	// walking the event log back to the attacker's EventAttack, and a
+	// block that was re-pointed away still counted in that walk.
+	//
+	// Source / CardID / Target are all the attacker, the way
+	// EventBattleDefeated names the battle three ways: Target so a
+	// predicate reads "the creature that became blocked" out of the
+	// same field EventBlock puts the attacker in, CardID so the
+	// generic card-shaped consumers find it, Source because the
+	// attacker is what the event is about.
+	//
+	// Emitted from commitBlockDeclarationLocked, in the same event
+	// batch as the EventBlock events of the same declaration, so a
+	// OncePerBatch ability sees one occurrence. Added in #830.
+	EventBecomesBlocked EventKind = "becomes_blocked"
 	// EventBattleDefeated — a battle's last defense counter came off
 	// (CR 310.12b). Source / Target / CardID = the battle, Actor = its
 	// controller.
@@ -455,6 +512,11 @@ const (
 	// is raised; the flag, not the event, is what the client reads.
 	// Added for #628 (ADR 0055).
 	EventLoopSuspected EventKind = "loop_suspected"
+
+	// EventRollDie and EventFlipCoin are public random outcomes. One event is
+	// emitted per die/coin; BatchSeq identifies the instruction that made them.
+	EventRollDie  EventKind = "roll_die"
+	EventFlipCoin EventKind = "flip_coin"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -465,8 +527,27 @@ const (
 // Seq is a monotonic per-Game counter stamped at emit time. First
 // event has Seq == 1; zero is the un-stamped sentinel.
 type Event struct {
-	Seq  uint64    `json:"seq"`
+	Seq uint64 `json:"seq"`
+
+	// Batch names the EVENT BATCH this event belongs to: the run of
+	// events the engine emitted as one occurrence, which is what
+	// "whenever ONE OR MORE …" counts (CR 603.2c). Two events with
+	// the same Batch happened at the same time as far as the rules
+	// are concerned; two with different Batch values are two separate
+	// occurrences, however close together they were and whatever is
+	// still on the stack from the first.
+	//
+	// Stamped at emit time from Game.eventBatch, which advances at
+	// exactly one boundary — see beginEventBatchLocked in
+	// event_batch.go. Zero is the un-stamped sentinel, as with Seq.
+	// Added for #829.
+	Batch uint64 `json:"batch,omitempty"`
+
 	Kind EventKind `json:"kind"`
+
+	// BatchSeq groups per-die and per-coin events from one instruction. It is
+	// the Seq of that instruction's first event.
+	BatchSeq uint64 `json:"batch_seq,omitempty"`
 
 	// Actor is the player responsible for the event (caster,
 	// controller, drawing player, etc.). uuid.Nil for admin / SBA
@@ -513,6 +594,12 @@ type Event struct {
 	// classification. Kept as a string so adding new counter kinds
 	// doesn't require a schema change.
 	Label string `json:"label,omitempty"`
+
+	// Sides is the die size for EventRollDie. Call and Won describe an
+	// EventFlipCoin; Won is false for a face-only flip.
+	Sides int    `json:"sides,omitempty"`
+	Call  string `json:"call,omitempty"`
+	Won   bool   `json:"won,omitempty"`
 
 	// Step is the step that began, on EventStepBegan. Typed so a
 	// trigger's predicate compares a constant rather than a string
@@ -641,8 +728,16 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 // trigger a follow-on event sees state consistent with the event
 // it's reacting to.
 func (g *Game) EmitEvent(ev Event) {
+	if ev.Kind == EventTokenCreated {
+		g.noteCreatedSourceLocked(ev.CardID)
+	}
 	g.eventSeq++
 	ev.Seq = g.eventSeq
+	// #829: every event carries the batch that was open when it was
+	// emitted. Stamped here rather than derived later so the log, an
+	// undo and every consumer see the same grouping the trigger
+	// harvester saw.
+	ev.Batch = g.currentEventBatchLocked()
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

@@ -14,7 +14,8 @@
 // Only one menu is open at a time. Opening a second one replaces the
 // first; closing writes null.
 
-import { writable, type Writable } from "svelte/store";
+import { type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { CardView } from "./protocol";
 
 export interface CardMenuOpen {
@@ -26,7 +27,7 @@ export interface CardMenuOpen {
   y: number;
 }
 
-export const cardMenu: Writable<CardMenuOpen | null> = writable(null);
+export const cardMenu: Writable<CardMenuOpen | null> = guardedWritable(null, "cardMenu");
 
 export function openCardMenu(open: CardMenuOpen): void {
   cardMenu.set(open);

@@ -90,6 +90,10 @@ func b12PlayFromHand(t *testing.T, g *game.Game, name, typeLine, oracle string, 
 			t.Fatalf("AdvanceStep: %v", err)
 		}
 	}
+	// #500: these fixtures build a board of several lands inside one
+	// main phase, so each helper call buys itself a land play. See
+	// playLandFromHand (temples_test.go) for the same note.
+	active.LandDropsPerTurn++
 	if err := g.CastSpell(active.ID, id, params); err != nil {
 		t.Fatalf("play %s: %v", name, err)
 	}
@@ -348,6 +352,10 @@ func TestB12LaeliaAttacksForACardAndGrows(t *testing.T) {
 	if err := g.DeclareAttacker(laelia, victim.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 
 	if !b12ExiledPlayableBy(t, g, top, me.ID) {

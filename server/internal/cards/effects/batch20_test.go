@@ -484,6 +484,10 @@ func TestB20HornOfGreedSeesALandPlayedFromExile(t *testing.T) {
 	island := b20HandCard(me, "Island", "Basic Land — Island")
 	g.WithWriteLock(func() { _ = g.ExileCardWithPermissionForEffect(island, grant) })
 	hand = me.Hand.Size()
+	// #500: two land PLAYS in one turn, which the engine now refuses
+	// by default. The subject here is the Horn's tally reading, not
+	// CR 305.2, so the seat is given the second land play outright.
+	me.LandDropsPerTurn++
 	if err := g.CastSpell(me.ID, island, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("playing the second exiled land: %v", err)
 	}
@@ -658,7 +662,7 @@ func TestB20KwainEveryoneDrawsAndGainsExceptAnEmptyLibrary(t *testing.T) {
 			t.Errorf("seat %d: hand %d life %d, want hand %d life %d", i, p.Hand.Size(), p.Life, wantHand, wantLife)
 		}
 	}
-	if empty.LosesAtNextSBA {
+	if empty.AttemptedEmptyDraw {
 		t.Error("a player with no library is treated as declining, not as drawing from nothing")
 	}
 	if spec, _ := Lookup(b20KwainOracle); spec.Completeness != CompletenessCaveats {

@@ -146,8 +146,8 @@ type DiscardPrompt struct {
 // discard system. The live-zone re-check, the set-level Validate
 // hook, the bot enumerator case and the client's ChoicePromptModal
 // all come with it; what makes it a DISCARD is the continuation,
-// which moves the picks to the graveyard and emits one
-// EventDiscardCard per card before running Then.
+// which hands the picks to discardCardsLocked — the one discard path
+// (discard.go) — and lets it run Then once they have landed.
 //
 // Two things it deliberately does not do. It does not prompt for a
 // random discard (CR 701.8b — DiscardRandomForEffect stays a
@@ -200,7 +200,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
 	discarder := p.Player
-	then := p.Then
+	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -212,13 +212,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		Zone:       ZoneHand,
 		Validate:   p.Validate,
 		Then: func(g *Game, picked []uuid.UUID) error {
-			if err := g.discardPicksLocked(discarder, picked); err != nil {
-				return err
-			}
-			if then == nil {
-				return nil
-			}
-			return then(g)
+			return g.discardCardsLocked(discarder, picked, opts)
 		},
 	})
 }
@@ -245,42 +239,6 @@ func (g *Game) discardQuestionLocked(source uuid.UUID, n int, upTo bool) string 
 		}
 	}
 	return "Discard " + what
-}
-
-// discardPicksLocked moves the chosen cards from a player's hand to
-// their graveyard, emitting one EventDiscardCard per card — the event
-// every "whenever you discard a card" trigger and every madness /
-// graveyard payoff in the catalog watches.
-//
-// A pick that is no longer in the hand is skipped rather than
-// erroring: ResolveChooseCards re-checks the live zone before it
-// dequeues, so an answer that got here was legal when it arrived, and
-// a half-applied discard that abandoned its continuation would be the
-// worse failure.
-//
-// Caller must hold g.mu.
-func (g *Game) discardPicksLocked(playerID uuid.UUID, picks []uuid.UUID) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return nil
-	}
-	for _, id := range picks {
-		if !p.Hand.Contains(id) {
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, id); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, id)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  id,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
 }
 
 // DiscardChoiceForEffect is the plain "this player discards n cards"
@@ -378,8 +336,20 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // `then` takes the live *Game rather than capturing one, on the same
 // undo-safety contract every other continuation frame follows.
 func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: a player who has left the game neither gains
+		// nor loses life, and there is no event for a replacement to
+		// see. Not an error — an effect reaching for a seat that
+		// conceded mid-resolution has done nothing wrong — but still a
+		// terminal outcome, so the continuation is told zero.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// The event is built before the pipeline runs and carries
 	// everything the tail needs — the continuation included — because a
@@ -416,8 +386,9 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 // continuation: that is what makes the running total a plain value
 // carried forward instead of a shared accumulator, which is what makes
 // an undo across the prompt land where a clean run would. A player who
-// has left the game is skipped, exactly as a fire-and-forget loop over
-// them would skip them.
+// has left the game — never seated, or eliminated (CR 800.4a), which
+// is the case that actually happens because an eliminated seat stays
+// in g.Seats — is skipped and adds nothing to the total (#808).
 //
 // The sequencing is observable only when a loss pauses: with two
 // different life replacements on the first opponent, the second
@@ -438,7 +409,7 @@ func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, 
 func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
 	for len(players) > 0 {
 		next, rest := players[0], players[1:]
-		if g.playerByIDLocked(next) == nil {
+		if p := g.playerByIDLocked(next); p == nil || p.Eliminated {
 			players = rest
 			continue
 		}
@@ -473,8 +444,10 @@ func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amo
 // and what the affected player gives up for it are in
 // payLifeAsCostLocked (life_tail.go) and ADR 0013 §5b.
 //
-// Returns ErrInvalidParam when the payment cannot be made from the
-// payer's life total (CR 119.4). Callers validate before they start
+// Returns ErrInvalidParam when the payment cannot be made: from the
+// payer's life total (CR 119.4), or at all because the window cancelled
+// it — a player who can't lose life can't pay life (CR 119.8,
+// CR 614.17b; #808). Callers validate the first before they start
 // paying; this is the backstop.
 func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 	return g.payLifeAsCostLocked(source, playerID, amount)
@@ -538,8 +511,10 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // damage event or queue the next prompt itself.
 //
 // Returns ErrPlayerNotFound without running `then` when the target is
-// not seated at all, exactly as ChangePlayerLifeThenForEffect does. The
-// batch form skips absent targets rather than failing on them.
+// not seated at all, exactly as ChangePlayerLifeThenForEffect does. A
+// seated player who has been eliminated is not an error: nothing is
+// dealt and `then` runs with zero (CR 800.4a, #808). The batch form
+// skips both rather than failing on them.
 func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
@@ -552,8 +527,18 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 		}
 		return nil
 	}
-	if g.playerByIDLocked(playerID) == nil {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if p.Eliminated {
+		// #808, CR 800.4a: no damage reaches a player who has left the
+		// game. A terminal outcome with nothing dealt, like the
+		// zero-damage case above.
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
 	}
 	// S22: route through the CR 614 replacement pipeline, the way
 	// combat damage to a player already did. Before this, damage
@@ -722,7 +707,13 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 		step := func(g *Game, dealt int) error {
 			return g.dealDamageEachStepLocked(source, rest, amount, dealtSoFar+dealt, then)
 		}
-		if g.playerByIDLocked(next) != nil {
+		if p := g.playerByIDLocked(next); p != nil {
+			if p.Eliminated {
+				// #808, CR 800.4a: a player who has left the game is
+				// skipped, not dealt zero through a pipeline run.
+				targets = rest
+				continue
+			}
 			return g.DealDamageToPlayerThenForEffect(source, next, amount, step)
 		}
 		if findBattlefieldCard(g, next) != nil {
@@ -741,7 +732,7 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 // DrawNForEffect draws n cards for the given player, emitting one
 // EventDrawCard per card (drawCardLocked already emits). Returns
 // an error only on the first failure — partial draws are allowed
-// (ErrZoneEmpty on the Nth card flags LosesAtNextSBA for the loss
+// (ErrZoneEmpty on the Nth card sets AttemptedEmptyDraw for the loss
 // on the next SBA pass, which is already the drawCardLocked
 // behaviour).
 func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
@@ -758,10 +749,9 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 }
 
 // DiscardRandomForEffect discards n cards from playerID's hand,
-// chosen at random. Emits one EventDiscardCard per card and no
-// EventZoneMove. The move is a direct MoveCard, so the discard
-// bypasses the CR 614 window (#650). If the hand has fewer than n
-// cards, discards all of them.
+// chosen at random (CR 701.8b). Emits one EventDiscardCard per card
+// and no EventZoneMove, through the one discard path (discard.go).
+// If the hand has fewer than n cards, discards all of them.
 //
 // The cards are one pick on the discarding player's "pick" stream
 // (ADR 0054 Decision 5), so an undone random discard redoes with the
@@ -779,26 +769,8 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
-	for _, cardID := range g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: playerID}, ids, n) {
-		if !p.Hand.Contains(cardID) {
-			// Nothing between two discards moves hand cards today;
-			// if something ever does, a card that already left is
-			// not discarded twice.
-			continue
-		}
-		if _, err := MoveCard(p.Hand, p.Graveyard, cardID); err != nil {
-			return err
-		}
-		g.markCardKnownInZoneLocked(p.Graveyard, cardID)
-		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   playerID,
-			CardID:  cardID,
-			OldZone: ZoneHand,
-			NewZone: ZoneGraveyard,
-		})
-	}
-	return nil
+	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the
@@ -806,13 +778,14 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 // game" (Pact of Negation and the rest of the Pact cycle), and of
 // every other card that says those words outright.
 //
-// Routed through LosesAtNextSBA rather than eliminating the player on
-// the spot, because CR 104.3 says a player who "loses the game" does
-// so as a state-based action (CR 704.5a-adjacent): the ability
-// finishes resolving first, and the loss lands at the next SBA check
-// alongside the empty-library and zero-life losses. That ordering is
-// observable — a replacement or a second effect in the same
-// resolution still happens.
+// Routed through the AttemptedEmptyDraw flag rather than eliminating
+// the player on the spot, so the ability finishes resolving first and
+// the loss lands at the next SBA check alongside the empty-library
+// and zero-life losses. That borrows the CR 704.5b flag for a loss
+// that is not a draw, and CR 104.3e actually makes an effect loss
+// immediate; ADR 0057 sub-PR 2 replaces this writer with
+// loseGameLocked, after which actuallyDrawCardLocked is the flag's
+// only writer.
 //
 // Caller must hold g.mu. Added in S28.
 func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
@@ -820,15 +793,14 @@ func (g *Game) LoseTheGameForEffect(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.LosesAtNextSBA = true
+	p.AttemptedEmptyDraw = true
 	return nil
 }
 
 // MillNForEffect moves n cards from the top of playerID's library
-// to their graveyard. Emits EventMill per card. An empty library
-// during the mill sets LosesAtNextSBA (CR 704.5b-equivalent read
-// from the top of an empty library) via the same path drawCardLocked
-// uses.
+// to their graveyard. Emits EventMill per card. A library holding
+// fewer than n mills what it has (CR 701.17b) and nobody loses for
+// it — see MillToZoneForEffect.
 func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 	_, err := g.MillToZoneForEffect(playerID, n, ZoneGraveyard, nil)
 	return err
@@ -838,11 +810,23 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // playerID's library into `dest`, which is ZoneGraveyard (an ordinary
 // mill) or ZoneExile ("exile the top N cards of your library").
 //
-// Returns the cards that moved, in the order they came off the top.
-// Callers that need to act on them — "exile all cards milled this
-// way", "you may cast one of them this turn", a payoff that counts
-// them — read the slice rather than diffing zones, which is the
+// Returns the cards that LANDED in `dest`, in the order they came off
+// the top. Callers that need to act on them — "exile all cards milled
+// this way", "you may cast one of them this turn", a payoff that
+// counts them — read the slice rather than diffing zones, which is the
 // difference between this and MillNForEffect.
+//
+// The FIRE-AND-FORGET form, and since #893 its slice means what
+// ExileCardsForEffect's count has meant since #866: the CR 400.7
+// arrived-object reading (landedInZoneLocked). A card a replacement
+// sent somewhere else is not in it — a commander whose owner took
+// CR 903.9's offer went to the command zone rather than to a
+// graveyard, and "if a card would be put into a graveyard from
+// anywhere, exile it instead" moved the card to exile — and neither is
+// a leg the CR 614 window cancelled. A leg that merely PAUSED on the
+// CR 903.9 prompt cannot be in it either, because nothing has moved
+// yet; that is what MillToZoneThenForEffect is for, and a caller that
+// reads the slice should use it.
 //
 // `until`, when non-nil, is consulted for each card as it comes off
 // the library and stops the mill AFTER the first card it accepts;
@@ -851,13 +835,105 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // `until` set, n <= 0 means "no limit but the library", so an
 // unbounded mill is expressible without inventing a sentinel.
 //
-// Running the library out mid-mill sets LosesAtNextSBA, the same
-// CR 704.5b-equivalent read-from-an-empty-library the draw path uses,
-// and stops rather than erroring: the player loses at the next SBA
-// check, not here.
+// Running the library out stops the run, with no error and NO loss.
+// CR 701.17b: a player instructed to mill more cards than their
+// library holds "mill[s] as many as possible", and only an attempt to
+// DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
+// The same holds for "exile the top N cards" and for an `until` run
+// that never finds its card — both simply end when the library does,
+// exactly as ExileTopFaceDownForEffect stops on an empty library.
+// (#767: this used to set the empty-draw flag, then named
+// LosesAtNextSBA, so Glimpse the Unthinkable on a nine-card library
+// eliminated its target.)
+//
+// Mill COSTS are the other half of CR 701.17b — "can't pay a cost
+// that includes milling a number of cards greater than the number of
+// cards in their library" — and they are not this function's
+// business: the engine has no mill cost component. The one catalog
+// card with a mill-a-card cost, Millikin, gates its activation on a
+// non-empty library itself; The Warring Triad declares the gap.
+//
+// The error is the up-front one — an unseated player, a destination
+// that is neither a graveyard nor exile. A leg that cannot move is
+// skipped by the batch body rather than failing the mill.
 //
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
+	ids, err := g.millPlanLocked(playerID, n, dest, until)
+	if err != nil {
+		return nil, err
+	}
+	return g.routeAllLandedLocked(millRoute(playerID, dest), ids), nil
+}
+
+// MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
+// MillToZoneForEffect would and hand `then` the cards that reached
+// `dest` — "for each creature card put into your graveyard this way",
+// "for each card of the chosen color exiled this way" (Oona).
+//
+// #893, and the same pair ExileCardsThenForEffect / ExileCardsForEffect
+// are two halves of (ADR 0013 §5k). Any leg can pause on the CR 903.9
+// prompt, so what was milled is not knowable on the line after the
+// mill: a commander on top of the library queues its owner's question
+// and moves nowhere until they answer it. The legs therefore go IN
+// SEQUENCE, each from the previous one's continuation, with the landed
+// list carried forward BY VALUE — the property that makes an undo
+// across the prompt replay identically.
+//
+// What "this way" means is CR 400.7's, landedInZoneLocked's: the
+// object that ARRIVED in `dest`. A commander that took the command
+// zone was not milled, and neither was a card an "exile it instead"
+// replacement rewrote on the way to a graveyard.
+//
+// The cost of waiting, which the fire-and-forget form does not pay:
+// the rest of the mill happens when the prompt is answered rather than
+// immediately. That is deliberate and it is the only version that can
+// report a true list — the same trade DestroyPermanentsThenForEffect
+// and the discard batch already make.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) MillToZoneThenForEffect(
+	playerID uuid.UUID,
+	n int,
+	dest ZoneKind,
+	until func(Card) bool,
+	then func(g *Game, milled []uuid.UUID) error,
+) error {
+	ids, err := g.millPlanLocked(playerID, n, dest, until)
+	if err != nil {
+		return err
+	}
+	return g.routeAllThenLocked(millRoute(playerID, dest), ids, then)
+}
+
+// millPlanLocked validates a mill and chooses the cards it will move,
+// top of the library first. Shared by both forms above, so they cannot
+// disagree about what a mill of n is.
+//
+// #529: the cards that will move are chosen UP FRONT, top-down, and
+// addressed by ID from there — rather than by repeatedly popping
+// whatever is on top.
+//
+// A milled commander gets the CR 903.9 prompt, and a queued prompt
+// leaves that card exactly where it was: still on top of the library.
+// Re-reading the top each iteration would hand back the same commander
+// every time and mill nothing else. Choosing the set first lets the
+// fire-and-forget mill proceed AROUND the paused card, which is both
+// what CR 701.17a's simultaneous mill wants and the only version that
+// does not silently shorten the mill when a commander is in the way.
+//
+// `until` is answered here too, against the same pre-move copies the
+// old loop consulted: it reads the card that came off the library, not
+// where that card ended up, so the run it ends is the same run whether
+// it is measured before the first move or after the last. That is what
+// lets the plan be a plain list of IDs — which is what the batch body
+// takes — and it is also the one thing Helm of Obedience's caveat is
+// about: a commander whose owner takes the command zone was never put
+// into a graveyard, so by CR 701.17a's letter the run should continue,
+// and it stops instead.
+//
+// Caller must hold g.mu.
+func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil, ErrPlayerNotFound
@@ -869,62 +945,20 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 	}
 	unbounded := until != nil && n <= 0
 
-	// #529: the cards that will move are chosen UP FRONT, top-down,
-	// and addressed by ID from there — rather than by repeatedly
-	// popping whatever is on top.
-	//
-	// A milled commander now gets the CR 903.9 prompt, and a queued
-	// prompt leaves that card exactly where it was: still on top of
-	// the library. Re-reading the top each iteration would hand back
-	// the same commander every time and mill nothing else. Choosing
-	// the set first lets the rest of the mill proceed AROUND the
-	// paused card, which is both what CR 701.17a's simultaneous mill
-	// wants and the only version that does not silently shorten the
-	// mill when a commander is in the way.
 	avail := len(p.Library.Cards)
 	want := n
 	if unbounded || want > avail {
 		want = avail
 	}
-	batch := make([]Card, 0, want)
+	ids := make([]uuid.UUID, 0, want)
 	for i := 0; i < want; i++ {
-		batch = append(batch, p.Library.Cards[avail-1-i])
-	}
-
-	moved := make([]uuid.UUID, 0, want)
-	for _, c := range batch {
-		// Only a move to the GRAVEYARD is a mill (CR 701.17). "Exile
-		// the top N cards of your library" is not, and firing
-		// EventMill for it would trigger every mill payoff at the
-		// table — Bruvac would double an impulse-draw exile, which it
-		// does not do.
-		paused, err := g.routeCardToZoneLocked(zoneRoute{
-			CardID: c.InstanceID,
-			Dst:    dest,
-			Actor:  playerID,
-			Mill:   dest == ZoneGraveyard,
-		})
-		if err != nil {
-			return moved, err
-		}
-		if !paused {
-			// A paused card has not been milled yet. It is left out
-			// of the returned slice so "exile all cards milled this
-			// way" cannot act on a card still sitting in the library.
-			moved = append(moved, c.InstanceID)
-		}
+		c := p.Library.Cards[avail-1-i]
+		ids = append(ids, c.InstanceID)
 		if until != nil && until(c) {
-			return moved, nil
+			break
 		}
 	}
-	// Reading from the top of an empty library is the CR
-	// 704.5b-equivalent loss — recorded for the next SBA check rather
-	// than raised here. An unbounded `until` mill that never found
-	// its card has read the library dry by definition.
-	if want < n || (unbounded && until != nil) {
-		p.LosesAtNextSBA = true
-	}
-	return moved, nil
+	return ids, nil
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent
@@ -968,6 +1002,12 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 // That is #372 (Airbend exiles a commander with no prompt). When the
 // prompt is queued nothing has moved yet and this returns nil; the
 // move completes when the owner answers.
+//
+// Which is why this is the FIRE-AND-FORGET form: nil means "no error",
+// never "it is in exile". A caller with an "if you do" or a "for each
+// card exiled this way" hanging off the move uses
+// ExileCardThenForEffect (one card) or ExileCardsThenForEffect
+// (several), which wait for the answer and report what landed (#870).
 func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 	_, err := g.routeCardToZoneLocked(zoneRoute{CardID: cardID, Dst: ZoneExile})
 	return err
@@ -997,7 +1037,7 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // card the rules say nobody can.
 //
 // Exiling off an empty library is not an error and is not a draw —
-// it moves nothing and does NOT set LosesAtNextSBA. Necropotence
+// it moves nothing and does NOT set AttemptedEmptyDraw. Necropotence
 // with an empty library charges the life and exiles nothing, which
 // is why its controller does not lose on the spot.
 //
@@ -2095,6 +2135,14 @@ func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int,
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)
 		}
+		// CR 506.3c / #859: a template that arrives already attacking
+		// (Adeline's "tapped and attacking Human") was PUT onto the
+		// battlefield attacking, not declared, so it announces no
+		// EventAttack — and the attack declaration's lock-in must not
+		// mistake its AttackingTarget for a staged declaration.
+		if tok.AttackingTarget != uuid.Nil {
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
+		}
 		g.Battlefield.PushTop(tok)
 		ids = append(ids, tok.InstanceID)
 		g.EmitEvent(Event{
@@ -2146,6 +2194,10 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 		tok.KnownBy = nil
 		if attacking {
 			tok.AttackingTarget = defender
+			// CR 506.3c, again: never declared, so the lock-in
+			// (attackers.go) skips it rather than announcing it at
+			// the next priority boundary.
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
 		}
 		for _, seat := range g.Seats {
 			tok.AddKnower(seat.ID)
@@ -2455,9 +2507,14 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		return uuid.Nil, err
 	}
 	newID := uuid.New()
+	// A blink gets a new instance ID but remains the same random source.
+	if ordinal, ok := g.sourceOrdinals[cardID]; ok {
+		g.sourceOrdinals[newID] = ordinal
+	}
 	card.InstanceID = newID
 	card.Controller = newController
 	card.Tapped = tapped || out.EntersTapped
+	card.NextUntapSkips = nil
 	card.Counters = nil
 	card.LostLastCounter = false
 	card.KnownBy = nil
@@ -2591,8 +2648,8 @@ func addManaReason(slot ProducedManaEntry) string {
 // `produced` is the Scryfall brace grammar ParseProducedMana reads,
 // pipe syntax included: a single-colour slot goes straight into the
 // pool, a multi-option slot queues the same PendingChoiceMana pick a
-// Birds of Paradise activation does, narrowed to the controller's
-// commander identity exactly as Treasure and Phyrexian Altar are.
+// Birds of Paradise activation does, with the controller's commander
+// identity listed first (manaPickOptionsFor).
 // `source` is the card the mana is attributed to (the spell itself
 // for Dark Ritual); it rides on each ManaToken.
 //
@@ -2611,19 +2668,21 @@ func (g *Game) AddManaForEffect(playerID, source uuid.UUID, produced string) err
 
 // AddManaOptions tunes AddManaWithOptionsForEffect.
 type AddManaOptions struct {
-	// IgnoreCommanderIdentity keeps a multi-option pick at its printed
-	// width instead of intersecting it with the controller's commander
-	// colour identity: the effect-side twin of the mana ability's
-	// IgnoreCommanderIdentity. Set it whenever the printed text says
-	// "any color" or "any one color" with no commander-identity clause
-	// (Sanctum of Fruitful Harvest, Lotus Cobra, Deathrite Shaman).
-	// Added for #742.
-	IgnoreCommanderIdentity bool
+	// NarrowToCommanderIdentity intersects a multi-option pick with the
+	// controller's commander colour identity instead of offering the
+	// printed width identity-first: the effect-side twin of
+	// ManaAbilityShape.NarrowToCommanderIdentity. Set it only when the
+	// printed text says "any color in your commander's color
+	// identity"; no effect in the catalog does today. Replaced #742's
+	// IgnoreCommanderIdentity when the default flipped (owner decision
+	// 2026-09-17). CR 903.4f (#844): with no commander, or a colourless
+	// one, such a pick adds nothing and is not queued.
+	NarrowToCommanderIdentity bool
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
-// AddManaForEffect is this with the zero options, so the existing
-// callers keep the commander-identity narrowing they declared.
+// AddManaForEffect is this with the zero options: the printed option
+// set, commander identity first.
 //
 // Caller must hold g.mu.
 func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced string, opts AddManaOptions) error {
@@ -2635,19 +2694,26 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if err != nil {
 		return err
 	}
+	// Read once, and only when a slot could use it: the identity read
+	// walks every zone, and Dark Ritual's three "{B}" slots have
+	// nothing to narrow or order.
+	var identity commanderIdentity
+	if opts.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
+		identity = commanderIdentityFor(g, p)
+	}
 	for _, slot := range slots {
-		options := slot.Options
-		if len(options) == 0 {
+		colorOptions := manaPickOptions(slot.Options, identity, opts.NarrowToCommanderIdentity)
+		if len(colorOptions) == 0 {
+			// CR 903.4f (#844): a "commander's color identity" effect
+			// with no identity adds nothing, and an empty picker is not
+			// a choice anybody can answer. An empty printed slot lands
+			// here too, as it always did.
 			continue
 		}
-		if len(options) == 1 {
-			p.ManaPool.AddMana(ManaToken{Color: options[0], Source: source})
+		if len(slot.Options) == 1 {
+			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source})
 			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
 			continue
-		}
-		colorOptions := options
-		if !opts.IgnoreCommanderIdentity {
-			colorOptions = filterPipeByCommanderIdentity(options, p)
 		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,

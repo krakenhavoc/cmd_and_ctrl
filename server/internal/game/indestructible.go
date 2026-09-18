@@ -10,7 +10,7 @@ import "github.com/google/uuid"
 //
 // Indestructible is the first keyword in `canonicalKeywords` whose
 // consumer is NOT the combat or targeting path. Flying, menace and
-// reach are read by `CanBlock` / `BlockerCountValid`; hexproof and
+// reach are read by `CanBlockLocked` / `BlockerCountValid`; hexproof and
 // shroud by `CanBeTargetedBy`. Indestructible is read by the
 // DESTRUCTION path, which runs through the SBA loop and the effect
 // API — two call sites in two other files that have nothing else in

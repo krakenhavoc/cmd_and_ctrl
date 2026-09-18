@@ -235,19 +235,22 @@ func TestSwordOfTheAnimistTriggersWhenTheEquippedCreatureAttacks(t *testing.T) {
 	sword := seedEquipment(g, me.ID, "Sword of the Animist", swordOfTheAnimistOracle)
 	equipTo(t, g, me.ID, sword, bear)
 
+	// Both attack in ONE declaration (CR 508.1), which is what the
+	// lock-in harvests from (#859): the equipped creature is the
+	// Sword's subject and the other one is not, so the whole
+	// declaration is worth exactly one trigger.
 	advanceTo(t, g, game.StepDeclareAttackers)
-	if err := g.DeclareAttacker(other, opp.ID); err != nil {
-		t.Fatalf("DeclareAttacker: %v", err)
+	for _, id := range []uuid.UUID{other, bear} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
 	}
-	if triggersOnStackFrom(g, sword) != 0 || len(g.PendingChoices) != 0 {
-		t.Fatalf("an unequipped creature attacking triggered the Sword")
-	}
-
-	if err := g.DeclareAttacker(bear, opp.ID); err != nil {
-		t.Fatalf("DeclareAttacker: %v", err)
-	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	if triggersOnStackFrom(g, sword) != 1 {
-		t.Errorf("attack triggers from the Sword = %d, want 1", triggersOnStackFrom(g, sword))
+		t.Errorf("attack triggers from the Sword = %d, want 1 (only the equipped creature)", triggersOnStackFrom(g, sword))
 	}
 }
 
@@ -270,6 +273,10 @@ func TestArgentumArmorDestroysTheChosenPermanentOnAttack(t *testing.T) {
 	if err := g.DeclareAttacker(bear, opp.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
+	// #859: the declaration is announced at its lock-in — the
+	// priority wrap inside declare_attackers — so the attack triggers
+	// exist only after this.
+	lockInAttacks(t, g)
 	prompt := latestPickTarget(g, me.ID)
 	if prompt == nil {
 		t.Fatal("no pick_target prompt from Argentum Armor")

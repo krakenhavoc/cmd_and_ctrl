@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (b28PermanentsYouControlEnterWithACounter, subtype read off the
 // entering card), so the counter is on the Dragon before its enters
 // trigger or any state check sees it, and a Hardened Scales applies
-// on top, as printed. The mana is a five-colour pipe pick, narrowed
-// to the commander's identity the way every "any color" rock is.
+// on top, as printed. The mana is a five-colour pipe pick, all five
+// offered with the commander's identity first, the way every "any
+// color" rock is.
 //
 // Known engine gap, declared: a Dragon TOKEN skips the entry pipeline
 // (token creation does not run the CR 614 replacements), so it enters

@@ -284,9 +284,30 @@ func (p *Policy) ShouldConcede(in aiseat.Input) bool {
 // not JSON and a number that is not a move all take the same path and
 // all cost nothing but the latency already spent.
 func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, error) {
+	d, _, err := p.decideTraced(ctx, in)
+	return d, err
+}
+
+// Compile-time assertion: the funnel is a Tracer.
+var _ aiseat.Tracer = (*Policy)(nil)
+
+// DecideTraced is Decide with the funnel's working attached: which
+// layer answered, what Layer B ranked, the exact prompt the model was
+// shown, its raw reply, the index parsed out of it, and what the call
+// cost.
+//
+// It is the same decision, not a second one — Decide is a thin
+// wrapper around the same code — so a caller must use one or the
+// other and never both on a window: two calls are two model calls.
+func (p *Policy) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
+	return p.decideTraced(ctx, in)
+}
+
+func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
 	started := time.Now()
+	tr := aiseat.Trace{HeuristicIndex: aiseat.Decline}
 	if len(in.Moves) == 0 {
-		return aiseat.Decision{}, aiseat.ErrNoMoves
+		return aiseat.Decision{}, tr, aiseat.ErrNoMoves
 	}
 
 	// --- Layer A ---------------------------------------------------
@@ -297,7 +318,8 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 			Layer: LayerA, Rule: v.Rule, Index: v.Index,
 			Reason: v.Reason, Latency: time.Since(started),
 		})
-		return aiseat.Decision{Index: v.Index, Reason: v.Reason}, nil
+		tr.Layer, tr.Rule = LayerA, v.Rule
+		return aiseat.Decision{Index: v.Index, Reason: v.Reason}, tr, nil
 	}
 
 	// --- Layer B ---------------------------------------------------
@@ -305,6 +327,7 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	if r, ok := p.cfg.Fallback.(ranker); ok {
 		cands = r.Rank(ctx, in)
 	}
+	tr.Candidates = traceCandidates(cands)
 	base, err := p.cfg.Fallback.Decide(ctx, in)
 	if err != nil {
 		// Nothing is left underneath. Hand the error up; the runner
@@ -313,7 +336,8 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 			Layer: LayerB, Fallback: FallbackPolicyError,
 			Index: base.Index, Latency: time.Since(started),
 		})
-		return base, err
+		tr.Layer, tr.Fallback = LayerB, FallbackPolicyError
+		return base, tr, err
 	}
 
 	rec := DecisionRecord{
@@ -322,27 +346,32 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		Index:       base.Index,
 		Reason:      base.Reason,
 	}
-	finish := func(d aiseat.Decision) aiseat.Decision {
+	tr.Layer, tr.HeuristicIndex, tr.Escalations = LayerB, base.Index, rec.Escalations
+	finish := func(d aiseat.Decision) (aiseat.Decision, aiseat.Trace) {
 		rec.Latency = time.Since(started)
 		p.rec.record(rec)
-		return d
+		tr.Layer, tr.Fallback = rec.Layer, rec.Fallback
+		return d, tr
 	}
 
 	// --- Layer C ---------------------------------------------------
 	if p.cfg.Client == nil {
 		rec.Fallback = FallbackNoClient
-		return finish(base), nil
+		d, tr := finish(base)
+		return d, tr, nil
 	}
 	budget := p.budget(ctx)
 	if budget < p.cfg.MinBudget {
 		rec.Fallback = FallbackNoBudget
-		return finish(base), nil
+		d, tr := finish(base)
+		return d, tr, nil
 	}
 	profile := p.cfg.Routine
 	if len(rec.Escalations) > 0 {
 		profile = p.cfg.Frontier
 	}
 	rec.Model = profile.ID
+	tr.Model = profile.ID
 
 	delta, _ := p.buildDelta(in, cands, base.Index)
 	req := Request{
@@ -353,6 +382,7 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		Effort:    profile.Effort,
 		Thinking:  profile.Thinking,
 	}
+	tr.Prompt = tracePrompt(req)
 
 	callCtx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
@@ -361,6 +391,7 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	rec.Attempted = true
 	rec.ModelLatency = time.Since(callStarted)
 	rec.Usage = resp.Usage
+	tr.ModelLatency, tr.Usage, tr.Reply = rec.ModelLatency, traceUsage(resp.Usage), resp.Text
 	if cerr != nil {
 		rec.Fallback = FallbackError
 		// A deadline miss is a different operational problem from an
@@ -373,22 +404,30 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		// looks identical from the table either way.
 		if errors.Is(cerr, context.DeadlineExceeded) {
 			rec.TimedOut = true
+			tr.TimedOut = true
 			p.cfg.Log.Warn("bot model call TIMED OUT; playing the heuristic's move — the model is slower than this tier's deadline (raise CMDCTRL_BOT_MAX_THINK)",
 				"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "budget", budget)
-			return finish(base), nil
+			d, tr := finish(base)
+			return d, tr, nil
 		}
 		p.cfg.Log.Warn("bot model call failed; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "took", rec.ModelLatency, "err", cerr)
-		return finish(base), nil
+		d, tr := finish(base)
+		return d, tr, nil
 	}
 
 	idx, why, perr := parseAnswer(resp.Text)
+	if perr == nil {
+		parsed := idx
+		tr.ParsedIndex = &parsed
+	}
 	switch {
 	case perr != nil:
 		rec.Fallback = FallbackMalformed
 		p.cfg.Log.Warn("bot model reply was not an index; playing the heuristic's move",
-			"tier", p.cfg.Tier, "model", profile.ID, "reply", truncate(resp.Text, 200))
-		return finish(base), nil
+			"tier", p.cfg.Tier, "model", profile.ID, "reply", Truncate(resp.Text, 200))
+		d, tr := finish(base)
+		return d, tr, nil
 	case idx < 0 || idx >= len(in.Moves):
 		// The one failure the closed move list makes harmless: a
 		// number that is not a move is not a move, and there is
@@ -402,13 +441,90 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 		rec.Fallback = FallbackOutOfRange
 		p.cfg.Log.Warn("bot model chose a move that was not offered; playing the heuristic's move",
 			"tier", p.cfg.Tier, "model", profile.ID, "index", idx, "moves", len(in.Moves))
-		return finish(base), nil
+		d, tr := finish(base)
+		return d, tr, nil
 	}
 
 	rec.Layer = LayerC
 	rec.Index = idx
 	rec.Reason = modelReason(profile.ID, why)
-	return finish(aiseat.Decision{Index: idx, Reason: rec.Reason}), nil
+	d, tr := finish(aiseat.Decision{Index: idx, Reason: rec.Reason})
+	return d, tr, nil
+}
+
+// BuildRequest assembles exactly the model call this window WOULD
+// make, and makes none: Layer A, then Layer B's ranking and pick,
+// then the prompt.
+//
+// It exists for the tools that need the prompt without the cost — the
+// position suite's labelling screen renders it, `boteval probe` sends
+// one of them by hand, and the prompt-size metric measures it. Pulling
+// the same bytes out of a Trace would mean paying for a call to see
+// what the call would have said.
+//
+// The returned Verdict is Layer A's. When it absorbed the window
+// there is no request to build and the zero Request comes back: the
+// model would never have been asked.
+func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []heuristic.Candidate, rules.Verdict) {
+	// Resolve, deliberately WITHOUT Meter.Observe: this is not a
+	// window the seat played, and counting it would move the
+	// absorption rate with calls nobody made.
+	v := rules.Resolve(in)
+	if len(in.Moves) == 0 || v.Absorbed() {
+		return Request{}, nil, v
+	}
+	var cands []heuristic.Candidate
+	if r, ok := p.cfg.Fallback.(ranker); ok {
+		cands = r.Rank(ctx, in)
+	}
+	fallback := 0
+	if base, err := p.cfg.Fallback.Decide(ctx, in); err == nil {
+		fallback = base.Index
+	}
+	profile := p.cfg.Routine
+	if len(p.escalationReasons(in, cands)) > 0 {
+		profile = p.cfg.Frontier
+	}
+	delta, _ := p.buildDelta(in, cands, fallback)
+	return Request{
+		Model:     profile.ID,
+		System:    p.static,
+		User:      delta,
+		MaxTokens: profile.MaxTokens,
+		Effort:    profile.Effort,
+		Thinking:  profile.Thinking,
+	}, cands, v
+}
+
+// --- trace projections ----------------------------------------------
+
+func traceCandidates(cands []heuristic.Candidate) []aiseat.Candidate {
+	if len(cands) == 0 {
+		return nil
+	}
+	out := make([]aiseat.Candidate, 0, len(cands))
+	for _, c := range cands {
+		out = append(out, aiseat.Candidate{Index: c.Index, Value: c.Value, Reason: c.Reason})
+	}
+	return out
+}
+
+func tracePrompt(req Request) *aiseat.Prompt {
+	pr := &aiseat.Prompt{User: req.User}
+	for _, b := range req.System {
+		pr.System = append(pr.System, b.Text)
+	}
+	return pr
+}
+
+func traceUsage(u Usage) aiseat.TokenUsage {
+	return aiseat.TokenUsage{
+		InputTokens:        u.InputTokens,
+		OutputTokens:       u.OutputTokens,
+		CacheReadTokens:    u.CacheReadTokens,
+		CacheWriteTokens:   u.CacheWriteTokens,
+		CachedPromptTokens: u.CachedPromptTokens,
+	}
 }
 
 // budget is how long a model call may take: whatever the runner's
@@ -431,6 +547,15 @@ func (p *Policy) budget(ctx context.Context) time.Duration {
 type answer struct {
 	Index *int   `json:"index"`
 	Why   string `json:"why"`
+}
+
+// ParseAnswerIndex is the funnel's own reply parser, exported for the
+// tools that have to score a raw reply exactly the way a live seat
+// would — `boteval probe` sends one request by hand and has to
+// classify the answer identically or it is measuring its own parser.
+func ParseAnswerIndex(text string) (int, error) {
+	i, _, err := parseAnswer(text)
+	return i, err
 }
 
 // parseAnswer pulls an index out of the reply.
@@ -458,7 +583,7 @@ func parseAnswer(text string) (int, string, error) {
 			return *a.Index, a.Why, nil
 		}
 	}
-	return 0, "", fmt.Errorf("no index in reply %q", truncate(s, 120))
+	return 0, "", fmt.Errorf("no index in reply %q", Truncate(s, 120))
 }
 
 // firstJSONObject returns the first balanced {...} run in s, ignoring
@@ -500,17 +625,22 @@ func firstJSONObject(s string) string {
 }
 
 func modelReason(model, why string) string {
-	why = oneLine(strings.TrimSpace(why))
+	why = OneLine(strings.TrimSpace(why))
 	if why == "" {
 		return model
 	}
-	return model + ": " + truncate(why, 120)
+	return model + ": " + Truncate(why, 120)
 }
 
-// truncate cuts at a rune boundary. A Decision.Reason reaches the
-// chat log behind the "show bot reasoning" setting, and half a rune
-// on the wire is a rendering bug in somebody else's code.
-func truncate(s string, n int) string {
+// Truncate cuts s to at most n bytes, at a rune boundary, adding an
+// ellipsis when it cut.
+//
+// Exported because every caller that shows a model's own text has the
+// same problem and there should be one answer to it: a Decision.Reason
+// reaches the chat log behind the "show bot reasoning" setting, and a
+// probe prints the first 300 characters of a reply. Half a rune is a
+// rendering bug in somebody else's code either way.
+func Truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}

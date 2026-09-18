@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 import {
   ACTIVATION_CONDITION_UNMET,
+  NO_COMMANDER_IDENTITY,
   abilityBlocked,
   buildMenuSections,
   type MenuSection,
@@ -87,6 +88,19 @@ describe("abilityBlocked and condition_unmet", () => {
 
   it("is silent when the flag is absent", () => {
     expect(abilityBlocked({}, false, false)).toBe("");
+  });
+
+  // #844, CR 903.4f: Command Tower with no commander, or a colourless
+  // one, adds no mana. The server ships adds_no_mana and the row greys
+  // with its own reason — a tap cost still comes first, because an
+  // already-tapped source is the more immediate truth.
+  it("names the missing commander identity for a mana ability", () => {
+    expect(abilityBlocked({ adds_no_mana: true, tap_cost: true }, false, false)).toBe(
+      NO_COMMANDER_IDENTITY,
+    );
+    expect(abilityBlocked({ adds_no_mana: true, tap_cost: true }, true, false)).toBe(
+      "already tapped",
+    );
   });
 
   it("keeps the tap reason for a tapped source", () => {

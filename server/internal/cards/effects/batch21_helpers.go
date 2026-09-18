@@ -227,9 +227,10 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // is the one thing worth announcing.
 //
 // With no basic land in the library every card is milled and the
-// empty library flags the loss at the next state check, exactly as a
-// mill of the whole library does — which is the combo the card is
-// famous for. That case reveals the whole library, as printed.
+// library is left empty — which is the combo the card is famous for.
+// Nobody loses for the mill (CR 701.17b); the loss comes at the
+// player's next draw (CR 704.5b), unless the combo wins first. That
+// case reveals the whole library, as printed.
 func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {
@@ -277,24 +278,32 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 		return nil
 	}
 	victim := item.Targets[0].ID
-	if err := (MillToZone{Player: victim, N: 4, To: game.ZoneExile}).Apply(ctx); err != nil {
-		return err
-	}
-	if g.Exile == nil {
-		return nil
-	}
-	var lands []uuid.UUID
-	for _, c := range g.Exile.Cards {
-		if c.Owner == victim && c.IsLand() {
-			lands = append(lands, c.InstanceID)
-		}
-	}
-	for _, id := range lands {
-		if err := (ReturnFromExile{Target: id, Controller: item.Controller}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return MillToZone{
+		Player: victim,
+		N:      4,
+		To:     game.ZoneExile,
+		// #893: the exile zone is walked from the continuation, because
+		// the four cards are not all in it yet on the line after the
+		// exile — a commander among them stops to answer CR 903.9, and
+		// a card that takes the offer never reaches exile at all.
+		Then: func(ctx *Context, _ []uuid.UUID) error {
+			if ctx.Game.Exile == nil {
+				return nil
+			}
+			var lands []uuid.UUID
+			for _, c := range ctx.Game.Exile.Cards {
+				if c.Owner == victim && c.IsLand() {
+					lands = append(lands, c.InstanceID)
+				}
+			}
+			for _, id := range lands {
+				if err := (ReturnFromExile{Target: id, Controller: item.Controller}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}.Apply(ctx)
 }
 
 // b21ReturnAllArtifactAndEnchantmentCards is Brilliant Restoration's

@@ -49,18 +49,17 @@ func PainRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
 // `self` is the printed self-reference ("This land" / "This
 // artifact") so the menu copy reads like the card.
 //
-// Pipe syntax for the colour pair, with the commander-identity
-// narrowing turned OFF: the printed text names two specific colours
-// and says nothing about the command zone, so a Shivan Reef in a
-// mono-blue deck must still offer {R}. (The narrowing is correct for
-// Arcane Signet and Command Tower, which do print the clause.)
+// Pipe syntax for the colour pair, with NarrowToCommanderIdentity
+// off: the printed text names two specific colours and says nothing
+// about the command zone, so a Shivan Reef in a mono-blue deck still
+// offers {R} (after {U}). (The narrowing is only for Arcane Signet
+// and Command Tower and their kin, which do print the clause.)
 func painDual(a, b, self string) ManaAbility {
 	return ManaAbility{
-		Cost:                    ManaAbilityCost{Tap: true},
-		Produced:                "{" + a + "|" + b + "}",
-		Label:                   "Add {" + a + "} or {" + b + "}. " + self + " deals 1 damage to you.",
-		Rider:                   PainRider(1),
-		IgnoreCommanderIdentity: true,
+		Cost:     ManaAbilityCost{Tap: true},
+		Produced: "{" + a + "|" + b + "}",
+		Label:    "Add {" + a + "} or {" + b + "}. " + self + " deals 1 damage to you.",
+		Rider:    PainRider(1),
 	}
 }
 

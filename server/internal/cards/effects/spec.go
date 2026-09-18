@@ -118,8 +118,9 @@ type Spec struct {
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
 	// Paradise's "{T}: Add one mana of any color", Arcane Signet's
-	// commander-identity-restricted variant. Mana abilities do NOT
-	// use the stack (CR 605.3); they resolve synchronously when the
+	// commander-identity-restricted variant
+	// (NarrowToCommanderIdentity). Mana abilities do NOT use the stack
+	// (CR 605.3); they resolve synchronously when the
 	// activate_mana_ability action fires. The Index a client sends in
 	// the action payload is the position in this slice.
 	//
@@ -226,6 +227,12 @@ type Spec struct {
 	//
 	// Added in S19 sub-PR 1.
 	Triggered []game.TriggeredAbility
+
+	// TriggerDoublers are CR 603.2d effects that add one instance to
+	// a matching triggered ability when it is harvested. The game
+	// package owns the query and applies the predicates at trigger
+	// time; the catalog only declares the card's printed condition.
+	TriggerDoublers []game.TriggerDoubler
 
 	// Modes is the S20 sub-PR 4 modal-spell clause ("Choose one —").
 	// Each option carries its oracle bullet and, when the bullet
@@ -418,6 +425,27 @@ type Spec struct {
 	// Issue #338.
 	NoMaxHandSize bool
 
+	// AdditionalLandPlays declares the printed static "you may play
+	// an additional land on each of your turns" — 1 for Exploration,
+	// 2 for Azusa, Lost but Seeking. Counted while the permanent is
+	// on the battlefield; its controller's land-play allowance rises
+	// by this much (CR 305.2).
+	//
+	// Deliberately NOT a `Static` entry, for exactly the reasons
+	// NoMaxHandSize above is not: it modifies a PLAYER, not an
+	// object, so the CR 613 layer engine has no characteristic for
+	// it and no layer for it to sit at. The engine DERIVES it
+	// instead — game.Game.EffectiveLandDropsLocked sums this over the
+	// permanents a player controls, through the
+	// game.CatalogAdditionalLandPlays hook — so two Explorations
+	// compose and one of them leaving does not take the other's
+	// grant with it.
+	//
+	// Added by #500, which made the land-drop limit enforceable at
+	// all. No card sets it yet; Exploration and Azusa are now a
+	// one-line Spec each rather than an engine change.
+	AdditionalLandPlays int
+
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding
 	// Clock, Drumbellower, Bender's Waterskin, and the second half
@@ -449,6 +477,9 @@ type Spec struct {
 	// Nil for every card that does not print the clause, which is
 	// nearly all of them. Issue #74.
 	UntapStep []game.UntapStepPermission
+	// UntapStepRestrictions declares permanents that stay tapped during
+	// their controller's untap step (Mana Vault, Meekstone, and Auras).
+	UntapStepRestrictions []game.UntapStepRestriction
 
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose
@@ -537,20 +568,27 @@ type ManaAbility struct {
 	// Added in the S22 mana-ability-rider pass.
 	Rider func(g *game.Game, controller, source uuid.UUID) error
 
-	// IgnoreCommanderIdentity keeps a pipe-syntax Produced string
-	// ("{U|R}", "{W|U|B|R|G}") at its printed width instead of
-	// letting the engine intersect it with the controller's
-	// commander colour identity.
+	// NarrowToCommanderIdentity intersects a pipe-syntax Produced
+	// string ("{W|U|B|R|G}") with the controller's commander colour
+	// identity before the colour pick is offered.
 	//
-	// Set it whenever the printed text does not actually say "in
-	// your commander's color identity" — City of Brass and Mana
-	// Confluence ("any color"), the painland and Talisman duals
-	// (two named colours). Leave it false for Command Tower,
-	// Arcane Signet, Commander's Sphere and Path of Ancestry, whose
-	// text is the reason the narrowing exists.
+	// Set it ONLY when the printed text says "any color in your
+	// commander's color identity" — Command Tower, Arcane Signet,
+	// Commander's Sphere, Path of Ancestry.
+	// TestNarrowToCommanderIdentityMatchesOracleText holds the
+	// catalog to exactly that. Every other pipe — Birds of Paradise,
+	// Treasure, City of Brass, the painland and guildgate duals —
+	// leaves it off and offers its printed width, with the
+	// commander's identity listed first (owner decision 2026-09-17).
 	//
-	// Added in the S22 mana-ability-rider pass.
-	IgnoreCommanderIdentity bool
+	// CR 903.4f (#844): a narrowing ability adds NO mana for a
+	// controller with no commander, or a colourless one — the
+	// intersection is empty, no pick is offered, and nothing
+	// enumerates the activation.
+	//
+	// Replaced IgnoreCommanderIdentity (S22), its inverse, when the
+	// default flipped from narrowing to ordering.
+	NarrowToCommanderIdentity bool
 
 	// ProducedFunc computes Produced at activation time instead of
 	// declaring it. Two card families need it and they are the same

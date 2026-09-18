@@ -42,10 +42,24 @@ const NoMaxHandSize = -1
 // carry a Reason ("commander damage", "burn spell", "manual") once
 // the rules graft surfaces those distinctions; right now every
 // change_life action is "manual" by definition.
+//
+// Seq is a per-player counter, stamped by ChangeLife, that starts at
+// 1 and only ever goes up (#703). It is what the client keys the
+// life-change popup on: entry COUNT is not usable for that, because
+// the log is trimmed at MaxLifeHistoryEntries and stops growing, and
+// At is not usable either, because it reaches the wire as RFC3339
+// seconds, so two changes in the same second are indistinguishable.
+// A watermark over Seq shows every delta a frame carries, not just
+// the last, and keeps working past the cap.
+//
+// Derived from the newest surviving entry rather than from a separate
+// Player counter, so it survives a snapshot restore and rewinds with
+// an undo exactly like the log it lives on.
 type LifeChange struct {
 	Delta    int
 	NewTotal int
 	At       time.Time
+	Seq      uint64
 }
 
 // Player is a seat at the table. Each player owns a set of private
@@ -160,13 +174,21 @@ type Player struct {
 	BotTier string
 	BotDeck string
 
-	// LosesAtNextSBA marks a player who has tried to draw from an
-	// empty library since the last SBA check (CR 704.5b) and will
-	// be eliminated on the next state-based-action loop. Set by the
-	// auto-draw step entry hook and the manual DrawCard action when
-	// PopTop returns ErrZoneEmpty; cleared on elimination. Added in
-	// S13.1.
-	LosesAtNextSBA bool
+	// AttemptedEmptyDraw records the one fact CR 704.5b reads: this
+	// player has attempted to draw a card from an empty library since
+	// the last state-based-action check. The SBA loop eliminates a
+	// player with it set. Set by actuallyDrawCardLocked (every draw
+	// path: the draw step, the DrawCard action, draw effects) when
+	// PopTop returns ErrZoneEmpty; cleared on elimination. A mill,
+	// an "exile the top N" or any other run off the bottom of the
+	// library never sets it (CR 701.17b, #767).
+	//
+	// Named LosesAtNextSBA until ADR 0057 sub-PR 1; the JSON tag
+	// keeps the old name so snapshots need no schema bump. One other
+	// writer remains until ADR 0057 sub-PR 2 makes an effect loss
+	// immediate: LoseTheGameForEffect (the Pact cycle) borrows the
+	// flag to defer its loss to the next SBA check. Added in S13.1.
+	AttemptedEmptyDraw bool
 
 	// CommanderCasts tracks the per-commander cast count from the
 	// command zone for the Commander tax (CR 903.8 — each cast costs
@@ -198,6 +220,18 @@ type Player struct {
 	// will write to it via the S16 layer pipeline. Added in S13.4.
 	MaxHandSize int
 
+	// LandDropsPerTurn is the player's BASE land-play allowance
+	// (CR 305.2). DefaultLandDropsPerTurn (1) on every freshly seated
+	// player. Permanents that grant additional land plays are NOT
+	// written here — they are derived from the battlefield, so two of
+	// them compose and one leaving doesn't strand the other's grant;
+	// see land_drops.go. Added in #500.
+	//
+	// A pre-#500 snapshot has no value for this, and 0 would restore
+	// a table where nobody may ever play a land, so restorePlayer
+	// treats a non-positive restored value as the default.
+	LandDropsPerTurn int
+
 	// ManaPool holds the player's currently-floating mana tokens.
 	// Slice (not multiset) to preserve insertion order for the S15
 	// auto-tapper preview + S17+ filter-land sub-payment routing.
@@ -212,13 +246,14 @@ type Player struct {
 func newPlayer(name string, seat int) *Player {
 	id := uuid.New()
 	p := &Player{
-		ID:              id,
-		Name:            name,
-		Seat:            seat,
-		Life:            StartingLife,
-		CommanderDamage: make(map[uuid.UUID]int),
-		CommanderCasts:  make(map[uuid.UUID]int),
-		MaxHandSize:     DefaultMaxHandSize,
+		ID:               id,
+		Name:             name,
+		Seat:             seat,
+		Life:             StartingLife,
+		CommanderDamage:  make(map[uuid.UUID]int),
+		CommanderCasts:   make(map[uuid.UUID]int),
+		MaxHandSize:      DefaultMaxHandSize,
+		LandDropsPerTurn: DefaultLandDropsPerTurn,
 	}
 	p.Library = newZone(ZoneLibrary, id)
 	p.Hand = newZone(ZoneHand, id)
@@ -228,9 +263,10 @@ func newPlayer(name string, seat int) *Player {
 }
 
 // ChangeLife mutates life total by delta (positive for gain, negative
-// for loss), records a LifeHistory entry stamped at time.Now().UTC(),
-// and returns the new total. A delta of 0 is a no-op — no history
-// entry is recorded so the log isn't polluted by accidental clicks.
+// for loss), records a LifeHistory entry stamped at time.Now().UTC()
+// and with the next per-player Seq, and returns the new total. A delta
+// of 0 is a no-op — no history entry is recorded so the log isn't
+// polluted by accidental clicks.
 func (p *Player) ChangeLife(delta int) int {
 	if delta == 0 {
 		return p.Life
@@ -240,6 +276,7 @@ func (p *Player) ChangeLife(delta int) int {
 		Delta:    delta,
 		NewTotal: p.Life,
 		At:       time.Now().UTC(),
+		Seq:      p.nextLifeSeq(),
 	})
 	if len(p.LifeHistory) > MaxLifeHistoryEntries {
 		// Trim by copying the tail forward so the underlying array
@@ -248,6 +285,20 @@ func (p *Player) ChangeLife(delta int) int {
 		p.LifeHistory = append(p.LifeHistory[:0], p.LifeHistory[dropped:]...)
 	}
 	return p.Life
+}
+
+// nextLifeSeq is the Seq the next LifeHistory entry gets: one past the
+// newest entry still in the log. Trimming only ever drops from the
+// FRONT, so the newest entry is always present and the counter keeps
+// climbing after the log stops growing. An empty log starts at 1; zero
+// is the un-stamped sentinel, which is also what a pre-#703 snapshot's
+// entries decode as (they then all read as "older than anything new",
+// which is exactly right).
+func (p *Player) nextLifeSeq() uint64 {
+	if n := len(p.LifeHistory); n > 0 {
+		return p.LifeHistory[n-1].Seq + 1
+	}
+	return 1
 }
 
 // RecordCommanderDamage adds damage dealt to this player by one

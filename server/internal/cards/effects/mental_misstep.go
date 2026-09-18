@@ -8,11 +8,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Counter target spell with mana value 1."
 //
 // The free counter for Sol Ring, Swords to Plowshares and the
-// one-mana dorks. The target clause reads the printed mana value
-// (CR 202.3), so a Sol Ring is a legal target and a Counterspell is
-// not; an {X} spell is mana value 1 only when its printed cost says
-// so, since the sandbox does not read the announced X for this
-// clause (Mana Drain's refund is the one place that does).
+// one-mana dorks. The target clause reads the spell's mana value on
+// the stack (b03ManaValueIs), so a Sol Ring is a legal target and a
+// Counterspell is not. {X} counts as the value chosen for it (CR
+// 202.3e): a {X}{U} spell cast with X=1 is mana value 2 and can't be
+// targeted, and a {X} spell cast with X=1 is mana value 1 and can.
 //
 // Sandbox simplification: the PHYREXIAN mana is paid with {U} only.
 // game.ParseCost recognises {U/P} and flags the requirement as

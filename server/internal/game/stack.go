@@ -109,6 +109,11 @@ type StackItem struct {
 	// spells (the card name is sufficient labeling).
 	Label string
 
+	// DoubledBy identifies the CR 603.2d effect that added this trigger
+	// instance. It is empty on the original and on non-trigger items.
+	DoubledBy     uuid.UUID
+	DoubledByName string
+
 	// Targets are the announce-time target slots. Empty slice means
 	// "no targets" (TargetNone or no targeting clause). Re-checked at
 	// resolution per CR 608.2b — see resolveTopOfStackLocked in
