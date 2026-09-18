@@ -66,8 +66,8 @@ registry disagree.
 | Registry keys (`len(effects.All())`) | **1718** |
 | — whole cards (bare `oracle_id`) | **1654** |
 | — back faces (`<oracle_id>#1`) | 64 |
-| Declared `full` | 1258 |
-| Declared `caveats` | 388 |
+| Declared `full` | 1259 |
+| Declared `caveats` | 387 |
 | Declared `unreviewed` | 72 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -627,11 +627,11 @@ Two neighbouring seams stayed open, and it is worth saying which:
   mill one or more cards, they mill twice that many instead" is not a
   per-card zone move.
 
-Three engine bugs the sweep found are filed, not fixed: **#446** (mass
-destroy bypasses indestructible), **#478** (a fetched permanent whose
-entry queues a replacement prompt is stranded in the library), **#482**
-(effect-side life changes skip the life-replacement pipeline; Rhox
-Faithmender is wrong today). The agents also recorded, on their issues,
+Three engine bugs the sweep found were filed rather than fixed on the
+spot: **#446** (mass destroy bypasses indestructible), **#478** (a
+fetched permanent whose entry queues a replacement prompt is stranded in
+the library; **fixed**, S39), **#482** (effect-side life changes skip the
+life-replacement pipeline; Rhox Faithmender is wrong today). The agents also recorded, on their issues,
 the smaller gaps they worked around: attacking taps without a tap
 event, dies-trigger LKI without counter math, entry replacements that
 cannot read X, a printed 0/0 the toughness SBA never sweeps, tokens

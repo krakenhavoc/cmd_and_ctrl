@@ -18,9 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Sandbox simplification, declared: an Aura fetched this way enters
 // UNATTACHED and stays that way. CR 303.4f lets Zur's controller
-// choose what it enchants as it enters; the search path has no such
-// prompt (#478), and the attachment state-based action sweeps only an
-// Aura attached to something illegal, not one attached to nothing.
+// choose what it enchants as it enters; the attach target is chosen
+// by the SPELL (attachResolvedAuraLocked reads the resolving stack
+// item) and a fetch has no stack item to read, so there is nothing to
+// ask — and the attachment state-based action sweeps only an Aura
+// attached to something illegal, not one attached to nothing.
 // Weaker than printed (the Aura does nothing), never stronger — and
 // it is the Aura half of Zur's toolbox (Shielded by Faith, Diplomatic
 // Immunity) that this loses.

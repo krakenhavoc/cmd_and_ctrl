@@ -364,6 +364,23 @@ func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
 	return zoneRoute{Dst: dest, Actor: player, Mill: dest == ZoneGraveyard}
 }
 
+// tuckRoute is the fifth template (#783): "put it into its owner's
+// library", at the position the tucking effect printed.
+//
+// The position rides the route rather than being applied by the caller
+// after the move, for the reason zoneRoute.Depth gives: a commander
+// tucked to the bottom, or third from the top, whose owner is asked
+// about the command zone and declines still lands where the card said,
+// because nothing has moved until the prompt is answered.
+//
+// The destination owner is deliberately left nil — every printed tuck
+// is "its OWNER's library" (CR 903.9's destinations all are), and
+// routeDestinationLocked resolves that per card, which is what lets one
+// batch tuck four attackers into four different libraries.
+func tuckRoute(opts TuckOptions) zoneRoute {
+	return zoneRoute{Dst: ZoneLibrary, ToBottom: opts.ToBottom, Depth: opts.Depth}
+}
+
 // routeAllThenLocked routes every card in `ids` as one simultaneous
 // exit and hands `then` the ones that LANDED where `r` asked.
 //
@@ -658,4 +675,53 @@ func (g *Game) BounceCardsToHandForEffect(ids []uuid.UUID) int {
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game, bounced []uuid.UUID) error) error {
 	return g.routeAllThenLocked(bounceRoute, ids, then)
+}
+
+// TuckCardsToLibraryThenForEffect puts every card in `ids` into its
+// OWNER's library as one simultaneous exit and hands `then` the ones
+// that actually reached a LIBRARY — Aetherspouts' "put all attacking
+// creatures on top or bottom of their owners' libraries", after which
+// each owner orders only the cards that arrived.
+//
+// ExileCardsThenForEffect's twin (ADR 0013 §5k, §5n), on the same body,
+// with the same CR 400.7 reading of "this way": a commander that took
+// CR 903.9's offer went to the command zone, not to a library, so it is
+// not in the list and nothing downstream may count it.
+//
+// #783 is the reason the `Then` half exists at all. A library is a
+// CR 903.9 destination, so EVERY tuck can pause — and until this
+// existed the fire-and-forget form was the only one, so a card that had
+// more to do after the tuck (Chaos Warp's shuffle and reveal,
+// Aetherspouts' scry, Sylvan Library's next question) did it on the
+// next line, with the card still on the battlefield and the question
+// still open.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) TuckCardsToLibraryThenForEffect(ids []uuid.UUID, opts TuckOptions, then func(g *Game, tucked []uuid.UUID) error) error {
+	return g.routeAllThenLocked(tuckRoute(opts), ids, then)
+}
+
+// TuckToLibraryThenForEffect is the SINGLE-CARD form: tuck one card and
+// tell `then` whether it actually reached a library.
+//
+// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
+// for the reason that one gives: a one-card read-back is the same bug
+// as a batch one, and a second tuck path with its own notion of what
+// landed is how two verbs drift. A batch of one publishes a one-card
+// simultaneous exit, which no watcher can observe.
+//
+// `tucked` is false when the CR 614 window cancelled the move, when a
+// replacement sent the card somewhere else, and when a commander took
+// CR 903.9's offer — it left, but not to a library. The continuation
+// runs on every one of those outcomes, because a caller that is waiting
+// has to be told even when the answer is "nothing happened".
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) TuckToLibraryThenForEffect(cardID uuid.UUID, opts TuckOptions, then func(g *Game, tucked bool) error) error {
+	return g.TuckCardsToLibraryThenForEffect([]uuid.UUID{cardID}, opts, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
 }

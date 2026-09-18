@@ -745,6 +745,20 @@ CR 601.2h pays a spell's costs as one indivisible step, so it sets
 `zoneRoute.MustSettleNow` and settles without asking, which means a
 commander pitched to a cost goes to the graveyard.
 
+**A tuck can pause, so read what LANDED** (#783). A library is a
+CR 903.9 destination like every other, so "put it into its owner's
+library" opens the window and can stop to ask a commander's owner about
+the command zone. If your card has anything to do AFTER the tuck —
+shuffle, reveal, scry, ask the next question, read the card's zone —
+hand it over as a continuation (`TuckToLibraryThenForEffect`, or
+`TuckCardsToLibraryThenForEffect` for a batch, which reports the cards
+that really reached a library). `TuckToLibraryForEffect` stays
+fire-and-forget and is right only when the tuck is the LAST instruction
+on the card. A printed position ("on the bottom", "third from the top")
+goes in `game.TuckOptions` so it rides the route and survives the
+prompt — never reposition the card yourself on the next line. See
+[ADR 0013 §5n](docs/decisions/0013-replacement-effects.md).
+
 **A discard still can't be replaced *as a discard*.** What the window
 sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
 (effect, cost or turn-based action), so the cause-sensitive family —
@@ -850,24 +864,39 @@ otherwise, but it may never run at all. See
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
 
-> **History, and one declared gap.** That `TappedOnEntry` flag used to be
-> the *only* thing standing in for the pipeline on the search path, which
-> is how a fetched fastland entered untapped
+> **History.** That `TappedOnEntry` flag used to be the *only* thing
+> standing in for the pipeline on the search path, which is how a fetched
+> fastland entered untapped
 > ([#263](https://github.com/krakenhavoc/cmd_and_ctrl/issues/263),
 > **fixed**). The search path — and the reanimation path, which had the
 > same hole and was not in the issue — now both run
 > `applyReplacementsLocked` before the card leaves its zone, and both
 > fire `fireETBHookLocked`.
->
-> What remains is deliberate: neither entry site is `entryResumable`, so
-> an entry replacement that wants to **ask** something cannot. A fetched
-> shockland enters tapped with **no payment offered** — weaker than
-> printed, never stronger, which is the posture
-> `ReplacementEvent.entryResumable` exists to enforce. Resuming
-> generically would finish the move without the search's continuation and
-> skip the library shuffle, and a missing shuffle silently leaks library
-> order. `TestFetchedShocklandEntersTappedWithNoPaymentOffered` pins the
-> gap and flips when it closes.
+
+**An ENTRY can pause too, and the effect that asked for it waits**
+(#478). A battlefield entry runs the CR 614 window before the card
+leaves its old zone, and that window can stop to ask: a CR 616 ordering
+prompt between two enters-tapped effects (Kismet plus Thalia, Heretic
+Cathar), a shockland's "you may pay 2 life", Clone's "choose what to
+copy", any CR 614.10 "may". The library search, the exile return and the
+reanimation are `entryResumable` now, so a fetched shockland IS offered
+its payment and two replacements on one fetched Guildgate no longer eat
+the card. What the effect still owed rides across the pause on
+`ReplacementEvent.entryTail` — the library shuffle and
+`EventSearchLibrary`, the caller's `Then`, and the CR 400.7 new object
+an exile return mints — and the same resume every other paused entry
+uses finishes it
+([entry_tail.go](server/internal/game/entry_tail.go), [ADR 0013
+§5o](docs/decisions/0013-replacement-effects.md)). For your card this
+means the line after a fetch, a blink or a reanimation may run one
+action later than the call; if you read the permanent's zone, its ID or
+what arrived, use the effect's own continuation
+(`SearchLibrarySpec.Then`) rather than the next line. The one entry that
+still cannot pause is `putOntoBattlefieldFromZoneLocked` (the
+hand / library "put onto the battlefield" batch), which runs every
+card's pipeline against the pre-entry board and moves them together; a
+card of that batch whose pipeline pauses stays where it was — weaker
+than printed, never stronger.
 
 ### Adding a copy effect (S16.5+)
 

@@ -74,8 +74,11 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 	}
 	g.dequeueChoiceLocked(idx)
 
-	found := g.executeSearchTakeLocked(spec, p, picks)
-	err := g.finishSearchLocked(spec, p, found)
+	// The take finishes the search itself — including the shuffle and
+	// spec.Then — because a battlefield destination is an ENTRY and an
+	// entry can pause on its own prompt (#478). Answering THIS prompt
+	// may therefore queue the next one rather than finishing the card.
+	err := g.executeSearchTakeLocked(spec, p, picks)
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,

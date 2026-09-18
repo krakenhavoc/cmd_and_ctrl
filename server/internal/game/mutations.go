@@ -873,6 +873,12 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			// path knows it may finish the push on this branch's
 			// behalf — see executeEntryToBattlefieldLocked.
 			entryResumable: true,
+			// CR 305.2: this is the one entry that spends the turn's
+			// land drop, and since #478 it says so rather than letting
+			// the resume infer it from "a land with no stack item" —
+			// a fetched, reanimated or blinked land can pause there now
+			// and was never PLAYED.
+			landPlay: true,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {

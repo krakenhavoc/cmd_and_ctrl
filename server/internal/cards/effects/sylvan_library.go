@@ -121,10 +121,16 @@ func sylvanLibrarySettle(g *game.Game, source, controller uuid.UUID, remaining [
 		// Top, not bottom: the card is back on the library and will be
 		// drawn again next turn. That is what makes the put-back leg a
 		// tempo cost rather than a loss.
-		if err := g.TuckToLibraryForEffect(card, false); err != nil {
-			return err
-		}
-		return sylvanLibrarySettle(g, source, controller, rest)
+		//
+		// #783: the NEXT question hangs off the tuck's continuation
+		// rather than the next line, for the same reason the first one
+		// hangs off the answer to the one before it — a library is a
+		// CR 903.9 destination, so putting a drawn commander back stops
+		// to ask its owner about the command zone, and the rest of the
+		// card must not run while that is open.
+		return g.TuckToLibraryThenForEffect(card, game.TuckOptions{}, func(g *game.Game, _ bool) error {
+			return sylvanLibrarySettle(g, source, controller, rest)
+		})
 	}
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil || p.Life < sylvanLibraryLifeCost {

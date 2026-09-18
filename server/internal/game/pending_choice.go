@@ -1509,22 +1509,38 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// said "yes"). Run the physical move through the shared
 		// executeBattlefieldLeaveLocked helper.
 		if ev.entryResumable && ev.NewZone == ZoneBattlefield && ev.OldZone != ZoneBattlefield {
-			// A paused ENTRY — the shockland's pay-2-life prompt,
-			// or a CR 616 ordering prompt between two enters-tapped
-			// effects. The pipeline function bailed before moving
-			// anything, so the push happens here. See
-			// executeEntryToBattlefieldLocked.
-			return g.executeEntryToBattlefieldLocked(ev)
+			// A paused ENTRY — the shockland's pay-2-life prompt, a
+			// CR 616 ordering prompt between two enters-tapped effects,
+			// Clone's "choose what to copy". The pipeline function
+			// bailed before moving anything, so the push happens here,
+			// through exactly the finisher the unpaused path runs
+			// (executeEntryToBattlefieldLocked), and the effect's own
+			// post-entry duties run off ev.entryTail with it: a search's
+			// shuffle and EventSearchLibrary, the caller's Then, the new
+			// object identity an exile return mints (#478).
+			_, err := g.executeEntryToBattlefieldLocked(ev)
+			if err != nil {
+				return err
+			}
+			// Answering a prompt is an action boundary, like every other
+			// Resolve* handler, so the sweep the finisher deliberately
+			// skips happens here — the unpaused entry paths get theirs
+			// from the resolution bookend they run inside. It runs after
+			// the tail so a permanent that entered and then died does so
+			// once, with everything else the effect did.
+			g.runStateChecksLocked()
+			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
 			// What is left here is a battlefield ENTRY that is not
-			// entryResumable — an exile → battlefield return (it mints
-			// a new instance ID, CR 400.7) or a library search (it owes
-			// its caller a shuffle). Those bail before moving anything
-			// and are documented as not happening when they pause; see
-			// ReplacementEvent.entryResumable. Since #707 no EXIT lands
-			// here: every one of them carries a zoneRoute or comes off
-			// the battlefield.
+			// entryResumable: putOntoBattlefieldFromZoneLocked's batch,
+			// which runs every card's pipeline against the pre-entry
+			// board and then moves them together — a simultaneity a
+			// per-card resume would break. It bails before moving
+			// anything and is documented as not happening when it
+			// pauses; see ReplacementEvent.entryResumable. Since #707 no
+			// EXIT lands here: every one of them carries a zoneRoute or
+			// comes off the battlefield.
 			return nil
 		}
 		var owner *Player
@@ -1617,8 +1633,18 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// The card stays where it is, but a multi-card discard sequenced
 	// through the route's continuation has to be told, or the rest of
 	// the batch — and the "then draw two" behind it — never happens.
+	//
+	// #478: and for a cancelled ENTRY that carries a tail. A search
+	// whose fetched permanent the window cancelled still owes its
+	// library a shuffle and its caller a "found nothing"; a leg of a
+	// multi-card fetch has to be told before it can start the next one.
+	// Only one of the two is ever set, so running both is one call and
+	// a no-op.
 	if ev.Kind == RepEventMove {
-		return g.runRouteTailLocked(ev.zoneRoute)
+		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
+			return err
+		}
+		return g.runEntryTailLocked(ev, uuid.Nil)
 	}
 	if ev.Kind != RepEventStepTransition {
 		return nil
@@ -2623,22 +2649,29 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 	}
 }
 
-// pausedZoneChangeStaleLocked reports whether the exit stashed on a
+// pausedZoneChangeStaleLocked reports whether the move stashed on a
 // queued prompt's resume frame can still happen.
 //
-// A paused exit moves NOTHING: the card sits in its old zone until
-// the prompt is answered (see routeCardToZoneLocked). So a card that
-// is no longer in the zone its paused move says it is leaving has
+// A paused move moves NOTHING: the card sits in its old zone until
+// the prompt is answered (see routeCardToZoneLocked, and
+// enterBattlefieldThroughPipelineLocked for the entry side). So a card
+// that is no longer in the zone its paused move says it is leaving has
 // already left by some other route, and that move will never happen.
 // Answering the prompt then either fails — the battlefield-leave
 // resume cannot find the card on the battlefield, which is the
 // "card instance not found in zone" of #605 — or, worse, moves the
 // card a SECOND time out of a zone nobody asked about, because the
-// shared exit primitive moves it from wherever it finds it.
+// shared primitive moves it from wherever it finds it.
 //
-// Battlefield ENTRIES are excluded: executeEntryToBattlefieldLocked
-// locates the card by scan and short-circuits when it is already on
-// the battlefield, so an entry prompt is never stale in this sense.
+// #478 brought battlefield ENTRIES under the same rule. They used to be
+// excluded on the grounds that a paused entry could only ever be
+// answered into a harmless double-push, which was true while nothing
+// that pauses an entry could be overtaken: a fetched permanent's entry
+// prompt is now open while the card sits in a LIBRARY, and a mill, a
+// draw or an opponent's exile can take it out from under the question.
+// A card already ON the battlefield is not stale — the entry it is
+// waiting on simply short-circuits — and neither is one still in its
+// source zone.
 //
 // Caller must hold g.mu.
 func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
@@ -2646,11 +2679,17 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 		return false
 	}
 	ev := frame.ev
-	if ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+	if ev.Kind != RepEventMove {
 		return false
 	}
 	src := g.findCardZoneLocked(ev.CardID)
-	return src == nil || src.Kind != ev.OldZone
+	if src == nil {
+		return true
+	}
+	if ev.NewZone == ZoneBattlefield && src == g.Battlefield {
+		return false
+	}
+	return src.Kind != ev.OldZone
 }
 
 // zoneChangePausedLocked reports whether an exit for cardID is already

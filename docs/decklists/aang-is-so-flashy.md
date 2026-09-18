@@ -263,6 +263,13 @@ Two things about the fix are worth carrying forward:
   lands. In this deck the case is live — Solemn Simulacrum and Loyal
   Warhound both fetch, and Hallowed Fountain is the shockland.
 
+  **Closed 2026-09-18 ([#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478)).**
+  The search's own duties ride across the pause on
+  `ReplacementEvent.entryTail`, so the search, exile-return and
+  reanimation entries are `entryResumable` and a fetched shockland is
+  asked. The test flipped as predicted and is now
+  `TestFetchedShocklandOffersItsPaymentAndTheSearchWaits`.
+
 ### One engine finding worth keeping
 
 `containsFoldASCII` folds **only the haystack**, so a capitalised needle

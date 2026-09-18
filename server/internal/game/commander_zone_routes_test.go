@@ -410,30 +410,10 @@ func hasEventFor(g *Game, kind EventKind, cardID uuid.UUID) bool {
 // --- #359: an Optional replacement must not pause an entry that has
 // no resume ---------------------------------------------------------
 
-// TestOptionalReplacementDoesNotStrandAnUnresumableEntry is #359.
-//
-// The CR 614.10 "may" branch of the apply-loop used to queue its
-// yes/no prompt unconditionally, while the EntryLifeCost branch
-// beside it has checked entryResumable since #268. A permanent
-// entering the battlefield by a route that cannot be resumed — a
-// reanimation, an exile-return, a library search — would therefore
-// pause on an Optional self-replacement with nothing to finish the
-// move: the card stays in its old zone and the prompt is answerable
-// to no effect.
-//
-// The reanimation path is the vehicle here because it is the easiest
-// non-resumable entry to drive; the defect is in the apply-loop, not
-// in any one entry site.
-func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
-	g := newActiveGame(t)
-	owner := g.Seats[0]
-	cardID := uuid.New()
-	owner.Graveyard.PushTop(Card{
-		InstanceID: cardID, Name: "Bears", TypeLine: "Creature — Bear",
-		Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID,
-	})
-
-	g.mu.Lock()
+// registerOptionalEntryReplacementForTest registers a CR 614.10 "may"
+// that taps `cardID` on its way onto the battlefield, controlled by
+// `owner`. Caller must hold g.mu.
+func registerOptionalEntryReplacementForTest(g *Game, cardID, owner uuid.UUID) {
 	g.RegisterReplacementForTest(ReplacementEffect{
 		Watches:        []EventKind{EventZoneMove},
 		Optional:       true,
@@ -447,14 +427,44 @@ func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
 			return nil
 		},
 		Controller: func(_ *ReplacementEvent, _ *Game, _ *Card) uuid.UUID {
-			return owner.ID
+			return owner
 		},
 		Label: "Test optional entry replacement",
 	})
-	err := g.ReturnFromGraveyardForEffect(cardID, ZoneBattlefield)
+}
+
+// TestOptionalReplacementDoesNotStrandAnUnresumableEntry is #359.
+//
+// The CR 614.10 "may" branch of the apply-loop used to queue its
+// yes/no prompt unconditionally, while the EntryLifeCost branch
+// beside it has checked entryResumable since #268. A permanent
+// entering the battlefield by a route that cannot be resumed would
+// therefore pause on an Optional self-replacement with nothing to
+// finish the move: the card stays in its old zone and the prompt is
+// answerable to no effect.
+//
+// The vehicle used to be the reanimation path. #478 gave that one a
+// resume, so the last unresumable entry is
+// putOntoBattlefieldFromZoneLocked — the hand / library "put onto the
+// battlefield" batch, which runs every card's pipeline against the
+// pre-entry board and then moves them together, a simultaneity a
+// per-card resume would break. The defect this pins is in the
+// apply-loop, not in any one entry site.
+func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	owner.Hand.PushTop(Card{
+		InstanceID: cardID, Name: "Bears", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID,
+	})
+
+	g.mu.Lock()
+	registerOptionalEntryReplacementForTest(g, cardID, owner.ID)
+	_, err := g.PutFromHandOntoBattlefieldForEffect(cardID, HandEntryOptions{})
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("ReturnFromGraveyardForEffect: %v", err)
+		t.Fatalf("PutFromHandOntoBattlefieldForEffect: %v", err)
 	}
 
 	if len(g.PendingChoices) != 0 {
@@ -463,7 +473,7 @@ func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
 	if !g.Battlefield.Contains(cardID) {
 		t.Fatal("the permanent was stranded instead of entering the battlefield")
 	}
-	if owner.Graveyard.Contains(cardID) {
+	if owner.Hand.Contains(cardID) {
 		t.Error("the permanent is in two places at once")
 	}
 	// The un-applied branch: weaker than printed, never stranded.
@@ -471,6 +481,58 @@ func TestOptionalReplacementDoesNotStrandAnUnresumableEntry(t *testing.T) {
 		if c.InstanceID == cardID && c.Tapped {
 			t.Error("the un-answered replacement was applied anyway")
 		}
+	}
+}
+
+// TestOptionalReplacementNowPausesAReanimation is the other half of
+// #478: the reanimation entry HAS a resume now, so the same "may" is
+// asked rather than silently skipped, and answering it finishes the
+// move. Weaker-than-printed was the right posture while there was
+// nothing to finish the entry; it is no longer the posture here.
+func TestOptionalReplacementNowPausesAReanimation(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	cardID := uuid.New()
+	owner.Graveyard.PushTop(Card{
+		InstanceID: cardID, Name: "Bears", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID,
+	})
+
+	g.mu.Lock()
+	registerOptionalEntryReplacementForTest(g, cardID, owner.ID)
+	err := g.ReturnFromGraveyardForEffect(cardID, ZoneBattlefield)
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("ReturnFromGraveyardForEffect: %v", err)
+	}
+
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("the resumable entry asks its question: %d prompts", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if prompt.Kind != PendingChoiceOptionalReplacement {
+		t.Fatalf("prompt kind = %q", prompt.Kind)
+	}
+	if !owner.Graveyard.Contains(cardID) {
+		t.Fatal("nothing moves while the question is open")
+	}
+	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+	if !g.Battlefield.Contains(cardID) {
+		t.Fatal("answering finishes the reanimation")
+	}
+	if owner.Graveyard.Contains(cardID) {
+		t.Error("the permanent is in two places at once")
+	}
+	tapped := false
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == cardID {
+			tapped = c.Tapped
+		}
+	}
+	if !tapped {
+		t.Error(`the answered "may" applied, so the permanent entered tapped`)
 	}
 }
 

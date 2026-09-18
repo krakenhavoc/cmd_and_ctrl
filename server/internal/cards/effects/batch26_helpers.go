@@ -282,26 +282,46 @@ func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
 // the owner the order anyway). The scry looks at nothing new: the
 // cards were public permanents a moment ago. Owners are asked in
 // seat order; a player with no attacker is not asked.
+//
+// #783: the scry is the tuck's CONTINUATION and it counts what LANDED.
+// A library is a CR 903.9 destination, so an attacking commander stops
+// to ask its owner about the command zone — and the old per-card loop
+// counted the question rather than the answer. The owner scried a
+// library card they had no right to look at, and the commander then
+// landed on top of the library, after the scry, never ordered. A
+// commander that takes the command zone was never put into a library
+// (CR 400.7), so it is not among the cards its owner arranges.
 func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
 	attackers := b26AttackingCreatures(ctx.Game)
-	byOwner := map[uuid.UUID]int{}
+	ids := make([]uuid.UUID, 0, len(attackers))
 	for _, c := range attackers {
-		if err := ctx.Game.TuckToLibraryForEffect(c.InstanceID, false); err != nil {
-			return err
-		}
-		byOwner[c.Owner]++
+		ids = append(ids, c.InstanceID)
 	}
-	for _, p := range ctx.Game.Seats {
-		if p == nil || p.Eliminated {
-			continue
-		}
-		if n := byOwner[p.ID]; n > 0 {
-			if err := (Scry{Player: p.ID, N: n}).Apply(ctx); err != nil {
-				return err
+	item := ctx.Item
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract every continuation in the engine follows: an
+	// undo restores this game's fields in place, so a captured *Game
+	// would be the wrong one.
+	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, tucked []uuid.UUID) error {
+		ctx := NewContext(g, item)
+		byOwner := map[uuid.UUID]int{}
+		for _, id := range tucked {
+			if c, ok := g.LookupCardForEffect(id); ok {
+				byOwner[c.Owner]++
 			}
 		}
-	}
-	return nil
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated {
+				continue
+			}
+			if n := byOwner[p.ID]; n > 0 {
+				if err := (Scry{Player: p.ID, N: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
 }
 
 // b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard is Raise the

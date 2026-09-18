@@ -43,10 +43,19 @@ import (
 // the command zone is not among them and does not come back, which is
 // the right answer rather than a stranded card.
 //
-// Both halves share the one continuation because a battlefield ENTRY
-// cannot pause: ReturnFromExileToBattlefieldForEffect consults the
-// pipeline before the card leaves exile and DROPS the return if a
-// CR 616 prompt is queued, rather than waiting on it.
+// Both halves share the one continuation because step 3 reads nothing
+// of step 2 and step 2 reads nothing of step 3 — they are two passes
+// over the same value, not a chain.
+//
+// #478: a battlefield ENTRY can now pause too, and the return is no
+// longer DROPPED when it does. A creature whose entry stops for a
+// prompt (two "enters tapped" replacements on it, a shockland asked to
+// pay) arrives when the answer comes, and the rest of the pass carries
+// on around it in the meantime — the same fire-and-forget posture the
+// sacrifice below has, and it strands nothing: the card is in exile
+// until it arrives, and nothing in Living Death reads the returns. The
+// note this replaced said the return was dropped, which was true and
+// was the actual gap.
 //
 // The sacrifice in step 2 is still per-card and fire-and-forget: a
 // commander sacrificed there is asked its own CR 903.9 question and
