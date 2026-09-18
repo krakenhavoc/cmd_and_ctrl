@@ -7,17 +7,25 @@ import (
 	"github.com/google/uuid"
 )
 
-// combat_damage_steps_test.go — #717, CR 510.4.
+// combat_damage_steps_test.go — #717 and #716, the two halves of
+// CR 510.4.
 //
-// A combat in which any attacking or blocking creature has first strike
-// or double strike as the combat damage step begins has TWO combat
-// damage steps, and the active player receives priority after each
-// (CR 510.3). The engine models that as a real step in turnSequence,
-// `first_strike_damage`, that a turn only has when the condition holds
-// — the same "a step this turn does not have is walked through" move a
-// replacement-cancelled step makes.
+// #717: a combat in which any attacking or blocking creature has first
+// strike or double strike as the combat damage step begins has TWO
+// combat damage steps, and the active player receives priority after
+// each (CR 510.3). The engine models that as a real step in
+// turnSequence, `first_strike_damage`, that a turn only has when the
+// condition holds — the same "a step this turn does not have is walked
+// through" move a replacement-cancelled step makes.
+//
+// #716: which creatures deal damage in the SECOND step is decided as
+// the FIRST one begins (CR 702.7c), not by re-reading keywords after
+// the window between them. The window is where a lord dies and a pump
+// lands, so the two readings genuinely differ.
 
 const (
+	fsLordOracle       = "test-first-strike-lord"
+	dsLordOracle       = "test-double-strike-lord"
 	fsDamageHookOracle = "test-first-strike-damage-hook"
 )
 
@@ -48,6 +56,23 @@ func pushDamageStepCard(g *Game, c Card) uuid.UUID {
 		}
 	})
 	return id
+}
+
+// keywordLordStatics is a Layer 6 grant of one keyword to the OTHER
+// creatures its controller controls — Stromkirk Captain's shape, which
+// is the shape #716 is about: the grant goes away with the lord.
+func keywordLordStatics(keyword string) []StaticAbility {
+	return []StaticAbility{{
+		Layer: Layer6Ability,
+		AppliesTo: func(target *Card, _ *Game, source *Card) bool {
+			return target.InstanceID != source.InstanceID &&
+				target.Controller == source.Controller &&
+				target.IsCreature()
+		},
+		Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
+			c.Abilities = append(c.Abilities, keyword)
+		},
+	}}
 }
 
 // declareAttacks walks the cursor to declare_attackers, declares each
@@ -273,6 +298,129 @@ func TestDoubleStrikeDealsInBothCombatDamageSteps(t *testing.T) {
 	passUntilStep(t, g, StepCombatDamage)
 	if got := StartingLife - def.Life; got != 4 {
 		t.Errorf("after both steps the defender lost %d, want 4", got)
+	}
+}
+
+// --- #716: participation is fixed as the first step begins ---------
+
+// The issue's own case. A Bear has first strike only because a lord
+// grants it; the lord dies to first-strike damage in the first step, so
+// by the second step the Bear reads as a non-first-striker. It must
+// NOT deal damage a second time (CR 702.7c: the second step includes
+// the creatures that had neither keyword as the FIRST step began).
+func TestB716LordGrantingFirstStrikeDiesInTheFirstStep(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+	withStaticAbilities(t, func(oracle string) []StaticAbility {
+		if oracle != fsLordOracle {
+			return nil
+		}
+		return keywordLordStatics("first strike")
+	})
+
+	lord := pushDamageStepCard(g, Card{
+		Name: "Stromkirk Captain", TypeLine: "Creature — Test", OracleID: fsLordOracle,
+		Power: 1, Toughness: 1, Owner: atk.ID, Controller: atk.ID,
+	})
+	bear := pushDamageStepCreature(g, atk, "Granted Striker", 2, 2)
+	blocker := pushDamageStepCreature(g, def, "First Strike Blocker", 2, 2, "first strike")
+
+	declareAttacks(t, g, lord, bear)
+	if err := g.DeclareBlocker(blocker, lord); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep into the first damage step: %v", err)
+	}
+	if g.Turn.Step != StepFirstStrikeDamage {
+		t.Fatalf("step: got %q, want %q", g.Turn.Step, StepFirstStrikeDamage)
+	}
+	if onBattlefield(g, lord) {
+		t.Fatal("fixture: the lord should have died to the blocker's first-strike damage")
+	}
+	if got := StartingLife - def.Life; got != 2 {
+		t.Fatalf("defender lost %d in the first step, want 2 — the granted striker only", got)
+	}
+
+	passUntilStep(t, g, StepCombatDamage)
+	if got := StartingLife - def.Life; got != 2 {
+		t.Errorf("defender lost %d over both steps, want 2 — the granted striker must not deal damage twice", got)
+	}
+}
+
+// The mirror. A creature that GAINS first strike in the window between
+// the steps had neither keyword when the first step began, so it deals
+// its damage in the second step — it does not miss combat because the
+// second step re-read its keywords and skipped it.
+func TestB716CreatureGainingFirstStrikeInTheWindowStillDealsRegularDamage(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+	withStaticAbilities(t, func(oracle string) []StaticAbility {
+		if oracle != fsLordOracle {
+			return nil
+		}
+		return keywordLordStatics("first strike")
+	})
+
+	striker := pushDamageStepCreature(g, atk, "Youthful Knight", 2, 1, "first strike")
+	bear := pushDamageStepCreature(g, atk, "Grizzly Bears", 2, 2)
+	declareAttacks(t, g, striker, bear)
+
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep into the first damage step: %v", err)
+	}
+	if got := StartingLife - def.Life; got != 2 {
+		t.Fatalf("defender lost %d in the first step, want 2", got)
+	}
+	// The lord arrives in the window and grants the Bears first strike
+	// — too late to matter (CR 702.7c).
+	pushTypedTestCard(g, Card{
+		Name: "Stromkirk Captain", TypeLine: "Creature — Test", OracleID: fsLordOracle,
+		Power: 1, Toughness: 1, Owner: atk.ID, Controller: atk.ID,
+	})
+	passUntilStep(t, g, StepCombatDamage)
+
+	if got := StartingLife - def.Life; got != 4 {
+		t.Errorf("defender lost %d over both steps, want 4 — the Bears deal regular damage", got)
+	}
+	if !HasKeyword(findBattlefieldCard(g, bear), "first strike") {
+		t.Error("fixture: the lord should have granted the Bears first strike by the second step")
+	}
+}
+
+// The double-strike half of CR 702.7c is the one clause the second step
+// still reads LIVE: it includes the creatures that have double strike
+// NOW. A creature whose granted double strike goes away in the window
+// dealt its damage in the first step and deals none in the second.
+func TestB716LosingDoubleStrikeInTheWindowStopsTheSecondHit(t *testing.T) {
+	g := newActiveGame(t)
+	atk, def := g.Seats[0], g.Seats[1]
+	withStaticAbilities(t, func(oracle string) []StaticAbility {
+		if oracle != dsLordOracle {
+			return nil
+		}
+		return keywordLordStatics("double strike")
+	})
+
+	lord := pushDamageStepCard(g, Card{
+		Name: "Double Strike Lord", TypeLine: "Creature — Test", OracleID: dsLordOracle,
+		Power: 1, Toughness: 1, Owner: atk.ID, Controller: atk.ID,
+	})
+	bear := pushDamageStepCreature(g, atk, "Granted Double Striker", 2, 2)
+	declareAttacks(t, g, bear)
+
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep into the first damage step: %v", err)
+	}
+	if got := StartingLife - def.Life; got != 2 {
+		t.Fatalf("defender lost %d in the first step, want 2", got)
+	}
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(lord) })
+	passUntilStep(t, g, StepCombatDamage)
+
+	if got := StartingLife - def.Life; got != 2 {
+		t.Errorf("defender lost %d over both steps, want 2 — the double strike went away in the window", got)
 	}
 }
 

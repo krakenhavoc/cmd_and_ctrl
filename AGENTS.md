@@ -1079,8 +1079,12 @@ and a turn that does not need it walks straight through it without
 entering it (`Game.stepExistsLocked`). Each step grants priority, so a
 "whenever this deals combat damage" trigger from first-strike damage
 goes on the stack and resolves BEFORE regular damage is dealt, and the
-table can respond in between (#717). Nothing about this is per card:
-declare the keyword and the turn structure follows.
+table can respond in between (#717). Who deals damage in the second
+step is fixed as the first one begins —
+`Game.firstStrikeStepParticipants`, one record, read by both steps; the
+only keyword read left in the second step is the one CR 702.7c asks
+for, "plus the ones that have double strike now" (#716). Nothing about
+this is per card: declare the keyword and the turn structure follows.
 
 **Keyword behaviour is engine-side, not catalog-side.** You do not
 write flying/trample/deathtouch logic in the card file. The combat

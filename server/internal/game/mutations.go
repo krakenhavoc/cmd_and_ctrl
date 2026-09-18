@@ -5332,7 +5332,13 @@ func (g *Game) ResolveCombatDamage() {
 // did not. runStepEntryHooksLocked calls it on entry to
 // StepCombatDamage.
 //
-// Who deals damage here is participatesInStepLocked's call.
+// Who deals damage here is read off g.firstStrikeStepParticipants, the
+// record taken as the FIRST step began, never off the creatures'
+// keywords now (#716, CR 702.7c): the second step includes every
+// combatant that had neither first strike nor double strike then, plus
+// the ones that have double strike right now. Between the two steps
+// sits a real priority window, so those two questions genuinely have
+// different answers — see participatesInStepLocked.
 //
 // Combat step tag (#187, ADR 0053 Decision 1): when the first-strike
 // step ran, every combat damage event of both steps is stamped with
@@ -5442,21 +5448,32 @@ func (g *Game) firstStrikeStepParticipantSetLocked() map[uuid.UUID]bool {
 }
 
 // participatesInStepLocked reports whether a combatant deals damage in
-// the given combat damage step. Per CR 702.4 / 702.7:
+// the given combat damage step. Per CR 510.4 and CR 702.7c, read off
+// the ONE participation record taken as the first step began:
 //
-//   - First combat damage step: creatures with first strike OR double
-//     strike.
-//   - Second combat damage step: creatures with double strike OR
-//     without first strike.
+//   - First combat damage step: the creatures in the record — the
+//     ones that had first strike or double strike then.
+//   - Second combat damage step: the creatures NOT in the record —
+//     the ones that had neither — plus any that have double strike
+//     now.
+//
+// Reading live keywords for the second step is the bug in #716: a
+// creature whose granted first strike died with its lord in the first
+// step would look like a non-first-striker and deal damage twice, and
+// one that gained first strike in the priority window between the
+// steps would be skipped by a step it never dealt damage in.
+//
+// An empty record means the first step did not happen, so every
+// combatant participates in the single combat damage step — which is
+// the same answer the old keyword read gave for a combat with no first
+// strike anywhere.
 //
 // Caller must hold g.mu.
 func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
-	fs := HasKeyword(c, "first strike")
-	ds := HasKeyword(c, "double strike")
 	if firstStrike {
-		return fs || ds
+		return g.firstStrikeStepParticipants[c.InstanceID]
 	}
-	return ds || !fs
+	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
 // assignAndDealCombatDamageLocked assigns and applies damage for one

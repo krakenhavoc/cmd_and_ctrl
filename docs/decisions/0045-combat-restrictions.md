@@ -1423,13 +1423,14 @@ Unchanged: everything about blocks, and the client.
 
 ---
 
-## Amendment (2026-09-18): two combat damage steps with a priority window between them (#717)
+## Amendment (2026-09-18): two combat damage steps with a priority window between them (#717, #716)
 
 Amends nothing above — Decisions 1-23 are about which declarations are
 legal and when they are announced, and none of them moves. This adds
 the step AFTER the declarations: CR 510.4's second combat damage step,
-tracked on [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717).
-It is
+tracked on [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717),
+and the participation rule that goes with it,
+[#716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/716). It is
 the answer [ADR 0053](0053-combat-damage-beats.md) Decision 5 deferred
 when #187 shipped presentation-only.
 
@@ -1442,8 +1443,9 @@ CR 506.1: "there are two combat damage steps" in a combat where a
 creature has first strike or double strike. CR 510.4: if at least one
 attacking or blocking creature has first strike or double strike **as
 the combat damage step begins**, the phase gets an extra combat damage
-step, the first one for those creatures, and and the second for the rest
-(CR 702.4b, 702.7b). CR 510.3 / 510.3a give the
+step, the first one for those creatures, and the second for the
+creatures that had NEITHER keyword then plus the ones that have double
+strike now (CR 702.4b, 702.7b, 702.7c). CR 510.3 / 510.3a give the
 active player priority after each step, with the damage triggers put on
 the stack first.
 
@@ -1491,6 +1493,42 @@ is a plan entry that is present or absent, and `stepExistsLocked` is the
 predicate that decides. ADR 0059 Decision 12 is superseded on the SHAPE
 and stands on everything else (both steps count for `combat_damage`'s
 ordinal; no card reads it; the client's stops treat the pair as one).
+
+### Decision 25. One participation record, taken as the first step begins
+
+`Game.firstStrikeStepParticipants` (unexported, `map[uuid.UUID]bool`) is
+the combatants that had first strike or double strike as the FIRST
+combat damage step began. `firstStrikeStepParticipantSetLocked` is the
+one scan that produces it, and it answers both questions CR 510.4 asks
+at that instant: whether the step exists (the set is non-empty) and who
+deals damage in it.
+
+`participatesInStepLocked` reads only that record:
+
+- first step — the creatures in the record;
+- second step — the creatures NOT in the record, plus any that have
+  double strike now.
+
+That second line is #716. The old `participatesInSubstep` re-read
+`HasKeyword` after the layer recompute between the passes, so a creature
+whose granted first strike died with its lord looked like a
+non-first-striker and dealt its damage a second time; one that gained
+first strike in between was skipped by a step it had never dealt damage
+in. With a real priority window between the steps those are no longer
+edge cases — the window is exactly where a lord dies and a pump lands.
+The live keyword read that remains is the one CR 702.7c asks for:
+"plus the ones that have double strike now".
+
+**It is combat-scoped state**, cleared by `clearCombatLocked` with the
+declarations it describes, and carried by `Clone` / `RestoreFrom` and the
+persisted snapshot — classified `carried` in `clone.go`, `snapshot.go`
+and `snapshot_drift_test.go` next to `announcedBlocks` and
+`announcedAttacks`. It is carried for one more reason than they are: the
+window between the steps is a priority window, so an undo or a deploy
+restore can land inside it, and a record dropped there would let every
+first-striker hit twice. An older snapshot restores with an empty
+record, which reads as "there was no first-strike step" — right for
+every file written before the steps existed.
 
 ### What this fixes along the way
 

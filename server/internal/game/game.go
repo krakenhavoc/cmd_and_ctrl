@@ -333,22 +333,34 @@ type Game struct {
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
 
-	// firstStrikeStepParticipants is THIS combat's CR 510.4
+	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
 	// had first strike or double strike as the FIRST combat damage
-	// step began, recorded once at that step's entry (#717).
+	// step began (#716). It is recorded once, at that step's entry,
+	// and both damage steps read it instead of re-reading keywords:
 	//
-	// It is what the first-strike step deals damage for, and it is
-	// how the regular step knows there WAS a first-strike step —
-	// which is what decides whether either step's damage carries the
-	// ADR 0053 Event.CombatStep tag. Empty means the combat had one
-	// damage step, which is also the zero value's answer.
+	//   - the first-strike step deals damage for exactly this set;
+	//   - the regular step deals damage for every combatant NOT in
+	//     it, plus the ones that have double strike right now.
 	//
+	// Re-reading the keywords in the second step is the bug #716
+	// reports. Between the two steps there is a real priority window
+	// (#717), so a lord granting first strike can die to first-strike
+	// damage, or be Murdered in the window: the creature it pumped
+	// has already dealt its damage and must not deal it again, and
+	// one that GAINS first strike in the window is owed its ordinary
+	// damage in the second step rather than a first-strike hit it
+	// missed.
+	//
+	// Empty means the first-strike step did not happen, so every
+	// combatant deals damage in the single combat damage step — which
+	// is also what the zero value gives a combat that never had one.
 	// Cleared by clearCombatLocked alongside the declarations it
 	// describes, and carried by Clone / RestoreFrom and the persisted
-	// snapshot for the reason announcedBlocks is, plus one of its own:
-	// the gap between the two steps is a priority window, so an undo
-	// or a restore can land inside it.
+	// snapshot for the reason announcedBlocks is: the window between
+	// the steps is a priority window, so an undo or a restore can land
+	// inside it, and a record that was dropped there would let a
+	// first-striker hit twice.
 	firstStrikeStepParticipants map[uuid.UUID]bool
 
 	// Listeners is the per-game event subscriber list. Populated by
