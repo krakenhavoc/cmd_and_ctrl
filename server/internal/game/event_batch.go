@@ -28,7 +28,11 @@ import "github.com/google/uuid"
 // PLAY MOVES ON — and there are exactly two such points:
 //
 //   - a stack item begins to resolve (resolveTopOfStackLocked), and
-//   - the turn cursor enters a new step (advanceCursorLocked).
+//   - the turn cursor enters a new step (advanceCursorLocked), plus
+//     the one step the RULES split in two and the cursor does not:
+//     the first-strike and regular combat damage steps (CR 510.4),
+//     which resolveCombatDamageLocked runs back to back inside the
+//     cursor's single combat_damage step (#784).
 //
 // Nothing else opens a batch. That is deliberate, and the two
 // consequences are the ones the rules want:
@@ -50,6 +54,22 @@ import "github.com/google/uuid"
 // a batch and fire a "one or more" trigger once. That is what the
 // old in-flight check did too, so it is not a regression, and manual
 // zone shoving has no rules occurrence to count in the first place.
+//
+// # The key, and its second dimension (#784)
+//
+// A batch is WHEN; the key is WHAT. CR 603.2c's other half — "it can
+// trigger repeatedly if one event contains multiple occurrences" —
+// is what a clause naming an object asks for: "whenever one or more
+// creatures you control deal combat damage to A PLAYER" is one
+// trigger per player dealt damage in that damage step, and "whenever
+// you attack A PLAYER" one per player attacked in that declaration.
+// TriggeredAbility.BatchKey reads that object off the event and
+// oncePerBatchKeyLocked appends it to the ability's Key, so the guard
+// reads "(source, key, object) once per batch". An ability whose
+// clause names no object leaves BatchKey nil and is unchanged. One
+// key with two dimensions, one guard, still no second dedupe path —
+// which is what let #784 delete the last hand-rolled one
+// (TriggerInFlightForEffect, Breena and Nature's Will).
 
 // beginEventBatchLocked opens a new event batch. Every Event emitted
 // from here until the next call is stamped with it, and a
@@ -76,6 +96,25 @@ func (g *Game) currentEventBatchLocked() uint64 {
 	return g.eventBatch
 }
 
+// oncePerBatchKeyLocked is the ability key the guard below is keyed
+// on: TriggeredAbility.Key, plus the dimension BatchKey reads off the
+// event when the printed clause quantifies over an object (#784).
+//
+// One key, two dimensions — not a second dedupe path. A clause that
+// names no object (Dour Port-Mage's "one or more creatures leave the
+// battlefield") has a nil BatchKey and keys on the label alone; one
+// that names a player ("deal combat damage to A PLAYER", "attack A
+// PLAYER") appends that player, so the batch collapses per player
+// instead of per step (CR 603.2c).
+//
+// Caller must hold g.mu in write mode.
+func oncePerBatchKeyLocked(t TriggeredAbility, ev Event, source *Card, g *Game) string {
+	if t.BatchKey == nil {
+		return t.Key
+	}
+	return t.Key + "|" + t.BatchKey(ev, source, g)
+}
+
 // oncePerBatchAllowsLocked is the CR 603.2c guard behind
 // TriggeredAbility.OncePerBatch: it reports whether the ability named
 // by (source, key) may still fire for the batch `batch`, and records
@@ -84,7 +123,9 @@ func (g *Game) currentEventBatchLocked() uint64 {
 // Test-and-set in one call, because the two halves must not drift:
 // every caller that asks is about to dispatch.
 //
-// An empty key means "any trigger from this source", matching
+// `key` is oncePerBatchKeyLocked's output — the ability's Key with
+// its per-event dimension appended when it has one. An empty key
+// means "any trigger from this source", matching
 // TriggeredAbility.Key's own contract; TallyKey handles it the same
 // way TurnTally.Triggered does.
 //

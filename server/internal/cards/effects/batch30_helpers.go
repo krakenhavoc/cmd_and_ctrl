@@ -206,16 +206,13 @@ func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, ma
 	return ok && match(c)
 }
 
-// b30NonHumanCreatureYouControlDealtCombatDamageToPlayer is Keeper
-// of Fables' condition: combat damage to a player by a creature the
-// source's controller controls that is not a Human. Effective
-// subtypes, so a changeling is a Human and does not count.
-func b30NonHumanCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && !c.HasSubtype("Human")
+// b30NonHuman is Keeper of Fables' narrowing of the creatures that
+// count — the ones that are not Humans. Effective subtypes, so a
+// changeling is a Human and does not count. The rest of the printed
+// condition (combat damage to a player, by a creature you control,
+// once per player) is the constructor's, #784.
+func b30NonHuman() CardPredicate {
+	return Not(Subtype("Human"))
 }
 
 // b30EndStepAndTotalToughnessAtLeast is Betor's intervening-if at

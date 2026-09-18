@@ -340,14 +340,19 @@ func b17HistoricSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) b
 	return ok && b09IsHistoric(c)
 }
 
+// b17BreenaKey names Breena's ability for the once-per-batch guard
+// (#784). The stack LABEL below is computed per attacked opponent and
+// so cannot be the key; the opponent is the guard's own second
+// dimension (OncePerBatchPerPlayer), which is what keeps a
+// five-creature attack on one opponent to one card while a split
+// attack on two still triggers twice.
+const b17BreenaKey = "Breena, the Demagogue — an opponent was attacked"
+
 // b17BreenaLabel is the stack label of Breena's trigger for one
 // attacked opponent. The attacked player's name is in it because the
-// ability triggers once per opponent attacked per combat. The label
-// is computed per event, so the dedup is TriggerInFlightForEffect —
-// the per-event-key leftover, not the OncePerBatch batch guard,
-// until #784 — and it is what keeps a five-creature attack on one
-// opponent from drawing five cards while a split attack on two still
-// triggers twice.
+// ability triggers once per opponent attacked per combat: it is what
+// tells two of them apart on the stack, and what the once-per-turn
+// tally (the declared extra-combat retreat) keys on.
 func b17BreenaLabel(g *game.Game, opp uuid.UUID) string {
 	name := "an opponent"
 	if p := g.PlayerByIDForEffect(opp); p != nil {

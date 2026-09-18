@@ -5292,6 +5292,16 @@ func (g *Game) resolveCombatDamageLocked() {
 		// ability (anthem off the field, etc.) and its absence
 		// affects the regular-substep attackers/blockers.
 		g.RecomputeLayersIfStaleLocked()
+		// #784 / CR 510.4: this substep IS a combat damage step of
+		// its own, and the regular pass below is a second one. The
+		// engine runs both inside one turn cursor step, so the step
+		// entry's batch covers only the first — the regular pass
+		// opens its own, and "whenever one or more creatures you
+		// control deal combat damage to a player" triggers once for
+		// each, as in paper. The event_batch.go boundary rule reads
+		// "the cursor enters a new step"; this is the one step the
+		// rules split in two and the cursor does not.
+		g.beginEventBatchLocked()
 		regularStep = CombatStepRegular
 	}
 

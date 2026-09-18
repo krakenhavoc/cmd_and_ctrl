@@ -20,10 +20,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     at all. The "may" is a real prompt; the bounce reads the
 //     attacker off the event and returns it if it is still on the
 //     battlefield.
-//   - "One or more … deal combat damage" is the Professional
-//     Face-Breaker dedup by label: the engine emits one damage event
-//     per creature, and the second is declined as a later event of
-//     the same batch (OncePerBatch; see AGENTS.md §7).
+//   - "One or more … deal combat damage TO A PLAYER" is the
+//     Professional Face-Breaker shape: the engine emits one damage
+//     event per creature, and a later one naming the same player is
+//     declined as a later event of the same batch, while a creature
+//     connecting with a SECOND player is its own occurrence and its
+//     own card (CR 603.2c, #784 —
+//     WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer;
+//     see AGENTS.md §7).
 //
 // No simplification.
 const b18GrazilaxxDrawLabel = "Grazilaxx, Illithid Scholar — draw a card"
@@ -55,9 +59,8 @@ func init() {
 						})
 				},
 			},
-			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g)
-			}, b18GrazilaxxDrawLabel, Do(DrawCards{N: 1}))),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(nil,
+				b18GrazilaxxDrawLabel, Do(DrawCards{N: 1})),
 		},
 	})
 }

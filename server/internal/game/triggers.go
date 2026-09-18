@@ -202,6 +202,31 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// BatchKey is the SECOND dimension of the OncePerBatch key: the
+	// distinct object the printed clause quantifies over, read off
+	// the event (#784).
+	//
+	// CR 603.2c fires one trigger per occurrence, and a clause that
+	// names an object counts one occurrence per object — "whenever
+	// one or more creatures you control deal combat damage to A
+	// PLAYER" is once per player dealt damage, not once per damage
+	// step (Keeper of Fables, ruling 2019-10-04), and "whenever you
+	// attack A PLAYER" is once per player attacked (Horizon
+	// Explorer, Neyali). Key alone cannot say that: it is static
+	// catalog data and the player is only known from the event.
+	//
+	// With this set the guard becomes "(source, key, this player)
+	// once per batch": three creatures hitting three opponents in
+	// one damage step are three triggers, and two creatures hitting
+	// one opponent are one. Nil — the usual case — leaves the guard
+	// keyed on (source, key) alone.
+	//
+	// Runs under g.mu in write mode, from the harvest path. MUST NOT
+	// call public locking mutators. Not persisted; catalog data, like
+	// Key. See effects.OncePerBatchPerPlayer for the one reading the
+	// catalog uses.
+	BatchKey func(ev Event, source *Card, g *Game) string
+
 	// Chapter is the Saga chapter number this ability is printed
 	// against — 1 for "I —", 3 for "III —" (CR 714.2b). Zero for
 	// every ability that is not a chapter, which is every ability on
@@ -384,7 +409,7 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 //
 // Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
 func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
-	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, t.Key) {
+	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, ev, &source, g)) {
 		return
 	}
 	g.dispatchTriggerInstanceLocked(ev, source, lki, t, doublerRef{})
@@ -393,7 +418,7 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 // harvestMatchLocked fixes the additional-instance count at the moment this
 // ability triggered, before prompts or items are queued.
 func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, fromSpell bool) {
-	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, t.Key) {
+	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
 	extra := g.triggerDoublersLocked(pass, source, lki, t, fromSpell)
@@ -597,56 +622,6 @@ func (g *Game) findCardByIDLocked(cardID uuid.UUID) *Card {
 		}
 	}
 	return nil
-}
-
-// TriggerInFlightForEffect reports whether an instance of the ability
-// identified by (source, key) is between "fired" and "resolved": on
-// PendingTriggers, on the stack, or waiting on a trigger prompt or a
-// target pick. An empty key matches any trigger from the source.
-//
-// This is NOT the "whenever one or more …" guard. That is
-// OncePerBatch, and since #829 it keys on Event.Batch
-// (event_batch.go) rather than on what is in flight. What is left
-// here is the narrower case OncePerBatch cannot express: a card whose
-// dedup key is computed PER EVENT and so cannot ride the static
-// TriggeredAbility.Key — Breena's per-opponent label and Nature's
-// Will's per-damaged-player label, which are its only two callers.
-// Those two still carry #829's failure in their own dimension (a
-// second batch aimed at the same player, while the first batch's
-// trigger is on the stack, is declined); #784 is the issue that gives
-// a per-event key a real batch identity and retires this helper.
-//
-// Runs under the lock the caller already holds; caller must hold
-// g.mu.
-func (g *Game) TriggerInFlightForEffect(source uuid.UUID, key string) bool {
-	match := func(item *StackItem) bool {
-		return item != nil && item.Kind == StackItemTriggered && item.SourceCardID == source && (key == "" || item.Label == key)
-	}
-	for _, item := range g.PendingTriggers {
-		if match(item) {
-			return true
-		}
-	}
-	for _, item := range g.StackMeta {
-		if match(item) {
-			return true
-		}
-	}
-	for _, c := range g.PendingChoices {
-		if c == nil || c.Source != source {
-			continue
-		}
-		if c.Kind != PendingChoiceTriggerPrompt && c.Kind != PendingChoicePickTarget {
-			continue
-		}
-		// A prompt from an ability with no Key (a hand-written literal)
-		// blocks every key of its source: that is the source-wide check
-		// the old helpers made, and the conservative direction.
-		if key == "" || c.triggerResume == nil || c.triggerResume.ability.Key == "" || c.triggerResume.ability.Key == key {
-			return true
-		}
-	}
-	return false
 }
 
 // triggerWatches reports whether kinds contains kind. Linear scan;

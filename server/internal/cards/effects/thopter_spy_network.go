@@ -20,11 +20,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // response still yields a Thopter — the same declared corner every
 // intervening-if card in the catalog takes.
 //
-// The combat half is "one or more", so it is deduplicated with the
-// batch 04 helper: the engine emits one damage event per creature,
-// and the second artifact creature's event is declined as a later
-// event of the same batch (OncePerBatch; see AGENTS.md §7). Without
-// that the card would ship STRONGER than printed (#259).
+// The combat half is "one or more … to a player", so it is one draw
+// per PLAYER the artifact creatures connect with (CR 603.2c, #784):
+// the engine emits one damage event per creature, and a second one
+// naming the same player is declined as a later event of the same
+// batch, while a second PLAYER hit is its own occurrence and its own
+// card (see AGENTS.md §7). Without the batch half the card would
+// ship STRONGER than printed (#259); without the player half,
+// weaker.
 func init() {
 	Register(Spec{
 		OracleID:     "49be65fd-3755-410d-b0dc-2e5861ea2552",
@@ -35,13 +38,8 @@ func init() {
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03ArtifactsControlled(g, source.Controller) > 0
 			}, "Thopter Spy Network — create a 1/1 Thopter", Do(CreateToken{Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: 1})),
-			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !combatDamageToPlayerBy(ev, source.Controller, g) {
-					return false
-				}
-				src, ok := g.LookupCardForEffect(ev.Source)
-				return ok && src.IsArtifact()
-			}, "Thopter Spy Network — draw a card", Do(DrawCards{N: 1}))),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(Artifact(),
+				"Thopter Spy Network — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }
