@@ -38,6 +38,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { autopassDecision } from "../lib/autopassDecision";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -176,120 +177,73 @@
   // S13.6: autopass mode is a session-scoped toggle ("get me
   // through this turn" / "I'm tapped out, don't ask me"). Stays on
   // until the viewer clicks the button again — not a one-shot.
-  // When on, overrides every other gate: settings.autoPassPriority,
-  // stepStops grid, smartAutoPass predicate, manual pins. The
-  // effect still requires the viewer to actually hold priority (so
-  // we don't spam the server with "you do not hold priority"
-  // rejections on opponents' turns — the toggle is ambient intent,
-  // not a manual pass loop).
+  // When on, it overrides settings.autoPassPriority, the stepStops
+  // grid and the smartAutoPass predicate. It does NOT override a
+  // manual one-time pin (#526) — see autopassDecision.ts for the
+  // full precedence and why. The effect still requires the viewer to
+  // actually hold priority (so we don't spam the server with "you do
+  // not hold priority" rejections on opponents' turns — the toggle
+  // is ambient intent, not a manual pass loop).
+  //
+  // The gate chain itself lives in lib/autopassDecision.ts: it is
+  // priority logic a player relies on mid-game, it had a precedence
+  // bug in it for four sprints (#526), and it was untestable while
+  // it sat inline in this effect. This effect now does the reactive
+  // reads and owns the two side effects (send the pass, disarm the
+  // toggle); the module decides.
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
   $effect(() => {
-    if (!viewerHasPriority) return;
-    if (mulligansOpen || gameEnded || viewerEliminated) return;
-    // Never auto-pass priority while the viewer has an open choice to
-    // make (e.g. an optional trigger's yes/no prompt). The choice
-    // persists server-side regardless, but auto-passing here would
-    // race the modal and let priority slip away before the player
-    // answers. The chooser must resolve their pending choice first.
-    if (view?.pending_choices?.some((c) => c.chooser === viewerID)) return;
-    // #328: never auto-pass a declare-blockers window the viewer can
-    // actually block in. This sits with the mulligan and pending-
-    // choice guards, ABOVE the autopass toggle, because it is the
-    // same kind of thing: a turn-based action the player owes, not a
-    // priority response they may decline to make. Declining to block
-    // is still legal — an explicit pass is how you decline — but a
-    // human has to be the one who does it. The reporter had the
-    // toggle on and lost 8 life to three unblocked attackers with an
-    // untapped creature out; a skipped block cannot be undone and
-    // there is no workaround.
-    //
-    // Holds while ANY eligible blocker remains, not just until the
-    // first declaration — otherwise auto-pass would slam the window
-    // shut the moment you assigned one blocker of an intended two.
-    if (owesBlockDecision(view, viewerID)) return;
-    // #628 (CR 726): the server has spotted a trigger loop and
-    // suspended AUTOMATIC passing for the whole table. Sits here,
-    // above the toggle, for the same reason the guards above it do:
-    // it is not a question about what this viewer can do, and the
-    // toggle must not be able to out-vote it — the toggle is exactly
-    // what was driving the loop. The "next" button still passes by
-    // hand, so a table that wants to watch the loop run can, one
-    // click at a time.
-    if (loopSuspended) return;
     const step = view?.turn?.step;
-    if (!step) return;
+    const verdict = autopassDecision({
+      viewerHasPriority,
+      tableBusy: mulligansOpen || gameEnded || viewerEliminated,
+      // Never auto-pass while the viewer has an open choice to make
+      // (e.g. an optional trigger's yes/no prompt). The choice
+      // persists server-side regardless, but auto-passing here would
+      // race the modal and let priority slip away before the player
+      // answers.
+      hasPendingChoice: !!view?.pending_choices?.some((c) => c.chooser === viewerID),
+      // #328: never auto-pass a declare-blockers window the viewer
+      // can actually block in. Declining to block is legal — an
+      // explicit pass is how you decline — but a human has to be the
+      // one who does it, and a skipped block cannot be undone.
+      owesBlockDecision: owesBlockDecision(view, viewerID),
+      // #628 (CR 726): the server has spotted a trigger loop and
+      // suspended AUTOMATIC passing for the whole table. The "next"
+      // button still passes by hand.
+      loopSuspended,
+      step,
+      autopassToggle: autopassEnabled,
+      viewerIsActive,
+      autopassPersistThroughTurns: $settings.gameplay.autopassPersistThroughTurns,
+      // Read via the $manualStops subscription (not the non-reactive
+      // hasManualStop helper) so unpinning while holding priority
+      // re-runs this effect and resumes auto-pass immediately rather
+      // than on the next snapshot.
+      manualStop: !!step && $manualStops.has(step as StepID),
+      autoPassPriority: $settings.gameplay.autoPassPriority,
+      stackEmpty: stackEmpty(view),
+      holdPriority: $holdPriority,
+      autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
+      ownsEveryStackItem: ownsEveryStackItem(view, viewerID),
+      stepStop: step ? $settings.gameplay.stepStops[step] : undefined,
+      smartAutoPass: $settings.gameplay.smartAutoPass,
+      hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
+    });
 
-    const autopass = autopassEnabled;
-
-    // S13.6 safety belt (gameplay.autopassPersistThroughTurns): when
-    // the flag is off (default), autopass auto-clears the first time
-    // the cursor enters the viewer's own precombat_main — so a
-    // forgotten toggle doesn't silently skip your turn. Users who
-    // know they want autopass to outlive their own main phase flip
-    // the danger setting on and accept the trade. We clear BEFORE
-    // firing pass_priority so the toggle going off means the cursor
-    // holds for the viewer's turn.
-    if (
-      autopass &&
-      step === "precombat_main" &&
-      viewerIsActive &&
-      !$settings.gameplay.autopassPersistThroughTurns
-    ) {
+    if (verdict === "hold") return;
+    if (verdict === "clear-toggle") {
+      // S13.6 safety belt (gameplay.autopassPersistThroughTurns):
+      // when the flag is off (default), autopass auto-clears the
+      // first time the cursor enters the viewer's own precombat_main
+      // — so a forgotten toggle doesn't silently skip your turn.
+      // Users who know they want autopass to outlive their own main
+      // phase flip the danger setting on and accept the trade. The
+      // clear happens INSTEAD of a pass, so the toggle going off
+      // means the cursor holds for the viewer's turn.
       autopassEnabled = false;
       return;
-    }
-
-    // Conventional (non-autopass) path: honour every gate.
-    if (!autopass) {
-      if (!$settings.gameplay.autoPassPriority) return;
-      // Manual one-time stops override everything below — including
-      // the #323 own-stack pass, so a pinned step still hands you
-      // the cursor with your own spell on the stack. Click a phase
-      // icon in PhaseDisplay to pin; the pin clears on step
-      // transition. "Fake a game action" — viewer gets the cursor
-      // even when the engine has nothing to offer (want to think /
-      // bluff / respond off-catalog). Read via the $manualStops
-      // subscription (not the non-reactive hasManualStop helper) so
-      // unpinning while holding priority re-runs this effect and
-      // resumes auto-pass immediately rather than on the next
-      // snapshot.
-      if ($manualStops.has(step as StepID)) return;
-      if (!stackEmpty(view)) {
-        // A non-empty stack stops: a spell card OR an ability item
-        // (S19 triggers have no card on Game.Stack, only a
-        // stack_items entry). Every trigger and every spell an
-        // OPPONENT put up is a window the viewer gets to answer,
-        // and nothing below weakens that.
-        //
-        // #323 carves out exactly one case: a stack on which every
-        // item is the viewer's own. Casting the spell was already
-        // the decision — being asked "Counter or Pass?" about your
-        // own spell is the friction the issue reports. The hatch is
-        // the session `hold` toggle (phase widget + stack header),
-        // which has to be armed BEFORE the cast because the pass
-        // fires on the very next snapshot. With it on, or with the
-        // persistent setting off, this is the pre-#323 behaviour.
-        // ownsEveryStackItem also refuses while pending_triggers is
-        // still draining, since those may belong to anyone.
-        if ($holdPriority) return;
-        if (!$settings.gameplay.autoPassOwnStack) return;
-        if (!ownsEveryStackItem(view, viewerID)) return;
-        // Fall through to pass: the step-stops grid below is about
-        // "give me the cursor at this step", a question the viewer
-        // already answered by casting during it.
-      } else if ($settings.gameplay.stepStops[step] === true) {
-        // Stop here if the viewer has opted to stop on this step.
-        // The map omits no-priority steps (Untap / Cleanup); for
-        // those, the viewer can never hold priority anyway.
-        // `smartAutoPass` adds an escape hatch: if the stop lands on
-        // the viewer but the legality engine reports no legal
-        // response, pass anyway. Predicate errs conservative
-        // (false-positive-stop > false-negative-skip per ADR 0009 §3).
-        const smart = $settings.gameplay.smartAutoPass;
-        const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
-        if (canRespond) return;
-      }
     }
 
     // Dedupe by snapshot seq so we don't fire twice on the same
