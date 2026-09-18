@@ -298,22 +298,36 @@ func TestMonarchEliminatedMonarchDrawsNothing(t *testing.T) {
 	monarch := g.Seats[2]
 	crown(t, g, monarch.ID)
 
-	before := monarch.Hand.Size()
 	if err := g.Concede(monarch.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
 	if g.Monarch == monarch.ID {
 		t.Fatalf("crown stayed with the conceded player")
 	}
+	// Hand.Size() cannot be the probe. CR 800.4a (#769) sweeps every
+	// zone the departed player owns, so their hand is empty here
+	// whether or not anything drew into it — the original assertion
+	// read the sweep as a draw of -7. Count the draw events aimed at
+	// the seat instead: EventDrawCard fires per card and carries the
+	// drawer in Actor, so it sees a draw that lands nowhere.
+	firstAfterConcede := len(g.Events)
+
 	// Walk a full cycle; the eliminated seat's end step never comes,
-	// and nothing draws into their hand.
+	// so its monarch draw never triggers.
 	for i := 0; i < len(g.Seats); i++ {
 		advanceTo(t, g, StepEnd)
 		settleMonarchStack(t, g)
 		advanceTo(t, g, StepUpkeep)
 	}
-	if monarch.Hand.Size() != before {
-		t.Errorf("eliminated monarch drew %d cards", monarch.Hand.Size()-before)
+
+	drew := 0
+	for _, ev := range g.Events[firstAfterConcede:] {
+		if ev.Kind == EventDrawCard && ev.Actor == monarch.ID {
+			drew++
+		}
+	}
+	if drew != 0 {
+		t.Errorf("eliminated monarch drew %d cards", drew)
 	}
 }
 
