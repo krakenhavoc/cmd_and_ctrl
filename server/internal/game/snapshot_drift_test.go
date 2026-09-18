@@ -380,6 +380,15 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	// #804's CR 726 shortcut prompt. Carried for the reason
+	// LoopNotice is: the key is the only way back to the run the
+	// answer is about, and a restored game that forgot it would put a
+	// question about nothing in front of the loop's controller — or,
+	// worse, take an answer and attach the allowance to no run at all,
+	// which is a table that starts spinning again.
+	"LoopShortcutKey", carried, "",
+	"LoopShortcutCount", carried, "",
+	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",

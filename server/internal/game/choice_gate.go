@@ -132,6 +132,15 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceEntryPayLife:        true,
 	PendingChoiceCopyTarget:          true,
 	PendingChoiceCreatureType:        true,
+	// #804, CR 726. The one kind whose blocking is worth arguing
+	// about, since ADR 0055 §4 was careful that the loop breaker
+	// refuse no passes. It blocks: the shortcut is proposed while the
+	// loop's trigger is still on the stack, and what the answer
+	// decides is how many times that trigger resolves next. A table
+	// that could pass through the question would be answering it by
+	// doing. The prompt is never queued to a seat that has left, so
+	// blocking cannot wedge a table (queueLoopShortcutLocked).
+	PendingChoiceLoopShortcut: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

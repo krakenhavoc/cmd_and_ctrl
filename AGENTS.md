@@ -2075,10 +2075,20 @@ Three things to know if you touch priority, prompts or the tally:
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.
 
-The CR 726 shortcut prompt ("resolve it K more times and stop?") and
-CR 726.4's draw are not built. A new `PendingChoiceKind` would need a
-case in `internal/legal/choices.go` first — see the choice-gate note
-above and #618.
+**The shortcut prompt (#804).** Raising the notice also asks the
+repeating ability's controller "resolve it K more times, then stop?" —
+`PendingChoiceLoopShortcut`, answered with a number. The answer is an
+allowance on the tally (`TurnTally.LoopAllowance[key]`), spent one per
+resolution; while it lasts the notice is down, so the client and the
+bots pass normally with no code of their own, and the K-th resolution
+raises the notice again and re-asks. `K = 0` is "stop here" and leaves
+the table paused where the breaker put it. Two things to know if you
+touch it: answering is a player decision, so the run is cleared and
+`grantLoopShortcutLocked` puts *this key's* run back where the notice
+found it — without that re-arm, "3 more" would mean 3 + the threshold;
+and this prompt **blocks the table**, which the notice deliberately does
+not, so `notePlayerDecisionLocked` withdraws a stale one rather than
+leaving a wedge. CR 726.4's draw is still not built.
 
 ### Untapping in another player's untap step (#74)
 

@@ -572,6 +572,14 @@ export interface PendingChoiceView {
     // S30 coin call: choose heads or tails for the pending flip. A
     // stop answer is offered only when allow_stop is true.
     | "coin_call"
+    // #804 CR 726: the loop breaker has fired and the repeating
+    // ability's controller is asked how many more times it should
+    // resolve. Answered with resolve_choice { iterations }, where 0
+    // means "stop here" and leaves the table paused exactly where the
+    // breaker put it. loop_count is how many times it has already
+    // resolved this turn; loop_max_iterations is the ceiling the
+    // engine will accept.
+    | "loop_shortcut"
     | string;
   chooser: string;
   from_player: string;
@@ -668,6 +676,11 @@ export interface PendingChoiceView {
   coins?: number;
   max_useful_wins?: number;
   wins?: number;
+  // #804: populated for kind "loop_shortcut" — how many times the
+  // repeating ability has already resolved this turn, and the largest
+  // answer the engine accepts. `reason` carries "<card> — <ability>".
+  loop_count?: number;
+  loop_max_iterations?: number;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —

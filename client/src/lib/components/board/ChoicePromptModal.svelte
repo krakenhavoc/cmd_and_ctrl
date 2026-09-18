@@ -350,6 +350,38 @@
   const confirmAccept = $derived(active?.accept_label || "Yes");
   const confirmDecline = $derived(active?.decline_label || "No");
 
+  // #804 loop_shortcut — CR 726. The loop breaker has fired and this
+  // viewer controls the ability that is repeating, so they get the
+  // question paper asks: how many more times? A number, not a yes/no,
+  // because that is what CR 726 lets a player propose — and 0 is a
+  // real answer ("stop here"), which leaves the table paused exactly
+  // where the breaker put it, banner and all.
+  const isLoopShortcut = $derived(active?.kind === "loop_shortcut");
+  const loopCount = $derived(active?.loop_count ?? 0);
+  const loopMax = $derived(active?.loop_max_iterations ?? 1000);
+  let loopIterations = $state(10);
+  // Re-seed the field whenever a shortcut prompt opens, so a second
+  // ask does not arrive holding the first ask's number.
+  let lastLoopID: string | null = null;
+  $effect(() => {
+    if (!isLoopShortcut || !active) {
+      lastLoopID = null;
+      return;
+    }
+    if (active.id === lastLoopID) return;
+    lastLoopID = active.id;
+    loopIterations = 10;
+  });
+  const loopAnswerable = $derived(
+    Number.isFinite(loopIterations) && loopIterations >= 0 && loopIterations <= loopMax,
+  );
+
+  function submitLoopShortcut(iterations: number): void {
+    if (!active || !viewerID) return;
+    if (iterations < 0 || iterations > loopMax) return;
+    answer({ iterations });
+  }
+
   // #744 coin_call — one heads/tails answer covers the number of coins
   // in this instruction. A stop button is shown only for effects such
   // as Fiery Gambit that explicitly allow ending a winning chain.
@@ -809,6 +841,41 @@
           {#if coinAllowStop}
             <button type="button" class="ghost" onclick={() => answerCoin("stop")}>Stop</button>
           {/if}
+        </div>
+      {:else if isLoopShortcut}
+        <h2 id="choice-title">
+          {active.reason || "This ability keeps resolving"}
+          <span class="prompt-src" aria-hidden="true">shortcut · CR 726</span>
+        </h2>
+        <p class="prompt-hint">
+          It has resolved {loopCount}
+          {loopCount === 1 ? "time" : "times"} this turn with nobody doing anything in between. Say how
+          many more times it should resolve and the table will run them without stopping; stop here leaves
+          auto-pass paused so you can step through by hand.
+        </p>
+        <div class="prompt-foot">
+          <label class="loop-iterations">
+            <span>More times</span>
+            <input
+              type="number"
+              min="0"
+              max={loopMax}
+              step="1"
+              bind:value={loopIterations}
+              aria-label="How many more times to resolve it"
+            />
+          </label>
+          <button type="button" class="ghost" onclick={() => submitLoopShortcut(0)}
+            >Stop here</button
+          >
+          <button
+            type="button"
+            class="primary"
+            disabled={!loopAnswerable}
+            onclick={() => submitLoopShortcut(loopIterations)}
+          >
+            Resolve {loopIterations} more
+          </button>
         </div>
       {:else if isCreatureTypePick}
         <h2 id="choice-title">
@@ -1330,6 +1397,26 @@
     max-height: 46vh;
     overflow-y: auto;
     padding: 4px 2px;
+  }
+  /* #804 CR 726 shortcut. One number, sitting in the button row with
+     the two answers it feeds, because the question is "how many" and
+     everything else about the prompt is already said above it. */
+  .loop-iterations {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+  .loop-iterations input {
+    width: 88px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
+    background: rgba(0, 0, 0, 0.22);
+    color: inherit;
+    font-size: 14px;
   }
   .type-pick {
     padding: 6px 12px;

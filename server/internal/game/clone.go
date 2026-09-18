@@ -648,6 +648,16 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
+	// #628's loop breaker, missed by this list when it landed: the
+	// clone carries the notice (cloneLocked, above) and the persisted
+	// snapshot carries it, but the undo path did not put it back, so
+	// an undo across the moment the breaker fired left the live notice
+	// exactly as it was — stale in one direction or absent in the
+	// other. #804 makes that visible rather than merely wrong: the
+	// CR 726 prompt rewinds with PendingChoices, and a prompt without
+	// the notice it is asking about is a question about nothing.
+	g.LoopNotice = src.LoopNotice
+	g.LoopThreshold = src.LoopThreshold
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

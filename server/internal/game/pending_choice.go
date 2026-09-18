@@ -506,6 +506,25 @@ type PendingChoice struct {
 	// serialised. Added in S28.
 	mayCastResume *mayCastFrame
 
+	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
+	// PendingChoiceLoopShortcut's question (#804, CR 726).
+	//
+	// Key is the TallyKey(source, label) the answer's allowance
+	// attaches to — the ability that is repeating, named the way the
+	// tally names everything. Count is how many times it had resolved
+	// when the notice went up, which is the N in "has resolved N times
+	// this turn". Repeat marks the SECOND ask of the turn for the same
+	// loop: a shortcut ran to its end and the question came back, which
+	// is what tells `internal/legal` to offer a bot seat nothing but
+	// "stop" and so guarantees a bot-only table terminates.
+	//
+	// All three are plain data, carried by the clone and the snapshot:
+	// the prompt has to mean the same thing after an undo, and the key
+	// is the only way back to the run the answer is about.
+	LoopShortcutKey    string
+	LoopShortcutCount  int
+	LoopShortcutRepeat bool
+
 	// AcceptLabel / DeclineLabel are the two branch names a
 	// PendingChoiceConfirm renders on its buttons — the card's own
 	// words ("Pay 4 life" / "Put it on top"), because a chained
@@ -910,12 +929,16 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 // that queues and prunes a prompt each iteration run forever.
 //
 // Caller must hold g.mu.
+// The drop comes FIRST. notePlayerDecisionLocked withdraws the CR 726
+// shortcut prompt (#804) as part of clearing the loop notice, which
+// rewrites g.PendingChoices — and an index into that slice taken
+// before it ran would then name the wrong entry.
 func (g *Game) dequeueChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
-	g.notePlayerDecisionLocked()
 	g.dropChoiceLocked(idx)
+	g.notePlayerDecisionLocked()
 }
 
 // dropChoiceLocked removes the choice at index idx without recording

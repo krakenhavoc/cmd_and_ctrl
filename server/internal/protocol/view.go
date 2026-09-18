@@ -307,6 +307,14 @@ type PendingChoiceView struct {
 	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
+	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
+	// kind (CR 726): how many times the repeating ability has already
+	// resolved this turn, and the ceiling the engine will accept on
+	// the answer. The client renders a number field between 0 and the
+	// max; `reason` carries "<card> — <ability>". Answered with
+	// `{choice_id, iterations}`, where 0 means "stop here".
+	LoopCount         int `json:"loop_count,omitempty"`
+	LoopMaxIterations int `json:"loop_max_iterations,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -2072,6 +2080,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+		}
+		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
+		// count is the N in "has resolved N times this turn" and the
+		// max is the ceiling on the client's number field; Reason
+		// already carries "<card> — <ability>". Public, like the
+		// loop_notice beside it: a loop is something the whole table
+		// can see running, and everyone can see whose question it is.
+		if c.Kind == game.PendingChoiceLoopShortcut {
+			v.LoopCount = c.LoopShortcutCount
+			v.LoopMaxIterations = game.MaxLoopShortcutIterations
 		}
 		// PendingChoiceChooseCards — the chained-choice card-set pick.
 		// The candidates are frequently cards in a hand, so they go

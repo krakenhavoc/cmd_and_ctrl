@@ -226,6 +226,15 @@ answers and nothing else. The prompt is a question already in front of
 it; answering is one dispatch, and the next window carries the seat's
 whole turn. What changed is only what the *other* seats may do.
 
+**The classification of the kind added since (#804).** `loop_shortcut`,
+the CR 726 shortcut prompt, **blocks**. It is the one entry worth arguing
+about, because ADR 0055 §4 was careful that the loop breaker refuse no
+passes: the shortcut is proposed while the loop's trigger is still on the
+stack, and what the answer decides is how many times that trigger resolves
+next, so a table that could pass through the question would be answering it
+by doing. It is never queued to a seat that has left, so blocking cannot
+wedge a table.
+
 Adding a kind is now gated rather than trusted:
 `TestEveryChoiceKindIsClassifiedAndEnumerated`
 (`server/internal/legal/choice_gate_test.go`) reads every

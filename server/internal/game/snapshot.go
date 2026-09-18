@@ -442,6 +442,12 @@ type pendingChoiceSnapshot struct {
 	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
 	ChooseMin            int                    `json:"chooseMin,omitempty"`
 	ChooseMax            int                    `json:"chooseMax,omitempty"`
+	// #804 CR 726 shortcut: which run the answer's allowance attaches
+	// to, how many resolutions had happened when it was asked, and
+	// whether this is the turn's second ask.
+	LoopShortcutKey    string `json:"loopShortcutKey,omitempty"`
+	LoopShortcutCount  int    `json:"loopShortcutCount,omitempty"`
+	LoopShortcutRepeat bool   `json:"loopShortcutRepeat,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -1014,6 +1020,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -1477,6 +1486,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		LoopShortcutKey:      c.LoopShortcutKey,
+		LoopShortcutCount:    c.LoopShortcutCount,
+		LoopShortcutRepeat:   c.LoopShortcutRepeat,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
