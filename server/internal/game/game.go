@@ -815,9 +815,15 @@ func (g *Game) End() {
 	g.State = StateEnded
 }
 
-// AdvanceStep moves the turn cursor forward by one step. After the
-// cleanup step, the cursor wraps to the next seat's untap step and
-// the turn number increments. Returns the new Turn.
+// AdvanceStep is the sandbox's skip-ahead: "pass priority until this
+// step ends." With an empty stack that is one step of the cursor, the
+// way it always was. With something ON the stack it is the passes the
+// rules require first — CR 117.4, a step or phase ends only once every
+// player has passed in succession with an empty stack — so whatever
+// the step owed resolves INSIDE the step instead of after the next
+// one's turn-based actions (#914). After the cleanup step the cursor
+// wraps to the next seat's untap step and the turn number increments.
+// Returns the Turn the call ends on.
 //
 // Side effects on step transitions:
 //   - Entering first_strike_damage: the first-strike damage pass
@@ -835,7 +841,11 @@ func (g *Game) End() {
 //     the attackers and blockers; the client's combat arrows come
 //     down when the cursor reaches postcombat_main.
 //
-// Returns ErrGameNotActive if the game is not in the active state.
+// Returns ErrGameNotActive if the game is not in the active state,
+// and a *ChoicePendingError while a blocking prompt is open (#730).
+// A prompt raised by a resolution the drive itself caused is NOT an
+// error: the drive stops there with the cursor where it is, so the
+// table sees the prompt against the board that raised it.
 func (g *Game) AdvanceStep() (Turn, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -862,6 +872,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if c := g.blockingChoiceLocked(); c != nil {
 		return g.Turn, choicePendingErrorLocked(c)
 	}
+	// #914 / CR 117.4: a step does not end while the stack has
+	// anything on it. Drive the table's passes until it is empty —
+	// each resolution followed by SBAs, the trigger drain and another
+	// priority round, exactly as ordinary play does it — and only
+	// then move the cursor.
+	switch g.driveStepToEndLocked() {
+	case driveStepEnded:
+		// The last pass wrapped with an empty stack and ended the
+		// step itself. That path runs the same entry hooks this one
+		// does; finish with the state checks below so AdvanceStep's
+		// postcondition is the same however the step ended.
+		g.runStateChecksLocked()
+		return g.Turn, nil
+	case driveHalted:
+		// A prompt, a loop notice or the game ending stopped the
+		// drive. The cursor stays in the step that still owes
+		// something; no error, because the resolutions that got this
+		// far are real and the caller must see them.
+		return g.Turn, nil
+	}
 	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get
@@ -872,6 +902,87 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that accumulated during the prior step without a priority pass.
 	g.runStateChecksLocked()
 	return g.Turn, nil
+}
+
+// driveResult says how the CR 117.4 drive in AdvanceStep ended.
+type driveResult int
+
+const (
+	// driveCursorMayMove: nothing is on the stack in the step the
+	// call started in, so the cursor moves the way it always has.
+	// Also the answer when the step grants no priority at all
+	// (untap, cleanup) and there is therefore nothing to drive —
+	// the cursor still moves, so a stray stack item cannot wedge a
+	// step that no pass_priority could unstick either.
+	driveCursorMayMove driveResult = iota
+	// driveStepEnded: the passes emptied the stack and the wrap ended
+	// the step on its own. The cursor has already moved.
+	driveStepEnded
+	// driveHalted: a blocking prompt, a CR 726 loop notice, or the
+	// game ending stopped the drive with the step still owing
+	// something. The cursor has not moved.
+	driveHalted
+)
+
+// maxAdvanceStepPasses bounds the CR 117.4 drive. One resolution
+// costs up to one pass per seat, so this is ~256 resolutions at a
+// four-player table — far past anything a step legitimately owes, and
+// past the CR 726 loop breaker's own threshold, which stops the drive
+// long before this does. Hitting it halts the drive with the cursor
+// where it stands; the caller clicks again.
+const maxAdvanceStepPasses = 1024
+
+// driveStepToEndLocked passes priority around the table for the
+// caller until the step's stack is empty — CR 117.4's "all players
+// pass in succession with the stack empty", which is what the sandbox
+// skip-ahead has to mean if it is not to walk past what the step owes
+// (#914).
+//
+// It reuses PassPriority's body rather than resolving anything
+// itself: one priority engine, so the drive resolves, runs SBAs,
+// drains triggers and hands priority back in exactly the order a
+// table of humans clicking "next" would.
+//
+// It stops on the three things that stop automatic passing anywhere
+// else in the engine: a prompt addressed to somebody (#730 /
+// ADR 0018 §6), a CR 726 loop notice (ADR 0055 — checked AFTER a
+// pass, so a standing notice still lets one manual nudge through the
+// way the client's "next" button does), and the game ending under a
+// resolution.
+//
+// Caller must hold g.mu.
+func (g *Game) driveStepToEndLocked() driveResult {
+	start := g.Turn
+	for i := 0; i < maxAdvanceStepPasses; i++ {
+		// A resolution that queued a prompt stops the drive here
+		// rather than inside passPriorityLocked, so the halt is a
+		// state the caller can broadcast rather than an error over a
+		// board that has already changed. Ahead of the stack check
+		// because the LAST resolution of the drive is the one most
+		// likely to ask a question: an empty stack with a prompt
+		// standing on it is still a cursor #730 must not move.
+		if g.blockingChoiceLocked() != nil {
+			return driveHalted
+		}
+		if !g.stackHasItemsLocked() {
+			return driveCursorMayMove
+		}
+		if err := g.passPriorityLocked(); err != nil {
+			if errors.Is(err, ErrNoPriority) {
+				return driveCursorMayMove
+			}
+			return driveHalted
+		}
+		if g.Turn.Step != start.Step ||
+			g.Turn.Number != start.Number ||
+			g.Turn.ActiveSeat != start.ActiveSeat {
+			return driveStepEnded
+		}
+		if g.LoopNotice != nil {
+			return driveHalted
+		}
+	}
+	return driveHalted
 }
 
 // advanceCursorLocked moves the step cursor forward by one — the

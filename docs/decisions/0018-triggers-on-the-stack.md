@@ -371,6 +371,59 @@ verb (Tithe / Sphinx watch draws). `Game.SpellsCastThisTurn` is
 bumped before `EventCast` fires so "first noncreature spell each
 turn" reads `Noncreature == 1` for the spell that triggered it.
 
+**Amendment (2026-09-18, #914): `advance_step` passes priority until
+the step ends. CR 117.4.**
+
+The #730 gate above stops the cursor for a PROMPT. Nothing stopped it
+for the STACK, and a step that ends owing something on its stack is
+the one thing CR 117.4 forbids: "a step or phase ends when all players
+pass in succession with an empty stack." So `AdvanceStep` walked past
+a trigger the step had already announced, and the next step's
+turn-based action happened first — combat damage before the afflict
+out of `declare_blockers`, regular damage before the first-strike
+damage triggers out of `first_strike_damage` (ADR 0045's amendment
+recorded both as open), an upkeep trigger resolving after the draw.
+It was never about combat: the cursor walked past anything.
+
+**The verb now means "pass priority until this step ends."** With an
+empty stack that is exactly what it always was — one move of the
+cursor, no pass, no extra event. With something on the stack it is the
+passes the rules require first: `AdvanceStep` drives `PassPriority`
+for the caller until the stack is empty, so each resolution is
+followed by state-based actions, the CR 603.3b trigger drain and
+another priority round, in the order a table of humans clicking "next"
+would produce. It is `PassPriority`'s own body under the lock
+(`passPriorityLocked`) — one priority engine, not a second one beside
+it — and the cursor moves at the end through the same
+`advanceCursorLocked` as before.
+
+**The drive stops on the three things that stop automatic passing
+anywhere else**, each with the cursor left in the step that still owes
+something and **no error**, because the resolutions it already made
+are real and the caller has to see them (`Room.apply` broadcasts
+nothing and mints no undo entry for a failed dispatch):
+
+- a **blocking prompt** raised by one of the resolutions — this
+  section's own rule, now applied to a prompt the verb itself caused;
+- a **CR 726 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
+  AFTER a pass so a standing notice still lets one manual nudge
+  through, exactly as the client's "next" button does;
+- the **game ending** under a resolution.
+
+A prompt that was already open when the verb was called is still the
+`*ChoicePendingError` refusal above: nothing has happened yet, so
+there is nothing to broadcast.
+
+**Bots are unaffected** — `internal/legal` has never enumerated
+`advance_step`, and a bot reaches the same board by passing priority,
+which is what the drive does on its behalf. **Three test expectations
+changed** rather than being silenced, each to the rules answer:
+Drana's first-strike trigger grows the attackers before regular
+damage (2 + 3, not 2 + 2), Professional Face-Breaker's first-strike
+Treasure is already made when the cursor reaches the regular step, and
+`TestB492…` is flipped to "afflict, then damage". Cyberman Patrol's
+caveat — the last of #388 — is gone with them.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice

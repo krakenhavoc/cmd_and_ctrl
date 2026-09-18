@@ -1274,7 +1274,10 @@ the stack inside `declare_blockers`, so under ordinary priority play
 afflict resolves before combat damage — which it did not before. A
 seat that clicks `advance_step` straight out of the step still walks
 past the trigger on the stack and takes the damage first. Cyberman
-Patrol's caveat now says exactly that.
+Patrol's caveat now says exactly that. **(Closed 2026-09-18, #914:
+`advance_step` passes priority until the step ends, so the skip-ahead
+route resolves the afflict inside `declare_blockers` too. The caveat
+is gone and the card is `CompletenessFull`.)**
 
 Unchanged: the attack side. `DeclareAttacker` announces per creature
 as it is declared and drains immediately, which is what Adeline and
@@ -1570,6 +1573,21 @@ on the stack when the test walks the cursor into combat damage, plus
 pins today's behaviour on purpose. That is a change to what the verb
 MEANS, and it needs the sentinel error, the `internal/legal` rule and
 the client message #914 asks for. It stays #914's call.
+
+> **Closed (2026-09-18, #914).** The call went the other way and cost
+> no sentinel, no `internal/legal` rule and no client message:
+> `advance_step` now means "pass priority until the step ends" (CR
+> 117.4), so it RESOLVES what the step owes instead of refusing to
+> move. The 11 tests the refusal broke are not broken by the drive —
+> they reach the same board, because passing is what they would have
+> done by hand. Three expectations did change, all in
+> `internal/cards/effects`, and each to the rules answer rather than
+> to silence: Drana, Liberator of Malakir (her first-strike trigger
+> grows the attackers before regular damage: 2 + 3, not 2 + 2),
+> Professional Face-Breaker (the (first strike, A) Treasure is already
+> made when the cursor reaches the regular step — still three), and
+> `TestB492…`, flipped to "afflict, then damage" and renamed. See
+> [ADR 0018 §6](0018-triggers-on-the-stack.md)'s 2026-09-18 amendment.
 
 **[#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715) is
 unchanged**: a blocked attacker whose blockers have all left combat is
