@@ -661,6 +661,18 @@ type Spec struct {
 	// reach the harvester. See emblem.go and ADR 0064.
 	Emblem *EmblemSpec
 
+	// Grants are the ability bundles this card's COPY effect can give
+	// the copy — "except … it has '<ability>'" (CR 707.9a). Nil for
+	// every card that grants none, which is nearly all of them.
+	//
+	// Declared here, next to the except clause that names one, for
+	// the same reason Emblem is: the abilities are static catalog
+	// data, and what the copy carries is only the bundle's Key.
+	// Register files each bundle's own CardDef under
+	// game.GrantKey(Key). See ability_grant.go and
+	// server/internal/game/copy_grants.go.
+	Grants []AbilityGrant
+
 	Completeness Completeness
 
 	// Caveats names the printed clauses this spec does NOT model,

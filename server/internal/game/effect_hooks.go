@@ -59,10 +59,20 @@ func CatalogKey(c Card) string {
 	if c.FaceDownIsPermanent() {
 		return ""
 	}
-	if c.ActiveFace == 0 || c.OracleID == "" {
-		return c.OracleID
+	base := c.OracleID
+	if c.ActiveFace != 0 && c.OracleID != "" {
+		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	}
-	return c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
+	// CR 707.9a, #665: an ability a copy effect GRANTED is part of
+	// the object's copiable values and has no oracle ID of its own,
+	// so it rides in the key. Every card in the game but a granted
+	// copy takes the nil-slice fast path and gets the bare key back
+	// unchanged; catalogDef answers the composite one by merging the
+	// grant's abilities into the card's. See copy_grants.go.
+	if len(c.GrantedAbilities) == 0 {
+		return base
+	}
+	return catalogKeyWithGrants(base, c.GrantedAbilities)
 }
 
 // CatalogKeyForFace is CatalogKey for a face other than the one

@@ -362,6 +362,7 @@ type cardSnapshot struct {
 	ColorIdentity            []string            `json:"colorIdentity,omitempty"`
 	StartingLoyalty          int                 `json:"startingLoyalty"`
 	Keywords                 []string            `json:"keywords,omitempty"`
+	GrantedAbilities         []string            `json:"grantedAbilities,omitempty"`
 	Layout                   string              `json:"layout,omitempty"`
 	Faces                    []Face              `json:"faces,omitempty"`
 	ActiveFace               int                 `json:"activeFace,omitempty"`
@@ -926,6 +927,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
@@ -1445,6 +1447,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,

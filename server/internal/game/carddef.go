@@ -158,6 +158,15 @@ func catalogDef(key string) *CardDef {
 	if CatalogLookup == nil || key == "" {
 		return nil
 	}
+	// CR 707.9a, #665: a key carrying granted-ability names is
+	// answered with the card's definition merged with each grant's.
+	// This is the ONE place a granted ability becomes findable, which
+	// is why every existing reader — the trigger harvest, the layer
+	// pass, the activation path, the view — needed no change of its
+	// own. See copy_grants.go.
+	if base, grants := splitCatalogKeyGrants(key); len(grants) > 0 {
+		return mergedCatalogDef(base, grants)
+	}
 	return CatalogLookup(key)
 }
 

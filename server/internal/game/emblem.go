@@ -135,7 +135,10 @@ func (g *Game) CreateEmblemForEffect(owner uuid.UUID, sourceCardID uuid.UUID) er
 	if src == nil {
 		return ErrCardNotFound
 	}
-	key := EmblemKey(CatalogKey(*src))
+	// BaseCatalogKey: the emblem is filed under the CARD's key, so a
+	// source carrying CR 707.9a granted abilities must not derive a
+	// key nothing registered (copy_grants.go).
+	key := EmblemKey(BaseCatalogKey(CatalogKey(*src)))
 	def := catalogDef(key)
 	if def == nil || def.Emblem == nil {
 		return ErrNoEmblemRegistered

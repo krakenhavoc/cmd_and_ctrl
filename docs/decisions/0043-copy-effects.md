@@ -300,3 +300,104 @@ caveat: the two cards discarded are random, which is `DiscardCards`
 everywhere in the catalog and not this card's doing). Both give the
 copy to the player who chose to make it, per CR 707.10b, which is what
 lets the chain walk around the table.
+
+## Amendment 2026-09-18 — an "except" clause may grant an ability and add a subtype (CR 707.9a, CR 707.9b) · Accepted · S45
+
+The Consequences above declare "an 'except' clause that GRANTS an
+ability rather than editing printed values" out of scope. That
+deferral is spent. [#665](https://github.com/krakenhavoc/cmd_and_ctrl/issues/665)
+lifts it; the paragraph is left as written, as the record of why the
+original PR stopped where it did.
+
+### What was actually missing
+
+Not a grant mechanism — a place for the grant to LIVE. CR 707.9a's
+second sentence is the hard half: an ability a copy effect grants is
+part of the copiable values, so a later copy copies it. A closure
+hanging off the replacement that made the copy cannot be copied again
+and cannot be snapshotted. And every ability the engine reads is
+found through `CatalogKey`, which after a copy is the COPIED card's
+key, so a granted ability had nowhere to key on.
+
+### Decision 6. The grant rides in `PrintedValues`, as a NAME
+
+`PrintedValues.GrantedAbilities []string` holds catalog keys, not
+closures, and `Card.GrantedAbilities` is the flat printed field it
+materialises onto — the same pairing `Keywords` and `TypeLine`
+already have. Everything else follows for free: `CopiableValuesOf`
+copies it, so a Clone of a Phantasmal Image inherits the grant
+(CR 707.9a); the snapshot carries it and `clone.go` deep-copies it,
+because names serialise; `restorePrintedSelf` clears it on the way
+out, because CR 400.7 makes the card in the graveyard the card again.
+
+The abilities themselves are static catalog data, declared by the
+card that grants them (`effects.Spec.Grants`, a list of
+`AbilityGrant{Key, Triggered, Static, Activated}`) and filed in the
+same `defs` map cards use, under `game.GrantKey(Key)`. That is the
+shape [ADR 0064](0064-emblems.md) / #623 already uses for an emblem,
+for the same reason: an object needs abilities the catalog can find,
+and it is not a card. `Register` panics on an empty key, a duplicate
+key, or a bundle with no abilities; the census still counts cards,
+because a grant is not one.
+
+### Decision 7. ONE lookup seam: the catalog KEY carries the grants
+
+`CatalogKey(c)` is already the single place a `Card` becomes a
+catalog answer — #940 put CR 708.2a's face-down silence there as an
+empty return. A card carrying grants now returns a composite:
+
+	no grants  →  "<oracle_id>"                       (unchanged)
+	grants     →  "<oracle_id>|grant:<name>|grant:…"
+
+and `catalogDef` answers a composite key by MERGING the card's
+definition with each grant's (`game/copy_grants.go`). Nothing else in
+the engine changed: the trigger harvester, the layer pass's static
+gather, `ActivateCatalogAbility`, the replacement gather, the cost
+modifiers and the view's auto bit all already went through those two
+functions, so all of them see a granted ability without a reader of
+their own. There is no second path to keep in sync, which is the
+whole point of doing it at the key rather than beside it.
+
+Three consequences worth stating:
+
+- **Ability removal still wins.** `CatalogAbilityKey` returns `""`
+  for a permanent under a CR 613.1f effect, before any of this is
+  consulted, so "loses all abilities" takes the granted one too.
+- **Face-down still wins.** `CatalogKey` returns `""` for a face-down
+  permanent first (CR 708.2a): no text means no granted text.
+- **A grant on a card with no catalog entry is the normal case.**
+  Phantasmal Image copying an imported vanilla bear has exactly one
+  ability, and it is the granted one, so `mergedCatalogDef` returns a
+  definition even when the base lookup is nil.
+
+Two sites read a catalog key as an IDENTITY rather than as a lookup
+and now strip the suffix with `game.BaseCatalogKey`: `EmblemKey`
+derivation (`game/emblem.go`) and the catalog's own `effects.Lookup`
+of the Spec registry (`batch16_helpers.go`).
+
+### Decision 8. `AddSubtype` / `RemoveSubtype` join the except-clause helpers
+
+CR 707.9b's "it's an Illusion in addition to its other types" is an
+ADD, not a SET: the copied Bear stays a Bear. The set form ("except
+it's a 4/4 black Zombie") already lives in the token-copy template
+(`retypedTypeLine`) and deliberately stays there.
+
+### Cards
+
+**Phantasmal Image** (new; caveat: the declined 0/0 survives, the
+engine-wide printed-zero-toughness convention Clone also declares)
+and **Sakashima the Impostor**, which drops its caveat and is now
+Full.
+
+### Still not covered
+
+A copy effect with a DURATION (Mirage Mirror, Cytoshape) is
+unchanged and still open — including the question this amendment
+raises for it: when a timed copy effect ends, the grant ends with it,
+because the grant is part of the copiable values the effect
+installed. Granted MANA abilities have no slot (`AbilityGrant` names
+three kinds), because no printed copy effect grants one and the
+engine reads mana abilities off the card object as well as the
+catalog, which would be a second seam. A granted ability's TEXT is
+not projected onto the wire, so the client shows the copy's abilities
+without it.

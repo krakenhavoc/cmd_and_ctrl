@@ -254,6 +254,13 @@ var cardFields = plan(
 	// it is printed as. Pure data by construction — see copy.go on
 	// why PrintedValues carries no closures.
 	"PrintedSelf", carried, "",
+	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
+	// clause granted. Carried, and carriable at all, because it holds
+	// catalog KEYS rather than closures — the abilities themselves
+	// are static catalog data the restoring binary already has. A
+	// restore that dropped it would leave a Phantasmal Image copy
+	// with no sacrifice trigger and no Illusion type.
+	"GrantedAbilities", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",

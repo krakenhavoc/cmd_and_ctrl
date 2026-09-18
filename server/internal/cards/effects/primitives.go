@@ -992,3 +992,24 @@ func (r RevealTopOfLibrary) Apply(ctx *Context) error {
 	}
 	return nil
 }
+
+// SacrificeThisIfStillOnBattlefield is the trigger body for the
+// commonest half-sentence in the format: "…, sacrifice it."
+//
+// It is a function rather than a primitive struct because it takes
+// nothing — the permanent doing the sacrificing is the trigger's own
+// source, read off the resolving item.
+//
+// The battlefield check is load-bearing rather than defensive. A
+// trigger resolves after everything that was put on the stack above
+// it, so between "when this becomes the target" and this body the
+// permanent can have been bounced, exiled or destroyed; CR 701.21a
+// says a sacrifice does nothing at all for a permanent its controller
+// no longer controls, and a resolution that cannot do its job must
+// not wedge the stack.
+func SacrificeThisIfStillOnBattlefield(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
+	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+}
