@@ -1318,6 +1318,18 @@ type ManaAbilityView struct {
 	// stampActivatedAbilities (the pass with a game handle). Added
 	// with #743 on the owner's decision to grey both kinds of row.
 	ConditionUnmet bool `json:"condition_unmet,omitempty"`
+	// AddsNoMana is CR 903.4f (#844): this ability's printed text
+	// says "any color in your commander's color identity" and the
+	// controller has no commander, or a commander whose colour
+	// identity is colourless (Kozilek, Karn). The quality is
+	// undefined or empty, so the ability adds no mana at all —
+	// Command Tower taps for nothing. The client greys the row with
+	// its own reason, the same way it greys ConditionUnmet; the
+	// server does not refuse the activation (the ability exists, it
+	// just does nothing), it simply stops offering it. Absent for
+	// every other ability, which is all but four cards. Stamped by
+	// stampManaIdentity, the pass with a game handle.
+	AddsNoMana bool `json:"adds_no_mana,omitempty"`
 	// Restrictions are the "spend this mana only on …" tags the
 	// produced tokens will carry — Ancient Ziggurat, Eldrazi
 	// Temple, the coloured half of Delighted Halfling. Present so
@@ -1809,6 +1821,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
+		stampManaIdentity(g, card, controller, c.ManaAbilities)
 	}
 }
 
@@ -1825,6 +1838,24 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 			continue
 		}
 		views[i].ConditionUnmet = !raw[i].Condition(g, controller, card.InstanceID)
+	}
+}
+
+// stampManaIdentity sets ManaAbilityView.AddsNoMana for every mana
+// ability that CR 903.4f leaves with nothing to add (#844): Command
+// Tower, Arcane Signet, Commander's Sphere or Path of Ancestry under a
+// controller with no commander or a colourless one. Same question the
+// engine answers when the ability fires, asked here so the client can
+// grey the row instead of letting a player tap a land for no mana.
+// Split from viewOfManaAbilities for the reason the conditions are:
+// that projection has no game handle. Caller must hold g's read lock.
+func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) {
+			continue
+		}
+		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
 	}
 }
 

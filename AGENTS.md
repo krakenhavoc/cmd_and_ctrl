@@ -616,7 +616,14 @@ PendingChoice for the controller to resolve:
   activation time. Set the flag only when the printed text says "in your
   commander's color identity"; `TestOnlyCommanderIdentityCardsNarrow`
   and the dump-gated `TestNarrowToCommanderIdentityMatchesOracleText`
-  hold the catalog to that.
+  hold the catalog to that. **CR 903.4f (#844):** that intersection may
+  come back empty — the player has no commander, or a colourless one —
+  and then the ability adds no mana at all: no token, no `mana_pick`,
+  and the enumerator, the auto-tapper and the client's menu all stop
+  offering it (`ManaAbilityAddsNoMana`). A commander with no colour data
+  at all is a data gap rather than a colourless commander, and keeps the
+  printed colours ([ADR 0040](docs/decisions/0040-mana-pipeline.md)
+  #844 amendment).
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.

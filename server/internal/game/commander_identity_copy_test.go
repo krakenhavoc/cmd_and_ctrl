@@ -30,7 +30,7 @@ func TestCopiedCommanderKeepsOriginalIdentity(t *testing.T) {
 			source.ManaCost = "{1}{G}"
 			cmdr.applyCopy(CopiableValuesOf(source), source)
 			g.Battlefield.PushTop(cmdr)
-			if got := commanderIdentityFor(g, p); !reflect.DeepEqual(got, tc.want) {
+			if got := commanderIdentityFor(g, p).Colors; !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("copied commander's identity = %v, want original %v", got, tc.want)
 			}
 			got := findBattlefieldCard(g, cmdr.InstanceID)

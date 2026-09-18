@@ -28,7 +28,7 @@
     type ServerErrorLike,
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
-  import { colorButtons } from "../../manaPick";
+  import { colorButtons, colorPromptAnswerable } from "../../manaPick";
 
   interface Props {
     snap: GameView;
@@ -53,6 +53,12 @@
       // S20 sub-PR 2: pick_target is answered by clicking the board
       // (Board.svelte drives the targeting store), not by a modal.
       if (c.kind === "pick_target") continue;
+      // #844, CR 903.4f: a colour prompt with no colours on offer is
+      // not a choice anybody can answer, and an empty picker modal
+      // would block the board. The server stopped queueing one when a
+      // "commander's color identity" source has no identity; this is
+      // the floor under that.
+      if (!colorPromptAnswerable(c)) continue;
       if (c.chooser === viewerID) return c;
     }
     return null;

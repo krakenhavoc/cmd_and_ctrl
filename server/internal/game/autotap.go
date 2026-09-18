@@ -233,9 +233,25 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// offer: Birds of Paradise keeps all five with the commander's
 		// identity first, and only a NarrowToCommanderIdentity source
 		// (Command Tower, Arcane Signet) is intersected with the
-		// identity — with the same empty-intersection fallback.
-		for i, slot := range slots {
-			slots[i].Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
+		// identity.
+		//
+		// CR 903.4f (#844): that intersection can be empty — no
+		// commander, or a colourless one — and a slot with nothing to
+		// add is not a slot. Drop those, and a source left with no
+		// slots at all is not a mana source: planning it would book a
+		// mana the activation can never mint, and the executor would
+		// tap the land for nothing on the way to a cast it can't pay.
+		live := slots[:0]
+		for _, slot := range slots {
+			slot.Options = manaPickOptions(slot.Options, identity, picked.NarrowToCommanderIdentity)
+			if len(slot.Options) == 0 {
+				continue
+			}
+			live = append(live, slot)
+		}
+		slots = live
+		if len(slots) == 0 {
+			continue
 		}
 		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots, Frozen: untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller)})
 	}
@@ -527,6 +543,19 @@ func intersectColors(a, b []string) []string {
 		}
 	}
 	return out
+}
+
+// hasMultiOptionSlot reports whether any slot is a pipe — a colour the
+// controller picks. Used to decide whether reading the commander's
+// colour identity can change anything at all: the read walks every
+// zone, and a Forest's "{G}" has no use for it.
+func hasMultiOptionSlot(slots []ProducedManaEntry) bool {
+	for _, slot := range slots {
+		if len(slot.Options) > 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // hasOneColorAmounts reports whether any slot is a "N mana of any one

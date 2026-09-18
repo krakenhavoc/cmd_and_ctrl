@@ -285,11 +285,13 @@ deck a single `{G}` button, which is narrower than the printed card.
   `AddManaOptions` and `effects.AddMana`. Only Command Tower, Arcane
   Signet, Commander's Sphere and Path of Ancestry set it, because their
   text says "any color in your commander's color identity". The
-  intersection keeps its no-overlap fallback to the raw set. With no
+  ~~intersection keeps its no-overlap fallback to the raw set. With no
   identity at all it also returns the raw set, which is stronger than
   CR 903.4f (a colourless or missing commander means these cards add
   nothing). That behaviour predates this addendum and is tracked in
-  #844.
+  #844.~~ *Superseded 2026-09-17 by the #844 amendment below: the
+  intersection may now come back empty, which means the ability adds no
+  mana, and the no-overlap fallback is gone.*
   `TestOnlyCommanderIdentityCardsNarrow` pins the list, and the
   dump-gated `TestNarrowToCommanderIdentityMatchesOracleText` checks that
   a catalog card narrows exactly when its oracle text has the clause.
@@ -322,3 +324,87 @@ deck a single `{G}` button, which is narrower than the printed card.
   of a narrowed one.
 - **No wire change.** `color_options` keeps its shape. Only its order,
   and the width it has for the formerly narrowed cards, change.
+
+## Amendment — 2026-09-17 (#844): identity mana with no identity
+
+**CR 903.4f.** "If an ability refers to the colors or number of colors
+in a commander's color identity, that quality is undefined if that
+player doesn't have a commander. That part of the ability won't do
+anything." The official rulings on Command Tower, Arcane Signet,
+Commander's Sphere and Path of Ancestry agree, and a **colourless**
+commander (Kozilek, Butcher of Truth; Karn, Silver Golem) leaves the
+same nothing to add. Until this amendment `manaPickOptions` handed back
+the printed five in both cases, so those four cards were stronger than
+printed for a commanderless or colourless deck (#259's direction).
+
+- **The identity is a tri-state, computed once.**
+  `commanderIdentityFor` returns `commanderIdentity{State, Colors}`,
+  and callers read `State`, never `len(Colors) == 0`:
+  - `identityNoCommander` — the player owns no commander in any zone.
+    CR 903.4f's own case: the quality is undefined.
+  - `identityKnown` — the commander's colour data is authoritative.
+    `Colors` **may be empty**, and that is a real answer: a colourless
+    commander's identity names no colours.
+  - `identityUnknown` — a commander is there, but nothing on it says
+    what its identity is. A data gap, not a rules state.
+  The per-card read is `printedIdentityOf`, which answers "what
+  colours" and "is that authoritative" together: Scryfall's stamped
+  `color_identity` (CR 903.4 itself, both faces of a DFC folded in),
+  then — the #844 half — **an imported card's empty `color_identity`,
+  which is authoritative too**, then `Effective().Colors`, then the
+  printed mana cost. A card counts as imported when it carries a
+  Scryfall printing (`ScryfallID` / `OracleID`), which `deck.ToGameCard`
+  stamps on every card of every real deck and the develop environment's
+  spawner. Only a placeholder — the demo seed, a token, a test fixture
+  — has neither, and only then, with no colour found anywhere, is the
+  answer unknown.
+- **The missing-data choice: fall back to the printed set, and log it
+  once.** An unknown identity leaves a narrowing card at its printed
+  colours, exactly as before this amendment, with one `slog.Warn` per
+  process naming the player and the rule. The alternative — treating a
+  data gap as colourless — would switch Command Tower off for a whole
+  table on a bad import, and a silently dead land is a worse failure
+  than a slightly generous one. Real decks cannot reach it: every card
+  they contain comes from a Scryfall record.
+- **One narrowing function, and an empty list means "adds no mana".**
+  `manaPickOptions(options, identity, narrow)` either orders the
+  printed set by the identity (every other source, the 2026-09-17
+  owner decision above) or intersects with it. The intersection is
+  allowed to be empty — no commander, colourless commander, or a
+  printed colour set that the identity does not cover — and empty is
+  the seam's representation of "this slot adds nothing". Nothing else
+  in the engine reads the identity to decide what a source offers.
+- **The no-overlap fallback is deleted.** It returned the raw printed
+  set when the intersection came back empty. No catalog card could
+  reach it (all four narrowing cards print five colours, and an
+  identity is a subset of WUBRG), and for a hypothetical narrowed card
+  with a narrower printed set the fallback is also the wrong answer:
+  "any color in your commander's color identity" can only add a colour
+  the identity names.
+- **A dead source is not offered.** `ManaAbilityAddsNoMana(g, player,
+  card, ability)` is the one predicate three surfaces read:
+  `legal.EnumerateFor` drops the `activate_mana_ability` move (a bot
+  tapping Command Tower for nothing would just lose a land), the view
+  stamps `mana_abilities[i].adds_no_mana` and the client greys the row
+  with "adds no mana: no commander color identity", and the auto-tapper
+  skips the source through the same narrowing — `gatherTapSources`
+  drops a slot the narrowing empties and refuses to plan a source left
+  with none, and `materializePlanLocked` drops it before tapping.
+- **The activation itself is still accepted.** A player who fires the
+  ability anyway taps the source and gets nothing, which is what the
+  rulings say; the engine does not invent an error for it. What
+  changed is that no mana token is minted and **no `mana_pick` is
+  queued** — an empty picker is not a choice anyone can answer. The
+  client carries a floor for that too: `colorPromptAnswerable` skips a
+  colour prompt with no options rather than opening a modal over the
+  board.
+- **Wire.** One new optional field, `mana_abilities[i].adds_no_mana`.
+  `color_options` is unchanged in shape and is never empty on a
+  `mana_pick`.
+- **Unaffected readers of the identity.** Deck legality (CR 903.5c) is
+  `deck/validate.go`, which reads `cards.Card.ColorIdentity` off the
+  Scryfall record before a game exists and never calls this seam.
+  Nothing in the catalog counts "the number of colors in your
+  commander's color identity", and Path of Ancestry's creature-type
+  half is a declared caveat (its scry rider is unimplemented), so the
+  three mana paths above are the whole reader list.

@@ -289,6 +289,11 @@ type ManaAbilityShape struct {
 	// the identity's colours listed first (owner decision 2026-09-17;
 	// see manaPickOptionsFor).
 	//
+	// CR 903.4f (#844): with no commander, or a commander whose colour
+	// identity is colourless, the intersection is empty and the ability
+	// adds NO mana — no pick is offered, and nothing enumerates the
+	// activation (ManaAbilityAddsNoMana).
+	//
 	// Replaced IgnoreCommanderIdentity, its inverse, when the default
 	// flipped from narrowing to ordering.
 	NarrowToCommanderIdentity bool

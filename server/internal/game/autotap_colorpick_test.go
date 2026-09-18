@@ -91,7 +91,7 @@ func TestTransformDFCCommanderHasColorIdentity(t *testing.T) {
 	p := g.Seats[0]
 	setCommanderIdentityForTest(t, p, []string{"W", "U"})
 
-	got := commanderIdentityFor(g, p)
+	got := commanderIdentityFor(g, p).Colors
 	want := []string{"W", "U"}
 	if len(got) != len(want) {
 		t.Fatalf("commanderIdentityFor: got %v, want %v", got, want)
@@ -124,7 +124,7 @@ func TestCommanderIdentityFallsBackToManaCost(t *testing.T) {
 	p := g.Seats[0]
 	setCommanderCostForTest(t, p, "{1}{W}{U}")
 
-	got := commanderIdentityFor(g, p)
+	got := commanderIdentityFor(g, p).Colors
 	if len(got) != 2 {
 		t.Fatalf("identity from printed cost: got %v, want two colours", got)
 	}
