@@ -502,3 +502,67 @@ Engine (`server/internal/game`):
 
 Catalog (`server/internal/cards/effects`): Act of Treason, Agent of
 Treachery, Sower of Temptation, Mass Diminish, Switcheroo.
+
+
+## Amendment (2026-09-18, #930): a control change is an EVENT, emitted from the one materialise step (CR 613.1b)
+
+The decision above made control a layer-2 output and materialised it
+back onto `Card.Controller` in one step. What it left out is that
+nothing in the game could *notice*: `materialiseControlLocked` carried
+CR 302.6 and CR 506.4 with the delta and emitted nothing, so "When you
+lose control of ~" (Khârn the Betrayer's Sigil of Corruption) and
+"Whenever an opponent gains control of a permanent you own" had no
+event to watch.
+
+`EventControlChanged` is that event, and it is emitted from the same
+step for the same reason the step exists: layer 2 is where every way
+control can move converges. A spell's scoped static, an Aura's static,
+an exchange (CR 701.12), a duration expiring and the Mind Control
+being destroyed are one delta each, and all five arrive at the
+materialise walk. An emit inside `GainControlForEffect` would have
+seen only the first.
+
+- **Shape.** `Actor` is the player who GAINED control, `Target` the
+  player who LOST it, `CardID` the permanent, and `Source` the card
+  whose effect took it — read off `Characteristic.ControlSource`,
+  which the layer-2 `Apply` closures write next to `Controller`, so
+  the effect the event names is whichever one won CR 613.7's timestamp
+  sort. A REVERT names no source (`uuid.Nil`): the permanent went back
+  to `BaseController`, which is nobody's effect.
+- **Only on a delta.** A control effect that hands a permanent to the
+  player who already controls it is not a control change, and a
+  recompute that changes nothing emits nothing.
+- **Emitted after the pass, not during it.** The walk collects the
+  deltas by value and `recomputeLayersLocked` emits them after
+  `lastResolvedVersion` is stored. `EmitEvent` dispatches listeners
+  synchronously, the trigger harvester is one of them, and a harvested
+  trigger can read the board back through
+  `RecomputeLayersIfStaleLocked` — which, emitted mid-walk, would be a
+  re-entrant recompute over a half-applied board, with a `*Card` held
+  across a `Build` that may reallocate the battlefield slice. This is
+  the collect-by-value discipline `commitAttackDeclarationLocked`
+  already uses for the attack declaration.
+- **One batch.** Nothing here opens an event batch, so an exchange is
+  two events with one `Batch` and a `OncePerBatch` ability sees one
+  occurrence (#829, CR 603.2c).
+- **Log-only.** The event rides `Game.Events` (carried by the
+  snapshot, cloned for undo) and is not projected into the public
+  wire log, so no `protocol` schema changes with it.
+
+Card side: `WhenYouLoseControlOfThis`, `WhenYouGainControlOfThis` and
+`WheneverAnOpponentGainsControlOfAPermanentYouOwn` in
+[triggers_common.go](../../server/internal/cards/effects/triggers_common.go).
+The first is the one printed shape whose ability is NOT controlled by
+the source's current controller — by the time the event lands the
+permanent is the other player's — so its `Build` puts the item on the
+stack for `ev.Target`, the player who lost it.
+
+Still open, and what keeps Khârn the Betrayer out of the catalog: his
+third ability is a damage-prevention replacement that hands the
+permanent to "an opponent of your choice", which needs the
+choose-a-player prompt this ADR's *Consequences* already lists as
+missing. Zidane, Tantalus Thief is the one printed card for the
+opponent-gains-control shape, and its clause reads "a permanent **from
+you**" rather than "a permanent you own" — a sibling predicate on the
+same event, one line away, not written until a card is being
+converted.

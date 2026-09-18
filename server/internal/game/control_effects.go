@@ -116,9 +116,58 @@ func controlStatic(target uuid.UUID, enteredAt int64, controller uuid.UUID) Stat
 		AppliesTo: func(c *Card, _ *Game, _ *Card) bool {
 			return c.InstanceID == target && c.EnteredBattlefieldAt == enteredAt
 		},
-		Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+		Apply: func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
 			ch.Controller = controller
+			// #930: whoever wrote Controller last in this bucket is
+			// the effect that won CR 613.7, and the event names it.
+			// `src` is the ScopedStatic's stored source card, so this
+			// is the spell or ability that took the permanent.
+			if src != nil {
+				ch.ControlSource = src.InstanceID
+			}
 		},
+	}
+}
+
+// controlChange is one permanent's layer-2 control delta, collected
+// by materialiseControlLocked and emitted by the recompute once the
+// pass has finished. Values only — the battlefield slice the walk
+// read them off may be reallocated by the time they are emitted.
+type controlChange struct {
+	card   uuid.UUID
+	from   uuid.UUID
+	to     uuid.UUID
+	source uuid.UUID
+}
+
+// emitControlChangesLocked emits one EventControlChanged per delta
+// the materialise step found (#930, CR 613.1b).
+//
+// ONE event and ONE emission point, for the reason
+// materialiseControlLocked is one step: every way control can move —
+// an Aura's static, a spell's scoped static, an exchange, a duration
+// expiring, the Mind Control being destroyed — is a layer-2 delta and
+// arrives here. A gain emitted from GainControlForEffect would have
+// missed all four of the others.
+//
+// Nothing here opens an event batch, so the whole pass is one
+// occurrence: CR 701.12's exchange is two events with one Batch, and
+// a "whenever one or more" ability guarded by OncePerBatch fires once
+// for it (#829, CR 603.2c).
+//
+// The order is battlefield order, which is deterministic and what a
+// replay reproduces.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) emitControlChangesLocked(changed []controlChange) {
+	for _, ch := range changed {
+		g.EmitEvent(Event{
+			Kind:   EventControlChanged,
+			Actor:  ch.to,
+			Target: ch.from,
+			CardID: ch.card,
+			Source: ch.source,
+		})
 	}
 }
 

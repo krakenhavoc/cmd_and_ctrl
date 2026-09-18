@@ -318,6 +318,11 @@ func ControlAttachedBySource() game.StaticAbility {
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			c.Controller = source.Controller
+			// #930: the Aura is what took it, and the control-change
+			// event names the effect's source. Written by the same
+			// assignment that decides the controller, so the winner of
+			// CR 613.7's timestamp sort is the one the event reports.
+			c.ControlSource = source.InstanceID
 		},
 	}
 }
