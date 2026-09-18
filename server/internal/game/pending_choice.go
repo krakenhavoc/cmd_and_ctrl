@@ -1057,6 +1057,125 @@ func (g *Game) dropChoiceLocked(idx int) {
 	}
 }
 
+// reassignChoiceLocked hands an open prompt to a new chooser — the
+// performing half of CR 800.4g/h. The POLICY (which kinds move, and who
+// inherits) is one file away, in leave_game.go with the rest of
+// CR 800.4; this is the only code that rewrites a PendingChoice.Chooser
+// after the choice has been queued.
+//
+// Reports whether the prompt moved. False means there is nothing left
+// to ask and the caller drops it exactly as it did before #902.
+//
+// What it does, and deliberately no more:
+//
+//   - Prunes the candidates that leave the game with the old chooser.
+//     CR 800.4a takes every object they OWN out of the game in the same
+//     breath as this runs, so a card of theirs on the prompt is already
+//     a card that will not be there when the answer arrives (the same
+//     staleness #701 taught the zone-change resume to recognise, one
+//     step earlier). A departed player is not offered as a target
+//     either. If that empties the question, the prompt is not moved —
+//     handing a seat a prompt with no answers is the #544 wedge.
+//   - Rewrites Chooser, which IS the re-redaction: protocol's
+//     redactChoiceCards decides what a prompt's card lists show from
+//     PendingChoiceView.Chooser and .FromPlayer at VIEW time, on every
+//     snapshot, per viewer. So the next broadcast already shows the new
+//     chooser exactly what that seat may see of a pool that is not
+//     theirs, and shows the departed seat nothing. There is no stored
+//     redaction to re-run.
+//   - Emits EventPendingChoiceReassigned, the twin of #868's
+//     EventPendingChoiceDropped, so a stall dump says where the prompt
+//     went instead of going quiet.
+//
+// What it does NOT touch is the CONTINUATION. Every resume frame on the
+// choice — the trigger's Build closure, the pile's `then`, the target
+// spec — is the rest of the CARD, and the card did not change because
+// the player answering it did. The new chooser makes the choice; the
+// effect still does what it printed, to whoever it printed it about.
+// The bot enumerator needs nothing: choiceMoves keys on Chooser
+// (internal/legal/choices.go), so the inheriting seat is offered the
+// prompt's answers on its next window, and the client renders it from
+// the same field.
+//
+// Caller must hold g.mu.
+func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool {
+	if c == nil || newChooser == uuid.Nil || newChooser == c.Chooser {
+		return false
+	}
+	if p := g.playerByIDLocked(newChooser); p == nil || p.Eliminated {
+		return false
+	}
+	gone := c.Chooser
+
+	// A candidate is pruned when it is leaving the game with the old
+	// chooser (they own it) or is already out of every zone.
+	keep := func(ids []uuid.UUID) []uuid.UUID {
+		if len(ids) == 0 {
+			return nil
+		}
+		out := make([]uuid.UUID, 0, len(ids))
+		for _, id := range ids {
+			card := g.findCardByIDLocked(id)
+			if card == nil || card.Owner == gone {
+				continue
+			}
+			out = append(out, id)
+		}
+		if len(out) == 0 {
+			return nil
+		}
+		return out
+	}
+
+	switch c.Kind {
+	case PendingChoicePickTarget:
+		players := make([]uuid.UUID, 0, len(c.PickTargetPlayers))
+		for _, id := range c.PickTargetPlayers {
+			if id == gone {
+				continue
+			}
+			players = append(players, id)
+		}
+		if len(players) == 0 {
+			players = nil
+		}
+		c.PickTargetPlayers, c.PickTargetCards = players, keep(c.PickTargetCards)
+		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
+			return false
+		}
+	case PendingChoiceChooseCards:
+		c.ChooseCards = keep(c.ChooseCards)
+		if len(c.ChooseCards) == 0 {
+			return false
+		}
+		if c.ChooseMax > len(c.ChooseCards) {
+			c.ChooseMax = len(c.ChooseCards)
+		}
+		if c.ChooseMin > c.ChooseMax {
+			c.ChooseMin = c.ChooseMax
+		}
+		if c.Count > c.ChooseMax {
+			c.Count = c.ChooseMax
+		}
+	case PendingChoiceOptionPick:
+		// The branches are labelled sentences and survive on their own;
+		// only the piles they name can go.
+		for i := range c.PickOptions {
+			c.PickOptions[i].Cards = keep(c.PickOptions[i].Cards)
+		}
+	}
+
+	c.Chooser = newChooser
+	g.EmitEvent(Event{
+		Kind:   EventPendingChoiceReassigned,
+		Actor:  gone,
+		Target: newChooser,
+		Source: c.Source,
+		Label:  string(c.Kind),
+	})
+	return true
+}
+
 // queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
 // prompt for a single optional replacement effect. The chooser is
 // the effect's Controller (for CR 903.9 commander-zone: the

@@ -10,8 +10,9 @@ import (
 
 // ability_removal_test.go is the catalog half of CR 613.1f: the three
 // Auras that change what a permanent IS. The engine half — the
-// CatalogAbilityKey seam, the two-pass recompute, the CR 613.6
-// timestamp rule — is pinned in game/layer6_ability_removal_test.go.
+// CatalogAbilityKey seam, the layer pass's CR 613.6 rule and the
+// layer-6 timestamp rule — is pinned in
+// game/layer6_ability_removal_test.go and game/layer_dependency_test.go.
 //
 // The cards are here together because each one proves a different
 // consequence of the same machinery, and none of them proves it
@@ -454,9 +455,44 @@ func TestSongOfTheDryadsOnAControlMagicGivesTheCreatureBack(t *testing.T) {
 		t.Errorf("controller %s, want the creature back with %s", got, owner.ID)
 	}
 	// The Control Magic is a Forest now, not an Aura, so CR 704.5m
-	// has nothing to say about it and it stays on the battlefield
-	// attached to a creature it no longer affects.
+	// has nothing to say about it and it stays on the battlefield.
 	if !g.Battlefield.Contains(steal) {
 		t.Error("a permanent that stopped being an Aura is not swept by CR 704.5m")
+	}
+	// CR 704.5p is why the creature came back, and it is the whole
+	// reason: a nonbattle, noncreature permanent that is neither an
+	// Aura, an Equipment nor a Fortification becomes UNATTACHED. Song's
+	// 2014-11-07 ruling says so in as many words. The ability removal
+	// has nothing to do with it — layer 2 ran long before layer 4
+	// could silence anything (CR 613.6), so without this rule the
+	// Forest would keep the creature stolen.
+	if c := layeredCard(t, g, steal); c.IsAttached() {
+		t.Error("the Song'd Control Magic is still attached (CR 704.5p)")
+	}
+}
+
+// The other half of CR 704.5p, and the one that shows the stale link
+// after the Song leaves: a Bonesplitter that became a Forest is
+// unattached, so the creature it was equipping is back to its printed
+// power.
+func TestSongOfTheDryadsUnattachesAnEquipment(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	bear := seedBear(g, me.ID)
+	splitter := seedEquipment(g, me.ID, "Bonesplitter", bonesplitterOracle)
+	equipTo(t, g, me.ID, splitter, bear)
+	if got := effectivePower(t, g, bear); got != 4 {
+		t.Fatalf("fixture is wrong: the equipped Bear is %d power, want 4", got)
+	}
+
+	enchant(t, g, "Song of the Dryads", songOfTheDryadsOracle, splitter)
+	settle(t, g)
+
+	if c := layeredCard(t, g, splitter); c.IsAttached() {
+		t.Error("the Song'd Bonesplitter is still attached (CR 704.5p)")
+	}
+	if got := effectivePower(t, g, bear); got != 2 {
+		t.Errorf("the Bear is %d power, want its printed 2", got)
 	}
 }

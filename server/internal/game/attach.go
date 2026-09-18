@@ -245,6 +245,32 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		if spec := TargetSpecFor(CatalogKey(*c)); spec != nil {
 			return g.specMatchLocked(c.Controller, spec, c.AttachedTo, false)
 		}
+	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") && !c.IsCreature() && !c.IsBattle() {
+		// CR 704.5p — "if any nonbattle, noncreature permanent
+		// that's neither an Aura, an Equipment, nor a Fortification
+		// is attached to an object or player, it becomes unattached
+		// and remains on the battlefield". The rule exists for the
+		// permanent that STOPS being one of those three while
+		// attached, which in this catalog means a Song of the
+		// Dryads: "enchanted permanent is a colorless Forest land"
+		// turns an opposing Control Magic or Bonesplitter into a
+		// land, and Song's 2014-11-07 ruling says it "becomes
+		// unattached from whatever it was attached to".
+		//
+		// Effective types, not printed: a Forest that used to be an
+		// Equipment is not one. Returning false here routes it to
+		// the unattach branch of attachmentSBALocked rather than to
+		// a graveyard — c.IsAura() is false, so CR 704.5m does not
+		// claim it, which is exactly the difference between 704.5p
+		// and 704.5m.
+		//
+		// This is #669's other half. Ability removal used to hand
+		// the stolen creature back by silencing the Control Magic in
+		// every layer, which is not a rule (CR 613.6 says layer 2
+		// has already happened by the time layer 4 or 6 removes
+		// anything). The creature comes back because "enchanted
+		// creature" stops existing, and that needs this.
+		return false
 	}
 	switch c.AttachedTo.Kind {
 	case TargetPlayer:

@@ -35,16 +35,20 @@ import (
 //      7c (modify, Glorious Anthem), 7d (counters, delegates to
 //      CurrentPower/CurrentToughness), 7e (switch).
 //
-// Dependency ordering (CR 613.8) is not implemented: every bucket is
-// applied in timestamp order. The one exception is ability removal,
-// which recomputeLayersLocked resolves by iterating to a fixed point
-// (ADR 0046 §4). ADR 0012 and ADR 0043 §5 deferred the rest on the
-// grounds that no catalog pair could produce a dependency. That
-// stopped being true on 2026-09-13: in layer 4, Urborg, Tomb of
-// Yawgmoth depends on Song of the Dryads and on Arixmethes, and
-// Maskwood Nexus depends on crew, The Warring Triad and Arixmethes,
-// so those pairs come out differently depending on entry order.
-// Tracked in #668; #644 declares the pairs as caveats on the cards.
+// Dependency ordering (CR 613.8) lives in layer_dependency.go: a
+// bucket with two or more effects is ordered by dependency rather
+// than by timestamp alone, decided by trial application rather than
+// by a declaration on every card (ADR 0067). ADR 0012 and ADR 0043 §5
+// deferred it on the grounds that no catalog pair could produce a
+// dependency; that stopped being true on 2026-09-13, when Urborg,
+// Tomb of Yawgmoth met Song of the Dryads and Arixmethes, and
+// Maskwood Nexus met crew, The Warring Triad and Arixmethes.
+//
+// Ability removal (CR 613.1f) is applied in the layer it happens in
+// and reaches forwards only: a source silenced in layer 6 still
+// applied in layers 1-5, and an effect that already started applying
+// carries on into the later layers (CR 613.6). That is why one pass
+// is enough — see recomputeLayersLocked.
 
 // Layer is one of CR 613's seven continuous-effect application
 // stages. Layer7PT carries a SubLayer; the others ignore it.
@@ -105,12 +109,28 @@ type ContinuousEffect interface {
 	// append the part it keeps.
 	//
 	// It is a declaration rather than something Apply does for
-	// itself because the removal is load-bearing outside layer 6:
-	// the recompute has to know which permanents were silenced so it
-	// can drop THEIR contributions from every other layer, and it
-	// cannot learn that by watching an opaque closure mutate a
-	// struct.
+	// itself because the removal is load-bearing outside its own
+	// Apply: the pass has to know which permanents were silenced and
+	// IN WHICH LAYER, so it can stop their effects from starting in
+	// the layers that come after (CR 613.6), and it cannot learn that
+	// by watching an opaque closure mutate a struct.
 	RemovesAbilities() bool
+
+	// ContinuesAfterRemoval declares this effect part of a
+	// continuous effect that STARTS in an earlier layer — the
+	// layer-7b "with base power and toughness 0/1" half of "is a 0/1
+	// Insect with indestructible and loses all other abilities".
+	//
+	// CR 613.6: an effect that has started to apply keeps applying in
+	// every later layer "even if the ability generating the effect is
+	// removed during this process". The engine models one printed
+	// sentence as one StaticAbility per layer, so it cannot see on
+	// its own that the layer-7b half and the layer-4 half are the
+	// same effect — this says so. False, the default, is right for a
+	// standalone ability (an anthem, a keyword grant, the printed
+	// keyword synth), which simply stops existing when its source is
+	// silenced in an earlier layer.
+	ContinuesAfterRemoval() bool
 }
 
 // StaticAbility is the declarative shape catalog cards use to
@@ -151,7 +171,21 @@ type StaticAbility struct {
 	// replacement ability working, because those are read through
 	// the Catalog* hooks at use time. Build one with
 	// effects.LoseAllAbilities.
+	//
+	// Layer 6 is the usual home, but not the only one: CR 305.7's
+	// "an effect that sets a land's subtype to a basic land type
+	// removes the abilities generated from its rules text" is part
+	// of the TYPE change and belongs in layer 4 (Song of the Dryads,
+	// Magus of the Moon — effects.SetsBasicLandType). Declaring it in
+	// the layer the rules put it in is what makes a layer-6 grant
+	// survive it, which is the whole of that rule's last sentence.
 	RemovesAbilities bool
+
+	// ContinuesAfterRemoval declares this static the later-layer half
+	// of a continuous effect that starts in an earlier layer, so
+	// CR 613.6 keeps it applying after its source has been silenced.
+	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
+	ContinuesAfterRemoval bool
 	// DependsOnHandSize declares that this ability's OUTPUT changes
 	// when somebody's hand does — Psychosis Crawler's "power and
 	// toughness are each equal to the number of cards in your hand".
@@ -212,6 +246,10 @@ func (e staticContinuousEffect) RemovesAbilities() bool {
 	return e.ability.RemovesAbilities
 }
 
+func (e staticContinuousEffect) ContinuesAfterRemoval() bool {
+	return e.ability.ContinuesAfterRemoval
+}
+
 func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) {
 	if e.ability.Apply == nil {
 		return
@@ -240,29 +278,26 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 // — safe for the duration of the recompute pass that holds the
 // write lock; not safe to retain across mutations.
 //
-// `silenced` names permanents a CR 613.1f ability-removing effect
-// applied to on the previous pass. A silenced source contributes
-// NOTHING — not its layer-2 control change, not its layer-4 type
-// change, not its anthem — because it has no abilities left to
-// generate a continuous effect from (CR 613.1f + CR 113.3). Nil on
-// the discovery pass, which is how the set is learned in the first
-// place; see recomputeLayersLocked.
+// EVERY battlefield permanent contributes, including one a CR 613.1f
+// ability-removing effect is about to silence. Removal happens in a
+// layer, and a layer reaches forwards only (CR 613.6): the gather
+// cannot be where silencing is decided, because by the time the
+// removal applies the earlier layers have already run and the rules
+// do not take them back. applyBucketLocked owns the silencing, per
+// layer, and ADR 0067 §2 has the rule.
 //
-// KNOWN WRONG, #669: dropping a silenced source from EVERY layer
-// breaks CR 613.6. Removal happens in layer 6, so the source's
-// layer 1-5 effects should still apply, and an effect that already
-// started applying carries on into layer 7 (Magus of the Moon's
-// ruling: under a removal it keeps making Mountains). No catalog card
-// shows it yet. The fix needs CR 704.5p first (#675), because a
-// Song'd Control Magic stays attached and only this silence hands
-// the creature back today.
+// Until #669 this dropped a silenced source from every layer, which
+// silently deleted its layer-2 control change and its layer-4 type
+// change as well as its abilities — the opposite of Magus of the
+// Moon's 2021-03-19 ruling, where a silenced Magus keeps turning
+// nonbasic lands into Mountains.
 //
 // Scoped statics and emblems are never silenced. Neither has a
 // battlefield source to take abilities away from: a scoped static
 // outlived its source by construction (CR 611.2b), and nothing in the
 // game can name an emblem at all (CR 114), so nothing on the board
 // can switch either off.
-func (g *Game) activeStaticAbilitiesLocked(silenced map[uuid.UUID]bool) []ContinuousEffect {
+func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// S32/S38: floating effects with a duration first. They are
 	// gathered unconditionally — they outlive their source card, so
 	// neither an empty battlefield nor a missing catalog hook can
@@ -279,14 +314,11 @@ func (g *Game) activeStaticAbilitiesLocked(silenced map[uuid.UUID]bool) []Contin
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		// `silenced`, not CatalogAbilityKey: the pass resets every
+		// CatalogKey, not CatalogAbilityKey: the pass resets every
 		// effective characteristic to printed before it gathers, so
-		// there is nothing for the accessor to read yet. The set
-		// carried in from the previous pass is the only thing that
-		// knows.
-		if silenced[src.InstanceID] {
-			continue
-		}
+		// there is nothing for the removal accessor to read yet —
+		// and nothing for it to say, because a removal that has not
+		// been applied in this pass has not happened.
 		abilities := CatalogStaticAbilities(CatalogKey(*src))
 		if len(abilities) == 0 {
 			continue
@@ -353,12 +385,15 @@ func inBucket(eff ContinuousEffect, l Layer, sub SubLayer, has7Sub bool) bool {
 }
 
 // applyLayerLocked filters effects to one (sub-)layer bucket,
-// sorts by timestamp, and applies each effect's Apply across every
-// battlefield card it AppliesTo. Stable sort so same-timestamp
-// effects fall in their gather order — matters for test
-// determinism and for catalog cards with multiple statics from a
-// single source.
-func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLayer, has7Sub bool) {
+// sorts by timestamp, and hands the bucket to applyBucketLocked.
+// Stable sort so same-timestamp effects fall in their gather order —
+// matters for test determinism and for catalog cards with multiple
+// statics from a single source.
+//
+// `bucketIndex` is the effect's position in layerOrder, which is what
+// "earlier layer" and "later layer" mean everywhere below. CR 613.6
+// is a statement about that ordering and nothing else.
+func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLayer, has7Sub bool, bucketIndex int, st *layerPassState) {
 	bucket := make([]ContinuousEffect, 0, len(effects))
 	for _, eff := range effects {
 		if inBucket(eff, l, sub, has7Sub) {
@@ -371,39 +406,72 @@ func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLaye
 	sort.SliceStable(bucket, func(i, j int) bool {
 		return bucket[i].Timestamp() < bucket[j].Timestamp()
 	})
-	for _, eff := range bucket {
-		// CR 613.1f between two ability-removing effects. An effect
-		// whose SOURCE has already been silenced earlier in this
-		// bucket no longer exists to apply: two Song of the Dryads,
-		// each enchanting the other, resolve to "the earlier one
-		// wins" rather than to a paradox, because layer 6 is walked
-		// in timestamp order and the earlier removal has already
-		// taken the later one's abilities away by the time we get
-		// here.
-		//
-		// Only checkable from layer 6 onwards — before it, nothing
-		// has been silenced yet. That is what the second recompute
-		// pass is for.
-		if src := effectSourceLocked(eff); src != nil && src.HasLostAllAbilities() {
-			continue
-		}
-		removes := eff.RemovesAbilities()
+	g.applyBucketLocked(bucket, l, bucketIndex, st)
+}
+
+// applyOneEffectLocked applies one continuous effect across every
+// battlefield card it AppliesTo, honouring CR 613.6's rule about a
+// source whose abilities have already been removed in this pass.
+//
+// The silencing rule, once, for every layer (ADR 0067 §2):
+//
+//   - Before the removal's own bucket, nothing is silenced — the
+//     removal has not happened, and CR 613.6 will not let it reach
+//     back. This is the branch that was missing (#669): a Magus of
+//     the Moon under a Kenrith's Transformation keeps turning
+//     nonbasic lands into Mountains, and every layer 1-5 effect of
+//     any silenced source keeps applying.
+//   - IN the removal's bucket, timestamp order decides, which is
+//     what `HasLostAllAbilities` already answers: two Song of the
+//     Dryads each enchanting the other settle on "the earlier one
+//     wins" rather than on a paradox.
+//   - AFTER it, the source's effects stop — unless this effect is the
+//     later-layer half of one that already started applying to this
+//     object, which CR 613.6 says carries on regardless
+//     (ContinuesAfterRemoval; Humility's own base 1/1 in layer 7b
+//     after it has taken its own abilities away in layer 6).
+func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *layerPassState) {
+	// The fast path, and it is the board almost every recompute runs
+	// on: nothing in play can remove an ability, so CR 613.6 has
+	// nothing to say, no source can be silenced, and the whole of the
+	// bookkeeping below is provably dead. `st.track` is decided once
+	// per pass from the gathered effects, so this is one bool test
+	// per effect rather than per (effect, object) — which matters,
+	// because this loop is the hottest in the engine.
+	if !st.track {
 		for i := range g.Battlefield.Cards {
 			target := &g.Battlefield.Cards[i]
 			if !eff.AppliesTo(target, g) {
 				continue
 			}
-			if removes {
-				// Emptied BEFORE Apply so "has indestructible, and
-				// it loses all other abilities" is one effect that
-				// clears and then re-grants, in the order it is
-				// printed — and so a card file cannot ship the
-				// removal without the engine learning about it.
-				target.effective.Abilities = nil
-				target.effective.AbilitiesRemoved = true
-			}
 			eff.Apply(target.effective, target, g)
 		}
+		return
+	}
+	src := effectSourceLocked(eff)
+	silenced := src != nil && src.HasLostAllAbilities()
+	removes := eff.RemovesAbilities()
+	continues := eff.ContinuesAfterRemoval()
+	for i := range g.Battlefield.Cards {
+		target := &g.Battlefield.Cards[i]
+		if !eff.AppliesTo(target, g) {
+			continue
+		}
+		if silenced && !st.stillApplies(src, target, bucketIndex, continues) {
+			continue
+		}
+		if removes {
+			// Emptied BEFORE Apply so "has indestructible, and
+			// it loses all other abilities" is one effect that
+			// clears and then re-grants, in the order it is
+			// printed — and so a card file cannot ship the
+			// removal without the engine learning about it.
+			target.effective.Abilities = nil
+			target.effective.AbilitiesRemoved = true
+			st.recordRemoval(target, bucketIndex)
+		}
+		eff.Apply(target.effective, target, g)
+		st.recordApplied(src, target)
 	}
 }
 
@@ -513,8 +581,13 @@ func (g *Game) RecomputeLayersIfStaleLocked() {
 //     effects to that bucket, sort by source timestamp ascending,
 //     apply each effect across every battlefield card it AppliesTo.
 //
-// S24 runs that pass more than once when a CR 613.1f ability-removing
-// effect is on the board; see the body.
+// One pass is all of it. S24 used to run the pass repeatedly to a
+// fixed point so it could learn which permanents to hold OUT of the
+// gather; #669 deleted that, because holding a silenced source out of
+// the gather is what broke CR 613.6 in the first place. A removal is
+// applied in its own layer and reaches forwards only, so the single
+// walk of layerOrder already knows everything the second walk used to
+// discover.
 //
 // Caller must hold g.mu in write mode — the pass writes
 // Card.effective on every battlefield card and, via
@@ -533,69 +606,14 @@ func (g *Game) recomputeLayersLocked() {
 	// up, so a pass that ends an effect settles in one go rather than
 	// looping.
 	g.ClearExpiredScopedStaticsLocked()
-	// S24: the ability-removal fixed point. The first pass is the
-	// discovery pass — it runs with nothing silenced and learns
-	// which permanents a layer-6 ability-removing effect applied to.
-	// If that set is empty, which it is on every board that has
-	// never seen a Darksteel Mutation, we are done and this has cost
-	// one extra battlefield walk.
-	//
-	// If it is not empty the pass runs again with the set honoured
-	// at GATHER time, so a silenced permanent stops contributing to
-	// layers 1-5 and 7 as well as to 6. That is more than the rules
-	// allow (CR 613.6, #669; see activeStaticAbilitiesLocked). The
-	// Mind Control that became a Forest gives the creature back in
-	// paper because it becomes unattached (CR 704.5p, #675), not
-	// because of layer order.
-	//
-	// This is the one CR 613.8 dependency the engine resolves, and
-	// it resolves it by iterating to a fixed point rather than by
-	// analysing the effects. The layer-4 dependencies the catalog
-	// can now build are not resolved (#668). The cap is what makes
-	// the iteration safe: a board that has not settled after
-	// maxLayerPasses keeps the last pass's answer rather than
-	// spinning. Reaching it needs a cycle of ability
-	// removers that the within-layer-6 timestamp skip in
-	// applyLayerLocked does not already break, which no catalogued
-	// card can currently build.
-	var silenced map[uuid.UUID]bool
-	for pass := 0; pass < maxLayerPasses; pass++ {
-		next := g.layerPassLocked(silenced)
-		if sameCardSet(silenced, next) {
-			break
-		}
-		silenced = next
-	}
+	g.layerPassLocked()
 	g.materialiseControlLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
 }
 
-// maxLayerPasses bounds the ability-removal fixed point. Two passes
-// is the answer for every shape the catalog can build today (one to
-// discover, one to apply); the extra headroom is for a future card
-// whose removal changes which OTHER removal applies.
-const maxLayerPasses = 4
-
-// sameCardSet reports whether two silenced sets name the same cards.
-// nil and empty are the same set — the common board, where nothing
-// has lost anything.
-func sameCardSet(a, b map[uuid.UUID]bool) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for id := range a {
-		if !b[id] {
-			return false
-		}
-	}
-	return true
-}
-
 // layerPassLocked runs one complete CR 613 application over the
-// battlefield with `silenced` held out of the gather, and returns
-// the set of permanents an ability-removing effect applied to during
-// it. Caller must hold g.mu in write mode.
-func (g *Game) layerPassLocked(silenced map[uuid.UUID]bool) map[uuid.UUID]bool {
+// battlefield. Caller must hold g.mu in write mode.
+func (g *Game) layerPassLocked() {
 	if g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
@@ -614,34 +632,11 @@ func (g *Game) layerPassLocked(silenced map[uuid.UUID]bool) map[uuid.UUID]bool {
 			c.effective = &printed
 		}
 	}
-	effects := g.activeStaticAbilitiesLocked(silenced)
-	for _, b := range layerOrder {
-		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub)
+	effects := g.activeStaticAbilitiesLocked()
+	st := newLayerPassState(effects)
+	for i, b := range layerOrder {
+		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
 	}
-	return g.silencedSetLocked()
-}
-
-// silencedSetLocked reads back the permanents the pass just finished
-// marked as having lost all their abilities. Returns nil rather than
-// an empty map for the overwhelmingly common "nothing was silenced"
-// board, so sameCardSet's cheap length compare ends the loop on the
-// first pass.
-func (g *Game) silencedSetLocked() map[uuid.UUID]bool {
-	if g.Battlefield == nil {
-		return nil
-	}
-	var out map[uuid.UUID]bool
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if c.effective == nil || !c.effective.AbilitiesRemoved {
-			continue
-		}
-		if out == nil {
-			out = make(map[uuid.UUID]bool, 2)
-		}
-		out[c.InstanceID] = true
-	}
-	return out
 }
 
 // materialiseControlLocked copies layer 2's output back onto

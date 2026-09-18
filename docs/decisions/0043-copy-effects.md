@@ -195,10 +195,17 @@ Tracked in [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668)
 (an ADR, then CR 613.8 dependency ordering in layer 4) and
 [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) (ability
 removal across layers, and Song of the Dryads' CR 305.7 loss), which
-comes first. Until they land, [#644](https://github.com/krakenhavoc/cmd_and_ctrl/pull/644)
-declares these pairs as caveats on the cards and pins them as skipped
-tests, and AGENTS.md §7 "When NOT to add a catalog entry" holds back
-the cards that would add more pairs.
+comes first.
+
+**Superseded 2026-09-18 by [ADR 0067](0067-layer-dependency-ordering.md).**
+This section's deferral is spent: CR 613.8 dependency ordering is
+implemented for layer 4, detected by trial application rather than by
+the declared read/write set this section priced and declined. Every
+pair in the table above now comes out the same whichever card entered
+first, the caveats are off Urborg, Song of the Dryads, Arixmethes,
+Maskwood Nexus and The Warring Triad, and the AGENTS.md §7 hold list
+is released. The paragraphs above are left as written, as the record
+of why #414 did not build it.
 
 ## Consequences
 
