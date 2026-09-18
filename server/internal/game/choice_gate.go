@@ -180,6 +180,22 @@ func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 	return !ok || blocks
 }
 
+// ChoicePromptBlocksTable is ChoiceBlocksTable for one live prompt:
+// the kind's answer, unless that prompt has asked to block anyway.
+//
+// Everything that asks "does this stop the table" about an OUTSTANDING
+// choice goes through here (blockingChoiceLocked below, and
+// legal.anyBlockingChoiceOpen), so the per-prompt override cannot
+// drift from the kind's answer the way #794's second list did.
+// ChoiceBlocksTable stays the answer for a KIND, which is what the
+// classification gate tests and what an author reasons about.
+func ChoicePromptBlocksTable(c *PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	return c.ForceBlocks || ChoiceBlocksTable(c.Kind)
+}
+
 // ClassifiedChoiceKinds lists every kind the gate has an explicit
 // decision for, so a test can hold that list against the kinds
 // declared in this package and fail on one that was never classified.
@@ -201,7 +217,7 @@ func (g *Game) blockingChoiceLocked() *PendingChoice {
 		if c == nil {
 			continue
 		}
-		if !ChoiceBlocksTable(c.Kind) {
+		if !ChoicePromptBlocksTable(c) {
 			continue
 		}
 		return c

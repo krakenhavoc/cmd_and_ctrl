@@ -2494,6 +2494,41 @@ the kind and the file; `TestEveryChoiceKindHasAReassignmentDecision`
 third is. If either goes red on a kind you just added, that is the gate
 working.
 
+### Cumulative upkeep (#567, CR 702.24)
+
+One constructor, `CumulativeUpkeep(label, cost)`
+([cumulative_upkeep.go](server/internal/cards/effects/cumulative_upkeep.go)),
+over primitives that already existed: an `AtYourUpkeep` trigger, the
+counter primitive for the age counter (`game.CounterAge`), and
+`PayUnless` for "sacrifice it unless you pay". The counter goes on
+FIRST and the cost is then charged once **per counter** — built as
+`strings.Repeat(cost, age)` at resolution, because a cumulative upkeep
+of `{1}{U}` at three counters is three separate `{U}` symbols to pay
+and not a number to multiply. `ParseCost` accumulates the repeated
+string.
+
+Two things that are not obvious:
+
+- **The prompt blocks the table**, which no other `pay_unless` does.
+  Set `PayUnless.Blocking`, which rides `PendingChoice.ForceBlocks` and
+  is read through `game.ChoicePromptBlocksTable` by the engine gate and
+  by `internal/legal` alike. ADR 0018 §6's latitude is Rhystic Study's:
+  a question to a *different* player after the ability left the stack.
+  Cumulative upkeep asks the active player during their own upkeep, and
+  the answer decides whether a permanent is still on the battlefield.
+  The override is one-way and per prompt — the `pay_unless` **kind** is
+  unchanged, so Rhystic Study still plays as it did.
+- **"Cumulative upkeep" is not a `canonicalKeywords` token**, for
+  ward's reason (ward.go): the keyword carries a cost and a bare string
+  in `Characteristic.Abilities` has nowhere to put one, so a token
+  would tell the ADR 0037 coverage signal that every cumulative-upkeep
+  card is implemented. The cost lives on the `Spec`.
+
+Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
+"—Sacrifice a creature" (Phyrexian Soulgorger) are the same trigger
+with a payment the pay-or-else prompt cannot parse; they wait for those
+payment shapes rather than being approximated.
+
 ### The CR 726 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
