@@ -102,6 +102,12 @@ func (g *Game) sweepTurnEndLocked() {
 	// granted for is over. The exiled card stays exiled; it just stops
 	// being playable.
 	g.clearExpiredExilePlayLocked()
+	// #663: an event-conditioned delayed trigger is "this turn" —
+	// "when you NEXT cast an instant or sorcery spell THIS TURN" —
+	// and CR 514.2 ends it here whether or not the cast it was
+	// waiting for ever happened. Step-conditioned triggers carry no
+	// duration and are untouched.
+	g.clearExpiredDelayedTriggersLocked(true)
 }
 
 // beginNextTurnLocked picks the next turn and stamps the cursor on

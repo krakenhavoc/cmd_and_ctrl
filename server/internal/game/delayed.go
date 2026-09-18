@@ -115,6 +115,51 @@ type DelayedTrigger struct {
 	//
 	// Runs under g.mu held in write mode.
 	Effect func(g *Game, item *StackItem) error
+
+	// On is the EVENT condition, the #663 alternative to At: "when
+	// you NEXT CAST an instant or sorcery spell this turn, copy that
+	// spell" (Doublecast). The kinds are the same cheap pre-filter
+	// TriggeredAbility.Watches is, read by the one hook in
+	// triggerHarvester.OnEvent.
+	//
+	// Empty means "step-conditioned", which is every trigger this
+	// file held before #663. A trigger may carry both At and On;
+	// whichever condition is met first fires it, and it fires once.
+	// See the 2026-09-18 amendment to ADR 0026, which reverses §1-2
+	// for this case and says why.
+	On []EventKind
+
+	// AppliesTo narrows On to the event the card actually names — the
+	// delayed sibling of TriggeredAbility.AppliesTo, with a
+	// DelayedTrigger in the source's place because there is no source
+	// card to hand it. Nil means every event of a watched kind
+	// matches.
+	//
+	// Runs under g.mu held in write mode. MUST NOT call public
+	// locking mutators. A closure, so it does not survive a snapshot
+	// — see the census note on Effect.
+	AppliesTo func(ev Event, dt *DelayedTrigger, g *Game) bool
+
+	// Optional is the CR 603.5 "you may" on a fired trigger, asked
+	// through the harvester's own prompt because the dispatch is the
+	// harvester's. Nil for the mandatory case, which is every card on
+	// this seam today.
+	Optional *TriggerOptionalPrompt
+
+	// Duration is how long this trigger is owed for — the SAME CR
+	// 611.2 duration model the scoped statics use (ADR 0063,
+	// duration.go), because "this turn" means the same thing to a
+	// delayed trigger as it does to a Giant Growth and one switch
+	// should decide it. Plain data, no closures, so it clones and
+	// snapshots verbatim.
+	//
+	// Nil means "no duration", which is what a step-conditioned
+	// trigger wants: "at the beginning of the NEXT end step"
+	// scheduled during an end step has to outlive this turn.
+	// ScheduleDelayedTriggerForEffect stamps UntilEndOfTurn on an
+	// event-conditioned trigger that names none, because every
+	// printed one says "this turn".
+	Duration *Duration
 }
 
 // ScheduleDelayedTriggerForEffect registers a delayed triggered
@@ -128,13 +173,21 @@ type DelayedTrigger struct {
 // CR 614 replacement pipeline, where an EmitEvent would re-enter the
 // trigger harvester in the middle of replacing an event.
 func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
-	if dt.Effect == nil || dt.At == "" {
+	if dt.Effect == nil || (dt.At == "" && len(dt.On) == 0) {
 		return uuid.Nil
 	}
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
 	}
 	dt.CreatedTurn = g.Turn.Number
+	// #663: "this turn" is the printed duration of every
+	// event-conditioned delayed trigger there is, and CR 514.2 ends
+	// it at cleanup whether or not it fired. A caller that means
+	// something longer hands over its own Duration.
+	if len(dt.On) > 0 && dt.Duration == nil {
+		d := g.UntilEndOfTurnDuration()
+		dt.Duration = &d
+	}
 	queued := dt
 	if len(dt.Cards) > 0 {
 		queued.Cards = append([]uuid.UUID(nil), dt.Cards...)
@@ -221,6 +274,19 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ControllerTurnOnly: dt.ControllerTurnOnly,
 		CreatedTurn:        dt.CreatedTurn,
 		Effect:             dt.Effect,
+		// #663: the event condition. AppliesTo and Optional are
+		// shared, not copied, on exactly the contract Effect above
+		// carries — they read the live *Game handed to them and
+		// capture neither it nor a pointer into a zone slice.
+		AppliesTo: dt.AppliesTo,
+		Optional:  dt.Optional,
+	}
+	if dt.Duration != nil {
+		d := *dt.Duration
+		out.Duration = &d
+	}
+	if len(dt.On) > 0 {
+		out.On = append([]EventKind(nil), dt.On...)
 	}
 	if len(dt.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), dt.Cards...)
@@ -235,4 +301,147 @@ func (g *Game) activePlayerIDLocked() uuid.UUID {
 		return uuid.Nil
 	}
 	return g.Seats[g.Turn.ActiveSeat].ID
+}
+
+// --- #663: the event condition ---------------------------------------
+//
+// "When you next cast an instant or sorcery spell this turn, copy that
+// spell" is a delayed triggered ability whose condition is an EVENT
+// rather than a step. ADR 0026 §1-2 decided against that and the
+// 2026-09-18 amendment reverses it for this one case; the amendment
+// carries the reasoning, and what follows is the whole implementation:
+// one hook, one match, one dispatch.
+//
+// Everything else about a delayed trigger is unchanged. It is the same
+// queue, the same clone, the same snapshot, the same "fires once and
+// ceases to exist". What is new is where "once" is decided — the first
+// matching event instead of the first matching step entry.
+
+// fireEventDelayedTriggersLocked is the hook, called once per event
+// from triggerHarvester.OnEvent after the zone walks. Every trigger
+// whose event condition this event meets fires and is removed; a turn
+// holding two Doublecasts fires both on the same cast, which is two
+// copies and is what the cards print.
+//
+// The queue is rewritten BEFORE the first dispatch, for the reason
+// fireDelayedTriggersLocked gives: dispatching emits EventTrigger,
+// which re-enters the listener chain, and a listener reading a queue
+// that still held already-fired entries would see them twice.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) fireEventDelayedTriggersLocked(ev Event) {
+	if len(g.DelayedTriggers) == 0 {
+		return
+	}
+	var keep, fire []*DelayedTrigger
+	for _, dt := range g.DelayedTriggers {
+		if dt == nil {
+			continue
+		}
+		if dt.matchesEventLocked(ev, g) {
+			fire = append(fire, dt)
+			continue
+		}
+		keep = append(keep, dt)
+	}
+	if len(fire) == 0 {
+		return
+	}
+	g.DelayedTriggers = keep
+	for _, dt := range fire {
+		g.dispatchEventDelayedTriggerLocked(ev, dt)
+	}
+}
+
+// matchesEventLocked is the event condition: a watched kind, then the
+// card's own predicate. A trigger with no On never matches, which is
+// what keeps every step-conditioned trigger in the queue untouched.
+//
+// Caller must hold g.mu.
+func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
+	if len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
+		return false
+	}
+	return dt.AppliesTo == nil || dt.AppliesTo(ev, dt, g)
+}
+
+// dispatchEventDelayedTriggerLocked hands a fired trigger to the
+// HARVESTER's dispatch — the same dispatchTriggerLocked that
+// harvestFromZone calls and that QueueReflexiveTriggerForEffect has
+// called since ADR 0026's 2026-09-17 amendment.
+//
+// That reuse is the design, not a convenience: it is what makes the CR
+// 603.5 "you may", the CR 603.3d target drop, the CR 608.2b re-check
+// and the APNAP drain behave identically for a "when you next cast"
+// and for an ETB, with one implementation of each rather than two.
+//
+// The triggering event's object rides as StackItem.Payload — "copy
+// THAT spell" names the spell the event named, and the Effect reads it
+// off the item rather than closing over it, which is what keeps the
+// closure clone-safe (ADR 0026 §4).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) dispatchEventDelayedTriggerLocked(ev Event, dt *DelayedTrigger) {
+	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
+	label, effect := dt.Label, dt.Effect
+	cards := append([]uuid.UUID(nil), dt.Cards...)
+	ability := TriggeredAbility{
+		// Watches / AppliesTo stay empty for the same reason a
+		// reflexive trigger leaves them empty: the dispatch is handed
+		// the match rather than asked to find one.
+		Key:            label,
+		OptionalPrompt: dt.Optional,
+		Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+			item := NewTriggeredItem(source, label, effect)
+			for _, cardID := range cards {
+				if cardID != uuid.Nil {
+					item.Targets = append(item.Targets, TargetRef{Kind: TargetCard, ID: cardID})
+				}
+			}
+			if ev.CardID != uuid.Nil {
+				item.Payload = append(item.Payload, TargetRef{Kind: TargetCard, ID: ev.CardID})
+			}
+			return item
+		},
+	}
+	g.dispatchTriggerLocked(ev, source, lki, ability)
+}
+
+// clearExpiredDelayedTriggersLocked drops every delayed trigger whose
+// duration has run out, fired or not (CR 514.2). Called from
+// sweepTurnEndLocked beside the scoped-static and turn-scoped
+// replacement sweeps — the same "this turn is over" pass — and it
+// asks the same question they do: durationExpiredLocked is the ONE
+// place in the engine that decides when a duration is over, and a
+// second answer here would be a second rule.
+//
+// A trigger with no Duration is untouched: that is every
+// step-conditioned trigger, and "at the beginning of the next end
+// step" has to outlive the turn it was scheduled in.
+//
+// Allocates a fresh slice rather than compacting in place, because the
+// backing array is shared with every undo snapshot Clone has taken —
+// the same trap sweepScopedStaticsLocked documents. The sweep is
+// idempotent; the cleanup hook runs it again after a discard pause
+// drains.
+//
+// Caller must hold g.mu.
+func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
+	if len(g.DelayedTriggers) == 0 {
+		return
+	}
+	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
+	for _, dt := range g.DelayedTriggers {
+		if dt != nil && dt.Duration != nil && g.durationExpiredLocked(*dt.Duration, endOfTurn) {
+			continue
+		}
+		kept = append(kept, dt)
+	}
+	if len(kept) == len(g.DelayedTriggers) {
+		return
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	g.DelayedTriggers = kept
 }

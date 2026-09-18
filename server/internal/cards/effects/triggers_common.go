@@ -443,3 +443,57 @@ func AtEndOfYourCombat(label string, effect Effect) game.TriggeredAbility {
 func WheneverYouGainLife(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventChangeLife, YouGainedLife, label, effect)
 }
+
+// --- where the ability watches from (CR 113.6, #925) ----------------
+
+// InGraveyard makes a trigger watch from its owner's GRAVEYARD
+// instead of from the battlefield — "when you cycle this card"
+// (CR 702.29c, the card is already in the graveyard when the ability
+// triggers), Bloodghast's landfall, Narcomoeba's arrival.
+//
+// It replaces the zone list rather than adding to it, which is the
+// rule and not a shortcut: an ability printed to work from the
+// graveyard does not also work from play, and a permanent with a
+// graveyard trigger firing on the battlefield is the bug this
+// wrapper exists to make impossible to write.
+//
+// "You" inside the trigger is the card's OWNER while it sits there
+// (CR 108.4): the harvest hands the predicate a source whose
+// Controller is its Owner, so ByYou, Self and Landfall all read the
+// way the card prints them.
+func InGraveyard(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
+	return t
+}
+
+// InExile is InGraveyard for exile — suspend's "at the beginning of
+// your upkeep, remove a time counter from this card" and "when the
+// last is removed, cast it" (CR 702.62b/c, #659).
+func InExile(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Zones = []game.ZoneKind{game.ZoneExile}
+	return t
+}
+
+// ThisWasPutIntoYourGraveyardFromYourLibrary — "when this card is put
+// into your graveyard from your library" (Narcomoeba, the dredge and
+// mill recursion family).
+//
+// Watches both kinds the route emits: EventMill for a mill proper
+// (CR 701.17a) and EventZoneMove for every other library-to-graveyard
+// move, which is one ability with two conditions rather than two
+// abilities — the card prints one sentence. The zone pair is read off
+// the event rather than assumed, so a card milled from an OPPONENT's
+// library does not trigger their copy.
+func ThisWasPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.CardID == source.InstanceID &&
+		ev.OldZone == game.ZoneLibrary &&
+		ev.NewZone == game.ZoneGraveyard
+}
+
+// WhenThisIsPutIntoYourGraveyardFromYourLibrary is the printed shape
+// over that condition, already scoped to the graveyard — the zone the
+// card is in when it triggers.
+func WhenThisIsPutIntoYourGraveyardFromYourLibrary(label string, effect Effect) game.TriggeredAbility {
+	return InGraveyard(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove},
+		ThisWasPutIntoYourGraveyardFromYourLibrary, label, effect))
+}

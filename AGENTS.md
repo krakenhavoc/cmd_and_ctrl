@@ -1410,6 +1410,26 @@ adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
 
+**Triggers in other zones (#925, CR 113.6):** a trigger watches from
+the battlefield unless it says otherwise, and the ones that say
+otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,
+`WhenThisIsPutIntoYourGraveyardFromYourLibrary(...)` is Narcomoeba,
+`InExile(AtYourUpkeep(...))` is suspend's countdown (#659). The
+wrapper sets `game.TriggeredAbility.Zones`, which REPLACES the default
+rather than adding to it — an ability printed to work from the
+graveyard does not also fire from play, and that is the whole point:
+"return this card from your graveyard" off a permanent has nothing to
+return. "You" inside such a trigger is the card's **owner** (CR
+108.4), because a card outside the battlefield has no controller; the
+harvest stamps it, so `ByYou`, `Self` and `Landfall` all read as
+printed and the stack item goes to the owner. Only the graveyard and
+exile are walked — `effects.Register` panics at boot on any other
+zone, and `ZoneStack` is `FromStack` (cascade). The per-event cost of
+the battlefield walk is unchanged: `game.IndexTriggerZones` builds a
+per-event-kind index at `Register`
+([trigger_zones.go](server/internal/game/trigger_zones.go)), so an
+event kind nothing declares costs one map lookup and no walk.
+
 An effect that needs the item (targets, X, the source ID) or must
 capture something off the event is a closure with the `Effect`
 signature, exactly as before:
@@ -2229,6 +2249,35 @@ on the stack when the step begins, so every player gets a response
 window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
+
+**Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
+next cast an instant or sorcery spell this turn, copy that spell"
+(Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather
+than for a step, and it is the same queue with a different condition —
+`WhenYouNextCast(label, pred, effect)`, or the general
+`DelayedOnEvent{Label, On, Matches, Effect}`, both in
+[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go):
+
+```go
+return WhenYouNextCast("Doublecast — copy that spell",
+    Or(Instant(), Sorcery()), copyTheSpellYouJustCast).Apply(ctx)
+```
+
+Four things it gets for free and must not re-implement. It fires
+**once** and is removed (CR 603.7b), from one hook at the end of
+`triggerHarvester.OnEvent`. It ends **with the turn** whether or not it
+fired (CR 514.2), carrying ADR 0063's `Duration` and swept beside the
+scoped statics — hand it a `Duration` only when the card says something
+other than "this turn". It never sees the cast
+that **created** it, because the `EventCast` of that spell was emitted
+before the resolution that scheduled it. And the fired trigger goes
+through `dispatchTriggerLocked`, the harvester's own dispatch, so the
+CR 603.5 "you may", the CR 603.3d drop and the APNAP drain are the same
+code an ETB uses. The triggering event's object rides on the item as
+`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the `Effect`
+stays a package-level func that captures nothing. This reverses
+[ADR 0026](docs/decisions/0026-delayed-triggers.md) §1-2 for this one
+case; the 2026-09-18 amendment there is the record.
 
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's
