@@ -77,10 +77,20 @@ import (
 // cannot know. Card.VariableToughness is the one such field; see
 // snapshot_backfill.go.
 //
+// The OTHER direction is also a reason to bump, and it is why v2
+// exists (#623, ADR 0064 Decision 7): emblems are additive and
+// restore correctly from a v1 file, but a v1 BINARY reading a v2 file
+// would restore a game with the emblems silently missing. There is no
+// per-field way to say "refuse this file if you don't know what an
+// emblem is", so the version is it. checkSchema already refuses a
+// file newer than the reader (ErrSchemaTooNew); the bump is what
+// makes it fire. The cost is that a pre-emblem binary refuses EVERY
+// post-emblem restore point, emblem or not.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 1
+const SnapshotSchemaVersion = 2
 
 // minRestorableSchema is the oldest schema Restore still understands.
 // Raise it only when carrying a migration forward stops being worth
@@ -256,6 +266,12 @@ type playerSnapshot struct {
 	Hand      *zoneSnapshot `json:"hand"`
 	Graveyard *zoneSnapshot `json:"graveyard"`
 	Command   *zoneSnapshot `json:"command"`
+	// Emblems is the other half of the command zone (CR 114, #623).
+	// Absent from every pre-S40 file, which restores as an empty
+	// zone — the right reading, because no game written before
+	// emblems existed had one. See SnapshotSchemaVersion for why the
+	// schema was bumped anyway.
+	Emblems *zoneSnapshot `json:"emblems,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -902,6 +918,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Hand:               snapshotZone(p.Hand, cen),
 		Graveyard:          snapshotZone(p.Graveyard, cen),
 		Command:            snapshotZone(p.Command, cen),
+		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
 		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
@@ -1401,6 +1418,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Hand:               restoreZone(p.Hand, ZoneHand),
 		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
 		Command:            restoreZone(p.Command, ZoneCommand),
+		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
@@ -1425,6 +1443,13 @@ func restorePlayer(p *playerSnapshot) *Player {
 	// means the default.
 	if out.LandDropsPerTurn <= 0 {
 		out.LandDropsPerTurn = DefaultLandDropsPerTurn
+	}
+	// #623: a pre-emblem file carries no emblem zone, so restoreZone
+	// hands back one owned by nobody. newPlayer stamps the owner, so
+	// stamp it here too and a restored seat is the shape a fresh one
+	// is.
+	if out.Emblems != nil {
+		out.Emblems.Owner = out.ID
 	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.

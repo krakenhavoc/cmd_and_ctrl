@@ -99,6 +99,24 @@ type Player struct {
 	Graveyard *Zone
 	Command   *Zone
 
+	// Emblems is the OTHER half of this player's command zone: the
+	// emblems they have been given (CR 114.2), as objects with a
+	// synthetic catalog key. See emblem.go and ADR 0064.
+	//
+	// It is a second slice rather than more cards in Command because
+	// every reader of Command.Cards means "commander card" — the cast
+	// enumerator offers them, the tax counts them, the admin move verb
+	// moves them, ReplaceDeck truncates them, and the CR 704.5d token
+	// sweep would delete one. ZoneRef is {Kind, Owner} with no
+	// discriminator, so nothing that resolves a zone by reference can
+	// reach this slice, which is how CR 114's "an emblem can't be
+	// moved, cast or targeted" is enforced: by the container, not by a
+	// check somebody has to remember.
+	//
+	// Kind is ZoneCommand because it IS the command zone. Added in
+	// S40 (#623).
+	Emblems *Zone
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.14a). See the note above the struct.
@@ -276,6 +294,7 @@ func newPlayer(name string, seat int) *Player {
 	p.Hand = newZone(ZoneHand, id)
 	p.Graveyard = newZone(ZoneGraveyard, id)
 	p.Command = newZone(ZoneCommand, id)
+	p.Emblems = newZone(ZoneCommand, id)
 	return p
 }
 

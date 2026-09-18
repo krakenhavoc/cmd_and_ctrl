@@ -144,6 +144,10 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		sweep(p.Hand)
 		sweep(p.Graveyard)
 		sweep(p.Command)
+		// #623 / CR 114: emblems are owned objects in the command
+		// zone, so they leave with their owner like everything else.
+		// This is the ONLY thing in the game that removes one.
+		sweep(p.Emblems)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()

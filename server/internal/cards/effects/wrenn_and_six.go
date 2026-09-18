@@ -23,17 +23,26 @@ import (
 // card and it is most of why Wrenn is played — the plus is a
 // loyalty engine first and a land recursion second.
 //
-// The ultimate is NOT REGISTERED. Emblems have no shape, and retrace
-// needs the "cast from your graveyard by discarding a land" path that
-// only arrived for declared zones in #409 and has no per-player
-// grant. An ability whose label promised an emblem and delivered a
-// loyalty payment would be a worse lie than one that isn't offered.
+// The ultimate is STILL NOT REGISTERED, and since S40 (#623) emblems
+// are no longer the reason. RETRACE is: the emblem's entire text is
+// "Instant and sorcery cards in your graveyard have retrace", and
+// retrace needs two things that do not exist — the alternative cost
+// itself ("cast this from your graveyard by discarding a land"), and
+// a granted cast permission a player can hold over a set of cards
+// they did not print, which is seam #652.
+//
+// Registering it now would offer a −7 that kills Wrenn, puts a real
+// emblem chip on the board reading "…have retrace", and then never
+// offers a retrace cast. That is the lie ADR 0032 refuses, moved one
+// step later, and a player who paid seven loyalty for it would get no
+// signal in game at all. The day #652 lands this card gains an
+// `Emblem` slot with one static in it and nothing else changes.
 func init() {
 	Register(Spec{
 		OracleID:     "108ae90a-50fa-4cfd-b751-d630e41425fe",
 		Name:         "Wrenn and Six",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The -7 ultimate isn't offered — there is no emblem and no retrace."},
+		Caveats:      []string{"The -7 ultimate isn't offered — its emblem grants retrace, which the engine can't cast yet (#652)."},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.

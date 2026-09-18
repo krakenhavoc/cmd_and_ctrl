@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0061 token creation and discard as replaceable events) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0064 emblems) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -2659,6 +2659,63 @@ exercise the actual card and check controller restrictions and a negative
 cause, not just the helper predicate. The `OncePerBatch` first-event
 limitation and remaining card wave are tracked in
 [ADR 0018's addendum](docs/decisions/0018-triggers-on-the-stack.md#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted).
+
+### Emblems (#623)
+
+"You get an emblem with [ability]" (CR 114) is one `Spec` slot plus a
+one-line ability. Declare the emblem next to the ability that makes
+it, and make the ability's whole effect `CreateEmblem{}` — it names
+nothing, because the emblem it creates is this card's:
+
+```go
+Register(Spec{
+    OracleID: "05e6b243-…",
+    Name:     "Elspeth, Sun's Champion",
+    Emblem: &EmblemSpec{
+        Label:  "Elspeth, Sun's Champion emblem",   // "<card> emblem"
+        Text:   "Creatures you control get +2/+2 and have flying.",
+        Static: []game.StaticAbility{ /* … */ },   // and/or Triggered
+    },
+    Activated: []ActivatedAbility{{
+        Label:  "−7: You get an emblem with \"…\"",
+        Cost:   LoyaltyCost(-7),
+        Effect: func(g *game.Game, item *game.StackItem) error {
+            return CreateEmblem{}.Apply(NewContext(g, item))
+        },
+    }},
+})
+```
+
+An emblem's abilities are written in **exactly** the vocabulary a
+permanent's are: `game.StaticAbility` with a layer and a sub-layer
+(the emblem object is the `source`, so "creatures you control" is the
+same `target.Controller == source.Controller` an anthem uses), and the
+ordinary trigger constructors (`Targeting(WheneverYouDraw(…), spec)`).
+There is no emblem dialect, because `effects.Register` files a second
+`game.CardDef` under `game.EmblemKey(OracleID)` and the emblem object
+reaches the layer pass and the harvester through the same
+`CatalogStaticAbilities` / `CatalogTriggers` hooks a battlefield
+permanent does. See [ADR 0064](docs/decisions/0064-emblems.md).
+
+Three things to know:
+
+- **`Register` panics** on an `EmblemSpec` with no `Label`, no `Text`,
+  or no abilities at all. An emblem whose printed ability the engine
+  cannot express yet is NOT declared with an empty `Static` — leave
+  the ultimate omitted and say why in `Caveats`, as Wrenn and Six does
+  for retrace (#652). ADR 0032 still holds: a −7 that costs seven
+  loyalty and delivers a chip that does nothing is the lie the
+  omission exists to avoid.
+- **Nothing removes an emblem**, and nothing can name one. It is not a
+  permanent, not a card, never a legal target, and there is no move,
+  route or admin verb that reaches it — `Player.Emblems` is a second
+  command-zone slice and `ZoneRef` is `{Kind, Owner}`, so
+  `{command, owner}` always resolves to the commander pile. The one
+  exit is CR 800.4a, its owner leaving the game.
+- **The wire is `PlayerView.emblems[]`**, public and unredacted, with
+  the label and text read from the catalog on every projection. The
+  board draws chips beside the player identity; the command-zone pile
+  stays commander-only.
 
 ### Adding a `Spec` slot (#622)
 

@@ -288,6 +288,9 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	}
 	pass := g.newHarvestPassLocked(ev)
 	g.harvestFromZone(&pass, g.Battlefield)
+	// #623 / CR 114.3: an emblem's triggered abilities function in the
+	// command zone. One more zone into the same walk — see emblem.go.
+	g.harvestFromEmblemsLocked(&pass)
 	// S28: "When you cast this spell, ..." — cascade. The source is
 	// the spell that was just announced, which is on the stack and
 	// invisible to the battlefield scan above. Narrow on purpose:

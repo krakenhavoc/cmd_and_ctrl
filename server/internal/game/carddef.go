@@ -68,6 +68,15 @@ type CardDef struct {
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// Emblem is the presentation half of an EMBLEM's catalog entry
+	// (CR 114) — its board label and its printed ability text. Set
+	// only on an emblem's own def, the one effects.Register files
+	// under game.EmblemKey(spec.OracleID), so a non-nil Emblem is how
+	// the engine tells an emblem's def from a card's. The emblem's
+	// abilities are the ordinary Static and Triggered slots above.
+	// See emblem.go and ADR 0064. Added in S40 (#623).
+	Emblem *EmblemDef
+
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read

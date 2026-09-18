@@ -306,18 +306,7 @@ func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 // b34ZombiesAndTokensYouControlHaveFlying is the flying half of On
 // Wings of Gold — layer 6, deduped.
 func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
-	return game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: b34ZombieOrTokenYouControl,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, k := range c.Abilities {
-				if k == "flying" {
-					return
-				}
-			}
-			c.Abilities = append(c.Abilities, "flying")
-		},
-	}
+	return KeywordGrant(b34ZombieOrTokenYouControl, "flying")
 }
 
 // --- replacements --------------------------------------------------

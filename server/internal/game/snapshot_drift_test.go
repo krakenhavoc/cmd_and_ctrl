@@ -259,6 +259,11 @@ var playerFields = plan(
 	"Hand", carried, "",
 	"Graveyard", carried, "",
 	"Command", carried, "",
+	// #623 / CR 114: the other half of the command zone. Carried, and
+	// it has to be — which emblems a player has is not derivable from
+	// anything else on the board, and a restore that dropped them
+	// would quietly un-ultimate a planeswalker.
+	"Emblems", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
