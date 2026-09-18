@@ -77,23 +77,12 @@ func crosswayMayPayTwoLifeToDraw(g *game.Game, item *game.StackItem) error {
 }
 
 // crosswayPayTwoLifeThenDraw is the "if you do" branch: a CR 118.3
-// cost, then the linked draw.
+// cost, then the linked draw. The body is the shared one in
+// helpers.go — Erebos, Bleak-Hearted prints the same sentence.
 //
 // Caller holds g.mu.
 func crosswayPayTwoLifeThenDraw(ctx *Context) error {
-	controller := ctx.Controller()
-	p := ctx.Game.PlayerByIDForEffect(controller)
-	if p == nil || p.Eliminated || p.Life < crosswayLifePayment {
-		// CR 119.4: a player cannot pay life they do not have, and
-		// life can move between the question and the answer. An
-		// unaffordable payment degrades to the decline rather than
-		// erroring, the same shape ResolveEntryPayLife uses.
-		return nil
-	}
-	if err := ctx.Game.PayLifeForEffect(ctx.Source(), controller, crosswayLifePayment); err != nil {
-		return err
-	}
-	return DrawCards{Player: controller, N: 1}.Apply(ctx)
+	return payLifeThenDraw(ctx, crosswayLifePayment, 1)
 }
 
 // crosswayLifePayment is the printed 2.

@@ -71,6 +71,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue and red Insect with flying and haste": {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"flying", "haste"}},
 	"1/1 colorless Ally":                            {Name: "Ally", TypeLine: "Token Creature — Ally", Power: 1, Toughness: 1},
 	"1/1 colorless Faerie Rogue with flying":        {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"1/1 colorless Construct artifact":              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 1, Toughness: 1},
 	"1/1 colorless Gnome artifact":                  {Name: "Gnome", TypeLine: "Token Artifact Creature — Gnome", Power: 1, Toughness: 1},
 	"1/1 colorless Human":                           {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1},
 	"1/1 colorless Human Soldier":                   {Name: "Human Soldier", TypeLine: "Token Creature — Human Soldier", Power: 1, Toughness: 1},
@@ -149,6 +150,7 @@ var tokenTable = map[string]game.Card{
 	"5/5 red Dragon Spirit with flying":             {Name: "Dragon Spirit", TypeLine: "Token Creature — Dragon Spirit", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 red and green Elemental":                   {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"R", "G"}},
 	"8/8 blue Scion of the Deep":                    {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
+	"9/9 blue Kraken":                               {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
 	"Munitions":                                     {Name: "Munitions", TypeLine: "Token Artifact"},
 
 	// A key longer than every row above: kept in its own block so gofmt
