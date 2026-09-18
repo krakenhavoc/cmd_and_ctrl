@@ -292,13 +292,26 @@ type Card struct {
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.
 
-	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
-	// "exile the top card of your library — you may play it this
-	// turn". Meaningful only while the card is in exile, and only
-	// for the player it names, who is usually not the owner. Zero
-	// value means the card is inert exile like any other. Cleared
-	// as the card leaves exile and swept at cleanup.
-	ExilePlay ExilePlayPermission
+	// ObjectEpoch counts how many times this card has become a NEW
+	// OBJECT by changing zones (CR 400.7). Bumped by MoveCard, which
+	// is the single choke point every zone change goes through, and
+	// read by nothing except the granted-permission model.
+	//
+	// It exists so CR 400.7 can be a CHECK rather than a discipline
+	// (ADR 0066 decision 2). A granted cast permission names
+	// {instance, epoch}: a card Snapcaster gave flashback to, exiled
+	// and returned to the graveyard, is a new object with a new epoch
+	// and has no flashback; an impulse-exiled card that reaches the
+	// stack has had its epoch bumped by that very move, so the grant
+	// is spent without anyone having to zero a field on the way out.
+	// Before this, six sites cleared Card.ExilePlay by hand and a
+	// seventh forgetting to was a silent illegal cast.
+	//
+	// Monotonic and never reset: a restore that reset it would revive
+	// every permission ever granted against the card. It is an int
+	// sitting between two other ints so it strands no padding
+	// (card_layout_test.go).
+	ObjectEpoch int
 
 	// Layout is Scryfall's printing layout, copied verbatim at deck
 	// import: "normal", "transform", "modal_dfc", "adventure",

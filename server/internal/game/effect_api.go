@@ -1361,7 +1361,7 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	// exile bolted onto the resolution, and the only place in the
 	// engine where it is observable.
 	for _, c := range g.Stack.Cards {
-		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item) {
 			destKind, destOwner = ZoneExile, uuid.Nil
 			break
 		}

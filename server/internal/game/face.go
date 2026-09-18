@@ -233,9 +233,9 @@ func faceCastable(c Card, i int) bool {
 }
 
 // faceForCastLocked settles which face a cast announces, given the
-// face the caller asked for and any per-instance exile grant on the
-// card (S32). Returns the face and whether the cast is allowed at
-// all.
+// face the caller asked for and any granted cast permission covering
+// the card (S32; ADR 0066 made the permission the one model).
+// Returns the face and whether the cast is allowed at all.
 //
 // Two rules, and the split between them is the whole seam:
 //
@@ -259,7 +259,7 @@ func faceCastable(c Card, i int) bool {
 // browser, a future enumerator entry — had to re-derive the one
 // possible answer and spell it back, and each of them forgetting is a
 // cast that fails for no reason a player can see.
-func faceForCastLocked(c Card, want int, grant ExilePlayPermission, playerID uuid.UUID, turn int) (int, bool) {
+func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID, turn int) (int, bool) {
 	if face, ok := grant.GrantsFace(playerID, turn); ok {
 		// A grant for a face the card does not have is REFUSED, not
 		// clamped. SetFace clamps, by design, so a card is never left

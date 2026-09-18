@@ -524,20 +524,22 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// cost gate finally sees {4}{U}{U}{U} instead of "" — which is
 	// both halves of #289 and all of #265.
 	//
-	// S32: the per-instance exile grant is read BEFORE the face gate,
+	// S32: the granted permission is read BEFORE the face gate,
 	// because a grant can name a face the card's own layout does not
 	// offer — "exile it, then cast it transformed" is a cast of a
 	// `transform` card's back face, which CastableFaces refuses on
-	// principle. ExilePlay is a property of the card instance and not
-	// of any face, so reading it before SetFace is safe and is the
-	// only order in which the gate can consult it. See
-	// faceForCastLocked for why a face-naming grant SETS the face
-	// rather than merely permitting it.
-	exileGrant := ExilePlayPermission{}
-	if src.Kind == ZoneExile {
-		exileGrant = card.ExilePlay
-	}
-	face, ok := faceForCastLocked(card, params.Face, exileGrant, playerID, g.Turn.Number)
+	// principle. A permission belongs to the card INSTANCE and not to
+	// any face, so reading it before SetFace is safe and is the only
+	// order in which the gate can consult it. See faceForCastLocked
+	// for why a face-naming grant SETS the face rather than merely
+	// permitting it.
+	//
+	// ADR 0066: one lookup for all three granted zones. It answers
+	// nil for hand and the command zone, and nil for a card whose own
+	// text already opens the zone — Gravecrawler and a printed
+	// flashback need no permission and must not be repriced by one.
+	grant := g.CastPermissionForLocked(playerID, card, src.Kind)
+	face, ok := faceForCastLocked(card, params.Face, grant, playerID, g.Turn.Number)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
 			"card_name", card.Name,
@@ -554,41 +556,43 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// gates were judged against.
 	params.Face = face
 	card.SetFace(params.Face)
-	// S21 sub-PR 6: casting out of exile needs a live impulse-exile
-	// grant naming this player. Checked before every other gate
-	// because it's the one that decides whether the card is yours to
-	// touch at all.
+	// S21 sub-PR 6: casting out of exile needs a live permission
+	// naming this player. Checked before every other gate because
+	// it's the one that decides whether the card is yours to touch at
+	// all.
 	//
 	// S29 softened the "no grant, no cast" half by exactly one case:
 	// a card whose own text declares ZoneExile castable does not need
-	// an instance grant. That declaration is a CARD-level permission,
-	// so it opens exile for every copy of the card at any time, and
-	// no catalog card declares it today. Suspend and foretell are NOT
-	// this shape: CR 702.62a allows a suspended card's cast only while
-	// its last-time-counter trigger resolves, and CR 702.143 makes
+	// a permission. That declaration is a CARD-level one, so it opens
+	// exile for every copy of the card at any time, and no catalog
+	// card declares it today. Suspend and foretell are NOT this
+	// shape: CR 702.62a allows a suspended card's cast only while its
+	// last-time-counter trigger resolves, and CR 702.143 makes
 	// foretold status belong to the exiled instance. Both want a
-	// per-instance ExilePlayPermission, the way cascade's free cast
-	// works. hasExileGrant rides down to validateCastPathLocked so the
-	// zone-cost rule can tell the two apart.
-	hasExileGrant := false
+	// per-instance CastPermission, the way cascade's free cast works.
+	//
+	// The graveyard and the library reach the same question through
+	// validateCastPathLocked below, which is handed `grant`; exile
+	// keeps its own sentinel because ErrNoPlayPermission is what its
+	// clients (the impulse button, the zone browser) already read.
 	if src.Kind == ZoneExile {
-		hasExileGrant = exileGrant.Active(playerID, g.Turn.Number)
-		if !hasExileGrant && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
+		if grant == nil && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
 			return ErrNoPlayPermission
 		}
-		// "You may CAST that card" (Ragavan) does not let you play a
-		// land: playing a land is a special action, not a cast
-		// (CR 305.1, 116.2a).
-		if hasExileGrant && exileGrant.CastOnly && card.IsLand() {
-			return ErrNoPlayPermission
-		}
+	}
+	// "You may CAST that card" (Ragavan) does not let you play a
+	// land: playing a land is a special action, not a cast
+	// (CR 305.1, 116.2a). True of a graveyard or library permission
+	// too — Realmwalker casts creature spells and plays no lands.
+	if grant != nil && grant.CastOnly && card.IsLand() {
+		return ErrNoPlayPermission
 	}
 	// S22: an alternative cost is claimed at announce and replaces
 	// the mana cost (CR 118.9). Resolved before every targeting gate
 	// below, because overload and cleave rewrite the target clause —
 	// the spell's legality has to be judged under the cost actually
 	// being paid, not under the printed one.
-	alt, err := validateAlternativeCost(CatalogKey(card), params.AlternativeCost, params.Targets)
+	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, params.Targets)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost claim",
 			"card_name", card.Name,
@@ -603,7 +607,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// before any targeting work, because the rewrite an alternative
 	// cost applies to the target clause is only legitimate if the
 	// cost could be claimed from this zone at all.
-	if err := g.validateCastPathLocked(card, src.Kind, alt, hasExileGrant); err != nil {
+	if err := g.validateCastPathLocked(card, src.Kind, alt, grant); err != nil {
 		slog.Warn("cast_spell rejected: illegal cast path",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -620,7 +624,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// cost may be paid (CR 118.6a).
 	// Mode-independent, like the unparseable-cost refusal: there is
 	// no cost to have paid on paper either.
-	if HasNoManaCost(card) && castPaysPrintedCost(alt, exileGrant, hasExileGrant) {
+	if HasNoManaCost(card) && castPaysPrintedCost(alt, grant) {
 		slog.Warn("cast_spell rejected: no mana cost to pay",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -683,7 +687,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// and quietly casting a different spell hides that from whoever
 	// has to debug it.
 	if params.XValue != 0 &&
-		CastCostFor(card, params.AlternativeCost, exileGrant, hasExileGrant).LocksXAtZero() {
+		CastCostFor(card, alt, grant).LocksXAtZero() {
 		slog.Warn("cast_spell rejected: X must be 0 when the mana cost isn't paid",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -805,7 +809,23 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// hand-resident Ambush Viper and the like. Anything else
 	// (sorceries, permanents that aren't instants and don't have
 	// flash) needs sorcery speed.
+	//
+	// ADR 0066: a granted permission does NOT open this gate unless it
+	// says so. Bolas's Citadel does not make a sorcery on top of your
+	// library castable on an opponent's turn, and Underworld Breach
+	// does not make a sorcery in your graveyard an instant. A
+	// permission that says otherwise (madness's "ignore timing",
+	// #657) sets TimingFlash and is read here rather than in a second
+	// branch bolted on later.
 	requiresSorcerySpeed := !card.IsInstant() && !card.IsLand() && !HasKeyword(&card, "flash")
+	if grant != nil {
+		switch grant.Timing {
+		case TimingFlash:
+			requiresSorcerySpeed = false
+		case TimingSorcery:
+			requiresSorcerySpeed = true
+		}
+	}
 	if card.IsLand() || requiresSorcerySpeed {
 		if !g.sorcerySpeedOpenLocked(playerID) {
 			return ErrSorcerySpeedRequired
@@ -908,10 +928,6 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 				if out.EntersTapped {
 					g.Battlefield.Cards[i].Tapped = true
 				}
-				// The impulse grant is spent. Zeroing it here means a
-				// later effect that exiles this card again can't
-				// inherit a permission it never granted.
-				g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
@@ -975,10 +991,8 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if _, err := MoveCard(src, g.Stack, cardID); err != nil {
 		return err
 	}
-	// The impulse grant is spent — see the land branch above.
 	for i := range g.Stack.Cards {
 		if g.Stack.Cards[i].InstanceID == cardID {
-			g.Stack.Cards[i].ExilePlay = ExilePlayPermission{}
 			// ADR 0034: the spell on the stack IS the chosen face.
 			// Everything downstream of here reads the card out of
 			// the stack zone rather than from the local copy — the
@@ -1007,7 +1021,13 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  params.SplitSecond,
 		AltCost:      params.AlternativeCost,
-		CastFromZone: src.Kind,
+		// CR 702.34a / CR 400.7g, ADR 0066. The fact travels with the
+		// stack object because the catalog cannot answer for it: a
+		// card given flashback by Snapcaster was cast for a cost the
+		// catalog has never heard of, and the permission that granted
+		// it may be gone by the time the spell leaves the stack.
+		AltCostExiles: alt != nil && alt.ExileOnLeavingStack,
+		CastFromZone:  src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
 		// XValue is: by resolution the tokens are gone from the pool
@@ -1577,32 +1597,31 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// whichever cost was chosen, because CR 903.8 taxes the cost
 	// being paid, not the cost printed in the corner.
 	//
-	// S22 airbend: an exile-play grant can carry its own "rather than
-	// its mana cost" price ({2}), which belongs to the exiled
+	// S22 airbend, ADR 0066: a granted permission can carry its own
+	// "rather than its mana cost" price ({2}), which belongs to the
 	// INSTANCE rather than to the card, so it can't come from the
 	// oracle-ID-keyed AlternativeCost catalog. It wins over the
 	// printed cost and is layered BEFORE the commander tax for the
 	// same reason the alternative cost is: CR 903.8 taxes whatever
 	// cost is actually being paid.
 	//
-	// The grant prices a cast out of EXILE and nothing else. MoveCard
-	// clears it when the card leaves exile (CR 400.7); this check is
-	// the second half, so a grant still sitting on a card can't
-	// reprice a cast from any other zone.
+	// The permission is re-derived here from the zone the cast claims
+	// rather than passed down, so a permission that has expired, or
+	// that covers a different zone, can never reprice this cast
+	// (CR 400.7).
 	//
 	// Both halves live in CastCostFor, because the announce path asks
 	// the same question of the same choice — whether the cost being
 	// paid still carries the printed {X} (CR 107.3b) — and two copies
 	// of the precedence would be two chances to disagree about which
 	// cost this cast is paying.
-	fromExile := params.FromZone == string(ZoneExile)
-	grant := ExilePlayPermission{}
-	hasGrant := false
-	if fromExile {
-		grant = card.ExilePlay
-		hasGrant = grant.Active(p.ID, g.Turn.Number)
+	srcKind, _ := castZoneFromWire(params.FromZone)
+	grant := g.CastPermissionForLocked(p.ID, card, srcKind)
+	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
+	if err != nil {
+		return ParsedCost{}, err
 	}
-	cost, err := ParseCost(CastCostFor(card, params.AlternativeCost, grant, hasGrant).Paid)
+	cost, err := ParseCost(CastCostFor(card, alt, grant).Paid)
 	if err != nil {
 		return ParsedCost{}, err
 	}
@@ -1614,7 +1633,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
 	// equivalent for the solver.
-	if card.ExilePlay.AnyColor && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
+	if grant != nil && grant.AnyColor {
 		cost = asAnyColorCost(cost)
 	}
 	return cost, nil
@@ -1647,6 +1666,18 @@ func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
 		// and escape. Per-player, so the zone lookup already scopes
 		// the cast to "your graveyard".
 		return p.Graveyard, nil
+	case ZoneLibrary:
+		// S42 / CR 401.5: "you may play lands and cast spells from the
+		// top of your library". Per-player like the graveyard, so a
+		// player naming a card in someone else's library simply won't
+		// find it — casting from another player's library (Bribery) is
+		// a different shape and is out of scope for ADR 0066.
+		//
+		// THE TOP CARD is the only one a permission opens, and that is
+		// checked by CastPermissionForLocked rather than here: this
+		// lookup answers "which pile", not "may you", and the position
+		// rule belongs with the permission that names it.
+		return p.Library, nil
 	case ZoneExile:
 		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
 		// unlike hand, command and graveyard the zone lookup does not
@@ -1740,7 +1771,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// not happen — but if it does, route to graveyard so the
 		// stack doesn't wedge. No meta means no record of the cost
 		// that was paid, so no flashback replacement either.
-		return g.routeStackCardToGraveyardLocked(top, "")
+		return g.routeStackCardToGraveyardLocked(top, nil)
 	}
 	// CR 608.1: spells and abilities share one LIFO stack. An ability
 	// item stamped with a higher Seq than the top spell was added
@@ -1790,7 +1821,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
 		// the resolution.
-		return g.routeStackCardToGraveyardLocked(top, item.AltCost)
+		return g.routeStackCardToGraveyardLocked(top, item)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1956,7 +1987,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
 	// exile, when the flashback cost was paid (CR 702.34a).
-	return g.routeStackCardToGraveyardLocked(top, item.AltCost)
+	return g.routeStackCardToGraveyardLocked(top, item)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -2088,15 +2119,13 @@ func (g *Game) resolveTopAbilityLocked() {
 // instants / sorceries and by the "countered by game rules" path
 // (sub-PR 3) when every target is illegal on resolve.
 //
-// `altCost` is the key of the cost the spell was cast for, because
-// S29's flashback replaces this destination: "exile this card
-// instead of putting it anywhere else any time it would leave the
-// stack" (CR 702.34a). Pass "" for a spell cast for its printed
-// cost, and for the defensive no-StackMeta path where there is no
-// cost to read.
+// `item` is the spell's stack item, because S29's flashback replaces
+// this destination: "exile this card instead of putting it anywhere
+// else any time it would leave the stack" (CR 702.34a). Pass nil for
+// the defensive no-StackMeta path, where there is no cost to read.
 //
 // Caller must hold g.mu.
-func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
+func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem) error {
 	// S29 flashback. Checked before the owner lookup because it does
 	// not depend on one: the destination is the shared exile zone
 	// either way, which is also where a card whose owner has left
@@ -2109,7 +2138,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, altCost string) error {
 	// answers — priority cannot pass while a choice is outstanding,
 	// so nothing resolves on top of it in the meantime.
 	r := zoneRoute{CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner}
-	if altCostExilesFromStack(c, altCost) {
+	if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	}
 	_, err := g.routeCardToZoneLocked(r)

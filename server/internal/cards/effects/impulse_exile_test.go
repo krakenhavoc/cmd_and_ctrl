@@ -30,13 +30,11 @@ func stackLibrary(p *game.Player, name, typeLine, manaCost string) uuid.UUID {
 }
 
 // exiledPermission returns the impulse grant on a card in exile.
-func exiledPermission(g *game.Game, id uuid.UUID) game.ExilePlayPermission {
-	for _, c := range g.Exile.Cards {
-		if c.InstanceID == id {
-			return c.ExilePlay
-		}
+func exiledPermission(g *game.Game, id uuid.UUID) *game.CastPermission {
+	if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+		return perm
 	}
-	return game.ExilePlayPermission{}
+	return &game.CastPermission{}
 }
 
 func TestRagavanStealsTheTopCardAndMakesATreasure(t *testing.T) {

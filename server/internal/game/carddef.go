@@ -96,6 +96,27 @@ type CardDef struct {
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
 	// through CatalogAdditionalLandPlays; see land_drops.go.
 	AdditionalLandPlays int
+
+	// CastPermissions are the STANDING cast and play permissions this
+	// permanent grants its controller while it is on the battlefield
+	// (ADR 0066) — Underworld Breach's escape for every nonland card
+	// in your graveyard, Bolas's Citadel's top of the library. Read
+	// through CatalogCastPermissions; see cast_permission.go.
+	//
+	// Derived on every query rather than written onto the player, so
+	// two sources compose and one leaving cannot revoke the other's
+	// permission. Per-INSTANCE permissions (Snapcaster, impulse exile)
+	// are not here — they are granted by an effect and stored on the
+	// player.
+	CastPermissions []CastPermission
+
+	// LibraryTopVisible is how far this permanent makes its
+	// controller's top library card visible (CR 401.5) — "you may look
+	// at the top card of your library any time" is LibraryTopOwner,
+	// "play with the top card of your library revealed" is
+	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
+	// library_top.go.
+	LibraryTopVisible LibraryTopVisibility
 }
 
 // CatalogLookup is the one production hook: the catalog's definition
@@ -274,5 +295,17 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogCastPermissions = func(key string) []CastPermission {
+		if d := catalogDef(key); d != nil {
+			return d.CastPermissions
+		}
+		return nil
+	}
+	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
+		if d := catalogDef(key); d != nil {
+			return d.LibraryTopVisible
+		}
+		return LibraryTopHidden
 	}
 }

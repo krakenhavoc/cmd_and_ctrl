@@ -97,11 +97,12 @@ func (g *Game) sweepTurnEndLocked() {
 	// ended by this turn being over — one function decides, and for
 	// those two it says no.
 	g.ClearEndOfTurnScopedStaticsLocked()
-	// S21 sub-PR 6: impulse-exile permissions ("you may play it this
-	// turn") lapse here for the same reason — the turn they were
-	// granted for is over. The exiled card stays exiled; it just stops
-	// being playable.
-	g.clearExpiredExilePlayLocked()
+	// S21 sub-PR 6, ADR 0066: granted cast and play permissions ("you
+	// may play it this turn") lapse here for the same reason — the
+	// turn they were granted for is over. The exiled card stays
+	// exiled; it just stops being playable. Hygiene rather than
+	// correctness: an expired permission is already refused.
+	g.clearExpiredCastPermissionsLocked()
 	// #663: an event-conditioned delayed trigger is "this turn" —
 	// "when you NEXT cast an instant or sorcery spell THIS TURN" —
 	// and CR 514.2 ends it here whether or not the cast it was

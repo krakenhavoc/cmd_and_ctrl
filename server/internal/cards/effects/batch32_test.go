@@ -811,7 +811,7 @@ func TestB32NeyaliRegrantsEarlierExiledCardsOnALaterTokenAttack(t *testing.T) {
 	other := uuid.New()
 	opp.Library.PushTop(game.Card{InstanceID: other, Name: "Their Card", TypeLine: "Sorcery", Owner: opp.ID, Controller: opp.ID})
 	g.WithWriteLock(func() {
-		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 1, game.ExilePlayPermission{})
+		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 1, game.CastPermission{})
 	})
 	if !g.Exile.Contains(other) {
 		t.Fatal("fixture: the other card is in exile")

@@ -509,6 +509,31 @@ func clonePlayer(p *Player) *Player {
 			out.ManaPool[i] = cloned
 		}
 	}
+	// ADR 0066: granted cast and play permissions. Deep-copied for the
+	// reason the mana pool is — an undo that rewinds past the
+	// Snapcaster must take the flashback back, and one that rewinds to
+	// a point where the permission was still owed must restore it
+	// intact, with its own Cards backing array.
+	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
+	return out
+}
+
+// cloneCastPermissions deep-copies a player's granted permissions.
+// The only reference-typed field is Cards, so one reallocation per
+// permission is the whole copy; everything else is scalar, which is
+// exactly the property that lets the snapshot mirror the type rather
+// than rebuild it.
+func cloneCastPermissions(in []CastPermission) []CastPermission {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]CastPermission, len(in))
+	copy(out, in)
+	for i := range out {
+		if len(in[i].Cards) > 0 {
+			out[i].Cards = append([]PermissionCardRef(nil), in[i].Cards...)
+		}
+	}
 	return out
 }
 
@@ -532,6 +557,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		HoldPriority:  s.HoldPriority,
 		SplitSecond:   s.SplitSecond,
 		AltCost:       s.AltCost,
+		AltCostExiles: s.AltCostExiles,
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,

@@ -376,7 +376,7 @@ type Spec struct {
 	// the format, not the card) and listing ZoneExile is for cards
 	// whose own text grants the permission; the impulse-exile /
 	// airbend / madness family grants it to a single exiled
-	// instance instead, through game.ExilePlayPermission.
+	// instance instead, through game.CastPermission.
 	CastableZones []game.ZoneKind
 
 	// Activated is the list of CR 602 activated abilities the card

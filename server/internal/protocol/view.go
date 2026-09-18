@@ -977,6 +977,21 @@ type CardView struct {
 	// projection. Added in S13.5.
 	knowers map[string]bool
 
+	// libraryTop marks the card the CR 401.5 standing visibility rule
+	// currently applies to — the top of its owner's library, under a
+	// "you may look at the top card" or "play with the top card
+	// revealed" permanent. Set by stampLibraryTop, read by
+	// keepKnownTopInLibraryZone.
+	//
+	// It exists because being KNOWN and being VISIBLE IN THE ZONE are
+	// different facts. A one-shot "reveal the top two cards of your
+	// library" makes those cards known to everyone — that is what the
+	// reveal frame carries — but it does not make them visible sitting
+	// in the library afterwards. Keying the zone projection on
+	// KnownByYou alone would have leaked exactly that. Unexported, so
+	// encoding/json never puts it on the wire.
+	libraryTop bool
+
 	// oracleID is the card's catalog key, kept off the wire (the
 	// client keys art on scryfall_id) so the post-projection
 	// legal-target stamp can look the TargetSpec up. Added in S20.
@@ -1826,6 +1841,12 @@ func ViewOfGame(g *game.Game) GameView {
 			LoopNotice:        viewOfLoopNotice(g.LoopNotice),
 		}
 		stampLegalTargets(g, view.Seats)
+		stampGrantedPermissions(g, &view.Exile, game.ZoneExile)
+		for si := range view.Seats {
+			stampGrantedPermissions(g, &view.Seats[si].Graveyard, game.ZoneGraveyard)
+			stampGrantedPermissions(g, &view.Seats[si].Library, game.ZoneLibrary)
+		}
+		stampLibraryTop(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampHandAbilities(g, view.Seats)
 		stampCombatTargets(g, &view)
@@ -1960,15 +1981,29 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 			{&seat.Hand, game.ZoneHand},
 			{&seat.Command, game.ZoneCommand},
 			{&seat.Graveyard, game.ZoneGraveyard},
+			// S42 / CR 401.5: the library is a cast surface for its
+			// top card when a permission opens it. Walked for every
+			// seat and gated per card below, exactly as the graveyard
+			// is — the per-viewer filter drops the whole zone for a
+			// library the viewer may not see into.
+			{&seat.Library, game.ZoneLibrary},
 		}
 		for _, zone := range zones {
 			for ci := range zone.view.Cards {
 				c := &zone.view.Cards[ci]
-				if zone.kind == game.ZoneGraveyard {
-					if !game.CardCastableFromZone(c.oracleID, game.ZoneGraveyard) {
+				if zone.kind == game.ZoneGraveyard || zone.kind == game.ZoneLibrary {
+					// The card's own text, or a granted permission
+					// (ADR 0066) — the same merge the cast path makes,
+					// so the client can never render a button
+					// CastSpell would refuse.
+					granted := grantedCastOffer(g, caster, c, zone.kind)
+					if granted == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
 						continue
 					}
 					c.CastableHere = true
+					if granted != nil {
+						c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c, nil, []game.AlternativeCost{*granted})
+					}
 				}
 				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
 					c.Modes = viewOfModeSpec(g, caster, ms)
@@ -3111,10 +3146,24 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		if p.ID == "" || p.ID != viewerID {
 			if viewerID == "" {
 				out.Hand = hideZoneContents(out.Hand)
+				// Spectator / admin: isKnower short-circuits to true,
+				// so the library has to be hidden wholesale here for
+				// the same reason the hand is — otherwise every
+				// library's top card would ride out on the wire.
+				out.Library = hideZoneContents(out.Library)
 			} else {
 				out.Hand = keepKnownInHandZone(out.Hand)
+				// S42 / CR 401.5. An opponent's library used to be
+				// wholesale-hidden, because no path revealed a card in
+				// one. "Play with the top card of your library
+				// revealed" (Oracle of Mul Daya, Courser of Kruphix)
+				// is that path, so the projection keeps the TOP CARD
+				// and only when this viewer knows it. Narrow on
+				// purpose: a tucked card in the middle of a library
+				// that still carries a stale knower is not exposed,
+				// because only the last element is even considered.
+				out.Library = keepKnownTopInLibraryZone(out.Library)
 			}
-			out.Library = hideZoneContents(out.Library)
 		}
 		seats[i] = out
 	}
@@ -3532,6 +3581,30 @@ func hideZoneContents(z ZoneView) ZoneView {
 	}
 }
 
+// keepKnownTopInLibraryZone hides an opponent's library except for
+// its top card, and even that only when the viewer is a knower of it
+// (CR 401.5's "play with the top card of your library revealed").
+//
+// The narrower sibling of keepKnownInHandZone: that one keeps every
+// revealed card in the zone, this one considers only the last element,
+// which is the top. Count is preserved either way, so the client still
+// renders the right number of backs.
+//
+// Input z is expected to have been projected through redactZone — we
+// key off KnownByYou, which redactZone set.
+func keepKnownTopInLibraryZone(z ZoneView) ZoneView {
+	out := ZoneView{
+		Kind:  z.Kind,
+		Owner: z.Owner,
+		Count: z.Count,
+		Cards: []CardView{},
+	}
+	if n := len(z.Cards); n > 0 && z.Cards[n-1].libraryTop && z.Cards[n-1].KnownByYou {
+		out.Cards = append(out.Cards, z.Cards[n-1])
+	}
+	return out
+}
+
 // keepKnownInHandZone drops cards the viewer isn't a knower of
 // from an opponent's hand zone. Revealed cards (Thoughtseize
 // reveal; scry-to-hand in future) survive; others are stripped
@@ -3692,39 +3765,131 @@ func viewOfCard(c game.Card) CardView {
 			ID:   id,
 		}
 	}
-	// S21 sub-PR 6: the impulse-exile grant rides the card itself,
-	// so no per-viewer stamping pass is needed — and it's zeroed as
-	// the card leaves exile, so this can't linger on a permanent.
-	if c.ExilePlay.Granted() {
-		view.ExilePlay = &ExilePlayView{
-			Player:        c.ExilePlay.Player.String(),
-			CastOnly:      c.ExilePlay.CastOnly,
-			AnyColor:      c.ExilePlay.AnyColor,
-			CostOverride:  c.ExilePlay.CostOverride,
-			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
-			Face:          c.ExilePlay.Face,
-			// CR 107.3b (#831): a cascade hit is granted at {0}, so
-			// its printed {X} is not being paid and the only legal
-			// announcement is 0. Through CastCostFor rather than a
-			// read of CostOverride, because an unpriced grant pays
-			// the PRINTED cost and locks nothing. Against the face
-			// the grant opens, because that is the cost the cast path
-			// will read (ADR 0034).
-			XLockedAtZero: game.CastCostFor(grantedFace(c), "", c.ExilePlay, true).LocksXAtZero(),
-		}
-	}
 	return view
 }
 
-// grantedFace materialises the face an exile grant opens on a copy
-// of the card, the way the cast path does before it prices anything
-// (ADR 0034). A grant that names no face — every impulse, airbend,
-// warp and cascade grant — gets the card back untouched.
-func grantedFace(c game.Card) game.Card {
-	if c.ExilePlay.Face <= 0 {
+// stampGrantedPermissions fills the `exile_play` field on every card
+// in a zone a granted permission can cover, and marks a granted cast
+// surface with `castable_here`.
+//
+// A stamping pass rather than a line in viewOfCard, because ADR 0066
+// moved the permission off the card and onto the player: answering
+// "may anyone play this" now needs the game, which viewOfCard does not
+// have. The information is public either way — the trigger that
+// created the permission resolved in the open — so one pass over the
+// zone is all it takes, and the per-viewer filter strips the field
+// from a card the viewer cannot read.
+func stampGrantedPermissions(g *game.Game, zone *ZoneView, kind game.ZoneKind) {
+	for i := range zone.Cards {
+		v := &zone.Cards[i]
+		id, err := uuid.Parse(v.InstanceID)
+		if err != nil {
+			continue
+		}
+		card, ok := g.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		perm := g.CastPermissionOnCardForEffect(card, kind)
+		if perm == nil {
+			continue
+		}
+		v.ExilePlay = &ExilePlayView{
+			Player:        perm.Player.String(),
+			CastOnly:      perm.CastOnly,
+			AnyColor:      perm.AnyColor,
+			CostOverride:  perm.Cost,
+			NotBeforeTurn: perm.NotBeforeTurn,
+			Face:          perm.Face,
+			// CR 107.3b (#831): a cascade hit is granted at {0}, so
+			// its printed {X} is not being paid and the only legal
+			// announcement is 0. Through CastCostFor rather than a
+			// read of the price, because an unpriced permission pays
+			// the PRINTED cost and locks nothing. Against the face the
+			// permission opens, because that is the cost the cast path
+			// will read (ADR 0034).
+			XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
+		}
+		if kind != game.ZoneExile {
+			// S42: a graveyard or library card a permission opens is a
+			// cast surface, exactly as a printed flashback card is.
+			v.CastableHere = true
+		}
+	}
+}
+
+// grantedCastOffer returns the alternative cost a granted permission
+// prices `c` under for `caster`, out of `kind` — nil when no
+// permission opens the card, and nil when the permission charges a
+// flat price or the printed cost rather than a claimable offer.
+//
+// Straight through game.CastPermissionForLocked, which is the same
+// function CastSpell validates with. That is the whole point: the
+// client cannot be shown a cast the engine would refuse, and it
+// cannot be shown the wrong price for one it would allow.
+func grantedCastOffer(g *game.Game, caster uuid.UUID, c *CardView, kind game.ZoneKind) *game.AlternativeCost {
+	id, err := uuid.Parse(c.InstanceID)
+	if err != nil {
+		return nil
+	}
+	card, ok := g.LookupCardForEffect(id)
+	if !ok {
+		return nil
+	}
+	perm := g.CastPermissionForLocked(caster, card, kind)
+	if !perm.Active(caster, g.Turn.Number) {
+		return nil
+	}
+	return perm.AlternativeCostFor(card)
+}
+
+// stampLibraryTop applies CR 401.5's visibility to the card currently
+// on top of each seat's library: "you may look at the top card of your
+// library any time" makes it known to its owner, "play with the top
+// card of your library revealed" makes it known to everyone.
+//
+// It writes into the projected card's `knowers` set rather than into
+// game state, for two reasons. The view runs under a READ lock, so it
+// may not mutate Card.KnownBy; and the top of a library is a POSITION
+// rather than a card, so a stamp that persisted would have to be
+// invalidated on every draw, mill, shuffle and scry. Re-deriving it
+// per frame is both cheaper and exactly CR 401.6 — a top card that
+// stops being revealed and is revealed again is a new object, and
+// nothing here remembers the old one.
+func stampLibraryTop(g *game.Game, seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		owner, err := uuid.Parse(seat.ID)
+		if err != nil || len(seat.Library.Cards) == 0 {
+			continue
+		}
+		knowers, topID := g.LibraryTopKnowersLocked(owner)
+		if len(knowers) == 0 {
+			continue
+		}
+		top := &seat.Library.Cards[len(seat.Library.Cards)-1]
+		if top.InstanceID != topID.String() {
+			continue
+		}
+		top.libraryTop = true
+		if top.knowers == nil {
+			top.knowers = make(map[string]bool, len(knowers))
+		}
+		for _, k := range knowers {
+			top.knowers[k.String()] = true
+		}
+	}
+}
+
+// grantedFace materialises the face a permission opens on a copy of
+// the card, the way the cast path does before it prices anything
+// (ADR 0034). A permission that names no face — every impulse,
+// airbend, warp and cascade grant — gets the card back untouched.
+func grantedFace(c game.Card, perm *game.CastPermission) game.Card {
+	if perm == nil || perm.Face <= 0 {
 		return c
 	}
-	c.SetFace(c.ExilePlay.Face)
+	c.SetFace(perm.Face)
 	return c
 }
 

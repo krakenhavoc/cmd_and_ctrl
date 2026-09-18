@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     combat damage to a player), so one declaration watches both
 //     kinds. "Up to one" is a Min-0 target; with nothing chosen the
 //     ability does nothing. The exiled card carries an unbounded,
-//     cast-only grant for its OWNER (game.ExilePlayPermission with
+//     cast-only grant for its OWNER (game.CastPermission with
 //     WhileExiled), which the cast path clears as the card leaves
 //     exile, so a card exiled again later by something else does not
 //     inherit it.

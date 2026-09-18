@@ -120,7 +120,7 @@ func TestFaceDownExileShipsNoIdentityToAnySeat(t *testing.T) {
 	foretold.OracleID = oracle
 	foretold.FaceDown = true
 	foretold.KnownBy = map[uuid.UUID]bool{me.ID: true}
-	foretold.ExilePlay = game.ExilePlayPermission{Player: me.ID, WhileExiled: true, CostOverride: "{1}{G}"}
+	foretoldGrant := game.CastPermission{Player: me.ID, WhileInZone: true, Cost: "{1}{G}"}
 
 	var exiled []uuid.UUID
 	g.WithWriteLock(func() {
@@ -131,6 +131,7 @@ func TestFaceDownExileShipsNoIdentityToAnySeat(t *testing.T) {
 			t.Fatalf("exile face down: %v", err)
 		}
 		g.Exile.PushTop(foretold)
+		g.GrantCastPermissionOverCardForEffect(foretold.InstanceID, foretoldGrant)
 	})
 	if len(exiled) != 1 || exiled[0] != necro.InstanceID {
 		t.Fatalf("exiled %v, want the seeded top card", exiled)

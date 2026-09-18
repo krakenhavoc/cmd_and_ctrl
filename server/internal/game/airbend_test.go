@@ -12,8 +12,8 @@ import (
 // OWNER.
 
 // airbendGrant is the permission every airbend card hands out.
-func airbendGrant() ExilePlayPermission {
-	return ExilePlayPermission{CastOnly: true, WhileExiled: true, CostOverride: "{2}"}
+func airbendGrant() CastPermission {
+	return CastPermission{CastOnly: true, WhileInZone: true, Cost: "{2}"}
 }
 
 // permanentFor puts a card on the battlefield under owner's control
@@ -27,21 +27,21 @@ func permanentFor(g *Game, owner *Player, name, typeLine, manaCost string) uuid.
 	return c.InstanceID
 }
 
-// exilePlayOf reads the grant off a card sitting in exile.
-func exilePlayOf(g *Game, id uuid.UUID) ExilePlayPermission {
-	for _, c := range g.Exile.Cards {
-		if c.InstanceID == id {
-			return c.ExilePlay
-		}
+// exilePlayOf reads the permission covering a card sitting in exile.
+// Since ADR 0066 the permission lives on the PLAYER, so this asks the
+// game rather than the card.
+func exilePlayOf(g *Game, id uuid.UUID) *CastPermission {
+	if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+		return perm
 	}
-	return ExilePlayPermission{}
+	return &CastPermission{}
 }
 
 // An unbounded grant ignores the turn number entirely — that is the
 // whole of piece 2.
 func TestUnboundedExilePermissionIgnoresTheTurn(t *testing.T) {
 	me := uuid.New()
-	perm := ExilePlayPermission{Player: me, WhileExiled: true}
+	perm := CastPermission{Player: me, WhileInZone: true}
 	for _, turn := range []int{1, 2, 50, 9999} {
 		if !perm.Active(me, turn) {
 			t.Errorf("turn %d: unbounded grant reported inactive", turn)
@@ -53,9 +53,9 @@ func TestUnboundedExilePermissionIgnoresTheTurn(t *testing.T) {
 		t.Errorf("unbounded grant admitted somebody it doesn't name")
 	}
 	// UntilTurn is not consulted, even when it is in the past.
-	stale := ExilePlayPermission{Player: me, WhileExiled: true, UntilTurn: 1}
+	stale := CastPermission{Player: me, WhileInZone: true, UntilTurn: 1}
 	if !stale.Active(me, 40) {
-		t.Errorf("UntilTurn overrode WhileExiled")
+		t.Errorf("UntilTurn overrode WhileInZone")
 	}
 }
 
@@ -67,7 +67,7 @@ func TestCleanupSpareUnboundedExilePermissions(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	opp.Library.Cards = nil
 	seedLibraryTop(opp, "This Turn", "Instant")
-	thisTurn := impulseExile(t, g, opp, me, ExilePlayPermission{})
+	thisTurn := impulseExile(t, g, opp, me, CastPermission{})
 
 	forever := permanentFor(g, opp, "Airbent Bear", "Creature — Bear", "{1}{G}")
 	g.WithWriteLock(func() {
@@ -76,20 +76,20 @@ func TestCleanupSpareUnboundedExilePermissions(t *testing.T) {
 		}
 	})
 
-	g.WithWriteLock(func() { g.clearExpiredExilePlayLocked() })
+	g.WithWriteLock(func() { g.clearExpiredCastPermissionsLocked() })
 
-	if exilePlayOf(g, thisTurn).Granted() {
+	if reaped := exilePlayOf(g, thisTurn); reaped.Granted() {
 		t.Errorf("the turn-bounded grant survived cleanup")
 	}
-	if got := exilePlayOf(g, forever); !got.Granted() || !got.WhileExiled {
+	if got := exilePlayOf(g, forever); !got.Granted() || !got.WhileInZone {
 		t.Errorf("cleanup reaped an unbounded grant: %+v", got)
 	}
 	// Still there several turns later.
 	g.WithWriteLock(func() {
 		g.Turn.Number += 5
-		g.clearExpiredExilePlayLocked()
+		g.clearExpiredCastPermissionsLocked()
 	})
-	if !exilePlayOf(g, forever).Granted() {
+	if later := exilePlayOf(g, forever); !later.Granted() {
 		t.Errorf("an unbounded grant lapsed on a later cleanup")
 	}
 }
@@ -125,14 +125,14 @@ func TestExileCardWithPermissionGrantsToTheOwner(t *testing.T) {
 	if got.Player != opp.ID {
 		t.Errorf("grant holder = %v, want the OWNER %v (not the exiler %v)", got.Player, opp.ID, me.ID)
 	}
-	if !got.WhileExiled || !got.CastOnly || got.CostOverride != "{2}" {
+	if !got.WhileInZone || !got.CastOnly || got.Cost != "{2}" {
 		t.Errorf("grant shape = %+v, want cast-only, unbounded, {2}", got)
 	}
 	// An explicit holder still wins — the primitive is not
 	// airbend-only.
 	other := permanentFor(g, opp, "Another Bear", "Creature — Bear", "{1}{G}")
 	g.WithWriteLock(func() {
-		_ = g.ExileCardWithPermissionForEffect(other, ExilePlayPermission{Player: me.ID})
+		_ = g.ExileCardWithPermissionForEffect(other, CastPermission{Player: me.ID})
 	})
 	if h := exilePlayOf(g, other).Player; h != me.ID {
 		t.Errorf("explicit holder = %v, want %v", h, me.ID)
@@ -174,7 +174,7 @@ func TestAirbendGrantChargesTheOverrideNotThePrintedCost(t *testing.T) {
 	// The grant is spent as the card leaves exile, so a later
 	// re-exile cannot inherit it.
 	for _, c := range g.Stack.Cards {
-		if c.InstanceID == expensive && c.ExilePlay.Granted() {
+		if perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID); c.InstanceID == expensive && perm.Granted() {
 			t.Errorf("an unbounded grant survived the cast")
 		}
 	}

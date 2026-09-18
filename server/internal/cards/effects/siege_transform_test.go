@@ -95,13 +95,11 @@ func defeatBattle(t *testing.T, g *game.Game, id uuid.UUID, defense int) {
 }
 
 // exileGrantFor returns the grant on an exiled card.
-func exileGrantFor(g *game.Game, id uuid.UUID) game.ExilePlayPermission {
-	for _, c := range g.Exile.Cards {
-		if c.InstanceID == id {
-			return c.ExilePlay
-		}
+func exileGrantFor(g *game.Game, id uuid.UUID) *game.CastPermission {
+	if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+		return perm
 	}
-	return game.ExilePlayPermission{}
+	return &game.CastPermission{}
 }
 
 func battlefieldCardFor(g *game.Game, id uuid.UUID) *game.Card {
@@ -185,8 +183,8 @@ func TestSiegeDefeatedGrantsItsBackFace(t *testing.T) {
 	if grant.Face != 1 {
 		t.Errorf("grant face = %d, want the back face 1", grant.Face)
 	}
-	if grant.CostOverride != "{0}" {
-		t.Errorf("grant cost = %q, want %q — the transformed cast is free", grant.CostOverride, "{0}")
+	if grant.Cost != "{0}" {
+		t.Errorf("grant cost = %q, want %q — the transformed cast is free", grant.Cost, "{0}")
 	}
 	if !grant.CastOnly {
 		t.Error("the grant should be cast-only")

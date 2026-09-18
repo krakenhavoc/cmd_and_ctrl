@@ -34,7 +34,7 @@ import (
 // Two things it deliberately does NOT do:
 //
 //   - It does not copy the ORIGINAL Card struct wholesale. Counters,
-//     KnownBy, ExilePlay, the cached `effective` characteristic and
+//     KnownBy, the cached `effective` characteristic and
 //     the battlefield position are per-instance state, not copiable
 //     values (CR 707.2), and the cached characteristic in particular
 //     is a pointer — a wholesale struct copy would have the token and

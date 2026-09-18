@@ -258,22 +258,23 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
 	}
-	// CR 400.7: a card that leaves exile is a new object with no
-	// memory of its previous one. Two exile-only fields go with it:
+	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
+	// memory of the old one. The epoch is that sentence, counted.
 	//
-	//   - ExilePlay, the per-instance "you may cast/play it" grant.
-	//     The cast and land-play paths already zeroed it once the
-	//     card reached the stack or the battlefield, but every other
-	//     exit (a sandbox move to hand, an effect returning it to a
-	//     library or graveyard) kept it. An airbended card moved to
-	//     hand then still paid airbend's {2} for a hand cast, and a
-	//     second exile later revived a permission nobody granted.
-	//   - Counters. Nothing in the engine puts counters on an exiled
-	//     card yet, but a player can by hand, and suspend's time
-	//     counters will. A suspended creature must not enter the
-	//     battlefield still carrying them.
+	// It is what ends a granted cast or play permission (ADR 0066):
+	// a permission names {instance, epoch}, so the bump below revokes
+	// every grant against this card, by every route out of every
+	// zone, without a single call site having to remember to. The six
+	// hand-written "zero the grant" sites this replaced each covered
+	// one route, and the one that was missing — a sandbox move from
+	// exile to hand — let an airbended card still pay airbend's {2}
+	// for a hand cast.
+	c.ObjectEpoch++
+	// Counters go with the exile exit specifically. Nothing in the
+	// engine puts counters on an exiled card yet, but a player can by
+	// hand, and suspend's time counters will. A suspended creature
+	// must not enter the battlefield still carrying them.
 	if src.Kind == ZoneExile {
-		c.ExilePlay = ExilePlayPermission{}
 		c.Counters = nil
 	}
 	// CR 400.7 / CR 708: "face down" is a property of an OBJECT in a

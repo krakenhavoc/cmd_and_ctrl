@@ -460,7 +460,7 @@ func TestB20HornOfGreedSeesALandPlayedFromExile(t *testing.T) {
 	me := g.Seats[0]
 	b12Push(g, me.ID, "Horn of Greed", "Artifact", b20HornOfGreedOracle, 0, 0)
 	advanceToMain(t, g)
-	grant := game.ExilePlayPermission{Player: me.ID, UntilTurn: g.Turn.Number + 5}
+	grant := game.CastPermission{Player: me.ID, UntilTurn: g.Turn.Number + 5}
 	swamp := b20HandCard(me, "Swamp", "Basic Land — Swamp")
 	g.WithWriteLock(func() { _ = g.ExileCardWithPermissionForEffect(swamp, grant) })
 	hand := me.Hand.Size()
@@ -1059,7 +1059,7 @@ func TestB20ProsperExilesAtYourEndStepAndPaysTreasureForPlaysFromExile(t *testin
 	// A spell cast from exile under any grant does too.
 	shock := b20HandCard(me, "Shock", "Instant")
 	g.WithWriteLock(func() {
-		_ = g.ExileCardWithPermissionForEffect(shock, game.ExilePlayPermission{Player: me.ID, UntilTurn: g.Turn.Number})
+		_ = g.ExileCardWithPermissionForEffect(shock, game.CastPermission{Player: me.ID, UntilTurn: g.Turn.Number})
 	})
 	if err := g.CastSpell(me.ID, shock, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("casting from exile: %v", err)

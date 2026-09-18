@@ -254,11 +254,17 @@ func TestUnknownFromZoneIsRejected(t *testing.T) {
 	me := g.Seats[0]
 	id := looterInGraveyard(t, g, me, "test-looting")
 
-	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "library"}); err != ErrZoneNotFound {
-		t.Fatalf("from_zone library: got %v, want ErrZoneNotFound", err)
-	}
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "nonsense"}); err != ErrZoneNotFound {
 		t.Fatalf("from_zone nonsense: got %v, want ErrZoneNotFound", err)
+	}
+	// "library" became a real zone in S42 (CR 401.5), so it resolves
+	// to a pile now and fails on the card not being in it. What must
+	// NOT have changed is that it is still no free pass: the card is
+	// in the graveyard, the library lookup does not find it, and a
+	// card that IS in the library still needs a permission
+	// (TestLibraryTopNeedsAPermission).
+	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "library"}); err != ErrCardNotFound {
+		t.Fatalf("from_zone library on a graveyard card: got %v, want ErrCardNotFound", err)
 	}
 }
 
@@ -286,7 +292,7 @@ func TestExileCastStillNeedsAGrantWithoutADeclaration(t *testing.T) {
 // NOT suspend or foretell: a suspended card may be cast only while
 // its last-time-counter trigger resolves (CR 702.62a), and foretold
 // status belongs to the exiled instance (CR 702.143). Those need a
-// per-instance ExilePlayPermission, the way cascade's free cast
+// per-instance CastPermission, the way cascade's free cast
 // works. No catalog card declares ZoneExile today; this test pins
 // the engine path so it doesn't rot unnoticed.
 func TestExileCastAllowedByCardLevelDeclaration(t *testing.T) {

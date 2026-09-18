@@ -30,18 +30,27 @@ type CastCost struct {
 }
 
 // CastCostFor picks the cost this cast pays, in the same order
-// printedCostLocked applies it: the claimed alternative cost
-// replaces the printed cost (CR 118.9), and a live exile grant's own
-// price replaces whatever was chosen, because the grant belongs to
-// the exiled INSTANCE and is the reason the cast is happening at all.
+// printedCostLocked applies it: the resolved alternative cost
+// replaces the printed cost (CR 118.9), and a granted permission's
+// own flat price replaces whatever was chosen, because the permission
+// is the reason the cast is happening at all.
 //
-// Pure. `hasExileGrant` is the caller's "this cast is out of exile
-// under a grant that names this player and has not expired" — the
-// same flag castPaysPrintedCost takes, for the same reason.
-func CastCostFor(card Card, altCostKey string, exileGrant ExilePlayPermission, hasExileGrant bool) CastCost {
-	paid := alternativeCostString(card, altCostKey)
-	if hasExileGrant && exileGrant.CostOverride != "" {
-		paid = exileGrant.CostOverride
+// Pure. `alt` is the offer the announce path already resolved — the
+// card's own, or the one a permission synthesised (ADR 0066), which
+// is why this takes the resolved offer rather than a key: by the time
+// a Snapcaster'd Brainstorm is priced, the catalog has nothing to say
+// about "flashback" on that card.
+//
+// `grant` is nil for an ordinary cast. A permission that carries an
+// AltCostKey has already become `alt`, so only a FLAT price (airbend's
+// "{2}", cascade's "{0}") is read here.
+func CastCostFor(card Card, alt *AlternativeCost, grant *CastPermission) CastCost {
+	paid := card.ManaCost
+	if alt != nil {
+		paid = alt.ManaCost
+	}
+	if grant != nil && grant.Cost != "" {
+		paid = grant.Cost
 	}
 	return CastCost{Printed: card.ManaCost, Paid: paid}
 }

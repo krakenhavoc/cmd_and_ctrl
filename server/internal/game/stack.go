@@ -226,6 +226,24 @@ type StackItem struct {
 	// CR 608.2b re-check's choice of target clause. Added in S22.
 	AltCost string
 
+	// AltCostExiles is CR 702.34a's flashback clause as a FACT about
+	// this stack object: "exile this card instead of putting it
+	// anywhere else any time it would leave the stack".
+	//
+	// It rides the item rather than being re-derived from the catalog
+	// because since ADR 0066 an alternative cost can be GRANTED — a
+	// card Snapcaster gave flashback to was cast for a cost the
+	// catalog has never heard of, and the permission that granted it
+	// is usually gone by the time the spell leaves the stack. CR
+	// 400.7g is the rule: the granted ability is part of the object on
+	// the stack.
+	//
+	// False on a spell cast for its printed cost, and on a game
+	// restored from a snapshot written before this field — for which
+	// altCostExilesFromStack still falls back to the catalog, so a
+	// printed flashback behaves exactly as it did.
+	AltCostExiles bool
+
 	// IsCopy marks a spell item that is a COPY of another spell
 	// (CR 707.10) rather than a cast card — Reverberate's output,
 	// Twincast's, the second half of a storm count. Set only on

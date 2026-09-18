@@ -273,6 +273,24 @@ type Player struct {
 	// Cleared at every step boundary by the step-change hook
 	// (CR 106.4). Added in S15 sub-PR 2.
 	ManaPool ManaPool
+
+	// CastPermissions are the granted cast and play permissions this
+	// player currently holds — "you may cast that card", flashback
+	// given to one card by Snapcaster, a set of cards locked by Past
+	// in Flames (ADR 0066, cast_permission.go).
+	//
+	// Per PLAYER rather than per card, because a permission names a
+	// player who is often not the card's owner and, for a standing
+	// rule, names no fixed card at all. STANDING permissions
+	// (Underworld Breach, Bolas's Citadel) are NOT here: they are
+	// derived from the battlefield on every query, so two sources
+	// compose and one leaving cannot revoke the other's grant — the
+	// same argument land_drops.go makes about Exploration.
+	//
+	// Swept at cleanup for hygiene only (clearExpiredCastPermissionsLocked):
+	// a permission that has expired or whose named objects have moved
+	// on is already refused by Active and NamesCard.
+	CastPermissions []CastPermission
 }
 
 // newPlayer constructs a player with empty zones and their starting

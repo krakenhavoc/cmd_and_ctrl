@@ -19,14 +19,18 @@ const (
 	monkGyatsoOracle            = "ff92fa60-f0fe-496e-8155-d9d6f5af651b"
 )
 
-// airbendGrantOn reads the exile-play grant on a card in exile.
-func airbendGrantOn(g *game.Game, id uuid.UUID) (game.ExilePlayPermission, bool) {
+// airbendGrantOn reads the permission covering a card in exile.
+func airbendGrantOn(g *game.Game, id uuid.UUID) (*game.CastPermission, bool) {
 	for _, c := range g.Exile.Cards {
-		if c.InstanceID == id {
-			return c.ExilePlay, true
+		if c.InstanceID != id {
+			continue
 		}
+		if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+			return perm, true
+		}
+		return &game.CastPermission{}, true
 	}
-	return game.ExilePlayPermission{}, false
+	return nil, false
 }
 
 // assertAirbent checks the shape of a finished airbend: the card is
@@ -43,11 +47,11 @@ func assertAirbent(t *testing.T, g *game.Game, id, owner uuid.UUID) {
 	if grant.Player != owner {
 		t.Errorf("grant holder = %v, want the card's owner %v", grant.Player, owner)
 	}
-	if !grant.WhileExiled {
+	if !grant.WhileInZone {
 		t.Errorf("airbend grant expires; it should last while the card is exiled")
 	}
-	if grant.CostOverride != AirbendCost {
-		t.Errorf("cost override = %q, want %q", grant.CostOverride, AirbendCost)
+	if grant.Cost != AirbendCost {
+		t.Errorf("cost override = %q, want %q", grant.Cost, AirbendCost)
 	}
 	if !grant.CastOnly {
 		t.Errorf("airbend says CAST, so the grant should be cast-only")
@@ -210,9 +214,9 @@ func TestAppaMakesAnAllyOnlyForCastsFromExile(t *testing.T) {
 	g.Exile.PushTop(game.Card{
 		InstanceID: fromExile, Name: "Exiled Instant", TypeLine: "Instant",
 		Owner: me.ID, Controller: me.ID,
-		ExilePlay: game.ExilePlayPermission{
-			Player: me.ID, CastOnly: true, WhileExiled: true, CostOverride: AirbendCost,
-		},
+	})
+	g.GrantCastPermissionOverCardForEffect(fromExile, game.CastPermission{
+		Player: me.ID, CastOnly: true, WhileInZone: true, Cost: AirbendCost,
 	})
 	if err := g.CastSpell(me.ID, fromExile, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("cast from exile: %v", err)
