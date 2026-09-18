@@ -221,17 +221,28 @@ func TestEliminationDropsThePlayersPendingChoices(t *testing.T) {
 // to the command zone?" prompt is addressed to the commander's owner;
 // when that owner has left the game the engine answers "no" inline
 // rather than queueing a prompt nobody can answer.
+//
+// The seat is flipped by hand rather than through Concede: since
+// CR 800.4a (#769) a real concede takes the commander out of the game
+// along with everything else its owner owns, so the ordinary route to
+// this board no longer exists. The gate is kept and pinned anyway —
+// it is the last line of defence for any other way a permanent can
+// end up owned by a seat that is no longer playing (a restored
+// snapshot, a future rule that leaves one behind), and an unanswerable
+// prompt wedges the whole table.
 func TestEliminatedOwnersCommanderNeedsNoPrompt(t *testing.T) {
 	g := newWrapGame(t, 3)
 	leaver := g.Seats[1]
 	cmdr := NewCommander("Leaver's Commander", leaver.ID)
 	cmdr.TypeLine = "Legendary Creature — Bear"
 	cmdr.Power, cmdr.Toughness = 2, 2
-	cmdr.Controller = leaver.ID
+	// Controlled by a seat that is still playing: a permanent left
+	// under a DEPARTED player's control is exiled (CR 800.4c,
+	// exileGhostControlledLocked), and this test is about the owner
+	// being gone, not the controller.
+	cmdr.Controller = g.Seats[0].ID
 	g.Battlefield.PushTop(cmdr)
-	if err := g.Concede(leaver.ID); err != nil {
-		t.Fatal(err)
-	}
+	g.WithWriteLock(func() { leaver.Eliminated = true })
 	// Any player sacrificing it is fine for the test — the caller gate
 	// is what SacrificePermanentForEffect skips.
 	if err := g.SacrificePermanentForEffect(cmdr.InstanceID); err != nil {

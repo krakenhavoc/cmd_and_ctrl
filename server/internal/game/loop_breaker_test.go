@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -111,6 +112,45 @@ func passAroundOnce(t *testing.T, g *Game) {
 	}
 }
 
+// passUntilLoopNotice passes around the table until the breaker fires,
+// and stops there. Since #804 it has to stop there: the notice comes
+// with a CR 726 shortcut prompt, and that prompt blocks the table
+// until the loop's controller answers it.
+func passUntilLoopNotice(t *testing.T, g *Game) {
+	t.Helper()
+	for i := 0; i < 200; i++ {
+		if g.LoopNotice != nil {
+			return
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority while winding the loop up: %v", err)
+		}
+	}
+	t.Fatal("the loop breaker never fired")
+}
+
+// loopShortcutPrompt returns the outstanding CR 726 prompt, or nil.
+func loopShortcutPrompt(g *Game) *PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceLoopShortcut {
+			return c
+		}
+	}
+	return nil
+}
+
+// answerLoopShortcut answers the outstanding CR 726 prompt with K.
+func answerLoopShortcut(t *testing.T, g *Game, iterations int) {
+	t.Helper()
+	c := loopShortcutPrompt(g)
+	if c == nil {
+		t.Fatal("no CR 726 shortcut prompt to answer")
+	}
+	if err := g.ResolveLoopShortcut(c.ID, c.Chooser, iterations); err != nil {
+		t.Fatalf("ResolveLoopShortcut(%d): %v", iterations, err)
+	}
+}
+
 func countLoopEvents(g *Game) int {
 	n := 0
 	for _, ev := range g.Events {
@@ -180,14 +220,19 @@ func TestLoopBreakerStopsAutomaticPassingNotTheGame(t *testing.T) {
 	g := newActiveGame(t)
 	g.LoopThreshold = threshold
 	seedTriggerLoop(t, g)
-	for i := 0; i < 2*threshold; i++ {
-		passAroundOnce(t, g)
-	}
-	if g.LoopNotice == nil {
-		t.Fatalf("expected a loop notice after %d resolutions", 2*threshold)
-	}
+	passUntilLoopNotice(t, g)
 	if g.LoopNotice.Label != loopLabelSpark {
 		t.Fatalf("notice label = %q, want the ability that tripped first (%q)", g.LoopNotice.Label, loopLabelSpark)
+	}
+	// #804: the shortcut prompt is the one thing that DOES hold the
+	// table, and only until it is answered. See ADR 0055's 2026-09-18
+	// amendment for why this prompt blocks where the notice does not.
+	if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("PassPriority with the CR 726 prompt open = %v, want ErrChoicePending", err)
+	}
+	answerLoopShortcut(t, g, 0)
+	if g.LoopNotice == nil {
+		t.Fatal("answering stop-here cleared the notice; the table should stay paused")
 	}
 	before := g.LoopNotice.Count
 
@@ -218,12 +263,7 @@ func TestAnsweredPromptClearsTheLoopNotice(t *testing.T) {
 	g := newActiveGame(t)
 	g.LoopThreshold = threshold
 	seedTriggerLoop(t, g)
-	for i := 0; i < 2*threshold; i++ {
-		passAroundOnce(t, g)
-	}
-	if g.LoopNotice == nil {
-		t.Fatal("expected a loop notice")
-	}
+	passUntilLoopNotice(t, g)
 
 	p := g.Seats[0]
 	var choiceID uuid.UUID
@@ -246,6 +286,15 @@ func TestAnsweredPromptClearsTheLoopNotice(t *testing.T) {
 	}
 	if len(g.TurnTally.LoopRun) != 0 {
 		t.Errorf("loop run = %v after a decision, want empty", g.TurnTally.LoopRun)
+	}
+	// #804: the shortcut prompt goes with the notice it was asking
+	// about. It blocks the table, so a stale one is not a stale
+	// question — it is a game nobody can move on.
+	if c := loopShortcutPrompt(g); c != nil {
+		t.Errorf("the CR 726 prompt outlived its notice: %+v", c)
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Errorf("AdvanceStep after the decision: %v", err)
 	}
 }
 
@@ -336,12 +385,7 @@ func TestLoopNoticeSurvivesCloneAndSnapshot(t *testing.T) {
 	g := newActiveGame(t)
 	g.LoopThreshold = threshold
 	seedTriggerLoop(t, g)
-	for i := 0; i < 2*threshold; i++ {
-		passAroundOnce(t, g)
-	}
-	if g.LoopNotice == nil {
-		t.Fatal("expected a loop notice")
-	}
+	passUntilLoopNotice(t, g)
 	want := *g.LoopNotice
 
 	clone := g.Clone()

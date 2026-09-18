@@ -791,6 +791,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// #500: CR 305.2's land-play allowance, enforced. Owner
+		// decision: the sandbox posture on land drops is over — the
+		// tally has existed since S31 sub-PR 1 and only the
+		// legal-move enumerator ever read it, so any client that did
+		// not consult the enumerator could play the whole hand as
+		// lands.
+		//
+		// The gate sits here rather than in the enumerator (which
+		// keeps its own check, so a bot is never offered a move the
+		// engine will refuse) and before the face is stamped into the
+		// source zone, so a refused play leaves the card in hand
+		// exactly as it was. The paused-entry path
+		// (executeEntryToBattlefieldLocked, the shockland's "pay 2
+		// life") is the tail of a play that already passed this gate,
+		// so it needs no second check.
+		//
+		// The allowance is not a literal 1 — see land_drops.go.
+		if g.LandDropsRemainingLocked(playerID) <= 0 {
+			slog.Warn("cast_spell rejected: no land plays left this turn",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"lands_played", g.LandsPlayedThisTurnFor(playerID),
+				"allowance", g.EffectiveLandDropsLocked(p),
+			)
+			return ErrLandDropUnavailable
+		}
 		// ADR 0034: the chosen face has to exist on the card IN THE
 		// SOURCE ZONE, not just on the local copy, before the
 		// replacement pipeline runs.
@@ -863,9 +889,9 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}
-		// S31 sub-PR 1: per-turn land-drop tally for the legal-move
-		// enumerator. Bookkeeping only — the engine still doesn't
-		// refuse a second land (sandbox posture).
+		// S31 sub-PR 1: per-turn land-drop tally. Since #500 this is
+		// what the gate at the top of this branch reads, so the bump
+		// has to happen on every successful play and nowhere else.
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
@@ -1204,6 +1230,17 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		}
 		ab := autoTapAbilityFor(ManaAbilitiesForCard(*card))
 		if ab == nil {
+			continue
+		}
+		// #540: CR 302.6, enforced here as well as in the planner.
+		// This executor taps `card.Tapped = true` directly rather
+		// than routing through ActivateManaAbility, so the gate that
+		// path applies does not cover it — and a plan can arrive
+		// stale (built before the creature entered) or from a caller
+		// that built it by hand. A source that has become sick since
+		// the plan was made drops silently, exactly as a gate that
+		// stopped holding does above.
+		if manaTapBlockedBySickness(card, ab) {
 			continue
 		}
 		// S32 (#352): the gate and the derived/scaled output are
@@ -2261,6 +2298,10 @@ func clearKnownInZoneLocked(zone *Zone) {
 //     sacrificed by its controller (the SBA half; the lore-counter
 //     advance trigger lands in S14+ with the effect catalog)
 //
+// Existence SBAs (#596):
+//   - 704.5d: a token in any zone other than the battlefield ceases
+//     to exist — see token_existence.go
+//
 // Counter ordering (CR 704.3): the +1/+1 / -1/-1 cancel runs BEFORE
 // the lethal-damage check so a 2/2 with one +1/+1 and one -1/-1 +
 // 1 marked damage doesn't die — the counters cancel first, leaving
@@ -2360,6 +2401,15 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	}
 	if left {
 		g.endGameIfDecidedLocked()
+	}
+
+	// CR 800.4c (#769) — a permanent whose controller has left the
+	// game is exiled. The departure itself already swept the board it
+	// left behind (leave_game.go); this catches the one case that can
+	// only appear LATER, when a control-changing effect ends and hands
+	// its permanent back to a player who is no longer there.
+	if g.exileGhostControlledLocked() > 0 {
+		fired = true
 	}
 
 	// Permanent + counter destruction SBAs. Collect doomed instance
@@ -2498,13 +2548,25 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		}
 	}
 
-	// 704.5j (S27) — the legend rule. Last, because it is the one
-	// state-based action whose outcome is a CHOICE rather than a
-	// consequence: running it after the destruction and sacrifice
-	// passes means a player is never asked to pick between two
-	// legends when one of them was about to leave anyway. See
-	// legend_rule.go.
+	// 704.5j (S27) — the legend rule. Last of the choosing SBAs,
+	// because it is the one state-based action whose outcome is a
+	// CHOICE rather than a consequence: running it after the
+	// destruction and sacrifice passes means a player is never asked
+	// to pick between two legends when one of them was about to leave
+	// anyway. See legend_rule.go.
 	if g.queueLegendRuleChoicesLocked() {
+		fired = true
+	}
+
+	// 704.5d (#596) — a token in any zone but the battlefield ceases
+	// to exist. Last of all, and deliberately after the destruction
+	// and sacrifice passes above: a token that died in THIS pass has
+	// already landed in its owner's graveyard and already had its
+	// dies / leaves-the-battlefield triggers harvested off that move
+	// (the harvest is synchronous, inside EmitEvent), so sweeping it
+	// now costs those triggers nothing and saves the loop a pass.
+	// See token_existence.go.
+	if g.tokenCeaseToExistSBALocked() {
 		fired = true
 	}
 
@@ -2547,7 +2609,20 @@ func (g *Game) runStateChecksLocked() {
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
+		// #809 / CR 603.3d: a targeted trigger dispatched from inside a
+		// resolving spell's own events froze its legal set while that
+		// spell was still on the stack. This is the priority-grant
+		// boundary the rules choose targets at, so the frozen set is
+		// re-read here — widened, narrowed, or withdrawn outright when
+		// nothing legal is left. No-op when no pick_target is open,
+		// which is nearly every call. See trigger_target_timing.go.
+		g.refreshTargetChoicesLocked()
 		fired, left := g.stateBasedActionsLocked()
+		// #864: belt-and-braces backstop, run every pass so nothing can
+		// leave this function about to hand a seat priority while a
+		// choice sits pending for a chooser this same pass (or an
+		// earlier one) already eliminated. See sweepEliminatedChoicesLocked.
+		g.sweepEliminatedChoicesLocked()
 		departuresPending = departuresPending || left
 		if departuresPending && g.State == StateActive {
 			if fired {
@@ -2587,11 +2662,15 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 }
 
 // leaveGameLocked transitions a seated player to eliminated state,
-// cleans up their stack items, pending triggers and prompts, and
-// emits EventPlayerEliminated. It does not move the turn on or check
+// cleans up their stack items, pending triggers and prompts, emits
+// EventPlayerEliminated, and then takes their objects out of the game
+// (CR 800.4a, leave_game.go). It does not move the turn on or check
 // whether the game is over; settleDeparturesLocked does both, once
 // per batch. Reports whether the player left (false when they had
 // already). Caller must hold g.mu.
+//
+// The elimination event is emitted BEFORE the objects go, so anything
+// watching a player lose the game sees the board they lost with.
 func (g *Game) leaveGameLocked(p *Player) bool {
 	if p.Eliminated {
 		return false
@@ -2603,6 +2682,21 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 		Kind:  EventPlayerEliminated,
 		Actor: p.ID,
 	})
+	// #769 / CR 800.4a: everything they own leaves the game, their
+	// control effects end, and anything still controlled by them is
+	// exiled. Runs after the stack cleanup above, which is what folds
+	// the spell cards that cleanup used to exile into the removal —
+	// a card owned by a player who has left does not sit in exile.
+	//
+	// Except when this departure is the one that ENDS the game. Then
+	// the board is not stripped: nothing can observe the objects
+	// leaving, no rule reads the table again, and the last board is
+	// what the winner, the post-game screen and the replay look at.
+	// endGameIfDecidedLocked leaves the turn cursor where it was for
+	// exactly the same reason. See ADR 0060 Decision 5.
+	if g.survivingSeatsLocked() > 1 {
+		g.leaveGameObjectsLocked(p.ID)
+	}
 	return true
 }
 
@@ -2631,25 +2725,24 @@ func (g *Game) settleDeparturesLocked() {
 // pull attackers out of combat on the board the game ended with, and
 // begin a turn nobody takes. Caller must hold g.mu.
 func (g *Game) endGameIfDecidedLocked() bool {
-	survivors := 0
-	for _, s := range g.Seats {
-		if !s.Eliminated {
-			survivors++
-		}
-	}
-	if survivors <= 1 {
+	if g.survivingSeatsLocked() <= 1 {
 		g.State = StateEnded
 		return true
 	}
 	return false
 }
 
-// cleanupStackForEliminatedLocked implements CR 800.4a — when a
-// player leaves the game, every spell and ability they control on
-// the stack ceases to exist. Spell items have their card removed
-// from Game.Stack to exile (closest analogue to "cease to exist").
-// Ability items are just deleted from StackMeta. Pending triggers
-// controlled by the eliminated player are dropped from the queue.
+// cleanupStackForEliminatedLocked implements the stack half of
+// CR 800.4a — when a player leaves the game, every spell and ability
+// they control on the stack ceases to exist. Ability items are just
+// deleted from StackMeta; spell items have their card moved out of
+// Game.Stack to exile, which is the rule's last clause ("anything
+// still controlled by them is exiled") for a card somebody ELSE owns.
+// A card the departed player owns does not stop here: leaveGameLocked
+// runs leaveGameObjectsLocked immediately afterwards and that card
+// leaves the game from exile, along with the rest of what they own
+// (#769). Pending triggers controlled by the eliminated player are
+// dropped from the queue.
 //
 // Targets on remaining stack items pointing at the eliminated
 // player are NOT scrubbed here — the existing target re-check at
@@ -2677,46 +2770,21 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 			}
 		}
 	}
-	if len(g.PendingTriggers) > 0 {
-		kept := g.PendingTriggers[:0]
-		for _, t := range g.PendingTriggers {
-			if t == nil || t.Controller != playerID {
-				kept = append(kept, t)
-			}
-		}
-		g.PendingTriggers = kept
-	}
+	g.dropPendingTriggersForLocked(playerID)
 	// A choice owed by a player who has left the game can never be
 	// answered, and while it sits in the queue every other seat is
 	// blocked behind it (pass_priority is refused client-side and the
 	// bot enumerator offers nothing while a choice is open). Drop the
 	// eliminated player's prompts — their objects are gone with them
 	// (CR 800.4a), so a damage assignment, target pick or scry they
-	// owed has nothing left to act on. Same for a cleanup-discard
-	// pause in their name. Found by the S31 bot fuzzer.
+	// owed has nothing left to act on. Found by the S31 bot fuzzer.
 	//
 	// #808: a dropped prompt may be holding a paused replacement event,
 	// and a life or damage event carries its CALLER's continuation — the
 	// rest of a drain, every later opponent's loss, the caster's gain.
-	// Those frames are collected here and finished below, once the queue
-	// no longer holds the dropped prompts.
-	var dropped []*replacementResumeFrame
-	if len(g.PendingChoices) > 0 {
-		kept := g.PendingChoices[:0]
-		for _, c := range g.PendingChoices {
-			if c == nil || c.Chooser != playerID {
-				kept = append(kept, c)
-				continue
-			}
-			if c.replacementResume != nil && c.replacementResume.ev != nil {
-				dropped = append(dropped, c.replacementResume)
-			}
-		}
-		g.PendingChoices = kept
-		if len(g.PendingChoices) == 0 {
-			g.PendingChoices = nil
-		}
-	}
+	// dropChoicesForPlayerLocked collects those frames; finish them
+	// below, once the queue no longer holds the dropped prompts.
+	dropped := g.dropChoicesForPlayerLocked(playerID)
 	if g.DiscardPending != nil {
 		delete(g.DiscardPending, playerID)
 		if len(g.DiscardPending) == 0 {
@@ -2726,6 +2794,74 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	g.recomputeSplitSecondLocked()
 	for _, frame := range dropped {
 		g.finishDroppedReplacementLocked(playerID, frame)
+	}
+}
+
+// dropChoicesForPlayerLocked removes every PendingChoice owed by
+// playerID — the same-name cleanup-discard pause in their name is
+// left to the caller — and returns the replacementResume frames those
+// choices were holding, for the caller to finish via
+// finishDroppedReplacementLocked (#808). Shared by
+// cleanupStackForEliminatedLocked (the instant a player leaves) and
+// sweepEliminatedChoicesLocked (#864's defensive backstop, below) so
+// the two run the identical drop. Caller must hold g.mu.
+func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResumeFrame {
+	if len(g.PendingChoices) == 0 {
+		return nil
+	}
+	var dropped []*replacementResumeFrame
+	kept := g.PendingChoices[:0]
+	for _, c := range g.PendingChoices {
+		if c == nil || c.Chooser != playerID {
+			kept = append(kept, c)
+			continue
+		}
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  c.Chooser,
+			Source: c.Source,
+			Label:  string(c.Kind),
+		})
+		if c.replacementResume != nil && c.replacementResume.ev != nil {
+			dropped = append(dropped, c.replacementResume)
+		}
+	}
+	g.PendingChoices = kept
+	if len(g.PendingChoices) == 0 {
+		g.PendingChoices = nil
+	}
+	return dropped
+}
+
+// sweepEliminatedChoicesLocked drops any PendingChoice whose chooser
+// has left the game. #864: cleanupStackForEliminatedLocked already
+// does this the instant a player leaves (#287/#808), but that sweep
+// runs once, at that exact moment — it cannot catch a choice queued
+// for the same player afterward. QueueChoiceForEffect's own guard
+// (#864) now refuses to queue such a choice going forward, so this
+// sweep is the belt to that guard's braces: a second, independent
+// layer that self-heals the queue at every state-based-action pass
+// (runStateChecksLocked, which is the seam where the table is next
+// about to offer a seat priority) regardless of whether some future
+// caller ever manages to slip a choice past the queue-time guard, or
+// a game restored from a snapshot written before this fix shipped
+// carries one already.
+//
+// Idempotent: a game with no eliminated seat holding a choice costs
+// one scan of g.Seats and returns without touching g.PendingChoices.
+// Never touches a live chooser's choice — only p.Eliminated seats are
+// considered. Caller must hold g.mu.
+func (g *Game) sweepEliminatedChoicesLocked() {
+	if len(g.PendingChoices) == 0 {
+		return
+	}
+	for _, p := range g.Seats {
+		if p == nil || !p.Eliminated {
+			continue
+		}
+		for _, frame := range g.dropChoicesForPlayerLocked(p.ID) {
+			g.finishDroppedReplacementLocked(p.ID, frame)
+		}
 	}
 }
 
@@ -3197,8 +3333,21 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 				break
 			}
 		}
-		if seat == -1 {
-			// Controller no longer seated — drop the trigger.
+		if seat == -1 || g.Seats[seat].Eliminated {
+			// Controller no longer seated, or has since left the game
+			// (CR 800.4a) — drop the trigger. #864: this specifically
+			// includes a trigger that lands here for a player the SBA
+			// loop already eliminated earlier in the SAME pass (a
+			// creature destroyed after its controller's life hit 0
+			// queues a "dies" trigger against the now-eliminated
+			// controller). Dropping it here, before it can ever reach
+			// seatNeedsTriggerOrder below, matters beyond tidiness:
+			// QueueChoiceForEffect now refuses to queue an ordering
+			// prompt for an eliminated chooser, but the loop below
+			// still marked the WHOLE APNAP drain `held` for that seat
+			// before finding that out, which would have wedged every
+			// other seat's triggers behind an ordering prompt that
+			// could never be created, let alone answered.
 			continue
 		}
 		bySeat[seat] = append(bySeat[seat], t)
@@ -5928,16 +6077,19 @@ func (g *Game) SetCommanderDamage(from, to uuid.UUID, amount int) error {
 	return nil
 }
 
-// SetMonarch designates the given player as the monarch (Conspiracy
-// mechanic — the monarch draws an extra card at the end of their turn
-// in MTG, and any opponent who deals combat damage to them becomes the
-// new monarch). Pass uuid.Nil to clear (no current monarch — the rare
-// case where a card explicitly removes monarchy).
+// SetMonarch designates the given player as the monarch (CR 724 —
+// "an effect instructs a player to become the monarch"). Pass uuid.Nil
+// to clear (no current monarch — the rare case where a card explicitly
+// removes monarchy).
 //
-// Sandbox-only: the must-attack constraint and the combat-damage
-// transfer rule are not enforced. The marker is the affordance; the
-// rules graft track will hook these up if/when the playgroup wants
-// them auto-handled.
+// #375: this is the ENTRY to the designation, not the whole mechanic
+// any more. Once a player is the monarch, monarch.go runs CR 724.2's
+// two inherent triggered abilities — the end-step draw and the
+// combat-damage transfer — off the listener registry, so the crown
+// moves and draws without anybody clicking it. The action stays
+// because a card has to be able to hand the crown out in the first
+// place, and because the sandbox posture is that a table can always
+// correct the board by hand.
 //
 // Returns ErrPlayerNotFound if playerID isn't seated, or
 // ErrGameNotActive in lobby/ended state.

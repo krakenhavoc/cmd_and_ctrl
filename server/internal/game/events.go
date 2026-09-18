@@ -284,6 +284,17 @@ const (
 	// debugging breadcrumb. ErrorMsg carries the reason.
 	EventEffectError EventKind = "effect_error"
 
+	// EventPendingChoiceDropped — a choice was NOT queued (or was
+	// swept from the queue) because its chooser has left the game.
+	// Deliberately not EventEffectError: nothing failed — CR 800.4a
+	// says the eliminated player's objects, and any decision left
+	// for them, cease to exist along with them, so declining to ask
+	// is the correct outcome, not a bug. Actor is the would-be
+	// chooser, Source is the choice's card (when known), and Label
+	// carries the PendingChoiceKind so a stall dump can tell a
+	// dropped "pick_target" from a dropped "trigger_prompt". #864.
+	EventPendingChoiceDropped EventKind = "pending_choice_dropped"
+
 	// EventStepTransition is an engine-internal sentinel used only
 	// by the S17 replacement-effect pipeline. Fired from the top of
 	// runStepEntryHooksLocked so skip-step replacements (Stasis

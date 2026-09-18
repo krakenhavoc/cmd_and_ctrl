@@ -228,14 +228,21 @@ func TestPassTurnSweepsTheTurn(t *testing.T) {
 
 // TestSimultaneousLossesMoveTheTurnOnOnce: two players lose in one SBA
 // pass, one of them the active seat. The turn moves on once, past both,
-// so the second loser's turn never begins (its permanents do not
-// untap).
+// so the second loser's turn never begins — no step of theirs ever
+// announces.
+//
+// The probe used to be one of the second loser's own permanents, left
+// tapped and expected to stay tapped through a turn that never
+// untapped it. CR 800.4a (#769) takes that permanent out of the game
+// with its controller, so "still tapped" and "not there at all" became
+// the same observation and the probe stopped distinguishing anything.
+// EventStepBegan carries the active player, which is the thing the
+// test was always really asking about.
 func TestSimultaneousLossesMoveTheTurnOnOnce(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	a, n := g.Seats[0], g.Seats[1]
-	nLand := pushKeywordCreature(t, g, n, 1, 1)
+	nCreature := pushKeywordCreature(t, g, n, 1, 1)
 	g.WithWriteLock(func() {
-		findCard(g, nLand).Tapped = true
 		a.Life = 0
 		n.Life = 0
 		g.runStateChecksLocked()
@@ -249,8 +256,15 @@ func TestSimultaneousLossesMoveTheTurnOnOnce(t *testing.T) {
 	if g.Turn.ActiveSeat != 2 || g.Turn.Step != StepUpkeep {
 		t.Errorf("cursor: seat %d step %s, want seat 2's upkeep", g.Turn.ActiveSeat, g.Turn.Step)
 	}
-	if c := findCard(g, nLand); c == nil || !c.Tapped {
-		t.Error("the second loser's untap step ran: their turn began inside the batch")
+	for _, ev := range g.Events {
+		if ev.Kind == EventStepBegan && ev.Actor == n.ID {
+			t.Errorf("the second loser's %s step began: their turn ran inside the batch", ev.Step)
+		}
+	}
+	// CR 800.4a while we are here: the losers' permanents went with
+	// them, so there is nothing of the second loser's left to untap.
+	if c := findCard(g, nCreature); c != nil {
+		t.Errorf("the second loser's creature is still on the battlefield: %+v", c)
 	}
 }
 

@@ -740,10 +740,12 @@ func (c Card) IsPermanent() bool {
 //
 // A token is not a card (CR 108.2), and a token that has left the
 // battlefield can't move to another zone or come back onto the
-// battlefield (CR 111.8). The engine has no CR 704.5d sweep, so a
-// token tucked into a library (Chaos Warp) is still sitting there as
-// an object; a move that promises "a permanent card" out of a hidden
-// zone refuses it with this.
+// battlefield (CR 111.8). Since #596 this is also what the CR 704.5d
+// state-based action reads — a token in any zone but the battlefield
+// ceases to exist at the next state check (token_existence.go). Until
+// that check runs, a token tucked into a library (Chaos Warp) is
+// still sitting there as an object, and a move that promises "a
+// permanent card" out of a hidden zone refuses it with this.
 func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 
 // HasCardType reports whether the card's effective card types

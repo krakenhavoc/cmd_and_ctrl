@@ -81,22 +81,22 @@ func TestADroppedDiscardPromptStillRunsTheRestOfTheBatch(t *testing.T) {
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("%d prompts survived the concede", len(g.PendingChoices))
 	}
-	if p.Hand.Contains(second) {
-		t.Error("the rest of the discard batch never ran — the second card is still in hand (#865)")
-	}
-	if !p.Graveyard.Contains(second) {
-		t.Error("the second card was discarded to its owner's graveyard")
-	}
 	if thenRuns != 1 {
 		t.Errorf(`the prompt's "then" ran %d times, want exactly 1 — the batch owes it once, `+
 			`whether the last leg landed or was abandoned`, thenRuns)
 	}
 
-	// The abandoned leg moved nothing, so it discarded nothing: the
-	// first commander is still in the hand it never left, and the
+	// Where the two cards ENDED is no longer observable: CR 800.4a
+	// (#769) takes everything the conceding player owns out of the game
+	// a moment after the batch finishes, so "still in hand" and "in the
+	// graveyard" are both "gone". What the batch did is still pinned,
+	// and by the thing that was always the real claim: the events. The
+	// abandoned leg moved nothing, so it discarded nothing, and the
 	// "whenever you discard a card" family sees one card, not two.
-	if !p.Hand.Contains(first) {
-		t.Error("the abandoned leg moved the card anyway — a paused route has moved nothing")
+	for what, id := range map[string]uuid.UUID{"first": first, "second": second} {
+		if zone := zoneHoldingCard(g, id); zone != "" {
+			t.Errorf("the %s card is in %s: it should have left the game with its owner", what, zone)
+		}
 	}
 	if len(w.discards) != 1 || w.discards[0].CardID != second {
 		t.Errorf("EventDiscardCard x %d (%v), want exactly one, for the card that actually left the hand",
@@ -150,8 +150,13 @@ func TestADroppedWipePromptStillFinishesTheSweep(t *testing.T) {
 		t.Errorf("destroyed this way = %v, want [asked bear] = %v %v — the abandoned leg destroyed nothing",
 			*got, asked, bear)
 	}
-	if findBattlefieldCard(g, gone) == nil {
-		t.Error("the abandoned leg moved the commander anyway — a paused route has moved nothing")
+	// The abandoned leg destroyed nothing — pinned by `got` above. Its
+	// commander is not on the battlefield either, but that is CR 800.4a
+	// (#769) taking its owner's objects out of the game, not the route
+	// moving it: it is in no zone at all, where a completed destruction
+	// would have put it in a graveyard or a command zone.
+	if zone := zoneHoldingCard(g, gone); zone != "" {
+		t.Errorf("the departed player's commander is in %s, want out of the game entirely", zone)
 	}
 	if !stayer.Command.Contains(asked) {
 		t.Error("the answered commander is in its owner's command zone")
@@ -185,8 +190,11 @@ func TestADroppedPromptInASingleCardRouteStillRunsThen(t *testing.T) {
 	if len(*got) != 0 {
 		t.Errorf("destroyed this way = %v, want none — the destruction never happened", *got)
 	}
-	if findBattlefieldCard(g, commander) == nil {
-		t.Error("the commander is still on the battlefield: nothing moved")
+	// Nothing moved: no graveyard, no command zone, no exile. The
+	// commander is in no zone at all, because CR 800.4a (#769) took it
+	// out of the game with its owner — which is not the route landing.
+	if zone := zoneHoldingCard(g, commander); zone != "" {
+		t.Errorf("the commander is in %s: the abandoned route moved it after all", zone)
 	}
 }
 

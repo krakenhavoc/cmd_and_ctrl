@@ -37,9 +37,12 @@ type GameView struct {
 	// keep / mulligan dialog while open. Added in S08.
 	MulligansOpen bool `json:"mulligans_open"`
 	// Monarch is the player ID currently designated as the monarch,
-	// or empty string if no monarch is set. Sandbox marker; the must-
-	// attack-when-able and combat-damage-transfer rules are not
-	// enforced. Added in S10.
+	// or empty string if no monarch is set. Since #375 the engine
+	// moves this itself: CR 724.2's two inherent triggered abilities
+	// (the end-step draw, and the transfer to whoever deals combat
+	// damage to the monarch) are enforced server-side, so a client
+	// that renders this field renders a crown that moves on its own.
+	// Added in S10.
 	Monarch string `json:"monarch,omitempty"`
 	// Initiative is the player ID currently holding the initiative
 	// (BG3 mechanic), or empty if unassigned. Same sandbox posture as
@@ -307,6 +310,14 @@ type PendingChoiceView struct {
 	// CR 701.23b permits failing to find — so the client's submit
 	// button is live from the first render. Absent for other kinds.
 	SearchMax int `json:"search_max,omitempty"`
+	// LoopCount / LoopMaxIterations populate the #804 "loop_shortcut"
+	// kind (CR 726): how many times the repeating ability has already
+	// resolved this turn, and the ceiling the engine will accept on
+	// the answer. The client renders a number field between 0 and the
+	// max; `reason` carries "<card> — <ability>". Answered with
+	// `{choice_id, iterations}`, where 0 means "stop here".
+	LoopCount         int `json:"loop_count,omitempty"`
+	LoopMaxIterations int `json:"loop_max_iterations,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -679,6 +690,20 @@ type PlayerView struct {
 	// badge would keep saying "10 / 7" for a player the cleanup step
 	// is (correctly) never going to prompt (#338).
 	MaxHandSize int `json:"max_hand_size"`
+
+	// LandDropsPerTurn / LandsPlayedThisTurn are the two halves of
+	// the land-drop badge (#500, CR 305.2): how many lands this seat
+	// may play this turn, and how many it already has. The engine
+	// REFUSES a land play past the allowance since #500, so the
+	// client needs both numbers to grey the hand's lands out before
+	// the player clicks rather than only explain the error after.
+	//
+	// LandDropsPerTurn is the EFFECTIVE allowance, not the raw
+	// Player.LandDropsPerTurn: a controlled Exploration or a
+	// one-turn grant is already summed in, exactly as MaxHandSize
+	// above reports the effective cap. Normally 1 / 0.
+	LandDropsPerTurn    int `json:"land_drops_per_turn"`
+	LandsPlayedThisTurn int `json:"lands_played_this_turn"`
 
 	// ManaPool is the player's current mana pool projection — one
 	// entry per floating mana token, in insertion order. Entries
@@ -2073,6 +2098,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
 		}
+		// PendingChoiceLoopShortcut — the CR 726 proposal (#804). The
+		// count is the N in "has resolved N times this turn" and the
+		// max is the ceiling on the client's number field; Reason
+		// already carries "<card> — <ability>". Public, like the
+		// loop_notice beside it: a loop is something the whole table
+		// can see running, and everyone can see whose question it is.
+		if c.Kind == game.PendingChoiceLoopShortcut {
+			v.LoopCount = c.LoopShortcutCount
+			v.LoopMaxIterations = game.MaxLoopShortcutIterations
+		}
 		// PendingChoiceChooseCards — the chained-choice card-set pick.
 		// The candidates are frequently cards in a hand, so they go
 		// through the ordinary per-viewer knower redaction in
@@ -2411,7 +2446,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
-		ManaPool:          manaPool,
+		// Locked variants: this builder already runs under the
+		// game's read lock (see legal.EnumerateFor's note), and the
+		// public accessors would take it a second time.
+		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
+		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
+		ManaPool:            manaPool,
 	}
 }
 
