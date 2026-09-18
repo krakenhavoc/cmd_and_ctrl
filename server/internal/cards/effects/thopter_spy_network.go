@@ -22,9 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The combat half is "one or more", so it is deduplicated with the
 // batch 04 helper: the engine emits one damage event per creature,
-// and the second artifact creature's event is declined while the
-// first trigger is still queued or on the stack. Without that the
-// card would ship STRONGER than printed (#259).
+// and the second artifact creature's event is declined as a later
+// event of the same batch (OncePerBatch; see AGENTS.md §7). Without
+// that the card would ship STRONGER than printed (#259).
 func init() {
 	Register(Spec{
 		OracleID:     "49be65fd-3755-410d-b0dc-2e5861ea2552",

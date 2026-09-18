@@ -188,11 +188,12 @@ func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card,
 // attacking. "Whenever a player attacks with N or more creatures" is
 // ONE trigger per declaration, and the engine emits EventAttack per
 // creature, so the ability fires on the declaration that reaches n
-// and declines every later one — both while its item is queued or on
-// the stack (OncePerBatch) and, because the sandbox
-// lets attackers be declared after the trigger has resolved, for the
-// rest of the turn (b11TriggeredThisTurn). Only the active player
-// attacks in a turn and the engine has no extra combats, so
+// and declines every later one — every later event of the SAME batch
+// (OncePerBatch, keyed on Event.Batch; see AGENTS.md §7) and,
+// because the sandbox lets attackers be declared after the trigger
+// has resolved, the rest of the turn (b11TriggeredThisTurn). Only
+// the active player attacks in a turn and the engine has no extra
+// combats, so
 // once-per-turn is once-per-declaration. Weaker than printed under
 // an extra combat, never stronger.
 func b16PlayerAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {

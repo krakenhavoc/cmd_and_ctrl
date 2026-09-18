@@ -266,7 +266,8 @@ func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game
 // owns was milled into their graveyard (Colossal Grave-Reaver's
 // read). The engine emits one EventMill per card, so the first
 // creature card of a mill fires the trigger and the rest are
-// declined while it is queued or on the stack.
+// declined as later events of the same batch (OncePerBatch; see
+// AGENTS.md §7).
 func b33CreatureCardMilledIntoYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventMill || ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
 		return false

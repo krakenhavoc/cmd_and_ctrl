@@ -12,9 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Boros token commander. Both printed abilities ride ONE
 // triggered ability, "whenever one or more creature tokens you
-// control attack" — deduped per source and label across
-// PendingTriggers, the stack and the pick queue, so a wide attack
-// fires it once — whose body (b32NeyaliAttack) does both sentences:
+// control attack" — one declaration is one batch and OncePerBatch
+// declines every later event of it (see AGENTS.md §7), so a wide
+// attack fires it once — whose body (b32NeyaliAttack) does both
+// sentences:
 //
 //   - The static, as an until-end-of-turn grant of double strike to
 //     every attacking token the controller controls, snapshotted as

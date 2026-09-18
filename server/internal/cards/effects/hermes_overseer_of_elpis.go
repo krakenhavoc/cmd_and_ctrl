@@ -19,8 +19,8 @@ const b33HermesScryLabel = "Hermes, Overseer of Elpis — scry 2"
 // still makes a Bird. The attack trigger is "one or more": the
 // engine emits one EventAttack per attacker, so the first Bird
 // declared fires it and the rest of that combat's Birds are declined
-// while it is queued or on the stack (OncePerBatch).
-// Effective subtypes, so a changeling attacking is a Bird.
+// as later events of the same batch (OncePerBatch; see AGENTS.md
+// §7). Effective subtypes, so a changeling attacking is a Bird.
 //
 // No simplification.
 func init() {

@@ -113,10 +113,13 @@ func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 
 // OncePerBatch marks a "whenever ONE OR MORE …" ability (#587): the
 // engine emits one event per creature that attacks, enters or deals
-// damage, and this makes the harvester decline the rest of a batch
-// while the first event's trigger is still pending, on the stack, or
-// waiting on its prompt. Matched by the ability's label, which the
-// constructors stamp as its Key.
+// damage, and this makes the harvester fire on the FIRST event of a
+// batch and decline every later event of the same batch (#829). A
+// batch is every event between two points where play moves on — a
+// stack item beginning to resolve, or the turn cursor entering a new
+// step — stamped on Event.Batch and checked by
+// oncePerBatchAllowsLocked; see AGENTS.md §7. Matched by the
+// ability's label, which the constructors stamp as its Key.
 func OncePerBatch(t game.TriggeredAbility) game.TriggeredAbility {
 	t.OncePerBatch = true
 	return t

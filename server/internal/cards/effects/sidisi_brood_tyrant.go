@@ -17,11 +17,12 @@ const b33SidisiZombieLabel = "Sidisi, Brood Tyrant — create a 2/2 black Zombie
 // or attacks" shape with a three-card mill; the second is Colossal
 // Grave-Reaver's: it watches EventMill — the engine emits one per
 // card — so the first creature card of a mill fires it and the rest
-// of that mill are declined while the trigger is queued or on the
-// stack. Two separate mills in one turn make two Zombies, as
-// printed. A creature card that reaches the graveyard from the
-// library some other way — a search that puts it there — is not a
-// mill and does not fire it; no card in the catalog does that.
+// of that mill are declined as later events of the same batch
+// (OncePerBatch; see AGENTS.md §7). Two separate mills in one turn
+// make two Zombies, as printed. A creature card that reaches the
+// graveyard from the library some other way — a search that puts it
+// there — is not a mill and does not fire it; no card in the catalog
+// does that.
 //
 // No simplification.
 func init() {

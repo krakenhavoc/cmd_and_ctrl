@@ -10,14 +10,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The non-Human beatdown deck's Bident. "ONE OR MORE" is one trigger
 // per combat damage step, not one per creature: the engine emits one
-// damage event per creature, so the condition declines any event
-// that arrives while a Keeper trigger is already queued or on the
-// stack (OncePerBatch — both queues, since a damage
-// batch can straddle a state check). Without it three attackers
-// would draw three, which is stronger than printed. First-strike and
-// regular damage are two batches and two draws, as in paper. Human
-// is read off the creature's effective subtypes, so a changeling is
-// a Human and does not count.
+// damage event per creature, so the condition declines every later
+// event of the SAME batch (OncePerBatch, keyed on Event.Batch — see
+// AGENTS.md §7). Without it three attackers would draw three, which
+// is stronger than printed. First-strike and regular damage are two
+// batches and two draws, as in paper. Human is read off the
+// creature's effective subtypes, so a changeling is a Human and does
+// not count.
 //
 // No simplification.
 func init() {
