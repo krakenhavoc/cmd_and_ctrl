@@ -61,12 +61,12 @@ func newRotationProbe(t *testing.T) rotationProbe {
 			Watches: []EventKind{EventDealDamage},
 			Label:   "Fog: prevent all combat damage this turn",
 		})
-		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+		g.RegisterScopedStaticForEffect(StaticAbility{
 			Layer:     Layer7PT,
 			SubLayer:  SubLayer7C_Modify,
 			AppliesTo: func(target *Card, _ *Game, _ *Card) bool { return target.InstanceID == blocker },
 			Apply:     func(c *Characteristic, _ *Card, _ *Game, _ *Card) { c.Power += 3; c.Toughness += 3 },
-		}, uuid.New(), "test — +3/+3 until end of turn")
+		}, uuid.New(), "test — +3/+3 until end of turn", g.UntilEndOfTurnDuration())
 	})
 
 	// The probe's "before" column: the departure is what must clear
@@ -121,8 +121,8 @@ func (p rotationProbe) assertCleanNextTurn(t *testing.T) {
 	if len(g.TurnScopedReplacements) != 0 {
 		t.Errorf("A's turn-scoped prevention shield survived into N's turn: %d", len(g.TurnScopedReplacements))
 	}
-	if len(g.TurnScopedStatics) != 0 {
-		t.Errorf("A's until-end-of-turn static survived into N's turn: %d", len(g.TurnScopedStatics))
+	if len(g.ScopedStatics) != 0 {
+		t.Errorf("A's until-end-of-turn static survived into N's turn: %d", len(g.ScopedStatics))
 	}
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
 	if c := findCard(g, p.blocker); c == nil || c.CurrentPower() != 4 {

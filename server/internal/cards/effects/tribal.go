@@ -252,11 +252,12 @@ func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
 	if set == nil {
 		return nil
 	}
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: set.appliesTo(),
 		Apply:     applyAllCreatureTypes,
-	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"))
+	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
 

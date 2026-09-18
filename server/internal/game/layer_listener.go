@@ -36,7 +36,7 @@ import (
 //     indestructible" is the forcing function — a static whose
 //     predicate reads the turn rather than the battlefield.
 //     (Turn-scoped "until end of turn" effects do NOT depend on that
-//     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
+//     bump: `ClearEndOfTurnScopedStaticsLocked` bumps the version
 //     itself when it sweeps.)
 //   - Control changes. Nothing needed as of S24: Mind Control's
 //     layer-2 control change is a continuous effect whose only input
