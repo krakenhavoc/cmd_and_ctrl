@@ -195,6 +195,22 @@ type zoneRoute struct {
 	Countered     bool
 	DropStackMeta bool
 
+	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.17a)
+	// rather than a destruction, so the leg announces EventSacrifice
+	// while the permanent is still on the battlefield, before the
+	// window opens over its move. Only meaningful with
+	// ViaBattlefieldLeave, which is the only route a sacrifice takes.
+	//
+	// It also picks the rule the leg's "this way" answer is read by:
+	// routeLegLandedLocked sends a sacrifice to sacrificedThisWayLocked
+	// rather than to destroyedThisWayLocked. #910.
+	//
+	// It is deliberately NOT a flavour of Destruction below, and the
+	// template says so by building on battlefieldExitRoute: a sacrifice
+	// is not a destruction (CR 701.17a), so the CR 701.19 regeneration
+	// built-in must never see one.
+	Sacrifice bool
+
 	// ViaBattlefieldLeave says the physical move belongs to
 	// executeBattlefieldLeaveLocked rather than to
 	// executeZoneRouteLocked — the destroy / sacrifice / SBA exit,

@@ -11,7 +11,10 @@ import "github.com/google/uuid"
 // last one is load-bearing since #667 rather than merely true: this
 // file routes through the SAME battlefield exit a destruction does,
 // and the only thing that tells them apart is that the destroy route
-// declares zoneRoute.Destruction and this one does not.
+// declares zoneRoute.Destruction and this one does not. #910 gave the
+// sacrifice its own template for the announcement below, and built it
+// on battlefieldExitRoute precisely so that stays true by
+// construction rather than by anyone remembering it.
 //
 // The mechanics are deliberately thin — the permanent takes the
 // ordinary route to its owner's graveyard, so dies-triggers, the
@@ -20,10 +23,43 @@ import "github.com/google/uuid"
 // the card is still on the battlefield so "whenever you sacrifice"
 // payoffs can read its characteristics before it moves.
 
-// sacrificePermanentLocked emits EventSacrifice for the permanent's
-// controller and routes it to its owner's graveyard. Caller must
-// hold g.mu.
+// sacrificePermanentLocked sacrifices ONE permanent: the announcement,
+// then the battlefield exit.
+//
+// #910 made it one leg of the shared batch body (routeLegLocked with
+// the sacrifice template) rather than its own pair of calls, so the
+// single sacrifice and a batch cannot drift — the same move, the same
+// announcement, in the same order. It stays the FIRE-AND-FORGET form:
+// nil means "no error", never "it left the battlefield", because a
+// sacrificed commander's CR 903.9 prompt can still be open when this
+// returns. A caller that reads the outcome uses SacrificeThenForEffect.
+//
+// A permanent that is not on the battlefield is ErrCardNotFound and
+// nothing is announced, which is the contract every caller already
+// relies on to tell "there was nothing to sacrifice" from "it was
+// sacrificed".
+//
+// Caller must hold g.mu.
 func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
+	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
+		return ErrCardNotFound
+	}
+	return g.routeLegLocked(sacrificeRoute(uuid.Nil), cardID, nil, nil)
+}
+
+// announceSacrificeLocked emits EventSacrifice for the permanent's
+// controller, `source` being the card that asked for the sacrifice.
+//
+// It fires while the card is STILL ON THE BATTLEFIELD and before the
+// CR 614 window opens over its move, which is the whole reason it is a
+// step of its own: a "whenever you sacrifice a permanent" payoff reads
+// characteristics (Ziatora's power, Witch's Oven's toughness) that the
+// CR 400.7 forget wipes a moment later, and it must fire whatever the
+// window then does with the destination — a sacrifice whose card an
+// "exile it instead" replacement takes is still a sacrifice.
+//
+// Caller must hold g.mu.
+func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID) error {
 	controller := g.controllerOfBattlefieldCardLocked(cardID)
 	if controller == uuid.Nil {
 		return ErrCardNotFound
@@ -31,9 +67,10 @@ func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
 	g.EmitEvent(Event{
 		Kind:   EventSacrifice,
 		Actor:  controller,
+		Source: source,
 		CardID: cardID,
 	})
-	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+	return nil
 }
 
 // SacrificePermanent is the locking entry point: a player sacrifices

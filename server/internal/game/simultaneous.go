@@ -294,6 +294,47 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 	return z.Kind == ZoneGraveyard || z.Kind == ZoneCommand
 }
 
+// sacrificedThisWayLocked reports whether a settled sacrifice of
+// cardID counts as a SACRIFICE — the question "for each permanent
+// sacrificed this way" (God-Eternal Bontu's draw) is asking.
+//
+// CR 701.17a: "To sacrifice a permanent, its controller moves it from
+// the battlefield to its owner's graveyard." The sacrifice is that
+// MOVE OFF the battlefield, and nothing replaces the sacrifice itself
+// — a replacement rewrites where the permanent goes. So the answer is
+// "is it still on the battlefield":
+//
+//   - anywhere else. Sacrificed. A graveyard is the printed
+//     destination; the command zone is CR 903.9 taking the offer; exile
+//     is Rest in Peace or Liesa, and a hand or a library is some other
+//     rewrite. All of them replaced the destination of a sacrifice
+//     that had already happened.
+//   - gone from the game entirely (a sacrificed TOKEN, CR 111.8).
+//     Sacrificed: it left the battlefield because its controller
+//     sacrificed it.
+//   - still on the battlefield. NOT sacrificed — the CR 614 window
+//     cancelled the move outright, or its prompt was abandoned
+//     (ADR 0013 §5j), and nothing ever left.
+//
+// This is where sacrifice PARTS COMPANY with destroy, and the two
+// rules are why. CR 701.7a defines a destruction BY the graveyard, so
+// a permanent a replacement sent to exile was not destroyed however
+// thoroughly it left (destroyedThisWayLocked, #863) — the command zone
+// is destroy's one declared carry-over. CR 701.17a names the same
+// destination but the keyword action is the controller's move off the
+// battlefield, and Korvold triggers on a sacrifice whose card an
+// "exile it instead" replacement took. Two rules, two functions, one
+// board read each; routeLegLandedLocked picks between them.
+//
+// Read off the live board rather than off the settled event, for the
+// reason destroyedThisWayLocked gives: it is the reading that is still
+// true after an undo rewinds into an open prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificedThisWayLocked(cardID uuid.UUID) bool {
+	return findCardOnBattlefield(g, cardID) < 0
+}
+
 // landedInZoneLocked reports whether cardID is now in the zone its
 // route asked for — the CR 400.7 reading of "exiled this way",
 // "returned this way", "put into a graveyard this way": the object
@@ -370,6 +411,32 @@ var (
 func destroyRouteWith(opts DestroyOptions) zoneRoute {
 	r := destroyRoute
 	r.CantBeRegenerated = opts.CantBeRegenerated
+	return r
+}
+
+// sacrificeRoute is the SEVENTH template (#910): the exit a SACRIFICE
+// takes, built on battlefieldExitRoute rather than on destroyRoute
+// because a sacrifice is not a destruction (CR 701.17a — "sacrificing
+// a permanent doesn't destroy it, so regeneration and other effects
+// that replace destruction can't affect it"). Inheriting the
+// undestructive route is what makes that true by construction rather
+// than by a comment: no Destruction flag, so the CR 701.19 shield
+// never sees it (#667).
+//
+// It differs from the exits around it in exactly two declared ways.
+//
+//   - it ANNOUNCES. EventSacrifice is emitted while the permanent is
+//     still on the battlefield, before the window opens over its move,
+//     so a "whenever you sacrifice" payoff can read what it is losing
+//     (sacrifice.go). No other battlefield exit announces anything.
+//   - "this way" is a different rule, sacrificedThisWayLocked's.
+//
+// A function rather than a package var because the announcement names
+// the card that asked for the sacrifice, which belongs to the caller.
+func sacrificeRoute(source uuid.UUID) zoneRoute {
+	r := battlefieldExitRoute
+	r.Sacrifice = true
+	r.Source = source
 	return r
 }
 
@@ -575,6 +642,15 @@ func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UU
 // Caller must hold g.mu in write mode.
 func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func(g *Game) error) error {
 	if r.ViaBattlefieldLeave {
+		if r.Sacrifice {
+			// Before the window, while the permanent is still there:
+			// CR 701.17a's announcement is not part of the move, and a
+			// "whenever you sacrifice" payoff reads characteristics
+			// that are gone a line later (sacrifice.go).
+			if err := g.announceSacrificeLocked(id, r.Source); err != nil {
+				return err
+			}
+		}
 		return g.routeBattlefieldExitInBatchThenLocked(id, r, batch, then)
 	}
 	r.CardID = id
@@ -614,6 +690,9 @@ func (g *Game) routeLegNothingToDoLocked(r zoneRoute, id uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) routeLegLandedLocked(r zoneRoute, id uuid.UUID) bool {
 	if r.ViaBattlefieldLeave {
+		if r.Sacrifice {
+			return g.sacrificedThisWayLocked(id)
+		}
 		return g.destroyedThisWayLocked(id)
 	}
 	return g.landedInZoneLocked(id, r.Dst, r.DstOwner)
@@ -769,6 +848,75 @@ func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exile
 		}
 		return then(g, len(landed) == 1)
 	})
+}
+
+// SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
+// simultaneous exit and hands `then` the ones that were actually
+// SACRIFICED — "then draw a card for each permanent sacrificed this
+// way" (God-Eternal Bontu), and every "sacrifice all X, then for
+// each …" that could not be written before.
+//
+// #910. Destroy, exile, bounce, tuck and mill have all had this since
+// #815 / #866 / #893; sacrifice had only the per-card call, so Living
+// Death's second pass fired and forgot and any follow-up ran on the
+// next line with a commander's CR 903.9 prompt still open.
+//
+// Sacrifice is not replaceable (CR 701.17a: sacrificing doesn't
+// destroy, so nothing that replaces destruction touches it, and no
+// replacement stops the sacrifice itself) — but the MOVE it makes is
+// an ordinary zone change, so a sacrificed commander opens the CR 903.9
+// window and a leg can PAUSE exactly like a destroy leg. That is the
+// whole reason this is a continuation rather than a return value.
+//
+// `sacrificed` is sacrificedThisWayLocked's answer: the permanents that
+// really left the battlefield. A commander that took the command zone
+// IS in it — it was sacrificed, and only where the card went was
+// replaced — and so is one an "exile it instead" replacement took.
+//
+// `source` is the card that asked, stamped on each EventSacrifice.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
+	return g.routeAllThenLocked(sacrificeRoute(source), ids, then)
+}
+
+// SacrificeThenForEffect is the SINGLE-CARD form: sacrifice one
+// permanent and tell `then` whether it really left the battlefield.
+//
+// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
+// for the reason that one gives: a one-card read-back is the same
+// problem as a batch one — the one leg is the leg that can pause — and
+// a second sacrifice path with its own notion of what happened is how
+// two verbs drift. "Sacrifice a creature. If you do, …" is this call.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Game, sacrificed bool) error) error {
+	return g.SacrificeAllThenForEffect(source, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
+// SacrificeAllForEffect is the FIRE-AND-FORGET batch: "each player
+// sacrifices all permanents they control that are one or more colors"
+// (All Is Dust), with nothing waiting on the answer.
+//
+// What it buys over a loop of single sacrifices is the one thing a
+// loop cannot have: the permanents leave as one SIMULTANEOUS exit, so
+// a Blood Artist swept by the same spell sees every death including
+// its own (CR 603.10 last-known information). That was All Is Dust's
+// declared caveat until this existed.
+//
+// The count is how many of the legs that SETTLED were sacrificed. A
+// leg that paused on the CR 903.9 prompt cannot be in it — nothing has
+// left yet — which is why a card that READS the number uses
+// SacrificeAllThenForEffect.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
+	return g.routeAllLocked(sacrificeRoute(source), ids)
 }
 
 // BounceCardsToHandForEffect returns every card in `ids` to its

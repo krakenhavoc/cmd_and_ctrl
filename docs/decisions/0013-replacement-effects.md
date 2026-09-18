@@ -1598,6 +1598,99 @@ owner takes CR 903.9's offer goes to the command zone, because the
 built-in rewrites the destination first and this replacement then no
 longer applies. Weaker than printed, never stronger.
 
+### 5r. Amendment, 2026-09-18: a sacrifice batch, and what "sacrificed this way" counts
+
+*Amendment, 2026-09-18, branch
+`fix/931-910-graveyard-route-and-sacrifice-batch`.
+Closes [#910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/910),
+filed by the #893/#894 agent in PR #909.*
+
+§5i gave destroy a batch with a continuation, §5k gave exile and
+bounce one and folded all three onto a single body, §5l added the mill.
+Sacrifice was the verb nobody had come back for: it had only the
+per-card `sacrificePermanentLocked`, so Living Death's second pass
+fired and forgot and God-Eternal Bontu counted its draws on the line
+after the loop.
+
+**1. It is a sibling of the battlefield exit, not a new path.**
+`sacrificeRoute(source)` is built on §5p's `battlefieldExitRoute` — the
+exit WITHOUT the `Destruction` flag — plus two declared differences,
+and it takes the same mover (`routeBattlefieldExitInBatchThenLocked`)
+because a sacrifice is a battlefield exit that is not a destruction:
+CR 701.17a, "sacrificing a permanent doesn't destroy it, so
+regeneration and other effects that replace destruction can't affect
+it". Inheriting the undestructive route is what makes that true by
+construction — §5p's regeneration built-in reads `Destruction`, and a
+sacrifice never sets it.
+
+- it ANNOUNCES. `EventSacrifice` is emitted by the leg, while the
+  permanent is still on the battlefield and before the window opens
+  over its move, because a "whenever you sacrifice" payoff reads
+  characteristics (Ziatora's power, Witch's Oven's toughness) that the
+  CR 400.7 forget wipes a moment later. That has been true since S21;
+  what changed is that the announcement is now part of the LEG, so a
+  batch and a single sacrifice cannot drift.
+- "this way" is a different rule (below).
+
+`sacrificePermanentLocked` is that same leg with no batch and no
+continuation, so there is one sacrifice path in the engine and not two.
+
+**2. Sacrifice is not replaceable; its MOVE is.** Nothing replaces the
+sacrifice itself, which is why the announcement is unconditional. The
+zone change it makes is an ordinary one: the CR 614 window opens over
+it, a sacrificed commander gets the CR 903.9 prompt, and Rest in Peace
+(§5q) can rewrite where the card goes. So a leg can PAUSE, which is the
+whole reason the batch hands its answer to a continuation.
+
+**3. "Sacrificed this way" is the permanent that LEFT.**
+`sacrificedThisWayLocked` asks whether it is still on the battlefield,
+and this is where sacrifice parts company with destroy:
+
+| Where it ended up | Destroyed this way? | Sacrificed this way? |
+| --- | --- | --- |
+| a graveyard | yes | yes |
+| the command zone (CR 903.9 took the offer) | yes (§5i's declared carry-over) | yes |
+| exile, a hand, a library (a replacement rewrote it) | **no** | **yes** |
+| gone entirely (a token, CR 111.8) | no | yes |
+| still on the battlefield (cancelled, or the prompt abandoned — §5j) | no | no |
+
+The two rules are why, and the difference is not an inconsistency.
+CR 701.7a defines a DESTRUCTION by the graveyard — "move it from the
+battlefield to its owner's graveyard" is what the word means, so a
+permanent an "exile it instead" replacement took was never destroyed
+however thoroughly it left, and the command zone is destroy's one
+declared exception (§5i). CR 701.17a names the same destination, but
+the keyword action is the CONTROLLER'S MOVE off the battlefield and
+nothing replaces that: Korvold triggers on a sacrifice whose card Rest
+in Peace exiled, and so the same sacrifice is in the list. Two rules,
+two functions, one board read each; `routeLegLandedLocked` picks
+between them.
+
+**4. What the catalog reads back.** `SacrificeAllThenForEffect(source,
+ids, then)` is the batch, `SacrificeThenForEffect` its single-card
+wrapper (#870's shape, for "sacrifice a creature. If you do, …"), and
+`SacrificeAllForEffect` the fire-and-forget twin whose count is the
+legs that had left by the time it returned. Three cards converted:
+
+- **Living Death** — pass 2 is one batch and pass 3 hangs off ITS
+  continuation, so the reanimation waits for a sacrificed commander's
+  CR 903.9 answer instead of running with the question open, and the
+  creatures leave as one simultaneous exit.
+- **God-Eternal Bontu** — "then draw that many cards" is the
+  continuation's `len(sacrificed)`. It used to be a tally taken on the
+  line after the loop, which drew a card for a commander that had only
+  been ASKED about the command zone.
+- **All Is Dust** (with Slaughter the Strong on the same helper) — the
+  fire-and-forget batch, which cost it its caveat: a Blood Artist swept
+  by the spell now sees every death including its own (CR 603.10),
+  where the old loop showed it only the permanents that left after it.
+
+**5. Nothing new is snapshotted.** The batch is `routeAllThenLocked`
+with a different template, so the undo contract is the one §5k signed
+and `sacrificed_this_way_test.go` pins it the same way: rewind into the
+open CR 903.9 prompt, answer again, and the same permanents are
+sacrificed and the same list reported.
+
 ### 5s. Amendment, 2026-09-18: a keyword action with a count is a replaceable event
 
 *Amendment, 2026-09-18, branch

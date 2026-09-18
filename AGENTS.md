@@ -2084,6 +2084,26 @@ card, and leave it ungated when it is a separate sentence (Path's
 search happens either way). See
 [ADR 0013 §5m](docs/decisions/0013-replacement-effects.md).
 
+**A sacrifice is a batch too, and "sacrificed this way" is not
+"destroyed this way" (#910).** `g.SacrificeAllThenForEffect(source,
+ids, then)` sacrifices a set as ONE simultaneous exit and hands `then`
+the permanents that were really sacrificed;
+`g.SacrificeThenForEffect(source, id, then)` is the single-card
+wrapper for "sacrifice a creature. If you do, …", and
+`g.SacrificeAllForEffect(source, ids)` the fire-and-forget count for a
+sweep nothing is waiting on. Reach for a `Then` form the moment a card
+reads the result — "draw that many cards", "for each permanent
+sacrificed this way" — because a sacrificed commander stops to answer
+CR 903.9 and the number is not knowable on the next line. A sacrifice
+is NOT a destruction (CR 701.17a: indestructible and regeneration do
+not apply), and the two "this way" rules differ in one row: CR 701.7a
+defines a destruction by the graveyard, so a permanent an "exile it
+instead" replacement took was not destroyed, while CR 701.17a's
+sacrifice is the controller's move OFF the battlefield and that same
+permanent WAS sacrificed. `EventSacrifice` still fires before the move,
+so a "whenever you sacrifice" payoff is unaffected either way. See
+[ADR 0013 §5r](docs/decisions/0013-replacement-effects.md).
+
 **Never call a locking accessor inside a snapshot body (#877).**
 Anything that runs inside `g.ReadSnapshot(func(){…})` or
 `g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`
