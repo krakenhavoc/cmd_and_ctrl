@@ -260,20 +260,22 @@ func TestB492BlockTriggersResolveBeforeCombatDamage(t *testing.T) {
 	}
 }
 
-// TestB492AdvanceStepOutOfDeclareBlockersStillTakesDamageFirst pins
-// what #857 left, and what Cyberman Patrol declares as a caveat: the
-// sandbox's skip-ahead button. advance_step locks the declaration in
-// and puts the afflict on the stack, then walks the cursor into
-// combat damage without a priority round, so the damage lands first
-// and the trigger resolves after it.
+// TestB492AdvanceStepOutOfDeclareBlockersResolvesTheAfflictFirst is
+// the same probe with the answer #914 gave it. It used to pin the
+// opposite — the skip-ahead button walked the cursor into combat
+// damage with the afflict still on the stack, so the Bear's 2 landed
+// before the 3 — and that was never a property of block triggers:
+// AdvanceStep walked past ANYTHING on the stack, including a trigger
+// an earlier priority pass had announced.
 //
-// That is not a property of block triggers — AdvanceStep walks past
-// ANYTHING on the stack, including a trigger already announced by an
-// earlier priority pass — so closing it is a turn-structure decision
-// about what advance_step means with a non-empty stack, not another
-// fix to the declaration. Filed separately; the totals are the same
-// either way unless the loss would have killed the player first.
-func TestB492AdvanceStepOutOfDeclareBlockersStillTakesDamageFirst(t *testing.T) {
+// CR 117.4 is the rule it broke: a step ends only once every player
+// has passed in succession with the stack EMPTY. advance_step now
+// passes priority until the step ends, so what the step owes resolves
+// inside it. The afflict is a declare-blockers trigger, it resolves
+// there, and the 3 comes before the 2 — the same order ordinary
+// priority play has produced since #857, which is why Cyberman Patrol
+// no longer declares the caveat.
+func TestB492AdvanceStepOutOfDeclareBlockersResolvesTheAfflictFirst(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	patrol := b12Push(g, me.ID, "Cyberman Patrol", "Artifact Creature — Cyberman", b26CybermanPatrolOracle, 2, 2)
@@ -288,17 +290,13 @@ func TestB492AdvanceStepOutOfDeclareBlockersStillTakesDamageFirst(t *testing.T) 
 	}
 	advanceTo(t, g, game.StepCombatDamage)
 
-	if opp.Life != life-2 {
-		t.Fatalf("the skip-ahead deals combat damage first: %d to %d, want %d", life, opp.Life, life-2)
+	if triggerOnStack(g, patrol) != nil {
+		t.Fatal("the afflict is still on the stack — the step ended owing it")
 	}
-	if triggerOnStack(g, patrol) == nil {
-		t.Fatal("the afflict is still on the stack, waiting for priority")
+	if opp.Life != life-3-2 {
+		t.Fatalf("afflict 3 in declare_blockers, then the Bear's 2: %d to %d, want %d", life, opp.Life, life-5)
 	}
-	passPriorityAroundTable(t, g)
-	if opp.Life != life-2-3 {
-		t.Errorf("and resolves after it: %d, want %d", opp.Life, life-5)
-	}
-	if spec, _ := Lookup(b26CybermanPatrolOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the skip-ahead ordering is a declared gap on the card")
+	if spec, _ := Lookup(b26CybermanPatrolOracle); spec.Completeness != CompletenessFull {
+		t.Error("the skip-ahead ordering was the card's last declared gap")
 	}
 }

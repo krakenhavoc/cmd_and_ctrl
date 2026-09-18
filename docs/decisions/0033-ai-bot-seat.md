@@ -668,3 +668,39 @@ Restoration's waterbend) is not enumerated at all, because the only
 announcement it could make is the one the engine refuses.
 
 **The bot's threat ordering (§1) is still not built** (#687). Unchanged.
+
+## Amendment (2026-09-18, #957): a pay-life X is priced like a mana X
+
+The first of the two gaps above is closed for the "pay X life" half.
+X is ONE announced number (CR 601.2b) and the mana cost is not the only
+thing that can charge for it: Toxic Deluge prints `{2}{B}` with no `{X}`
+anywhere in it and announces X by paying X life
+(`game.AdditionalCost.PayLifeX`). The affordable-X search reads `{X}`
+slots, so it answered 0 for the card and always would — the enumerator
+offered the cast at X=0 and the board was swept for -0/-0, a zero-effect
+move of rule 1's exact shape arriving through a different seam.
+
+**One more line in the one X rule**, `xCeilingFromCost` in
+`internal/legal/x.go`, and it is keyed on the COST COMPONENT rather than
+on the card: any future "as an additional cost to cast this spell, pay X
+life" is priced by it the day the card is registered, with no catalog
+entry and no per-card branch.
+
+- The **floor** is `enumeratedXFloor`'s, unchanged. Toxic Deluge declares
+  `XMatters`, so it is 1, and a seat that cannot reach 1 is offered no
+  cast at all — the Soothsaying treatment, one cost component over.
+- The **ceiling** is `life - 1`. CR 119.4 permits paying exactly your life
+  total and the engine accepts that (`xValue > p.Life` is the announce
+  check); this package will not OFFER it, on rule 1's own footing of what
+  is worth putting in front of a player. A sweep that kills its own caster
+  is not the pricing to hand a bot as the card's only offer.
+- `Options.MaxX` caps it like every other X search, and the announcement
+  is still exactly one number, so X never enters an expansion cross
+  product. (The issue said `MaxExpansionPerSource`; that one caps the
+  cross product, which an X that is a single value never joins.)
+
+A cost with BOTH an `{X}` in its mana cost and a pay-X-life would take the
+smaller of the two ceilings — `announcedX` is written that way — though no
+such card is registered. Waterbender's Restoration's waterbend
+`TapPermanentsCost` is still unpriced and still not enumerated, for the
+reason rule 2 gives.

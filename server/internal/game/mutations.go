@@ -5155,6 +5155,15 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.passPriorityLocked()
+}
+
+// passPriorityLocked is PassPriority's whole body, under a lock the
+// caller already holds. Extracted in #914 so AdvanceStep can drive
+// the table's passes through the ONE priority engine rather than
+// growing a second one beside it — see driveStepToEndLocked (game.go).
+// Caller must hold g.mu.
+func (g *Game) passPriorityLocked() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}

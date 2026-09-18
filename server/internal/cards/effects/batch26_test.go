@@ -835,8 +835,11 @@ func TestB26CybermanPatrolGivesArtifactCreaturesAfflictThree(t *testing.T) {
 	if opp.Life != life-2-3 {
 		t.Errorf("2 combat damage and 3 afflict: %d → %d", life, opp.Life)
 	}
-	if spec, _ := Lookup(b26CybermanPatrolOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the post-damage timing is a declared gap")
+	// #914 closed the other half of the #388 timing gap — the
+	// skip-ahead button resolves the afflict inside declare_blockers
+	// too — so the card carries no caveat any more.
+	if spec, _ := Lookup(b26CybermanPatrolOracle); spec.Completeness != CompletenessFull {
+		t.Error("the afflict timing is correct on both routes now")
 	}
 }
 

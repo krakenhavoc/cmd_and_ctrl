@@ -856,6 +856,20 @@ the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
 still makes X=0 a legal announcement and the engine still accepts one;
 this is about what is worth putting in front of a player.
 
+**An X paid in LIFE is priced the same way, one short of the life
+total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
+announced by paying X life as an additional cost — so the affordable-X
+search saw no `{X}` slot, announced 0, and offered a board wipe that
+swept for -0/-0
+([#957](https://github.com/krakenhavoc/cmd_and_ctrl/issues/957)). The
+same floor applies (1, because the card declares `XMatters`), the
+ceiling is the seat's life total minus one — CR 119.4 forbids paying
+more life than you have, and a sweep a bot does not survive is not the
+one offer to hand it — and `MaxX` caps it like any other X. A bot at 13
+life is offered Toxic Deluge at X=12; a bot at 1 life is not offered it
+at all. The rule is keyed on the cost component, so the next card that
+prints "pay X life" is priced without a line of its own.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement

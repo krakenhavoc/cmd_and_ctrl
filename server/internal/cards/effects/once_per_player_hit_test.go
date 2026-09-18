@@ -108,6 +108,13 @@ func TestB784KeeperOfFablesDrawsOnceForTwoCreaturesOnOnePlayer(t *testing.T) {
 // even though the turn cursor sees one step. A first-striker and a
 // regular attacker on the same opponent are two Treasures; a third
 // attacker on a second opponent in the regular step is a third.
+//
+// #914 moved where the FIRST of the three is counted, not how many
+// there are. b784AttackEach walks the cursor with advance_step, and a
+// step can no longer end owing what is on its stack (CR 117.4), so the
+// first-strike step's trigger resolves inside that step — one Treasure
+// already on the battlefield by the time the cursor reaches the
+// regular step, and two triggers left waiting there. Three either way.
 func TestB784FaceBreakerMakesATreasurePerStepAndPlayer(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -122,8 +129,11 @@ func TestB784FaceBreakerMakesATreasurePerStepAndPlayer(t *testing.T) {
 		[2]uuid.UUID{regular, g.Seats[1].ID},
 		[2]uuid.UUID{other, g.Seats[2].ID})
 
-	if n := b784Triggers(g, breaker); n != 3 {
-		t.Fatalf("%d triggers, want 3 — (first strike, A), (regular, A), (regular, B)", n)
+	if got := countBattlefieldNamed(g, me.ID, "Treasure"); got != 1 {
+		t.Fatalf("%d Treasures on entering the regular step, want 1 — (first strike, A) resolved in its own step", got)
+	}
+	if n := b784Triggers(g, breaker); n != 2 {
+		t.Fatalf("%d triggers, want 2 — (regular, A) and (regular, B)", n)
 	}
 	passPriorityAroundTable(t, g)
 	if got := countBattlefieldNamed(g, me.ID, "Treasure"); got != 3 {

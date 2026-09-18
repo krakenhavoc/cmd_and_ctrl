@@ -1317,6 +1317,20 @@ block legality — menace's count included — is judged once, at the
 declaration (CR 509.1b), and never re-checked at damage. Do not derive
 "unblocked" from the live blocker count anywhere.
 
+**`advance_step` passes priority until the step ends** (#914,
+CR 117.4). The sandbox's skip-ahead button used to move the cursor
+whatever was on the stack, so a trigger the step owed resolved after
+the next step's turn-based actions — combat damage before an afflict,
+regular damage before the first-strike damage triggers, a draw before
+an upkeep trigger. A step cannot end with objects on the stack, so
+`Game.AdvanceStep` now drives `PassPriority` for the caller until the
+stack is empty and only then moves the cursor. An empty stack is
+unchanged: one move, no pass. The drive stops — cursor where it is, no
+error — on a blocking prompt one of its resolutions raised, on a
+CR 726 loop notice, or on the game ending. A card whose trigger fires
+in one step and pays off in the next needs nothing for this; write the
+trigger and the turn structure is already right.
+
 **Keyword behaviour is engine-side, not catalog-side.** You do not
 write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.
