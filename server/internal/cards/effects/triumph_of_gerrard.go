@@ -22,9 +22,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, "Triumph of Gerrard — I: +1/+1 counter on your biggest creature",
-				targetGreatestPowerYouControl(), gerrardCounter),
+				targetGreatestPowerYouControl(), plusOneCounterOnChosen),
 			ChapterTriggerTargeting(2, "Triumph of Gerrard — II: +1/+1 counter on your biggest creature",
-				targetGreatestPowerYouControl(), gerrardCounter),
+				targetGreatestPowerYouControl(), plusOneCounterOnChosen),
 			ChapterTriggerTargeting(3, "Triumph of Gerrard — III: flying, first strike and lifelink",
 				targetGreatestPowerYouControl(), gerrardKeywords),
 		},
@@ -38,17 +38,6 @@ func init() {
 func targetGreatestPowerYouControl() *game.TargetSpec {
 	return TargetCreature("target creature you control with the greatest power",
 		GreatestPowerYouControl())
-}
-
-func gerrardCounter(g *game.Game, item *game.StackItem) error {
-	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-		return nil
-	}
-	return AddCounter{
-		Target: item.Targets[0].ID,
-		Kind:   game.CounterPlusOne,
-		N:      1,
-	}.Apply(NewContext(g, item))
 }
 
 func gerrardKeywords(g *game.Game, item *game.StackItem) error {

@@ -53,12 +53,7 @@ func init() {
 				Label:   "{4}, {T}: Tap target creature.",
 				Cost:    Plus(ManaCost("{4}"), TapCost()),
 				Targets: TargetCreature("target creature"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-						return nil
-					}
-					return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-				},
+				Effect:  tapChosenPermanent,
 			},
 			{
 				Label: "{5}, {T}: Draw a card.",
