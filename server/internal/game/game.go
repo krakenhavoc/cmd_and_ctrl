@@ -828,11 +828,12 @@ func (g *Game) End() {
 //     auto-applies unblocked attacker damage to defending players'
 //     life totals). Combat declarations (AttackingTarget /
 //     BlockingTarget) are intentionally left in place.
-//   - Entering end_combat: clearCombatLocked wipes the combat
-//     declarations. Deferring the clear until this step lets the
-//     client keep its combat-arrow overlay visible through the
-//     entire combat_damage step instead of vanishing the moment
-//     damage is resolved.
+//   - LEAVING end_combat: clearCombatLocked wipes the combat
+//     declarations (CR 511.3 — creatures are removed from combat as
+//     that step ENDS, #785). Everything that happens in the end of
+//     combat step, "at end of combat" triggers included, still sees
+//     the attackers and blockers; the client's combat arrows come
+//     down when the cursor reaches postcombat_main.
 //
 // Returns ErrGameNotActive if the game is not in the active state.
 func (g *Game) AdvanceStep() (Turn, error) {
@@ -886,6 +887,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
 // every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
+	// CR 511.3: "as soon as the end of combat step ends, all
+	// creatures, battles and planeswalkers are removed from combat."
+	// This is where that step ends — the one seam every step
+	// transition goes through — so this is where combat is cleared
+	// (#785). It used to happen on ENTRY to end_combat, which took
+	// every attacker and blocker out of combat for the whole of the
+	// step the rules keep them in: Aetherize, Settle the Wreckage and
+	// Aetherspouts cast there found nothing, Desert had no legal
+	// target in the only step it can be activated, and "activate only
+	// if you control an attacking creature" was false there. The "at
+	// end of combat" triggers are unaffected: CR 511.2 fires them as
+	// the step BEGINS, from the step-entry hook's announcement, with
+	// the creatures still in combat.
+	//
+	// The manual ClearCombat verb, PassTurn and the eliminated-seat
+	// rotation keep their own calls — a turn that ends early never
+	// reaches this seam.
+	if g.Turn.Step == StepEndCombat {
+		g.clearCombatLocked()
+	}
 	// #829: entering a step is one of the two points where play moves
 	// on, so the events this step emits are a new occurrence — first
 	// strike damage and regular damage are two batches, as in paper.
@@ -1008,11 +1029,9 @@ func (g *Game) stepExistsLocked(s Step) bool {
 //     your end step" triggers fire. The delayed-trigger drain that
 //     runs just before the switch covers "at the beginning of the
 //     next end step" for the same boundary.
-//   - StepEndCombat: clear AttackingTarget / BlockingTarget on every
-//     battlefield card. Deferring the clear until end_combat (rather
-//     than combat_damage) lets the client keep its combat-arrow
-//     overlay visible through the entire combat_damage step instead
-//     of vanishing the moment damage is resolved.
+//   - StepEndCombat: nothing. The step has no turn-based action
+//     (CR 511.1), and the removal from combat happens as it ENDS
+//     (CR 511.3), from advanceCursorLocked — not here (#785).
 //   - StepCleanup (S13): the CR 514.1 hand-size discard pauses the
 //     cursor here (S13.4); the CR 514.2 sweep runs; then cleanup.go's
 //     one exit either ends the turn (CR 514.3) or gives the active
@@ -1255,8 +1274,6 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		g.resolveFirstStrikeCombatDamageLocked()
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
-	case StepEndCombat:
-		g.clearCombatLocked()
 	case StepCleanup:
 		// CR 402.2: build the discard-pending map for any player
 		// over their per-player MaxHandSize. The cursor pauses at

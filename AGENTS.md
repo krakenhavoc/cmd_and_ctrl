@@ -1294,6 +1294,17 @@ only keyword read left in the second step is the one CR 702.7c asks
 for, "plus the ones that have double strike now" (#716). Nothing about
 this is per card: declare the keyword and the turn structure follows.
 
+**A creature is in combat until the end of combat step ENDS (#785,
+CR 511.3).** `AttackingTarget` / `BlockingTarget` are stamped at
+declaration and cleared by the cursor as it leaves `end_combat`, not
+as it enters — so "each attacking creature" reads the whole attack
+during that step (Aetherize, Settle the Wreckage, Aetherspouts), an
+"activate only if … attacking" condition is true there, and "at end of
+combat" triggers, which fire as the step BEGINS (CR 511.2), see the
+attackers. There is one clear point, `clearCombatLocked`; the
+`ClearCombat` verb, `PassTurn` and the eliminated-seat rotation call it
+themselves because a turn that ends early never leaves the step.
+
 **"Blocked" is a state, not a blocker count (#715, CR 509.1h).** An
 attacker is blocked the moment the block declaration is locked in, and
 it stays blocked for the rest of the combat however many creatures are

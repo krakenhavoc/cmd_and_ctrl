@@ -750,6 +750,27 @@ func TestGoroGoroDragonNeedsAnAttackingModifiedCreature(t *testing.T) {
 	}
 }
 
+// The printed card allows the Dragon ability in the end of combat
+// step, and the engine does too: creatures leave combat as that step
+// ENDS (CR 511.3, #785). This is the caveat that came off with it.
+func TestGoroGoroDragonWorksInTheEndOfCombatStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	goro := pushCatalogPermanent(g, me.ID, "Goro-Goro, Disciple of Ryusei", "Legendary Creature — Goblin Samurai", acGoroGoroOracle, false)
+	samurai := acPermanent(g, me.ID, "Samurai", "Creature — Human Samurai", 2, 2)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(samurai, game.CounterPlusOne, 1) })
+	advanceToMain(t, g)
+
+	declareAttack(t, g, opp.ID, samurai)
+	advanceTo(t, g, game.StepEndCombat)
+	b06AddMana(me, "C", "C", "C", "R", "R")
+	b16Activate(t, g, me.ID, goro, 1, game.ActivateAbilityParams{})
+	if len(battlefieldIDsNamed(g, "Dragon Spirit")) != 1 {
+		t.Error("the Dragon ability found no attacking creature in the end of combat step")
+	}
+}
+
 func TestLilypadVillageSurveilsAfterAFrogEnters(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

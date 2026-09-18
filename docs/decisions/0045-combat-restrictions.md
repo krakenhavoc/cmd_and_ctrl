@@ -1686,3 +1686,93 @@ not this record's.
 Not attempted: "removed from combat" as a card-facing verb (#672), and
 the CR 509.1c blocking REQUIREMENTS that Decision 15 sketches. Both
 read this state when they land; neither writes it.
+
+---
+
+## Amendment (2026-09-18): combat lasts through the end of combat step (#785)
+
+Adds the other end of the combat's lifetime. Decisions 1-26 stand;
+this one moves a single call site.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 511.1: the end of combat step has no turn-based action, and the
+active player receives priority in it. CR 511.2: "at end of combat"
+abilities trigger as the step BEGINS. CR 511.3: "as soon as the end of
+combat step ends, all creatures, battles, and planeswalkers are
+removed from combat."
+
+`runStepEntryHooksLocked` called `clearCombatLocked` on ENTRY to
+`end_combat`, so every attacker and blocker stopped being in combat
+for the whole of the step the rules keep them in. The comment there
+showed the clear had already been deferred once — from `combat_damage`,
+to keep the client's arrows up through the damage step — and it had
+stopped one step short of where the rules put it.
+
+The cost was that **no creature was attacking during the end of combat
+step at all**. Aetherize, Settle the Wreckage and Aetherspouts cast
+there found nothing and did nothing. Desert ("{T}: this land deals 1
+damage to target attacking creature. Activate only during the end of
+combat step") had no legal target in the only step it can be
+activated, which is why it was left out of #743. Goro-Goro, Disciple
+of Ryusei's "activate only if you control an attacking modified
+creature" was false there, against the printed card, and carried a
+declared caveat saying so.
+
+### Decision 27. The clear happens as the cursor LEAVES end_combat
+
+`advanceCursorLocked` — the one seam every step transition goes
+through — clears combat when the step it is leaving is
+`StepEndCombat`, and `runStepEntryHooksLocked` loses its
+`StepEndCombat` case entirely (the step has no turn-based action,
+CR 511.1). One call site moves; nothing else about the clear changes.
+
+**What still happens at the step's entry** is the step announcement,
+so "at end of combat" triggers are harvested from `EventStepBegan`
+with the creatures still in combat (CR 511.2 fires them as the step
+begins, and CR 511.3 removes the creatures after). Legion Loyalty's
+delayed trigger, scheduled `At: StepEndCombat`, is in the same
+position and now exiles its myriad tokens while they are still
+attacking — which is what a token exiled at end of combat is.
+
+**The verbs keep their own clears.** `ClearCombat` (the sandbox verb),
+`PassTurn` and the eliminated-seat rotation end a turn without the
+cursor ever leaving `end_combat`, so each still calls
+`clearCombatLocked` itself. #672's "remove from combat" verb and
+#921's `removeFromCombatLocked` are per-permanent and untouched.
+
+**No client change.** The combat arrows are drawn from the server's
+`attacking_target` / `blocking_target` with no step gate
+(`CombatArrows.svelte`), so they now come down when the cursor reaches
+`postcombat_main` — which is the rules answer and the same behaviour
+the deferral was protecting. [ADR 0053](0053-combat-damage-beats.md)'s
+`keepArrowCache` is untouched: it governs the geometry cache of tiles
+that have LEFT the battlefield, kept while a beat cue is still
+playing, which is a different question from whether a live card's
+arrow is drawn.
+
+### What this fixes, and what it leaves
+
+Fixed: every "attacking creature" reader in the catalog works in the
+end of combat step — Aetherize (tested), Settle the Wreckage,
+Aetherspouts, `b13AttackingCreaturesYouControl`, `b26AttackingCreatures`,
+`AttackingCreature()`.
+
+Two cards lose a caveat and become `full`, neither needing a line of
+card code changed — which is the Darksteel Citadel posture paying off.
+**Goro-Goro, Disciple of Ryusei**'s Dragon ability is activatable in
+the step, as printed. **Desert** (#450) is the worked example: "{T}:
+this land deals 1 damage to target attacking creature. Activate only
+during the end of combat step" landed in roadmap batch 43 declared as
+printed and unusable, because the one window the ability allows had no
+attacking creature in it. It has one now, and batch 43's
+`TestB43DesertPingsAnAttackerInTheEndOfCombatStep` is the assertion
+that batch said was waiting for this fix.
+
+Unchanged: the two combat damage steps, the blocked state (Decision 26)
+and the declarations' announcements. They are all cleared by the same
+`clearCombatLocked`, so they all now last exactly as long as the
+combat does.

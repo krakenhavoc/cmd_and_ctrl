@@ -5571,11 +5571,9 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 //     the live blocker count (#715, CR 509.1h).
 //
 // AttackingTarget / BlockingTarget are intentionally NOT cleared
-// here — they persist through the combat_damage step so the client
-// can keep its combat-arrow overlay drawn while damage shows up on
-// the affected player headers. AdvanceStep calls clearCombatLocked
-// when the cursor moves on to end_combat, which is what actually
-// retracts the arrows.
+// here — a creature stays in combat until the end of combat step ends
+// (CR 511.3), which is where AdvanceStep calls clearCombatLocked, and
+// what actually retracts the client's combat arrows.
 //
 // This is the REGULAR combat damage step only. First-strike damage is
 // its own step's turn-based action (CR 510.4, #717) and the cursor
@@ -5638,11 +5636,11 @@ func (g *Game) resolveCombatDamageLocked() {
 	g.assignAndDealCombatDamageLocked(step)
 	g.runStateChecksLocked()
 
-	// Combat state is intentionally left in place. AdvanceStep's
-	// transition into end_combat invokes clearCombatLocked, which
-	// clears AttackingTarget / BlockingTarget — and with them the
-	// participation record. Deferring the clear lets the client keep
-	// combat arrows drawn for the full duration of the damage steps.
+	// Combat state is intentionally left in place. The cursor clears
+	// it as it LEAVES end_combat (CR 511.3, #785), which clears
+	// AttackingTarget / BlockingTarget — and with them the blocked
+	// state and the participation record. Attackers and blockers are
+	// therefore still in combat for the whole end of combat step.
 }
 
 // resolveFirstStrikeCombatDamageLocked is the FIRST combat damage
@@ -6089,9 +6087,10 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
-// and not blocking". Called by the active player at end of combat
-// (or by anyone, really — the sandbox doesn't gate it). Cheap O(n)
-// pass over the battlefield.
+// and not blocking". The sandbox verb; the cursor does this by itself
+// as the end of combat step ends (CR 511.3, advanceCursorLocked).
+// Callable by anyone — the sandbox doesn't gate it. Cheap O(n) pass
+// over the battlefield.
 func (g *Game) ClearCombat() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
