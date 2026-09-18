@@ -2362,6 +2362,15 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		g.endGameIfDecidedLocked()
 	}
 
+	// CR 800.4c (#769) — a permanent whose controller has left the
+	// game is exiled. The departure itself already swept the board it
+	// left behind (leave_game.go); this catches the one case that can
+	// only appear LATER, when a control-changing effect ends and hands
+	// its permanent back to a player who is no longer there.
+	if g.exileGhostControlledLocked() > 0 {
+		fired = true
+	}
+
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
 	//
@@ -2587,11 +2596,15 @@ func (g *Game) eliminatePlayerLocked(p *Player) {
 }
 
 // leaveGameLocked transitions a seated player to eliminated state,
-// cleans up their stack items, pending triggers and prompts, and
-// emits EventPlayerEliminated. It does not move the turn on or check
+// cleans up their stack items, pending triggers and prompts, emits
+// EventPlayerEliminated, and then takes their objects out of the game
+// (CR 800.4a, leave_game.go). It does not move the turn on or check
 // whether the game is over; settleDeparturesLocked does both, once
 // per batch. Reports whether the player left (false when they had
 // already). Caller must hold g.mu.
+//
+// The elimination event is emitted BEFORE the objects go, so anything
+// watching a player lose the game sees the board they lost with.
 func (g *Game) leaveGameLocked(p *Player) bool {
 	if p.Eliminated {
 		return false
@@ -2603,6 +2616,21 @@ func (g *Game) leaveGameLocked(p *Player) bool {
 		Kind:  EventPlayerEliminated,
 		Actor: p.ID,
 	})
+	// #769 / CR 800.4a: everything they own leaves the game, their
+	// control effects end, and anything still controlled by them is
+	// exiled. Runs after the stack cleanup above, which is what folds
+	// the spell cards that cleanup used to exile into the removal —
+	// a card owned by a player who has left does not sit in exile.
+	//
+	// Except when this departure is the one that ENDS the game. Then
+	// the board is not stripped: nothing can observe the objects
+	// leaving, no rule reads the table again, and the last board is
+	// what the winner, the post-game screen and the replay look at.
+	// endGameIfDecidedLocked leaves the turn cursor where it was for
+	// exactly the same reason. See ADR 0060 Decision 5.
+	if g.survivingSeatsLocked() > 1 {
+		g.leaveGameObjectsLocked(p.ID)
+	}
 	return true
 }
 
@@ -2631,25 +2659,24 @@ func (g *Game) settleDeparturesLocked() {
 // pull attackers out of combat on the board the game ended with, and
 // begin a turn nobody takes. Caller must hold g.mu.
 func (g *Game) endGameIfDecidedLocked() bool {
-	survivors := 0
-	for _, s := range g.Seats {
-		if !s.Eliminated {
-			survivors++
-		}
-	}
-	if survivors <= 1 {
+	if g.survivingSeatsLocked() <= 1 {
 		g.State = StateEnded
 		return true
 	}
 	return false
 }
 
-// cleanupStackForEliminatedLocked implements CR 800.4a — when a
-// player leaves the game, every spell and ability they control on
-// the stack ceases to exist. Spell items have their card removed
-// from Game.Stack to exile (closest analogue to "cease to exist").
-// Ability items are just deleted from StackMeta. Pending triggers
-// controlled by the eliminated player are dropped from the queue.
+// cleanupStackForEliminatedLocked implements the stack half of
+// CR 800.4a — when a player leaves the game, every spell and ability
+// they control on the stack ceases to exist. Ability items are just
+// deleted from StackMeta; spell items have their card moved out of
+// Game.Stack to exile, which is the rule's last clause ("anything
+// still controlled by them is exiled") for a card somebody ELSE owns.
+// A card the departed player owns does not stop here: leaveGameLocked
+// runs leaveGameObjectsLocked immediately afterwards and that card
+// leaves the game from exile, along with the rest of what they own
+// (#769). Pending triggers controlled by the eliminated player are
+// dropped from the queue.
 //
 // Targets on remaining stack items pointing at the eliminated
 // player are NOT scrubbed here — the existing target re-check at
@@ -2677,15 +2704,7 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 			}
 		}
 	}
-	if len(g.PendingTriggers) > 0 {
-		kept := g.PendingTriggers[:0]
-		for _, t := range g.PendingTriggers {
-			if t == nil || t.Controller != playerID {
-				kept = append(kept, t)
-			}
-		}
-		g.PendingTriggers = kept
-	}
+	g.dropPendingTriggersForLocked(playerID)
 	// A choice owed by a player who has left the game can never be
 	// answered, and while it sits in the queue every other seat is
 	// blocked behind it (pass_priority is refused client-side and the

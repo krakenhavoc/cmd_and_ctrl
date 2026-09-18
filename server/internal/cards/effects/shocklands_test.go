@@ -208,15 +208,21 @@ func TestShocklandExactlyTheCostMayPay(t *testing.T) {
 	}
 	answerEntryPayLife(t, g, me.ID, true)
 
-	card, ok := battlefieldCard(g, id)
-	if !ok {
-		t.Fatal("Watery Grave is not on the battlefield")
-	}
-	if card.Tapped {
-		t.Error("paid and still entered tapped")
-	}
 	if me.Life != 0 {
 		t.Errorf("life: got %d, want 0", me.Life)
+	}
+	// "State-based actions handle the rest" is the whole tail of this
+	// test now: at 0 life the player loses, and CR 800.4a (#769) takes
+	// their objects out of the game with them — this land included, at
+	// a four-seat table where the game goes on. That a PAID shockland
+	// enters untapped is TestShocklandPaidTwoLifeEntersUntapped's
+	// claim; this test is about the payment being legal at exactly the
+	// cost.
+	if !me.Eliminated {
+		t.Error("a player at 0 life should have lost to the state-based action")
+	}
+	if _, ok := battlefieldCard(g, id); ok {
+		t.Error("the land stayed on the battlefield after its owner left the game (CR 800.4a)")
 	}
 }
 
