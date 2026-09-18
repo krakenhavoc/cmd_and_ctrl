@@ -95,7 +95,18 @@
   $effect(() => {
     const nextID = active?.id ?? null;
     if (nextID !== lastChoiceID) {
-      selected = new Set();
+      // #826: an untap prompt whose ceiling is "all of them" is a board
+      // of nothing but "you may choose NOT to untap" permanents, and
+      // the default there is to untap — so the player's click should be
+      // the deselection. Where a cap binds there is no such default and
+      // the picker starts empty rather than pre-filled with a set the
+      // player would have to undo.
+      const options = active?.options ?? [];
+      const preselect =
+        active?.kind === "untap_choice" &&
+        options.length > 0 &&
+        (active.choose_max ?? 0) >= options.length;
+      selected = preselect ? new Set(options.map((c) => c.instance_id)) : new Set();
       ordered = [];
       rejection = null;
       submission = null;
@@ -164,18 +175,29 @@
   // are sent separately and can differ.
   const isChooseCards = $derived(active?.kind === "choose_cards");
 
+  // #826 untap_choice — CR 502.3's "the active player determines which
+  // permanents they control will untap", asked when a cap ("players
+  // can't untap more than one land") or an opt-out ("you may choose
+  // not to untap this") makes it a real decision. Same payload, same
+  // bounds and the same picker as choose_cards; what differs is the
+  // sentence, and that the candidates are public permanents rather
+  // than somebody's hand.
+  const isUntapChoice = $derived(active?.kind === "untap_choice");
+  // The two kinds that share the bounded card-set grid.
+  const isCardSetPick = $derived(isChooseCards || isUntapChoice);
+
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
   // ceiling.
   const pickMax = $derived(
     isSearch
       ? (active?.search_max ?? 1)
-      : isChooseCards
+      : isCardSetPick
         ? (active?.choose_max ?? active?.count ?? 0)
         : (active?.count ?? 0),
   );
   const pickMin = $derived(
-    isSearch || isCopyTarget ? 0 : isChooseCards ? (active?.choose_min ?? 0) : (active?.count ?? 0),
+    isSearch || isCopyTarget ? 0 : isCardSetPick ? (active?.choose_min ?? 0) : (active?.count ?? 0),
   );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
@@ -1282,6 +1304,9 @@
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
             <span class="prompt-src" aria-hidden="true">copy · CR 707</span>
+          {:else if isUntapChoice}
+            {active.reason || "Untap step — choose which permanents untap"}
+            <span class="prompt-src" aria-hidden="true">untap · CR 502.3</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1304,6 +1329,16 @@
           {:else if isCopyTarget}
             Pick what it enters as a copy of — it copies the printed card, so counters, damage and
             other effects don't come across. Or copy nothing and let it enter as itself.
+          {:else if isUntapChoice}
+            {#if pickMin === 0}
+              These don't have to untap. Leave any of them tapped, or untap them all.
+            {:else if pickMin === pickMax}
+              Only {pickMax} of these can untap this turn.
+            {:else}
+              Between {pickMin} and {pickMax} of these can untap this turn; the rest stay tapped.
+            {/if}
+            Nothing else on your board is affected — everything that could untap without a decision already
+            has.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1339,7 +1374,7 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch || isCopyTarget || (isChooseCards && pickMin === 0)}
+          {#if isSearch || isCopyTarget || (isCardSetPick && pickMin === 0)}
             <button
               type="button"
               onclick={() => (selected = new Set())}
@@ -1355,6 +1390,8 @@
               {selected.size === 0 ? "Fail to find" : "Take"}
             {:else if isCopyTarget}
               {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
+            {:else if isUntapChoice}
+              Untap
             {:else if isChooseCards}
               Choose
             {:else}

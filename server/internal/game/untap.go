@@ -468,10 +468,33 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 // answer there) went unread the same way. The recompute stays here
 // too, next to the reads, so a caller that is not the hook gets it.
 //
+// THE STEP CAN PAUSE (ADR 0070, #826). CR 502.3's first sentence is a
+// DETERMINATION — "the active player determines which permanents they
+// control will untap" — and two printed families make it a real
+// decision: a cap ("players can't untap more than one land during
+// their untap steps") and an opt-out ("you may choose not to untap
+// this during your untap step"). When one of them is live and actually
+// binds, this function queues ONE prompt to the active player and
+// returns true, having untapped NOTHING: CR 502.3 untaps them all
+// simultaneously, so the determination finishes first and the whole
+// set untaps in one loop from the prompt's continuation
+// (finishUntapStepLocked). See untap_choice.go.
+//
+// The summoning-sickness clear and the marker sweep stay eager, and
+// deliberately so. The first is a different turn-based action that does
+// not depend on the answer (CR 302.6, above). The second is used up by
+// the step that happened rather than by the permanents that untapped
+// (ADR 0058 Decision 2), and re-running it after a pause would consume
+// twice.
+//
+// Returns whether the step PAUSED. A paused step has not moved the
+// cursor either; the caller must not advance it. See
+// exitUntapStepLocked for the one place the step ends.
+//
 // Caller must hold g.mu in write mode.
-func (g *Game) performUntapStepLocked(seat int) {
+func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	if seat < 0 || seat >= len(g.Seats) || g.Seats[seat] == nil {
-		return
+		return false
 	}
 	g.RecomputeLayersIfStaleLocked()
 	activePlayer := g.Seats[seat].ID
@@ -487,9 +510,14 @@ func (g *Game) performUntapStepLocked(seat int) {
 	// already upright and therefore absent from this set. Kept before any
 	// emits so listeners cannot observe a half-used step.
 	g.consumeUntapSkipsLocked(activePlayer)
+	if plan := g.untapChoicePlanLocked(activePlayer, ids); plan != nil {
+		g.queueUntapChoiceLocked(activePlayer, plan)
+		return true
+	}
 	for _, id := range ids {
 		g.untapPermanentByIDLocked(id)
 	}
+	return false
 }
 
 // untapAllForLocked untaps every battlefield card controlled by the

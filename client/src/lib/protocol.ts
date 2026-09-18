@@ -565,6 +565,16 @@ export interface PendingChoiceView {
     // ONLY — the candidates are usually cards in a hand, and their
     // number is as private as their faces.
     | "choose_cards"
+    // #826 CR 502.3: the untap step's own determination — "choose
+    // which of these untap", addressed to the active player over the
+    // permanents actually in question under a cap ("can't untap more
+    // than one land") or an opt-out ("you may choose not to untap
+    // this"). Same {choice_id, card_ids} payload and the same
+    // choose_min / choose_max bounds as choose_cards, and the same
+    // picker renders it. UNLIKE choose_cards the options and bounds
+    // reach every seat: the candidates are tapped permanents on the
+    // battlefield, which everyone can already see.
+    | "untap_choice"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -679,10 +689,11 @@ export interface PendingChoiceView {
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
   life_cost?: number;
-  // #74: populated for kind "choose_cards" — how few and how many of
-  // `options` the chooser must pick. Absent for every other kind, and
-  // absent for non-chooser viewers, who are not told the size of a
-  // choice over someone else's hidden cards.
+  // #74: populated for kinds "choose_cards" and "untap_choice" — how
+  // few and how many of `options` the chooser must pick. Absent for
+  // every other kind, and (for choose_cards only) absent for
+  // non-chooser viewers, who are not told the size of a choice over
+  // someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
   // CR 603.2d: when this is a trigger_prompt or pick_target choice,

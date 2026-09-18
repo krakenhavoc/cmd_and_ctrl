@@ -153,6 +153,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// doing. The prompt is never queued to a seat that has left, so
 	// blocking cannot wedge a table (queueLoopShortcutLocked).
 	PendingChoiceLoopShortcut: true,
+	// #826, CR 502.3. The untap step's own determination. It blocks
+	// for the reason the step it pauses grants nobody priority: CR
+	// 502.3 happens before anything else in the turn, and a table that
+	// could walk past the question would be answering it by doing.
+	// (Deny-by-default would have said the same; the row is here
+	// because the gate demands every kind be classified out loud.)
+	PendingChoiceUntapChoice: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this
@@ -171,6 +178,22 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 	blocks, ok := choiceGateDecisions[kind]
 	return !ok || blocks
+}
+
+// ChoicePromptBlocksTable is ChoiceBlocksTable for one live prompt:
+// the kind's answer, unless that prompt has asked to block anyway.
+//
+// Everything that asks "does this stop the table" about an OUTSTANDING
+// choice goes through here (blockingChoiceLocked below, and
+// legal.anyBlockingChoiceOpen), so the per-prompt override cannot
+// drift from the kind's answer the way #794's second list did.
+// ChoiceBlocksTable stays the answer for a KIND, which is what the
+// classification gate tests and what an author reasons about.
+func ChoicePromptBlocksTable(c *PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	return c.ForceBlocks || ChoiceBlocksTable(c.Kind)
 }
 
 // ClassifiedChoiceKinds lists every kind the gate has an explicit
@@ -194,7 +217,7 @@ func (g *Game) blockingChoiceLocked() *PendingChoice {
 		if c == nil {
 			continue
 		}
-		if !ChoiceBlocksTable(c.Kind) {
+		if !ChoicePromptBlocksTable(c) {
 			continue
 		}
 		return c

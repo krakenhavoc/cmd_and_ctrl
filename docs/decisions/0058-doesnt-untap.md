@@ -827,3 +827,27 @@ post-departure last-known-information limitation for their draw-step and entry
 abilities, respectively. Their untap restrictions are implemented. Winter Orb
 and the other choose-N cards still wait on #826; exert's action/cost and
 source-linked durations remain outside this implementation.
+
+## Amendment (2026-09-18, #826): Decision 8's first bullet is closed
+
+[ADR 0070](0070-untap-step-choices.md) builds the choose-which-untap half this
+ADR deliberately left out, and answers question 3's follow-up: Winter Orb,
+Static Orb and Winter Moon ship there, with a real prompt rather than an
+automatic pick.
+
+What changed in this ADR's code: `performUntapStepLocked` now reports whether
+the step **paused**, and the step-entry hook's `StepUntap` case no longer
+advances the cursor itself — `exitUntapStepLocked` does, from the hook or from
+the prompt's continuation, the one-exit shape #661 gave the cleanup step.
+`untapStepSetLocked` is unchanged and is still the first word on which
+permanents untap: a permanent held back by an `UntapStepRestriction` or a
+next-untap marker is not offered as one of the N choices, exactly as this
+Decision 8 predicted, and a chosen permanent with a stun counter still loses the
+counter instead of untapping.
+
+Decision 8's **second** bullet — duration-bound restrictions, "for as long as
+this remains tapped" (Rust Tick, Amber Prison, Dungeon Geists) — is still open.
+ADR 0070 Decision 6 designs it as two more fields on this ADR's `UntapSkip`
+rather than a third mechanism, and does not build it; Rust Tick and Amber Prison
+ship their "you may choose not to untap" clause with the activated ability
+declared in `Caveats`. Exert and Telekinesis are untouched.

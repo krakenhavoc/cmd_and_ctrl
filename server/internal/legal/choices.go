@@ -438,7 +438,7 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
-		case game.PendingChoiceChooseCards:
+		case game.PendingChoiceChooseCards, game.PendingChoiceUntapChoice:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -475,10 +475,19 @@ func (e *enumerator) choiceMoves() bool {
 			// TestChooseCardsReachesValidPairsPastTheBudget).
 			sets := filteredCombinations(c.ChooseCards, c.ChooseMin, c.ChooseMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.ChooseCardsPickLegalLocked(c, set) })
+			// #826: untap_choice shares every line of this branch —
+			// the same payload, the same bounds and the same
+			// engine-side acceptance check, which is where the cap
+			// solver lives (ADR 0070 Decision 3). Only the verb the
+			// seat reads differs.
+			verb := ": choose"
+			if c.Kind == game.PendingChoiceUntapChoice {
+				verb = ": untap"
+			}
 			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
-				label := reason + ": choose"
+				label := reason + verb
 				for _, id := range set {
 					// cardNameFor, not cardName: the candidates are
 					// as often cards in a hand as cards on the

@@ -108,6 +108,15 @@ const PendingChoiceConfirm PendingChoiceKind = "confirm"
 // would have made Sylvan Library pay life to keep its worst two cards.
 const PendingChoiceChooseCards PendingChoiceKind = "choose_cards"
 
+// isCardSetPickKind reports whether a prompt carries the choose-cards
+// payload — ChooseCards / ChooseMin / ChooseMax and a chooseCardsFrame.
+// Two kinds do: this one, and CR 502.3's untap_choice (ADR 0070
+// Decision 2), which shares the shape and differs only in what the
+// player is being asked and how a bot scores the answer.
+func isCardSetPickKind(kind PendingChoiceKind) bool {
+	return kind == PendingChoiceChooseCards || kind == PendingChoiceUntapChoice
+}
+
 // confirmFrame is the continuation pair behind a PendingChoiceConfirm.
 // Both callbacks receive the live *Game (not a captured one) on the
 // same undo-safety contract payUnlessFrame and StackItem.Effect follow,
@@ -365,6 +374,22 @@ func (g *Game) ResolveConfirm(choiceID, chooserID uuid.UUID, accept bool) error 
 //
 // Caller must NOT hold g.mu.
 func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
+	return g.resolveCardSetPick(PendingChoiceChooseCards, choiceID, chooserID, picks)
+}
+
+// resolveCardSetPick is ResolveChooseCards' body, shared with the ONE
+// other kind that carries a choose-cards payload and a choose-cards
+// continuation: PendingChoiceUntapChoice, CR 502.3's determination
+// (untap_choice.go). `kind` is the kind the caller is answering, so a
+// client cannot answer one prompt through the other's verb.
+//
+// One body rather than two, for the reason checkChooseCardsPicksLocked
+// is one function: the validation, the dequeue-before-the-branch order
+// and the EventEffectError contract are all rules about the QUEUE, not
+// about the card, and a second copy of them would drift.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) resolveCardSetPick(kind PendingChoiceKind, choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -374,7 +399,7 @@ func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UU
 	if idx < 0 {
 		return ErrPendingChoiceNotFound
 	}
-	if choice.Kind != PendingChoiceChooseCards {
+	if choice.Kind != kind {
 		return ErrInvalidParam
 	}
 	if choice.Chooser != chooserID {
@@ -413,7 +438,7 @@ func (g *Game) ResolveChooseCards(choiceID, chooserID uuid.UUID, picks []uuid.UU
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.UUID) error {
-	if choice == nil || choice.Kind != PendingChoiceChooseCards {
+	if choice == nil || !isCardSetPickKind(choice.Kind) {
 		return ErrInvalidParam
 	}
 	if len(picks) < choice.ChooseMin || len(picks) > choice.ChooseMax {

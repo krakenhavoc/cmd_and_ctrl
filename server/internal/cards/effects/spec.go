@@ -505,6 +505,17 @@ type Spec struct {
 	// UntapStepRestrictions declares permanents that stay tapped during
 	// their controller's untap step (Mana Vault, Meekstone, and Auras).
 	UntapStepRestrictions []game.UntapStepRestriction
+	// UntapCaps declares "players can't untap more than N <kind>
+	// during their untap steps" — Winter Orb, Static Orb, Winter Moon
+	// (#826, CR 502.3). A ceiling, not a restriction: when more
+	// permanents are eligible than the cap allows, the active player
+	// is asked which ones untap. See ADR 0070 and untap_choice.go.
+	UntapCaps []game.UntapCap
+	// UntapOptOuts declares "you may choose not to untap this during
+	// your untap step" — Rust Tick, Amber Prison (#826, CR 502.3).
+	// Such a permanent joins the same prompt the caps raise, exempt
+	// from the rule that untapping is otherwise mandatory.
+	UntapOptOuts []game.UntapOptOut
 
 	// Completeness declares how faithfully this spec implements the
 	// card as printed — the machine-readable form of the prose

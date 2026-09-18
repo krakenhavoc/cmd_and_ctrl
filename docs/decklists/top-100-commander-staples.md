@@ -112,7 +112,7 @@ everything else names the one piece of machinery standing in its way.
 | 48 | 95 | Glacial Fortress | Land | **shipped** |
 | 49 | 96 | City of Brass | Land | mana rider |
 | 50 | 98 | Hinterland Harbor | Land | **shipped** |
-| 51 | 99 | Mystic Remora | Enchantment | cumulative upkeep |
+| 51 | 99 | Mystic Remora | Enchantment | **shipped** |
 | 52 | 104 | Jeska's Will | Sorcery | add mana |
 | 53 | 105 | Canopy Vista | Land - Forest Plains | **shipped** |
 | 54 | 106 | Prairie Stream | Land - Plains Island | **shipped** |
@@ -280,12 +280,13 @@ printed is acceptable and must be declared; one that makes it
 
 ## Skipped because the only available version would be STRONGER
 
-- **Mystic Remora** (rank 99). The payoff half is already expressible —
-  `PayUnless` is exactly Rhystic Study's machinery. But **cumulative
-  upkeep** is not, and a Remora that is never sacrificed is a
-  format-warping card rather than a two-turn cantrip. This is the
-  clearest example in the whole list of why the honesty rule has to cut
-  both ways.
+- ~~**Mystic Remora** (rank 99)~~ — **shipped** ([#567](https://github.com/krakenhavoc/cmd_and_ctrl/issues/567),
+  CR 702.24). The reason it was skipped stands as written: the payoff
+  half was already expressible and a Remora that is never sacrificed is
+  a format-warping card rather than a two-turn cantrip. Cumulative
+  upkeep is now one constructor over the counter primitive and the
+  pay-unless prompt, so both halves ship together and the honesty rule
+  costs nothing here any more.
 - **Chromatic Lantern** (rank 85). Its own mana ability is trivial; the
   card is played for "Lands you control have '{T}: Add one mana of any
   color.'" Shipping the trivial half would register a marquee card that
@@ -435,7 +436,7 @@ worth more than three cards.
 | Delayed triggers ("at the beginning of the next…") | 1 | Arcane Denial |
 | Multi-target graveyard + sacrifice mid-resolution | 1 | Victimize |
 | Beginning-of-main-phase repeatable modal | 1 | Black Market Connections |
-| Cumulative upkeep | 1 | Mystic Remora |
+| ~~Cumulative upkeep~~ (shipped, #567) | 1 | Mystic Remora |
 | Cost amounts computed at activation | 1 | War Room |
 | Protection from everything | 1 | The One Ring |
 | Choose new targets for a spell or ability | 1 | Deflecting Swat |
