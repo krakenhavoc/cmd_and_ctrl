@@ -1294,6 +1294,18 @@ only keyword read left in the second step is the one CR 702.7c asks
 for, "plus the ones that have double strike now" (#716). Nothing about
 this is per card: declare the keyword and the turn structure follows.
 
+**"Blocked" is a state, not a blocker count (#715, CR 509.1h).** An
+attacker is blocked the moment the block declaration is locked in, and
+it stays blocked for the rest of the combat however many creatures are
+still blocking it — `Game.blockedAttackers`, written only by
+`commitBlockDeclarationLocked` and read only by the damage steps
+(`attackerBlockedLocked`). So a blocked attacker whose blockers all
+died assigns no combat damage (CR 510.1c) unless it has trample, which
+sends all of it to what the creature is attacking (CR 702.19d/e), and
+block legality — menace's count included — is judged once, at the
+declaration (CR 509.1b), and never re-checked at damage. Do not derive
+"unblocked" from the live blocker count anywhere.
+
 **Keyword behaviour is engine-side, not catalog-side.** You do not
 write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.

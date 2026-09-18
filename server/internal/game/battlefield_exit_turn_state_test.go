@@ -228,7 +228,7 @@ func TestCombatAnnouncementsDoNotSurviveABattlefieldExit(t *testing.T) {
 	if _, ok := g.announcedBlocks[blocker]; !ok {
 		t.Fatalf("setup: the block was never announced")
 	}
-	if !g.announcedBecameBlocked[attacker] {
+	if !g.blockedAttackers[attacker] {
 		t.Fatalf("setup: the attacker was never recorded as blocked")
 	}
 
@@ -247,8 +247,8 @@ func TestCombatAnnouncementsDoNotSurviveABattlefieldExit(t *testing.T) {
 	if _, ok := g.announcedBlocks[blocker]; ok {
 		t.Errorf("announcedBlocks kept a row for a permanent that left the battlefield")
 	}
-	if g.announcedBecameBlocked[attacker] {
-		t.Errorf("announcedBecameBlocked kept a row for a permanent that left the battlefield")
+	if g.blockedAttackers[attacker] {
+		t.Errorf("blockedAttackers kept a row for a permanent that left the battlefield")
 	}
 }
 

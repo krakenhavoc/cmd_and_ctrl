@@ -310,10 +310,12 @@ func HasSummoningSickness(c *Card) bool {
 
 // BlockerCountValid reports whether the given blocker set is
 // legal against the attacker under block-count keywords (menace,
-// CR 702.111b). Only keywords_test.go calls it: menace is enforced at
-// the top of assignAndDealCombatDamageLocked, not here. ADR 0045's
-// addendum (Decision 12) deletes this function when block
-// declarations become sets.
+// CR 702.111b). Called from the block declaration's lock-in
+// (revertIllegalBlockCountsLocked, blockers.go) — the one moment the
+// declaration is complete and a COUNT can be judged (CR 509.1b), and
+// the only moment it is judged (#715). ADR 0045's addendum
+// (Decision 12) generalises this function when block declarations
+// become sets.
 //
 // Menace requires ≥2 blockers: a single blocker against a menace
 // attacker is illegal and the single block is reverted (attacker

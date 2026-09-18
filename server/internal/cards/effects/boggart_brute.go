@@ -4,8 +4,9 @@ package effects
 //
 // Simple vanilla menace creature — 3/2 for 2R. Covers the S18
 // menace keyword; `BlockerCountValid` rejects a single blocker
-// against this attacker, and the combat close-out validator
-// silently reverts the block (attacker becomes unblocked).
+// against this attacker, and the block declaration's lock-in
+// silently reverts that block inside the declare-blockers step
+// (attacker ends up unblocked, CR 509.1b / #715).
 //
 // Swapped in for Dreg Mangler from the ADR 0014 §2.8 card list
 // after oracle-text review showed Dreg Mangler has haste +

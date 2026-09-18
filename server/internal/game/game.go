@@ -297,27 +297,41 @@ type Game struct {
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
 
-	// announcedBlocks and announcedBecameBlocked are what the block
-	// declaration has already announced this combat (#830).
-	// announcedBlocks maps blocker -> the attacker its EventBlock
-	// named; announcedBecameBlocked records the attackers that have
-	// had their one EventBecomesBlocked (CR 506.4).
+	// announcedBlocks and blockedAttackers are what this combat's
+	// block declaration has produced (#830, #715). announcedBlocks
+	// maps blocker -> the attacker its EventBlock named;
+	// blockedAttackers is the set of attackers that are BLOCKED.
 	//
-	// They exist because the declaration is announced at LOCK-IN and
-	// the sandbox lets the defender keep clicking afterwards: the
+	// blockedAttackers is the CR 509.1h state: "a creature remains
+	// blocked even if all the creatures blocking it are removed from
+	// combat". It is written in exactly one place —
+	// commitBlockDeclarationLocked, the block declaration's lock-in —
+	// and read by both combat damage steps, which never ask the live
+	// battlefield whether an attacker is blocked (#715: they used to,
+	// so an attacker whose chump blocker died hit the player). The
+	// same set is the CR 506.4 announcement guard, because an
+	// attacker becomes blocked exactly once: an EventBecomesBlocked
+	// is emitted when, and only when, an attacker is added here.
+	//
+	// The maps exist because the declaration is announced at LOCK-IN
+	// and the sandbox lets the defender keep clicking afterwards: the
 	// commit emits events only for what has changed since, so a
 	// second blocker added to an already-blocked attacker announces
 	// its own block and no second "becomes blocked", and a blocker
 	// re-pointed after the lock-in does not re-announce the attacker
 	// it left. Both are cleared by clearCombatLocked, which is also
 	// what clears BlockingTarget — they are one combat's bookkeeping.
+	// removeFromCombatLocked drops one permanent's rows when an
+	// effect takes it out of combat (CR 506.4).
 	//
 	// Carried by Clone / RestoreFrom together for the reason
 	// eventBatch and oncePerBatchFired are: an undo that rewound the
 	// declaration but kept the announcements would swallow the
-	// re-done trigger, and the reverse would double-fire it.
-	announcedBlocks        map[uuid.UUID]uuid.UUID
-	announcedBecameBlocked map[uuid.UUID]bool
+	// re-done trigger, and the reverse would double-fire it — and an
+	// undo that dropped the blocked state would hand a blocked
+	// attacker's damage to the defending player.
+	announcedBlocks  map[uuid.UUID]uuid.UUID
+	blockedAttackers map[uuid.UUID]bool
 
 	// announcedAttacks is the same bookkeeping for the ATTACK
 	// declaration (#859, attackers.go): the creatures that have had

@@ -1574,5 +1574,115 @@ the client message #914 asks for. It stays #914's call.
 **[#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715) is
 unchanged**: a blocked attacker whose blockers have all left combat is
 still treated as unblocked in the second step. Its test keeps its skip.
+*(Fixed on 2026-09-18 by Decision 26 below, and the skip came off with
+it.)*
 
 **The beat animation is not rebuilt.** [ADR 0053](0053-combat-damage-beats.md) Decision 5 now carries a note saying what #717 changed for the client beat sequencer: it keys a combat's beats on the first damage step entry, keeps the arrow cache through the new step, and keeps everything else.
+
+---
+
+## Amendment (2026-09-18): an attacker stays blocked when its blockers leave (#715)
+
+Amends the addendum's [Decision 13](#13-the-stored-declaration-is-always-legal-and-the-menace-close-out-is-deleted)
+on WHERE the menace close-out lives, and adds the state the combat
+damage steps had been doing without. Decisions 1-25 stand.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 509.1h: "a creature remains blocked even if all the creatures
+blocking it are removed from combat." CR 506.4 removes a creature from
+combat when it leaves the battlefield, phases out, or an effect says
+so. CR 510.1c: a blocked creature with no creatures blocking it
+assigns no combat damage. CR 702.19d/e: trample is the exception — a
+blocked trampler with nothing blocking it assigns all its damage to
+the player or planeswalker it is attacking. CR 509.1b makes block
+legality a property of the declaration, checked as it is made.
+
+The engine kept no blocked state. Both combat damage passes rebuilt
+`blockersByAttacker` from the live battlefield, so "no live blocker"
+and "not blocked" were the same question, and the menace close-out ran
+on that same live map at damage time. Three wrong boards, all the same
+bug: a chump blocker that died in the first-strike step let the
+attacker hit the player in the second; a blocker destroyed in the
+declare-blockers window let a blocked attacker through; and a menace
+attacker that lost one of its two blockers had its whole block
+reverted and hit the player for full.
+
+### Decision 26. One blocked record, written at the lock-in and read at damage
+
+`Game.blockedAttackers` (unexported, `map[uuid.UUID]bool`) is the set
+of attackers that are BLOCKED this combat. It is the field #830's
+`announcedBecameBlocked` already was, under the name the rules give
+it: an attacker becomes blocked exactly once (CR 506.4) and stays
+blocked (CR 509.1h), so the set that has had its `EventBecomesBlocked`
+and the set that is blocked are the same set, and keeping two would be
+two things to get out of step.
+
+**Written in one place.** `commitBlockDeclarationLocked` (`blockers.go`),
+the block declaration's lock-in — Decision 19's "the declaration is
+complete" point. Nothing else writes it. `clearCombatLocked` drops it
+with the `BlockingTarget` wipe it describes, `removeFromCombatLocked`
+(#921) drops one attacker's row when an effect takes that attacker out
+of combat, and the battlefield exit (#935) drops it when the attacker
+leaves the battlefield. A row keyed by the ATTACKER is never touched by
+anything that happens to a BLOCKER, which is CR 509.1h expressed as a
+map key.
+
+**Read in one place.** `attackerBlockedLocked`, called by
+`assignAndDealCombatDamageLocked` for an attacker with no live
+blockers: blocked and no blockers left → no damage at all (CR 510.1c);
+blocked, no blockers left and trample → all of it to what it is
+attacking (CR 702.19d/e); never blocked → the unblocked path it always
+took. Both damage steps run that one function, so first strike and
+double strike need nothing of their own — which is what takes the skip
+off `TestCombatStepDoubleStrikeBlockerDiesInFirstStep`.
+
+**No "becomes unblocked" event.** There is no such rules concept: the
+attacker's state never changes, so there is nothing to announce.
+
+**The menace close-out moves with it**, from the top of
+`assignAndDealCombatDamageLocked` to `revertIllegalBlockCountsLocked`,
+called by the lock-in before it announces anything. Same rule
+(`BlockerCountValid`, CR 702.111b), asked at the moment CR 509.1b asks
+it: the declaration is complete, so a COUNT can be judged. An attacker
+already in `blockedAttackers` is skipped — its declaration was legal
+when it was made, and legality is never re-evaluated. Three things
+fall out. An illegal lone block against a menace attacker is reverted
+INSIDE `declare_blockers`, where the defender can see it and block
+again, instead of silently at damage. The reverted blocker's
+`EventBlock` is never emitted, so "whenever this creature blocks" no
+longer fires for a block the engine is about to undo. And the damage
+steps no longer read `HasKeyword(atk, "menace")` at all. This is the
+half of Decision 13 that does not need the bulk `DeclareBlockers`
+verb: the close-out is not deleted yet, but it is no longer at damage
+time, and when the set-shaped declaration lands it is
+`revertIllegalBlockCountsLocked` that it replaces.
+
+**It is combat-scoped state**, classified `carried` in `clone.go`,
+`snapshot.go` and `snapshot_drift_test.go` beside `announcedBlocks`,
+`announcedAttacks` and `firstStrikeStepParticipants`. An undo that
+rewound the removal but dropped the blocked state, or a deploy restore
+that landed between the damage steps without it, would hand the
+defending player damage they had blocked. The persisted key keeps its
+#830 spelling (`announcedBecameBlocked`) — identical contents and
+identical lifetime, so a file written before the rename restores a
+mid-combat blocked state rather than losing it.
+
+### What this fixes, and what it leaves
+
+Fixed: the three boards above, on both damage steps, for a blocker
+that died, was bounced, or was removed from combat by an effect; and a
+blocked trampler whose blockers are gone now tramples over for its
+full power (CR 702.19d/e).
+
+Unchanged: the multi-blocker CR 510.1c assignment prompt. An attacker
+with two or more live blockers still queues it, and a blocker that
+dies while the prompt is open is the prompt's own validation problem,
+not this record's.
+
+Not attempted: "removed from combat" as a card-facing verb (#672), and
+the CR 509.1c blocking REQUIREMENTS that Decision 15 sketches. Both
+read this state when they land; neither writes it.
