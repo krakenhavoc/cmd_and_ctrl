@@ -205,7 +205,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
 	discarder := p.Player
-	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
+	opts := discardOptions{cause: DiscardCauseEffect, source: p.Source, then: p.Then}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -775,7 +775,7 @@ func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
 		ids[i] = c.InstanceID
 	}
 	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
-	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the

@@ -25,48 +25,57 @@ import "github.com/google/uuid"
 // no discard opened the CR 614 replacement window, so a discarded
 // commander was never offered the command zone (CR 903.9). Folding
 // the loops together first meant the window had one place to go, and
-// #853 is the four lines of zoneRoute below. Madness (#657) and a
-// replaceable discard that knows its cause (#650) are the next two,
-// and they land here too.
+// #853 is the four lines of zoneRoute below. #650 was the next one and
+// landed here too: the route now opens a RepEventDiscard carrying the
+// cause, so Library of Leng, madness (#657) and the Obstinate Baloth
+// family have a discard to key on rather than an anonymous move.
 //
 // What the callers keep is what is genuinely theirs: WHICH cards
 // (picked, randomly chosen, or named by the client) and what happens
 // afterwards (dequeue the prompt, clear the hand-size debt, run the
 // rest of the card). What they hand over is the discard itself.
 
-// discardCause names why a card is being discarded. It is the one
-// thing about a discard the rules treat differently, and today it
-// decides exactly one thing: a COST may not pause (CR 601.2h).
+// DiscardCause names why a card is being discarded. It is the one
+// thing about a discard the rules treat differently, and since #650 it
+// decides two: a COST may not pause (CR 601.2h), and a replacement
+// effect can read it off the event ("if an EFFECT causes you to
+// discard a card" — Library of Leng).
 //
-// It is deliberately a closed enum rather than a bool: #650's
-// replaceable discard needs the same three-way distinction on the
-// event ("if you would discard a card" cares what caused it, and
-// Library of Leng only replaces a discard that is an effect's
-// instruction), so naming them now is naming them once.
-type discardCause int
+// A closed enum rather than a bool, and a STRING one so it reads in
+// the event log and on the wire without a translation table. ADR 0013
+// §10a is the argument for these three and against the
+// voluntary/involuntary framing #160 was written around: the rules
+// have no such thing as a voluntary discard.
+type DiscardCause string
 
 const (
-	// discardCauseEffect is a discard an effect instructed — Mind Rot,
+	// DiscardCauseEffect is a discard an effect instructed — Mind Rot,
 	// looting, a random discard, a revealed-hand pick. CR 701.8a, part
-	// of a resolving spell or ability (CR 608.2c).
-	discardCauseEffect discardCause = iota
+	// of a resolving spell or ability (CR 608.2c). This is the only
+	// cause Library of Leng replaces.
+	DiscardCauseEffect DiscardCause = "effect"
 
-	// discardCauseCleanup is the CR 514.1 hand-size discard: a turn-
-	// based action in the cleanup step, nobody's effect.
-	discardCauseCleanup
+	// DiscardCauseCleanup is the CR 514.1 hand-size discard: a turn-
+	// based action in the cleanup step (CR 703.1), nobody's effect.
+	DiscardCauseCleanup DiscardCause = "cleanup"
 
-	// discardCauseCost is a discard paid as a cost — the additional
-	// cost of casting a spell (CR 601.2h) or of activating an ability
-	// (CR 602.2b). Costs are paid as one indivisible step, so a cost
-	// discard MUST NOT pause on a player prompt; see
-	// discardCardsLocked.
-	discardCauseCost
+	// DiscardCauseCost is a discard paid as a cost — the additional
+	// cost of casting a spell (CR 601.2h), the cost of activating an
+	// ability (CR 602.2b), or the CR 118.12 "unless you discard"
+	// branch of a resolving spell. Costs are paid as one indivisible
+	// step, so a cost discard MUST NOT pause on a player prompt; see
+	// discardCardsLocked. Costs are also not effects (Gatherer ruling,
+	// 2004-10-04), which is the other half of why Library of Leng
+	// leaves one alone.
+	DiscardCauseCost DiscardCause = "cost"
 )
 
 // discardOptions carries what differs between the discard sites.
 type discardOptions struct {
-	// cause is why the discard is happening. See discardCause.
-	cause discardCause
+	// cause is why the discard is happening. See DiscardCause. The
+	// zero value ("") is normalised to DiscardCauseEffect by the
+	// route, which is the cause every caller that forgets to say means.
+	cause DiscardCause
 
 	// source is the card that caused the discard — the Mind Rot, the
 	// spell whose additional cost this is — stamped on the emitted
@@ -122,7 +131,7 @@ type discardOptions struct {
 //
 // A COST MAY NOT PAUSE. CR 601.2h pays a spell's costs as one
 // indivisible step and CR 602.2b says the same for an activated
-// ability, so discardCauseCost sets zoneRoute.MustSettleNow: the
+// ability, so DiscardCauseCost sets zoneRoute.MustSettleNow: the
 // window still runs — a discard replacement would still see it — but
 // it settles without asking, and CR 903.9 being a "may" means a
 // commander pitched to a cost goes to the graveyard. The argument, and
@@ -156,8 +165,9 @@ func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts di
 			DstOwner:      playerID,
 			Actor:         playerID,
 			Discard:       true,
+			DiscardCause:  opts.cause,
 			Source:        opts.source,
-			MustSettleNow: opts.cause == discardCauseCost,
+			MustSettleNow: opts.cause == DiscardCauseCost,
 			then: func(g *Game) error {
 				return g.discardCardsLocked(playerID, rest, opts)
 			},

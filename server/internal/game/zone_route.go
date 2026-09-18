@@ -150,6 +150,15 @@ type zoneRoute struct {
 	// discard by its SOURCE ("move it from its owner's hand").
 	Discard bool
 
+	// DiscardCause is why the discard is happening — an effect's
+	// instruction, a cost, or the cleanup step's turn-based action. It
+	// rides onto the RepEventDiscard this route opens, where Library of
+	// Leng and the rest of the cause-sensitive family read it, and onto
+	// the EventDiscardCard the completed move emits. Meaningless unless
+	// Discard is set; the empty value is normalised to
+	// DiscardCauseEffect. #650.
+	DiscardCause DiscardCause
+
 	// Source is the card whose effect asked for the move, stamped on
 	// the emitted event. Read only by the Discard leg today, which is
 	// the only route whose event has ever carried one; uuid.Nil
@@ -308,9 +317,9 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// #762: an abandoned CREATION makes nothing, and the rest of
 		// the card behind it still has to be told. Nothing is staged
 		// yet — the tokens are not minted until the window settles.
-		return g.runTokenTailLocked(ev, nil)
+		return g.abandonTokenCreationLocked(ev)
 	}
-	if ev.Kind != RepEventMove {
+	if !isExitMove(ev.Kind) {
 		return nil
 	}
 	// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
@@ -395,6 +404,19 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		zoneRoute:       &r,
 		asCommanderMove: r.AsCommander,
 		mustSettleNow:   r.MustSettleNow,
+	}
+	if r.Discard {
+		// #650: a discard is its own event kind, because what a discard
+		// replacement watches for is the DISCARD and not the zone move
+		// underneath it. Everything else on the event is the same, and
+		// every exit site downstream reads the two kinds together
+		// (isExitMove).
+		ev.Kind = RepEventDiscard
+		ev.DiscardPlayer = r.Actor
+		ev.DiscardCause = r.DiscardCause
+		if ev.DiscardCause == "" {
+			ev.DiscardCause = DiscardCauseEffect
+		}
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -542,18 +564,24 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		})
 	case r.Discard:
 		// CR 701.8a: the discard is the move OUT of the hand, so it
-		// happened whatever the CR 903.9 window did with the
-		// destination — a commander put into the command zone instead
-		// was still discarded, and Megrim, Containment Construct and
+		// happened whatever the window did with the destination — a
+		// commander put into the command zone instead was still
+		// discarded, Library of Leng putting it on top of the library
+		// was still a discard, and Megrim, Containment Construct and
 		// the rest of the family still see it. NewZone is where the
 		// card really went, so a listener that cares can tell.
+		//
+		// #650: it also carries the CAUSE now, so the log can say why
+		// and a payoff that cares ("a spell or ability an opponent
+		// controls causes you to discard") has it beside the Source.
 		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   actor,
-			Source:  r.Source,
-			CardID:  ev.CardID,
-			OldZone: src.Kind,
-			NewZone: dstZone.Kind,
+			Kind:         EventDiscardCard,
+			Actor:        actor,
+			Source:       r.Source,
+			CardID:       ev.CardID,
+			OldZone:      src.Kind,
+			NewZone:      dstZone.Kind,
+			DiscardCause: ev.DiscardCause,
 		})
 	default:
 		kind := EventZoneMove

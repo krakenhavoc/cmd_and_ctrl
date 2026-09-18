@@ -473,6 +473,68 @@ func TestUndoAcrossATokenCreationPauseReplaysTheSameWay(t *testing.T) {
 	}
 }
 
+// TestUndoAcrossATokenENTRYPauseReplaysTheSameWay — the other pause,
+// and the one with the sharper undo hazard. The rest of the batch and
+// the ids it has collected so far live in a CLOSURE on the entry
+// frame, not on the snapshot, so a replayed answer must not count the
+// first run's tokens again and must not skip the caller's "then"
+// because the first run consumed it.
+func TestUndoAcrossATokenENTRYPauseReplaysTheSameWay(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0].ID, g.Seats[1].ID
+	stubCatalogReplacements(t, map[string][]ReplacementEffect{
+		"kismet": {entersTappedForOthers("Kismet: enters tapped")},
+		"thalia": {entersTappedForOthers("Thalia: enters tapped")},
+	})
+	pushReplacementSource(g, "kismet", me)
+	pushReplacementSource(g, "thalia", me)
+
+	ran := 0
+	var handed []uuid.UUID
+	createGoblins(t, g, opp, 2, func(_ *Game, ids []uuid.UUID) error {
+		ran++
+		handed = ids
+		return nil
+	})
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("pending choices = %d, want the first token's entry prompt", len(g.PendingChoices))
+	}
+
+	answerAll := func() {
+		t.Helper()
+		for len(g.PendingChoices) > 0 {
+			pc := g.PendingChoices[0]
+			if err := g.ResolveReplacementOrder(pc.ID, pc.Chooser, pc.ReplacementEffectIDs); err != nil {
+				t.Fatalf("ResolveReplacementOrder: %v", err)
+			}
+		}
+	}
+
+	firstTokenPaused := g.Clone()
+	answerAll()
+	if got := tokensNamed(g, "Goblin"); got != 2 || ran != 1 || len(handed) != 2 {
+		t.Fatalf("first run: %d Goblins, %d continuation runs with %d ids; want 2, 1, 2", got, ran, len(handed))
+	}
+
+	ran, handed = 0, nil
+	g.WithWriteLock(func() { g.RestoreFrom(firstTokenPaused) })
+	if got := tokensNamed(g, "Goblin"); got != 0 {
+		t.Fatalf("the rewind into the open entry prompt left %d Goblin(s) on the battlefield", got)
+	}
+	answerAll()
+	if got := tokensNamed(g, "Goblin"); got != 2 {
+		t.Errorf("replay: %d Goblins, want 2", got)
+	}
+	if ran != 1 || len(handed) != 2 {
+		t.Errorf("replay: the continuation ran %d time(s) with %d ids, want 1 and 2 — a closure that survives an undo must not accumulate", ran, len(handed))
+	}
+	for _, id := range handed {
+		if !g.Battlefield.Contains(id) {
+			t.Error("the continuation was handed an id from the run that was undone")
+		}
+	}
+}
+
 // --- shared prompt helpers --------------------------------------------
 
 // onlyReplacementOrderPrompt asserts the game is sitting on exactly one

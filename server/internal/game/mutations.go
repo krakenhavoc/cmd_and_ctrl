@@ -3558,7 +3558,7 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 	// hand-size bookkeeping is this site's own and runs once the whole
 	// batch has landed.
 	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
-		cause: discardCauseCleanup,
+		cause: DiscardCauseCleanup,
 		then: func(g *Game) error {
 			delete(g.DiscardPending, playerID)
 			if len(g.DiscardPending) == 0 {

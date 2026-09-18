@@ -241,31 +241,35 @@ func (ev *ReplacementEvent) TokenTemplatesMatch(pred func(Card) bool) bool {
 	return false
 }
 
-// runTokenTailLocked runs a settled creation's continuation exactly
-// once, with the IDs of the tokens that actually landed. The
-// continuation is cleared before it runs, so a tail that re-enters
-// the pipeline on the same event cannot run itself twice.
+// abandonTokenCreationLocked is the terminal outcome of a creation
+// that made NOTHING — cancelled by a CR 614.10 null replacement, or
+// abandoned because its ordering prompt was taken away. It runs the
+// caller's continuation with no IDs.
 //
-// Every TERMINAL outcome goes through here — created, cancelled
-// (CR 614.10), or abandoned because the prompt was taken away —
-// because a caller sequencing work behind the tokens has to be told
-// even when the answer is "none", or it waits forever. That is the
-// call #808 made for the life tail and #853 for the route tail.
+// A caller sequencing work behind the tokens has to be told even when
+// the answer is "none", or it waits forever; that is the call #808
+// made for the life tail and #853 for the route tail. The SUCCESS
+// path runs the same continuation from
+// enterCreatedTokensLocked, with the IDs that landed.
 //
 // Caller must hold g.mu.
-func (g *Game) runTokenTailLocked(ev *ReplacementEvent, created []uuid.UUID) error {
+func (g *Game) abandonTokenCreationLocked(ev *ReplacementEvent) error {
 	if ev == nil {
 		return nil
 	}
-	return runTokenTailValueLocked(g, ev.tokenTail, created)
+	return runTokenTailLocked(g, ev.tokenTail, nil)
 }
 
-// runTokenTailValueLocked is runTokenTailLocked for a tail held
-// somewhere other than on an event — the batch's own "done", which
-// outlives the per-token entry events it is threaded through.
+// runTokenTailLocked runs a creation's continuation exactly once. The
+// continuation is cleared before it runs, so a tail that re-enters the
+// pipeline on the same tail value cannot run itself twice.
+//
+// Only the ABANDON path uses it; the success path threads the
+// continuation down the batch as a value (see
+// applyResolvedTokenCreationLocked).
 //
 // Caller must hold g.mu.
-func runTokenTailValueLocked(g *Game, tail *tokenTail, created []uuid.UUID) error {
+func runTokenTailLocked(g *Game, tail *tokenTail, created []uuid.UUID) error {
 	if tail == nil || tail.then == nil {
 		return nil
 	}
@@ -308,7 +312,7 @@ func (g *Game) CreateTokensThenForEffect(spec TokenCreation, then func(g *Game, 
 	if len(groups) == 0 {
 		// Nothing to create. Still a terminal outcome: a caller
 		// sequenced behind the tail has to be told.
-		return g.runTokenTailLocked(ev, nil)
+		return g.abandonTokenCreationLocked(ev)
 	}
 	return g.createTokensLocked(ev)
 }
@@ -336,7 +340,7 @@ func (g *Game) createTokensLocked(ev *ReplacementEvent) error {
 	if out == nil || out.Canceled {
 		// CR 614.10 with a null replacement: the tokens are simply
 		// not created. The caller's continuation still runs.
-		return g.runTokenTailLocked(ev, nil)
+		return g.abandonTokenCreationLocked(ev)
 	}
 	return g.applyResolvedTokenCreationLocked(out)
 }
@@ -358,9 +362,21 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 		}
 	}
 	if len(batch) == 0 {
-		return g.runTokenTailLocked(ev, nil)
+		return g.abandonTokenCreationLocked(ev)
 	}
-	return g.enterCreatedTokensLocked(batch, nil, ev.Source, ev.tokenTail)
+	// The caller's continuation is taken as a VALUE and threaded down
+	// the batch, not passed as the clearable pointer the event holds.
+	// The pointer is the right shape for a tail that lives on a
+	// snapshot-restored event; this one lives only in the closures
+	// below, which an undo does not restore, so clearing it would make
+	// a replayed answer skip the rest of the card. Reaching here and
+	// reaching abandonTokenCreationLocked are mutually exclusive, so
+	// the continuation still runs exactly once per run.
+	var then func(g *Game, created []uuid.UUID) error
+	if ev.tokenTail != nil {
+		then = ev.tokenTail.then
+	}
+	return g.enterCreatedTokensLocked(batch, nil, ev.Source, then)
 }
 
 // stagedToken is one minted-but-not-yet-entered token: the object
@@ -422,9 +438,12 @@ func (g *Game) mintTokenLocked(grp TokenGroup, controller uuid.UUID) Card {
 // across the prompt lands where a clean run would.
 //
 // Caller must hold g.mu.
-func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID, source uuid.UUID, done *tokenTail) error {
+func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID, source uuid.UUID, done func(g *Game, created []uuid.UUID) error) error {
 	if len(batch) == 0 {
-		return runTokenTailValueLocked(g, done, created)
+		if done == nil {
+			return nil
+		}
+		return done(g, created)
 	}
 	next, rest := batch[0], batch[1:]
 	g.enteringTokens = append(g.enteringTokens, next.card)
@@ -455,10 +474,16 @@ func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID
 		// never reached the battlefield never existed (CR 111.1), and
 		// the rest of the batch still does.
 		g.dropEnteringTokenLocked(next.card.InstanceID)
+		// A FRESH slice rather than an append into the captured one:
+		// this closure survives an undo, and mutating what it captured
+		// would let a replayed answer count the first run's tokens
+		// again. The batch is a value carried forward, exactly as
+		// discardCardsLocked carries its shrinking slice.
+		landed := created
 		if entered != uuid.Nil {
-			created = append(created, entered)
+			landed = append(append([]uuid.UUID(nil), created...), entered)
 		}
-		return g.enterCreatedTokensLocked(rest, created, source, done)
+		return g.enterCreatedTokensLocked(rest, landed, source, done)
 	}}
 	_, err := g.enterBattlefieldThroughPipelineLocked(ev)
 	return err

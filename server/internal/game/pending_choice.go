@@ -884,7 +884,7 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// an index into g.PendingChoices does not survive that.
 		g.dequeueChoiceLocked(idx)
 		return g.discardCardsLocked(from.ID, picks, discardOptions{
-			cause:  discardCauseEffect,
+			cause:  DiscardCauseEffect,
 			source: choice.Source,
 		})
 	default:
@@ -1495,7 +1495,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// happens here — which is also where it was before #694.
 		g.runStateChecksLocked()
 		return nil
-	case RepEventMove:
+	case RepEventMove, RepEventDiscard:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
 		// it is finished by the same code the unpaused path runs —
@@ -1655,7 +1655,7 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// it") has to be told so rather than wait for tokens that will
 	// never arrive.
 	if ev.Kind == RepEventCreateTokens {
-		return g.runTokenTailLocked(ev, nil)
+		return g.abandonTokenCreationLocked(ev)
 	}
 	// #853: and the same for a cancelled EXIT that carries a route.
 	// The card stays where it is, but a multi-card discard sequenced
@@ -1668,7 +1668,7 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// multi-card fetch has to be told before it can start the next one.
 	// Only one of the two is ever set, so running both is one call and
 	// a no-op.
-	if ev.Kind == RepEventMove {
+	if isExitMove(ev.Kind) {
 		// #762: a cancelled ENTRY of a created token is the one move
 		// that leaves an object behind. A token exists only on the
 		// battlefield (CR 111.1), so one whose entry was replaced away
@@ -2713,7 +2713,7 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 		return false
 	}
 	ev := frame.ev
-	if ev.Kind != RepEventMove {
+	if !isExitMove(ev.Kind) {
 		return false
 	}
 	src := g.findCardZoneLocked(ev.CardID)
@@ -2747,7 +2747,7 @@ func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
 			continue
 		}
 		ev := c.replacementResume.ev
-		if ev == nil || ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+		if ev == nil || !isExitMove(ev.Kind) || ev.NewZone == ZoneBattlefield {
 			continue
 		}
 		if ev.CardID == cardID {

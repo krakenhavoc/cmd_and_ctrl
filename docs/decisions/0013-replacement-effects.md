@@ -1441,8 +1441,10 @@ or via an effect's primitive.
 *Partly delivered 2026-09-18 by
 [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
 (#762): TOKEN creation is the entry site this section promised and
-never got. A created token now runs `enterPermanentLocked` — the same
-entry body the land play and the stack resolution run — so
+never got. A created token now runs
+`enterBattlefieldThroughPipelineLocked` and `executeEntryToBattlefieldLocked`
+— the same entry primitive and the same finisher a library search, an
+exile return and a reanimation run (#478) — so
 enters-tapped, enters-with-counters, CR 614.12 self-replacement and
 `fireETBHookLocked` all reach a token. Token creation itself also
 became its own replacement event (`RepEventCreateTokens`), which this
