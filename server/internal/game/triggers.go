@@ -353,6 +353,13 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// card whose death is being reported, so a wipe needs its own
 	// pass. No-op unless a simultaneous batch is open.
 	g.harvestSimultaneousExitLocked(&pass)
+	// #663: event-conditioned delayed triggers — "when you next cast
+	// an instant or sorcery spell this turn, copy that spell" (CR
+	// 603.7b). Checked LAST, after every zone walk, so the delayed
+	// list sees the event exactly once and the first match fires it
+	// and removes it. One hook, one place, no per-card case. See
+	// delayed.go and the 2026-09-18 amendment to ADR 0026.
+	g.fireEventDelayedTriggersLocked(ev)
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,

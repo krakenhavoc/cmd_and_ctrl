@@ -2250,6 +2250,35 @@ window. Declare `Effect` as a package-level func so it captures nothing:
 a delayed trigger survives `Clone` / undo by sharing its `Effect` with
 the snapshot, and reads its payload off the item it is handed.
 
+**Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
+next cast an instant or sorcery spell this turn, copy that spell"
+(Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather
+than for a step, and it is the same queue with a different condition —
+`WhenYouNextCast(label, pred, effect)`, or the general
+`DelayedOnEvent{Label, On, Matches, Effect}`, both in
+[delayed_on_event.go](server/internal/cards/effects/delayed_on_event.go):
+
+```go
+return WhenYouNextCast("Doublecast — copy that spell",
+    Or(Instant(), Sorcery()), copyTheSpellYouJustCast).Apply(ctx)
+```
+
+Four things it gets for free and must not re-implement. It fires
+**once** and is removed (CR 603.7b), from one hook at the end of
+`triggerHarvester.OnEvent`. It ends **with the turn** whether or not it
+fired (CR 514.2), carrying ADR 0063's `Duration` and swept beside the
+scoped statics — hand it a `Duration` only when the card says something
+other than "this turn". It never sees the cast
+that **created** it, because the `EventCast` of that spell was emitted
+before the resolution that scheduled it. And the fired trigger goes
+through `dispatchTriggerLocked`, the harvester's own dispatch, so the
+CR 603.5 "you may", the CR 603.3d drop and the APNAP drain are the same
+code an ETB uses. The triggering event's object rides on the item as
+`Payload` — `ctx.PayloadCards()[0]` is "that spell" — so the `Effect`
+stays a package-level func that captures nothing. This reverses
+[ADR 0026](docs/decisions/0026-delayed-triggers.md) §1-2 for this one
+case; the 2026-09-18 amendment there is the record.
+
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's
 fetch, Invasion of Tarkir's damage. The second sentence is a trigger

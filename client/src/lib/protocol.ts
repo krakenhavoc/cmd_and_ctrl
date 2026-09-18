@@ -766,7 +766,10 @@ export interface DamageAssignmentView {
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`
 // server-side: one queued CR 603.7 delayed triggered ability. `at`
 // is the step whose beginning fires it ("end", "upkeep"); `cards`
-// are the instance IDs the effect acts on. Added in S22.
+// are the instance IDs the effect acts on. `on` (#663) is the event
+// condition of a "when you next cast …" trigger, which is owed on the
+// next matching event rather than at a step — such a trigger carries
+// `on` and an empty `at`. Added in S22.
 export interface DelayedTriggerView {
   id: string;
   controller: string;
@@ -775,6 +778,7 @@ export interface DelayedTriggerView {
   at: string;
   created_turn?: number;
   cards?: string[];
+  on?: string[];
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the

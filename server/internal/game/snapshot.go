@@ -456,6 +456,14 @@ type delayedTriggerSnapshot struct {
 	CreatedTurn        int         `json:"createdTurn"`
 	Cards              []uuid.UUID `json:"cards,omitempty"`
 	HasEffect          bool        `json:"hasEffect,omitempty"`
+	// #663: the event condition. On and ExpiresAfterTurn are data
+	// and come back; the AppliesTo predicate and the Optional prompt
+	// are closures and do not, exactly as Effect does not — and the
+	// trigger is already counted once in
+	// ContinuationCensus.DelayedTriggerEffects, so it is already
+	// marked unrestorable and nothing here double-counts it.
+	On       []EventKind `json:"on,omitempty"`
+	Duration *Duration   `json:"duration,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -1065,6 +1073,13 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		CreatedTurn:        d.CreatedTurn,
 		HasEffect:          d.Effect != nil,
 	}
+	if d.Duration != nil {
+		dur := *d.Duration
+		out.Duration = &dur
+	}
+	if len(d.On) > 0 {
+		out.On = append([]EventKind(nil), d.On...)
+	}
 	if len(d.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), d.Cards...)
 	}
@@ -1580,7 +1595,14 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedTurn:        d.CreatedTurn,
-		// Effect stays nil; see the census.
+		// Effect, AppliesTo and Optional stay nil; see the census.
+	}
+	if d.Duration != nil {
+		dur := *d.Duration
+		out.Duration = &dur
+	}
+	if len(d.On) > 0 {
+		out.On = append([]EventKind(nil), d.On...)
 	}
 	if len(d.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), d.Cards...)

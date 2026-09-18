@@ -194,19 +194,30 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 //
 // Caller must hold g.mu.
 func (g *Game) reflexiveSourceLocked(parent *StackItem) (Card, Characteristic) {
+	return g.triggerSourceLocked(parent.SourceCardID, parent.Controller)
+}
+
+// triggerSourceLocked is that body, shared with the #663
+// event-conditioned delayed trigger, which needs exactly the same
+// thing for exactly the same reason: a source card that may be
+// anywhere or nowhere, and a controller the RULE fixes rather than the
+// card's current Controller field.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerSourceLocked(sourceCardID, controller uuid.UUID) (Card, Characteristic) {
 	var source Card
 	var lki Characteristic
-	if parent.SourceCardID != uuid.Nil {
-		if c := g.findCardByIDLocked(parent.SourceCardID); c != nil {
+	if sourceCardID != uuid.Nil {
+		if c := g.findCardByIDLocked(sourceCardID); c != nil {
 			source = *c
-			if known, ok := g.lastKnownBattlefield[parent.SourceCardID]; ok {
+			if known, ok := g.lastKnownBattlefield[sourceCardID]; ok {
 				lki = known
 			} else {
 				lki = c.Effective()
 			}
 		}
 	}
-	source.InstanceID = parent.SourceCardID
-	source.Controller = parent.Controller
+	source.InstanceID = sourceCardID
+	source.Controller = controller
 	return source, lki
 }

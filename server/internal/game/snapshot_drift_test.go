@@ -390,8 +390,14 @@ var delayedTriggerFields = plan(
 	"ControllerTurnOnly", carried, "",
 	"CreatedTurn", carried, "",
 	"Cards", carried, "",
+	// #663's event condition. The data half comes back so a restored
+	// game still knows WHAT was owed and until when.
+	"On", carried, "",
+	"Duration", carried, "",
 
 	"Effect", dropped, "a closure; counted in ContinuationCensus.DelayedTriggerEffects",
+	"AppliesTo", dropped, "a closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
+	"Optional", dropped, "a prompt declaration holding a Chooser closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
 )
 
 var pendingChoiceFields = plan(

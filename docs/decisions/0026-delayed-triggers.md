@@ -68,7 +68,7 @@ matches the step being entered, immediately before the step's own
 turn-based actions.
 
 The consequence is the whole rules content of the word "next" (CR
-603.7b), obtained without any "was this created during the current
+603.7c), obtained without any "was this created during the current
 step" bookkeeping: an ability scheduled *during* an end step is queued
 after that step's entry hook has already run, so it waits for the
 following one. That timing is observable and it is exactly what blink
@@ -168,6 +168,113 @@ left.
 - Delayed triggers are reusable well past flicker: rebound, "at the
   beginning of the next end step, sacrifice it" (token makers),
   "until your next turn" cleanups.
+
+## Amendment, 2026-09-18: a delayed trigger may watch an EVENT (#663)
+
+This reverses §1-2 for one case, and only for that case.
+
+"When you next cast an instant or sorcery spell this turn, copy that
+spell" (Doublecast, Galvanic Iteration, Teach by Example, Ral's -2,
+Chandra's -2) is a delayed triggered ability whose condition is an
+EVENT rather than a step. §1 said a delayed trigger is "not a
+`TriggeredAbility` variant … no `Watches` pre-filter over the event
+log", and §2 said firing on step entry is what gives "next" its
+meaning for free. Both sentences are true of the step-conditioned
+trigger and neither can express this card: there is no step to wait
+for, and the thing being waited for is a cast that may never happen.
+
+**Decision: extend `DelayedTrigger` with an event condition, rather
+than build a second registry.**
+
+```go
+type DelayedTrigger struct {
+    …
+    On        []EventKind
+    AppliesTo func(ev Event, dt *DelayedTrigger, g *Game) bool
+    Optional  *TriggerOptionalPrompt
+    Duration  *Duration
+}
+```
+
+`At` and `On` are alternatives, and a trigger may carry both (nothing
+in the catalog does yet). A trigger with `On` set is checked by ONE
+hook in `triggerHarvester.OnEvent`, after the zone walks: the first
+matching event fires it and removes it from the queue, in one place,
+with no per-card special case anywhere.
+
+The alternative considered and rejected was a `TurnScopedTriggers`
+registry modelled on `TurnScopedReplacements` / the scoped statics
+([ADR 0063](0063-durations-and-control.md)), which would have left this
+ADR intact. It was rejected because it
+would have been a second queue holding the same four things this one
+holds (a controller, a source, a label, an effect), snapshotted twice,
+cloned twice, and drained by a second dispatch — and the one real
+difference between the two is a predicate. A recorded decision is
+worth reversing in writing; it is not worth duplicating a queue to
+avoid reversing.
+
+### Why the properties of §2-4 survive
+
+- **"Next" is still free, by a different mechanism.** A step-conditioned
+  trigger gets it from the step-entry hook having already run. An
+  event-conditioned one gets it from *when it is created*: the trigger
+  is created by a resolving spell, and the `EventCast` of the spell
+  that created it was emitted before that resolution began. A
+  Doublecast cannot copy itself, and nothing has to remember that it
+  must not.
+- **It fires exactly once (CR 603.7b).** The queue is rewritten before
+  the first item is dispatched, exactly as `fireDelayedTriggersLocked`
+  rewrites it, so a trigger cannot see its own follow-on events. Two
+  Doublecasts in one turn are two entries and both fire on the same
+  cast — two copies, which is the printed outcome.
+- **It uses the stack, through the harvester's own dispatch.** §3 said
+  a fired delayed trigger becomes a `StackItem` on `PendingTriggers`.
+  The event-conditioned one goes further and enters
+  `dispatchTriggerLocked` — the same function `harvestFromZone` calls,
+  the same one `QueueReflexiveTriggerForEffect` calls since the 2026-09-17
+  amendment — so the CR 603.3d drop, the CR 603.5 "you may" and the
+  APNAP drain are the harvester's and not a second implementation.
+- **The payload still rides on the item.** §4 holds unchanged for
+  `Cards`; what is new is that the TRIGGERING EVENT'S object rides too,
+  as `StackItem.Payload`, which is how "copy THAT spell" names the
+  spell without the `Effect` closing over it.
+
+### Duration (CR 514.2)
+
+"This turn" is a real clause and it is the default: an event-conditioned
+trigger created with no explicit duration is stamped with
+`g.UntilEndOfTurnDuration()` and swept by `sweepTurnEndLocked`, beside
+the scoped statics and the turn-scoped replacements, whether or not it
+ever fired.
+
+It is the SAME `Duration` [ADR 0063](0063-durations-and-control.md)
+gave the scoped statics, and deliberately so: "until end of turn" means
+the same thing to a delayed trigger as it does to a Giant Growth,
+`durationExpiredLocked` is the one function in the engine that decides
+when a duration is over, and a private int here would have been a
+second answer to that question — the exact shape ADR 0063 retired when
+it replaced `ScopedStatic.ExpiresAfterTurn`. A card wanting "until your
+next turn" needs no new machinery.
+
+A step-conditioned trigger is unaffected: its `Duration` is nil, which
+means "no duration", and that is what "at the beginning of the NEXT end
+step" needs when it is scheduled during an end step.
+
+### Persistence
+
+`On` and `Duration` are data and are carried by `Clone`,
+`snapshot.go` and the wire view. `AppliesTo` and `Optional` are
+closures and are dropped, like `Effect` beside them — a restored
+trigger with no `Effect` is inert either way, and the whole trigger is
+already counted once in `ContinuationCensus.DelayedTriggerEffects`, so
+nothing is double-counted and nothing is silently lost.
+
+### Citation fix
+
+§2 above cited "CR 603.7c/d" for "next". The rule that a delayed
+trigger fires only once is **CR 603.7b**; CR 603.7c is the one that
+gives "the next time" its meaning. The §2 text now cites 603.7c, and
+this amendment cites 603.7b for the fires-once property.
 
 ## Amendment, 2026-09-17: the reflexive sibling is NOT this slot (#636)
 

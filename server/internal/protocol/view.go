@@ -663,6 +663,12 @@ type DelayedTriggerView struct {
 	At          string   `json:"at"`
 	CreatedTurn int      `json:"created_turn,omitempty"`
 	Cards       []string `json:"cards,omitempty"`
+	// On is the #663 EVENT condition — "when you next cast an
+	// instant or sorcery spell this turn". Present instead of a
+	// meaningful `at` for such a trigger, so a client can tell "owed
+	// at a step" from "owed on the next matching event" rather than
+	// rendering an empty step.
+	On []string `json:"on,omitempty"`
 }
 
 // TargetRefView is the wire shape of a single announce-time target
@@ -2621,6 +2627,9 @@ func viewOfDelayedTriggers(queue []*game.DelayedTrigger) []DelayedTriggerView {
 			Label:       dt.Label,
 			At:          string(dt.At),
 			CreatedTurn: dt.CreatedTurn,
+		}
+		for _, kind := range dt.On {
+			view.On = append(view.On, string(kind))
 		}
 		for _, cardID := range dt.Cards {
 			view.Cards = append(view.Cards, cardID.String())
