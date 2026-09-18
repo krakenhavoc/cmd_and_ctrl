@@ -113,11 +113,11 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 // WHO IS ALLOWED TO CALL THIS, and it is a short list (#708). Damage
 // marked on a permanent stays there until the cleanup step (CR 514.2);
 // nothing else removes it except a permanent LEAVING the battlefield
-// (where the damage belongs to an object that no longer exists) and,
-// when it ships, a regeneration shield, which CR 701.15a says removes
-// all damage from the permanent as part of the regeneration itself.
+// (where the damage belongs to an object that no longer exists) and a
+// regeneration shield, which CR 701.19a says removes all damage from
+// the permanent as part of the regeneration itself.
 //
-// So there are two callers (#816). MoveCard's battlefield-exit cleanup
+// So there are three callers (#816, #667). MoveCard's battlefield-exit cleanup
 // is the one place a permanent physically leaves, whatever sent it —
 // destroyed, sacrificed, exiled, bounced, tucked, milled or moved by
 // hand — and CR 400.7 makes what lands in the new zone a new object,
@@ -131,7 +131,11 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, deatht
 // helper exists to end.) The other caller is the turn's CR 514.2 sweep
 // (sweepTurnEndLocked, rotation.go), which clears every permanent at
 // once and goes through here per card so "what clearing means" is
-// written down once.
+// written down once. The third is the CR 701.19 regeneration built-in
+// (#667, regeneration.go), and it is the one caller that clears the
+// damage while the permanent STAYS on the battlefield — it has to, or
+// the CR 704.5g lethal-damage check destroys the creature again on the
+// very next pass and spends every shield it has in a loop.
 //
 // It is deliberately NOT called from the destroy entry points: a
 // destruction that a replacement effect rewrites into something else

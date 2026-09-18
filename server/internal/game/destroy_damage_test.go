@@ -72,7 +72,7 @@ func TestReplacedDestructionKeepsTheDamageMarked(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(leaveBattlefieldReplacement(id,
 			"it isn't destroyed", func(ev *ReplacementEvent) { ev.Cancel() }))
-		if err := g.destroyBattlefieldPermanentLocked(id); err != nil {
+		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {
 			t.Fatalf("destroyBattlefieldPermanentLocked: %v", err)
 		}
 	})
@@ -111,7 +111,7 @@ func TestAReplacementCanReadTheDamageOnTheDoomedPermanent(t *testing.T) {
 			},
 			Label: "read the damage",
 		})
-		if err := g.destroyBattlefieldPermanentLocked(id); err != nil {
+		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {
 			t.Fatalf("destroyBattlefieldPermanentLocked: %v", err)
 		}
 	})
@@ -132,7 +132,7 @@ func TestLandedDestructionClearsTheDamage(t *testing.T) {
 	id := damagedCreature(g, owner, 4, 3)
 
 	g.WithWriteLock(func() {
-		if err := g.destroyBattlefieldPermanentLocked(id); err != nil {
+		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {
 			t.Fatalf("destroyBattlefieldPermanentLocked: %v", err)
 		}
 	})
@@ -164,7 +164,7 @@ func TestRedirectedDestructionClearsTheDamage(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(leaveBattlefieldReplacement(id,
 			"exile it instead", func(ev *ReplacementEvent) { ev.NewZone = ZoneExile }))
-		if err := g.destroyBattlefieldPermanentLocked(id); err != nil {
+		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {
 			t.Fatalf("destroyBattlefieldPermanentLocked: %v", err)
 		}
 	})
@@ -198,7 +198,7 @@ func TestPausedDestructionKeepsTheDamageUntilItLands(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() {
-		if err := g.destroyBattlefieldPermanentLocked(id); err != nil {
+		if err := g.destroyBattlefieldPermanentLocked(id, DestroyOptions{}); err != nil {
 			t.Fatalf("destroyBattlefieldPermanentLocked: %v", err)
 		}
 	})

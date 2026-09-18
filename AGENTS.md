@@ -1067,6 +1067,45 @@ card's pipeline against the pre-entry board and moves them together; a
 card of that batch whose pipeline pauses stays where it was — weaker
 than printed, never stronger.
 
+**Regeneration is an engine built-in, not a card's replacement**
+(#667, [ADR 0013 §5p](docs/decisions/0013-replacement-effects.md)).
+"Regenerate target creature" is `effects.Regenerate{Target}`, and
+that is the whole card side: it adds one shield
+(`Card.RegenerationShields`, a count, cleared at cleanup and on the
+way off the battlefield) and the rule lives in
+`regenerationShieldReplacement`
+(`server/internal/game/builtin_replacements.go`), which watches the
+DESTROY `RepEventMove` and, when it applies, cancels the move, taps
+the permanent, removes all damage from it, takes it out of combat and
+spends one shield (CR 701.19a). Two shields never prompt — a built-in
+is registered once per game, so two of them are one applicable
+effect — and a shielded COMMANDER does prompt, because CR 903.9
+applies to the same event and CR 616.1 gives its controller the order.
+
+**"It can't be regenerated" is a rider on the destroy, not a keyword**
+(CR 701.19c). Write `DestroyTarget{Target: id, CantBeRegenerated:
+true}` or `DestroyAllMatching{Match: …, CantBeRegenerated: true}` on
+every card whose oracle text prints the clause — Terminate, Mortify,
+Putrefy, Pongify, Rapid Hybridization, Snuff Out, Damn, Damnation,
+Wrath of God, Winds of Rath, Shatterstorm do — and leave it off the
+printings that don't (Day of Judgment, Supreme Verdict, Vanquish the
+Horde). The rider rides the route onto the event and gates the
+built-in's `AppliesTo`, so an ignored shield is NOT spent
+(CR 701.19d). `"regenerate"` is still not a keyword and is not in
+`canonicalKeywords`: it is a keyword ACTION, and the closed keyword
+list is for keyword abilities.
+
+**What a shield does not stop**, and why each one is a separate
+branch rather than one check: a sacrifice (CR 701.21a), a creature at
+zero toughness (CR 704.5f), a planeswalker at zero loyalty
+(CR 704.5i), a battle at zero defense (CR 704.5v), the legend rule,
+an illegally attached Aura, an exile, a bounce. All of those take the
+same battlefield exit a destruction does, so the exit carries a
+declared `Destruction` flag — `destroyRoute` sets it,
+`battlefieldExitRoute` does not — and the state-based-action sweep
+tags each doomed permanent with the rule that doomed it
+(`doomedPermanent`, `server/internal/game/simultaneous.go`).
+
 ### Adding a copy effect (S16.5+)
 
 "You may have this creature enter as a copy of X" (Clone, Phyrexian

@@ -383,3 +383,39 @@ func plusOneCounterOnChosen(g *game.Game, item *game.StackItem) error {
 		N:      1,
 	}.Apply(NewContext(g, item))
 }
+
+// regenerateTheTargetPermanent is the whole Effect of "{cost}:
+// Regenerate target [permanent]." — Asceticism's {1}{G} ability,
+// Welding Jar's sacrifice, Goblin Chirurgeon's. What the three may
+// point at differs and is declared on each ability's TargetSpec; what
+// they DO is one line (CR 701.19a).
+//
+// A target that has left the battlefield by the time the ability
+// resolves is a no-op (CR 701.19b), which the primitive handles;
+// reading the target through LegalTargets is what makes an ability
+// whose ONLY target is gone fizzle properly instead.
+func regenerateTheTargetPermanent(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Regenerate{Target: id}.Apply(ctx)
+}
+
+// destroyTheTargetPermanentNoRegen is the same sentence with the
+// CR 701.19c rider on the end — "Destroy target [permanent]. It can't
+// be regenerated." Terminate, Mortify and Putrefy are that sentence
+// and nothing else; they differ only in what their TargetSpec lets
+// them point at, which is declared on the Spec rather than written
+// here.
+//
+// It exists because #667 made the rider real: the three bodies were
+// already identical and became a new clone family the moment they all
+// grew the same extra field. One helper, three callers.
+func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return DestroyTarget{Target: item.Targets[0].ID, CantBeRegenerated: true}.Apply(ctx)
+}

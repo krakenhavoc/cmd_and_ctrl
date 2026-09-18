@@ -1319,6 +1319,11 @@ export interface CardView {
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
   damage_marked?: number;
+  // Regeneration shields on this permanent (CR 701.19a, #667). Each
+  // one replaces the next destruction this turn: instead of dying it
+  // is tapped, all damage is removed from it and it leaves combat.
+  // Public state, like damage_marked; omitted when zero.
+  regeneration_shields?: number;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to

@@ -218,6 +218,30 @@ type Card struct {
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
 
+	// RegenerationShields is how many regeneration shields (CR
+	// 701.19a) this permanent is carrying. Each one replaces the next
+	// destruction of this permanent THIS TURN — tap it, remove all
+	// damage from it, remove it from combat — and is used up doing so.
+	// Cleared by the cleanup step alongside DamageMarked, and by the
+	// battlefield exit, because a shield belongs to the permanent that
+	// was given one and the card in the next zone is a new object
+	// (CR 400.7).
+	//
+	// A COUNT rather than a flag because "regenerate it twice" is two
+	// shields and survives two destructions (CR 701.19a's "the next
+	// time"), and a count rather than a Duration-scoped entry
+	// (ADR 0063) because a shield is not a continuous effect: it
+	// changes no characteristic, it is consumed rather than expiring
+	// when it applies, and it belongs to ONE object — which is exactly
+	// what a per-object integer says. The engine reads it from one
+	// place, the CR 701.19 built-in replacement in
+	// builtin_replacements.go. See regeneration.go.
+	//
+	// It is NOT a counter (CR 122): nothing that reads, removes,
+	// doubles or proliferates counters may see it, so it deliberately
+	// does not live in Card.Counters. Added in #667.
+	RegenerationShields int
+
 	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's

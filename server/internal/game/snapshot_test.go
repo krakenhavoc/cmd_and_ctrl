@@ -341,8 +341,8 @@ func TestSnapshotRoundTripKeepsGameUsable(t *testing.T) {
 	if n := len(restored.Listeners); n != len(g.Listeners) {
 		t.Errorf("restored game has %d listeners, want %d — they are rebuilt by NewGame, not serialised", n, len(g.Listeners))
 	}
-	if n := len(restored.BuiltinReplacements); n != 1 {
-		t.Errorf("restored game has %d built-in replacements, want 1 (commander zone)", n)
+	if n := len(restored.BuiltinReplacements); n != len(g.BuiltinReplacements) {
+		t.Errorf("restored game has %d built-in replacements, want %d — they are registered by NewGame, not serialised", n, len(g.BuiltinReplacements))
 	}
 	// The layer engine must be stale so the first read recomputes
 	// against the restored board rather than serving a cache that

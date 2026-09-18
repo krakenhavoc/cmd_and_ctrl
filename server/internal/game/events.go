@@ -192,13 +192,33 @@ const (
 	// too. Actor is the sacrificing player (the controller), CardID
 	// the permanent.
 	//
-	// Sacrifice is NOT destruction: it ignores indestructible and
-	// regeneration, and "if a creature would die" replacements that
-	// key on destruction don't see it. Aristocrats payoffs ("whenever
+	// Sacrifice is NOT destruction: it ignores indestructible
+	// (CR 702.12b) and regeneration (CR 701.19a), and "if a creature
+	// would die" replacements that key on destruction don't see it —
+	// the exit it takes carries no Destruction flag (#667). Aristocrats payoffs ("whenever
 	// you sacrifice a permanent") watch this kind; "whenever a
 	// creature dies" payoffs watch EventLTB as before. Added in S21
 	// sub-PR 1.
 	EventSacrifice EventKind = "sacrifice"
+
+	// EventRegenerated — a regeneration shield replaced a destruction
+	// (CR 701.19a). Emitted by the engine built-in that owns the rule
+	// (regeneration.go), AFTER the shield has been spent and the
+	// permanent has been tapped, cleaned of damage and taken out of
+	// combat, and INSTEAD of the destruction: nothing left the
+	// battlefield, so there is no EventZoneMove and no EventLTB, and
+	// no dies-trigger fires.
+	//
+	// Actor is the permanent's controller, CardID and Source the
+	// permanent itself. Nothing in the catalog watches it yet — it is
+	// here because a regeneration is a thing that HAPPENED and the
+	// game log has to be able to say so, and because "whenever a
+	// permanent is regenerated" is a printed wording.
+	//
+	// It is NOT emitted when a shield is created: creating one changes
+	// nothing a player can observe except the shield count itself,
+	// which the wire carries on the card. Added in #667.
+	EventRegenerated EventKind = "regenerated"
 
 	// EventAttack — CardID was declared as an attacker. Actor is the
 	// attacking creature's controller; Target is the player it is

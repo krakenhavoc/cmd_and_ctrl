@@ -194,6 +194,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// number and brought it back with it when it was replayed —
 		// dying to the first ping. See clearBattlefieldDamage.
 		clearBattlefieldDamage(&c)
+		// #667 / CR 400.7, and the same argument marked damage makes
+		// one line up: a regeneration shield was given to the
+		// permanent, and what lands in the new zone is a new object
+		// that was never given one. A creature that dies with a shield
+		// unused and comes back does not come back protected.
+		c.RegenerationShields = 0
 		// S24 / ADR 0036 decision 12: an Equipment or Aura that
 		// leaves the battlefield stops being attached. This is the
 		// FORWARD direction only — permanents attached to a host

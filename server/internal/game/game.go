@@ -571,7 +571,10 @@ func NewGame() *Game {
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See
 	// builtin_replacements.go.
-	g.BuiltinReplacements = append(g.BuiltinReplacements, commanderZoneReplacement)
+	g.BuiltinReplacements = append(g.BuiltinReplacements,
+		commanderZoneReplacement,
+		regenerationShieldReplacement,
+	)
 	return g
 }
 

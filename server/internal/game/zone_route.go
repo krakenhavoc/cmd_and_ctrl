@@ -206,6 +206,18 @@ type zoneRoute struct {
 	// exit already had. #815.
 	ViaBattlefieldLeave bool
 
+	// Destruction marks this exit as a DESTRUCTION (CR 701.7a) rather
+	// than a sacrifice, a legend-rule death, an illegally attached
+	// Aura or a zero-counter state-based action, all of which take the
+	// same ViaBattlefieldLeave exit. It rides onto
+	// ReplacementEvent.Destruction, where the CR 701.19 regeneration
+	// built-in reads it. #667.
+	//
+	// CantBeRegenerated is the rider a destroying effect prints
+	// alongside it (CR 701.19c). Meaningless without Destruction.
+	Destruction       bool
+	CantBeRegenerated bool
+
 	// simultaneousExit carries the pre-move copies for a destroy batch
 	// whose current leg may pause. The snapshot has to be active around
 	// the physical move on BOTH paths: the inline path and the later

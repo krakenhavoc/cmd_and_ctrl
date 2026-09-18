@@ -6,8 +6,12 @@ import "github.com/google/uuid"
 // operation (CR 701.21). A permanent is sacrificed by its
 // controller, as a cost (Goblin Bombardment, Treasure's mana
 // ability) or as an effect's instruction. It is NOT destroyed:
-// indestructible and regeneration don't apply, and a replacement
-// keyed on destruction never sees it.
+// indestructible (CR 702.12b) and regeneration (CR 701.19a) don't
+// apply, and a replacement keyed on destruction never sees it. That
+// last one is load-bearing since #667 rather than merely true: this
+// file routes through the SAME battlefield exit a destruction does,
+// and the only thing that tells them apart is that the destroy route
+// declares zoneRoute.Destruction and this one does not.
 //
 // The mechanics are deliberately thin — the permanent takes the
 // ordinary route to its owner's graveyard, so dies-triggers, the

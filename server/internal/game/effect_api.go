@@ -998,8 +998,16 @@ func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until fu
 // indestructible.go for why the check cannot live one level down in
 // routeBattlefieldCardToOwnerGraveyardLocked, which sacrifice and
 // the zero-counter SBAs share.
-func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
-	return g.destroyBattlefieldPermanentLocked(cardID)
+//
+// #667: it is also where "it can't be regenerated" (CR 701.19c) goes.
+// Pass DestroyOptions{CantBeRegenerated: true} — Damnation, Day of
+// Judgment, Mortify, Putrefy, Pongify and the rest of the family — and
+// the flag rides the destroy route onto the CR 614 event, where the
+// regeneration built-in reads it and declines (regeneration.go). The
+// rider is variadic so the hundred-odd plain "destroy this" calls stay
+// as they were; at most one is meaningful.
+func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID, opts ...DestroyOptions) error {
+	return g.destroyBattlefieldPermanentLocked(cardID, firstDestroyOptions(opts))
 }
 
 // SacrificePermanentForEffect sacrifices a battlefield permanent on
