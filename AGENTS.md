@@ -1531,6 +1531,23 @@ primitive with `To: game.ZoneExile`, and it is not a mill — no
 `EventMill`, no mill payoff. See
 [ADR 0013 §5l](docs/decisions/0013-replacement-effects.md).
 
+**A card that exiles and then USES the card hands the rest over
+(#894).** "Exile it, then return it" (`Flicker`), "exile all creature
+cards from graveyards, then put all cards exiled this way onto the
+battlefield" (Living Death), "exile target creature, then its
+controller searches" (Path to Exile): the second half belongs in
+`ExileTarget.Then` — or, for a set, in `g.ExileCardsThenForEffect`'s
+continuation, which also hands over the cards that really reached
+exile. Written as the next line it runs while a commander's CR 903.9
+prompt is still open, which at best asks the table two questions at
+once and at worst LOSES the card: the return half finds nothing in
+exile, finishes, and the commander lands there a moment later with
+nothing left to move it. Gate the second half on the `exiled` /
+landed answer when the card says "if you do" or acts on the exiled
+card, and leave it ungated when it is a separate sentence (Path's
+search happens either way). See
+[ADR 0013 §5m](docs/decisions/0013-replacement-effects.md).
+
 **Never call a locking accessor inside a snapshot body (#877).**
 Anything that runs inside `g.ReadSnapshot(func(){…})` or
 `g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`

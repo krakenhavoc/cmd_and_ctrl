@@ -1113,6 +1113,112 @@ the route. The undo contract is the one §5k's exile batch signs, and
 again, and the same cards are milled and the same list reported,
 because the landed list is carried forward by value.
 
+### 5m. Amendment, 2026-09-18: a card that exiles and then uses the card waits
+
+*Amendment, 2026-09-18, branch `fix/893-894-mill-and-living-death`.
+Closes [#894](https://github.com/krakenhavoc/cmd_and_ctrl/issues/894),
+filed by the #870/#877 agent in PR #878.*
+
+§5k gave the batch a continuation and #870 gave the single card one.
+This is the two catalog callers that still wrote the next line instead
+of handing one over, and the first of them lost a card doing it.
+
+**1. Living Death, and the only bug in this pair that changes an
+outcome.** "Each player exiles all creature cards from their graveyard,
+then sacrifices all creatures they control, then puts all cards they
+exiled this way onto the battlefield." The three passes were three
+loops, and the first loop's legs can PAUSE: a commander card in any
+graveyard asks its owner about the command zone. The swap did not wait.
+It sacrificed, it reanimated what was in exile at that moment, and it
+finished — and the commander then landed in exile with the step that
+would have returned it already over. Stranded, with nothing in the game
+that could ever move it again.
+
+Now the exile is ONE batch (`ExileCardsThenForEffect`) and the other
+two passes are its continuation. Three things fall out of it:
+
+- **The reanimated set is the LANDED list**, which is precisely what
+  "all cards they exiled this way" means (CR 400.7, §5k). A commander
+  that takes the command zone is not in it and does not come back —
+  the right answer, where the old loop had no answer at all.
+- **Both remaining passes share ONE continuation**, because a
+  battlefield ENTRY cannot pause:
+  `ReturnFromExileToBattlefieldForEffect` consults the pipeline before
+  the card leaves exile and DROPS the return if a CR 616 prompt is
+  queued rather than waiting on it. If that ever changes, the
+  reanimation half needs a continuation of its own.
+- **Both sides are gathered before anything moves**, the graveyard side
+  in particular. The creatures sacrificed in pass 2 land in graveyards,
+  and a set re-gathered on the far side of the exile would reanimate
+  them too — the trick the card is built on, and it is now protected by
+  a value carried into the continuation rather than by the passes
+  happening to run back to back.
+
+The sacrifice pass is still per-card and fire-and-forget. A commander
+sacrificed there is asked its own CR 903.9 question and lands a beat
+later, which strands nothing — the card is where it was until the
+answer — and nothing in Living Death reads the sacrifice. There is no
+batch-with-continuation form of sacrifice to use; when one exists this
+is a caller for it.
+
+**2. Path to Exile, and the reason it is here anyway.** The outcome was
+always right: "Exile target creature. Its controller may search their
+library for a basic land card." The search ran on the next line, so a
+commander's owner was offered the search while their own command-zone
+question was still open — two prompts at once, in the wrong order, at a
+table where the second one is a reasonable thing to answer first. It
+moves into `ExileTarget.Then` and the `exiled` answer is deliberately
+IGNORED: the search is a separate sentence, not an "if you do", so it
+is offered whichever way the question is answered. Only the ORDER
+changes, which is the whole of the fix and the whole of its risk.
+
+**3. The `Flicker` primitive is Living Death with one card.** "Exile
+it, then return it" was the same two lines, and a flickered commander
+was asked about the command zone, had its return run against an empty
+exile, and stayed in exile for good. It is `ExileTarget.Then` now,
+gated on `exiled` this time — a commander that takes the command zone
+stays there, which is what CR 903.9 says happens and not a card lost.
+One catalog card uses it today (Y'shtola Rhul); every future one gets
+the fix for free, which is the argument for putting it in the primitive
+rather than in the card.
+
+**4. What can now pause where it could not before.** Living Death's
+sacrifice and reanimation halves, Path to Exile's search, and any
+`Flicker`. In each case the delay is one action and it happens only
+when a commander is actually caught in the effect.
+
+**5. What was deliberately NOT converted**, so the next reader does not
+assume it was missed:
+
+- **The mass exiles with no `Then`** — Farewell's up-to-four halves,
+  Merciless Eviction, Selective Obliteration. §5k already declared the
+  fire-and-forget sweeps untouched; no half reads another's outcome and
+  nothing is stranded, so what a paused leg costs them is interleaving,
+  not correctness.
+- **Exile-then-a-silent-unconditional-clause** — Swords to Plowshares,
+  Solitude, Resculpt, Anguished Unmaking, Ashes to Ashes, Cemetery
+  Reaper, Heritage Reclamation, Patron of the Vein, Deathrite Shaman's
+  two graveyard modes. The clause is not gated on the exile and asks
+  nobody anything, so the order is unobservable.
+- **Exile-then-a-clause-about-the-CARD** — Cling to Dust, Scavenging
+  Ooze, Deluge of the Dead ("if it was a creature card"). The condition
+  reads the card's type, which is known before the move, and CR 903.9
+  is a "may" the clause does not mention. Gating these on the landed
+  outcome is a rules question rather than a plumbing one, and it is not
+  this issue's.
+- **Deathrite Shaman's mana mode.** Its target is a land card in a
+  graveyard, which the CR 903.9 built-in can only fire for if a land is
+  flagged as a commander, and the follow-up is MANA — delaying that
+  behind a prompt in the middle of paying for something is a change
+  with a bigger blast radius than the ordering it would fix.
+
+**6. Nothing new is snapshotted.** Both cards ride
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, which ride
+`zoneRoute.then` and the `replacementResume` frame from §5g. The undo
+contract is §5k's and `paused_exile_continuations_test.go` pins it on
+the card: rewind into the open prompt, answer the other way, and the
+board follows that answer.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

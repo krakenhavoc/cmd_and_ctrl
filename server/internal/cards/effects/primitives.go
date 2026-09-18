@@ -229,6 +229,15 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 // step, return it") is NOT this: it exiles now and schedules a
 // separate delayed trigger for the return — see
 // ScheduleDelayedTrigger.
+//
+// #894: the return is the exile's CONTINUATION, because the exile can
+// pause. A commander flickered by the old two-line form was asked about
+// the command zone, the return ran with that question still open and
+// found nothing in exile to bring back, and the commander landed in
+// exile for good a moment later. The return now waits, and it happens
+// only if the card really reached exile — a commander that takes the
+// command zone stays there, which is the printed outcome rather than a
+// stranded card.
 type Flicker struct {
 	Target     uuid.UUID
 	Controller uuid.UUID
@@ -236,10 +245,15 @@ type Flicker struct {
 }
 
 func (f Flicker) Apply(ctx *Context) error {
-	if err := (ExileTarget{Target: f.Target}).Apply(ctx); err != nil {
-		return err
-	}
-	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+	return ExileTarget{
+		Target: f.Target,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				return nil
+			}
+			return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // ScheduleDelayedTrigger registers a CR 603.7 delayed triggered
