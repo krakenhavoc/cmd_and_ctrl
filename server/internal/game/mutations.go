@@ -2547,6 +2547,14 @@ func (g *Game) runStateChecksLocked() {
 	const maxIter = 32
 	departuresPending := false
 	for i := 0; i < maxIter; i++ {
+		// #809 / CR 603.3d: a targeted trigger dispatched from inside a
+		// resolving spell's own events froze its legal set while that
+		// spell was still on the stack. This is the priority-grant
+		// boundary the rules choose targets at, so the frozen set is
+		// re-read here — widened, narrowed, or withdrawn outright when
+		// nothing legal is left. No-op when no pick_target is open,
+		// which is nearly every call. See trigger_target_timing.go.
+		g.refreshTargetChoicesLocked()
 		fired, left := g.stateBasedActionsLocked()
 		departuresPending = departuresPending || left
 		if departuresPending && g.State == StateActive {
