@@ -165,10 +165,20 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// own and carries its own X.
 	spend := game.ManaSpendForCast(card)
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
+	// Additional costs (CR 601.2f). Read before the X search because
+	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
+	// whole of its X, and the mana cost it prints has no {X} slot at
+	// all (#957). The payments themselves are expanded below.
+	addCost := game.AdditionalCostFor(game.CatalogKey(card))
 	// #810: the one X rule. A spell whose whole effect is X (Fireball,
 	// Stroke of Genius) is not offered at X=0, where it would resolve
-	// for nothing; a spell with a fixed rider still is. See x.go.
+	// for nothing; a spell with a fixed rider still is. #957 is the
+	// same rule reaching the non-mana half of the price: the floor is
+	// the same one, and xCeilingFromCost is what a "pay X life" cost
+	// can pay for (CR 119.4, less one so the seat survives its own
+	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
+	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
 	x := 0
 	if !perTarget {
 		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
@@ -180,7 +190,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 			return
 		}
 		var ok bool
-		x, ok = e.affordableXFrom(priced, spend, xFloor)
+		x, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
 		if !ok {
 			return
 		}
@@ -200,10 +210,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 		}
 	}
 
-	// Additional costs (CR 601.2f). Discards choose from the rest of
-	// the hand; a sacrifice chooses from the seat's own permanents
-	// matching the clause.
-	addCost := game.AdditionalCostFor(game.CatalogKey(card))
+	// The additional cost's PAYMENTS (CR 601.2f), read above. Discards
+	// choose from the rest of the hand; a sacrifice chooses from the
+	// seat's own permanents matching the clause. A pay-X-life needs no
+	// payment set of its own — the announced X is the payment, and it
+	// was priced with the rest of X above.
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
 	if addCost != nil && !addCost.Empty() {
@@ -301,7 +312,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					continue
 				}
 				var ok bool
-				setX, ok = e.affordableXFrom(priced, spend, xFloor)
+				setX, ok = e.announcedX(priced, spend, xFloor, xLifeCeiling)
 				if !ok {
 					continue
 				}

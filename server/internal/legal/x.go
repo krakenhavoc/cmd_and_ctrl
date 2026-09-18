@@ -35,17 +35,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // search below takes the LARGEST affordable X: a rider's X=0 is
 // offered exactly when no larger announcement can be paid for.
 //
-// TWO GAPS, both of them "the enumerator is not choosing X here":
+// ONE GAP LEFT, and it is "the enumerator is not choosing X here":
 //
-//   - X from a cost that is not the mana cost. Toxic Deluge announces
-//     X by paying X life (AdditionalCost.PayLifeX) and Waterbender's
-//     Restoration by a waterbend TapPermanentsCost. Nothing in this
-//     package prices either, so it announces 0 and the rule below
-//     never fires (the floor is meaningless on a cost with no {X}
-//     slot). Toxic Deluge is therefore still offered at X=0.
 //   - CountFromX on an ACTIVATED ability. The engine resolves an
 //     X-defined target count for casts only (game/mutations.go), so
 //     the tie in cast.go has no ability-side twin to mirror.
+//
+// The other one — X announced by a cost that is not the mana cost —
+// is closed for the "pay X life" half by xCeilingFromCost below
+// (#957). Waterbender's Restoration's waterbend TapPermanentsCost is
+// still unpriced; cast.go declines to enumerate that cast rather than
+// announcing an X it cannot pay for.
 func enumeratedXFloor(catalogKey string, printedFloor int) int {
 	// The printed floor wins when it is higher: Helm of Obedience's
 	// MinX(1) is a rule of the card, this is a rule about offers, and
@@ -57,4 +57,76 @@ func enumeratedXFloor(catalogKey string, printedFloor int) int {
 		return 1
 	}
 	return printedFloor
+}
+
+// noXCeiling means "no cost component other than the mana cost prices
+// X", which is every card but the pay-X-life family today.
+const noXCeiling = -1
+
+// xCeilingFromCost is the largest X a NON-MANA cost component lets the
+// seat announce, or noXCeiling when no component prices one (#957).
+//
+// X is ONE announced number (CR 601.2b) and the mana cost is not the
+// only thing that can charge for it. Toxic Deluge prints {2}{B} with
+// no {X} anywhere in it and announces X by paying X life, so the
+// {X}-slot search in cast.go answers 0 for it and always would — the
+// spell was offered at X=0 and swept the board for -0/-0, #810's
+// zero-effect move arriving through a different seam.
+//
+// Keyed on the COST COMPONENT, not on the card: any future "as an
+// additional cost, pay X life" is priced by this line the day it is
+// registered, with no catalog entry and no per-card branch. The floor
+// is still enumeratedXFloor's — Toxic Deluge declares XMatters, so it
+// is 1 and a seat that cannot reach 1 is offered no cast at all.
+//
+// The ceiling is life - 1, not life. CR 119.4 permits paying exactly
+// your life total, and the engine accepts it (the announce check in
+// game/additional_cost.go is `xValue > p.Life`); this package will not
+// OFFER it, on the same "what is worth putting in front of a player"
+// footing as the X=0 rule above. A sweep that kills the caster is not
+// a move a bot should be handed as its only pricing of the card.
+func xCeilingFromCost(addCost *game.AdditionalCost, life int) int {
+	if addCost == nil || !addCost.PayLifeX {
+		return noXCeiling
+	}
+	if life < 1 {
+		return 0
+	}
+	return life - 1
+}
+
+// announcedX is the one number a cast announces for X: the largest
+// value EVERY cost component that prices X can pay for, at or above
+// the floor, capped by Options.MaxX like any other X search. Reports
+// false when the floor cannot be met — no move at all, rather than a
+// free one.
+//
+// `priced` is the mana cost after modifiers; `lifeCeiling` comes from
+// xCeilingFromCost. A cost with no {X} slot has no mana ceiling, so
+// the life ceiling is the whole answer (Toxic Deluge); a cost with
+// both would take the smaller, and a cost with neither keeps
+// affordableXFrom's answer unchanged.
+func (e *enumerator) announcedX(
+	priced game.ParsedCost,
+	spend game.ManaSpendContext,
+	floor int,
+	lifeCeiling int,
+) (int, bool) {
+	x, ok := e.affordableXFrom(priced, spend, floor)
+	if !ok {
+		return 0, false
+	}
+	if lifeCeiling == noXCeiling {
+		return x, true
+	}
+	if priced.XSlots == 0 || lifeCeiling < x {
+		x = lifeCeiling
+	}
+	if x > e.opts.MaxX {
+		x = e.opts.MaxX
+	}
+	if x < floor {
+		return 0, false
+	}
+	return x, true
 }
