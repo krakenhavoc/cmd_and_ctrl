@@ -229,6 +229,15 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 // step, return it") is NOT this: it exiles now and schedules a
 // separate delayed trigger for the return — see
 // ScheduleDelayedTrigger.
+//
+// #894: the return is the exile's CONTINUATION, because the exile can
+// pause. A commander flickered by the old two-line form was asked about
+// the command zone, the return ran with that question still open and
+// found nothing in exile to bring back, and the commander landed in
+// exile for good a moment later. The return now waits, and it happens
+// only if the card really reached exile — a commander that takes the
+// command zone stays there, which is the printed outcome rather than a
+// stranded card.
 type Flicker struct {
 	Target     uuid.UUID
 	Controller uuid.UUID
@@ -236,10 +245,15 @@ type Flicker struct {
 }
 
 func (f Flicker) Apply(ctx *Context) error {
-	if err := (ExileTarget{Target: f.Target}).Apply(ctx); err != nil {
-		return err
-	}
-	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+	return ExileTarget{
+		Target: f.Target,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				return nil
+			}
+			return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // ScheduleDelayedTrigger registers a CR 603.7 delayed triggered
@@ -705,7 +719,7 @@ func (s ShuffleLibrary) Apply(ctx *Context) error {
 //   - "... until a creature card is put into their graveyard" — Until
 //     ends the run after the first card it accepts, and the card that
 //     ends it still moves.
-//   - "... then do something with the cards milled this way" — Milled
+//   - "... then do something with the cards milled this way" — Then
 //     receives them in the order they came off the library. Diffing
 //     the graveyard afterwards would be wrong the moment anything
 //     else put a card there during the same resolution.
@@ -725,14 +739,34 @@ type MillToZone struct {
 	// library", which is how an unbounded mill is written.
 	Until func(c game.Card) bool
 
-	// Milled, when non-nil, is filled with the instance IDs that
-	// moved, in library order (top first).
-	Milled *[]uuid.UUID
+	// Then is the "for each card milled this way" clause, and `milled`
+	// holds the instance IDs that actually reached To, in library
+	// order (top first). Optional; leave it nil for a mill with
+	// nothing hanging off it.
+	//
+	// #893: it runs from a CONTINUATION, for the reason
+	// ExileTarget.Then and DestroyAllMatching.Then do — a mill opens
+	// the CR 614 window per card, so a commander coming off the top
+	// stops to answer CR 903.9 and what was milled is not knowable on
+	// the next line. `milled` is CR 400.7's reading: a card a
+	// replacement sent somewhere else (the command zone, or exile
+	// under "if a card would be put into a graveyard from anywhere,
+	// exile it instead") is not in it, however thoroughly it left the
+	// library. Write the clause as something that acts on what it is
+	// told, not as the next line of the card.
+	Then func(ctx *Context, milled []uuid.UUID) error
 }
 
 func (m MillToZone) Apply(ctx *Context) error {
 	if m.N <= 0 && m.Until == nil {
-		return nil
+		if m.Then == nil {
+			return nil
+		}
+		// A mill of nothing is still an answer. A caller sequencing
+		// several mills through the continuation has to be told, or it
+		// waits forever — the rule runRouteTailLocked follows for every
+		// terminal outcome of a routed move.
+		return m.Then(ctx, nil)
 	}
 	dest := m.To
 	if dest == "" {
@@ -742,11 +776,23 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	moved, err := ctx.Game.MillToZoneForEffect(player, m.N, dest, m.Until)
-	if m.Milled != nil {
-		*m.Milled = moved
+	if m.Then == nil {
+		// Nothing is waiting on the list, so the mill stays
+		// fire-and-forget: every card is routed on this line and a
+		// commander's CR 903.9 prompt lands its own card later without
+		// holding the rest of the mill up.
+		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest, m.Until)
+		return err
 	}
-	return err
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until,
+		func(g *game.Game, milled []uuid.UUID) error {
+			return m.Then(NewContext(g, item), milled)
+		})
 }
 
 // ExileTopFaceDown is "exile the top N cards of your library face

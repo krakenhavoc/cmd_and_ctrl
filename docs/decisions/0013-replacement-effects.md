@@ -1013,6 +1013,212 @@ its own — `ExileCardThenForEffect` is a wrapper over
 `ExileCardsThenForEffect` with a batch of one, so one card gets the
 same CR 400.7 answer and the same replay-under-undo as a sweep.*
 
+### 5l. Amendment, 2026-09-18: a mill counts what landed
+
+*Amendment, 2026-09-18, branch `fix/893-894-mill-and-living-death`.
+Closes [#893](https://github.com/krakenhavoc/cmd_and_ctrl/issues/893),
+filed by the #870/#877 agent in PR #878.*
+
+§5i fixed the destroy sweep's number and §5k fixed exile's and
+bounce's. The mill was the fourth verb with a "this way" clause on it
+and the one nobody had looked at: `MillToZoneForEffect` returned every
+leg that had not PAUSED, so the list it handed back held a card the
+CR 614 window had cancelled, a card a replacement had sent somewhere
+else, and — because a pause is the one thing it did check — nothing at
+all for the leg that mattered most. Oona, Queen of the Fae reads that
+list as "for each card of the chosen color exiled this way" and made a
+Faerie for a commander whose owner was still being ASKED about the
+command zone.
+
+**1. The rule is CR 400.7, read against the destination the mill asked
+for.** Not a new rule and not a new function: `landedInZoneLocked` is
+the one §5k wrote, and the mill asks it the same question exile and
+bounce do.
+
+| Where it landed | Milled this way? |
+| --- | --- |
+| the destination the mill named (a graveyard, or exile for "exile the top N") | yes |
+| the command zone (CR 903.9 took the offer) | no |
+| anywhere else — "if a card would be put into a graveyard from anywhere, exile it instead" | no |
+| still on the library (cancelled, or the prompt abandoned — §5j) | no |
+
+The event shape already agreed with this and had since #529:
+`zoneRoute.Mill` is honoured only when the card really reaches a
+graveyard, because CR 701.17a defines the keyword action by its
+destination. What did not agree was the number the caller was handed.
+Now one answer serves both.
+
+**2. One body, and no second mill.** The mill joins
+`routeAllThenLocked` with a fourth template, `millRoute(player, dest)`
+— a function rather than a package var because two things about a mill
+belong to the caller: the destination (a graveyard for CR 701.17a's
+mill, exile for "exile the top N cards of your library", which is not a
+mill) and the Actor, which is the player whose library is being read
+and not the card's owner.
+
+`MillToZoneThenForEffect(player, n, dest, until, then)` is the
+continuation form, `MillToZoneForEffect` keeps its signature and its
+slice, and both plan the mill through `millPlanLocked` so they cannot
+disagree about what a mill of n is. The fire-and-forget form needed the
+IDs rather than a count, so `routeAllLocked`'s loop became
+`routeAllLandedLocked` and the count is its length — one loop, not two.
+
+**3. `until` is answered before the first move, and that is exact.**
+Helm of Obedience's "mills until a creature card is put into their
+graveyard" is a predicate on the card that came OFF THE LIBRARY, not on
+where that card ended up, and the batch was already chosen up front
+(#529). So the run is truncated in the plan, which is what lets the
+plan be a plain list of IDs — the only thing the shared body takes —
+and it is identical to the old post-move loop card for card.
+
+Its one deviation is now declared on the card: a commander that takes
+the command zone was never put into a graveyard, so by CR 701.17a's
+letter the Helm should keep milling, and it stops instead. That is the
+caveat Helm of Obedience carries, rewritten to say so.
+
+**4. The two forms differ in one thing, and #529 chose it.** A paused
+mill must not re-read the top of the library, and the plan-up-front
+answers that for both forms. What the FIRE-AND-FORGET form keeps is
+#529's second half: it proceeds AROUND the paused card, milling the
+rest on this line, because nothing is waiting on its answer. The `Then`
+form cannot — a list that is still being decided is not a list — so it
+sequences, and the rest of the mill happens when the prompt is
+answered. That is the same trade §5i's destroy batch and §5g's discard
+batch make, and it is the only version that can report a true list.
+
+**5. What can now pause that could not before.** Five catalog readers,
+and only readers; every fire-and-forget mill in the catalog is
+untouched.
+
+- **Oona, Queen of the Fae** — the issue. The Faeries wait for the
+  answer and a commander that takes the command zone pays for none.
+- **Helm of Obedience** — "a creature card put into their graveyard" is
+  now read after the answer, so a commander that goes to the graveyard
+  IS reanimated. It used to read the list with the prompt open, find
+  nothing, and drop its own second half.
+- **Sphinx's Tutelage** — the repeat is recursion through the
+  continuation rather than a loop, so "if two nonland cards that share
+  a color were milled this way" is asked about cards that arrived.
+- **Dread Summons** — the seats are milled in sequence, each from the
+  previous one's continuation, with the creature tally carried forward
+  BY VALUE for the reason `LoseLifeEachThenForEffect` gives (§5b).
+- **Oblivion Sower** — it walks the exile zone rather than the returned
+  slice, which is the same read one line too early.
+
+**6. Nothing new is snapshotted.** The mill rides `zoneRoute.then` and
+the `replacementResume` frame every other exit has used since §5g, and
+`cloneReplacementResume` already gives an undo snapshot its own copy of
+the route. The undo contract is the one §5k's exile batch signs, and
+`milled_this_way_test.go` pins it: rewind into the open prompt, answer
+again, and the same cards are milled and the same list reported,
+because the landed list is carried forward by value.
+
+### 5m. Amendment, 2026-09-18: a card that exiles and then uses the card waits
+
+*Amendment, 2026-09-18, branch `fix/893-894-mill-and-living-death`.
+Closes [#894](https://github.com/krakenhavoc/cmd_and_ctrl/issues/894),
+filed by the #870/#877 agent in PR #878.*
+
+§5k gave the batch a continuation and #870 gave the single card one.
+This is the two catalog callers that still wrote the next line instead
+of handing one over, and the first of them lost a card doing it.
+
+**1. Living Death, and the only bug in this pair that changes an
+outcome.** "Each player exiles all creature cards from their graveyard,
+then sacrifices all creatures they control, then puts all cards they
+exiled this way onto the battlefield." The three passes were three
+loops, and the first loop's legs can PAUSE: a commander card in any
+graveyard asks its owner about the command zone. The swap did not wait.
+It sacrificed, it reanimated what was in exile at that moment, and it
+finished — and the commander then landed in exile with the step that
+would have returned it already over. Stranded, with nothing in the game
+that could ever move it again.
+
+Now the exile is ONE batch (`ExileCardsThenForEffect`) and the other
+two passes are its continuation. Three things fall out of it:
+
+- **The reanimated set is the LANDED list**, which is precisely what
+  "all cards they exiled this way" means (CR 400.7, §5k). A commander
+  that takes the command zone is not in it and does not come back —
+  the right answer, where the old loop had no answer at all.
+- **Both remaining passes share ONE continuation**, because a
+  battlefield ENTRY cannot pause:
+  `ReturnFromExileToBattlefieldForEffect` consults the pipeline before
+  the card leaves exile and DROPS the return if a CR 616 prompt is
+  queued rather than waiting on it. If that ever changes, the
+  reanimation half needs a continuation of its own.
+- **Both sides are gathered before anything moves**, the graveyard side
+  in particular. The creatures sacrificed in pass 2 land in graveyards,
+  and a set re-gathered on the far side of the exile would reanimate
+  them too — the trick the card is built on, and it is now protected by
+  a value carried into the continuation rather than by the passes
+  happening to run back to back.
+
+The sacrifice pass is still per-card and fire-and-forget. A commander
+sacrificed there is asked its own CR 903.9 question and lands a beat
+later, which strands nothing — the card is where it was until the
+answer — and nothing in Living Death reads the sacrifice. There is no
+batch-with-continuation form of sacrifice to use; when one exists this
+is a caller for it.
+
+**2. Path to Exile, and the reason it is here anyway.** The outcome was
+always right: "Exile target creature. Its controller may search their
+library for a basic land card." The search ran on the next line, so a
+commander's owner was offered the search while their own command-zone
+question was still open — two prompts at once, in the wrong order, at a
+table where the second one is a reasonable thing to answer first. It
+moves into `ExileTarget.Then` and the `exiled` answer is deliberately
+IGNORED: the search is a separate sentence, not an "if you do", so it
+is offered whichever way the question is answered. Only the ORDER
+changes, which is the whole of the fix and the whole of its risk.
+
+**3. The `Flicker` primitive is Living Death with one card.** "Exile
+it, then return it" was the same two lines, and a flickered commander
+was asked about the command zone, had its return run against an empty
+exile, and stayed in exile for good. It is `ExileTarget.Then` now,
+gated on `exiled` this time — a commander that takes the command zone
+stays there, which is what CR 903.9 says happens and not a card lost.
+One catalog card uses it today (Y'shtola Rhul); every future one gets
+the fix for free, which is the argument for putting it in the primitive
+rather than in the card.
+
+**4. What can now pause where it could not before.** Living Death's
+sacrifice and reanimation halves, Path to Exile's search, and any
+`Flicker`. In each case the delay is one action and it happens only
+when a commander is actually caught in the effect.
+
+**5. What was deliberately NOT converted**, so the next reader does not
+assume it was missed:
+
+- **The mass exiles with no `Then`** — Farewell's up-to-four halves,
+  Merciless Eviction, Selective Obliteration. §5k already declared the
+  fire-and-forget sweeps untouched; no half reads another's outcome and
+  nothing is stranded, so what a paused leg costs them is interleaving,
+  not correctness.
+- **Exile-then-a-silent-unconditional-clause** — Swords to Plowshares,
+  Solitude, Resculpt, Anguished Unmaking, Ashes to Ashes, Cemetery
+  Reaper, Heritage Reclamation, Patron of the Vein, Deathrite Shaman's
+  two graveyard modes. The clause is not gated on the exile and asks
+  nobody anything, so the order is unobservable.
+- **Exile-then-a-clause-about-the-CARD** — Cling to Dust, Scavenging
+  Ooze, Deluge of the Dead ("if it was a creature card"). The condition
+  reads the card's type, which is known before the move, and CR 903.9
+  is a "may" the clause does not mention. Gating these on the landed
+  outcome is a rules question rather than a plumbing one, and it is not
+  this issue's.
+- **Deathrite Shaman's mana mode.** Its target is a land card in a
+  graveyard, which the CR 903.9 built-in can only fire for if a land is
+  flagged as a commander, and the follow-up is MANA — delaying that
+  behind a prompt in the middle of paying for something is a change
+  with a bigger blast radius than the ordering it would fix.
+
+**6. Nothing new is snapshotted.** Both cards ride
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, which ride
+`zoneRoute.then` and the `replacementResume` frame from §5g. The undo
+contract is §5k's and `paused_exile_continuations_test.go` pins it on
+the card: rewind into the open prompt, answer the other way, and the
+board follows that answer.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

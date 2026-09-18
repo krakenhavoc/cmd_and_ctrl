@@ -318,18 +318,34 @@ func b35TutelageMill(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetPlayer {
 			continue
 		}
-		for guard := 0; guard < 200; guard++ {
-			var milled []uuid.UUID
-			if err := (MillToZone{Player: t.ID, N: 2, Milled: &milled}).Apply(ctx); err != nil {
-				return err
-			}
-			if !b35TwoNonlandCardsShareAColor(g, milled) {
-				return nil
-			}
-		}
-		return nil
+		return b35TutelageMillPass(ctx, t.ID, 0)
 	}
 	return nil
+}
+
+// b35TutelageMillPass is one pass of that repeat, and the repeat is
+// recursion through the mill's continuation rather than a loop.
+//
+// #893: the pair to test is the cards that were PUT INTO THE GRAVEYARD
+// this way (CR 400.7), and a commander coming off the top stops to
+// answer CR 903.9 — so the pass that decides whether to repeat cannot
+// read its own result on the next line. `guard` is carried by value,
+// which keeps the bound honest across an undo that rewinds into the
+// prompt and replays the answer.
+func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
+	if guard >= 200 {
+		return nil
+	}
+	return MillToZone{
+		Player: victim,
+		N:      2,
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
+				return nil
+			}
+			return b35TutelageMillPass(ctx, victim, guard+1)
+		},
+	}.Apply(ctx)
 }
 
 // b35LootOne is "draw a card, then discard a card" as an activated
@@ -404,26 +420,44 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 // each creature card that landed in a graveyard that way, all the
 // Zombies after all the mills as the printed "for each" reads.
 func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
-	x := ctx.X()
-	creatures := 0
-	for _, id := range tablePlayers(ctx) {
-		var milled []uuid.UUID
-		if err := (MillToZone{Player: id, N: x, Milled: &milled}).Apply(ctx); err != nil {
-			return err
+	return b35DreadSummonsMillStep(ctx, item, tablePlayers(ctx), ctx.X(), 0)
+}
+
+// b35DreadSummonsMillStep mills the head of `players` and continues
+// with the tail from that mill's continuation; the empty list is the
+// base case, where the Zombies are created.
+//
+// #893: "each creature card put into a graveyard this way" is what
+// LANDED in a graveyard (CR 400.7), and any seat's mill can stop to
+// ask its owner about CR 903.9, so the tally cannot be read on the line
+// after the mill and the seats cannot all be milled on one line either.
+// The running count is carried forward BY VALUE, which is what makes an
+// undo across the prompt replay identically rather than counting the
+// first run's creatures twice.
+func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.UUID, x, creatures int) error {
+	if len(players) == 0 {
+		if creatures == 0 {
+			return nil
 		}
-		for _, cardID := range milled {
-			if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
-				creatures++
+		return CreateTokenAdvanced{
+			Controller: item.Controller,
+			Spec:       Token(BlackZombieToken()).EntersTapped(),
+			N:          creatures,
+		}.Apply(ctx)
+	}
+	next, rest := players[0], players[1:]
+	return MillToZone{
+		Player: next,
+		N:      x,
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			found := creatures
+			for _, cardID := range milled {
+				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
+					found++
+				}
 			}
-		}
-	}
-	if creatures == 0 {
-		return nil
-	}
-	return CreateTokenAdvanced{
-		Controller: item.Controller,
-		Spec:       Token(BlackZombieToken()).EntersTapped(),
-		N:          creatures,
+			return b35DreadSummonsMillStep(ctx, item, rest, x, found)
+		},
 	}.Apply(ctx)
 }
 
