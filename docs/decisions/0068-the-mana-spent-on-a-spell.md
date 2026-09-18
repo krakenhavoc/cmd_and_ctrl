@@ -1,14 +1,16 @@
-# ADR 0070 — A stack item records the mana spent to cast it: converge, sunburst, adamant, and "if no mana was spent"
+# ADR 0068 — A stack item records the mana spent to cast it: converge, sunburst, adamant, and "if no mana was spent"
 
 **Status:** Accepted · 2026-09-18 · S44 — Mana and cost components
 **Issue:** [#761](https://github.com/krakenhavoc/cmd_and_ctrl/issues/761)
-**Numbering:** on 2026-09-18, after `git fetch origin`, every remote branch
-was enumerated (`git ls-remote --heads origin`) and every ADR file reachable
-from any ref listed (`git log --all --name-only -- docs/decisions/`). The
-highest number present anywhere is 0069 (`0069-face-down-objects.md`);
-0061–0064, 0066 and 0069 are today's other agents. 0065, 0067 and 0068 are
-unpushed branches at the time of writing and are left alone. 0005, 0024,
-0029 and 0030 stay permanently unused per AGENTS.md §4.
+**Numbering:** re-checked immediately before pushing on 2026-09-18, after a
+fresh fetch: every remote branch was enumerated (`git ls-remote --heads
+origin`) and every ADR file reachable from any ref listed
+(`git log --all --name-only -- docs/decisions/`). 0061–0067, 0069 and 0070
+are all taken by this sprint's other agents — 0070 twice over, by
+`0070-untap-step-choices.md` on another branch. **0068 is the one gap**,
+absent from every ref and from a repo-wide filename search, so this ADR
+takes it. 0005, 0024, 0029 and 0030 stay permanently unused per
+AGENTS.md §4.
 **Related:** [ADR 0040](0040-mana-pipeline.md) (the pool, the spend context
 and the solver this extends), [ADR 0048](0048-cost-modification.md)
 (`CastCost{Printed, Paid}` — what a spell was *charged*, as against what was

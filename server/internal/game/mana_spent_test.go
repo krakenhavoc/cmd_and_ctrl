@@ -9,7 +9,7 @@ import (
 // mana_spent_test.go — #761: a stack item records the mana that paid
 // for it.
 //
-// What is pinned here is the contract ADR 0070 argues for: the tokens
+// What is pinned here is the contract ADR 0068 argues for: the tokens
 // are recorded on every payment path, a waived charge says so out loud
 // rather than looking like a free cast, the colour-maximising strategy
 // is used only by a spell that reads colours, and the record survives

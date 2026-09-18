@@ -15,7 +15,7 @@ import (
 // what the card says — ctx.ColorsSpentCount(), SunburstCounters(),
 // AdamantSpent("R", 3) — and never reaches for the record itself.
 //
-// The one rule they all inherit, from ADR 0070 §3: a payment the
+// The one rule they all inherit, from ADR 0068 §3: a payment the
 // engine WAIVED (permissive mode, a strict-mode override) answers
 // "unknown", and every reader here takes unknown as the weaker
 // answer. Converge counts no colours, adamant does not turn on, and

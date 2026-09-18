@@ -1062,7 +1062,7 @@ are the ceiling, and the validator enforces it.
 
 The count the activator announces is the payment itself, so it rides the
 payment fields rather than a second X slot. It reaches the effect through
-`StackItem.Paid.CountersRemoved` — **the same record [ADR 0070](0070-the-mana-spent-on-a-spell.md)
+`StackItem.Paid.CountersRemoved` — **the same record [ADR 0068](0068-the-mana-spent-on-a-spell.md)
 introduces for the mana half**, designed once and landing in the same PR.
 An activated ability reads `ctx.CountersRemoved()`; a mana ability has no
 stack item (CR 605.3b), so its record is handed to

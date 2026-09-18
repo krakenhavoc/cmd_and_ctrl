@@ -403,7 +403,7 @@ type ManaAbilityShape struct {
 // colours of the mana that paid for it — converge (CR 702.86),
 // sunburst (CR 702.44), and nothing else today. It is the switch that
 // picks the colour-maximising payment strategy at the cast gate
-// (#761, ADR 0070 §5).
+// (#761, ADR 0068 §5).
 //
 // A declaration on effects.Spec rather than something inferred from
 // the oracle text, for the reason DerivesFromOtherSources is one: a
