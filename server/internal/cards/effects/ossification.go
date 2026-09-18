@@ -51,7 +51,10 @@ func init() {
 				Targets: TargetPermanent("target creature or planeswalker an opponent controls",
 					b41CreatureOrPlaneswalkerAnOpponentControls()),
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					return game.NewTriggeredItem(source, b41OssificationExileLabel, b41ExileFirstLegalTarget)
+					// b27ExileChosenTarget is Duplicant's body: exile
+					// whatever the pick stamped into the item, if it is
+					// still legal (CR 608.2b).
+					return game.NewTriggeredItem(source, b41OssificationExileLabel, b27ExileChosenTarget)
 				},
 			},
 			On(game.EventLTB, Self, "Ossification — return the exiled card",

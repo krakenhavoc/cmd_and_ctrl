@@ -18,7 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger goes on the stack, so the graveyard that gets emptied is the
 // one that exists at RESOLUTION. A player who mills themselves in
 // response loses those cards too, and a reanimation spell cast in
-// response resolves first and saves its creature.
+// response resolves first and saves its creature. The two cards share
+// one body (exileTargetPlayersGraveyard) because they are one
+// sentence.
 //
 // Mandatory and never a fizzle: every seated player is a legal target,
 // the Angel's own controller included, so a table with nothing in any
@@ -35,12 +37,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Angel of Finality — exile target player's graveyard",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return exileGraveyardForEffect(g, item, item.Targets[0].ID)
-					}),
+					exileTargetPlayersGraveyard),
 				TargetPlayer("target player")),
 		},
 	})

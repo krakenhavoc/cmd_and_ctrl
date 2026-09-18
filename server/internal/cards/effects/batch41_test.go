@@ -366,7 +366,6 @@ func TestB41RekiDrawsOnlyOnALegendarySpell(t *testing.T) {
 	}
 }
 
-
 func TestB41AuramancerMayRebuyAnEnchantmentCard(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

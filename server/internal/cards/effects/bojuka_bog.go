@@ -48,15 +48,25 @@ func init() {
 			Targets: TargetPlayer("target player"),
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, "Bojuka Bog — exile target player's graveyard",
-					func(g *game.Game, item *game.StackItem) error {
-						if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-							return nil
-						}
-						return exileGraveyardForEffect(g, item, item.Targets[0].ID)
-					})
+					exileTargetPlayersGraveyard)
 			},
 		}},
 	})
+}
+
+// exileTargetPlayersGraveyard is the whole body of "exile target
+// player's graveyard" — Bojuka Bog's trigger and Angel of Finality's,
+// which are the same sentence on a land and on a 3/4 flier.
+//
+// The player is read off the item's first target rather than
+// recomputed, because the clause targets: the graveyard emptied is the
+// one that player has at RESOLUTION, and a player who mills themselves
+// in response loses those cards too.
+func exileTargetPlayersGraveyard(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return nil
+	}
+	return exileGraveyardForEffect(g, item, item.Targets[0].ID)
 }
 
 // exileGraveyardForEffect exiles every card in one player's

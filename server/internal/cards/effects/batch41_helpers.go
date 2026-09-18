@@ -63,18 +63,14 @@ func b41CreatureOrPlaneswalkerAnOpponentControls() CardPredicate {
 // b41HasACounter is Chocobo Knights' "creatures you control with
 // counters on them" — ANY counter, not only +1/+1: a permanent with a
 // charge, loyalty, stun or oil counter is a creature with counters on
-// it. Zero-valued entries do not count; the counter map keeps a key
-// after the last one is removed.
-func b41HasACounter() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		for _, n := range c.Counters {
-			if n > 0 {
-				return true
-			}
-		}
-		return false
-	}
-}
+// it.
+//
+// Written as the negation of Damning Verdict's clause rather than as
+// its own scan, so the two can never disagree about what "no counters"
+// means — a counter map that still holds a zero entry after the last
+// counter was removed is a permanent with NO counters, and one place
+// decides that.
+func b41HasACounter() CardPredicate { return Not(b10NoCounters()) }
 
 // --- state reads ---------------------------------------------------
 
@@ -321,20 +317,6 @@ func b41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match f
 // battlefield" record on it, so the two must agree — a const rather
 // than two string literals for exactly that reason.
 const b41OssificationExileLabel = "Ossification — exile target creature or planeswalker an opponent controls"
-
-// b41ExileFirstLegalTarget exiles the first still-legal card target
-// of a single-target trigger. CR 608.2b: a target that left in
-// response is skipped and the ability does as much as it can, which
-// for one target is nothing.
-func b41ExileFirstLegalTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return ExileTarget{Target: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
-}
 
 // b41ReturnCardsExiledWithToTheBattlefield is the "until this permanent
 // leaves the battlefield" half of an Oblivion Ring: every card this
