@@ -527,6 +527,10 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// actually LANDED, so a redirect to the command zone cannot carry
 	// a face-down flag or a to-the-bottom instruction with it.
 	//
+	// MoveCard has already cleared the face-down state for every
+	// destination (ADR 0069 decision 5), so the only thing left to do
+	// here is set it again when the destination IS a face-down state.
+	// The two former `FaceDown = false` arms are gone with it.
 	faceDown := r.FaceDown != FaceDownNone && !redirected && dstZone.Kind == ZoneExile
 	switch {
 	case faceDown:
@@ -542,19 +546,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// this card a moment ago cannot now.
 		for i := range dstZone.Cards {
 			if dstZone.Cards[i].InstanceID == ev.CardID {
-				dstZone.Cards[i].ClearFaceDown()
 				dstZone.Cards[i].ClearKnown()
-				break
-			}
-		}
-	default:
-		// CR 400.7 / 708: "face down" belongs to an object in a zone,
-		// and a card that changes zones is a new object with no
-		// memory of it. #697 moves this into MoveCard, where it
-		// covers the callers that never reached this route.
-		for i := range dstZone.Cards {
-			if dstZone.Cards[i].InstanceID == ev.CardID {
-				dstZone.Cards[i].ClearFaceDown()
 				break
 			}
 		}

@@ -377,8 +377,11 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			// battlefield is public, and markCardKnownInZoneLocked
 			// below makes every seat a knower.
 			//
+			// MoveCard has already cleared the face-down state
+			// (CR 400.7, ADR 0069 decision 5), so the former
+			// `FaceDown = false` here is gone; a FACE-DOWN entry sets
+			// it back, below, instead of marking the table.
 			g.Battlefield.Cards[i].ClearKnown()
-			g.Battlefield.Cards[i].ClearFaceDown()
 			break
 		}
 		if opts.FaceDown != FaceDownNone {
