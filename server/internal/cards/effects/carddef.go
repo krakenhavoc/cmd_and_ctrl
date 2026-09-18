@@ -37,6 +37,8 @@ func buildDef(spec Spec) *game.CardDef {
 		CastableZones:         spec.CastableZones,
 		UntapStep:             spec.UntapStep,
 		UntapStepRestrictions: spec.UntapStepRestrictions,
+		UntapCaps:             spec.UntapCaps,
+		UntapOptOuts:          spec.UntapOptOuts,
 		CantBeCountered:       spec.CantBeCountered,
 		NoMaxHandSize:         spec.NoMaxHandSize,
 		WantsDistinctColors:   spec.WantsDistinctColors,

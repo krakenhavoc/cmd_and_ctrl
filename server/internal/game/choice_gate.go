@@ -153,6 +153,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// doing. The prompt is never queued to a seat that has left, so
 	// blocking cannot wedge a table (queueLoopShortcutLocked).
 	PendingChoiceLoopShortcut: true,
+	// #826, CR 502.3. The untap step's own determination. It blocks
+	// for the reason the step it pauses grants nobody priority: CR
+	// 502.3 happens before anything else in the turn, and a table that
+	// could walk past the question would be answering it by doing.
+	// (Deny-by-default would have said the same; the row is here
+	// because the gate demands every kind be classified out loud.)
+	PendingChoiceUntapChoice: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

@@ -1187,11 +1187,21 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			// PendingTriggers and go on the stack at the next
 			// priority boundary, which is the upkeep, exactly as
 			// CR 502.4 requires of a step that grants none.
-			g.performUntapStepLocked(g.Turn.ActiveSeat)
+			//
+			// #826: the step can PAUSE. CR 502.3's "the active
+			// player determines which permanents they control will
+			// untap" is a real decision under a Winter Orb cap or
+			// a "you may choose not to untap" clause, and the
+			// prompt stops the step halfway with nothing untapped
+			// and the cursor unmoved. Its continuation calls
+			// exitUntapStepLocked, which is what this case would
+			// have called. See untap_choice.go (ADR 0070).
+			if g.performUntapStepLocked(g.Turn.ActiveSeat) {
+				return
+			}
 		}
 		// Untap grants no priority; recurse into the next step.
-		g.advanceCursorLocked()
-		g.runStepEntryHooksLocked()
+		g.exitUntapStepLocked()
 	case StepDraw:
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 			return

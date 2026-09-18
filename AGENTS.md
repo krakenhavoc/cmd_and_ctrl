@@ -2594,14 +2594,42 @@ player's step. The constructors live in
 [untap_restrictions.go](server/internal/cards/effects/untap_restrictions.go),
 beside the permission helpers.
 
+`Spec.UntapCaps` and `Spec.UntapOptOuts` (#826, [ADR 0070](docs/decisions/0070-untap-step-choices.md))
+are the two clauses that make CR 502.3's *first* sentence a decision —
+"players can't untap more than one land during their untap steps"
+(Winter Orb, Static Orb, Winter Moon) and "you may choose not to untap
+this during your untap step" (Rust Tick, Amber Prison). Constructors in
+[untap_caps.go](server/internal/cards/effects/untap_caps.go). A cap is
+a ceiling, not a restriction: it only asks when more permanents are
+eligible than it allows, several caps compose (a chosen set has to
+satisfy every one), and both families share ONE prompt, the
+`untap_choice` kind. Caps and opt-outs are scoped by the engine to the
+active player's own determination, because every printed card says
+"during **their** untap steps" — so a Seedborn Muse untap on somebody
+else's turn is uncapped, and the predicate never asks whose step it is.
+
+**A turn-based action that can pause has ONE exit function.** The untap
+step's is `exitUntapStepLocked`
+([untap_choice.go](server/internal/game/untap_choice.go)), called from
+the `StepUntap` case of the step-entry hook and from the prompt's
+continuation; the cleanup step's is `exitCleanupStepLocked`
+([cleanup.go](server/internal/game/cleanup.go)); the step ENTRY's is
+`finishStepEntryLocked` (#710). Two sites that decide separately how a
+step ends is how #661's discard path inherited a bug. `performUntapStepLocked`
+returns whether it paused, and a paused step has untapped nothing and
+moved no cursor — CR 502.3 is "determine, *then* untap them all
+simultaneously", so the whole set untaps in one loop from the answer.
+
 For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 `Player == uuid.Nil` follows the permanent's controller; a player ID
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost and choose-N
-untap effects such as Winter Orb remain separate work. See
-[ADR 0058](docs/decisions/0058-doesnt-untap.md).
+and persisted snapshots retain them. Exert's action/cost, and a restriction
+that lasts "for as long as ~ remains tapped" (Rust Tick's and Amber
+Prison's tap abilities), remain separate work. See
+[ADR 0058](docs/decisions/0058-doesnt-untap.md) and
+[ADR 0070](docs/decisions/0070-untap-step-choices.md).
 
 Two things to know when you touch the untap path at all:
 

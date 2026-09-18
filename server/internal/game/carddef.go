@@ -65,6 +65,8 @@ type CardDef struct {
 	CastableZones         []ZoneKind
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
+	UntapCaps             []UntapCap
+	UntapOptOuts          []UntapOptOut
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
@@ -236,6 +238,18 @@ func init() {
 	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStepRestrictions
+		}
+		return nil
+	}
+	CatalogUntapCaps = func(key string) []UntapCap {
+		if d := catalogDef(key); d != nil {
+			return d.UntapCaps
+		}
+		return nil
+	}
+	CatalogUntapOptOuts = func(key string) []UntapOptOut {
+		if d := catalogDef(key); d != nil {
+			return d.UntapOptOuts
 		}
 		return nil
 	}
