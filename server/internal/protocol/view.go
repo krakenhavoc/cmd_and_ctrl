@@ -327,6 +327,20 @@ type PendingChoiceView struct {
 	// redaction as Options above. Absent for other kinds.
 	PickOptions []PickOptionView `json:"pick_options,omitempty"`
 
+	// ModeOptions / ModeIndexes / ModeMin / ModeMax / ModeRepeatable
+	// populate the #764 "mode_pick" kind (CR 603.3c): the bullets a
+	// modal TRIGGER offers its controller as it goes on the stack,
+	// how many to choose, and whether the same one may be chosen
+	// more than once (CR 700.2d). Only the choosable bullets are
+	// listed — an option whose target clause has no legal target is
+	// dropped before the prompt is queued — so mode_indexes carries
+	// the ModeSpec index each label belongs to, which is what the
+	// answer sends back. Answered with `{choice_id, modes: [i, …]}`.
+	ModeOptions    []string `json:"mode_options,omitempty"`
+	ModeIndexes    []int    `json:"mode_indexes,omitempty"`
+	ModeMin        int      `json:"mode_min,omitempty"`
+	ModeMax        int      `json:"mode_max,omitempty"`
+	ModeRepeatable bool     `json:"mode_repeatable,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -366,7 +380,25 @@ type LegalTargetsView struct {
 	// client substitutes the X it collected in the cost prompts.
 	// Added in S22 alongside convoke / waterbend.
 	CountFromX bool `json:"count_from_x,omitempty"`
+
+	// Label is the clause's printed wording — "target creature you
+	// control". Absent for a single-clause statement, where the
+	// banner reads the card's target_mode as it always has; present
+	// on every entry of `clauses`, where the picker has to say which
+	// of several questions it is asking. Added by #764.
+	Label string `json:"label,omitempty"`
+
+	// Distinct marks a clause whose picks must differ from every
+	// EARLIER clause's ("a second target permanent you control"), so
+	// the picker can grey what is already taken. Added by #764.
+	Distinct bool `json:"distinct,omitempty"`
 }
+
+// clausesView projects every clause of a multi-clause statement,
+// each with its own legal set, count and label (#764, ADR 0065 §7).
+// Nil for the single-clause statement that is nearly every card —
+// `legal_targets` alone says everything there, and every client path
+// that predates #764 keeps reading it.
 
 // ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
 // for the owner's hand cards. Added in S20 sub-PR 4.
@@ -375,15 +407,24 @@ type ModeSpecView struct {
 	Min     int              `json:"min"`
 	Max     int              `json:"max"`
 	Options []ModeOptionView `json:"options"`
+	// Repeatable is CR 700.2d, "you may choose the same mode more
+	// than once" (Mystic Confluence). The picker offers a count per
+	// option instead of a toggle, and each occurrence is asked for
+	// its own targets. Added by #764.
+	Repeatable bool `json:"repeatable,omitempty"`
 }
 
 type ModeOptionView struct {
 	Label string `json:"label"`
 	// TargetMode / LegalTargets mirror CardView.target_mode /
-	// legal_targets for the option's own target clause; both absent
+	// legal_targets for the option's FIRST target clause; both absent
 	// for untargeted options.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of the option's statement when it has
+	// more than one, in printed order. Absent for the one-clause
+	// bullet that is nearly every bullet. Added by #764.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -559,10 +600,16 @@ type StackItemView struct {
 	Label        string          `json:"label,omitempty"`
 	Targets      []TargetRefView `json:"targets,omitempty"`
 	Modes        []int           `json:"modes,omitempty"`
-	XValue       int             `json:"x_value,omitempty"`
-	Distribution map[string]int  `json:"distribution,omitempty"`
-	HoldPriority bool            `json:"hold_priority,omitempty"`
-	SplitSecond  bool            `json:"split_second,omitempty"`
+	// ModeLabels is the oracle bullet of each chosen mode, in
+	// announce order and with repeats — what "modes: 0, 2" used to
+	// make the table guess. The caster's hand card is gone by the
+	// time the spell is on the stack, so the labels have to travel
+	// with the item. Added by #764 (ADR 0065 §7).
+	ModeLabels   []string       `json:"mode_labels,omitempty"`
+	XValue       int            `json:"x_value,omitempty"`
+	Distribution map[string]int `json:"distribution,omitempty"`
+	HoldPriority bool           `json:"hold_priority,omitempty"`
+	SplitSecond  bool           `json:"split_second,omitempty"`
 	// AltCost is the key of the alternative cost this spell was cast
 	// for — "overload", "evoke", "cleave" — empty for an ordinary
 	// cast (S22). Public information the moment it is announced, and
@@ -607,6 +654,13 @@ type DelayedTriggerView struct {
 type TargetRefView struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answered: the
+	// clause index within the clause list, and the index into the
+	// item's `modes` whose clause list that is. Both omitted at zero,
+	// which is what every single-clause non-modal announcement has
+	// always meant. Added by #764 (ADR 0065 §2).
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -736,6 +790,35 @@ type PlayerView struct {
 	// outside a cast). Drives the S15 ManaPoolPips UI. Added in
 	// S15 sub-PR 2.
 	ManaPool []string `json:"mana_pool,omitempty"`
+
+	// Emblems are the emblems this player has (CR 114), in creation
+	// order. Absent for every seat that has none, which is nearly
+	// every seat in nearly every game.
+	//
+	// Not a ZoneView: a ZoneView carries CardViews, and an emblem has
+	// no characteristics at all (CR 114.1), so a CardView of one is a
+	// row of empty strings that the hover-zoom, the card-image route
+	// and the targeting layer would each have to learn to skip. The
+	// label and the text are the whole thing a client needs.
+	//
+	// PUBLIC and unredacted. An emblem sits face up in the command
+	// zone and any player may read it, so FilterViewFor leaves this
+	// field alone - the same posture as delayed_triggers and
+	// life_history. Added in S40 (#623, ADR 0064).
+	Emblems []EmblemView `json:"emblems,omitempty"`
+}
+
+// EmblemView is one emblem on the wire (CR 114). Label is what the
+// board calls it ("Elspeth, Sun's Champion emblem") and Text is its
+// printed ability, for the chip's hover.
+//
+// Both are read from the catalog on every projection rather than
+// stored on the object, so a wording fix in a card file reaches a
+// game that is already in progress.
+type EmblemView struct {
+	InstanceID string `json:"instance_id"`
+	Label      string `json:"label"`
+	Text       string `json:"text"`
 }
 
 // LifeChangeView is the wire representation of a single life-change
@@ -818,6 +901,24 @@ type CardView struct {
 	// client can hover-reveal the printed characteristics. Added
 	// in S13.5.
 	FaceDown bool `json:"face_down,omitempty"`
+	// FaceDownKind is WHY the card is face down (ADR 0069) — one of
+	// "exiled", "foretold", "manifested", "morphed", "disguised",
+	// "cloaked", or absent for a face-up card. PUBLIC: every player
+	// can see that a permanent is a morph and that an exiled card is
+	// foretold, so it survives the non-knower redaction. The client
+	// uses it to label the card back.
+	FaceDownKind string `json:"face_down_kind,omitempty"`
+	// FaceVisible is whether THIS viewer may look at the face of a
+	// face-down object — the controller of a CR 708.5 permanent, the
+	// owner of a foretold card (CR 702.143d), nobody for a plain
+	// face-down exile (CR 406.3). Stamped per-viewer by
+	// FilterViewFor beside KnownByYou and never trusted from the
+	// input; it is exactly `face_down && known_by_you`, on the wire
+	// rather than derived client-side because it is the rules
+	// permission and one place should own it. The client renders the
+	// real face plus a face-down badge when it is true and a card
+	// back when it is not. Added by ADR 0069.
+	FaceVisible bool `json:"face_visible,omitempty"`
 	// KnownByYou reports whether the viewer is currently a knower
 	// of this card's identity (S13.5). Computed per-viewer at
 	// FilterViewFor time. When false, printed characteristics
@@ -957,6 +1058,14 @@ type CardView struct {
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of a MULTI-clause target statement, in
+	// printed order, each with its own legal set, count and printed
+	// wording — Bite Down's "target creature you control" then
+	// "target creature or planeswalker you don't control". Absent for
+	// the single-clause card that is nearly every card, where
+	// legal_targets alone says everything. The client walks the
+	// clauses one prompt at a time. Added by #764 (ADR 0065 §7).
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 	// Modes is the S20 sub-PR 4 modal-spell clause for a card in the
 	// viewer's own hand / command zone: the prompt, how many options
 	// to pick, and each option's label plus — for targeted options —
@@ -1309,6 +1418,11 @@ type ActivatedAbilityView struct {
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of the ability's statement when it has
+	// more than one; Modes is its CR 700.2 mode clause when it is
+	// modal. Both absent for the ordinary ability. Added by #764.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
+	Modes   *ModeSpecView      `json:"modes,omitempty"`
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -1710,13 +1824,14 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 					continue
 				}
 				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+				c.Clauses = viewOfClauses(g, caster, spec)
 			}
 		}
 	}
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -1835,14 +1950,39 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base
 // option's legal set from the caster's point of view. Caller must
 // hold g.mu.
 func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpecView {
-	out := &ModeSpecView{Prompt: ms.Prompt, Min: ms.Min, Max: ms.Max, Options: make([]ModeOptionView, 0, len(ms.Options))}
+	out := &ModeSpecView{
+		Prompt:     ms.Prompt,
+		Min:        ms.Min,
+		Max:        ms.Max,
+		Repeatable: ms.Repeatable,
+		Options:    make([]ModeOptionView, 0, len(ms.Options)),
+	}
 	for _, o := range ms.Options {
 		ov := ModeOptionView{Label: o.Label}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets), o.Targets)
+			ov.Clauses = viewOfClauses(g, caster, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
+	}
+	return out
+}
+
+// viewOfClauses projects a multi-clause statement's clauses, each
+// with its own legal set and bounds. Nil for a single-clause
+// statement, where `legal_targets` alone is the whole answer and
+// every pre-#764 client path keeps working. Caller must hold g.mu.
+func viewOfClauses(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) []LegalTargetsView {
+	if spec.ClauseCount() < 2 {
+		return nil
+	}
+	out := make([]LegalTargetsView, 0, spec.ClauseCount())
+	for i := 0; i < spec.ClauseCount(); i++ {
+		c := spec.Clause(i)
+		v := viewOfLegalTargets(g.LegalTargetsForEffect(caster, c), c)
+		v.Label = c.Label
+		out = append(out, *v)
 	}
 	return out
 }
@@ -2173,6 +2313,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PickOptions = append(v.PickOptions, out)
 			}
 		}
+		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
+		// bullets, chosen as the ability is put on the stack. Public
+		// information the moment it is asked (the card's text is
+		// public), so nothing here is redacted; the labels are oracle
+		// text and the indexes are what the answer names.
+		if c.Kind == game.PendingChoiceModePick {
+			v.ModeOptions = append([]string(nil), c.ModeOptionLabel...)
+			v.ModeIndexes = append([]int(nil), c.ModeOptionIndex...)
+			v.ModeMin = c.ModeMin
+			v.ModeMax = c.ModeMax
+			v.ModeRepeatable = c.ModeRepeatable
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
@@ -2404,6 +2556,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		SourceCardID: it.SourceCardID.String(),
 		Label:        it.Label,
 		Modes:        append([]int(nil), it.Modes...),
+		ModeLabels:   it.ModeLabels(),
 		XValue:       it.XValue,
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
@@ -2420,6 +2573,8 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 			view.Targets[i] = TargetRefView{
 				Kind: string(t.Kind),
 				ID:   uuidStringOrEmpty(t.ID),
+				Slot: t.Slot,
+				Mode: t.Mode,
 			}
 		}
 	}
@@ -2468,6 +2623,17 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			manaPool[i] = t.Color
 		}
 	}
+	// #623 / CR 114. The label and text come from the catalog, so a
+	// game restored on a binary whose card file reworded the emblem
+	// shows the new wording.
+	var emblems []EmblemView
+	for _, e := range g.EmblemsForPlayer(p.ID) {
+		emblems = append(emblems, EmblemView{
+			InstanceID: e.InstanceID.String(),
+			Label:      e.Label,
+			Text:       e.Text,
+		})
+	}
 	return PlayerView{
 		ID:                p.ID.String(),
 		Name:              p.Name,
@@ -2501,6 +2667,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
+		Emblems:             emblems,
 	}
 }
 
@@ -2888,6 +3055,13 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out := c
 	out.knowers = nil
 	out.KnownByYou = known
+	// ADR 0069 decision 6: "may this viewer look at the face" is the
+	// rules permission, computed here beside known_by_you and never
+	// carried in from the input. A face-down object's knowers are set
+	// to the CR 406.3a / CR 702.143d / CR 708.5 answer as it enters
+	// the state, so being a knower of a face-down card IS being
+	// allowed to look at it.
+	out.FaceVisible = c.FaceDown && known
 	if known {
 		return out
 	}
@@ -2947,6 +3121,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// player who can read the card, and each one quotes it: a mode
 	// prompt, an additional-cost label, a target clause's bounds.
 	out.LegalTargets = nil
+	// #764: the per-clause legal sets name the card as loudly as the
+	// single one does — "target creature you control, then target
+	// creature or planeswalker you don't control" is the card.
+	out.Clauses = nil
 	out.Modes = nil
 	out.AdditionalCost = nil
 	// Type-derived bits. Sickness says "creature without haste",
@@ -2957,6 +3135,77 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.LoyaltyActivated = false
 	out.Defense = 0
 	out.ProtectorPlayer = ""
+	return stampFaceDownPublicBody(out, c)
+}
+
+// stampFaceDownPublicBody puts the CR 708.2 body back onto a card the
+// redaction has just stripped, when that card is a FACE-DOWN PERMANENT
+// (ADR 0069 decision 6).
+//
+// The redaction above clears name, type line, colours and P/T because
+// on an ordinary hidden card those fields name it. On a face-down
+// permanent they are not the card's — they are the projection the
+// engine put in at layer 0, a 2/2 colourless creature with no name
+// that identifies nothing and that CR 708.2 makes PUBLIC. Opponents
+// have to see the 2/2 to block it, target it and count it.
+//
+// It re-stamps rather than widening `redactedCardKeys`, so the #646
+// zone × viewer table stays exactly as strict as it is for every card
+// that is not a face-down permanent, and this one case gets its own
+// cells. Everything that names the card — scryfall_id (the art),
+// mana_cost, faces, layout, oracle_id, auto, target_mode and the
+// ability lists — is still gone, and CatalogKey suppression means most
+// of it was never stamped.
+//
+// The restored fields are taken from `orig` — the view viewOfCard
+// built — rather than re-derived, because viewOfCard already read them
+// off the layer-0 projection and added the counter deltas the pip
+// needs. game.FaceDownBody is consulted only for "is this a CR 708.2
+// object", so there is still one definition of the 2/2 for the engine
+// and the wire both.
+// IsFaceDownPermanent reports whether this view is a CR 708.2 object —
+// a face-down permanent, which every viewer sees as a 2/2 colourless
+// creature with no name (ADR 0069 decision 3), as opposed to a
+// face-down card in exile, which has no characteristics at all.
+//
+// Exported for readers on this side of the wire — the bot's board
+// evaluator and prompt renderer — so "is this the public 2/2" has one
+// definition there too rather than a re-derivation per reader.
+func (c CardView) IsFaceDownPermanent() bool {
+	if !c.FaceDown {
+		return false
+	}
+	_, ok := game.FaceDownBody(game.FaceDownKind(c.FaceDownKind))
+	return ok
+}
+
+func stampFaceDownPublicBody(out, orig CardView) CardView {
+	if !out.IsFaceDownPermanent() {
+		// A face-down card in EXILE has no characteristics at all
+		// (CR 406.3a) and gets nothing back — it is not a permanent,
+		// and its real characteristics are exactly what must not
+		// reach a non-knower.
+		return out
+	}
+	// Name is "" on the projection, so restoring it is a no-op; it is
+	// here to say that the empty name is the OBJECT's name (CR 708.2:
+	// no name) and not a redaction.
+	out.Name = orig.Name
+	out.TypeLine = orig.TypeLine
+	out.Colors = orig.Colors
+	out.Power = orig.Power
+	out.NegativePower = orig.NegativePower
+	out.Toughness = orig.Toughness
+	// nil today; disguise and cloak's ward is #95's (ADR 0069 §3).
+	out.Abilities = orig.Abilities
+	// Counters on a face-down permanent are public — they are what
+	// makes the restored P/T add up, and a +1/+1 counter on a morph
+	// is visible across the table.
+	out.Counters = orig.Counters
+	// "Creature without haste" is public and combat-relevant: an
+	// opponent has to know whether the face-down 2/2 can attack this
+	// turn. It says "creature", which is already on the type line.
+	out.SummoningSick = orig.SummoningSick
 	return out
 }
 
@@ -2996,6 +3245,9 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			// alternative-cost offers in for the same reason — they
 			// carry their own legal sets.
 			c.LegalTargets = nil
+			// #764: the per-clause sets are the same information,
+			// clause by clause, and go with it.
+			c.Clauses = nil
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
@@ -3061,6 +3313,7 @@ func viewOfCard(c game.Card) CardView {
 		// battlefield and leaves them nil everywhere else (#29).
 		DamageMarked:  c.DamageMarked,
 		FaceDown:      c.FaceDown,
+		FaceDownKind:  string(c.FaceDownKind),
 		Auto:          game.IsAutoCard(game.CatalogKey(c)),
 		Unimplemented: game.Unimplemented(c),
 		TargetMode:    game.TargetModeFor(game.CatalogKey(c)),
@@ -3281,6 +3534,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
+			v.Clauses = viewOfClauses(g, caster, a.Targets)
+		}
+		// #764: a modal activated ability announces its modes with
+		// its targets, so the menu needs the same picker a modal
+		// spell's hand card gets.
+		if a.Modes != nil {
+			v.Modes = viewOfModeSpec(g, caster, a.Modes)
 		}
 		out[i] = v
 	}

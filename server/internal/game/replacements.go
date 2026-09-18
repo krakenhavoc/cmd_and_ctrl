@@ -24,6 +24,11 @@ import (
 //   - drawCardLocked → RepEventDraw
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
+//   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
+//     route is a discard (CR 701.8, #650)
+//   - createTokensLocked → RepEventCreateTokens, then one
+//     RepEventMove battlefield entry per token created (CR 701.7b,
+//     #762)
 //   - ChangePlayerLife → RepEventLife
 //   - MarkDamage / MarkCombatDamage → RepEventDamage
 //   - AddCounter → RepEventCounter
@@ -40,22 +45,63 @@ import (
 // ReplacementEventKind narrows the meaningful fields on a
 // ReplacementEvent. Values:
 //
-//	"draw"    — RepEventDraw    — DrawPlayer
-//	"move"    — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
-//	"counter" — RepEventCounter — CounterTarget, CounterName, CounterDelta
-//	"life"    — RepEventLife    — LifePlayer, LifeDelta
-//	"damage"  — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
-//	"step"    — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
+//	"draw"         — RepEventDraw    — DrawPlayer
+//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
+//	"counter"      — RepEventCounter — CounterTarget, CounterName, CounterDelta
+//	"life"         — RepEventLife    — LifePlayer, LifeDelta
+//	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
+//	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
+//	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
 const (
-	RepEventDraw           ReplacementEventKind = "draw"
-	RepEventMove           ReplacementEventKind = "move"
-	RepEventCounter        ReplacementEventKind = "counter"
-	RepEventLife           ReplacementEventKind = "life"
-	RepEventDamage         ReplacementEventKind = "damage"
+	RepEventDraw    ReplacementEventKind = "draw"
+	RepEventMove    ReplacementEventKind = "move"
+	RepEventCounter ReplacementEventKind = "counter"
+	RepEventLife    ReplacementEventKind = "life"
+	RepEventDamage  ReplacementEventKind = "damage"
+
+	// RepEventDiscard is a discard (CR 701.8a) — the one exit whose
+	// keyword action is defined by where the card comes FROM, so it is
+	// its own event kind rather than a flag on RepEventMove. Library of
+	// Leng, madness (#657) and the Obstinate Baloth family all key on
+	// "if you would discard", and two of the three also need the CAUSE:
+	// an effect's instruction, a cost, or the cleanup step's turn-based
+	// action. See #650 and ADR 0061.
+	//
+	// It still carries the move payload — CardID, OldZone (always the
+	// hand), NewZone, NewZoneOwner and the zoneRoute — because a discard
+	// IS a move out of the hand and its replacements rewrite the
+	// destination. Everything in the engine that finishes, abandons or
+	// prunes a routed exit therefore handles the two kinds together; see
+	// isExitMove.
+	RepEventDiscard ReplacementEventKind = "discard"
+
+	// RepEventCreateTokens is one "create N tokens" INSTRUCTION
+	// (CR 701.7b), opened once however many tokens it makes, so a
+	// doubler modifies the instruction rather than each token: "create
+	// two tokens" with Parallel Lives out is one event that becomes
+	// four tokens, not two events of two. See #762 and ADR 0061.
+	//
+	// The tokens it settles on each run the ordinary battlefield-ENTRY
+	// pipeline afterwards (a RepEventMove with no old zone), so
+	// enters-tapped, enters-with-counters and the ETB hook reach a
+	// token exactly as they reach every other permanent.
+	RepEventCreateTokens ReplacementEventKind = "create_tokens"
+
 	RepEventStepTransition ReplacementEventKind = "step"
 )
+
+// isExitMove reports whether a kind is a routed move OUT of a zone — an
+// ordinary RepEventMove or a discard. The two share every field the
+// exit path reads (CardID, OldZone, NewZone, NewZoneOwner, zoneRoute)
+// and differ only in what the completed move announces, so every engine
+// site that finishes, abandons or prunes a routed exit asks this rather
+// than naming one kind and quietly skipping the other.
+func isExitMove(kind ReplacementEventKind) bool {
+	return kind == RepEventMove || kind == RepEventDiscard
+}
 
 // ReplacementEventID is the per-event key used by the once-per-event
 // tracking map (CR 614.5). Minted by applyReplacementsLocked on first
@@ -149,9 +195,14 @@ type ReplacementEvent struct {
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
 	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
-	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
-	// builds a RepEventMove yet: every discard moves the card directly
-	// and bypasses this pipeline (#650).
+	// built-in, Stone of Erech's graveyard → exile, Library of Leng's
+	// hand → top of library).
+	//
+	// A created TOKEN enters with OldZone empty: it came from no zone
+	// at all (CR 111.1 — a token is created on the battlefield), which
+	// is the honest spelling and the one every "enters the
+	// battlefield" replacement already reads past, because they key on
+	// NewZone.
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
@@ -280,6 +331,76 @@ type ReplacementEvent struct {
 	// flavor flag on the manual move_card action. Unexported because
 	// the catalog should never read or set it.
 	asCommanderMove bool
+
+	// --- RepEventDiscard fields ---
+	//
+	// A discard also fills in the RepEventMove fields above: CardID is
+	// the discarded card, OldZone is the hand it is leaving, and
+	// NewZone / NewZoneOwner are the destination a replacement may
+	// rewrite.
+
+	// DiscardPlayer is the player discarding the card — its owner,
+	// because every hand in this engine holds only its owner's cards
+	// (CR 701.8a moves the card to that player's graveyard).
+	DiscardPlayer uuid.UUID
+
+	// DiscardCause is why the discard is happening: an effect's
+	// instruction, a cost, or the cleanup step's turn-based action. It
+	// is the distinction the rules actually draw, and the one Library
+	// of Leng needs ("if an EFFECT causes you to discard a card"); the
+	// Gatherer ruling of 2004-10-04 says costs are not effects, and
+	// CR 514.1 / 703.1 make the cleanup discard a turn-based action
+	// rather than anybody's effect. See ADR 0013 §10a, which withdrew
+	// the voluntary/involuntary framing #160 was written around, and
+	// ADR 0061.
+	//
+	// Source names the card whose effect or cost asked for it, so the
+	// Obstinate Baloth family ("a spell or ability an opponent controls
+	// causes you to discard") can read its controller.
+	DiscardCause DiscardCause
+
+	// --- RepEventCreateTokens fields ---
+
+	// TokenController is the player the tokens are created under the
+	// control of. Actor carries the same value; this is the name the
+	// rules use ("create one or more tokens UNDER YOUR CONTROL"), and
+	// a doubler's AppliesTo reads it.
+	TokenController uuid.UUID
+
+	// TokenGroups is what the instruction creates, one entry per KIND
+	// of token: a template, how many of it, and the creation-time
+	// entry options the instruction asked for.
+	//
+	// Groups rather than a bare count because the printed cards need
+	// both halves. Parallel Lives, Anointed Procession, Doubling
+	// Season, Primal Vigor and Mondrak multiply the COUNTS
+	// (MultiplyTokens); Academy Manufactor rewrites the KIND SET
+	// (ReplaceTokenKinds) — "if you would create a Clue, Food or
+	// Treasure token, instead create one of each" turns one group into
+	// three. A count alone could not express the second.
+	TokenGroups []TokenGroup
+
+	// TokenAttacking is the player the tokens are created attacking
+	// (CR 506.3c — put onto the battlefield attacking, never
+	// declared, so nothing sees an attack declaration). uuid.Nil for
+	// the ordinary creation.
+	TokenAttacking uuid.UUID
+
+	// tokenTail is the token half's answer to lifeTail and damageTail:
+	// the rest of the effect that asked for the creation, run with the
+	// IDs of the tokens that were actually made once the pipeline
+	// settles. Set by CreateTokensThenForEffect and read only by
+	// runTokenTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// It exists because a creation can now PAUSE: a Doubling Season
+	// and an Academy Manufactor in the same window is a CR 616
+	// ordering prompt, and a caller that says "create a token, then
+	// sacrifice it" cannot write the second half on the next line.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See token_create.go.
+	tokenTail *tokenTail
 
 	// --- RepEventCounter fields ---
 
@@ -1343,6 +1464,15 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		want = EventDrawCard
 	case RepEventMove:
 		want = EventZoneMove
+	case RepEventDiscard:
+		// CR 701.8a. A discard is a move out of the hand, but what a
+		// discard replacement watches for is the DISCARD — Library of
+		// Leng, madness, "if you would discard a card, exile it
+		// instead" — so it keys on the discard event, not the zone
+		// move. An effect that wants both declares both.
+		want = EventDiscardCard
+	case RepEventCreateTokens:
+		want = EventTokenCreated
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:

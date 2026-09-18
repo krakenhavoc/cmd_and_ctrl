@@ -39,8 +39,8 @@ import (
 //     values (CR 707.2), and the cached characteristic in particular
 //     is a pointer — a wholesale struct copy would have the token and
 //     its original sharing one layer cache.
-//   - It does not fire the copied card's Spec.AsEnters. See the note on
-//     CreateTokenCopy.Apply.
+//   - It does not read last-known information: the copy is taken from
+//     wherever the named card sits right now.
 
 // CreateTokenCopy creates N tokens that are copies of the card
 // `Copy`, which may be in ANY zone — Hashaton copies a card in the
@@ -55,13 +55,14 @@ import (
 // error: the card it named may have been exiled in response, and a
 // resolution that can't do its job still shouldn't wedge the stack.
 //
-// Known gap, worth stating because it is invisible otherwise: the
-// token's ETB *triggered abilities* fire (CreateTokenForEffect emits
-// EventETB and the harvester reads the log), but the copied card's
-// Spec.AsEnters does NOT, because CreateTokenForEffect does not call
-// fireETBHookLocked. Most catalog ETB effects are written as
-// Triggered on EventETB and so are unaffected; a card whose ETB
-// lives in OnETB would produce a token missing that clause.
+// Since #762 the token runs the ordinary battlefield-entry pipeline,
+// so BOTH halves of an "enters the battlefield" clause reach it: the
+// copied card's ETB *triggered abilities* fire (EventETB is emitted
+// and the harvester reads the log), and its CR 614.12 Spec.AsEnters
+// clause fires too, because fireETBHookLocked is on that path. A token
+// copy of Adaptive Automaton names a creature type, as it should. That
+// was the declared gap here until token creation became a replaceable
+// event with a real entry.
 type CreateTokenCopy struct {
 	Controller uuid.UUID
 	Copy       uuid.UUID

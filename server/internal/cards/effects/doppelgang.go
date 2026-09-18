@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d04c6375-25dd-4882-b8b3-a3b0d3081f32",
 		Name:         "Doppelgang",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Token copies skip the enters-the-battlefield effect on some cards."},
 		Targets:      b28DoppelgangTargets(),

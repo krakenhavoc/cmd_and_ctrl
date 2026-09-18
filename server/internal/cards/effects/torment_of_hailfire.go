@@ -48,6 +48,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "30a0a6c2-1fbb-4784-ab96-22611d57e62c",
 		Name:         "Torment of Hailfire",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return tormentOfHailfireStart(ctx)

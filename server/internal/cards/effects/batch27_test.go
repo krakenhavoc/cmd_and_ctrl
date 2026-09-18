@@ -241,14 +241,15 @@ func TestB27RenataPowerIsDevotionAndOthersEnterWithACounter(t *testing.T) {
 	if got := counterCount(g, bear, "+1/+1"); got != 1 {
 		t.Errorf("a creature entering under Renata's controller: %d +1/+1 counters, want 1", got)
 	}
-	// A token entering gets nothing — the declared gap.
+	// #762: a created token takes the same entry pipeline, so it gets
+	// the counter exactly as a cast creature does.
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, BlackZombieToken(), 1) })
 	passPriorityAroundTable(t, g)
-	if got := counterCount(g, findBattlefieldByName(g, "Zombie"), "+1/+1"); got != 0 {
-		t.Errorf("a token: %d counters, want 0 (the declared token gap)", got)
+	if got := counterCount(g, findBattlefieldByName(g, "Zombie"), "+1/+1"); got != 1 {
+		t.Errorf("a token: %d counters, want 1", got)
 	}
-	if spec, _ := Lookup(b27RenataOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	if spec, _ := Lookup(b27RenataOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 

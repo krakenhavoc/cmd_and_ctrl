@@ -27,9 +27,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - "or player": poison and energy counters on players emit no
 //     event the trigger can watch, so counters put on a PLAYER never
 //     fire it. Weaker than printed.
-//   - Tokens created with counters already on them (a Hydra spec's
-//     "enters with" counters) are stamped rather than placed, and
-//     emit no event either.
 //   - Counters whose placer the log cannot attribute — a loyalty
 //     cost or a Saga's lore counter on your own permanent while an
 //     opponent's spell was the last thing to resolve — do not fire
@@ -41,7 +38,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Counters put on a player (poison, energy) don't trigger it — only counters put on permanents do.",
-			"A token that is created with counters already on it doesn't trigger it.",
 		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCounterPlaced},

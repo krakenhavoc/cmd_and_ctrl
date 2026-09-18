@@ -122,10 +122,16 @@ type zoneRoute struct {
 	// prompt is answered.
 	Depth int
 
-	// FaceDown exiles the card face down (CR 406.3, Necropotence).
+	// FaceDown exiles the card face down in this state (CR 406.3a) —
+	// FaceDownExiled for Necropotence, FaceDownForetold for foretell
+	// (#658). The zero value, FaceDownNone, is an ordinary face-up
+	// move.
+	//
 	// Face-down exile is the one destination that must NOT mark the
-	// table as knowers — see ExileTopFaceDownForEffect.
-	FaceDown bool
+	// table as knowers: who may look is the kind's answer, written by
+	// applyFaceDownLandingLocked. See ADR 0069 decision 2 and
+	// ExileTopFaceDownForEffect.
+	FaceDown FaceDownKind
 
 	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
@@ -149,6 +155,15 @@ type zoneRoute struct {
 	// their library into their graveyard") while CR 701.8a defines a
 	// discard by its SOURCE ("move it from its owner's hand").
 	Discard bool
+
+	// DiscardCause is why the discard is happening — an effect's
+	// instruction, a cost, or the cleanup step's turn-based action. It
+	// rides onto the RepEventDiscard this route opens, where Library of
+	// Leng and the rest of the cause-sensitive family read it, and onto
+	// the EventDiscardCard the completed move emits. Meaningless unless
+	// Discard is set; the empty value is normalised to
+	// DiscardCauseEffect. #650.
+	DiscardCause DiscardCause
 
 	// Source is the card whose effect asked for the move, stamped on
 	// the emitted event. Read only by the Discard leg today, which is
@@ -304,9 +319,19 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	// The CR 614.5 once-per-event bookkeeping the abandoned event was
 	// holding: nothing else will release it now.
 	g.clearReplacementEventLocked(ev.ID)
-	if ev.Kind != RepEventMove {
+	if ev.Kind == RepEventCreateTokens {
+		// #762: an abandoned CREATION makes nothing, and the rest of
+		// the card behind it still has to be told. Nothing is staged
+		// yet — the tokens are not minted until the window settles.
+		return g.abandonTokenCreationLocked(ev)
+	}
+	if !isExitMove(ev.Kind) {
 		return nil
 	}
+	// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
+	// staged and unentered. It never reached the battlefield, so it
+	// never existed (CR 111.1). A no-op for every other entry.
+	g.dropEnteringTokenLocked(ev.CardID)
 	if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 		return err
 	}
@@ -316,7 +341,8 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	// question was open — moved nothing, and the search behind it has
 	// to be told so, or its shuffle and its caller's Then wait forever.
 	// A move carries a route or a tail, never both, so this is one call
-	// and a no-op for every exit.
+	// and a no-op for every exit. Since #762 a token creation threads
+	// the rest of its batch through the same tail.
 	return g.runEntryTailLocked(ev, uuid.Nil)
 }
 
@@ -384,6 +410,19 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		zoneRoute:       &r,
 		asCommanderMove: r.AsCommander,
 		mustSettleNow:   r.MustSettleNow,
+	}
+	if r.Discard {
+		// #650: a discard is its own event kind, because what a discard
+		// replacement watches for is the DISCARD and not the zone move
+		// underneath it. Everything else on the event is the same, and
+		// every exit site downstream reads the two kinds together
+		// (isExitMove).
+		ev.Kind = RepEventDiscard
+		ev.DiscardPlayer = r.Actor
+		ev.DiscardCause = r.DiscardCause
+		if ev.DiscardCause == "" {
+			ev.DiscardCause = DiscardCauseEffect
+		}
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -463,39 +502,55 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 
 	fromBattlefield := src.Kind == ZoneBattlefield
 	if fromBattlefield {
-		g.snapshotLKILocked(ev.CardID)
+		// LKI, and the CR 400.7 forget — battlefield_exit.go.
+		g.battlefieldExitLocked(ev.CardID)
 	}
+	// The pre-move card, for CR 708.9 below: MoveCard clears the
+	// face-down state on the way through (CR 400.7), so "was this a
+	// face-down permanent" can only be asked before it runs.
+	before, hadBefore := g.cardInZoneLocked(src, ev.CardID)
 	if _, err := MoveCard(src, dstZone, ev.CardID); err != nil {
 		return err
+	}
+	// CR 708.9: a face-down PERMANENT that moves to another zone is
+	// revealed by its owner. FIRST, before the destination's own
+	// knowledge rule below, and that order is the rule: the reveal is
+	// what every player SAW, and the destination then decides what
+	// they still KNOW. A morph tucked into a library is revealed to
+	// the table and then lost in it (CR 401.2); one exiled face down
+	// is revealed and then unreadable again. Reveal last would leave
+	// every seat able to read a library card by position.
+	if hadBefore {
+		g.revealFaceDownExitLocked(before)
 	}
 
 	// Destination bookkeeping. All of it is keyed on where the card
 	// actually LANDED, so a redirect to the command zone cannot carry
 	// a face-down flag or a to-the-bottom instruction with it.
-	faceDown := r.FaceDown && !redirected && dstZone.Kind == ZoneExile
-	for i := range dstZone.Cards {
-		if dstZone.Cards[i].InstanceID != ev.CardID {
-			continue
+	//
+	// MoveCard has already cleared the face-down state for every
+	// destination (ADR 0069 decision 5), so the only thing left to do
+	// here is set it again when the destination IS a face-down state.
+	// The two former `FaceDown = false` arms are gone with it.
+	faceDown := r.FaceDown != FaceDownNone && !redirected && dstZone.Kind == ZoneExile
+	switch {
+	case faceDown:
+		// Who may look is the kind's answer (CR 406.3 for a plain
+		// exile: nobody, the player who exiled it included; CR
+		// 702.143d for a foretold card: its owner). Replacing the
+		// knowledge set rather than leaving it alone matters — a
+		// scryed library card has a knower, and carrying that in
+		// would let exactly one seat read a card nobody may.
+		g.applyFaceDownLandingLocked(dstZone, ev.CardID, r.FaceDown)
+	case dstZone.Kind == ZoneLibrary:
+		// A library is a hidden zone (CR 401.2). Whoever could read
+		// this card a moment ago cannot now.
+		for i := range dstZone.Cards {
+			if dstZone.Cards[i].InstanceID == ev.CardID {
+				dstZone.Cards[i].ClearKnown()
+				break
+			}
 		}
-		switch {
-		case faceDown:
-			// CR 406.3: nobody may look at it, including the player
-			// who exiled it. Clearing rather than leaving the set
-			// alone matters — a scryed library card has a knower.
-			dstZone.Cards[i].FaceDown = true
-			dstZone.Cards[i].ClearKnown()
-		case dstZone.Kind == ZoneLibrary:
-			// A library is a hidden zone (CR 401.2). Whoever could
-			// read this card a moment ago cannot now.
-			dstZone.Cards[i].FaceDown = false
-			dstZone.Cards[i].ClearKnown()
-		default:
-			// CR 400.7 / 708.2: "face down" belongs to an object in a
-			// zone, and a card that changes zones is a new object
-			// with no memory of it.
-			dstZone.Cards[i].FaceDown = false
-		}
-		break
 	}
 	if !faceDown {
 		g.markCardKnownInZoneLocked(dstZone, ev.CardID)
@@ -531,18 +586,24 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		})
 	case r.Discard:
 		// CR 701.8a: the discard is the move OUT of the hand, so it
-		// happened whatever the CR 903.9 window did with the
-		// destination — a commander put into the command zone instead
-		// was still discarded, and Megrim, Containment Construct and
+		// happened whatever the window did with the destination — a
+		// commander put into the command zone instead was still
+		// discarded, Library of Leng putting it on top of the library
+		// was still a discard, and Megrim, Containment Construct and
 		// the rest of the family still see it. NewZone is where the
 		// card really went, so a listener that cares can tell.
+		//
+		// #650: it also carries the CAUSE now, so the log can say why
+		// and a payoff that cares ("a spell or ability an opponent
+		// controls causes you to discard") has it beside the Source.
 		g.EmitEvent(Event{
-			Kind:    EventDiscardCard,
-			Actor:   actor,
-			Source:  r.Source,
-			CardID:  ev.CardID,
-			OldZone: src.Kind,
-			NewZone: dstZone.Kind,
+			Kind:         EventDiscardCard,
+			Actor:        actor,
+			Source:       r.Source,
+			CardID:       ev.CardID,
+			OldZone:      src.Kind,
+			NewZone:      dstZone.Kind,
+			DiscardCause: ev.DiscardCause,
 		})
 	default:
 		kind := EventZoneMove

@@ -165,6 +165,10 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// own and carries its own X.
 	spend := game.ManaSpendForCast(card)
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
+	// #810: the one X rule. A spell whose whole effect is X (Fireball,
+	// Stroke of Genius) is not offered at X=0, where it would resolve
+	// for nothing; a spell with a fixed rider still is. See x.go.
+	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	x := 0
 	if !perTarget {
 		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
@@ -176,17 +180,21 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 			return
 		}
 		var ok bool
-		x, ok = e.affordableX(priced, spend)
+		x, ok = e.affordableXFrom(priced, spend, xFloor)
 		if !ok {
 			return
 		}
 	}
 
-	// Modes → each choice of modes yields a target spec (at most one
-	// chosen mode may carry a target clause; the engine rejects two).
+	// Modes → each choice of modes yields its own clause list, and
+	// each clause its own picks (#764). Options with no legal target
+	// are dropped before any combination is built, so the budget is
+	// never spent on selections the engine would refuse (ADR 0065
+	// §6).
+	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
-	if ms := game.ModeSpecFor(game.CatalogKey(card)); ms != nil {
-		modeSets = legalModeSets(ms)
+	if modeSpec != nil {
+		modeSets = e.legalModeSets(modeSpec)
 		if len(modeSets) == 0 {
 			return
 		}
@@ -230,14 +238,51 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	}
 
 	budget := e.opts.MaxExpansionPerSource
+	cardSpec := game.TargetSpecFor(game.CatalogKey(card))
 	for _, modes := range modeSets {
-		spec := castTargetSpec(game.CatalogKey(card), modes)
-		targetSets := [][]game.TargetRef{nil}
-		if spec != nil {
-			targetSets = e.legalTargetSets(spec, budget)
-			if len(targetSets) == 0 {
+		// The budget is spent MODES-outermost: every mode selection
+		// gets at least one target set before any gets a second, so a
+		// bot is never offered only the first bullet of a charm
+		// (ADR 0065 §6).
+		steps := game.AnnouncedClauses(cardSpec, modeSpec, modes)
+		// #619, CR 601.2c. Crackle with Power's target count IS X
+		// ("deals five times X damage to each of up to X targets"),
+		// and the announce path refuses any cast where the two
+		// disagree. So for such a step the enumerator does not pick an
+		// X and a target list independently — it picks the targets,
+		// and the X it announces is how many it picked.
+		xSteps := stepsCountedByX(steps)
+		if len(xSteps) > 0 {
+			if cost.XSlots == 0 {
+				// The step's X is announced by a cost this package
+				// cannot price — Waterbender's Restoration's
+				// waterbend {X}, paid by tapping artifacts and
+				// creatures. The only announcement the enumerator
+				// could make for it is X=0, which buys no targets and
+				// a spell that does nothing, and any larger one would
+				// be a move the engine refuses for an unpaid cost. So
+				// the cast is not enumerable, the same answer an
+				// unparseable cost gets.
 				continue
 			}
+			// The arities to generate are bounded by the largest X
+			// the seat could announce. Under a per-target price that
+			// is not known until each set is priced, so open the step
+			// to MaxX and let the affordability check below drop what
+			// cannot be paid; the budget caps the expansion either
+			// way.
+			bound := x
+			if perTarget {
+				bound = e.opts.MaxX
+			}
+			if bound < 1 {
+				continue
+			}
+			steps = openXCountedSteps(steps, bound)
+		}
+		targetSets := e.legalStepSets(steps, budget)
+		if len(targetSets) == 0 {
+			continue
 		}
 		for _, targets := range targetSets {
 			setX := x
@@ -256,10 +301,22 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					continue
 				}
 				var ok bool
-				setX, ok = e.affordableX(priced, spend)
+				setX, ok = e.affordableXFrom(priced, spend, xFloor)
 				if !ok {
 					continue
 				}
+			}
+			if len(xSteps) > 0 {
+				// setX is the largest announcement this seat can pay
+				// for; a set that filled more X-counted slots than
+				// that is a cast it cannot make. The cost is monotonic
+				// in X, so the comparison is the whole affordability
+				// check.
+				k, ok := announcedXCount(steps, xSteps, targets)
+				if !ok || k < 1 || k > setX {
+					continue
+				}
+				setX = k
 			}
 			for _, discards := range discardSets {
 				for _, sacs := range sacrificeSets {
@@ -303,20 +360,18 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	}
 }
 
-// affordableX reports whether the seat can pay cost right now — from
-// the floating pool, or by the auto-tapper's plan — and, for an {X}
-// cost, the largest X it can pay up to MaxX. Mirrors the engine's
-// auto_tap + strict path: the pool is consulted first, then a plan
-// is sought for the WHOLE cost (the engine does not net floating
-// mana against the plan).
-func (e *enumerator) affordableX(cost game.ParsedCost, spend game.ManaSpendContext) (int, bool) {
-	return e.affordableXFrom(cost, spend, 0)
-}
-
-// affordableXFrom is affordableX with a floor on the announcement —
-// an activated ability whose printed text says "X can't be 0" (Helm
-// of Obedience) has a floor of 1, and a seat that cannot pay for
-// X=1 has no legal activation at all rather than a free one at X=0.
+// affordableXFrom reports whether the seat can pay cost right now —
+// from the floating pool, or by the auto-tapper's plan — and, for an
+// {X} cost, the largest X it can pay, at or above `floor`, up to MaxX.
+// Mirrors the engine's auto_tap + strict path: the pool is consulted
+// first, then a plan is sought for the WHOLE cost (the engine does not
+// net floating mana against the plan).
+//
+// The floor is the announcement's lower bound, and it has two sources,
+// both settled by enumeratedXFloor (x.go) before the call: a printed
+// "X can't be 0" (Helm of Obedience), and #810's rule that a move
+// whose whole effect is X is not worth offering at X=0. A seat that
+// cannot pay for the floor has no move at all rather than a free one.
 //
 // The scan still starts at the floor and still breaks on the first
 // unaffordable value, because the cost is monotonic in X: every
@@ -379,57 +434,184 @@ func (e *enumerator) canPayExcluding(
 	return ok
 }
 
-// castTargetSpec mirrors game.castTargetSpec: the card-level spec
-// wins; otherwise the single chosen mode that carries a clause. Two
-// targeted modes never reach here — legalModeSets excludes them.
-func castTargetSpec(oracleID string, modes []int) *game.TargetSpec {
-	if spec := game.TargetSpecFor(oracleID); spec != nil {
-		return spec
-	}
-	ms := game.ModeSpecFor(oracleID)
-	if ms == nil {
-		return nil
-	}
-	for _, m := range modes {
-		if m >= 0 && m < len(ms.Options) && ms.Options[m].Targets != nil {
-			return ms.Options[m].Targets
-		}
-	}
-	return nil
-}
-
 // legalModeSets lists every distinct mode selection of size
 // Min..Max, excluding any with more than one targeted option (the
 // engine's castTargetSpec rejects those).
-func legalModeSets(ms *game.ModeSpec) [][]int {
-	n := len(ms.Options)
-	hi := ms.Max
-	if hi <= 0 || hi > n {
-		hi = n
+func (e *enumerator) legalModeSets(ms *game.ModeSpec) [][]int {
+	// ADR 0065 §6, "prefer the modes that have legal targets": an
+	// option whose clause cannot be filled is dropped before any
+	// combination is built, so the budget never goes on a selection
+	// the engine would refuse at announce.
+	options := e.g.ChoosableModeOptionsForEffect(e.seat, ms)
+	if !game.EnoughChoosableModes(len(options), ms) {
+		return nil
 	}
+	hi := ms.Max
+	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
+		hi = len(options)
+	}
+	budget := e.opts.MaxExpansionPerSource
 	var out [][]int
-	var rec func(start int, cur []int)
-	rec = func(start int, cur []int) {
-		if len(cur) >= ms.Min && len(cur) <= hi {
-			targeted := 0
-			for _, m := range cur {
-				if ms.Options[m].Targets != nil {
-					targeted++
+	add := func(sel []int) bool {
+		out = append(out, append([]int(nil), sel...))
+		return len(out) < budget
+	}
+	if ms.Min == 0 {
+		if !add(nil) {
+			return out
+		}
+	}
+	lo := ms.Min
+	if lo < 1 {
+		lo = 1
+	}
+	// CR 700.2d: the all-one-option selections first, so a
+	// repeatable spec whose only legal option is one mode is not
+	// crowded out by mixed multisets.
+	if ms.Repeatable {
+		for _, opt := range options {
+			for n := lo; n <= hi; n++ {
+				sel := make([]int, n)
+				for i := range sel {
+					sel[i] = opt
+				}
+				if !add(sel) {
+					return out
 				}
 			}
-			if targeted <= 1 {
-				out = append(out, append([]int(nil), cur...))
+		}
+	}
+	var rec func(start int, cur []int) bool
+	rec = func(start int, cur []int) bool {
+		if len(cur) >= lo && len(cur) <= hi {
+			if !(ms.Repeatable && len(cur) == 1) && !add(cur) {
+				return false
 			}
 		}
 		if len(cur) == hi {
-			return
+			return true
 		}
-		for i := start; i < n; i++ {
-			rec(i+1, append(cur, i))
+		for i := start; i < len(options); i++ {
+			if !rec(i+1, append(cur, options[i])) {
+				return false
+			}
 		}
+		return true
 	}
 	rec(0, nil)
 	return out
+}
+
+// legalStepSets is the cartesian product of each clause's legal
+// picks, in step order, capped at `budget` (#764, ADR 0065 §6). An
+// announcement with no steps yields the single empty set, which is
+// how an untargeted cast stays one move.
+func (e *enumerator) legalStepSets(steps []game.AnnouncedClause, budget int) [][]game.TargetRef {
+	out := [][]game.TargetRef{nil}
+	for i := range steps {
+		clause := steps[i].Clause
+		picks := e.legalTargetSets(&clause, budget)
+		if len(picks) == 0 {
+			return nil
+		}
+		next := make([][]game.TargetRef, 0, budget)
+		for _, prefix := range out {
+			for _, pick := range picks {
+				if len(next) >= budget {
+					break
+				}
+				combined := append([]game.TargetRef(nil), prefix...)
+				skip := false
+				for _, p := range pick {
+					p.Mode, p.Slot = steps[i].Mode, steps[i].Slot
+					// CR 601.2c: a Distinct clause may not repeat an
+					// object an earlier clause took.
+					if clause.Distinct {
+						for _, seen := range prefix {
+							if seen.ID == p.ID {
+								skip = true
+							}
+						}
+					}
+					combined = append(combined, p)
+				}
+				if skip {
+					continue
+				}
+				next = append(next, combined)
+			}
+		}
+		if len(next) == 0 {
+			return nil
+		}
+		out = next
+	}
+	return out
+}
+
+// stepsCountedByX lists the indexes of the announcement's steps whose
+// target count is the announced X rather than a printed constant
+// (Crackle with Power, Doppelgang, Heliod's Intervention's first
+// mode). Empty — the overwhelming majority — means nothing here ties
+// X to anything.
+func stepsCountedByX(steps []game.AnnouncedClause) []int {
+	var out []int
+	for i := range steps {
+		if steps[i].Clause.CountFromX {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// openXCountedSteps returns a copy of `steps` with every X-counted
+// clause opened to 1..bound, so legalStepSets expands one target set
+// per arity and the caller can read the arity back off the set.
+//
+// The engine's own resolveStepCountsFromX pins the same clauses to a
+// single announced X; this is that operation with the X still unknown,
+// which is the whole difference between validating an announcement and
+// building one.
+//
+// The floor is 1, not 0. X=0 on such a step is a spell cast with no
+// targets, which for every card in the catalog that has one means a
+// spell that does nothing — #810's rule, and the reason this needs no
+// zero case of its own. A CountFromX card with a fixed rider would
+// want one; none exists, and x.go is where that would be decided.
+func openXCountedSteps(steps []game.AnnouncedClause, bound int) []game.AnnouncedClause {
+	out := append([]game.AnnouncedClause(nil), steps...)
+	for _, i := range stepsCountedByX(out) {
+		out[i].Clause.Min, out[i].Clause.Max = 1, bound
+		out[i].Clause.CountFromX = false
+	}
+	return out
+}
+
+// announcedXCount reads the X a target set is announcing: how many
+// refs answer the X-counted steps. False when two such steps disagree,
+// which is a set no announcement could cover — one X, one count
+// (CR 601.2c).
+//
+// Matched on (Mode, Slot), the coordinates legalStepSets stamps onto
+// every ref, which is exactly what the engine's stepTargetCount reads.
+func announcedXCount(steps []game.AnnouncedClause, xSteps []int, targets []game.TargetRef) (int, bool) {
+	k := -1
+	for _, i := range xSteps {
+		n := 0
+		for _, t := range targets {
+			if t.Kind == game.TargetSelf || t.Kind == game.TargetNone {
+				continue
+			}
+			if t.Mode == steps[i].Mode && t.Slot == steps[i].Slot {
+				n++
+			}
+		}
+		if k >= 0 && n != k {
+			return 0, false
+		}
+		k = n
+	}
+	return k, k >= 0
 }
 
 // legalTargetSets expands a target clause into concrete target

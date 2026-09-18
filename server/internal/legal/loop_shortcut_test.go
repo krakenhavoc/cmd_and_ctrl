@@ -103,3 +103,81 @@ func TestLoopShortcutSecondAskOffersOnlyStop(t *testing.T) {
 	}
 	dispatchAll(t, g, me.ID, moves)
 }
+
+// TestLoopShortcutOffersOnlyStopForASelfActivatedLoop is #810's half
+// of the same termination guarantee. "Resolve it ten more times" is an
+// answer about a loop that runs itself; a loop its controller feeds
+// one activation at a time is not one, and ten more turns of the crank
+// is not a shortcut past anything. So a self-activated loop gets the
+// stop-only list on the FIRST ask, and a bot-only table that finds one
+// runs exactly the threshold's worth of iterations.
+//
+// The prompt carries no new field for this: the source permanent and
+// the repeating ability's stack label are already on it, and an
+// activated ability's stack label is its printed label.
+func TestLoopShortcutOffersOnlyStopForASelfActivatedLoop(t *testing.T) {
+	g := newTable(t)
+	me := g.Seats[0]
+	const label = "Free Engine: do nothing, repeatedly"
+	src := battlefieldCard(g, me, game.Card{
+		Name:     "Free Engine",
+		TypeLine: "Enchantment",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label:  label,
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:              game.PendingChoiceLoopShortcut,
+			Chooser:           me.ID,
+			Count:             1,
+			Source:            src,
+			Reason:            label,
+			LoopShortcutKey:   game.TallyKey(src, label),
+			LoopShortcutCount: 25,
+		})
+	})
+
+	moves := legal.EnumerateFor(g, me.ID)
+	if len(moves) != 1 {
+		t.Fatalf("enumerated %d answers for a loop the seat drives itself, want just stop: %v",
+			len(moves), labels(moves))
+	}
+	if !strings.HasSuffix(moves[0].Label, ": stop here") {
+		t.Errorf("answer = %q, want stop", moves[0].Label)
+	}
+	dispatchAll(t, g, me.ID, moves)
+}
+
+// The control: a TRIGGER loop on a permanent that also happens to have
+// an activated ability still gets the full list, because the label the
+// notice names is not that ability's.
+func TestLoopShortcutStillOffersNumbersForATriggerLoop(t *testing.T) {
+	g := newTable(t)
+	me := g.Seats[0]
+	src := battlefieldCard(g, me, game.Card{
+		Name:     "Mirror Engine",
+		TypeLine: "Artifact",
+		ActivatedAbilities: []game.ActivatedAbilityShape{{
+			Label:  "Mirror Engine: something else entirely",
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	const label = "Mirror Engine — create a Spark"
+	g.WithWriteLock(func() {
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind:              game.PendingChoiceLoopShortcut,
+			Chooser:           me.ID,
+			Count:             1,
+			Source:            src,
+			Reason:            label,
+			LoopShortcutKey:   game.TallyKey(src, label),
+			LoopShortcutCount: 25,
+		})
+	})
+
+	if moves := legal.EnumerateFor(g, me.ID); len(moves) != 3 {
+		t.Fatalf("enumerated %d answers for a trigger loop, want the full list: %v", len(moves), labels(moves))
+	}
+}

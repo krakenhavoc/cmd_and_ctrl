@@ -116,22 +116,28 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceDamageAssignment:    true,
 	PendingChoiceTriggerPrompt:       true,
 	PendingChoiceTriggerOrder:        true,
-	PendingChoicePickTarget:          true,
-	PendingChoiceSacrifice:           true,
-	PendingChoiceScry:                true,
-	PendingChoiceSurveil:             true,
-	PendingChoiceLookAtTop:           true,
-	PendingChoiceSearchLibrary:       true,
-	PendingChoiceMayCast:             true,
-	PendingChoiceCoinCall:            true,
-	PendingChoiceChooseProtector:     true,
-	PendingChoiceLegendRule:          true,
-	PendingChoiceColor:               true,
-	PendingChoiceConfirm:             true,
-	PendingChoiceChooseCards:         true,
-	PendingChoiceEntryPayLife:        true,
-	PendingChoiceCopyTarget:          true,
-	PendingChoiceCreatureType:        true,
+	// #764 CR 603.3c: a trigger's mode is chosen as it is put on the
+	// stack. Nothing may happen until it is — the ability is not on
+	// the stack yet, and the targets it asks for next depend on the
+	// answer.
+	PendingChoiceModePick: true,
+
+	PendingChoicePickTarget:      true,
+	PendingChoiceSacrifice:       true,
+	PendingChoiceScry:            true,
+	PendingChoiceSurveil:         true,
+	PendingChoiceLookAtTop:       true,
+	PendingChoiceSearchLibrary:   true,
+	PendingChoiceMayCast:         true,
+	PendingChoiceCoinCall:        true,
+	PendingChoiceChooseProtector: true,
+	PendingChoiceLegendRule:      true,
+	PendingChoiceColor:           true,
+	PendingChoiceConfirm:         true,
+	PendingChoiceChooseCards:     true,
+	PendingChoiceEntryPayLife:    true,
+	PendingChoiceCopyTarget:      true,
+	PendingChoiceCreatureType:    true,
 	// #568. "Choose one of the following", addressed to any seat —
 	// Torment of Hailfire's three-way question, and the second half
 	// of a Fact or Fiction pile split. It blocks for the reason every

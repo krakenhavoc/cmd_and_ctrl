@@ -47,6 +47,14 @@ type choiceParams struct {
 	// and a plain int would be sent on every other kind. The
 	// dispatcher still routes this kind by KIND, not by presence.
 	OptionIndex *int `json:"option_index,omitempty"`
+	// Modes answers a mode_pick prompt (#764, CR 603.3c): the chosen
+	// OPTION indexes in the order chosen, repeats allowed when the
+	// ability says so. No omitempty, and the dispatcher routes this
+	// kind by the choice's KIND — "choose up to one, and I choose
+	// none" is the empty slice, which omitempty would erase into
+	// absent, and an index list of zeroes is a perfectly ordinary
+	// answer ([0, 0, 0] is Mystic Confluence drawing three cards).
+	Modes []int `json:"modes"`
 	// CreatureType answers a choose_creature_type prompt (CR 614.12).
 	// omitempty because the dispatcher routes on its PRESENCE: an
 	// empty string sent on every other kind would be read as "this is
@@ -253,6 +261,22 @@ func (e *enumerator) choiceMoves() bool {
 					p.Targets = []targetWire{}
 				}
 				e.addChoice(c, reason+targetLabel(g, set), p)
+			}
+
+		// #764 CR 603.3c: a modal trigger's mode, chosen as the
+		// ability is put on the stack. Every legal selection, bounded
+		// by MaxExpansionPerSource and ordered by ADR 0065 §6 — the
+		// all-one-option selections first, so a repeatable prompt
+		// whose only legal option is one mode is not crowded out by
+		// mixed multisets it cannot take.
+		case game.PendingChoiceModePick:
+			for _, sel := range game.ModePickSelections(c, e.opts.MaxExpansionPerSource) {
+				p := base()
+				p.Modes = sel
+				if p.Modes == nil {
+					p.Modes = []int{}
+				}
+				e.addChoice(c, reason+modeLabel(c, sel), p)
 			}
 
 		case game.PendingChoiceSacrifice:
@@ -637,12 +661,21 @@ func (e *enumerator) choiceMoves() bool {
 			//
 			// First ask: 10, then 100, then stop. A bot takes the
 			// first offer, which is why 10 leads. See docs/bot.md.
+			//
+			// #810 adds the second case that offers only stop: a loop
+			// the chooser is DRIVING, by activating an ability of
+			// their own permanent once per iteration. "Resolve it ten
+			// more times" is an answer about a loop that runs itself;
+			// for one the seat feeds by hand it buys nothing but ten
+			// more turns of the crank, and the crank is the thing the
+			// breaker is trying to stop. So a self-activated loop gets
+			// the termination answer on the FIRST ask.
 			offers := []int{
 				game.DefaultLoopShortcutIterations,
 				100,
 				0,
 			}
-			if c.LoopShortcutRepeat {
+			if c.LoopShortcutRepeat || e.loopIsSelfActivated(c) {
 				offers = []int{0}
 			}
 			for _, k := range offers {
@@ -685,6 +718,64 @@ func (e *enumerator) choiceMoves() bool {
 		}
 	}
 	return owed
+}
+
+// modeLabel renders a mode selection for the move list: the chosen
+// bullets in order, so a bot's log says what it picked rather than
+// which indexes it picked.
+func modeLabel(c *game.PendingChoice, sel []int) string {
+	if len(sel) == 0 {
+		return ": none"
+	}
+	pos := make(map[int]int, len(c.ModeOptionIndex))
+	for i, idx := range c.ModeOptionIndex {
+		pos[idx] = i
+	}
+	out := ""
+	for _, m := range sel {
+		label := ""
+		if i, ok := pos[m]; ok && i < len(c.ModeOptionLabel) {
+			label = c.ModeOptionLabel[i]
+		}
+		if label == "" {
+			label = "mode " + strconv.Itoa(m)
+		}
+		if out != "" {
+			out += "; "
+		}
+		out += label
+	}
+	return ": " + out
+}
+
+// loopIsSelfActivated reports whether the loop a CR 726 shortcut
+// prompt names is one its controller drives themselves, by activating
+// an ability once per iteration, rather than a trigger loop that runs
+// on its own once it starts (#810).
+//
+// Read off the ability the notice names: the prompt carries the
+// source permanent and the stack label the repeating item announced
+// with, and an ACTIVATED ability's stack label is its printed label
+// (ActivateCatalogAbility), so a label that matches one of the
+// source's activated abilities is an activation loop. A triggered
+// ability's label never does — the catalog's convention for one is
+// "<card> — <what happens>".
+//
+// No new state on the prompt for a fact the board already answers.
+func (e *enumerator) loopIsSelfActivated(c *game.PendingChoice) bool {
+	if c.Source == uuid.Nil || c.Reason == "" {
+		return false
+	}
+	src := findBattlefield(e.g, c.Source)
+	if src == nil {
+		return false
+	}
+	for _, ab := range game.ActivatedAbilitiesForCard(*src) {
+		if ab.Label == c.Reason {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *enumerator) addChoice(c *game.PendingChoice, label string, p choiceParams) {

@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8164b1e8-3350-465e-8a17-75f57d326344",
 		Name:         "Exsanguinate",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return b21DrainEachOpponentAndGainTheTotal(ctx.Game, item, ctx.X())

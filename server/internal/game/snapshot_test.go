@@ -112,6 +112,22 @@ func enrich(t *testing.T, g *Game) {
 			KnownBy:    map[uuid.UUID]bool{p0.ID: true},
 		})
 
+		// --- exile, face down and known to its owner (ADR 0069) ---
+		// Foretell's shape. Here so the exact round-trip covers
+		// FaceDownKind: a card carried back with FaceDown set and no
+		// kind would read as a Necropotence exile that nobody may
+		// look at, which is a different game.
+		g.Exile.PushTop(Card{
+			InstanceID:   uuid.New(),
+			Name:         "Foretold Card",
+			OracleID:     "oracle-foretold",
+			Owner:        p1.ID,
+			Controller:   p1.ID,
+			FaceDown:     true,
+			FaceDownKind: FaceDownForetold,
+			KnownBy:      map[uuid.UUID]bool{p1.ID: true},
+		})
+
 		// --- a spell on the stack, plus its StackMeta -------------
 		// Kind spell with a nil Effect: spells dispatch through
 		// EffectResolver by oracle ID at resolution, so a spell item

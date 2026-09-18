@@ -724,6 +724,41 @@ Gate a policy only once you have run the suite and seen it pass.
 
 ---
 
+## Enumerating a modal announcement (#764)
+
+A modal cast or activation is a product: every legal selection of
+modes, times every legal set of targets for each clause of each
+chosen mode. That product is unbounded in principle and is bounded in
+practice by `legal.Options.MaxExpansionPerSource` (default 12, [ADR
+0033](decisions/0033-ai-bot-seat.md) §1). The policy for spending
+that budget is stated here because it decides what a bot is even
+allowed to consider, and [ADR 0065
+§6](decisions/0065-modal-and-multi-target-clauses.md) is where it was
+decided:
+
+- **Prefer the modes that have legal targets.** An option whose
+  clause cannot be filled from the current board is dropped before
+  any combination is built, so the budget is never spent on a
+  selection the engine would refuse at announce. This is the same
+  `ChoosableModeOptions` walk the `mode_pick` prompt uses, so the
+  enumerator and the prompt offer the same bullets.
+- **All-one-mode first for a repeatable spec.** With CR 700.2d in
+  play (Mystic Confluence's "you may choose the same mode more than
+  once") the selections that take one bullet `Max` times are emitted
+  before the mixed multisets. When only one bullet is legal, "that
+  bullet three times" is the only selection there is, and it must not
+  be crowded out by mixtures the seat cannot take.
+- **Modes outermost.** The budget is spent mode-selection first, so
+  every selection gets at least one target set before any selection
+  gets a second. Without that, one charm's first bullet with twelve
+  targets would be the whole move list and the other three bullets
+  would never be offered.
+
+A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
+every legal multiset of the bullets the prompt carries, capped by the
+same budget, and labels each move with the bullets rather than their
+indexes so the decision log reads.
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than
@@ -785,6 +820,32 @@ every surviving window and a wider candidate list.
 conservative, on the grounds that a human playing a bot generally
 wants the finish.
 
+**A bot is never offered an {X} spell or ability at X=0 when X is the
+whole of what it does.** Soothsaying's "{X}: Look at the top X cards of
+your library" is free at X=0, does nothing, and is back on the list the
+moment it resolves — so a table of bots took it 79,519 times in five
+minutes and never got past turn 18
+([#810](https://github.com/krakenhavoc/cmd_and_ctrl/issues/810)). The
+enumerator's rule is one line of policy: the smallest X it will
+announce for such a cost is 1, and where X=1 cannot be paid for the
+move is not offered at all. A card with a fixed rider — The Goose
+Mother is a 2/2 flier before X buys anything — is still offered at X=0,
+and then only when nothing larger is affordable, because the enumerator
+always takes the largest X the seat can pay. Which cards are which is
+the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
+still makes X=0 a legal announcement and the engine still accepts one;
+this is about what is worth putting in front of a player.
+
+**A spell whose target count is X is offered with X equal to the
+number of targets it picks.** Crackle with Power deals five times X
+damage to each of up to X targets, so the count and the announcement
+are one decision, not two — the enumerator used to make them
+separately and offer one target at X=0, which the engine refused
+outright
+([#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619)). A bot
+now sees Crackle at one target for X=1, two for X=2, and so on as far
+as its mana reaches, and never sees the cast that bounces.
+
 **A bot takes one CR 726 shortcut per loop per turn, then stops.** When
 the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
 repeating ability's controller is asked how many more times it should
@@ -797,3 +858,15 @@ guarantee is in the enumerator rather than in a policy on purpose: a
 policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
+
+**A loop the bot is feeding itself gets "stop" on the first ask, and
+the bot stops activating.** An activation loop is the other shape of
+runaway: nothing repeats on its own, the seat just keeps taking the
+same free ability. "Resolve it ten more times" is no kind of shortcut
+past a crank somebody has to keep turning, so for a loop whose
+repeating ability is an activated ability of the chooser's own
+permanent the enumerator offers only "stop here" — and while the notice
+stands, a bot runner holds on an activation of that permanent exactly
+as it holds on a pass. The table comes to rest at the threshold with
+the notice naming the ability, which is [ADR 0055
+§5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
