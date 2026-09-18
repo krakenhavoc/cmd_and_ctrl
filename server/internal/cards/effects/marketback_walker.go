@@ -56,6 +56,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "0405e0a9-6d02-4691-bdb8-59c72b824dab",
 		Name:         "Marketback Walker",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The X +1/+1 counters are put on it as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them.",

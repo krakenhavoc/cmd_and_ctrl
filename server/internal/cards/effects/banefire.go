@@ -40,6 +40,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5eff8a06-e0d6-435a-a7c0-db9f9d98636a",
 		Name:         "Banefire",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"A Banefire for X=5 or more can still be countered — the \"can't be countered\" rider isn't implemented.",
