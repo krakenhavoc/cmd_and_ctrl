@@ -1,4 +1,6 @@
-import { writable, type Readable } from "svelte/store";
+import { type Readable } from "svelte/store";
+
+import { guardedWritable } from "./guardedStore";
 
 // Route is the discriminated union of client-side views. The router
 // derives one of these from location.hash and re-derives on
@@ -112,7 +114,7 @@ function parseHash(hash: string): Route {
   }
 }
 
-const store = writable<Route>(parseHash(location.hash));
+const store = guardedWritable<Route>(parseHash(location.hash), "route");
 
 if (typeof window !== "undefined") {
   window.addEventListener("hashchange", () => {

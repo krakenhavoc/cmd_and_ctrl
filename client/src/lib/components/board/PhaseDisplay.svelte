@@ -105,10 +105,10 @@
 
   // S13.6: manual one-time stops. Click a priority-granting icon to
   // pin the cursor there the next time the viewer holds priority.
-  // Overrides autoPassPriority + smartAutoPass so the viewer can
-  // "fake a game action" — stop to think / bluff / respond even
-  // when the engine sees nothing to do. Consumed on step transition
-  // by the consumer in Game.svelte.
+  // Overrides autoPassPriority + smartAutoPass + the autopass
+  // toggle (#526) so the viewer can "fake a game action" — stop to
+  // think / bluff / respond even when the engine sees nothing to do.
+  // Consumed on step transition by the consumer in Game.svelte.
   const pinned = $derived($manualStops);
   function onIconClick(id: StepID): void {
     if (!canManuallyStop(id)) return;
@@ -211,8 +211,8 @@
       title={(autopassPaused
         ? "autopass PAUSED — a loop is resolving (CR 726). Use next to step through it; passing resumes on the next real play"
         : autopassEnabled
-          ? "autopass ON — every time priority lands on you, it passes; click to turn off"
-          : "autopass OFF — click to pass every priority window (bypasses stops, smart-skip, and manual pins)") +
+          ? "autopass ON — every time priority lands on you, it passes; click to turn off, or pin a phase icon to stop at just that step"
+          : "autopass OFF — click to pass every priority window (bypasses stops and smart-skip; a pinned phase icon still stops you)") +
         keyHint(keys.toggleAutopass)}
     >
       {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}

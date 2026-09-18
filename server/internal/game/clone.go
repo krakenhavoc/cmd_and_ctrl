@@ -102,6 +102,12 @@ func (g *Game) cloneLocked() *Game {
 			out.LandsPlayedThisTurn[k] = v
 		}
 	}
+	if len(g.ExtraLandDropsThisTurn) > 0 {
+		out.ExtraLandDropsThisTurn = make(map[uuid.UUID]int, len(g.ExtraLandDropsThisTurn))
+		for k, v := range g.ExtraLandDropsThisTurn {
+			out.ExtraLandDropsThisTurn[k] = v
+		}
+	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
@@ -456,6 +462,7 @@ func clonePlayer(p *Player) *Player {
 		}
 	}
 	out.MaxHandSize = p.MaxHandSize
+	out.LandDropsPerTurn = p.LandDropsPerTurn
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
@@ -646,6 +653,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
+	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
 	g.TurnTally = src.TurnTally
 	// #628's loop breaker, missed by this list when it landed: the

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { GameClient } from "../lib/ws";
+  import { recordClientError } from "../lib/clientErrors";
+  import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
   import { session } from "../lib/session";
   import { seatColor } from "../lib/colors";
@@ -38,6 +40,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { autopassDecision } from "../lib/autopassDecision";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import { registerShortcutHandlers, setShortcutContext } from "../lib/shortcutRuntime";
   import { effectiveBindings, formatChord, isMacLike } from "../lib/shortcuts";
@@ -134,6 +137,29 @@
   // offering an upload that 503s.
   let bugReportAttachments = $state(false);
   let bugReportOpen = $state(false);
+
+  // #720 / #266: the <svelte:boundary> around <Board> below. A throw
+  // while rendering the table, or in one of its `$effect`s, used to
+  // surface as an uncaught error and leave the board frozen on its
+  // last good frame — no message, nothing to press, and a bug report
+  // that arrived saying "it froze".
+  //
+  // The boundary turns that into a recoverable, reported state. Note
+  // what it does NOT catch: an event handler, a promise rejection, or
+  // anything outside this subtree. Those are still clientErrors.ts's
+  // window-level capture, which is why onerror records through the
+  // same ring buffer rather than keeping a channel of its own.
+  let boardErrorText = $state("");
+
+  function handleBoardError(err: unknown): void {
+    boardErrorText = describeThrown(err);
+    recordClientError(`board render failed: ${boardErrorText}`);
+  }
+
+  function retryBoard(reset: () => void): void {
+    boardErrorText = "";
+    reset();
+  }
   onMount(() => {
     void fetchBugReportConfig().then((cfg) => {
       bugReportAvailable = cfg.enabled;
@@ -176,120 +202,73 @@
   // S13.6: autopass mode is a session-scoped toggle ("get me
   // through this turn" / "I'm tapped out, don't ask me"). Stays on
   // until the viewer clicks the button again — not a one-shot.
-  // When on, overrides every other gate: settings.autoPassPriority,
-  // stepStops grid, smartAutoPass predicate, manual pins. The
-  // effect still requires the viewer to actually hold priority (so
-  // we don't spam the server with "you do not hold priority"
-  // rejections on opponents' turns — the toggle is ambient intent,
-  // not a manual pass loop).
+  // When on, it overrides settings.autoPassPriority, the stepStops
+  // grid and the smartAutoPass predicate. It does NOT override a
+  // manual one-time pin (#526) — see autopassDecision.ts for the
+  // full precedence and why. The effect still requires the viewer to
+  // actually hold priority (so we don't spam the server with "you do
+  // not hold priority" rejections on opponents' turns — the toggle
+  // is ambient intent, not a manual pass loop).
+  //
+  // The gate chain itself lives in lib/autopassDecision.ts: it is
+  // priority logic a player relies on mid-game, it had a precedence
+  // bug in it for four sprints (#526), and it was untestable while
+  // it sat inline in this effect. This effect now does the reactive
+  // reads and owns the two side effects (send the pass, disarm the
+  // toggle); the module decides.
   let autopassEnabled = $state(false);
   let lastAutoPassedSeq = $state(-1);
   $effect(() => {
-    if (!viewerHasPriority) return;
-    if (mulligansOpen || gameEnded || viewerEliminated) return;
-    // Never auto-pass priority while the viewer has an open choice to
-    // make (e.g. an optional trigger's yes/no prompt). The choice
-    // persists server-side regardless, but auto-passing here would
-    // race the modal and let priority slip away before the player
-    // answers. The chooser must resolve their pending choice first.
-    if (view?.pending_choices?.some((c) => c.chooser === viewerID)) return;
-    // #328: never auto-pass a declare-blockers window the viewer can
-    // actually block in. This sits with the mulligan and pending-
-    // choice guards, ABOVE the autopass toggle, because it is the
-    // same kind of thing: a turn-based action the player owes, not a
-    // priority response they may decline to make. Declining to block
-    // is still legal — an explicit pass is how you decline — but a
-    // human has to be the one who does it. The reporter had the
-    // toggle on and lost 8 life to three unblocked attackers with an
-    // untapped creature out; a skipped block cannot be undone and
-    // there is no workaround.
-    //
-    // Holds while ANY eligible blocker remains, not just until the
-    // first declaration — otherwise auto-pass would slam the window
-    // shut the moment you assigned one blocker of an intended two.
-    if (owesBlockDecision(view, viewerID)) return;
-    // #628 (CR 726): the server has spotted a trigger loop and
-    // suspended AUTOMATIC passing for the whole table. Sits here,
-    // above the toggle, for the same reason the guards above it do:
-    // it is not a question about what this viewer can do, and the
-    // toggle must not be able to out-vote it — the toggle is exactly
-    // what was driving the loop. The "next" button still passes by
-    // hand, so a table that wants to watch the loop run can, one
-    // click at a time.
-    if (loopSuspended) return;
     const step = view?.turn?.step;
-    if (!step) return;
+    const verdict = autopassDecision({
+      viewerHasPriority,
+      tableBusy: mulligansOpen || gameEnded || viewerEliminated,
+      // Never auto-pass while the viewer has an open choice to make
+      // (e.g. an optional trigger's yes/no prompt). The choice
+      // persists server-side regardless, but auto-passing here would
+      // race the modal and let priority slip away before the player
+      // answers.
+      hasPendingChoice: !!view?.pending_choices?.some((c) => c.chooser === viewerID),
+      // #328: never auto-pass a declare-blockers window the viewer
+      // can actually block in. Declining to block is legal — an
+      // explicit pass is how you decline — but a human has to be the
+      // one who does it, and a skipped block cannot be undone.
+      owesBlockDecision: owesBlockDecision(view, viewerID),
+      // #628 (CR 726): the server has spotted a trigger loop and
+      // suspended AUTOMATIC passing for the whole table. The "next"
+      // button still passes by hand.
+      loopSuspended,
+      step,
+      autopassToggle: autopassEnabled,
+      viewerIsActive,
+      autopassPersistThroughTurns: $settings.gameplay.autopassPersistThroughTurns,
+      // Read via the $manualStops subscription (not the non-reactive
+      // hasManualStop helper) so unpinning while holding priority
+      // re-runs this effect and resumes auto-pass immediately rather
+      // than on the next snapshot.
+      manualStop: !!step && $manualStops.has(step as StepID),
+      autoPassPriority: $settings.gameplay.autoPassPriority,
+      stackEmpty: stackEmpty(view),
+      holdPriority: $holdPriority,
+      autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
+      ownsEveryStackItem: ownsEveryStackItem(view, viewerID),
+      stepStop: step ? $settings.gameplay.stepStops[step] : undefined,
+      smartAutoPass: $settings.gameplay.smartAutoPass,
+      hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
+    });
 
-    const autopass = autopassEnabled;
-
-    // S13.6 safety belt (gameplay.autopassPersistThroughTurns): when
-    // the flag is off (default), autopass auto-clears the first time
-    // the cursor enters the viewer's own precombat_main — so a
-    // forgotten toggle doesn't silently skip your turn. Users who
-    // know they want autopass to outlive their own main phase flip
-    // the danger setting on and accept the trade. We clear BEFORE
-    // firing pass_priority so the toggle going off means the cursor
-    // holds for the viewer's turn.
-    if (
-      autopass &&
-      step === "precombat_main" &&
-      viewerIsActive &&
-      !$settings.gameplay.autopassPersistThroughTurns
-    ) {
+    if (verdict === "hold") return;
+    if (verdict === "clear-toggle") {
+      // S13.6 safety belt (gameplay.autopassPersistThroughTurns):
+      // when the flag is off (default), autopass auto-clears the
+      // first time the cursor enters the viewer's own precombat_main
+      // — so a forgotten toggle doesn't silently skip your turn.
+      // Users who know they want autopass to outlive their own main
+      // phase flip the danger setting on and accept the trade. The
+      // clear happens INSTEAD of a pass, so the toggle going off
+      // means the cursor holds for the viewer's turn.
       autopassEnabled = false;
       return;
-    }
-
-    // Conventional (non-autopass) path: honour every gate.
-    if (!autopass) {
-      if (!$settings.gameplay.autoPassPriority) return;
-      // Manual one-time stops override everything below — including
-      // the #323 own-stack pass, so a pinned step still hands you
-      // the cursor with your own spell on the stack. Click a phase
-      // icon in PhaseDisplay to pin; the pin clears on step
-      // transition. "Fake a game action" — viewer gets the cursor
-      // even when the engine has nothing to offer (want to think /
-      // bluff / respond off-catalog). Read via the $manualStops
-      // subscription (not the non-reactive hasManualStop helper) so
-      // unpinning while holding priority re-runs this effect and
-      // resumes auto-pass immediately rather than on the next
-      // snapshot.
-      if ($manualStops.has(step as StepID)) return;
-      if (!stackEmpty(view)) {
-        // A non-empty stack stops: a spell card OR an ability item
-        // (S19 triggers have no card on Game.Stack, only a
-        // stack_items entry). Every trigger and every spell an
-        // OPPONENT put up is a window the viewer gets to answer,
-        // and nothing below weakens that.
-        //
-        // #323 carves out exactly one case: a stack on which every
-        // item is the viewer's own. Casting the spell was already
-        // the decision — being asked "Counter or Pass?" about your
-        // own spell is the friction the issue reports. The hatch is
-        // the session `hold` toggle (phase widget + stack header),
-        // which has to be armed BEFORE the cast because the pass
-        // fires on the very next snapshot. With it on, or with the
-        // persistent setting off, this is the pre-#323 behaviour.
-        // ownsEveryStackItem also refuses while pending_triggers is
-        // still draining, since those may belong to anyone.
-        if ($holdPriority) return;
-        if (!$settings.gameplay.autoPassOwnStack) return;
-        if (!ownsEveryStackItem(view, viewerID)) return;
-        // Fall through to pass: the step-stops grid below is about
-        // "give me the cursor at this step", a question the viewer
-        // already answered by casting during it.
-      } else if ($settings.gameplay.stepStops[step] === true) {
-        // Stop here if the viewer has opted to stop on this step.
-        // The map omits no-priority steps (Untap / Cleanup); for
-        // those, the viewer can never hold priority anyway.
-        // `smartAutoPass` adds an escape hatch: if the stop lands on
-        // the viewer but the legality engine reports no legal
-        // response, pass anyway. Predicate errs conservative
-        // (false-positive-stop > false-negative-skip per ADR 0009 §3).
-        const smart = $settings.gameplay.smartAutoPass;
-        const canRespond = smart ? hasAnyLegalResponse(view, viewerID, $lastSeq) : true;
-        if (canRespond) return;
-      }
     }
 
     // Dedupe by snapshot seq so we don't fire twice on the same
@@ -1128,221 +1107,276 @@
 
   <div class="play-area">
     {#if view}
-      <Board
-        {view}
-        {viewerID}
-        {isAdmin}
-        {sendAction}
-        {combatMode}
-        {selectedCombatCardID}
-        onSelectCombatCard={handleSelectCombatCard}
-        onDeclareAttack={declareAttackTarget}
-        onDeclareBlock={declareBlockTarget}
-        {autopassEnabled}
-        {loopNotice}
-        onPassPriority={passPriority}
-        onToggleAutopass={toggleAutopass}
-        {beatsPrimeKey}
-      >
-        <!-- Everything that asks for the viewer's attention shares the
-             board's strip (under the stack card): targeting prompt,
-             combat hint, opening-hand roll-call, toasts, game end.
-             Nothing here pushes the table around. -->
-        {#snippet attention()}
-          <TargetingBanner />
+      <!-- #720 / #266: Svelte 5's error boundary around the table.
+           Everything that draws the game lives in here, and a throw in
+           any of it used to mean an uncaught error and a board stuck on
+           its last frame. Now it is a panel the player can act on, and
+           a recorded error the next bug report carries.
 
-          <!-- Bot disclosures. Improvisation announcements always
-               show; per-move reasoning only with the S11.5 "show bot
-               reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
-          <BotFeed chat={$chat} />
+           Deliberately NOT around the whole route: the header, the
+           lobby controls, the bug-report button and "back to lobby"
+           have to keep working when the table does not, or the
+           fallback's own advice is unreachable. -->
+      <svelte:boundary onerror={handleBoardError}>
+        <Board
+          {view}
+          {viewerID}
+          {isAdmin}
+          {sendAction}
+          {combatMode}
+          {selectedCombatCardID}
+          onSelectCombatCard={handleSelectCombatCard}
+          onDeclareAttack={declareAttackTarget}
+          onDeclareBlock={declareBlockTarget}
+          {autopassEnabled}
+          {loopNotice}
+          onPassPriority={passPriority}
+          onToggleAutopass={toggleAutopass}
+          {beatsPrimeKey}
+        >
+          <!-- Everything that asks for the viewer's attention shares the
+               board's strip (under the stack card): targeting prompt,
+               combat hint, opening-hand roll-call, toasts, game end.
+               Nothing here pushes the table around. -->
+          {#snippet attention()}
+            <TargetingBanner />
 
-          <!-- S22 broadcast reveals (CR 701.20). The strip rather than
-               a modal on purpose: a reveal asks nobody a question, and
-               three of the four seats receiving it did not act. It
-               must not take the board away from a player who is
-               mid-decision the way the scry prompt legitimately
-               does. -->
-          <RevealBanner snap={view} />
+            <!-- Bot disclosures. Improvisation announcements always
+                 show; per-move reasoning only with the S11.5 "show bot
+                 reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
+            <BotFeed chat={$chat} />
 
-          <!-- #318: the attack-with-all cluster. Present for the whole
-               declare-attackers step so the count stays live as
-               creatures are declared one by one; it disappears the
-               moment nothing is left that could attack. -->
-          {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
-            <div class="att attack-all" aria-label="declare attackers">
-              <span class="att-label danger">
-                <Icon name="sword" size={12} />
-                attack
-              </span>
-              <span class="att-text">
+            <!-- S22 broadcast reveals (CR 701.20). The strip rather than
+                 a modal on purpose: a reveal asks nobody a question, and
+                 three of the four seats receiving it did not act. It
+                 must not take the board away from a player who is
+                 mid-decision the way the scry prompt legitimately
+                 does. -->
+            <RevealBanner snap={view} />
+
+            <!-- #318: the attack-with-all cluster. Present for the whole
+                 declare-attackers step so the count stays live as
+                 creatures are declared one by one; it disappears the
+                 moment nothing is left that could attack. -->
+            {#if canDeclareAttackers && !mulligansOpen && !gameEnded && (attackAllReady || canUndoDeclaration)}
+              <div class="att attack-all" aria-label="declare attackers">
+                <span class="att-label danger">
+                  <Icon name="sword" size={12} />
+                  attack
+                </span>
+                <span class="att-text">
+                  {#if attackAllReady}
+                    <strong>{attackPlan.eligible.length}</strong>
+                    ready to attack
+                    {#if attackPlan.declared.length > 0}
+                      <span class="muted">· {attackPlan.declared.length} already declared</span>
+                    {/if}
+                    {#if attackBlockedHint}
+                      <span class="muted">· can't: {attackBlockedHint}</span>
+                    {/if}
+                  {:else}
+                    <strong>{attackPlan.declared.length}</strong>
+                    declared
+                    {#if attackBlockedHint}
+                      <span class="muted">· {attackBlockedHint} can't attack</span>
+                    {/if}
+                  {/if}
+                </span>
                 {#if attackAllReady}
-                  <strong>{attackPlan.eligible.length}</strong>
-                  ready to attack
-                  {#if attackPlan.declared.length > 0}
-                    <span class="muted">· {attackPlan.declared.length} already declared</span>
-                  {/if}
-                  {#if attackBlockedHint}
-                    <span class="muted">· can't: {attackBlockedHint}</span>
-                  {/if}
-                {:else}
-                  <strong>{attackPlan.declared.length}</strong>
-                  declared
-                  {#if attackBlockedHint}
-                    <span class="muted">· {attackBlockedHint} can't attack</span>
-                  {/if}
-                {/if}
-              </span>
-              {#if attackAllReady}
-                {#if attackPlan.defenders.length === 1}
-                  <button
-                    type="button"
-                    class="primary att-btn"
-                    title={attackAllLabel(attackPlan, attackPlan.defenders[0]) +
-                      keyHint(keys.attackAll)}
-                    onclick={() => attackAllAt(attackPlan.defenders[0].id)}
-                  >
-                    {attackAllLabel(attackPlan, attackPlan.defenders[0])}
-                  </button>
-                {:else}
-                  <!-- Multi-opponent: one button per seat rather than a
-                       bare "attack all", so the control always says who
-                       gets hit. Nothing here spreads an attack. -->
-                  <span class="att-text all-at">Attack all →</span>
-                  {#each attackPlan.defenders as opp (opp.id)}
+                  {#if attackPlan.defenders.length === 1}
                     <button
                       type="button"
-                      class="att-btn opp-btn"
-                      title={attackAllLabel(attackPlan, opp)}
-                      onclick={() => attackAllAt(opp.id)}
+                      class="primary att-btn"
+                      title={attackAllLabel(attackPlan, attackPlan.defenders[0]) +
+                        keyHint(keys.attackAll)}
+                      onclick={() => attackAllAt(attackPlan.defenders[0].id)}
                     >
-                      <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
-                      {seatLabel(opp)}
+                      {attackAllLabel(attackPlan, attackPlan.defenders[0])}
                     </button>
-                  {/each}
+                  {:else}
+                    <!-- Multi-opponent: one button per seat rather than a
+                         bare "attack all", so the control always says who
+                         gets hit. Nothing here spreads an attack. -->
+                    <span class="att-text all-at">Attack all →</span>
+                    {#each attackPlan.defenders as opp (opp.id)}
+                      <button
+                        type="button"
+                        class="att-btn opp-btn"
+                        title={attackAllLabel(attackPlan, opp)}
+                        onclick={() => attackAllAt(opp.id)}
+                      >
+                        <span class="seat-dot" style="background:{seatColor(opp.seat)}"></span>
+                        {seatLabel(opp)}
+                      </button>
+                    {/each}
+                  {/if}
                 {/if}
-              {/if}
-              {#if canUndoDeclaration}
+                {#if canUndoDeclaration}
+                  <button
+                    type="button"
+                    class="ghost att-btn"
+                    title="take back your last declaration — restores tap state too"
+                    onclick={undoDeclaration}
+                  >
+                    <Icon name="undo" size={12} /> Undo
+                  </button>
+                {/if}
+              </div>
+            {/if}
+
+            {#if combatSelection && !mulligansOpen}
+              <div class="att combat-hint" role="status" aria-live="polite">
+                <span class="att-label danger">
+                  <Icon name="sword" size={12} />
+                  {combatSelection.kind === "attacker" ? "attack" : "block"}
+                </span>
+                <span class="att-text">
+                  {#if combatSelection.kind === "attacker"}
+                    Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
+                    opponent's seat to commit, or the creature again to cancel.
+                  {:else}
+                    Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
+                    incoming attacker to commit, or the creature again to cancel.
+                  {/if}
+                </span>
                 <button
                   type="button"
                   class="ghost att-btn"
-                  title="take back your last declaration — restores tap state too"
-                  onclick={undoDeclaration}
+                  onclick={() => (combatSelection = null)}
                 >
-                  <Icon name="undo" size={12} /> Undo
+                  Cancel <kbd>Esc</kbd>
                 </button>
-              {/if}
-            </div>
-          {/if}
+              </div>
+            {/if}
 
-          {#if combatSelection && !mulligansOpen}
-            <div class="att combat-hint" role="status" aria-live="polite">
-              <span class="att-label danger">
-                <Icon name="sword" size={12} />
-                {combatSelection.kind === "attacker" ? "attack" : "block"}
-              </span>
-              <span class="att-text">
-                {#if combatSelection.kind === "attacker"}
-                  Attacking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an
-                  opponent's seat to commit, or the creature again to cancel.
-                {:else}
-                  Blocking with <strong>{cardLabel(combatSelection.cardID).name}</strong> — click an incoming
-                  attacker to commit, or the creature again to cancel.
-                {/if}
-              </span>
-              <button type="button" class="ghost att-btn" onclick={() => (combatSelection = null)}>
-                Cancel <kbd>Esc</kbd>
-              </button>
-            </div>
-          {/if}
+            {#if mulligansOpen && !gameEnded}
+              <div class="att mulligan-banner" aria-label="opening hand decisions">
+                <span class="att-label">Opening hands</span>
+                {#each seats as seat (seat.id)}
+                  <span
+                    class="mull"
+                    class:waiting={!seat.hand_kept && !seat.eliminated}
+                    class:kept={seat.hand_kept && !seat.eliminated}
+                    style="--seat-color: {seatColor(seat.seat)}"
+                  >
+                    <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+                    <b>{seat.name}</b>
+                    {#if seat.eliminated}
+                      <span class="muted">eliminated</span>
+                    {:else if seat.hand_kept}
+                      kept <Icon name="check" size={11} />
+                    {:else}
+                      deciding…
+                    {/if}
+                    {#if (seat.mulligans_taken ?? 0) > 0}
+                      <span class="muted mull-count">×{seat.mulligans_taken}</span>
+                    {/if}
+                  </span>
+                {/each}
+              </div>
+            {/if}
 
-          {#if mulligansOpen && !gameEnded}
-            <div class="att mulligan-banner" aria-label="opening hand decisions">
-              <span class="att-label">Opening hands</span>
-              {#each seats as seat (seat.id)}
-                <span
-                  class="mull"
-                  class:waiting={!seat.hand_kept && !seat.eliminated}
-                  class:kept={seat.hand_kept && !seat.eliminated}
-                  style="--seat-color: {seatColor(seat.seat)}"
-                >
-                  <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
-                  <b>{seat.name}</b>
-                  {#if seat.eliminated}
-                    <span class="muted">eliminated</span>
-                  {:else if seat.hand_kept}
-                    kept <Icon name="check" size={11} />
-                  {:else}
-                    deciding…
-                  {/if}
-                  {#if (seat.mulligans_taken ?? 0) > 0}
-                    <span class="muted mull-count">×{seat.mulligans_taken}</span>
+            {#if manaOverride}
+              <div class="att toast mana-override" role="alert" aria-live="polite">
+                <span class="att-label gold">mana</span>
+                <span class="att-text">
+                  <strong>Insufficient mana</strong>
+                  {#if manaOverride.missing.length > 0}
+                    <span class="muted">· missing {manaOverride.missing.join(" ")}</span>
                   {/if}
                 </span>
-              {/each}
-            </div>
-          {/if}
+                <button type="button" class="primary att-btn" onclick={openAutoTap}>
+                  Auto-tap & cast
+                </button>
+                <button type="button" class="att-btn" onclick={castAnyway}>Cast anyway</button>
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={dismissManaOverride}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            {:else if $lastError}
+              <div class="att toast error" role="alert" aria-live="polite">
+                <span class="att-label danger">rejected</span>
+                <span class="att-text">
+                  {$lastError.message}
+                  <span class="muted mono">({$lastError.code})</span>
+                </span>
+                <button
+                  type="button"
+                  class="ghost att-close"
+                  onclick={() => lastError.set(null)}
+                  aria-label="dismiss"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
+            {/if}
 
-          {#if manaOverride}
-            <div class="att toast mana-override" role="alert" aria-live="polite">
-              <span class="att-label gold">mana</span>
-              <span class="att-text">
-                <strong>Insufficient mana</strong>
-                {#if manaOverride.missing.length > 0}
-                  <span class="muted">· missing {manaOverride.missing.join(" ")}</span>
-                {/if}
-              </span>
-              <button type="button" class="primary att-btn" onclick={openAutoTap}>
-                Auto-tap & cast
-              </button>
-              <button type="button" class="att-btn" onclick={castAnyway}>Cast anyway</button>
-              <button
-                type="button"
-                class="ghost att-close"
-                onclick={dismissManaOverride}
-                aria-label="dismiss"
-              >
-                <Icon name="x" size={12} />
-              </button>
-            </div>
-          {:else if $lastError}
-            <div class="att toast error" role="alert" aria-live="polite">
-              <span class="att-label danger">rejected</span>
-              <span class="att-text">
-                {$lastError.message}
-                <span class="muted mono">({$lastError.code})</span>
-              </span>
-              <button
-                type="button"
-                class="ghost att-close"
-                onclick={() => lastError.set(null)}
-                aria-label="dismiss"
-              >
-                <Icon name="x" size={12} />
-              </button>
-            </div>
-          {/if}
+            {#if gameEnded}
+              <div class="att game-end" role="alert">
+                <span class="att-label gold"><Icon name="crown" size={12} /> game over</span>
+                <span class="att-text">
+                  {#if winner}
+                    <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
+                    <strong>{winner.name}</strong> wins the game.
+                  {:else}
+                    Game ended — no survivors.
+                  {/if}
+                </span>
+                <button type="button" class="primary att-btn" onclick={back}>
+                  Back to lobby
+                </button>
+              </div>
+            {:else if viewerEliminated}
+              <div class="att eliminated" role="status">
+                <span class="att-label danger">eliminated</span>
+                <span class="att-text">You have been eliminated. Spectating.</span>
+              </div>
+            {/if}
+          {/snippet}
+        </Board>
 
-          {#if gameEnded}
-            <div class="att game-end" role="alert">
-              <span class="att-label gold"><Icon name="crown" size={12} /> game over</span>
-              <span class="att-text">
-                {#if winner}
-                  <span class="seat-dot" style="background:{seatColor(winner.seat)}"></span>
-                  <strong>{winner.name}</strong> wins the game.
-                {:else}
-                  Game ended — no survivors.
-                {/if}
-              </span>
-              <button type="button" class="primary att-btn" onclick={back}> Back to lobby </button>
+        {#snippet failed(_error, reset)}
+          <!-- Wording is deliberately about DRAWING, not about the
+               connection: #519's stale-connection banner is the other
+               half of #266's symptom, and telling a player to check
+               their network when their socket is fine sends them
+               chasing the wrong thing. -->
+          <div class="board-failed" role="alert">
+            <h2>The board stopped drawing</h2>
+            <p>
+              Something in the table view threw while rendering it. Your seat and the game itself
+              are untouched — the server still has both, and nothing you did has been lost.
+              Redrawing usually brings the board back.
+            </p>
+            {#if boardErrorText}
+              <p class="board-failed-detail">{boardErrorText}</p>
+            {/if}
+            <div class="board-failed-actions">
+              <button type="button" class="primary" onclick={() => retryBoard(reset)}>
+                Redraw the board
+              </button>
+              <button type="button" onclick={() => location.reload()}>Reload the page</button>
+              <button type="button" onclick={back}>Back to lobby</button>
             </div>
-          {:else if viewerEliminated}
-            <div class="att eliminated" role="status">
-              <span class="att-label danger">eliminated</span>
-              <span class="att-text">You have been eliminated. Spectating.</span>
-            </div>
-          {/if}
+            <p class="board-failed-hint">
+              {#if bugReportAvailable}
+                <button class="linkish" onclick={() => (bugReportOpen = true)}>
+                  Report this
+                </button>
+                — the error above is already in the log the report attaches.
+              {:else}
+                The error above is in the log a bug report attaches, so it does not need copying out
+                by hand.
+              {/if}
+            </p>
+          </div>
         {/snippet}
-      </Board>
+      </svelte:boundary>
       {#if viewerNeedsToDecide}
         <ModalLayer />
         <div class="mulligan-scrim"></div>
@@ -1741,6 +1775,50 @@
        overlays (HoverZoomOverlay, StackOverlay) to this container
        rather than to the viewport. */
     position: relative;
+  }
+
+  /* #720: the <svelte:boundary> fallback. Centred in the space the
+     board would have filled, so it is plainly the table that failed and
+     not the whole page. Every line here is readable at the smallest
+     board size — a fallback that overflows its own panel is no better
+     than a blank one. */
+  .board-failed {
+    place-self: center;
+    max-width: 44rem;
+    padding: 20px 24px;
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+    border-radius: 12px;
+    background: var(--bg-raised, var(--bg));
+    text-align: left;
+  }
+  .board-failed h2 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+  }
+  .board-failed p {
+    margin: 0 0 10px;
+    color: var(--fg-dim);
+    line-height: 1.45;
+  }
+  .board-failed-detail {
+    font-family: var(--mono, ui-monospace, monospace);
+    font-size: 0.8rem;
+    /* A minified stack frame is one long unbreakable token; without
+       this it pushes the panel wider than the board. */
+    overflow-wrap: anywhere;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+  .board-failed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0 10px;
+  }
+  .board-failed-hint {
+    margin: 0;
+    font-size: 0.85rem;
   }
   .muted {
     color: var(--fg-dim);

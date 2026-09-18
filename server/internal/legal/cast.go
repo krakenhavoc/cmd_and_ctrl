@@ -38,7 +38,11 @@ func (e *enumerator) castMoves() {
 		return
 	}
 	speed := sorcerySpeedOpen(g, e.seat)
-	landOwed := g.LandsPlayedThisTurnFor(e.seat) < 1
+	// #500: the allowance is the player's, not a literal one — a
+	// controlled Exploration or a one-turn grant raises it. Same
+	// helper the engine's own refusal reads, so the enumerator can
+	// never offer a land play CastSpell will reject.
+	landOwed := g.LandDropsRemainingLocked(e.seat) > 0
 
 	for _, zone := range []struct {
 		z    *game.Zone
@@ -64,8 +68,10 @@ func (e *enumerator) castMoves() {
 				card.SetFace(face)
 				if card.IsLand() {
 					// CR 305: main phase, empty stack, your turn, and
-					// one per turn. The engine enforces the first
-					// three and not the fourth; we enforce all four.
+					// the per-turn land-play allowance. The engine
+					// enforces all four since #500; the check stays
+					// here so a bot is never OFFERED a move that
+					// would be refused.
 					if zone.from == "hand" && speed && landOwed {
 						e.add(Move{
 							Type:   TypeCastSpell,

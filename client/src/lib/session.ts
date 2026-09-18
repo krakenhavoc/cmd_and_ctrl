@@ -1,4 +1,5 @@
-import { writable, get, type Writable } from "svelte/store";
+import { get, type Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 
 // Session is the client-side view of a server-issued Principal.
 // Mirrors auth.Principal in server/internal/auth/auth.go — new
@@ -46,13 +47,13 @@ function loadSession(): Session | null {
   }
 }
 
-export const session: Writable<Session | null> = writable(loadSession());
+export const session: Writable<Session | null> = guardedWritable(loadSession(), "session");
 
 // expiryNotice is raised when we clear the session proactively
 // because its TTL elapsed. The Login route surfaces this as a banner
 // so the user understands why they landed back on login instead of
 // mid-game. Cleared on the next successful setSession.
-export const expiryNotice: Writable<string> = writable("");
+export const expiryNotice: Writable<string> = guardedWritable("", "expiryNotice");
 
 // Track the pending expiry timer so we cancel + rearm it on every
 // setSession call. Module-scoped rather than per-subscriber so there
@@ -90,8 +91,19 @@ function expireSession(): void {
 session.subscribe((s) => {
   scheduleExpiry(s);
   if (typeof localStorage === "undefined") return;
-  if (s === null) localStorage.removeItem(STORAGE_KEY);
-  else localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  // #720: persistence is best-effort, the same as settings.ts's
+  // saveSettings. setItem throws on a full quota and in Safari
+  // private browsing, and this runs inside a subscribe callback —
+  // i.e. inside svelte/store's shared drain loop. `session` is
+  // guarded now, so a throw here could not freeze the app, but it
+  // would still cost the expiry timer its rearm on the way past, and
+  // a failed WRITE is no reason to lose the live session.
+  try {
+    if (s === null) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch {
+    // Swallowed: the store still holds the session for this tab.
+  }
 });
 
 // setSession replaces the current session with s and persists it.
