@@ -707,27 +707,33 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// free-form behaviour (any ID the client sent is accepted),
 	// except that a modal card whose chosen modes take no target
 	// must arrive with none.
-	spec, err := castTargetSpec(CatalogKey(card), params.Modes)
-	if err != nil {
-		return err
-	}
+	spec, _ := castClauseSources(CatalogKey(card))
 	// S22: the alternative cost gets the last word on the clause —
-	// overload deletes it, cleave swaps a wider one in. Applied after
-	// the modal derivation so a modal card with an alternative cost
-	// would compose rather than conflict.
+	// overload deletes it, cleave swaps a wider one in. Applied to
+	// the card-level clause list; no card offers an alternative cost
+	// AND modes, and the two would compose rather than conflict.
 	spec = TargetSpecUnderAlternativeCost(spec, alt)
+	// #764: the announcement's target STEPS — one per clause of the
+	// card-level list, or one per clause of each chosen mode
+	// occurrence (CR 700.2c). A card with neither keeps the S13.1
+	// free-form behaviour; a modal card whose chosen modes take no
+	// target must arrive with none.
+	steps := AnnouncedClauses(spec, modeSpec, params.Modes)
+	if len(steps) == 0 && modeSpec != nil && len(params.Targets) > 0 {
+		return ErrInvalidParam
+	}
 	// S22: "Exile X target creatures you control" — the clause's
 	// count is the X announced at 601.2b, so resolve it into a
-	// concrete Min / Max before anything validates against it. The
-	// copy (rather than a mutation) matters: the catalog's TargetSpec
-	// is shared by every cast of the card.
-	if spec != nil && spec.CountFromX {
-		// Max 0 means "unbounded" everywhere else in TargetSpec, so
-		// an X of zero has to be rejected here rather than left to
-		// the count check below — otherwise announcing X=0 would buy
-		// an unbounded clause for free, which is the exact shape of
-		// the bug this field exists to close.
-		if n := countRealTargets(params.Targets); n != params.XValue {
+	// concrete Min / Max before anything validates against it. Over
+	// the STEPS rather than the card-level spec because the clause
+	// may belong to a MODE (Heliod's Intervention); the steps hold
+	// clause copies, so nothing mutates the shared catalog entry.
+	xSteps := resolveStepCountsFromX(steps, params.XValue)
+	params.Targets = assignAnnouncedSlots(steps, params.Targets)
+	for _, i := range xSteps {
+		// Max 0 reads as "unbounded" to the ordinary count check, so
+		// an X-counted step is checked for an EXACT count of X here.
+		if n := stepTargetCount(steps[i], params.Targets); n != params.XValue {
 			slog.Warn("cast_spell rejected: X-defined target count mismatch",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -736,24 +742,16 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			)
 			return ErrInvalidParam
 		}
-		resolved := *spec
-		resolved.Min, resolved.Max = params.XValue, params.XValue
-		resolved.CountFromX = false
-		spec = &resolved
 	}
-	if spec == nil && modeSpec != nil && len(params.Targets) > 0 {
-		return ErrInvalidParam
-	}
-	if spec != nil {
-		if err := g.validateTargetsLocked(playerID, spec, params.Targets); err != nil {
-			slog.Warn("cast_spell rejected: illegal target",
-				"card_name", card.Name,
-				"oracle_id", card.OracleID,
-				"targets_received", len(params.Targets),
-				"err", err,
-			)
-			return err
-		}
+	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+		slog.Warn("cast_spell rejected: illegal target",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"targets_received", len(params.Targets),
+			"x_value", params.XValue,
+			"err", err,
+		)
+		return err
 	}
 	// S21 sub-PR 5: additional costs (CR 601.2f). Validated here,
 	// with the rest of the announce-time choices, and paid further
@@ -1008,7 +1006,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		Seq:          g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
+		// #764: and the ModeSpec, so a per-mode target group can be
+		// resolved back to the clause it answered.
 		targetSpec: spec,
+		modeSpec:   modeSpec,
 	}
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
@@ -1704,7 +1705,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
-	if spellAllTargetsIllegalLocked(g, item, castTargetSpecForItem(CatalogKey(top), item)) {
+	if spellAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -1740,6 +1741,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// spells fire their effect here. Errors emit EventEffectError
 	// via fireEffectResolverLocked and do not wedge resolution.
 	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// CR 700.2c / 700.2d: each chosen bullet's own body, in announce
+	// order, once per occurrence. A modal card that branches inside
+	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
+	// this is a no-op for it (#764).
+	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
 	// CR 608.3f / 707.10f: a resolving copy of a PERMANENT spell becomes a
 	// token. This engine has no token-from-stack-item path, and
 	// letting the copy fall through to the battlefield branch below
@@ -1902,7 +1908,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 // re-check).
 //
 // Caller must hold g.mu.
-func spellAllTargetsIllegalLocked(g *Game, item *StackItem, spec *TargetSpec) bool {
+func spellAllTargetsIllegalLocked(g *Game, item *StackItem) bool {
 	if item == nil || len(item.Targets) == 0 {
 		return false
 	}
@@ -1917,13 +1923,10 @@ func spellAllTargetsIllegalLocked(g *Game, item *StackItem, spec *TargetSpec) bo
 			continue
 		case TargetPlayer, TargetCard:
 			hadTargeted = true
-			legal := false
-			if spec != nil {
-				legal = g.targetLegalLocked(item.Controller, spec, t)
-			} else {
-				legal = targetStillExistsLocked(g, t)
-			}
-			if legal {
+			// #764: each ref is re-checked against the clause it was
+			// announced under, which for a multi-clause or modal item
+			// is not the item's first clause.
+			if g.TargetStillLegalForEffect(item, t) {
 				anyLegal = true
 			}
 		}
@@ -1987,7 +1990,7 @@ func (g *Game) resolveTopAbilityLocked() {
 	}
 	delete(g.StackMeta, top.ID)
 	g.recomputeSplitSecondLocked()
-	if spellAllTargetsIllegalLocked(g, top, top.targetSpec) {
+	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{
 			Kind:   EventFizzle,
 			Actor:  top.Controller,
@@ -2012,6 +2015,10 @@ func (g *Game) resolveTopAbilityLocked() {
 			})
 		}
 	}
+	// CR 700.2c: a modal triggered or activated ability resolves its
+	// chosen bullets in announce order, after whatever body the item
+	// itself carries (#764).
+	g.runChosenModeEffectsLocked(top, top.modeSpec)
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and

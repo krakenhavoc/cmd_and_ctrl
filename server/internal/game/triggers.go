@@ -116,11 +116,29 @@ type TriggeredAbility struct {
 	// captured event + LKI and queues the StackItem. On `apply:
 	// false`, the trigger drops without effect.
 	//
-	// Nil means mandatory — Build runs unconditionally. Modal-choice
-	// triggers ("draw a card OR gain 3 life") aren't represented
-	// here; they need a separate ModePrompt slot when the first
-	// modal catalog card ships. Added in S19 sub-PR 2.
+	// Nil means mandatory — Build runs unconditionally. Added in S19
+	// sub-PR 2.
 	OptionalPrompt *TriggerOptionalPrompt
+
+	// Modes is the CR 700.2 mode clause of a modal triggered ability
+	// ("choose one — put a +1/+1 counter on this creature; create a
+	// Treasure token; you gain 2 life"). The same game.ModeSpec a
+	// modal spell and a modal activated ability declare — one struct,
+	// three owners (#764, ADR 0065 §3).
+	//
+	// The choice is made as the ability is put on the stack (CR
+	// 603.3c): after the OptionalPrompt's "yes", before the CR
+	// 603.3d target pick, through a mode_pick prompt to the source's
+	// controller. An option whose target clause has no legal target
+	// is not offered, and if that leaves fewer than Min the trigger
+	// is removed without any prompt at all.
+	//
+	// The chosen occurrences land on the built item's Modes and each
+	// bullet's ModeOption.Effect runs at resolution in announce
+	// order; a card that would rather branch by hand reads
+	// effects.Context.HasMode in the Build closure's effect instead.
+	// Added by #764.
+	Modes *ModeSpec
 
 	// Targets is the S20 structured target clause for a targeted
 	// trigger ("destroy target artifact or enchantment"). When set,
@@ -406,11 +424,15 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 //     the trigger is removed without any prompt (CR 603.3d).
 //  2. OptionalPrompt → the yes/no prompt; on "yes" the flow re-enters
 //     here at step 3 via ResolveTriggerPrompt.
-//  3. Targeted → pick_target prompt; on the pick, Build runs and the
-//     chosen ref is stamped onto the item.
-//  4. Otherwise Build → queue.
+//  3. Modal (Modes != nil) → mode_pick prompt (CR 603.3c); on the
+//     answer the flow re-enters at step 4 via ResolveModePick.
+//  4. Targeted → the pick_target walk, one prompt per clause of the
+//     announcement; on the last pick, Build runs and the chosen refs
+//     are stamped onto the item.
+//  5. Otherwise Build → queue.
 //
-// Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
+// Caller must hold g.mu. Added in S20 sub-PR 2; step 3 and the
+// multi-clause walk in step 4 by #764.
 func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, ev, &source, g)) {
 		return
@@ -432,34 +454,61 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 }
 
 func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
-	if t.Targets != nil {
-		lt := g.legalTargetsLocked(source.Controller, t.Targets)
-		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
-			return
-		}
+	// CR 603.3d, checked before any prompt: an ability whose target
+	// clause cannot be filled is never put on the stack, so nobody is
+	// asked a question whose only answer is "nothing happens".
+	// #764: every REQUIRED clause of the statement, not just the
+	// first, and for a modal ability the question is instead whether
+	// Min options remain choosable (choosableModeOptionsLocked).
+	if t.Modes == nil && t.Targets != nil &&
+		g.anyClauseUnfillableLocked(source.Controller, AnnouncedClauses(t.Targets, nil, nil)) {
+		return
+	}
+	if t.Modes != nil &&
+		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(source.Controller, t.Modes)), t.Modes) {
+		return
 	}
 	if t.OptionalPrompt != nil {
 		g.queueTriggerPromptLocked(ev, source, lki, t, doubledBy)
 		return
 	}
-	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy)
+	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy, nil)
 }
 
 // buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
-// queue the target picker for a targeted trigger, or Build and queue
-// the item directly. Caller must hold g.mu.
-func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
+// the mode prompt for a modal trigger, then the target walk for a
+// targeted one, then Build.
+//
+// `modes` is nil on the way in and carries the CR 603.3c answer on
+// the way back through ResolveModePick — which is what makes the
+// mode choice happen exactly once, before targets, and never for an
+// ability that has none. Caller must hold g.mu.
+func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int) {
 	if t.Build == nil {
 		return
 	}
-	if t.Targets != nil {
-		g.queuePickTargetLocked(ev, source, lki, t, doubledBy)
+	// CR 603.3c: modes first. An untargeted modal trigger (Black
+	// Mark, Gala Greeters) takes this path too — the prompt is the
+	// only thing between the harvest and the stack.
+	if t.Modes != nil && modes == nil {
+		if !g.queueModePickLocked(ev, source, lki, t, doubledBy) {
+			// Fewer choosable options than Min: CR 603.3d removes the
+			// ability rather than asking an unanswerable question.
+			return
+		}
+		return
+	}
+	steps := AnnouncedClauses(t.Targets, t.Modes, modes)
+	if len(steps) > 0 {
+		g.queuePickTargetLocked(ev, source, lki, t, doubledBy, modes, steps)
 		return
 	}
 	item := t.Build(ev, &source, lki, g)
 	if item == nil {
 		return
 	}
+	item.Modes = append([]int(nil), modes...)
+	item.modeSpec = t.Modes
 	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
 }

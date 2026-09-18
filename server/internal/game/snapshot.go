@@ -419,10 +419,11 @@ type stackItemSnapshot struct {
 	Seq           uint64            `json:"seq"`
 	Ordered       bool              `json:"ordered"`
 
-	// HasEffect / HasTargetSpec record the two closure slots so the
-	// census can count what restore had to drop.
+	// HasEffect / HasTargetSpec / HasModeSpec record the catalog
+	// slots so the census can count what restore had to drop.
 	HasEffect     bool `json:"hasEffect,omitempty"`
 	HasTargetSpec bool `json:"hasTargetSpec,omitempty"`
+	HasModeSpec   bool `json:"hasModeSpec,omitempty"`
 
 	// OracleID is the source card's oracle ID, captured so restore
 	// can re-derive a SPELL's target spec from the catalog without
@@ -469,6 +470,11 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
+	ModeOptionIndex      []int                  `json:"modeOptionIndex,omitempty"`
+	ModeOptionLabel      []string               `json:"modeOptionLabel,omitempty"`
+	ModeMin              int                    `json:"modeMin,omitempty"`
+	ModeMax              int                    `json:"modeMax,omitempty"`
+	ModeRepeatable       bool                   `json:"modeRepeatable,omitempty"`
 	SacrificeOptions     []uuid.UUID            `json:"sacrificeOptions,omitempty"`
 	CopyOptions          []uuid.UUID            `json:"copyOptions,omitempty"`
 	ScryCards            []uuid.UUID            `json:"scryCards,omitempty"`
@@ -980,6 +986,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Ordered:       s.Ordered,
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
+		HasModeSpec:   s.modeSpec != nil,
 		OracleID:      oracleIDOfLocked(g, s.SourceCardID),
 	}
 	if s.Effect != nil {
@@ -994,6 +1001,13 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 	if s.targetSpec != nil && !spellSpecRederivable(out) {
 		cen.StackTargetSpecs++
 		cen.note("stack target spec: %s", labelOr(s.Label, string(s.Kind)))
+	}
+	// #764: an ABILITY's ModeSpec came off the ability declaration,
+	// reached by an index the item does not record, so it cannot be
+	// recovered here either. A spell's is looked up by oracle ID.
+	if s.modeSpec != nil && !spellSpecRederivable(out) {
+		cen.StackTargetSpecs++
+		cen.note("stack mode spec: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	return out
 }
@@ -1060,6 +1074,11 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -1106,6 +1125,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
 		"chooseColorResume": c.chooseColorResume != nil,
+		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
 	} {
 		if present {
@@ -1507,6 +1527,9 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
 		out.targetSpec = CatalogTargetSpec(s.OracleID)
 	}
+	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
+		out.modeSpec = CatalogModeSpec(s.OracleID)
+	}
 	return out
 }
 
@@ -1549,6 +1572,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { get } from "svelte/store";
 
-import { begin, beginForMode, cancel, discardCostOf, targeting } from "./targeting";
+import { begin, beginForModes, cancel, discardCostOf, targeting } from "./targeting";
 import { canCastFromHand } from "./timing";
 import type { CardView, GameView, ModeOptionView, PlayerView, ZoneView } from "./protocol";
 
@@ -31,7 +31,8 @@ describe("additional costs on cast — S21 sub-PR 5", () => {
       target_mode: "creature",
       legal_targets: { cards: ["bear"], min: 1, max: 1 },
     };
-    beginForMode(card(), option, [0], { xValue: 3, discardIDs: ["fodder", "chaff"] });
+    const modal = card({ modes: { prompt: "Choose one", min: 1, max: 1, options: [option] } });
+    expect(beginForModes(modal, [0], { xValue: 3, discardIDs: ["fodder", "chaff"] })).toBe(true);
     const t = get(targeting)!;
     expect(t.choices?.discardIDs).toEqual(["fodder", "chaff"]);
     expect(t.choices?.xValue).toBe(3);

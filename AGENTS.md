@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0064 emblems) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0065 modal and multi-target clauses) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -420,7 +420,36 @@ surface tiny.
    `OnResolve` iterates `ctx.LegalTargets()` (or indexes
    `item.Targets` with `ctx.IsTargetLegal` per slot when the order
    matters, as in Arc Trail) so a target that left in response is
-   skipped rather than erroring. The engine computes the legal
+   skipped rather than erroring.
+
+   **Target clauses (#764).** A count is one predicate chosen N
+   times. When the slots have DIFFERENT predicates — Bite Down's
+   "target creature you control" then "target creature or
+   planeswalker you don't control" — they are separate CLAUSES, and a
+   statement is an ordered list of them:
+   ```go
+   Targets: Clauses(
+       TargetCreature("target creature you control", YouControl()),
+       TargetPermanent("target creature or planeswalker you don't control",
+           Or(Creature(), Planeswalker()), OpponentControls()),
+   ),
+   // "a SECOND target permanent you control" — must differ from the first:
+   Targets: Clauses(
+       TargetPermanent("target permanent you control", YouControl()),
+       Distinct(TargetPermanent("a second target permanent you control", YouControl())),
+   ),
+   ```
+   A `game.TargetSpec` **is** its first clause and hangs the rest off
+   it (`Rest`), so a one-clause card, a cost-payment predicate
+   (`SacrificeOther` and friends) and a mode's clause are all the same
+   struct and the same walk — see
+   [ADR 0065 §1](docs/decisions/0065-modal-and-multi-target-clauses.md).
+   Each clause is enforced on its own at announce (CR 601.2c) and
+   re-checked on its own at resolution (CR 608.2b), so a pair that
+   fits the wrong slots is REFUSED rather than resolving to nothing.
+   Read the slots back with `ctx.ClauseTarget(slot)` /
+   `ctx.ClauseTargets(slot)`; `item.Targets` is still one flat list in
+   announce order, so a positional reader keeps working. The engine computes the legal
    set for the client's picker on every snapshot, rejects an illegal
    pick at announce (`ErrIllegalTarget`, CR 601.2c), and re-runs the
    same predicate at resolution (CR 608.2b). Colour predicates read
@@ -442,12 +471,39 @@ surface tiny.
    // "Choose two —": ChooseN("Choose two", 2, 2, Mode(…), Mode(…), …)
    ```
    `OnResolve` is a run of `if ctx.HasMode(i) { … }` blocks in
-   printed order (CR 608.2c). The engine validates the choice at
+   printed order (CR 700.2c). The engine validates the choice at
    announce and applies the chosen option's target clause exactly as
    it would a card-level one; the client shows a mode picker before
-   targeting. Limit: one targeted option per cast — `Register`
-   panics on a `Max > 1` card with two targeted options (per-mode
-   target slots ride with multi-target).
+   targeting.
+
+   **Modes (#764): one `ModeSpec`, three owners.** The same
+   `game.ModeSpec` is read by `Spec.Modes` (a spell),
+   `TriggeredAbility.Modes` (a trigger) and `ActivatedAbility.Modes`
+   (an activated ability) — see
+   [ADR 0065 §3](docs/decisions/0065-modal-and-multi-target-clauses.md).
+   What differs is only WHEN the choice is made:
+
+   - a **spell** announces its modes at CR 601.2b, with the cast;
+   - an **activated ability** announces them at CR 602.2b, with the
+     activation — one indivisible message, no prompt;
+   - a **trigger** is put on the stack by the engine, so it asks:
+     a `mode_pick` pending choice at CR 603.3c, after the "you may"
+     prompt and before the CR 603.3d target pick. A bullet whose
+     clause has no legal target is not offered, and if that leaves
+     fewer than `Min` the trigger is removed (CR 603.3d).
+
+   Every bullet targets if it wants to — the old "one targeted option
+   per cast" panic in `Register` is gone — and each chosen occurrence
+   gets its OWN target group. Constructors: `ChooseOne`, `ChooseN`,
+   `ChooseOneOrMore` (Sublime Epiphany) and `ChooseNRepeating`
+   (CR 700.2d, "you may choose the same mode more than once" — Mystic
+   Confluence). A trigger or activated ability has no `OnResolve` to
+   branch in, so declare each bullet's body on the option with
+   `ModeDoing(label, targets, fn)`; the engine runs the chosen ones
+   in announce order, once per occurrence. Inside a bullet, read its
+   own targets with `ModeTarget(ctx, occurrence)` /
+   `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
+   belongs to whichever bullet was chosen first.
 
 4. **Write the card file.** One file per card at
    `server/internal/cards/effects/<snake_name>.go`:

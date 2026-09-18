@@ -16,6 +16,21 @@ import "github.com/google/uuid"
 // sent was accepted. TargetMode survives as the derived hint the
 // client uses for banner copy; TargetSpec is the truth.
 
+// TargetClause is ONE clause of a target statement: one predicate,
+// chosen Min..Max times. It is an ALIAS for TargetSpec, not a second
+// type — a TargetSpec *is* its first clause, and a statement with
+// more than one clause hangs the rest off it in Rest (#764, ADR
+// 0065 §1). That shape is what lets a cost-payment predicate
+// (AbilityCost.SacrificeOther and friends), a mode option's clause
+// and a two-slot spell all be the same struct walked by the same
+// code, with one predicate struct in the tree.
+//
+// Read a clause list with ClauseCount / Clause (allocation-free) or
+// Clauses (convenient). Never read Rest off a clause you got from
+// one of those: the list is flat by construction and Register
+// refuses a nested Rest at boot.
+type TargetClause = TargetSpec
+
 // TargetSpec declares a spell's or ability's target clause: one
 // predicate, chosen Min..Max times. "Target creature" is 1 / 1;
 // "two target creatures" 2 / 2; "up to three target cards" 0 / 3;
@@ -89,6 +104,90 @@ type TargetSpec struct {
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.
 	AllowSame bool
+
+	// Distinct makes this clause's picks differ from every EARLIER
+	// clause's picks in the same statement — "a SECOND target
+	// permanent you control" (Resourceful Defense), "target creature
+	// or planeswalker you don't control" after "target creature you
+	// control". CR 601.2c lets one object fill two different
+	// instances of the word "target" unless the card says otherwise,
+	// so this is opt-in per clause rather than the default.
+	//
+	// AllowSame is the WITHIN-clause twin: it governs whether two
+	// picks of the SAME clause may coincide. The two are
+	// independent. Added by #764.
+	Distinct bool
+
+	// Rest holds clauses 2..n of a multi-clause statement, in
+	// printed order. Empty — which is every clause the catalog
+	// declared before #764, every cost-payment predicate and every
+	// mode option that targets once — means "this statement is one
+	// clause", and everything about the spec reads exactly as it did.
+	//
+	// The list is FLAT: an entry's own Rest is ignored, and
+	// effects.Register refuses one at boot. Build it with
+	// effects.Clauses(first, then…). Added by #764 (ADR 0065 §1).
+	Rest []TargetClause
+}
+
+// ClauseCount is the number of clauses in this statement: 1 for the
+// ordinary single-clause spec. Nil-safe (0).
+func (s *TargetSpec) ClauseCount() int {
+	if s == nil {
+		return 0
+	}
+	return 1 + len(s.Rest)
+}
+
+// Clause returns clause i of the statement, or nil when i is out of
+// range. Clause(0) is the spec itself — which is the whole point of
+// the head-and-tail shape — so the returned pointer's Rest is the
+// statement's tail and MUST NOT be read as though it were the
+// clause's own. Read predicate fields only.
+func (s *TargetSpec) Clause(i int) *TargetClause {
+	if s == nil || i < 0 || i > len(s.Rest) {
+		return nil
+	}
+	if i == 0 {
+		return s
+	}
+	return &s.Rest[i-1]
+}
+
+// Clauses is the allocating form of the same walk, for callers that
+// want a range loop (the protocol projection, the bot enumerator).
+// Each entry is a VALUE copy with Rest cleared, so nothing downstream
+// can mistake the statement's tail for a clause's own.
+func (s *TargetSpec) Clauses() []TargetClause {
+	n := s.ClauseCount()
+	if n == 0 {
+		return nil
+	}
+	out := make([]TargetClause, 0, n)
+	for i := 0; i < n; i++ {
+		c := *s.Clause(i)
+		c.Rest = nil
+		out = append(out, c)
+	}
+	return out
+}
+
+// Then appends clauses to this statement and returns it, so a
+// catalog constructor chain reads in printed order. Mutates and
+// returns the receiver, as WithCount does.
+func (s *TargetSpec) Then(more ...*TargetSpec) *TargetSpec {
+	for _, m := range more {
+		if m == nil {
+			continue
+		}
+		c := *m
+		c.Rest = nil
+		s.Rest = append(s.Rest, c)
+		// A nested statement flattens rather than nesting — the list
+		// is flat by construction everywhere it is read.
+		s.Rest = append(s.Rest, m.Rest...)
+	}
+	return s
 }
 
 // WithCount returns the spec with its Min / Max replaced — the
@@ -210,8 +309,11 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 	case TargetSelf, TargetNone:
 		return true
 	case TargetPlayer, TargetCard:
-		if item != nil && item.targetSpec != nil {
-			return g.targetLegalLocked(item.Controller, item.targetSpec, ref)
+		// #764: the clause the ref was announced under, not the
+		// item's first clause — a two-slot spell's second pick is
+		// re-checked against its OWN predicate here.
+		if clause := g.clauseForRefLocked(item, ref); clause != nil {
+			return g.targetLegalLocked(item.Controller, clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}
@@ -368,31 +470,16 @@ func (g *Game) specMatchLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef
 	return false
 }
 
-// validateTargetsLocked is the announce-time gate (CR 601.2c): the
-// number of targeted slots must fall within Min..Max, each must be
-// legal, and (unless AllowSame) no two may name the same object.
-// Returns ErrInvalidParam for a count / duplicate violation and
-// ErrIllegalTarget for a bad pick. Caller must hold g.mu.
+// validateTargetsLocked is the announce-time gate (CR 601.2c) for a
+// NON-MODAL clause list: each pick must fall in its own clause's
+// Min..Max, be legal under that clause's predicate, and (unless
+// AllowSame) not repeat within it. Returns ErrInvalidParam for a
+// count / duplicate / bad-slot violation and ErrIllegalTarget for an
+// illegal pick.
+//
+// It is a thin wrapper over validateAnnouncedTargetsLocked (#764),
+// which is the general form the modal paths use; a single-clause spec
+// is that walk with one step. Caller must hold g.mu.
 func (g *Game) validateTargetsLocked(caster uuid.UUID, spec *TargetSpec, targets []TargetRef) error {
-	n := 0
-	seen := make(map[uuid.UUID]bool, len(targets))
-	for _, t := range targets {
-		if t.Kind == TargetSelf || t.Kind == TargetNone {
-			continue
-		}
-		n++
-		if !spec.AllowSame {
-			if seen[t.ID] {
-				return ErrInvalidParam
-			}
-			seen[t.ID] = true
-		}
-		if !g.targetLegalLocked(caster, spec, t) {
-			return ErrIllegalTarget
-		}
-	}
-	if n < spec.Min || (spec.Max > 0 && n > spec.Max) {
-		return ErrInvalidParam
-	}
-	return nil
+	return g.validateAnnouncedTargetsLocked(caster, AnnouncedClauses(spec, nil, nil), targets)
 }

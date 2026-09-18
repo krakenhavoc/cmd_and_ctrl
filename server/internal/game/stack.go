@@ -70,6 +70,27 @@ const (
 type TargetRef struct {
 	Kind TargetRefKind
 	ID   uuid.UUID
+
+	// Slot is the index of the target CLAUSE this ref answers,
+	// within the clause list that governed the announcement
+	// (TargetSpec.Clause(Slot)). Zero — the value every ref carried
+	// before #764, in every snapshot and on every wire message — is
+	// "the only clause", so nothing needed migrating.
+	//
+	// Announce order is clause order, so a positional reader
+	// (item.Targets[0] is the biter, [1] the victim) is still
+	// correct; the slot is what lets the CR 608.2b re-check run each
+	// pick against its OWN predicate instead of a union. Added by
+	// #764 (ADR 0065 §2).
+	Slot int
+
+	// Mode is the index into StackItem.Modes — the mode OCCURRENCE,
+	// not the option — whose clause list Slot indexes. Zero for a
+	// non-modal item and for the first chosen mode. A repeated mode
+	// (CR 700.2d) is two occurrences with the same option index and
+	// different Mode values, which is what gives each occurrence its
+	// own target group. Added by #764.
+	Mode int
 }
 
 // StackItem is the metadata for one item on the stack. Lives in
@@ -253,6 +274,15 @@ type StackItem struct {
 	// list. Meaningless once the item is on the stack. Added in S19
 	// sub-PR 8.
 	Ordered bool
+
+	// modeSpec is the ModeSpec an ability item was announced under,
+	// so the CR 608.2b re-check can find the clause list of the mode
+	// OCCURRENCE a TargetRef names. Nil for a spell (looked up by
+	// oracle ID, like its targetSpec) and for every non-modal
+	// ability. Unexported: set by the harvester and the activation
+	// path, shared by cloneStackItem, re-derived on restore. Added
+	// by #764.
+	modeSpec *ModeSpec
 
 	// targetSpec is the S20 TargetSpec a targeted ability item was
 	// built against, so resolveTopAbilityLocked can run the same

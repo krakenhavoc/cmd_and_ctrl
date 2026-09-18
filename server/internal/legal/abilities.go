@@ -17,8 +17,11 @@ type activateParams struct {
 	SourceCardID string       `json:"source_card_id"`
 	AbilityIndex int          `json:"ability_index"`
 	Targets      []targetWire `json:"targets,omitempty"`
-	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
-	CrewIDs      []string     `json:"crew_ids,omitempty"`
+	// Modes is the CR 602.2b mode choice of a modal activated
+	// ability (#764), announced with the targets.
+	Modes        []int    `json:"modes,omitempty"`
+	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	CrewIDs      []string `json:"crew_ids,omitempty"`
 	// #625: the permanent a RemoveCounters cost removes from (omitted
 	// for the self form) and, for "a counter" of any kind, the kind.
 	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
@@ -174,12 +177,30 @@ func (e *enumerator) activatedMoves() {
 				}
 			}
 			budget := e.opts.MaxExpansionPerSource
-			targetSets := [][]game.TargetRef{nil}
-			if ab.Targets != nil {
-				targetSets = e.legalTargetSets(ab.Targets, budget)
-				if len(targetSets) == 0 {
+			// #764: a modal activated ability announces its modes with
+			// its targets (CR 602.2b), so the enumerator expands the
+			// same product a modal cast does.
+			modeSets := [][]int{nil}
+			if ab.Modes != nil {
+				modeSets = e.legalModeSets(ab.Modes)
+				if len(modeSets) == 0 {
 					continue
 				}
+			}
+			type announcement struct {
+				modes   []int
+				targets []game.TargetRef
+			}
+			var announcements []announcement
+			for _, modes := range modeSets {
+				steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+				sets := e.legalStepSets(steps, budget)
+				for _, ts := range sets {
+					announcements = append(announcements, announcement{modes: modes, targets: ts})
+				}
+			}
+			if len(announcements) == 0 {
+				continue
 			}
 			// #74: the life and loyalty components ride the Move
 			// rather than the params, because the params are the
@@ -191,7 +212,8 @@ func (e *enumerator) activatedMoves() {
 			if ab.Cost.Loyalty != nil {
 				loyalty = *ab.Cost.Loyalty
 			}
-			for _, targets := range targetSets {
+			for _, ann := range announcements {
+				targets := ann.targets
 				for _, sacs := range sacrificeSets {
 					for _, cc := range counterChoices {
 						if budget <= 0 {
@@ -219,6 +241,7 @@ func (e *enumerator) activatedMoves() {
 								SourceCardID:     source.InstanceID.String(),
 								AbilityIndex:     idx,
 								Targets:          wireTargets(targets),
+								Modes:            ann.modes,
 								SacrificeIDs:     idStrings(sacs),
 								CrewIDs:          idStrings(crewIDs),
 								CounterSourceIDs: cc.wireIDs(),

@@ -35,15 +35,39 @@ func Register(spec Spec) {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
-		targeted := 0
-		for _, o := range spec.Modes.Options {
-			if o.Targets != nil {
-				targeted++
+		// #764 retired the "one targeted option per cast" panic that
+		// stood here: per-mode target slots exist now, so Kolaghan's
+		// Command is declarable. What replaced it are the two shapes
+		// the new machinery genuinely cannot read.
+		if spec.Modes.Repeatable && spec.Modes.Max == 1 {
+			panic(fmt.Sprintf("effects.Register: %q is Repeatable with Max 1 — there is nothing to repeat", spec.Name))
+		}
+		for i, o := range spec.Modes.Options {
+			if o.Label == "" {
+				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
+			}
+			checkFlatClauses(spec.Name, o.Targets)
+		}
+	}
+	checkFlatClauses(spec.Name, spec.Targets)
+	for _, a := range spec.Activated {
+		checkFlatClauses(spec.Name, a.Targets)
+		if a.Modes != nil {
+			if a.Targets != nil {
+				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
+			}
+			for i, o := range a.Modes.Options {
+				if o.Label == "" {
+					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
+				}
+				checkFlatClauses(spec.Name, o.Targets)
 			}
 		}
-		if spec.Modes.Max > 1 && targeted > 1 {
-			panic(fmt.Sprintf("effects.Register: %q has %d targeted modes with Max %d — per-mode target slots are unsupported (S20 sub-PR 4)",
-				spec.Name, targeted, spec.Modes.Max))
+	}
+	for _, t := range spec.Triggered {
+		checkFlatClauses(spec.Name, t.Targets)
+		if t.Modes != nil && t.Targets != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
 	}
 	// S22: an alternative cost is claimed by name on the wire, so a
@@ -266,4 +290,22 @@ func All() []Spec {
 func Has(oracleID string) bool {
 	_, ok := registry[oracleID]
 	return ok
+}
+
+// checkFlatClauses refuses a nested clause list at boot (#764, ADR
+// 0065 §1). A TargetSpec IS its first clause and hangs the rest off
+// it in Rest; an entry of Rest with its own Rest is a statement
+// nothing reads, because every walk over a clause list is flat. The
+// constructor (Clauses) flattens, so reaching this is a hand-built
+// literal, and finding out at boot is far cheaper than finding out
+// when a second target silently never gets asked for.
+func checkFlatClauses(name string, spec *game.TargetSpec) {
+	if spec == nil {
+		return
+	}
+	for i := range spec.Rest {
+		if len(spec.Rest[i].Rest) > 0 {
+			panic(fmt.Sprintf("effects.Register: %q target clause %d nests further clauses — the list is flat; build it with Clauses(...)", name, i+1))
+		}
+	}
 }

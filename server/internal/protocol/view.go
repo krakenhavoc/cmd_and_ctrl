@@ -327,6 +327,20 @@ type PendingChoiceView struct {
 	// redaction as Options above. Absent for other kinds.
 	PickOptions []PickOptionView `json:"pick_options,omitempty"`
 
+	// ModeOptions / ModeIndexes / ModeMin / ModeMax / ModeRepeatable
+	// populate the #764 "mode_pick" kind (CR 603.3c): the bullets a
+	// modal TRIGGER offers its controller as it goes on the stack,
+	// how many to choose, and whether the same one may be chosen
+	// more than once (CR 700.2d). Only the choosable bullets are
+	// listed — an option whose target clause has no legal target is
+	// dropped before the prompt is queued — so mode_indexes carries
+	// the ModeSpec index each label belongs to, which is what the
+	// answer sends back. Answered with `{choice_id, modes: [i, …]}`.
+	ModeOptions    []string `json:"mode_options,omitempty"`
+	ModeIndexes    []int    `json:"mode_indexes,omitempty"`
+	ModeMin        int      `json:"mode_min,omitempty"`
+	ModeMax        int      `json:"mode_max,omitempty"`
+	ModeRepeatable bool     `json:"mode_repeatable,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -366,7 +380,25 @@ type LegalTargetsView struct {
 	// client substitutes the X it collected in the cost prompts.
 	// Added in S22 alongside convoke / waterbend.
 	CountFromX bool `json:"count_from_x,omitempty"`
+
+	// Label is the clause's printed wording — "target creature you
+	// control". Absent for a single-clause statement, where the
+	// banner reads the card's target_mode as it always has; present
+	// on every entry of `clauses`, where the picker has to say which
+	// of several questions it is asking. Added by #764.
+	Label string `json:"label,omitempty"`
+
+	// Distinct marks a clause whose picks must differ from every
+	// EARLIER clause's ("a second target permanent you control"), so
+	// the picker can grey what is already taken. Added by #764.
+	Distinct bool `json:"distinct,omitempty"`
 }
+
+// clausesView projects every clause of a multi-clause statement,
+// each with its own legal set, count and label (#764, ADR 0065 §7).
+// Nil for the single-clause statement that is nearly every card —
+// `legal_targets` alone says everything there, and every client path
+// that predates #764 keeps reading it.
 
 // ModeSpecView / ModeOptionView are the wire shape of game.ModeSpec
 // for the owner's hand cards. Added in S20 sub-PR 4.
@@ -375,15 +407,24 @@ type ModeSpecView struct {
 	Min     int              `json:"min"`
 	Max     int              `json:"max"`
 	Options []ModeOptionView `json:"options"`
+	// Repeatable is CR 700.2d, "you may choose the same mode more
+	// than once" (Mystic Confluence). The picker offers a count per
+	// option instead of a toggle, and each occurrence is asked for
+	// its own targets. Added by #764.
+	Repeatable bool `json:"repeatable,omitempty"`
 }
 
 type ModeOptionView struct {
 	Label string `json:"label"`
 	// TargetMode / LegalTargets mirror CardView.target_mode /
-	// legal_targets for the option's own target clause; both absent
+	// legal_targets for the option's FIRST target clause; both absent
 	// for untargeted options.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of the option's statement when it has
+	// more than one, in printed order. Absent for the one-clause
+	// bullet that is nearly every bullet. Added by #764.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 }
 
 // AdditionalCostView is the wire shape of game.AdditionalCost — the
@@ -559,10 +600,16 @@ type StackItemView struct {
 	Label        string          `json:"label,omitempty"`
 	Targets      []TargetRefView `json:"targets,omitempty"`
 	Modes        []int           `json:"modes,omitempty"`
-	XValue       int             `json:"x_value,omitempty"`
-	Distribution map[string]int  `json:"distribution,omitempty"`
-	HoldPriority bool            `json:"hold_priority,omitempty"`
-	SplitSecond  bool            `json:"split_second,omitempty"`
+	// ModeLabels is the oracle bullet of each chosen mode, in
+	// announce order and with repeats — what "modes: 0, 2" used to
+	// make the table guess. The caster's hand card is gone by the
+	// time the spell is on the stack, so the labels have to travel
+	// with the item. Added by #764 (ADR 0065 §7).
+	ModeLabels   []string       `json:"mode_labels,omitempty"`
+	XValue       int            `json:"x_value,omitempty"`
+	Distribution map[string]int `json:"distribution,omitempty"`
+	HoldPriority bool           `json:"hold_priority,omitempty"`
+	SplitSecond  bool           `json:"split_second,omitempty"`
 	// AltCost is the key of the alternative cost this spell was cast
 	// for — "overload", "evoke", "cleave" — empty for an ordinary
 	// cast (S22). Public information the moment it is announced, and
@@ -607,6 +654,13 @@ type DelayedTriggerView struct {
 type TargetRefView struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answered: the
+	// clause index within the clause list, and the index into the
+	// item's `modes` whose clause list that is. Both omitted at zero,
+	// which is what every single-clause non-modal announcement has
+	// always meant. Added by #764 (ADR 0065 §2).
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -986,6 +1040,14 @@ type CardView struct {
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of a MULTI-clause target statement, in
+	// printed order, each with its own legal set, count and printed
+	// wording — Bite Down's "target creature you control" then
+	// "target creature or planeswalker you don't control". Absent for
+	// the single-clause card that is nearly every card, where
+	// legal_targets alone says everything. The client walks the
+	// clauses one prompt at a time. Added by #764 (ADR 0065 §7).
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 	// Modes is the S20 sub-PR 4 modal-spell clause for a card in the
 	// viewer's own hand / command zone: the prompt, how many options
 	// to pick, and each option's label plus — for targeted options —
@@ -1338,6 +1400,11 @@ type ActivatedAbilityView struct {
 	// fields for an ability that targets.
 	TargetMode   string            `json:"target_mode,omitempty"`
 	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// Clauses is every clause of the ability's statement when it has
+	// more than one; Modes is its CR 700.2 mode clause when it is
+	// modal. Both absent for the ordinary ability. Added by #764.
+	Clauses []LegalTargetsView `json:"clauses,omitempty"`
+	Modes   *ModeSpecView      `json:"modes,omitempty"`
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -1739,13 +1806,14 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 					continue
 				}
 				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+				c.Clauses = viewOfClauses(g, caster, spec)
 			}
 		}
 	}
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, Distinct: spec.Distinct}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -1864,14 +1932,39 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base
 // option's legal set from the caster's point of view. Caller must
 // hold g.mu.
 func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpecView {
-	out := &ModeSpecView{Prompt: ms.Prompt, Min: ms.Min, Max: ms.Max, Options: make([]ModeOptionView, 0, len(ms.Options))}
+	out := &ModeSpecView{
+		Prompt:     ms.Prompt,
+		Min:        ms.Min,
+		Max:        ms.Max,
+		Repeatable: ms.Repeatable,
+		Options:    make([]ModeOptionView, 0, len(ms.Options)),
+	}
 	for _, o := range ms.Options {
 		ov := ModeOptionView{Label: o.Label}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
 			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets), o.Targets)
+			ov.Clauses = viewOfClauses(g, caster, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
+	}
+	return out
+}
+
+// viewOfClauses projects a multi-clause statement's clauses, each
+// with its own legal set and bounds. Nil for a single-clause
+// statement, where `legal_targets` alone is the whole answer and
+// every pre-#764 client path keeps working. Caller must hold g.mu.
+func viewOfClauses(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) []LegalTargetsView {
+	if spec.ClauseCount() < 2 {
+		return nil
+	}
+	out := make([]LegalTargetsView, 0, spec.ClauseCount())
+	for i := 0; i < spec.ClauseCount(); i++ {
+		c := spec.Clause(i)
+		v := viewOfLegalTargets(g.LegalTargetsForEffect(caster, c), c)
+		v.Label = c.Label
+		out = append(out, *v)
 	}
 	return out
 }
@@ -2202,6 +2295,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PickOptions = append(v.PickOptions, out)
 			}
 		}
+		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
+		// bullets, chosen as the ability is put on the stack. Public
+		// information the moment it is asked (the card's text is
+		// public), so nothing here is redacted; the labels are oracle
+		// text and the indexes are what the answer names.
+		if c.Kind == game.PendingChoiceModePick {
+			v.ModeOptions = append([]string(nil), c.ModeOptionLabel...)
+			v.ModeIndexes = append([]int(nil), c.ModeOptionIndex...)
+			v.ModeMin = c.ModeMin
+			v.ModeMax = c.ModeMax
+			v.ModeRepeatable = c.ModeRepeatable
+		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
@@ -2433,6 +2538,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		SourceCardID: it.SourceCardID.String(),
 		Label:        it.Label,
 		Modes:        append([]int(nil), it.Modes...),
+		ModeLabels:   it.ModeLabels(),
 		XValue:       it.XValue,
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
@@ -2449,6 +2555,8 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 			view.Targets[i] = TargetRefView{
 				Kind: string(t.Kind),
 				ID:   uuidStringOrEmpty(t.ID),
+				Slot: t.Slot,
+				Mode: t.Mode,
 			}
 		}
 	}
@@ -2988,6 +3096,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// player who can read the card, and each one quotes it: a mode
 	// prompt, an additional-cost label, a target clause's bounds.
 	out.LegalTargets = nil
+	// #764: the per-clause legal sets name the card as loudly as the
+	// single one does — "target creature you control, then target
+	// creature or planeswalker you don't control" is the card.
+	out.Clauses = nil
 	out.Modes = nil
 	out.AdditionalCost = nil
 	// Type-derived bits. Sickness says "creature without haste",
@@ -3037,6 +3149,9 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			// alternative-cost offers in for the same reason — they
 			// carry their own legal sets.
 			c.LegalTargets = nil
+			// #764: the per-clause sets are the same information,
+			// clause by clause, and go with it.
+			c.Clauses = nil
 			c.Modes = nil
 			c.AlternativeCosts = nil
 			c.TapCost = nil
@@ -3322,6 +3437,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
+			v.Clauses = viewOfClauses(g, caster, a.Targets)
+		}
+		// #764: a modal activated ability announces its modes with
+		// its targets, so the menu needs the same picker a modal
+		// spell's hand card gets.
+		if a.Modes != nil {
+			v.Modes = viewOfModeSpec(g, caster, a.Modes)
 		}
 		out[i] = v
 	}

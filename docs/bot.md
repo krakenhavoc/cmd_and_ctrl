@@ -724,6 +724,41 @@ Gate a policy only once you have run the suite and seen it pass.
 
 ---
 
+## Enumerating a modal announcement (#764)
+
+A modal cast or activation is a product: every legal selection of
+modes, times every legal set of targets for each clause of each
+chosen mode. That product is unbounded in principle and is bounded in
+practice by `legal.Options.MaxExpansionPerSource` (default 12, [ADR
+0033](decisions/0033-ai-bot-seat.md) §1). The policy for spending
+that budget is stated here because it decides what a bot is even
+allowed to consider, and [ADR 0065
+§6](decisions/0065-modal-and-multi-target-clauses.md) is where it was
+decided:
+
+- **Prefer the modes that have legal targets.** An option whose
+  clause cannot be filled from the current board is dropped before
+  any combination is built, so the budget is never spent on a
+  selection the engine would refuse at announce. This is the same
+  `ChoosableModeOptions` walk the `mode_pick` prompt uses, so the
+  enumerator and the prompt offer the same bullets.
+- **All-one-mode first for a repeatable spec.** With CR 700.2d in
+  play (Mystic Confluence's "you may choose the same mode more than
+  once") the selections that take one bullet `Max` times are emitted
+  before the mixed multisets. When only one bullet is legal, "that
+  bullet three times" is the only selection there is, and it must not
+  be crowded out by mixtures the seat cannot take.
+- **Modes outermost.** The budget is spent mode-selection first, so
+  every selection gets at least one target set before any selection
+  gets a second. Without that, one charm's first bullet with twelve
+  targets would be the whole move list and the other three bullets
+  would never be offered.
+
+A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
+every legal multiset of the bullets the prompt carries, capped by the
+same budget, and labels each move with the bullets rather than their
+indexes so the decision log reads.
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than

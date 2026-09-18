@@ -182,11 +182,15 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 		}
 	}
 
-	// Modes → each choice of modes yields a target spec (at most one
-	// chosen mode may carry a target clause; the engine rejects two).
+	// Modes → each choice of modes yields its own clause list, and
+	// each clause its own picks (#764). Options with no legal target
+	// are dropped before any combination is built, so the budget is
+	// never spent on selections the engine would refuse (ADR 0065
+	// §6).
+	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
-	if ms := game.ModeSpecFor(game.CatalogKey(card)); ms != nil {
-		modeSets = legalModeSets(ms)
+	if modeSpec != nil {
+		modeSets = e.legalModeSets(modeSpec)
 		if len(modeSets) == 0 {
 			return
 		}
@@ -230,14 +234,16 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	}
 
 	budget := e.opts.MaxExpansionPerSource
+	cardSpec := game.TargetSpecFor(game.CatalogKey(card))
 	for _, modes := range modeSets {
-		spec := castTargetSpec(game.CatalogKey(card), modes)
-		targetSets := [][]game.TargetRef{nil}
-		if spec != nil {
-			targetSets = e.legalTargetSets(spec, budget)
-			if len(targetSets) == 0 {
-				continue
-			}
+		// The budget is spent MODES-outermost: every mode selection
+		// gets at least one target set before any gets a second, so a
+		// bot is never offered only the first bullet of a charm
+		// (ADR 0065 §6).
+		steps := game.AnnouncedClauses(cardSpec, modeSpec, modes)
+		targetSets := e.legalStepSets(steps, budget)
+		if len(targetSets) == 0 {
+			continue
 		}
 		for _, targets := range targetSets {
 			setX := x
@@ -379,56 +385,118 @@ func (e *enumerator) canPayExcluding(
 	return ok
 }
 
-// castTargetSpec mirrors game.castTargetSpec: the card-level spec
-// wins; otherwise the single chosen mode that carries a clause. Two
-// targeted modes never reach here — legalModeSets excludes them.
-func castTargetSpec(oracleID string, modes []int) *game.TargetSpec {
-	if spec := game.TargetSpecFor(oracleID); spec != nil {
-		return spec
-	}
-	ms := game.ModeSpecFor(oracleID)
-	if ms == nil {
-		return nil
-	}
-	for _, m := range modes {
-		if m >= 0 && m < len(ms.Options) && ms.Options[m].Targets != nil {
-			return ms.Options[m].Targets
-		}
-	}
-	return nil
-}
-
 // legalModeSets lists every distinct mode selection of size
 // Min..Max, excluding any with more than one targeted option (the
 // engine's castTargetSpec rejects those).
-func legalModeSets(ms *game.ModeSpec) [][]int {
-	n := len(ms.Options)
-	hi := ms.Max
-	if hi <= 0 || hi > n {
-		hi = n
+func (e *enumerator) legalModeSets(ms *game.ModeSpec) [][]int {
+	// ADR 0065 §6, "prefer the modes that have legal targets": an
+	// option whose clause cannot be filled is dropped before any
+	// combination is built, so the budget never goes on a selection
+	// the engine would refuse at announce.
+	options := e.g.ChoosableModeOptionsForEffect(e.seat, ms)
+	if !game.EnoughChoosableModes(len(options), ms) {
+		return nil
 	}
+	hi := ms.Max
+	if hi <= 0 || (!ms.Repeatable && hi > len(options)) {
+		hi = len(options)
+	}
+	budget := e.opts.MaxExpansionPerSource
 	var out [][]int
-	var rec func(start int, cur []int)
-	rec = func(start int, cur []int) {
-		if len(cur) >= ms.Min && len(cur) <= hi {
-			targeted := 0
-			for _, m := range cur {
-				if ms.Options[m].Targets != nil {
-					targeted++
+	add := func(sel []int) bool {
+		out = append(out, append([]int(nil), sel...))
+		return len(out) < budget
+	}
+	if ms.Min == 0 {
+		if !add(nil) {
+			return out
+		}
+	}
+	lo := ms.Min
+	if lo < 1 {
+		lo = 1
+	}
+	// CR 700.2d: the all-one-option selections first, so a
+	// repeatable spec whose only legal option is one mode is not
+	// crowded out by mixed multisets.
+	if ms.Repeatable {
+		for _, opt := range options {
+			for n := lo; n <= hi; n++ {
+				sel := make([]int, n)
+				for i := range sel {
+					sel[i] = opt
+				}
+				if !add(sel) {
+					return out
 				}
 			}
-			if targeted <= 1 {
-				out = append(out, append([]int(nil), cur...))
+		}
+	}
+	var rec func(start int, cur []int) bool
+	rec = func(start int, cur []int) bool {
+		if len(cur) >= lo && len(cur) <= hi {
+			if !(ms.Repeatable && len(cur) == 1) && !add(cur) {
+				return false
 			}
 		}
 		if len(cur) == hi {
-			return
+			return true
 		}
-		for i := start; i < n; i++ {
-			rec(i+1, append(cur, i))
+		for i := start; i < len(options); i++ {
+			if !rec(i+1, append(cur, options[i])) {
+				return false
+			}
 		}
+		return true
 	}
 	rec(0, nil)
+	return out
+}
+
+// legalStepSets is the cartesian product of each clause's legal
+// picks, in step order, capped at `budget` (#764, ADR 0065 §6). An
+// announcement with no steps yields the single empty set, which is
+// how an untargeted cast stays one move.
+func (e *enumerator) legalStepSets(steps []game.AnnouncedClause, budget int) [][]game.TargetRef {
+	out := [][]game.TargetRef{nil}
+	for i := range steps {
+		clause := steps[i].Clause
+		picks := e.legalTargetSets(&clause, budget)
+		if len(picks) == 0 {
+			return nil
+		}
+		next := make([][]game.TargetRef, 0, budget)
+		for _, prefix := range out {
+			for _, pick := range picks {
+				if len(next) >= budget {
+					break
+				}
+				combined := append([]game.TargetRef(nil), prefix...)
+				skip := false
+				for _, p := range pick {
+					p.Mode, p.Slot = steps[i].Mode, steps[i].Slot
+					// CR 601.2c: a Distinct clause may not repeat an
+					// object an earlier clause took.
+					if clause.Distinct {
+						for _, seen := range prefix {
+							if seen.ID == p.ID {
+								skip = true
+							}
+						}
+					}
+					combined = append(combined, p)
+				}
+				if skip {
+					continue
+				}
+				next = append(next, combined)
+			}
+		}
+		if len(next) == 0 {
+			return nil
+		}
+		out = next
+	}
 	return out
 }
 
