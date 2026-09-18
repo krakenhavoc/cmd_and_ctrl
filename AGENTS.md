@@ -1254,6 +1254,17 @@ X lives in the MANA component and nowhere else. A cost with a
 variable COUNT — Ruthless Technomancer's "Sacrifice X artifacts" —
 is a different seam and is still open.
 
+**A Phyrexian symbol in the cost (#787):** `{W/P}` and CR 107.4's ten
+hybrid Phyrexian symbols (`{W/U/P}` … `{G/U/P}`) are ONE
+`ColorRequirement` each — a set of colour options plus `Phyrexian` —
+so there is no new symbol kind to declare and nothing for a card file
+to write. The "or 2 life" half (CR 107.4c/f) is announced on the
+CAST, as `CastSpellParams.PhyrexianLife`: the number of the cost's
+Phyrexian symbols being paid with 2 life each, validated against what
+the cost prints and against CR 119.4, paid through `PayLifeForEffect`.
+An ACTIVATED ability's `ManaCost("{1}{G/P}")` has no such announce and
+pays the coloured half (Birthing Pod).
+
 **"Activate only if …" / "Activate only during your turn" (#743):**
 the ability's `Condition`, a `func(g, controller, source) bool` built
 from [activation_conditions.go](server/internal/cards/effects/activation_conditions.go)

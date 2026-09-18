@@ -27,9 +27,10 @@ import (
 //
 // **The activated ability is not modelled.** `AbilityCost` has no
 // discard component (the same gap the Blood token declared in S21
-// sub-PR 4), and the {R/P} Phyrexian mana would need a pay-2-life
-// alternative the cost parser records but doesn't offer. Both are
-// one piece of work; this card is now the third asking for it.
+// sub-PR 4), and no pay-2-life announce for the {R/P} Phyrexian mana
+// — #787 gave that announce to the CAST path only
+// (CastSpellParams.PhyrexianLife), and an activation has nowhere to
+// carry it. Both are one piece of work; this card is still asking.
 func init() {
 	Register(Spec{
 		OracleID:     "895f23a2-55b7-4cc0-8939-2efaaf097e6f",

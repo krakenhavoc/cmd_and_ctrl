@@ -408,3 +408,76 @@ printed for a commanderless or colourless deck (#259's direction).
   commander's color identity", and Path of Ancestry's creature-type
   half is a declared caveat (its scry rider is unimplemented), so the
   three mana paths above are the whole reader list.
+
+## Amendment — 2026-09-18 (#787): one symbol model, and the life half
+
+**CR 107.4.** Ten hybrid Phyrexian symbols — `{W/U/P}` through
+`{G/U/P}` — were an `unknown token` to `ParseCost`. Every card
+printing one was uncastable (`legal/cast.go` dropped it under the #289
+guard, the engine refused it with `ErrUnparseableCost`) and read mana
+value **0** where CR 202.3g says each Phyrexian symbol counts as 1.
+Ajani, Sleeper Agent; Lukka, Bound to Ruin; Nahiri, the Unforgiving;
+Tamiyo, Compleated Sage — four cards in the dump, importable into any
+deck today, and every `ManaValueLE` / cascade / `SpellManaValueAtLeast`
+read of them was wrong in both directions at once.
+
+- **No fourth symbol kind.** `ColorRequirement` already carried a
+  colour-option SET and two independent flags, and the ten symbols are
+  the existing pieces composed: `Options {"W","U"}` **and**
+  `Phyrexian`. `{W}`, `{W/U}`, `{W/P}`, `{W/U/P}` and `{2/W}` are one
+  struct with different fields set, so `ManaValue` (CR 202.3f/g), the
+  pool solver, the auto-tapper, the cost-modifier splice and the
+  colour readers all needed **no change** — five lines of parser and
+  the symbol was expressible. The rule the shape encodes is that a
+  Phyrexian symbol is not a colour-count: it is an alternative
+  PAYMENT, and it composes with however many colours the symbol names.
+- **Colour is not read from the parse.** `EffectiveColors`,
+  `printedColors` and `printedIdentityOf` scan the raw cost string for
+  `W U B R G`, so `{G/W/P}` was already both colours (CR 202.2d) and a
+  two-colour identity (CR 903.4) before this change, and still is. The
+  parse fix does not touch that path; the tests pin it so a future
+  parse-based colour reader cannot quietly disagree.
+- **The life half is announced, not inferred.** CR 601.2b makes "how
+  do you intend to pay each hybrid and Phyrexian symbol" part of
+  announcing the spell, so it is `CastSpellParams.PhyrexianLife` — an
+  announce-time parameter beside `Face`, `XValue` and the alternative
+  cost, not a `PendingChoice`, for the reason `Face` is not one: the
+  choice machinery resumes replacement, search and trigger frames and
+  has no frame for a half-validated cast. On the wire it is one
+  optional integer, `cast_spell`'s `phyrexian_life`.
+- **A count, not a list of symbols.** The engine strikes out the
+  symbols a life payment can actually save first — the ones no
+  spendable token in the pool matches, then the rest in printed order
+  — so a caster who says "one" never has the engine spend the life on
+  a pip they could have paid. Choosing between two symbols the pool
+  can both pay changes nothing but which colour is left floating.
+- **2 life each, through the one cost-shaped life path.** `#806` made
+  paying life a real loss that runs the CR 614 window and settles it
+  without a prompt (CR 601.2h pays a spell's costs as one indivisible
+  step). This calls `PayLifeForEffect` and writes no life total of its
+  own. An over-claim — more symbols than the cost prints, or more life
+  than CR 119.4 allows — is `ErrInvalidParam` **before** anything is
+  paid, so a refused cast costs neither mana nor a point.
+- **The auto-tapper plans the mana half only.** A claimed symbol
+  leaves the cost before `autoTapLocked` sees it; tapping a land for a
+  pip the caster said they would pay with life is exactly the
+  stranding the unparseable-cost short-circuit already avoids.
+- **What the enumerator offers is the MANA payment.**
+  `legal.EnumerateFor` now offers these casts at all, which it could
+  not before, and it offers them priced in mana. It advertises no life
+  payment, which is deliberate: #695's complaint is life-component
+  offers shown below the life total and then rejected, and the way not
+  to widen it is not to advertise one.
+- **What changes for symbols that already parsed.** Two things, both
+  reads. A missing-symbol breakdown now spells the Phyrexian tail —
+  `{W/P}` reported as `{W}` before and reports `{W/P}` now — so the
+  payment the engine did not take is visible in the message. And
+  `cascadeHit` stops bailing on a compleated planeswalker: an
+  unreadable cost was never a cascade hit, and a mana value of 4 now
+  is one.
+- **Still the board's gap.** No client button asks the question, so a
+  player clicking Gitaxian Probe from hand pays `{U}`. The five cards
+  whose caveats said "Phyrexian mana isn't supported" now say that,
+  which is the true statement. An ACTIVATED ability's mana cost has no
+  announce to carry the claim at all (Birthing Pod's `{1}{G/P}`,
+  Solphim's `{1}{R/P}{R/P}`), and both stay declared.

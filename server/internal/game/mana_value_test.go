@@ -29,6 +29,8 @@ var manaValueRows = []struct {
 	{"Reaper King", "{2/W}{2/U}{2/B}{2/R}{2/G}", 10, 0, 10, 5},
 	{"monocoloured hybrid beside generic", "{1}{2/U}{2/R}", 5, 0, 5, 3},
 	{"Phyrexian is 1 (CR 202.3g example)", "{1}{W/P}{W/P}", 3, 0, 3, 3},
+	{"hybrid Phyrexian is 1 (CR 107.4, CR 202.3g)", "{1}{G}{G/W/P}{W}", 4, 0, 4, 4},
+	{"hybrid Phyrexian, Tamiyo, Compleated Sage", "{2}{G}{G/U/P}{U}", 5, 0, 5, 5},
 }
 
 func TestParsedCostManaValue(t *testing.T) {
