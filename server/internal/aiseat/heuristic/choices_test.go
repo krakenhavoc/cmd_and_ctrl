@@ -239,3 +239,152 @@ func TestGangBlockingNeedsToChangeTheOutcome(t *testing.T) {
 		t.Fatalf("chose %q; the attacker is already stopped and the 2/2 only dies", chose(t, in, d))
 	}
 }
+
+// --- #798: a choose_cards prompt over the bot's own hand -------------
+
+// sixLands is a settled mana base: with this much on the battlefield
+// the bot is past Config.LandsWanted, so another land in hand is the
+// cheapest card it holds. That is the same board
+// TestCleanupDiscardPitchesTheWorstCard uses, and it is what makes
+// "worst card" mean the same thing on both discard paths.
+func sixLands() []protocol.CardView {
+	var bf []protocol.CardView
+	for i := 0; i < 6; i++ {
+		bf = append(bf, land(cardID(30+i), 0))
+	}
+	return bf
+}
+
+// handChoice is a choose_cards prompt over seat 0's own hand — the
+// shape #797 gives every effect discard, loot and rummage.
+func handChoice(id, reason string, lo, hi int, opts ...protocol.CardView) protocol.PendingChoiceView {
+	return protocol.PendingChoiceView{
+		ID: id, Kind: "choose_cards", Chooser: seatID(0).String(),
+		FromPlayer: seatID(0).String(), Reason: reason,
+		Options: opts, ChooseMin: lo, ChooseMax: hi, Count: hi,
+	}
+}
+
+// #798. Before this, every choose_cards answer scored the same and the
+// bot took the first one the enumerator offered — which is hand order,
+// so a Mind Rotted bot pitched whatever it happened to be holding
+// first. The answer is scored by what it KEEPS, so the cards it names
+// are the ones it wants least. The winning answer is listed LAST in
+// every case here: a test that passed on the enumerator's ordering
+// would be testing nothing.
+func TestEffectDiscardNamesTheWorstCardsNotTheFirstOnes(t *testing.T) {
+	const choiceID = "choice-discard"
+	dragon := creature(cardID(1), 0, "Dragon", 6, 6)
+	bear := creature(cardID(2), 0, "Bear", 2, 2)
+	mountain := land(cardID(3), 0)
+
+	t.Run("Mind Rot discards the two worst", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(dragon, bear, mountain)), newSeat(1)},
+			withBattlefield(sixLands()...),
+			withChoice(handChoice(choiceID, "Mind Rot — discard 2 cards", 2, 2, dragon, bear, mountain)))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "pitch dragon + bear", map[string]any{"card_ids": []string{cardID(1), cardID(2)}}),
+			choiceMove(t, 0, choiceID, "pitch dragon + mountain", map[string]any{"card_ids": []string{cardID(1), cardID(3)}}),
+			choiceMove(t, 0, choiceID, "pitch bear + mountain", map[string]any{"card_ids": []string{cardID(2), cardID(3)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "pitch bear + mountain" {
+			t.Fatalf("chose %q, want the answer that keeps the Dragon", got)
+		}
+	})
+
+	// "Discard up to two cards" — the bot owes nothing, so it keeps
+	// everything. Keeping a card is never worth less than nothing, so
+	// the smallest legal answer wins without a rule of its own.
+	t.Run("up to two discards as few as it must", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(dragon, mountain)), newSeat(1)},
+			withBattlefield(sixLands()...),
+			withChoice(handChoice(choiceID, "Rummage — discard up to 2 cards", 0, 2, dragon, mountain)))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "pitch both", map[string]any{"card_ids": []string{cardID(1), cardID(3)}}),
+			choiceMove(t, 0, choiceID, "pitch the dragon", map[string]any{"card_ids": []string{cardID(1)}}),
+			choiceMove(t, 0, choiceID, "pitch the mountain", map[string]any{"card_ids": []string{cardID(3)}}),
+			choiceMove(t, 0, choiceID, "pitch nothing", map[string]any{"card_ids": []string{}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "pitch nothing" {
+			t.Fatalf("chose %q, want the smallest legal answer", got)
+		}
+	})
+
+	// A loot draws first and then discards, so the drawn card is in
+	// the hand the prompt is built from and the count is fixed: the
+	// only question is which of the two the bot keeps.
+	t.Run("looting keeps the better card", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(mountain, dragon)), newSeat(1)},
+			withBattlefield(sixLands()...),
+			withChoice(handChoice(choiceID, "Faithless Looting — discard a card", 1, 1, mountain, dragon)))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "pitch the dragon", map[string]any{"card_ids": []string{cardID(1)}}),
+			choiceMove(t, 0, choiceID, "pitch the mountain", map[string]any{"card_ids": []string{cardID(3)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "pitch the mountain" {
+			t.Fatalf("chose %q, want the answer that keeps the Dragon", got)
+		}
+	})
+
+	// A rummage discards and then draws — the prompt is the same
+	// shape, over the hand as it stands before the draw.
+	t.Run("rummage names the worst card it holds", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(dragon, bear, mountain)), newSeat(1)},
+			withBattlefield(sixLands()...),
+			withChoice(handChoice(choiceID, "Syphon Mind — discard a card", 1, 1, dragon, bear, mountain)))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "pitch the dragon", map[string]any{"card_ids": []string{cardID(1)}}),
+			choiceMove(t, 0, choiceID, "pitch the bear", map[string]any{"card_ids": []string{cardID(2)}}),
+			choiceMove(t, 0, choiceID, "pitch the mountain", map[string]any{"card_ids": []string{cardID(3)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "pitch the mountain" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+}
+
+// The rule is about cards the bot is being asked to GIVE UP, which is
+// what a candidate in its own hand means. A choose_cards over anything
+// else — a Ward sacrifice, a library pick, a reveal — carries no such
+// promise on the wire, so it keeps the flat score and the enumerator's
+// order decides. Naming the bot's best permanent because "keeping" the
+// others scored higher would be a worse bug than the one #798 fixed.
+func TestChooseCardsOverOtherZonesKeepsTheEnumeratorsOrder(t *testing.T) {
+	const choiceID = "choice-bf"
+	dragon := creature(cardID(1), 0, "Dragon", 6, 6)
+	bear := creature(cardID(2), 0, "Bear", 2, 2)
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(dragon, bear),
+		withChoice(handChoice(choiceID, "Ward — choose a creature to sacrifice", 1, 1, dragon, bear)))
+	in := input(0, v,
+		choiceMove(t, 0, choiceID, "name the dragon", map[string]any{"card_ids": []string{cardID(1)}}),
+		choiceMove(t, 0, choiceID, "name the bear", map[string]any{"card_ids": []string{cardID(2)}}),
+	)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "name the dragon" {
+		t.Fatalf("chose %q, want the enumerator's first answer", got)
+	}
+}
+
+// The policy carries no randomness and reads no map in an order that
+// could vary, so the same window must answer the same way every time —
+// including when two answers are worth exactly the same and the tie
+// falls to the enumerator's order. #775 keyed the RNG the rest of the
+// bot stack draws from; this is the part of it that has none.
+func TestDiscardRankingIsDeterministicAcrossRepeatedDecisions(t *testing.T) {
+	const choiceID = "choice-tie"
+	first := land(cardID(1), 0)
+	second := land(cardID(2), 0)
+	v := newView([]protocol.PlayerView{newSeat(0, withHand(first, second)), newSeat(1)},
+		withBattlefield(sixLands()...),
+		withChoice(handChoice(choiceID, "Mind Rot — discard a card", 1, 1, first, second)))
+	in := input(0, v,
+		choiceMove(t, 0, choiceID, "pitch the first", map[string]any{"card_ids": []string{cardID(1)}}),
+		choiceMove(t, 0, choiceID, "pitch the second", map[string]any{"card_ids": []string{cardID(2)}}),
+	)
+	pol := heuristic.New()
+	for i := 0; i < 50; i++ {
+		if got := chose(t, in, decide(t, pol, in)); got != "pitch the first" {
+			t.Fatalf("run %d chose %q; two equal answers must always tie to the enumerator's order", i, got)
+		}
+	}
+}
