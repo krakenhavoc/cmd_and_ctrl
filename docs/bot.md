@@ -836,6 +836,16 @@ the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
 still makes X=0 a legal announcement and the engine still accepts one;
 this is about what is worth putting in front of a player.
 
+**A spell whose target count is X is offered with X equal to the
+number of targets it picks.** Crackle with Power deals five times X
+damage to each of up to X targets, so the count and the announcement
+are one decision, not two — the enumerator used to make them
+separately and offer one target at X=0, which the engine refused
+outright
+([#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619)). A bot
+now sees Crackle at one target for X=1, two for X=2, and so on as far
+as its mana reaches, and never sees the cast that bounces.
+
 **A bot takes one CR 726 shortcut per loop per turn, then stops.** When
 the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
 repeating ability's controller is asked how many more times it should
