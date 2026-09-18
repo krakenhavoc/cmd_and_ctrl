@@ -908,6 +908,11 @@ export interface AlternativeCostView {
   pay_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card").
   pay_label?: string;
+  // CR 107.3b (#831): the card prints an {X} in its mana cost and
+  // this offer does not, so claiming it fixes X at 0 — the cast flow
+  // skips the X picker and sends nothing. Absent for nearly every
+  // offer, including one priced with an {X} of its own.
+  x_locked_at_zero?: boolean;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -972,6 +977,12 @@ export interface ExilePlayView {
   // than from the request, so a client that ignores this labels the
   // button with the wrong name but cannot cast the wrong half.
   face?: number;
+  // CR 107.3b (#831): the card prints an {X} in its mana cost and
+  // this grant's price does not, so casting under it fixes X at 0 —
+  // what a cascade hit carries. The cast flow skips the X picker.
+  // Absent for a grant that charges the printed cost, which still
+  // asks.
+  x_locked_at_zero?: boolean;
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a

@@ -643,6 +643,30 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if params.XValue < 0 {
 		return ErrInvalidParam
 	}
+	// CR 107.3b: a spell with {X} in its mana cost, cast while paying
+	// neither that cost nor an alternative cost that includes X, has
+	// exactly one legal choice for X, and it is 0. Cascade's "{0}"
+	// grant, a Siege's free cast and a free alternative cost are the
+	// same answer to one question, asked here because 601.2b is where
+	// X is announced and because the claimed alternative cost and the
+	// exile grant are both settled by now.
+	//
+	// Refused rather than silently clamped, exactly as the
+	// X-defined target count above is: a client that announces X=5
+	// on a free Stroke of Genius is wrong about what it is casting,
+	// and quietly casting a different spell hides that from whoever
+	// has to debug it.
+	if params.XValue != 0 &&
+		CastCostFor(card, params.AlternativeCost, exileGrant, hasExileGrant).LocksXAtZero() {
+		slog.Warn("cast_spell rejected: X must be 0 when the mana cost isn't paid",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+			"alternative_cost", params.AlternativeCost,
+			"x_value", params.XValue,
+		)
+		return ErrInvalidParam
+	}
 	// S20 sub-PR 4: modal spells — the chosen modes must be distinct,
 	// in range and the right count (CR 601.2b, 700.2).
 	modeSpec := ModeSpecFor(CatalogKey(card))
@@ -1361,11 +1385,11 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// (CR 118.9). The commander tax below is layered on top of
 	// whichever cost was chosen, because CR 903.8 taxes the cost
 	// being paid, not the cost printed in the corner.
-	costString := alternativeCostString(card, params.AlternativeCost)
+	//
 	// S22 airbend: an exile-play grant can carry its own "rather than
 	// its mana cost" price ({2}), which belongs to the exiled
 	// INSTANCE rather than to the card, so it can't come from the
-	// oracle-ID-keyed AlternativeCost catalog above. It wins over the
+	// oracle-ID-keyed AlternativeCost catalog. It wins over the
 	// printed cost and is layered BEFORE the commander tax for the
 	// same reason the alternative cost is: CR 903.8 taxes whatever
 	// cost is actually being paid.
@@ -1374,11 +1398,20 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// clears it when the card leaves exile (CR 400.7); this check is
 	// the second half, so a grant still sitting on a card can't
 	// reprice a cast from any other zone.
+	//
+	// Both halves live in CastCostFor, because the announce path asks
+	// the same question of the same choice — whether the cost being
+	// paid still carries the printed {X} (CR 107.3b) — and two copies
+	// of the precedence would be two chances to disagree about which
+	// cost this cast is paying.
 	fromExile := params.FromZone == string(ZoneExile)
-	if ov := card.ExilePlay.CostOverride; ov != "" && fromExile && card.ExilePlay.Active(p.ID, g.Turn.Number) {
-		costString = ov
+	grant := ExilePlayPermission{}
+	hasGrant := false
+	if fromExile {
+		grant = card.ExilePlay
+		hasGrant = grant.Active(p.ID, g.Turn.Number)
 	}
-	cost, err := ParseCost(costString)
+	cost, err := ParseCost(CastCostFor(card, params.AlternativeCost, grant, hasGrant).Paid)
 	if err != nil {
 		return ParsedCost{}, err
 	}

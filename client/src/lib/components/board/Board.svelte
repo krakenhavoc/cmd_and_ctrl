@@ -51,6 +51,7 @@
     beginForAbility as beginTargetingForAbility,
     beginForMode as beginTargetingForMode,
     hasXCost,
+    castLocksXAtZero,
     isModal,
     discardCostOf,
     sacrificeCostOptions,
@@ -411,7 +412,11 @@
   }
 
   function afterCastCosts(card: CardView, choices: CastChoices): void {
-    if (hasXCost(card)) {
+    // CR 107.3b (#831): a free cast of an {X} spell has one legal X
+    // and it is 0, so the picker is skipped and nothing is sent. The
+    // server refuses a non-zero X on such a cast, which is what makes
+    // this a prompt decision rather than a rule the client enforces.
+    if (hasXCost(card) && !castLocksXAtZero(card, choices.altCost)) {
       xPromptChoices = choices;
       xPromptCard = card;
       return;

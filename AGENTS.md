@@ -1747,6 +1747,15 @@ to one exiled *instance* and rides `game.ExilePlayPermission` instead.
 Declare `ZoneExile` only when the card's own printed text grants the
 cast.
 
+**`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
+mana cost, cast while paying neither that cost nor an alternative cost
+that includes `X`, has exactly one legal `X` and it is `0` — cascade's
+`{0}` grant, a Siege's free cast and an offer priced `{R}` are all the
+same answer. One predicate says so, `game.CastCost.LocksXAtZero`
+([cast_cost.go](server/internal/game/cast_cost.go)), applied
+once at CR 601.2b in `CastSpell`; a cost *reduction* never triggers it,
+and a card file needs no flag for it.
+
 **A delayed trigger (S22):** "at the beginning of the next end step,
 <do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs
 now:

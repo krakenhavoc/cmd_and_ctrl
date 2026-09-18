@@ -436,6 +436,17 @@ type AlternativeCostView struct {
 	// card", "an Island you control"). Absent when there is nothing
 	// to pick.
 	PayLabel string `json:"pay_label,omitempty"`
+
+	// XLockedAtZero is CR 107.3b for THIS offer: the card prints an
+	// {X} in its mana cost and this cost does not, so claiming it
+	// fixes X at 0 and the client must not open its X picker. Absent
+	// — the overwhelming majority — means X is announced as usual.
+	//
+	// Server-computed (game.CastCost.LocksXAtZero) rather than
+	// re-derived from `mana_cost` on the client, so the rule has one
+	// statement and the picker cannot disagree with the announce
+	// gate that would reject what it collected. Added for #831.
+	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1118,6 +1129,18 @@ type ExilePlayView struct {
 	// does not cast the wrong thing, because the server settles the
 	// face from the grant rather than from the request.
 	Face int `json:"face,omitempty"`
+
+	// XLockedAtZero is CR 107.3b for a cast taken under this grant:
+	// the card prints an {X} in its mana cost and `cost_override`
+	// does not, so the only legal X is 0 and the client must not open
+	// its X picker. This is what a cascade hit carries. Absent — the
+	// overwhelming majority, including every impulse grant that
+	// charges the printed cost — means X is announced as usual.
+	//
+	// Server-computed (game.CastCost.LocksXAtZero), the same field
+	// and the same rule an alternative-cost offer carries. Added for
+	// #831.
+	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -1614,7 +1637,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView) {
 				// disjoint sets, and showing the wrong one produces a
 				// button the server will reject.
 				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
-					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c.InstanceID, spec, alts)
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c, spec, alts)
 				}
 				if spec == nil {
 					continue
@@ -1684,7 +1707,8 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // 601.2a moved it to the stack before the cost is paid), but a
 // picker that offers a card the cast will be rejected for choosing
 // is a trap rather than an affordance.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+	self := card.InstanceID
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
@@ -1699,6 +1723,12 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, self string, base *g
 		v := AlternativeCostView{
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
 			Life: ac.Life, PayLabel: ac.PayLabel,
+			// CR 107.3b (#831). An offer is a cost; the rule asks
+			// only whether the printed {X} survives into it, so the
+			// pair of strings IS the whole question here — no exile
+			// grant can be in play on a card in hand, command or
+			// graveyard, which are the only zones that carry offers.
+			XLockedAtZero: game.CastCost{Printed: card.ManaCost, Paid: ac.ManaCost}.LocksXAtZero(),
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
@@ -2896,9 +2926,29 @@ func viewOfCard(c game.Card) CardView {
 			CostOverride:  c.ExilePlay.CostOverride,
 			NotBeforeTurn: c.ExilePlay.NotBeforeTurn,
 			Face:          c.ExilePlay.Face,
+			// CR 107.3b (#831): a cascade hit is granted at {0}, so
+			// its printed {X} is not being paid and the only legal
+			// announcement is 0. Through CastCostFor rather than a
+			// read of CostOverride, because an unpriced grant pays
+			// the PRINTED cost and locks nothing. Against the face
+			// the grant opens, because that is the cost the cast path
+			// will read (ADR 0034).
+			XLockedAtZero: game.CastCostFor(grantedFace(c), "", c.ExilePlay, true).LocksXAtZero(),
 		}
 	}
 	return view
+}
+
+// grantedFace materialises the face an exile grant opens on a copy
+// of the card, the way the cast path does before it prices anything
+// (ADR 0034). A grant that names no face — every impulse, airbend,
+// warp and cascade grant — gets the card back untouched.
+func grantedFace(c game.Card) game.Card {
+	if c.ExilePlay.Face <= 0 {
+		return c
+	}
+	c.SetFace(c.ExilePlay.Face)
+	return c
 }
 
 // effectiveTypeLine renders the wire `type_line` string from the

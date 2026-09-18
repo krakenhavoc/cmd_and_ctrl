@@ -416,6 +416,27 @@ export function hasXCost(card: CardView): boolean {
   return (card.mana_cost ?? "").includes("{X}");
 }
 
+// castLocksXAtZero reports CR 107.3b: a spell with {X} in its mana
+// cost, cast while paying neither that cost nor an alternative cost
+// that includes X, has 0 as its only legal X — so there is nothing to
+// ask and the picker must not open.
+//
+// The rule is NOT re-derived here from the cost strings. The server
+// computes it with the same predicate it will judge the cast by
+// (game.CastCost.LocksXAtZero) and ships the answer per offer:
+// `exile_play.x_locked_at_zero` for a cascade hit or a Siege's free
+// cast, `alternative_costs[].x_locked_at_zero` for an offer. Asking
+// twice in two languages is how a picker ends up collecting a value
+// the announce gate rejects.
+//
+// The grant wins over the offer, because that is the order the server
+// prices a cast in: an exile grant's own price replaces whatever cost
+// was chosen.
+export function castLocksXAtZero(card: CardView, altCost: string | undefined): boolean {
+  if (card.exile_play?.x_locked_at_zero) return true;
+  return alternativeCostByKey(card, altCost)?.x_locked_at_zero === true;
+}
+
 // beginForAbility enters a targeting prompt for an activated
 // ability's target clause. `card` is the source permanent; the
 // legal set comes from the ability, not the card.
