@@ -357,3 +357,30 @@ func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
 	}
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
 }
+
+// payLifeThenDraw is the "you may pay N life. If you do, draw M
+// cards" body — Crossway Troublemakers' and Erebos, Bleak-Hearted's.
+// The "may" is answered before this runs, by the trigger's optional
+// prompt; this is only the payment and the linked draw.
+//
+// Paying life is a COST (CR 118.3), so "if you do" has to know the
+// payment finished before the draw happens (#793) — which is why
+// this is one body and not two primitives in a Do().
+//
+// CR 119.4: a player cannot pay life they do not have, and life can
+// move between the question and the answer. An unaffordable payment
+// degrades to the decline rather than erroring, the same shape
+// ResolveEntryPayLife uses — so neither the life nor the cards move.
+//
+// Caller holds g.mu.
+func payLifeThenDraw(ctx *Context, life, cards int) error {
+	controller := ctx.Controller()
+	p := ctx.Game.PlayerByIDForEffect(controller)
+	if p == nil || p.Eliminated || p.Life < life {
+		return nil
+	}
+	if err := ctx.Game.PayLifeForEffect(ctx.Source(), controller, life); err != nil {
+		return err
+	}
+	return DrawCards{Player: controller, N: cards}.Apply(ctx)
+}
