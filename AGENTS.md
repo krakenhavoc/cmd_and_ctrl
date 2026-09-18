@@ -1515,6 +1515,22 @@ wrappers over the batch, and `exiled` is the batch's CR 400.7 answer.
 stay the fire-and-forget form: their `nil` means "no error", never "it
 is in exile". A card that reads the move at all reaches for the `Then`.
 
+**A mill reports what LANDED, through the same `Then` (#893).** A mill
+opens the CR 614 window per card, so a commander coming off the top
+stops to answer CR 903.9 and what was milled is not knowable on the
+next line. `MillToZone{…, Then: func(ctx, milled []uuid.UUID) error}`
+and `g.MillToZoneThenForEffect` are the read-back — `milled` is
+CR 400.7's answer, the cards that ARRIVED in the destination, so a
+commander that took the command zone and a card an "exile it instead"
+replacement rewrote are not in it. `MillToZone` with no `Then`,
+`MillCards` and `g.MillToZoneForEffect` stay fire-and-forget: they mill
+AROUND a paused card rather than waiting for it, which is right when
+nothing is waiting on the answer and wrong the moment anything reads
+the result. "Exile the top N cards of your library" is the same
+primitive with `To: game.ZoneExile`, and it is not a mill — no
+`EventMill`, no mill payoff. See
+[ADR 0013 §5l](docs/decisions/0013-replacement-effects.md).
+
 **Never call a locking accessor inside a snapshot body (#877).**
 Anything that runs inside `g.ReadSnapshot(func(){…})` or
 `g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`

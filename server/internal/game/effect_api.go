@@ -810,11 +810,23 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // playerID's library into `dest`, which is ZoneGraveyard (an ordinary
 // mill) or ZoneExile ("exile the top N cards of your library").
 //
-// Returns the cards that moved, in the order they came off the top.
-// Callers that need to act on them — "exile all cards milled this
-// way", "you may cast one of them this turn", a payoff that counts
-// them — read the slice rather than diffing zones, which is the
+// Returns the cards that LANDED in `dest`, in the order they came off
+// the top. Callers that need to act on them — "exile all cards milled
+// this way", "you may cast one of them this turn", a payoff that
+// counts them — read the slice rather than diffing zones, which is the
 // difference between this and MillNForEffect.
+//
+// The FIRE-AND-FORGET form, and since #893 its slice means what
+// ExileCardsForEffect's count has meant since #866: the CR 400.7
+// arrived-object reading (landedInZoneLocked). A card a replacement
+// sent somewhere else is not in it — a commander whose owner took
+// CR 903.9's offer went to the command zone rather than to a
+// graveyard, and "if a card would be put into a graveyard from
+// anywhere, exile it instead" moved the card to exile — and neither is
+// a leg the CR 614 window cancelled. A leg that merely PAUSED on the
+// CR 903.9 prompt cannot be in it either, because nothing has moved
+// yet; that is what MillToZoneThenForEffect is for, and a caller that
+// reads the slice should use it.
 //
 // `until`, when non-nil, is consulted for each card as it comes off
 // the library and stops the mill AFTER the first card it accepts;
@@ -841,8 +853,87 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // card with a mill-a-card cost, Millikin, gates its activation on a
 // non-empty library itself; The Warring Triad declares the gap.
 //
+// The error is the up-front one — an unseated player, a destination
+// that is neither a graveyard nor exile. A leg that cannot move is
+// skipped by the batch body rather than failing the mill.
+//
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
+	ids, err := g.millPlanLocked(playerID, n, dest, until)
+	if err != nil {
+		return nil, err
+	}
+	return g.routeAllLandedLocked(millRoute(playerID, dest), ids), nil
+}
+
+// MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
+// MillToZoneForEffect would and hand `then` the cards that reached
+// `dest` — "for each creature card put into your graveyard this way",
+// "for each card of the chosen color exiled this way" (Oona).
+//
+// #893, and the same pair ExileCardsThenForEffect / ExileCardsForEffect
+// are two halves of (ADR 0013 §5k). Any leg can pause on the CR 903.9
+// prompt, so what was milled is not knowable on the line after the
+// mill: a commander on top of the library queues its owner's question
+// and moves nowhere until they answer it. The legs therefore go IN
+// SEQUENCE, each from the previous one's continuation, with the landed
+// list carried forward BY VALUE — the property that makes an undo
+// across the prompt replay identically.
+//
+// What "this way" means is CR 400.7's, landedInZoneLocked's: the
+// object that ARRIVED in `dest`. A commander that took the command
+// zone was not milled, and neither was a card an "exile it instead"
+// replacement rewrote on the way to a graveyard.
+//
+// The cost of waiting, which the fire-and-forget form does not pay:
+// the rest of the mill happens when the prompt is answered rather than
+// immediately. That is deliberate and it is the only version that can
+// report a true list — the same trade DestroyPermanentsThenForEffect
+// and the discard batch already make.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) MillToZoneThenForEffect(
+	playerID uuid.UUID,
+	n int,
+	dest ZoneKind,
+	until func(Card) bool,
+	then func(g *Game, milled []uuid.UUID) error,
+) error {
+	ids, err := g.millPlanLocked(playerID, n, dest, until)
+	if err != nil {
+		return err
+	}
+	return g.routeAllThenLocked(millRoute(playerID, dest), ids, then)
+}
+
+// millPlanLocked validates a mill and chooses the cards it will move,
+// top of the library first. Shared by both forms above, so they cannot
+// disagree about what a mill of n is.
+//
+// #529: the cards that will move are chosen UP FRONT, top-down, and
+// addressed by ID from there — rather than by repeatedly popping
+// whatever is on top.
+//
+// A milled commander gets the CR 903.9 prompt, and a queued prompt
+// leaves that card exactly where it was: still on top of the library.
+// Re-reading the top each iteration would hand back the same commander
+// every time and mill nothing else. Choosing the set first lets the
+// fire-and-forget mill proceed AROUND the paused card, which is both
+// what CR 701.17a's simultaneous mill wants and the only version that
+// does not silently shorten the mill when a commander is in the way.
+//
+// `until` is answered here too, against the same pre-move copies the
+// old loop consulted: it reads the card that came off the library, not
+// where that card ended up, so the run it ends is the same run whether
+// it is measured before the first move or after the last. That is what
+// lets the plan be a plain list of IDs — which is what the batch body
+// takes — and it is also the one thing Helm of Obedience's caveat is
+// about: a commander whose owner takes the command zone was never put
+// into a graveyard, so by CR 701.17a's letter the run should continue,
+// and it stops instead.
+//
+// Caller must hold g.mu.
+func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil, ErrPlayerNotFound
@@ -854,57 +945,20 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 	}
 	unbounded := until != nil && n <= 0
 
-	// #529: the cards that will move are chosen UP FRONT, top-down,
-	// and addressed by ID from there — rather than by repeatedly
-	// popping whatever is on top.
-	//
-	// A milled commander now gets the CR 903.9 prompt, and a queued
-	// prompt leaves that card exactly where it was: still on top of
-	// the library. Re-reading the top each iteration would hand back
-	// the same commander every time and mill nothing else. Choosing
-	// the set first lets the rest of the mill proceed AROUND the
-	// paused card, which is both what CR 701.17a's simultaneous mill
-	// wants and the only version that does not silently shorten the
-	// mill when a commander is in the way.
 	avail := len(p.Library.Cards)
 	want := n
 	if unbounded || want > avail {
 		want = avail
 	}
-	batch := make([]Card, 0, want)
+	ids := make([]uuid.UUID, 0, want)
 	for i := 0; i < want; i++ {
-		batch = append(batch, p.Library.Cards[avail-1-i])
-	}
-
-	moved := make([]uuid.UUID, 0, want)
-	for _, c := range batch {
-		// Only a move to the GRAVEYARD is a mill (CR 701.17). "Exile
-		// the top N cards of your library" is not, and firing
-		// EventMill for it would trigger every mill payoff at the
-		// table — Bruvac would double an impulse-draw exile, which it
-		// does not do.
-		paused, err := g.routeCardToZoneLocked(zoneRoute{
-			CardID: c.InstanceID,
-			Dst:    dest,
-			Actor:  playerID,
-			Mill:   dest == ZoneGraveyard,
-		})
-		if err != nil {
-			return moved, err
-		}
-		if !paused {
-			// A paused card has not been milled yet. It is left out
-			// of the returned slice so "exile all cards milled this
-			// way" cannot act on a card still sitting in the library.
-			moved = append(moved, c.InstanceID)
-		}
+		c := p.Library.Cards[avail-1-i]
+		ids = append(ids, c.InstanceID)
 		if until != nil && until(c) {
-			return moved, nil
+			break
 		}
 	}
-	// The library ran out (or the batch was the whole library): the
-	// run ends here. No loss — CR 701.17b, see above.
-	return moved, nil
+	return ids, nil
 }
 
 // DestroyPermanentForEffect destroys a battlefield permanent

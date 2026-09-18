@@ -52,7 +52,7 @@ func init() {
 		Name:         "Helm of Obedience",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"If the creature card milled is a commander, the Helm stops milling but puts nothing onto the battlefield — its owner is still being asked whether the commander goes to the command zone instead.",
+			"If the creature card milled is a commander and its owner puts it into the command zone instead (CR 903.9), the Helm stops milling rather than continuing until a creature card really is put into the graveyard, and nothing is reanimated.",
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{X}, {T}: Target opponent mills until a creature card or X cards are in their graveyard; reanimate it.",
@@ -76,35 +76,39 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 	// the stack item — the same X the cost charged. MinX(1) above is
 	// what guarantees it is at least 1 here, so the "X can't be 0"
 	// clause needs no second check in the effect.
-	var milled []uuid.UUID
-	if err := (MillToZone{
+	return MillToZone{
 		Player: victim,
 		N:      ctx.X(),
 		Until:  func(c game.Card) bool { return c.IsCreature() },
-		Milled: &milled,
-	}).Apply(ctx); err != nil {
-		return err
-	}
-	var creature uuid.UUID
-	for _, id := range milled {
-		c, ok := g.LookupCardForEffect(id)
-		if ok && c.IsCreature() {
-			creature = id
-			break
-		}
-	}
-	if creature == uuid.Nil {
-		return nil
-	}
-	// "sacrifice this artifact AND put one of them onto the
-	// battlefield" — in that order, so an aristocrats payoff
-	// watching the Helm die sees it before the creature arrives.
-	if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-		return err
-	}
-	return ReturnFromGraveyard{
-		Target:     creature,
-		Dest:       game.ZoneBattlefield,
-		Controller: item.Controller,
+		// #893: the reanimation reads what was PUT INTO THE GRAVEYARD,
+		// so it runs from the continuation. A milled commander stops to
+		// answer CR 903.9 and the creature card to reanimate is not
+		// knowable until it does — the Helm used to read the list with
+		// that prompt still open, find nothing, and drop its own second
+		// half on the floor.
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			var creature uuid.UUID
+			for _, id := range milled {
+				c, ok := ctx.Game.LookupCardForEffect(id)
+				if ok && c.IsCreature() {
+					creature = id
+					break
+				}
+			}
+			if creature == uuid.Nil {
+				return nil
+			}
+			// "sacrifice this artifact AND put one of them onto the
+			// battlefield" — in that order, so an aristocrats payoff
+			// watching the Helm die sees it before the creature arrives.
+			if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+				return err
+			}
+			return ReturnFromGraveyard{
+				Target:     creature,
+				Dest:       game.ZoneBattlefield,
+				Controller: item.Controller,
+			}.Apply(ctx)
+		},
 	}.Apply(ctx)
 }

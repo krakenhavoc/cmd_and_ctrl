@@ -343,6 +343,27 @@ var (
 	bounceRoute  = zoneRoute{Dst: ZoneHand}
 )
 
+// millRoute is the fourth template (#893) and the one that cannot be a
+// package var, because two things about a mill are decided by the
+// caller rather than by the verb:
+//
+//   - the destination. CR 701.17a's mill is library -> graveyard, and
+//     the same helper expresses "exile the top N cards of your
+//     library", which is not a mill at all. Mill is set only for the
+//     graveyard, so EventMill fires for a mill and an ordinary zone
+//     move fires for the exile — the distinction executeZoneRouteLocked
+//     already makes off the SETTLED destination, so a commander that
+//     took CR 903.9's offer emits neither.
+//   - the Actor, which is the player whose library is being read. It
+//     is stamped on the events, and it is not the card's owner: an
+//     opponent's Glimpse the Unthinkable mills YOUR library.
+//
+// The destination is where the cards were ASKED to go, which is what
+// landedInZoneLocked measures "milled this way" against (CR 400.7).
+func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
+	return zoneRoute{Dst: dest, Actor: player, Mill: dest == ZoneGraveyard}
+}
+
 // routeAllThenLocked routes every card in `ids` as one simultaneous
 // exit and hands `then` the ones that LANDED where `r` asked.
 //
@@ -411,11 +432,26 @@ func (g *Game) routeEachStepLocked(
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
+	return len(g.routeAllLandedLocked(r, ids))
+}
+
+// routeAllLandedLocked is that body, reporting WHICH legs landed
+// rather than how many. The count above is its length.
+//
+// #893: the mill is the caller that needs the list from the
+// fire-and-forget form, because MillToZoneForEffect has returned the
+// cards that moved since long before any of this existed and callers
+// read them. The rule is the same one the count reports — a leg that
+// landed where the route asked, and nothing else — so it is the same
+// loop, not a second one.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 	if len(ids) == 0 {
-		return 0
+		return nil
 	}
 	defer g.beginSimultaneousExitLocked(ids)()
-	landed := 0
+	landed := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		if g.routeLegNothingToDoLocked(r, id) {
 			continue
@@ -424,7 +460,7 @@ func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
 			continue
 		}
 		if g.routeLegLandedLocked(r, id) {
-			landed++
+			landed = append(landed, id)
 		}
 	}
 	return landed

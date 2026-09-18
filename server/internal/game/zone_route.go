@@ -70,8 +70,18 @@ import (
 // the window. It brought the other half of a pausable move with it:
 // zoneRoute.then, the continuation a caller with more to do hands over
 // instead of writing it on the next line. A multi-card discard
-// sequences itself through it rather than looping, which is the
-// opposite of what the mill above does, and discard.go says why.
+// sequences itself through it rather than looping, and discard.go says
+// why.
+//
+// #866 made that sequencing ONE body (routeAllThenLocked,
+// simultaneous.go) shared by every batched exit, and #893 put the mill
+// on it too. The mill above is therefore both shapes at once, on one
+// implementation: MillToZoneThenForEffect sequences through the
+// continuation, because a caller that reads what was milled cannot be
+// told while a commander's prompt is open, and the fire-and-forget
+// MillToZoneForEffect keeps the loop that proceeds AROUND a paused
+// card, because nothing is waiting on its answer and a mill must not
+// re-read the top of the library.
 
 // zoneRoute describes one card's motion into a zone, together with
 // the bookkeeping that particular route owes beyond the physical
@@ -309,8 +319,8 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 // zone, no event has been emitted, and the move completes from
 // applyResolvedReplacementEventLocked when the player answers. Every
 // caller has to be able to tolerate that, which is why the bool is
-// returned rather than swallowed — the mill loop in particular has to
-// know not to pop the same card again.
+// returned rather than swallowed — ExileTopFaceDownForEffect in
+// particular has to know not to read the same top card again.
 //
 // A caller with something to do AFTER the move hands it over as
 // r.then rather than writing it on the next line, and then ignores the

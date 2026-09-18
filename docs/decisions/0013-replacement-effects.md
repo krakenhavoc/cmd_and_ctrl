@@ -1013,6 +1013,106 @@ its own — `ExileCardThenForEffect` is a wrapper over
 `ExileCardsThenForEffect` with a batch of one, so one card gets the
 same CR 400.7 answer and the same replay-under-undo as a sweep.*
 
+### 5l. Amendment, 2026-09-18: a mill counts what landed
+
+*Amendment, 2026-09-18, branch `fix/893-894-mill-and-living-death`.
+Closes [#893](https://github.com/krakenhavoc/cmd_and_ctrl/issues/893),
+filed by the #870/#877 agent in PR #878.*
+
+§5i fixed the destroy sweep's number and §5k fixed exile's and
+bounce's. The mill was the fourth verb with a "this way" clause on it
+and the one nobody had looked at: `MillToZoneForEffect` returned every
+leg that had not PAUSED, so the list it handed back held a card the
+CR 614 window had cancelled, a card a replacement had sent somewhere
+else, and — because a pause is the one thing it did check — nothing at
+all for the leg that mattered most. Oona, Queen of the Fae reads that
+list as "for each card of the chosen color exiled this way" and made a
+Faerie for a commander whose owner was still being ASKED about the
+command zone.
+
+**1. The rule is CR 400.7, read against the destination the mill asked
+for.** Not a new rule and not a new function: `landedInZoneLocked` is
+the one §5k wrote, and the mill asks it the same question exile and
+bounce do.
+
+| Where it landed | Milled this way? |
+| --- | --- |
+| the destination the mill named (a graveyard, or exile for "exile the top N") | yes |
+| the command zone (CR 903.9 took the offer) | no |
+| anywhere else — "if a card would be put into a graveyard from anywhere, exile it instead" | no |
+| still on the library (cancelled, or the prompt abandoned — §5j) | no |
+
+The event shape already agreed with this and had since #529:
+`zoneRoute.Mill` is honoured only when the card really reaches a
+graveyard, because CR 701.17a defines the keyword action by its
+destination. What did not agree was the number the caller was handed.
+Now one answer serves both.
+
+**2. One body, and no second mill.** The mill joins
+`routeAllThenLocked` with a fourth template, `millRoute(player, dest)`
+— a function rather than a package var because two things about a mill
+belong to the caller: the destination (a graveyard for CR 701.17a's
+mill, exile for "exile the top N cards of your library", which is not a
+mill) and the Actor, which is the player whose library is being read
+and not the card's owner.
+
+`MillToZoneThenForEffect(player, n, dest, until, then)` is the
+continuation form, `MillToZoneForEffect` keeps its signature and its
+slice, and both plan the mill through `millPlanLocked` so they cannot
+disagree about what a mill of n is. The fire-and-forget form needed the
+IDs rather than a count, so `routeAllLocked`'s loop became
+`routeAllLandedLocked` and the count is its length — one loop, not two.
+
+**3. `until` is answered before the first move, and that is exact.**
+Helm of Obedience's "mills until a creature card is put into their
+graveyard" is a predicate on the card that came OFF THE LIBRARY, not on
+where that card ended up, and the batch was already chosen up front
+(#529). So the run is truncated in the plan, which is what lets the
+plan be a plain list of IDs — the only thing the shared body takes —
+and it is identical to the old post-move loop card for card.
+
+Its one deviation is now declared on the card: a commander that takes
+the command zone was never put into a graveyard, so by CR 701.17a's
+letter the Helm should keep milling, and it stops instead. That is the
+caveat Helm of Obedience carries, rewritten to say so.
+
+**4. The two forms differ in one thing, and #529 chose it.** A paused
+mill must not re-read the top of the library, and the plan-up-front
+answers that for both forms. What the FIRE-AND-FORGET form keeps is
+#529's second half: it proceeds AROUND the paused card, milling the
+rest on this line, because nothing is waiting on its answer. The `Then`
+form cannot — a list that is still being decided is not a list — so it
+sequences, and the rest of the mill happens when the prompt is
+answered. That is the same trade §5i's destroy batch and §5g's discard
+batch make, and it is the only version that can report a true list.
+
+**5. What can now pause that could not before.** Five catalog readers,
+and only readers; every fire-and-forget mill in the catalog is
+untouched.
+
+- **Oona, Queen of the Fae** — the issue. The Faeries wait for the
+  answer and a commander that takes the command zone pays for none.
+- **Helm of Obedience** — "a creature card put into their graveyard" is
+  now read after the answer, so a commander that goes to the graveyard
+  IS reanimated. It used to read the list with the prompt open, find
+  nothing, and drop its own second half.
+- **Sphinx's Tutelage** — the repeat is recursion through the
+  continuation rather than a loop, so "if two nonland cards that share
+  a color were milled this way" is asked about cards that arrived.
+- **Dread Summons** — the seats are milled in sequence, each from the
+  previous one's continuation, with the creature tally carried forward
+  BY VALUE for the reason `LoseLifeEachThenForEffect` gives (§5b).
+- **Oblivion Sower** — it walks the exile zone rather than the returned
+  slice, which is the same read one line too early.
+
+**6. Nothing new is snapshotted.** The mill rides `zoneRoute.then` and
+the `replacementResume` frame every other exit has used since §5g, and
+`cloneReplacementResume` already gives an undo snapshot its own copy of
+the route. The undo contract is the one §5k's exile batch signs, and
+`milled_this_way_test.go` pins it: rewind into the open prompt, answer
+again, and the same cards are milled and the same list reported,
+because the landed list is carried forward by value.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
