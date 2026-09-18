@@ -158,10 +158,36 @@ func (s SacrificePermanent) Apply(ctx *Context) error {
 // / graveyard cards alike.
 type ExileTarget struct {
 	Target uuid.UUID
+
+	// Then is the "if you do" / "for each card exiled this way"
+	// clause for ONE card, and `exiled` is whether the card actually
+	// reached exile. Optional; leave it nil for a plain exile with
+	// nothing hanging off it.
+	//
+	// #870: it runs from a CONTINUATION for the reason
+	// ExileAllMatching.Then does — the exile opens the CR 614 window,
+	// so a commander stops to answer CR 903.9 and whether it was
+	// exiled is not knowable on the next line. `exiled` is false when
+	// the window cancelled the move, when a replacement sent the card
+	// somewhere else, and when a commander took the command zone: it
+	// left, but not to exile (CR 400.7). Write the clause as
+	// something that acts on what it is told, not as the next line of
+	// the card.
+	Then func(ctx *Context, exiled bool) error
 }
 
 func (e ExileTarget) Apply(ctx *Context) error {
-	return ctx.Game.ExileCardForEffect(e.Target)
+	if e.Then == nil {
+		return ctx.Game.ExileCardForEffect(e.Target)
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
+		return e.Then(NewContext(g, item), exiled)
+	})
 }
 
 // ReturnFromExile puts a card that is currently in exile back onto

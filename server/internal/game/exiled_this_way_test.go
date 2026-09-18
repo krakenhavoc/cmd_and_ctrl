@@ -252,3 +252,82 @@ func TestFireAndForgetExileAndBounceCountWhatLanded(t *testing.T) {
 		t.Errorf("BounceCardsToHandForEffect = %d, want 1 — a bounce the window cancelled returned nothing", bouncedN)
 	}
 }
+
+// TestSingleCardExileThenReportsWhatLanded — #870's engine half. The
+// one-card form is a WRAPPER over the batch rather than a second exile
+// path, so it inherits the batch's answer: it waits for the CR 903.9
+// prompt and reports what ARRIVED, where the fire-and-forget
+// ExileCardForEffect can only report that the call returned no error.
+func TestSingleCardExileThenReportsWhatLanded(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+		want        bool
+	}{
+		{"to the command zone", true, false},
+		{"to exile", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			owner := g.Seats[0]
+			commander := seatCommander(t, g.Battlefield, owner)
+
+			got, ran := false, 0
+			g.WithWriteLock(func() {
+				err := g.ExileCardThenForEffect(commander, func(_ *Game, exiled bool) error {
+					ran++
+					got = exiled
+					return nil
+				})
+				if err != nil {
+					t.Fatalf("ExileCardThenForEffect: %v", err)
+				}
+			})
+			if ran != 0 {
+				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", ran)
+			}
+
+			prompt := expectCommanderPrompt(t, g, owner)
+			if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, tc.commandZone); err != nil {
+				t.Fatalf("ResolveOptionalReplacement: %v", err)
+			}
+			if ran != 1 {
+				t.Fatalf("the continuation ran %d times after the answer, want 1", ran)
+			}
+			if got != tc.want {
+				t.Errorf("exiled = %v, want %v — CR 400.7, the object that arrived", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestSingleCardExileThenIsNotToldAboutACancelledMove — the other way
+// a one-card exile fails to land, and the one with no prompt in it.
+func TestSingleCardExileThenIsNotToldAboutACancelledMove(t *testing.T) {
+	g := newActiveGame(t)
+	owner := g.Seats[0]
+	saved := wipeTarget(g, owner)
+
+	got, ran := true, 0
+	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(leaveBattlefieldReplacement(saved,
+			"it can't be exiled", func(ev *ReplacementEvent) { ev.Cancel() }))
+		err := g.ExileCardThenForEffect(saved, func(_ *Game, exiled bool) error {
+			ran++
+			got = exiled
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("ExileCardThenForEffect: %v", err)
+		}
+	})
+	if ran != 1 {
+		t.Fatalf("the continuation ran %d times, want 1 — a cancelled move still reports", ran)
+	}
+	if got {
+		t.Error("exiled = true for a move the window cancelled; the permanent never left the battlefield")
+	}
+	if findBattlefieldCard(g, saved) == nil {
+		t.Error("the cancelled exile leaves its permanent on the battlefield")
+	}
+}
