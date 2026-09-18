@@ -791,6 +791,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
+		// #500: CR 305.2's land-play allowance, enforced. Owner
+		// decision: the sandbox posture on land drops is over — the
+		// tally has existed since S31 sub-PR 1 and only the
+		// legal-move enumerator ever read it, so any client that did
+		// not consult the enumerator could play the whole hand as
+		// lands.
+		//
+		// The gate sits here rather than in the enumerator (which
+		// keeps its own check, so a bot is never offered a move the
+		// engine will refuse) and before the face is stamped into the
+		// source zone, so a refused play leaves the card in hand
+		// exactly as it was. The paused-entry path
+		// (executeEntryToBattlefieldLocked, the shockland's "pay 2
+		// life") is the tail of a play that already passed this gate,
+		// so it needs no second check.
+		//
+		// The allowance is not a literal 1 — see land_drops.go.
+		if g.LandDropsRemainingLocked(playerID) <= 0 {
+			slog.Warn("cast_spell rejected: no land plays left this turn",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"lands_played", g.LandsPlayedThisTurnFor(playerID),
+				"allowance", g.EffectiveLandDropsLocked(p),
+			)
+			return ErrLandDropUnavailable
+		}
 		// ADR 0034: the chosen face has to exist on the card IN THE
 		// SOURCE ZONE, not just on the local copy, before the
 		// replacement pipeline runs.
@@ -863,9 +889,9 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		for name, n := range out.EntersWithCounters {
 			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
 		}
-		// S31 sub-PR 1: per-turn land-drop tally for the legal-move
-		// enumerator. Bookkeeping only — the engine still doesn't
-		// refuse a second land (sandbox posture).
+		// S31 sub-PR 1: per-turn land-drop tally. Since #500 this is
+		// what the gate at the top of this branch reads, so the bump
+		// has to happen on every successful play and nowhere else.
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}

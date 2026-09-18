@@ -136,7 +136,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "00000008-0000-4000-8000-000000000000",
@@ -180,7 +182,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -561,7 +565,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "0000001a-0000-4000-8000-000000000000",
@@ -605,7 +611,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -969,7 +977,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "00000027-0000-4000-8000-000000000000",
@@ -1013,7 +1023,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -1404,7 +1416,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "00000036-0000-4000-8000-000000000000",
@@ -1448,7 +1462,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -1754,7 +1770,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "0000003f-0000-4000-8000-000000000000",
@@ -1856,7 +1874,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -2093,7 +2113,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 1
         },
         {
           "id": "00000054-0000-4000-8000-000000000000",
@@ -2137,7 +2159,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -2381,7 +2405,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "0000005f-0000-4000-8000-000000000000",
@@ -2425,7 +2451,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {
@@ -2672,7 +2700,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         },
         {
           "id": "0000006b-0000-4000-8000-000000000000",
@@ -2716,7 +2746,9 @@
           "life_history": [],
           "hand_kept": true,
           "undos_remaining": 1,
-          "max_hand_size": 7
+          "max_hand_size": 7,
+          "land_drops_per_turn": 1,
+          "lands_played_this_turn": 0
         }
       ],
       "battlefield": {

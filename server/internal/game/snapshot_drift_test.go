@@ -84,6 +84,7 @@ var gameFields = plan(
 	"LoyaltyActivatedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
+	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
 	// this turn"). Carried for the same reason the other per-turn
 	// tallies are: a restore mid-turn that forgot it would offer the
@@ -271,6 +272,7 @@ var playerFields = plan(
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",
 	"MaxHandSize", carried, "",
+	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
 )
 

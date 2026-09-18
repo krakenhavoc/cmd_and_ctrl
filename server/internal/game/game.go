@@ -155,13 +155,23 @@ type Game struct {
 	SpellsCastThisTurn map[uuid.UUID]CastTally
 
 	// LandsPlayedThisTurn counts, per player, the lands that player
-	// has played this turn via CastSpell's land branch. The engine
-	// does NOT enforce the one-land-per-turn rule (CR 305.2) — that
-	// stays a sandbox affordance — but the S31 legal-move enumerator
-	// needs the count to offer a land drop only when one is still
-	// owed. Cleared on Turn.advance to a new turn. Keyed by player
-	// ID. Added in S31 sub-PR 1.
+	// has played this turn via CastSpell's land branch. Cleared on
+	// Turn.advance to a new turn. Keyed by player ID. Added in S31
+	// sub-PR 1.
+	//
+	// #500: this is now the ENFORCED side of CR 305.2, not just
+	// bookkeeping for the legal-move enumerator. CastSpell refuses a
+	// land play once the count reaches the player's allowance —
+	// EffectiveLandDropsLocked, see land_drops.go.
 	LandsPlayedThisTurn map[uuid.UUID]int
+
+	// ExtraLandDropsThisTurn holds one-turn grants of additional land
+	// plays ("you may play an additional land this turn"), per player.
+	// Added to the player's base allowance and to any static grant
+	// from a controlled permanent; see land_drops.go. Written by
+	// GrantAdditionalLandPlayForEffect and cleared on Turn.advance to
+	// a new turn with the rest of the per-turn state. Added in #500.
+	ExtraLandDropsThisTurn map[uuid.UUID]int
 
 	// DrawnThisTurn records, per player, the card instance IDs that
 	// player has DRAWN this turn, in draw order. Appended by

@@ -484,6 +484,10 @@ func TestB20HornOfGreedSeesALandPlayedFromExile(t *testing.T) {
 	island := b20HandCard(me, "Island", "Basic Land — Island")
 	g.WithWriteLock(func() { _ = g.ExileCardWithPermissionForEffect(island, grant) })
 	hand = me.Hand.Size()
+	// #500: two land PLAYS in one turn, which the engine now refuses
+	// by default. The subject here is the Horn's tally reading, not
+	// CR 305.2, so the seat is given the second land play outright.
+	me.LandDropsPerTurn++
 	if err := g.CastSpell(me.ID, island, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("playing the second exiled land: %v", err)
 	}
