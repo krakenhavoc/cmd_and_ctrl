@@ -147,7 +147,37 @@ type AbilityCost struct {
 	// lists abilities separately, and the entry is only payable while
 	// a real planeswalker holds a real counter, which is the whole of
 	// what #259 asks.
+	//
+	// #789 added two more answers to the same component's question:
+	// a count the activator announces (Variable — "Remove X storage
+	// counters") and a removal split across several permanents
+	// (Among — "Remove two +1/+1 counters from among artifacts you
+	// control"). Both ride ActivateAbilityParams.CounterCounts.
 	RemoveCounters *CounterRemovalCost
+
+	// AddCounter is a cost that PUTS a counter on the source —
+	// Devoted Druid's "Put a -1/-1 counter on this creature: Untap
+	// this creature" (#789). Nil means no such component, which is
+	// every ability but a handful.
+	//
+	// There is nothing to choose, so it rides no field on
+	// ActivateAbilityParams. Two rules come with it and are enforced
+	// in ActivateCatalogAbility rather than asked of each card:
+	//
+	//	CR 118.3   a cost that cannot be paid stops the activation.
+	//	           canPlaceCounterLocked is the one predicate that
+	//	           answers "can this permanent have that counter",
+	//	           and the place a Solemnity-style prohibition
+	//	           plugs in.
+	//	CR 121.1   paying a cost is not an effect, so the placement
+	//	           is not replaceable: Doubling Season does NOT
+	//	           double the Druid's -1/-1. Same rule the loyalty
+	//	           cost and the removal half already follow.
+	//
+	// Paid AFTER the removal half and before the sacrifices, so a
+	// cost that both removes and adds (none printed yet, but the
+	// order has to be decided somewhere) reads left to right.
+	AddCounter *CounterAddCost
 
 	// MinX is the floor the printed text puts on the announced X —
 	// Helm of Obedience's "X can't be 0" is MinX: 1. Zero means the
@@ -335,12 +365,26 @@ type ActivateAbilityParams struct {
 	// number (CR 702.122a).
 	CrewIDs []uuid.UUID
 
-	// CounterSourceIDs names the permanent a RemoveCounters cost
+	// CounterSourceIDs names the permanents a RemoveCounters cost
 	// removes from (#625). Exactly one for the "from a planeswalker
 	// you control" form; empty (or the source's own ID) for the
-	// self form. A slice for the same wire-shape reason SacrificeIDs
-	// is one.
+	// self form; any number for the "from among artifacts you
+	// control" form (#789), which is why it was a slice from the
+	// start.
 	CounterSourceIDs []uuid.UUID
+
+	// CounterCounts is the per-permanent split, parallel to
+	// CounterSourceIDs (#789): how many counters come off each. It
+	// is what makes ONE payment shape cover all five printed forms
+	// of the component.
+	//
+	// Empty means "the printed count, off the one permanent named"
+	// — the shape every #625 client sends, and still the whole
+	// answer for a fixed single-permanent cost. An among cost sends
+	// counts summing to exactly N; a variable cost sends the count
+	// the activator announced, which is the payment itself (CR
+	// 601.2b's "announce the value of X", one component over).
+	CounterCounts []int
 
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
@@ -517,9 +561,20 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	if err != nil {
 		return err
 	}
-	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, params.CounterSourceIDs, params.CounterKind)
+	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
+		SourceIDs: params.CounterSourceIDs,
+		Counts:    params.CounterCounts,
+		Kind:      params.CounterKind,
+	})
 	if err != nil {
 		return err
+	}
+	// CR 118.3 (#789): "Put a -1/-1 counter on this creature" is a
+	// cost, so an activator who cannot put that counter on cannot
+	// activate. Checked here, with everything else, so a refusal
+	// leaves the source untapped and the pool untouched.
+	if !g.canPlaceCounterLocked(playerID, cardID, ab.Cost.AddCounter) {
+		return ErrCantPayCounterCost
 	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 		// CR 119.4 forbids paying more life than you have. Paying
@@ -552,6 +607,12 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	}
 
 	// --- pay ----------------------------------------------------
+	//
+	// #789 / #761: one record of what this announcement paid, built
+	// as the components are charged and stamped onto the stack item
+	// below. The effect reads the paid counter count back out of it
+	// (Context.CountersRemoved), the same way it reads X.
+	paid := PaidCost{}
 	if ab.Cost.Mana != "" {
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
@@ -591,6 +652,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
 			return err
 		}
+		paid.LifePaid = ab.Cost.Life
 	}
 	if ab.Cost.Loyalty != nil {
 		// applyCounterLocked, not AddCounterForEffect: paying a cost
@@ -613,6 +675,18 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// payCounterRemovalLocked says why.
 	if err := g.payCounterRemovalLocked(counters); err != nil {
 		return err
+	}
+	paid.CountersRemoved = counters.total
+	// #789: the other direction — "Put a -1/-1 counter on this
+	// creature" (Devoted Druid). After the removal so a cost that
+	// did both would read left to right, and before the sacrifices
+	// for the same reason the removal is: the source has to still be
+	// on the battlefield.
+	if ac := ab.Cost.AddCounter; ac != nil {
+		if err := g.payCounterAddLocked(cardID, ac); err != nil {
+			return err
+		}
+		paid.CountersAdded = ac.N
 	}
 	// Sacrifices last: they move cards, which invalidates `source`.
 	// One payment is one simultaneous exit (#747, CR 603.10a).
@@ -639,7 +713,13 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships
 		// it on the stack item so the table can see what was paid.
-		XValue:     params.XValue,
+		XValue: params.XValue,
+		// #789: what the activation actually paid. An announced
+		// counter count is a fact about the ANNOUNCEMENT, exactly as
+		// X is, so it is locked here and read back at resolution
+		// through Context.CountersRemoved — the counters are off the
+		// board by then, so nothing downstream could recompute it.
+		Paid:       paid,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,

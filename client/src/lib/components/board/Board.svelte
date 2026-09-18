@@ -83,6 +83,7 @@
   import CounterCostModal from "./CounterCostModal.svelte";
   import {
     autoCounterChoice,
+    counterCostNeedsPrompt,
     counterPaymentParams,
     hasCounterCost,
     type CounterChoice,
@@ -692,6 +693,17 @@
     crewIDs: string[];
   } | null>(null);
 
+  // #789: the same question for a MANA ability — Mage-Ring Network's
+  // "any number of storage counters", a Vivid land whose kind or
+  // permanent is ambiguous. One modal and one payload builder; only
+  // the action it ends in differs, because a mana ability has no
+  // targeting or X step after the cost.
+  let manaCounterPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+    sacrificeIDs?: string[];
+  } | null>(null);
+
   function handleActivateAbility(card: CardView, index: number): void {
     const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
     if (!ability) return;
@@ -731,9 +743,18 @@
     counterPrompt = { card, ability, sacrificeIDs, crewIDs };
   }
 
-  function confirmCounterCost(choice: CounterChoice): void {
+  function confirmCounterCost(choices: CounterChoice[]): void {
     const p = counterPrompt;
+    const m = manaCounterPrompt;
     counterPrompt = null;
+    manaCounterPrompt = null;
+    // #789: the same prompt serves a mana ability's counter cost —
+    // one component, one picker — so the confirm routes to whichever
+    // activation opened it.
+    if (m) {
+      sendManaAbility(m.card, m.ability, counterPaymentParams(m.ability, choices), m.sacrificeIDs);
+      return;
+    }
     if (!p) return;
     continueActivation(
       p.card,
@@ -741,7 +762,7 @@
       p.sacrificeIDs,
       p.crewIDs,
       undefined,
-      counterPaymentParams(p.ability, choice),
+      counterPaymentParams(p.ability, choices),
     );
   }
 
@@ -759,10 +780,52 @@
     continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, x, p.counter);
   }
 
-  // S21: a mana ability with a sacrifice-another cost, handed up by
-  // PlayerPanel because the picker is board-wide.
-  function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
-    sacrificePrompt = { kind: "mana", card, ability };
+  // S21, widened in #789: a mana ability whose cost still needs an
+  // answer, handed up by PlayerPanel because the pickers are
+  // board-wide. Sacrifice first, then counters — the order the engine
+  // validates and pays them in.
+  function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+    if (ability.sacrifice_options) {
+      sacrificePrompt = { kind: "mana", card, ability };
+      return;
+    }
+    askManaCounterCost(card, ability);
+  }
+
+  // askManaCounterCost is askCounterCost's mana-ability twin: the same
+  // component, the same picker, the same auto-skip when there is only
+  // one way to pay (every Vivid land, Ramos). It exists separately
+  // only because a mana ability has no targeting or X step after the
+  // cost — the action goes straight out.
+  function askManaCounterCost(card: CardView, ability: ManaAbilityView): void {
+    if (!hasCounterCost(ability)) {
+      sendManaAbility(card, ability, {});
+      return;
+    }
+    const auto = autoCounterChoice(ability);
+    if (auto) {
+      sendManaAbility(card, ability, counterPaymentParams(ability, auto));
+      return;
+    }
+    manaCounterPrompt = { card, ability };
+  }
+
+  function sendManaAbility(
+    card: CardView,
+    ability: ManaAbilityView,
+    counter: CounterPayment,
+    sacrificeIDs?: string[],
+  ): void {
+    sendAction(
+      "activate_mana_ability",
+      {
+        card_id: card.instance_id,
+        ability_index: ability.index,
+        ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        ...counter,
+      },
+      viewerID ?? undefined,
+    );
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -774,8 +837,8 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (ability?.sacrifice_options) {
-      handleManaSacrificeCost(card, ability);
+    if (ability && (ability.sacrifice_options || counterCostNeedsPrompt(ability))) {
+      handleManaAbilityCost(card, ability);
       return;
     }
     const params = { card_id: card.instance_id, ability_index: activate.index };
@@ -787,14 +850,19 @@
     sacrificePrompt = null;
     if (!p) return;
     if (p.kind === "mana") {
-      sendAction(
-        "activate_mana_ability",
-        {
-          card_id: p.card.instance_id,
-          ability_index: p.ability.index,
-          sacrifice_ids: instanceIDs,
-        },
-        viewerID ?? undefined,
+      // #789: a mana ability could in principle carry both halves, so
+      // the counter question is asked after the sacrifice one — the
+      // order the engine validates them in.
+      if (counterCostNeedsPrompt(p.ability)) {
+        manaCounterPrompt = { card: p.card, ability: p.ability, sacrificeIDs: instanceIDs };
+        return;
+      }
+      const auto = autoCounterChoice(p.ability);
+      sendManaAbility(
+        p.card,
+        p.ability,
+        counterPaymentParams(p.ability, auto ?? undefined),
+        instanceIDs,
       );
       return;
     }
@@ -1004,7 +1072,7 @@
             {onPassPriority}
             {onToggleAutopass}
             onActivateAbility={handleActivateAbility}
-            onManaSacrificeCost={handleManaSacrificeCost}
+            onManaAbilityCost={handleManaAbilityCost}
           />
         </div>
       {/if}
@@ -1084,11 +1152,14 @@
     onCancel={() => (crewPrompt = null)}
   />
   <CounterCostModal
-    card={counterPrompt?.card ?? null}
-    ability={counterPrompt?.ability ?? null}
+    card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
+    ability={counterPrompt?.ability ?? manaCounterPrompt?.ability ?? null}
     board={view.battlefield.cards}
     onConfirm={confirmCounterCost}
-    onCancel={() => (counterPrompt = null)}
+    onCancel={() => {
+      counterPrompt = null;
+      manaCounterPrompt = null;
+    }}
   />
   <FacePickerModal
     card={facePromptCard}

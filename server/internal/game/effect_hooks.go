@@ -205,6 +205,65 @@ type ManaAbilityShape struct {
 	// sub-costs land with later sprints" note (#352 sub-gap 1).
 	ManaCost string
 
+	// RemoveCounters is a "remove N counters" component of the
+	// activation cost — Vivid Creek's "{T}, Remove a charge counter
+	// from this land", Ramos's "Remove five +1/+1 counters", Mage-
+	// Ring Network's "Remove any number of storage counters" (#789).
+	//
+	// It is the SAME type an activated ability's cost carries
+	// (AbilityCost.RemoveCounters), not a parallel one, and that is
+	// the whole design: one CounterRemovalCost, two owners, so the
+	// validator (validateCounterRemovalLocked), the candidate walk
+	// (CounterCostOptionsForEffect), the move enumerator, the
+	// protocol view and the client's picker are each written once.
+	// The S15 note above finally has no "counter" left in it.
+	//
+	// Validated with every other component before any is paid, and
+	// paid after the tap and the life, so an activation that cannot
+	// pay fails with the source still untapped.
+	//
+	// The AUTO-TAPPER only plans a source whose counter cost it can
+	// both decide and pay: the self form, a printed kind, a fixed
+	// count, and enough counters on the permanent right now. Every
+	// other shape is a decision, and the planner makes none — see
+	// autoTapAbilityFor and manaCounterCostPlannable.
+	RemoveCounters *CounterRemovalCost
+
+	// AddCounter is a cost that puts a counter on the source. No
+	// printed mana ability has one today; the slot exists because
+	// the component is declared once and owned by both ability
+	// kinds, and leaving it off here would mean a second place that
+	// has to learn about counter costs later. Auto-tap never plans
+	// an ability that has one.
+	AddCounter *CounterAddCost
+
+	// ProducedForPaid computes the produced-mana string from what
+	// the cost actually PAID, for an ability whose output the
+	// printed text derives from the payment rather than from the
+	// board (#789):
+	//
+	//   - Mage-Ring Network, "Add {C} for each storage counter
+	//     removed this way" — returns "{C3}" for three.
+	//   - Crucible of the Spirit Dragon's "Add X mana", and any
+	//     future "for each counter / each life paid" clause.
+	//
+	// Wins over ProducedFunc, which wins over Produced. Returning ""
+	// produces no mana, which is the printed behaviour for a variable
+	// removal that removed nothing.
+	//
+	// The `paid` record is the SAME PaidCost a stack item carries
+	// (paid_cost.go); a mana ability has no stack item to hang it on
+	// (CR 605.3b), so it is handed over directly and lives only for
+	// the length of the activation.
+	//
+	// Same locking contract as Condition and ProducedFunc: read-only,
+	// under g.mu. CR 106.7's "could produce" reader evaluates it with
+	// the LARGEST record the source could pay right now, because
+	// that is what "could" means — a Mage-Ring Network with three
+	// storage counters could produce {C}, and one with none could
+	// not.
+	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) string
+
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "Activate only
 	// if you control three or more artifacts" (Mox Opal). Checked

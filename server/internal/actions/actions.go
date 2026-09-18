@@ -930,7 +930,14 @@ func Dispatch(g *game.Game, a Action) error {
 			// "remove N counters" cost removes from (omitted for the
 			// "from this" form); counter_kind names the kind for "a
 			// counter" of any kind.
+			// counter_counts is the per-permanent split, added in
+			// #789 for a removal spread across several permanents
+			// ("from among artifacts you control") or one whose
+			// count the activator announces ("Remove X storage
+			// counters"). Omitted for a fixed one-permanent cost,
+			// which is the shape every earlier client sends.
 			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
 			Strict           bool     `json:"strict,omitempty"`
 			AutoTap          bool     `json:"auto_tap,omitempty"`
@@ -985,6 +992,7 @@ func Dispatch(g *game.Game, a Action) error {
 				SacrificeIDs:     sacIDs,
 				CrewIDs:          crewIDs,
 				CounterSourceIDs: counterIDs,
+				CounterCounts:    p.CounterCounts,
 				CounterKind:      p.CounterKind,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
@@ -1421,6 +1429,16 @@ func Dispatch(g *game.Game, a Action) error {
 			// name and shape as activate_ability's, so the client
 			// reuses one picker for both ability kinds.
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #789 — the counter component of a mana ability's cost,
+			// with exactly the field names and shapes
+			// activate_ability uses. One component, one payload
+			// shape, whichever ability kind carries it: Vivid Creek
+			// sends nothing at all (the self form with a printed
+			// kind and count), Mage-Ring Network sends
+			// counter_counts.
+			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
+			CounterKind      string   `json:"counter_kind,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1437,8 +1455,20 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			sacIDs = append(sacIDs, id)
 		}
-		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex,
-			game.ManaAbilityParams{SacrificeIDs: sacIDs})
+		manaCounterIDs := make([]uuid.UUID, 0, len(p.CounterSourceIDs))
+		for _, raw := range p.CounterSourceIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability counter_source_ids: %w", err)
+			}
+			manaCounterIDs = append(manaCounterIDs, id)
+		}
+		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
+			SacrificeIDs:     sacIDs,
+			CounterSourceIDs: manaCounterIDs,
+			CounterCounts:    p.CounterCounts,
+			CounterKind:      p.CounterKind,
+		})
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {

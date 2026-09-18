@@ -1366,34 +1366,11 @@ type ActivatedAbilityView struct {
 	// without a second round trip. Added in S27.
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
-	// CounterCostN / Kind / Label / Self / Options describe a
-	// "remove N counters" cost component (#625). CounterCostN is the
-	// number removed and its presence marks the component; zero and
-	// absent for every ability without one.
-	//
-	//   - CounterCostKind is the printed kind ("loyalty", "gold");
-	//     empty means "a counter" of ANY kind, and the client asks
-	//     for the kind as well as the permanent.
-	//   - CounterCostSelf is the "from this" form: the counters come
-	//     off the source, and no permanent is sent.
-	//   - CounterCostLabel is the "from" clause of the other form ("a
-	//     planeswalker you control"); empty for the self form.
-	//   - CounterCostOptions is what could pay right now: permanents
-	//     the controller controls that match the clause (the source
-	//     alone for the self form) and hold at least N counters of the
-	//     kind, each with the kinds that could pay — most counters
-	//     first. Built from the NON-targeting candidate walk, so a
-	//     hexproof or shrouded permanent of yours is offered: a cost
-	//     does not target. Absent when nothing can pay.
-	//
-	// The client sends the chosen permanent as `counter_source_ids`
-	// (omitted for the self form) and, for the any-kind form, the
-	// chosen kind as `counter_kind`.
-	CounterCostN       int                     `json:"counter_cost_n,omitempty"`
-	CounterCostKind    string                  `json:"counter_cost_kind,omitempty"`
-	CounterCostSelf    bool                    `json:"counter_cost_self,omitempty"`
-	CounterCostLabel   string                  `json:"counter_cost_label,omitempty"`
-	CounterCostOptions []CounterCostOptionView `json:"counter_cost_options,omitempty"`
+	// CounterCostView is the counter half of the cost — embedded, so
+	// its fields sit at the top level of the JSON exactly as they did
+	// before #789 split them out, and so a mana ability can carry the
+	// same ones without a second declaration to keep in step.
+	CounterCostView
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -1423,6 +1400,62 @@ type ActivatedAbilityView struct {
 	// modal. Both absent for the ordinary ability. Added by #764.
 	Clauses []LegalTargetsView `json:"clauses,omitempty"`
 	Modes   *ModeSpecView      `json:"modes,omitempty"`
+}
+
+// CounterCostView describes the counter components of an ability's
+// activation cost. ONE view for both ability kinds (#789): an
+// activated ability and a mana ability embed it, because they carry
+// the same game.CounterRemovalCost and the client renders them with
+// the same picker.
+//
+// CounterCostN is the number removed and its presence marks the
+// removal component; zero and absent for every ability without one.
+//
+//   - CounterCostKind is the printed kind ("loyalty", "charge");
+//     empty means "a counter" of ANY kind, and the client asks for
+//     the kind as well as the permanent.
+//   - CounterCostSelf is the "from this" form: the counters come off
+//     the source, and no permanent is sent.
+//   - CounterCostLabel is the "from" clause of the other and among
+//     forms ("a planeswalker you control", "artifacts you control");
+//     empty for the self form.
+//   - CounterCostAmong is "from AMONG …" (#789): the N counters may
+//     be split across any number of the listed permanents, and the
+//     client sends a count per permanent in `counter_counts`.
+//   - CounterCostVariable is "Remove X counters" / "any number"
+//     (#789): the count is announced, CounterCostN is the FLOOR
+//     rather than the amount, and CounterCostMax is the most the
+//     payer could name right now — so the picker can bound its
+//     stepper without a second round trip.
+//   - CounterCostOptions is what could pay right now: permanents the
+//     controller controls that match the clause (the source alone for
+//     the self form) and hold enough counters, each with the kinds
+//     that could pay — most counters first. Built from the
+//     NON-targeting candidate walk, so a hexproof or shrouded
+//     permanent of yours is offered: a cost does not target. Absent
+//     when nothing can pay.
+//   - CounterCostAdd / CounterCostAddKind are a cost that PUTS
+//     counters on the source (Devoted Druid's -1/-1). Nothing is
+//     chosen, so there is no option list; CounterAddBlocked is CR
+//     118.3 saying the permanent can't have them, which is the one
+//     reason such a cost is unpayable.
+//
+// The client sends the chosen permanents as `counter_source_ids`
+// (omitted for the self form), the split as `counter_counts` (only
+// for the among and variable forms) and, for the any-kind form, the
+// chosen kind as `counter_kind`.
+type CounterCostView struct {
+	CounterCostN        int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind     string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf     bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel    string                  `json:"counter_cost_label,omitempty"`
+	CounterCostAmong    bool                    `json:"counter_cost_among,omitempty"`
+	CounterCostVariable bool                    `json:"counter_cost_variable,omitempty"`
+	CounterCostMax      int                     `json:"counter_cost_max,omitempty"`
+	CounterCostOptions  []CounterCostOptionView `json:"counter_cost_options,omitempty"`
+	CounterCostAdd      int                     `json:"counter_cost_add,omitempty"`
+	CounterCostAddKind  string                  `json:"counter_cost_add_kind,omitempty"`
+	CounterAddBlocked   bool                    `json:"counter_add_blocked,omitempty"`
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -1479,6 +1512,13 @@ type ManaAbilityView struct {
 	// fired against mana the player has already produced.
 	// Added in the S32 mana-pipeline pass (#352).
 	ManaCost string `json:"mana_cost,omitempty"`
+	// CounterCostView is the counter half of the activation cost —
+	// Vivid Creek's charge counter, Ramos's five +1/+1 counters,
+	// Mage-Ring Network's "any number of storage counters" (#789).
+	// The SAME embedded view an activated ability carries, so the
+	// client's picker, its greyed-row reason and its payload builder
+	// are each written once.
+	CounterCostView
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -2017,6 +2057,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
+		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
 	}
 }
 
@@ -2051,6 +2092,22 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 			continue
 		}
 		views[i].AddsNoMana = game.ManaAbilityAddsNoMana(g, controller, card.InstanceID, raw[i])
+	}
+}
+
+// stampManaCounterCosts fills ManaAbilityView's counter half (#789):
+// Vivid Creek's charge counter, Ramos's five +1/+1 counters, Mage-Ring
+// Network's "any number of storage counters". Split from
+// viewOfManaAbilities for the reason the conditions and the identity
+// are — that projection has no game handle, and the option list is a
+// walk of the battlefield. Caller must hold g's read lock.
+func stampManaCounterCosts(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	raw := game.ManaAbilitiesForCard(card)
+	for i := range views {
+		if i >= len(raw) {
+			continue
+		}
+		views[i].CounterCostView = counterCostView(g, controller, card.InstanceID, raw[i].RemoveCounters, raw[i].AddCounter)
 	}
 }
 
@@ -3517,15 +3574,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 			v.CrewCost = a.Cost.Crew
 			v.CrewOptions = crewOptions(g, caster)
 		}
-		if rc := a.Cost.RemoveCounters; rc != nil && rc.N > 0 {
-			v.CounterCostN = rc.N
-			v.CounterCostKind = rc.Counter
-			v.CounterCostSelf = rc.From == nil
-			if rc.From != nil {
-				v.CounterCostLabel = rc.From.Label
-			}
-			v.CounterCostOptions = counterCostOptions(g, caster, c.InstanceID, rc)
-		}
+		v.CounterCostView = counterCostView(g, caster, c.InstanceID, a.Cost.RemoveCounters, a.Cost.AddCounter)
 		if a.Cost.DemandsX() {
 			v.DemandsX = true
 			v.MinX = a.Cost.FloorX()
@@ -3580,6 +3629,40 @@ func crewOptions(g *game.Game, caster uuid.UUID) *LegalTargetsView {
 // Its own shape rather than sacrificeCostOptions' LegalTargetsView
 // because each option carries the counter kinds that could pay.
 // Caller must hold g.mu.
+// counterCostView projects the counter components of one ability's
+// cost. ONE function for both ability kinds (#789), for the same
+// reason there is one view struct and one validator: an activated
+// ability's charge counter and a mana ability's are the same
+// component, and two projections would be two chances to disagree
+// about what the client may offer. Caller must hold g.mu.
+func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost, ac *game.CounterAddCost) CounterCostView {
+	var v CounterCostView
+	if rc != nil && (rc.N > 0 || rc.Variable) {
+		v.CounterCostN = rc.N
+		v.CounterCostKind = rc.Counter
+		v.CounterCostSelf = rc.From == nil
+		v.CounterCostAmong = rc.Among
+		v.CounterCostVariable = rc.Variable
+		if rc.From != nil {
+			v.CounterCostLabel = rc.From.Label
+		}
+		v.CounterCostOptions = counterCostOptions(g, caster, sourceID, rc)
+		if rc.Variable {
+			// The ceiling the picker's stepper needs, from the same
+			// walk the engine validates against — so a player can
+			// never name a number the server then refuses.
+			v.CounterCostMax = g.MaxCounterPaymentForEffect(caster, sourceID, rc)
+		}
+	}
+	if ac != nil && ac.N > 0 {
+		v.CounterCostAdd = ac.N
+		v.CounterCostAddKind = ac.Counter
+		// CR 118.3: the only way an add-a-counter cost is unpayable.
+		v.CounterAddBlocked = !g.CanPlaceCounterForEffect(caster, sourceID, ac)
+	}
+	return v
+}
+
 func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost) []CounterCostOptionView {
 	opts := g.CounterCostOptionsForEffect(caster, sourceID, rc)
 	if len(opts) == 0 {

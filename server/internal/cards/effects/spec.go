@@ -662,6 +662,24 @@ type ManaAbility struct {
 	// than by hand.
 	ProducedFunc func(g *game.Game, controller, source uuid.UUID) string
 
+	// ProducedForPaid computes Produced from what the cost actually
+	// PAID, for an ability whose printed text derives its output
+	// from the payment rather than from the board (#789):
+	//
+	//	Mage-Ring Network  "Add {C} for each storage counter removed
+	//	                    this way"  →  ProducedPerCounterRemoved("{C}")
+	//
+	// Wins over ProducedFunc, which wins over Produced. It is handed
+	// the same game.PaidCost a stack item carries — a mana ability
+	// has no stack item (CR 605.3b), so the record lives only for the
+	// length of the activation.
+	//
+	// Same read-only-under-the-lock contract as ProducedFunc. CR
+	// 106.7's "could produce" reader evaluates it with the largest
+	// payment the source could make right now, so a Network with
+	// three counters could produce {C} and one with none could not.
+	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string
+
 	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting
 	// Pool, Fellwar Stone, and nothing else in the catalog. It is the
@@ -775,9 +793,40 @@ type ManaAbilityCost struct {
 	//
 	// This is the last of S15's "mana / life / counter sub-costs
 	// land with later sprints when a catalog card demands them"
-	// note. #267 took life; #352 takes mana, and the counter case
-	// still has no card asking for it.
+	// note. #267 took life; #352 takes mana, and #789 took the
+	// counter case — see RemoveCounters below, which finally empties
+	// that sentence.
 	Mana string
+
+	// RemoveCounters is a "remove N counters" component (#789):
+	// Vivid Creek's "{T}, Remove a charge counter from this land",
+	// Ramos's "Remove five +1/+1 counters from Ramos", Mage-Ring
+	// Network's "Remove any number of storage counters from this
+	// land".
+	//
+	// Build it with the SAME constructors an activated ability's
+	// cost uses, reading the component off the returned AbilityCost:
+	//
+	//	RemoveCountersFromThis("charge", 1).RemoveCounters
+	//	RemoveCountersXFromThis("storage", 0).RemoveCounters
+	//
+	// One game.CounterRemovalCost with two owners, so the validator,
+	// the candidate walk, the enumerator, the view and the client's
+	// picker are each written once — the same "one clause
+	// vocabulary" reasoning SacrificeOther above was built on.
+	//
+	// The auto-tapper only plans a source whose counter cost it can
+	// decide and pay: the self form, a printed kind, a fixed count,
+	// and enough counters right now. A Vivid land with no charge
+	// counters left is not a five-colour source and is not planned
+	// as one.
+	RemoveCounters *game.CounterRemovalCost
+
+	// AddCounter is a cost that puts a counter on the source. No
+	// printed mana ability has one; the slot exists because the
+	// component is declared once and owned by both ability kinds.
+	// Build it with AddCounterToThis(kind, n).AddCounter.
+	AddCounter *game.CounterAddCost
 }
 
 // ZeroUUID is an alias for uuid.Nil. Mostly used in tests to

@@ -173,6 +173,27 @@ type StackItem struct {
 	// targets" spells. Sandbox: just data capture, not enforcement.
 	Distribution map[uuid.UUID]int
 
+	// Paid is what this announcement actually cost: the counters
+	// removed or added, the life paid, and — since #761 — the mana
+	// tokens that left the pool, or the fact that the engine waived
+	// the charge (PaidCost.OnPaper).
+	//
+	// DATA, not a closure, and stamped at announce for the same
+	// reason XValue is: by the time the item resolves the counters
+	// are gone, the mana has been spent and the Treasure that made
+	// it may have been sacrificed, so nothing downstream could
+	// recompute any of it. Converge, sunburst, adamant, "if no mana
+	// was spent" and "for each counter removed this way" are all one
+	// read of this field.
+	//
+	// A COPY of a spell carries an empty record (CR 707.10, the
+	// Dawnglow Infusion ruling): mana is not an object, so nothing
+	// was spent to cast the copy. That is a real zero rather than an
+	// unknown — NoManaSpent is true of a copy, and it should be.
+	//
+	// Added in #789 (the counter half) and #761 (the mana half).
+	Paid PaidCost
+
 	// HoldPriority signals that the controller did NOT want priority
 	// to rotate to the next seat after the announce. Used for
 	// chaining casts (e.g. cast Lightning Bolt holding priority, then

@@ -1328,10 +1328,20 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
 			continue
 		}
-		producedStr := ab.Produced
-		if ab.ProducedFunc != nil {
-			producedStr = ab.ProducedFunc(g, p.ID, cardID)
+		// #789: the counter cost, re-asked here for the same reason
+		// the gate and the sickness check are — a plan can arrive
+		// stale (built before the last charge counter was spent in
+		// response), and tapping a Vivid land the executor then
+		// cannot charge would be the strand this whole function
+		// avoids.
+		if !manaCounterCostPlannable(g, p.ID, card, ab) {
+			continue
 		}
+		counterPaid := PaidCost{}
+		if rc := ab.RemoveCounters; rc != nil {
+			counterPaid.CountersRemoved = rc.N
+		}
+		producedStr := manaAbilityProducedLocked(g, p.ID, cardID, ab, counterPaid)
 		slots, err := ParseProducedMana(producedStr)
 		if err != nil {
 			continue
@@ -1356,6 +1366,16 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		slots = live
 		if len(slots) == 0 {
 			continue
+		}
+		// #789: the counters come off as part of the same payment as
+		// the tap, and first, so a refusal leaves the land untapped.
+		// applyCounterLocked for the same reason the activation path
+		// uses it — paying a cost is not an effect (CR 121.1), so
+		// nothing doubles or cancels it.
+		if rc := ab.RemoveCounters; rc != nil {
+			if err := g.applyCounterLocked(cardID, rc.Counter, -rc.N); err != nil {
+				continue
+			}
 		}
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
@@ -4034,6 +4054,16 @@ type ManaAbilityParams struct {
 	// component. Exactly one for a single-permanent clause; empty
 	// when the ability has no such cost.
 	SacrificeIDs []uuid.UUID
+
+	// CounterSourceIDs / CounterCounts / CounterKind are the
+	// announce-time payment for a RemoveCounters component (#789),
+	// with exactly the meanings ActivateAbilityParams gives them —
+	// one component, one payment shape, whichever ability kind
+	// carries it. Empty for the common self form with a printed
+	// kind and a printed count, which is every Vivid land and Ramos.
+	CounterSourceIDs []uuid.UUID
+	CounterCounts    []int
+	CounterKind      string
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -4130,6 +4160,21 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		// AbilityCost.Life.
 		return ErrInvalidParam
 	}
+	// #789: the counter components, validated by the SAME functions
+	// the CR 602 activated path uses, because it is the same
+	// component — a Vivid land's charge counter and Heart of Kiran's
+	// loyalty counter are one cost shape with two owners.
+	counters, err := g.validateCounterRemovalLocked(playerID, cardID, ab.RemoveCounters, CounterCostPayment{
+		SourceIDs: params.CounterSourceIDs,
+		Counts:    params.CounterCounts,
+		Kind:      params.CounterKind,
+	})
+	if err != nil {
+		return err
+	}
+	if !g.canPlaceCounterLocked(playerID, cardID, ab.AddCounter) {
+		return ErrCantPayCounterCost
+	}
 	// A mana component in the cost — the Signet cycle's "{1}, {T}",
 	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
 	// below with everything else, so an unaffordable Signet fails
@@ -4163,6 +4208,14 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	// them, so a painland activated at 1 life loses the game on the
 	// way out of this call rather than at some later boundary.
 	needStateChecks := false
+
+	// #789: the one paid-cost record, built as the components are
+	// charged. A mana ability has no stack item to hang it on (CR
+	// 605.3b — it never uses the stack), so it lives for the length
+	// of this call and is handed to ProducedForPaid, which is how
+	// "Add {C} for each storage counter removed this way" knows how
+	// many came off.
+	paid := PaidCost{}
 
 	// --- pay ----------------------------------------------------
 	//
@@ -4198,7 +4251,22 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		if err := g.PayLifeForEffect(cardID, playerID, ab.LifeCost); err != nil {
 			return err
 		}
+		paid.LifePaid = ab.LifeCost
 		needStateChecks = true
+	}
+	// #789: counters after the life and before the sacrifice, the
+	// same component order ActivateCatalogAbility pays in — a self
+	// removal has to find the source still on the battlefield, and a
+	// sacrifice takes it off.
+	if err := g.payCounterRemovalLocked(counters); err != nil {
+		return err
+	}
+	paid.CountersRemoved = counters.total
+	if ab.AddCounter != nil {
+		if err := g.payCounterAddLocked(cardID, ab.AddCounter); err != nil {
+			return err
+		}
+		paid.CountersAdded = ab.AddCounter.N
 	}
 	// S21 sub-PR 1 made sacrifice-self costs real (Treasure, Eldrazi
 	// Spawn, Lotus Petal); the mana-cost pass adds sacrifice-another
@@ -4239,6 +4307,14 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	produced := ab.Produced
 	if ab.ProducedFunc != nil {
 		produced = ab.ProducedFunc(g, playerID, cardID)
+	}
+	// #789: an output that depends on what the cost PAID wins over
+	// both — "Add {C} for each storage counter removed this way" can
+	// only be answered from the record, because the counters it
+	// counts came off a moment ago and the board no longer shows
+	// how many there were.
+	if ab.ProducedForPaid != nil {
+		produced = ab.ProducedForPaid(g, playerID, cardID, paid)
 	}
 	slots, err := ParseProducedMana(produced)
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
@@ -4601,6 +4677,77 @@ func containsColor(set []string, c string) bool {
 	return false
 }
 
+// manaAbilityProducedLocked is the produced-mana string one mana
+// ability would add, given what its cost paid. THE one place the
+// three-slot precedence lives — ProducedForPaid beats ProducedFunc
+// beats Produced — so the activation, the auto-tapper's planner and
+// executor, CR 106.7's "could produce" reader and CR 903.4f's
+// adds-no-mana check cannot disagree about what a source makes.
+//
+// Read-only. Caller must hold g.mu.
+func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) string {
+	if ab == nil {
+		return ""
+	}
+	out := ab.Produced
+	if ab.ProducedFunc != nil {
+		out = ab.ProducedFunc(g, playerID, cardID)
+	}
+	if ab.ProducedForPaid != nil {
+		out = ab.ProducedForPaid(g, playerID, cardID, paid)
+	}
+	return out
+}
+
+// maxCounterPaymentLocked is the LARGEST counter removal `rc` could
+// be paid with right now, as a PaidCost — what a reader that asks
+// "what could this source produce" has to assume, because "could
+// produce" (CR 106.7) is about what is possible, not about what some
+// hypothetical activation chose.
+//
+// A Mage-Ring Network with three storage counters could produce
+// {C}{C}{C}; one with none could produce nothing, and answering
+// otherwise would let a cast be planned against mana that cannot
+// exist. For a fixed cost the answer is simply N.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) maxCounterPaymentLocked(playerID, sourceID uuid.UUID, rc *CounterRemovalCost) PaidCost {
+	if rc == nil {
+		return PaidCost{}
+	}
+	if !rc.Variable {
+		return PaidCost{CountersRemoved: rc.N}
+	}
+	total := 0
+	for _, o := range g.CounterCostOptionsForEffect(playerID, sourceID, rc) {
+		best := 0
+		for _, k := range o.Kinds {
+			if k.Count > best {
+				best = k.Count
+			}
+		}
+		total += best
+		if !rc.Among {
+			// A variable cost that is not an among cost is paid off
+			// one permanent — the source — so the first option is
+			// the whole answer.
+			break
+		}
+	}
+	return PaidCost{CountersRemoved: total}
+}
+
+// MaxCounterPaymentForEffect is the largest number of counters a
+// variable removal could be paid with right now — the ceiling the
+// client's picker bounds its stepper with, from the same walk the
+// engine validates against, so a player can never name a number the
+// server then refuses. Zero for a fixed cost's nil component.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) MaxCounterPaymentForEffect(playerID, sourceID uuid.UUID, rc *CounterRemovalCost) int {
+	return g.maxCounterPaymentLocked(playerID, sourceID, rc).CountersRemoved
+}
+
 // ManaAbilityAddsNoMana reports CR 903.4f for one mana ability: it
 // would add no mana at all, so nothing should offer it. True only for
 // an ability whose printed text says "any color in your commander's
@@ -4622,10 +4769,7 @@ func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilitySh
 	if g == nil || !ab.NarrowToCommanderIdentity {
 		return false
 	}
-	produced := ab.Produced
-	if ab.ProducedFunc != nil {
-		produced = ab.ProducedFunc(g, playerID, cardID)
-	}
+	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	slots, err := ParseProducedMana(produced)
 	if err != nil || len(slots) == 0 {
 		// A broken or empty declaration is not this rule's business.

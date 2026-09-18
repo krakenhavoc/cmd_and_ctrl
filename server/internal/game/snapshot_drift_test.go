@@ -351,6 +351,14 @@ var stackItemFields = plan(
 	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
+	// #789 / #761: what the announcement paid — the counters
+	// removed, the life, and the mana tokens that left the pool.
+	// Carried, and it has to be: the counters are off the board and
+	// the Treasure that made the mana may be in a graveyard by the
+	// time the item resolves, so a restore that lost the record
+	// would resolve Painful Truths for zero cards and a "for each
+	// counter removed this way" ability for nothing.
+	"Paid", carried, "",
 
 	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
 	// #764: the ModeSpec an item was announced under, so the CR
