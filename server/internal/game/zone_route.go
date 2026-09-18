@@ -166,8 +166,10 @@ type zoneRoute struct {
 	DiscardCause DiscardCause
 
 	// Source is the card whose effect asked for the move, stamped on
-	// the emitted event. Read only by the Discard leg today, which is
-	// the only route whose event has ever carried one; uuid.Nil
+	// the emitted event. The Discard leg has always carried one; #931
+	// gave the plain move and the mill one too, because surveil's
+	// graveyard leg names the card that surveilled and its EventMill
+	// carried that before the leg went through this route. uuid.Nil
 	// everywhere else leaves the event exactly as it was.
 	Source uuid.UUID
 
@@ -625,6 +627,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		g.EmitEvent(Event{
 			Kind:    kind,
 			Actor:   actor,
+			Source:  r.Source,
 			CardID:  ev.CardID,
 			OldZone: src.Kind,
 			NewZone: dstZone.Kind,

@@ -394,6 +394,34 @@ func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
 	return zoneRoute{Dst: dest, Actor: player, Mill: dest == ZoneGraveyard}
 }
 
+// searchRoute is the SIXTH template (#931): a library search that
+// takes the cards it finds into a hand or a graveyard — "search your
+// library for a card and put it into your graveyard" (Entomb, Buried
+// Alive, Unmarked Grave, Vile Entomber, Goblin Engineer, Final
+// Parting's first half).
+//
+// Before this the take was a raw MoveCard, so the one thing a
+// graveyard arrival owes — the CR 614 window, "if a card would be put
+// into a graveyard from anywhere, exile it instead" — never opened for
+// it, and neither did CR 903.9 for a tutored commander. Rest in Peace
+// could not be written because of it (ADR 0061 §7).
+//
+// Like millRoute it is a function rather than a package var, for the
+// same two reasons: the destination belongs to the CARD ("into your
+// graveyard" / "into your hand") and the Actor is the SEARCHER, who is
+// always the library's owner but not always the card's — Assassin's
+// Trophy makes the victim search their own library.
+//
+// It is NOT a mill: CR 701.17a defines a mill from the TOP of a
+// library by count, and no mill payoff may see an Entomb. That is the
+// one thing it does not share with millRoute, and it is why the two
+// are separate templates rather than one with a flag. A battlefield
+// destination never reaches here — an entry is not an exit, and
+// searchEnterBattlefieldLocked owns it.
+func searchRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
+	return zoneRoute{Dst: dest, Actor: player}
+}
+
 // tuckRoute is the fifth template (#783): "put it into its owner's
 // library", at the position the tucking effect printed.
 //

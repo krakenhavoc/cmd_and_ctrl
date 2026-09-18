@@ -2048,6 +2048,25 @@ primitive with `To: game.ZoneExile`, and it is not a mill — no
 `EventMill`, no mill payoff. See
 [ADR 0013 §5l](docs/decisions/0013-replacement-effects.md).
 
+**Every arrival in a graveyard goes through the window (#931).** "If a
+card would be put into a graveyard from anywhere, exile it instead"
+(Rest in Peace, Leyline of the Void) is one sentence whose whole
+content is *anywhere*, so a graveyard arrival that moves the card by
+hand breaks a card rather than merely skipping a prompt. All of them
+route now: the battlefield exit, a mill, a discard, a countered spell,
+`PutIntoGraveyardForEffect`, and — since #931 — a library SEARCH with
+`Dest: game.ZoneGraveyard` (Entomb, Buried Alive) and SURVEIL's
+graveyard leg. Two consequences for a card that uses them. A search
+finishes from a continuation, so `SearchLibrary{…, Then}` is handed the
+cards that ARRIVED where it aimed them (CR 400.7) and runs an action
+later when a tutored commander stops to answer CR 903.9 — `found` is
+not "what I picked". And "put a card from your hand into your
+graveyard" that does NOT say *discard* is not a discard (CR 701.8a
+defines one by the move out of the hand under that word): reach for
+`PutIntoGraveyardForEffect`, never `discardCardsLocked`, or Megrim
+fires off a card that never discarded. See
+[ADR 0013 §5q](docs/decisions/0013-replacement-effects.md).
+
 **A card that exiles and then USES the card hands the rest over
 (#894).** "Exile it, then return it" (`Flicker`), "exile all creature
 cards from graveyards, then put all cards exiled this way onto the

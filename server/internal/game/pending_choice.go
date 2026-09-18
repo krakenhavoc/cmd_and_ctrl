@@ -3485,6 +3485,29 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 // surveil then emits EventSurveil once, for the payoffs that watch
 // the keyword itself.
 //
+// #931: the graveyard leg goes through the shared exit primitive
+// (routeAllThenLocked with millRoute, the template it shares with an
+// ordinary library → graveyard move) rather than pushing the cards
+// into the pile by hand. So the CR 614 window opens on each of them —
+// "if a card would be put into a graveyard from anywhere, exile it
+// instead" (Rest in Peace, Leyline of the Void) — and a surveilled
+// commander is offered the command zone (CR 903.9).
+//
+// Which means the leg can PAUSE, so everything after it moved into the
+// batch's continuation: the EventSurveil announcement and the rest of
+// the effect run once every card has settled, not on the next line
+// with a prompt still open.
+//
+// The cards that are going to the graveyard are put BACK on top of the
+// library first, above the ones that stay, and then routed out of it.
+// They have to be in a zone for the window to replace a move out of
+// it, and the order is what leaves the library correct on the far
+// side: once the graveyard-bound cards have left, the kept ones are
+// the top of the library in the order the player chose. A leg the
+// window cancels outright is the one visible consequence — that card
+// stays on top of the library rather than under the kept ones, which
+// is a position the rules do not name for a move that never happened.
+//
 // Caller must NOT hold g.mu.
 func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder []uuid.UUID) error {
 	g.mu.Lock()
@@ -3518,6 +3541,10 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
+	// Read off the choice before it goes out of scope: the
+	// continuation below may run an action later, from the resume of a
+	// CR 903.9 prompt, and must not close over a dequeued frame.
+	resume := choice.scryResume
 
 	// Pull all of them out first, then place them, so the
 	// intermediate state can't depend on removal order.
@@ -3529,45 +3556,45 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		}
 		pulled[id] = c
 	}
-	// Graveyard first: the cards that stay on top end up above a
-	// library that no longer contains the ones that left, which is
-	// the order the printed instruction reads in.
-	for _, id := range graveyard {
-		c := pulled[id]
-		p.Graveyard.PushTop(c)
-		g.markCardKnownInZoneLocked(p.Graveyard, c.InstanceID)
-		g.EmitEvent(Event{
-			Kind:    EventMill,
-			Actor:   chooserID,
-			Source:  choice.Source,
-			CardID:  c.InstanceID,
-			OldZone: ZoneLibrary,
-			NewZone: ZoneGraveyard,
-		})
-	}
+	// The kept cards go back first and the graveyard-bound ones on top
+	// of them, so that once the route has taken the latter out of the
+	// library the former are its top in the order the player chose.
 	// topOrder is top-first and PushTop appends to the top, so walk it
 	// backwards: the last push lands on top and must be the caller's
 	// first entry.
 	for i := len(topOrder) - 1; i >= 0; i-- {
 		p.Library.PushTop(pulled[topOrder[i]])
 	}
-	g.EmitEvent(Event{
-		Kind:   EventSurveil,
-		Actor:  chooserID,
-		Source: choice.Source,
-		Amount: len(graveyard),
-	})
-	// The rest of the effect, now that the library is in the order the
-	// player chose.
-	if choice.scryResume != nil {
-		if err := choice.scryResume(g); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    chooserID,
-				Source:   choice.Source,
-				ErrorMsg: err.Error(),
-			})
+	for i := len(graveyard) - 1; i >= 0; i-- {
+		p.Library.PushTop(pulled[graveyard[i]])
+	}
+	r := millRoute(chooserID, ZoneGraveyard)
+	r.Source = choice.Source
+	source := choice.Source
+	err = g.routeAllThenLocked(r, graveyard, func(g *Game, milled []uuid.UUID) error {
+		g.EmitEvent(Event{
+			Kind:   EventSurveil,
+			Actor:  chooserID,
+			Source: source,
+			Amount: len(milled),
+		})
+		// The rest of the effect, now that the library is in the order
+		// the player chose and every card that was going to a graveyard
+		// has settled.
+		if resume != nil {
+			if err := resume(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    chooserID,
+					Source:   source,
+					ErrorMsg: err.Error(),
+				})
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	g.runStateChecksLocked()
 	return nil

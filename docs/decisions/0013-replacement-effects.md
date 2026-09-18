@@ -1506,6 +1506,98 @@ the only reason it is not in that list. Totem armor (CR 702.111) and
 CR 701.19b's static "if this would be destroyed, regenerate it"
 remain unmodelled; no catalog card needs either yet.
 
+### 5q. Amendment, 2026-09-18: every graveyard arrival opens the window
+
+*Amendment, 2026-09-18, branch
+`fix/931-910-graveyard-route-and-sacrifice-batch`.
+Closes [#931](https://github.com/krakenhavoc/cmd_and_ctrl/issues/931),
+filed by the #762/#650 agent in PR #923 and named in
+[ADR 0061 §7](0061-token-creation-and-discard-are-replaceable-events.md)
+as the work that ADR deliberately did not do.*
+
+§5g folded the discard into the exit primitive and ADR 0061 gave it its
+own event kind. Two graveyard arrivals were left outside: a library
+SEARCH with a graveyard destination (`executeSearchTakeLocked` —
+Entomb, Buried Alive, Unmarked Grave, Vile Entomber, Goblin Engineer,
+Final Parting) and SURVEIL's graveyard leg (`ResolveSurveil`). Both
+moved the card with a raw `MoveCard` and emitted their own event, so
+neither opened a `RepEventMove` — and a replacement effect only ever
+runs for a mover that asks.
+
+**1. What that cost.** "If a card would be put into a graveyard from
+anywhere, exile it instead" is one sentence whose only content is the
+word *anywhere*, so a card that prints it is not writable while any
+arrival is outside the window. **Rest in Peace** and **Leyline of the
+Void** were on [#383](https://github.com/krakenhavoc/cmd_and_ctrl/issues/383)'s
+skip list for exactly that, and CR 903.9 was missing the same two
+movers: a tutored or surveilled commander was never offered the command
+zone, though a MILLED one had been since #529.
+
+**2. One template per cause, and the two causes here are not the same
+one.** The search take joins the shared batch body (`routeAllThenLocked`)
+with a sixth template, `searchRoute(player, dest)` — a function rather
+than a package var for `millRoute`'s two reasons: the destination
+belongs to the card and the Actor is the SEARCHER, who is the library's
+owner but not always the card's. It deliberately does not set `Mill`:
+CR 701.17a defines a mill from the TOP of a library by count, and no
+mill payoff may see an Entomb.
+
+Surveil takes `millRoute` itself, because that is what the engine had
+already decided surveil's graveyard leg IS: it has emitted `EventMill`
+per binned card since S22, on the stated ground that a "whenever a card
+is put into your graveyard from your library" payoff must not care which
+keyword moved it. Routing it does not revisit that call; it keeps the
+same event and adds the window underneath. (The rules are narrower —
+surveil is not a mill — and the engine's `EventMill` is the broader
+"put into a graveyard from a library" signal. That is a pre-existing
+declared reading, not a new one.)
+
+**3. The search take is the whole take, not the graveyard half.** The
+hand destination rides along, because it is the same two lines of the
+same function and leaving one of them on a raw `MoveCard` is how the
+seventh mover reintroduces the defect for free (zone_route.go's opening
+argument). The visible gain is CR 903.9 on a tutored commander going to
+a HAND, which was missing for the same reason. A BATTLEFIELD destination
+is an entry, not an exit, and `searchEnterBattlefieldLocked` still owns
+it (§5o).
+
+**4. Both can now PAUSE, so both finish from a continuation.** The
+search's `EventSearchLibrary`, its shuffle and its `Then` run from the
+batch's continuation — the shape §5o already gave the battlefield
+branch — and `found` is the batch's CR 400.7 answer: the cards that
+ARRIVED where the search aimed them. A card an "exile it instead"
+replacement took and a commander that took CR 903.9's offer are not in
+it, exactly as a fetched permanent whose entry was replaced away has not
+been "found" since §5o.
+
+Surveil's `EventSurveil` and its `scryResume` moved into the same
+continuation. `EventSurveil.Amount` has always been documented as "how
+many went to the GRAVEYARD", so it is now the landed count and says
+0 under Rest in Peace, which is what the field claims.
+
+**5. Surveil's one ordering subtlety.** A move can only be replaced out
+of the zone the card is in, so the cards the player chose to bin are put
+BACK on top of the library — above the ones they kept — and then routed
+out of it. Once they have left, the kept cards are the top of the
+library in the chosen order, which is what the printed instruction
+means. The one visible consequence is a leg the window CANCELS
+outright: that card stays on top of the library rather than under the
+kept ones. The rules name no position for a move that never happened,
+and the alternative (deciding a position for it) would be inventing one.
+
+**6. The proof, and what it says about the rest.** Rest in Peace and
+Leyline of the Void ship with it, built from one
+`GraveyardBecomesExile{OpponentsOnly}` builder in
+`cards/effects/graveyard_replacements.go` — the shape
+`DiscardBecomes{…}.Build()` set in ADR 0061. They watch both exit kinds
+(`EventZoneMove` and `EventDiscardCard`) for the reason the CR 903.9
+built-in does, and the tests are one per MOVER rather than one per card:
+search, surveil, mill, and a creature dying. Both carry the declared
+deviation Liesa and Stone of Erech already carry — a commander whose
+owner takes CR 903.9's offer goes to the command zone, because the
+built-in rewrites the destination first and this replacement then no
+longer applies. Weaker than printed, never stronger.
+
 ### 5s. Amendment, 2026-09-18: a keyword action with a count is a replaceable event
 
 *Amendment, 2026-09-18, branch

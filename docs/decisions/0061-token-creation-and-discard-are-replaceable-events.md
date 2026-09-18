@@ -241,6 +241,9 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   [#383](https://github.com/krakenhavoc/cmd_and_ctrl/issues/383)'s skip list. #650
   asked whether they join this work; the answer is no — they are a graveyard-arrival
   seam, not a discard one, and folding them in would make one PR out of two.
+  *(Closed 2026-09-18 by [#931](https://github.com/krakenhavoc/cmd_and_ctrl/issues/931),
+  which routed both and shipped Rest in Peace and Leyline of the Void off that skip
+  list — see [ADR 0013 §5q](0013-replacement-effects.md).)*
 - **A "discard these card IDs" primitive** (Kroxa, the Obstinate Baloth redirect)
   is not added. Nothing in the catalog needs it yet.
 - **Choices inside a token-creation replacement** — Jinnie Fay's two-way pick,
