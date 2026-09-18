@@ -322,10 +322,30 @@ func TestB43DesertPingsAnAttackerOnlyInTheEndOfCombatStep(t *testing.T) {
 	if open {
 		t.Error("and closes again after it")
 	}
-	// The damage half cannot be exercised yet: the engine clears
-	// AttackingTarget on ENTERING the end of combat step, where CR 511.3
-	// removes creatures from combat as that step ENDS. Declared as a
-	// caveat on the card.
+	// The damage half is the test below.
+}
+
+// The damage half, and the caveat this card shipped with: creatures
+// are in combat for the whole end of combat step (CR 511.3, #785), so
+// the ping has the legal target the printed card promises in the one
+// window it is allowed in.
+func TestB43DesertPingsAnAttackerInTheEndOfCombatStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	desert := b43Catalog(g, me.ID, "Desert", "Land — Desert", b43DesertOracle, 0, 0)
+	raider := b43Creature(g, me.ID, "Raider", "Creature — Human", 2, 2)
+
+	declareAttack(t, g, opp.ID, raider)
+	advanceTo(t, g, game.StepEndCombat)
+	b16Activate(t, g, me.ID, desert, 0, game.ActivateAbilityParams{Targets: cardRefs(raider)})
+
+	c, ok := battlefieldCard(g, raider)
+	if !ok {
+		t.Fatalf("the attacker left the battlefield")
+	}
+	if c.DamageMarked != 1 {
+		t.Errorf("the attacker has %d damage marked, want 1 from the Desert", c.DamageMarked)
+	}
 }
 
 func TestB43IfnirDeadlandsPaysLifeForBlackAndEatsADesertForTwoMinusCounters(t *testing.T) {

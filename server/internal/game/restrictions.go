@@ -68,8 +68,8 @@ import "github.com/google/uuid"
 //     (Silent Arbiter) are COUNT restrictions over the whole
 //     declaration, not over one permanent. They are reachable from
 //     here without disturbing anything in this file: the engine
-//     already validates a block COUNT at the declare-blockers
-//     close-out (BlockerCountValid, for menace) and DeclareAttackers
+//     already validates a block COUNT when the block declaration is
+//     locked in (BlockerCountValid, for menace) and DeclareAttackers
 //     already receives the whole attacking set in one call, which is
 //     the batch a count rule needs. The count limit belongs beside
 //     BlockerCountValid as a set-shaped predicate, with this file's

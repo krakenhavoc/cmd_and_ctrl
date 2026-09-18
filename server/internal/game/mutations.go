@@ -5559,24 +5559,21 @@ func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
 	return ErrCardNotFound
 }
 
-// ResolveCombatDamage applies damage from declared attackers that
-// went unblocked. For each card with AttackingTarget set:
+// ResolveCombatDamage applies the regular combat damage step's damage.
+// For each card with AttackingTarget set:
 //
-//   - If no other battlefield card is currently blocking it
-//     (BlockingTarget == this attacker's instance ID), the
-//     attacker's CurrentPower is subtracted from the target
-//     player's life — recorded via the same path as ChangeLife so
-//     the change shows up in LifeHistory.
-//   - If at least one blocker is declared, the attacker is left
-//     alone here; creature-vs-creature damage assignment requires
-//     full rules support and remains a manual step until S13+.
+//   - If it was never blocked, the attacker's CurrentPower is
+//     subtracted from the target player's life — recorded via the
+//     same path as ChangeLife so the change shows up in LifeHistory.
+//   - If it is blocked, its damage goes to the creatures blocking it,
+//     and if none are left it deals none at all (CR 510.1c) unless it
+//     tramples (CR 702.19d/e). Blocked is the lock-in's record, not
+//     the live blocker count (#715, CR 509.1h).
 //
 // AttackingTarget / BlockingTarget are intentionally NOT cleared
-// here — they persist through the combat_damage step so the client
-// can keep its combat-arrow overlay drawn while damage shows up on
-// the affected player headers. AdvanceStep calls clearCombatLocked
-// when the cursor moves on to end_combat, which is what actually
-// retracts the arrows.
+// here — a creature stays in combat until the end of combat step ends
+// (CR 511.3), which is where AdvanceStep calls clearCombatLocked, and
+// what actually retracts the client's combat arrows.
 //
 // This is the REGULAR combat damage step only. First-strike damage is
 // its own step's turn-based action (CR 510.4, #717) and the cursor
@@ -5639,11 +5636,11 @@ func (g *Game) resolveCombatDamageLocked() {
 	g.assignAndDealCombatDamageLocked(step)
 	g.runStateChecksLocked()
 
-	// Combat state is intentionally left in place. AdvanceStep's
-	// transition into end_combat invokes clearCombatLocked, which
-	// clears AttackingTarget / BlockingTarget — and with them the
-	// participation record. Deferring the clear lets the client keep
-	// combat arrows drawn for the full duration of the damage steps.
+	// Combat state is intentionally left in place. The cursor clears
+	// it as it LEAVES end_combat (CR 511.3, #785), which clears
+	// AttackingTarget / BlockingTarget — and with them the blocked
+	// state and the participation record. Attackers and blockers are
+	// therefore still in combat for the whole end of combat step.
 }
 
 // resolveFirstStrikeCombatDamageLocked is the FIRST combat damage
@@ -5753,6 +5750,10 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 //
 //   - Unblocked → straight to AttackingTarget via
 //     markCombatDamageToPlayerLocked.
+//   - Blocked, but nothing is blocking it any more → no damage at
+//     all (CR 510.1c), unless it has trample, which assigns all of
+//     it to the player or planeswalker it is attacking
+//     (CR 702.19d/e). See the blocked state below.
 //   - Single blocker → full power on the blocker; trample overflow
 //     spills to AttackingTarget if (i) the attacker has trample and
 //     (ii) the blocker was assigned at-least-lethal.
@@ -5764,46 +5765,24 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // damage-marking helpers so they fire uniformly via the replacement
 // pipeline.
 //
-// Menace enforcement (CR 702.111): a single blocker on a menace
-// attacker is silently reverted — clear BlockingTarget, leaving the
-// attacker unblocked. Done at the top of this function so the
-// subsequent blocker list reflects the final legal state.
+// "Blocked" is READ here, never decided here (#715, CR 509.1h): it is
+// Game.blockedAttackers, written once by the block declaration's
+// lock-in (commitBlockDeclarationLocked). This pass used to derive it
+// from the live battlefield, so an attacker whose only blocker died
+// in the first-strike step looked unblocked and hit the player, and a
+// menace attacker that lost one of its two blockers had its block
+// reverted. Block legality — menace included — is judged at the
+// declaration and nowhere else.
 //
 // Caller must hold g.mu.
 func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	firstStrike := step == CombatStepFirstStrike
 
-	// Menace close-out: scan attackers, if any has menace and
-	// exactly one blocker assigned, revert that blocker.
-	menaceReversions := 0
 	blockersByAttacker := make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.BlockingTarget != uuid.Nil {
 			blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
-		}
-	}
-	for atkID, blkIdxs := range blockersByAttacker {
-		atk := findBattlefieldCard(g, atkID)
-		if atk == nil {
-			continue
-		}
-		if !HasKeyword(atk, "menace") {
-			continue
-		}
-		if len(blkIdxs) == 1 {
-			g.Battlefield.Cards[blkIdxs[0]].BlockingTarget = uuid.Nil
-			menaceReversions++
-		}
-	}
-	if menaceReversions > 0 {
-		// Rebuild blocker map after reversions.
-		blockersByAttacker = make(map[uuid.UUID][]int, len(g.Battlefield.Cards))
-		for i := range g.Battlefield.Cards {
-			c := &g.Battlefield.Cards[i]
-			if c.BlockingTarget != uuid.Nil {
-				blockersByAttacker[c.BlockingTarget] = append(blockersByAttacker[c.BlockingTarget], i)
-			}
 		}
 	}
 
@@ -5856,7 +5835,16 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// branch but fall through to blocker damage below.
 		if atkParticipates {
 			if len(liveBlockers) == 0 {
-				if atkPower > 0 {
+				// Nothing is blocking it now — but that is not the
+				// same question as whether it is BLOCKED (CR 509.1h).
+				// A blocked attacker with no blockers left assigns no
+				// combat damage at all (CR 510.1c); a TRAMPLING one
+				// assigns all of it to the player or planeswalker it
+				// is attacking (CR 702.19d/e). An attacker that was
+				// never blocked deals its damage to what it attacked,
+				// as it always did.
+				blocked := g.attackerBlockedLocked(atkID)
+				if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
 					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower, step)
 				}
 			} else if len(liveBlockers) == 1 {
@@ -6099,9 +6087,10 @@ func (g *Game) markCombatDamageToPlayerLocked(playerID, source uuid.UUID, amount
 }
 
 // ClearCombat resets every card on the battlefield to "not attacking
-// and not blocking". Called by the active player at end of combat
-// (or by anyone, really — the sandbox doesn't gate it). Cheap O(n)
-// pass over the battlefield.
+// and not blocking". The sandbox verb; the cursor does this by itself
+// as the end of combat step ends (CR 511.3, advanceCursorLocked).
+// Callable by anyone — the sandbox doesn't gate it. Cheap O(n) pass
+// over the battlefield.
 func (g *Game) ClearCombat() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -6122,7 +6111,7 @@ func (g *Game) clearCombatLocked() {
 	}
 	// #830 / #859: the combat declarations' announcements describe
 	// the declarations being wiped here, so they go with them.
-	g.clearBlockAnnouncementsLocked()
+	g.clearBlockStateLocked()
 	g.clearAttackAnnouncementsLocked()
 	// #716: and so does the combat damage steps' participation
 	// record — it describes these same attackers and blockers.

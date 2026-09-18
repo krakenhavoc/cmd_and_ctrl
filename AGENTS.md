@@ -1294,6 +1294,29 @@ only keyword read left in the second step is the one CR 702.7c asks
 for, "plus the ones that have double strike now" (#716). Nothing about
 this is per card: declare the keyword and the turn structure follows.
 
+**A creature is in combat until the end of combat step ENDS (#785,
+CR 511.3).** `AttackingTarget` / `BlockingTarget` are stamped at
+declaration and cleared by the cursor as it leaves `end_combat`, not
+as it enters — so "each attacking creature" reads the whole attack
+during that step (Aetherize, Settle the Wreckage, Aetherspouts), an
+"activate only if … attacking" condition is true there, and "at end of
+combat" triggers, which fire as the step BEGINS (CR 511.2), see the
+attackers. There is one clear point, `clearCombatLocked`; the
+`ClearCombat` verb, `PassTurn` and the eliminated-seat rotation call it
+themselves because a turn that ends early never leaves the step.
+
+**"Blocked" is a state, not a blocker count (#715, CR 509.1h).** An
+attacker is blocked the moment the block declaration is locked in, and
+it stays blocked for the rest of the combat however many creatures are
+still blocking it — `Game.blockedAttackers`, written only by
+`commitBlockDeclarationLocked` and read only by the damage steps
+(`attackerBlockedLocked`). So a blocked attacker whose blockers all
+died assigns no combat damage (CR 510.1c) unless it has trample, which
+sends all of it to what the creature is attacking (CR 702.19d/e), and
+block legality — menace's count included — is judged once, at the
+declaration (CR 509.1b), and never re-checked at damage. Do not derive
+"unblocked" from the live blocker count anywhere.
+
 **Keyword behaviour is engine-side, not catalog-side.** You do not
 write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.

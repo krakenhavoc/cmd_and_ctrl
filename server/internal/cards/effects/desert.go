@@ -34,29 +34,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Cycling ({2}, discard) was never printed on this card; the Deserts
 // that cycle are the Amonkhet ones.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): the ping has no legal
-// target today, so it cannot actually be used. The engine clears
-// AttackingTarget when it ENTERS the end of combat step
-// (Game.runStepEntryHooksLocked, deliberately, to keep the client's
-// combat arrows drawn through the damage steps), where CR 511.3
-// removes creatures from combat as that step ENDS. There is therefore
-// no attacking creature during the one window this ability is allowed
-// in, and the legal-target enumerator never offers it.
-//
-// The ability is declared anyway rather than dropped, on the posture
-// Darksteel Citadel's indestructible took: the day the combat clear
-// moves to the end of the step where the rules put it, this card
-// starts working with no change to this file. Until then the Desert
-// is a colourless land — and a DESERT, which is the cost Ifnir
-// Deadlands eats.
+// The ping had no legal target when this card was written: the engine
+// cleared AttackingTarget on ENTRY to the end of combat step, so there
+// was no attacking creature during the one window the ability is
+// allowed in. It was declared anyway rather than dropped, on the
+// posture Darksteel Citadel's indestructible took — and #785 moved the
+// clear to where CR 511.3 puts it, as the step ENDS, so the card
+// started working with no change to this file. The caveat came off
+// with that fix.
 func init() {
 	Register(Spec{
 		OracleID:     "195107ad-879d-4b02-a44a-a3ba70fedf88",
 		Name:         "Desert",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The damage ability can't be used yet: attackers stop being attackers the moment the end of combat step begins, so there is never a legal target during the one window the card allows.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",

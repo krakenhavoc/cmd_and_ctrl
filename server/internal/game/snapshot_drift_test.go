@@ -115,13 +115,16 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
-	// #830 block-declaration lock-in. Carried for the same reason and
-	// in the same pair-wise way: the map of announced pairings names
-	// what the "became blocked" marks were recorded for, so a restore
-	// that kept one and not the other would either re-announce an
-	// attacker that is already blocked or swallow a real block.
+	// #830 block-declaration lock-in, and #715's blocked state.
+	// Carried for the same reason and in the same pair-wise way: the
+	// map of announced pairings names what the blocked marks were
+	// recorded for, so a restore that kept one and not the other
+	// would either re-announce an attacker that is already blocked or
+	// swallow a real block. blockedAttackers is carried for one more
+	// reason — a restore that dropped it would hand a blocked
+	// attacker's combat damage to the defending player (CR 509.1h).
 	"announcedBlocks", carried, "",
-	"announcedBecameBlocked", carried, "",
+	"blockedAttackers", carried, "GameSnapshot.BlockedAttackers",
 	// #859 attack-declaration lock-in. Carried for the reason the two
 	// above are: a restore that dropped it would announce an attacker
 	// that has already attacked, and one that invented it would

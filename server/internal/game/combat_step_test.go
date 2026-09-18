@@ -18,16 +18,17 @@ import (
 // arithmetic: Fencing Ace is a 1/1 double strike, Youthful Knight a 2/1
 // first strike, Grizzly Bears a 2/2.
 //
-// Two criteria depend on open engine bugs and are written as skipped
-// tests that assert the RULES outcome, so they fail loudly the day the
-// skip is removed without the fix — they never pin today's wrong
-// behaviour:
+// Two criteria were written as skipped tests asserting the RULES
+// outcome while the bugs behind them were open — they never pinned the
+// wrong behaviour, and each skip came off with its fix:
 //
 //   - #715 (a blocked attacker whose blockers are gone is treated as
-//     unblocked): acceptance criterion 2.
+//     unblocked): acceptance criterion 2. The blocked state
+//     (Game.blockedAttackers, blockers.go) fixed it; the rest of that
+//     issue's cases are blocked_state_test.go.
 //   - #702 (a first-strike multi-blocker prompt resolves after the
 //     regular pass): the ORDER half of the first-strike prompt case.
-//     Its tag half is tested now.
+//     Two real damage steps (#717) fixed it.
 //
 // #716 (keywords read after the recompute between passes) changes
 // which creatures deal damage in the regular pass, not how that damage
@@ -455,12 +456,9 @@ func TestCombatStepFirstStrikeAssignmentPromptOrder(t *testing.T) {
 // Acceptance criterion 2 — double strike, the blocker dies in the first
 // step. By the rules (CR 509.1h, 510.1c) Ace is still blocked and deals
 // no regular damage: one first_strike event, the defender stays at 40.
-// Today the engine treats Ace as unblocked in the regular pass and hits
-// the defender for 1 (#715). ADR 0053 says sub-PR 1 does not pin that
-// wrong behaviour, so this asserts the rules outcome behind a skip.
+// The engine used to treat Ace as unblocked in the regular pass and hit
+// the defender for 1 (#715); the skip came off with that fix.
 func TestCombatStepDoubleStrikeBlockerDiesInFirstStep(t *testing.T) {
-	t.Skip("#715: a blocked attacker whose blockers are all gone is treated as unblocked; " +
-		"remove this skip with the fix")
 	g := newActiveGame(t)
 	ace := pushCombatant(t, g, g.Seats[0], "Fencing Ace", 1, 1, "double strike")
 	chump := pushCombatant(t, g, g.Seats[1], "Vanilla 1/1", 1, 1)

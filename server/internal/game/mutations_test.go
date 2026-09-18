@@ -567,9 +567,20 @@ func TestPassPriorityRunsStepEntryHooks(t *testing.T) {
 			defender.Life, startLife-2)
 	}
 
-	// One more wrap moves into end_combat; the clear hook should
-	// nil AttackingTarget on every battlefield card.
+	// One more wrap moves into end_combat, where the attacker is
+	// still attacking (CR 511.3 removes it from combat as that step
+	// ENDS); the wrap after that leaves the step and clears it.
 	for g.Turn.Step != StepEndCombat {
+		before := g.Turn.Step
+		wrapStep()
+		if g.Turn.Step == before {
+			t.Fatalf("priority-wrap loop didn't progress past %q", before)
+		}
+	}
+	if c := findCard(g, attacker); c == nil || c.AttackingTarget == uuid.Nil {
+		t.Errorf("AttackingTarget cleared on entry to end_combat; creatures leave combat as it ends (CR 511.3)")
+	}
+	for g.Turn.Step != StepPostcombatMain {
 		before := g.Turn.Step
 		wrapStep()
 		if g.Turn.Step == before {
@@ -578,7 +589,7 @@ func TestPassPriorityRunsStepEntryHooks(t *testing.T) {
 	}
 	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget != uuid.Nil {
-			t.Errorf("AttackingTarget not cleared after pass-priority into end_combat: %v",
+			t.Errorf("AttackingTarget not cleared once the end of combat step ended: %v",
 				c.AttackingTarget)
 		}
 	}
@@ -911,12 +922,18 @@ func TestResolveCombatDamageUnblockedAppliesPower(t *testing.T) {
 	if !stillAttacking {
 		t.Error("AttackingTarget cleared inside combat_damage; expected persistence until end_combat")
 	}
-	// One more advance moves the cursor into end_combat, which IS
-	// where the clear should fire.
+	// The end of combat step keeps them too: CR 511.3 removes
+	// creatures from combat as that step ENDS (#785), which is why
+	// Aetherize and Settle the Wreckage work when cast in it.
 	advanceTo(t, g, StepEndCombat)
+	if c := findCard(g, attacker); c == nil || c.AttackingTarget == uuid.Nil {
+		t.Error("AttackingTarget cleared on entry to end_combat, not as the step ended")
+	}
+	// Leaving the step is where the clear fires.
+	advanceTo(t, g, StepPostcombatMain)
 	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget != uuid.Nil {
-			t.Error("AttackingTarget not cleared after entering end_combat")
+			t.Error("AttackingTarget not cleared once the end of combat step ended")
 		}
 	}
 }

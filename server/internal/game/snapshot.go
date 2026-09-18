@@ -199,17 +199,24 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
-	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
-	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// AnnouncedBlocks / BlockedAttackers are what the block
+	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
-	// attacker, and which attackers have had their one
-	// EventBecomesBlocked. Both are empty outside a combat with
-	// blockers declared, and a file written before them restores as
-	// empty — which reads as "nothing announced yet", so the next
+	// attacker, and which attackers are BLOCKED (CR 509.1h) — the
+	// same set that has had its one EventBecomesBlocked (CR 506.4).
+	// Both are empty outside a combat with blockers declared, and a
+	// file written before them restores as empty — which reads as
+	// "nothing announced and nothing blocked yet", so the next
 	// lock-in announces the declaration the battlefield already
 	// carries. No schema bump.
-	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
-	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+	//
+	// BlockedAttackers keeps the wire key the field was born with
+	// (#830 called it announcedBecameBlocked, before #715 gave the
+	// same set its rules name): identical contents, identical
+	// lifetime, so a file written before the rename restores a
+	// mid-combat blocked state rather than losing it.
+	AnnouncedBlocks  map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	BlockedAttackers map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
 
 	// AnnouncedAttacks is the attack declaration's half of the same
 	// bookkeeping (#859, attackers.go): the creatures that have had
@@ -704,7 +711,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
-	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
@@ -1231,7 +1238,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
-	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
+	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 

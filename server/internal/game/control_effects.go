@@ -128,8 +128,8 @@ func controlStatic(target uuid.UUID, enteredAt int64, controller uuid.UUID) Stat
 //
 // The announcements are the part that was missing. `announcedAttacks`
 // (#830/#859) records that a creature has had its one `EventAttack`
-// for this combat, and `announcedBlocks` / `announcedBecameBlocked`
-// do the same for blocks. Clearing `AttackingTarget` without clearing
+// for this combat, and `announcedBlocks` / `blockedAttackers` do the
+// same for blocks. Clearing `AttackingTarget` without clearing
 // them left a creature that a control change pulled out of combat
 // marked as already-announced, so if it was declared as an attacker
 // again in the same combat — under its new controller, after a second
@@ -147,5 +147,11 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 	c.BlockingTarget = uuid.Nil
 	delete(g.announcedAttacks, c.InstanceID)
 	delete(g.announcedBlocks, c.InstanceID)
-	delete(g.announcedBecameBlocked, c.InstanceID)
+	// Its own blocked state only: an attacker removed from combat is
+	// no longer blocked because it is no longer in combat at all
+	// (CR 506.4). Taking a BLOCKER out of combat leaves the attacker
+	// it was blocking blocked, which is CR 509.1h and the whole point
+	// of #715 — that row is keyed by the attacker and is not touched
+	// here.
+	delete(g.blockedAttackers, c.InstanceID)
 }

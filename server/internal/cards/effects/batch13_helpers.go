@@ -256,8 +256,9 @@ func b13ManaValueAtMostControllersGraveyard() CardPredicate {
 // b13AttackingCreaturesYouControl snapshots the creatures
 // `controller` controls that are attacking right now — Drana's
 // "each attacking creature you control". AttackingTarget is stamped
-// at declaration and cleared when combat ends, so a trigger that
-// resolves during the combat damage step still sees the attackers.
+// at declaration and cleared as the end of combat step ENDS
+// (CR 511.3), so a trigger that resolves during a combat damage step
+// or the end of combat step still sees the attackers.
 func b13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {

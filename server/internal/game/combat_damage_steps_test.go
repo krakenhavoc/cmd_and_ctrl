@@ -503,8 +503,9 @@ func TestSnapshotBetweenTheCombatDamageStepsRoundTrips(t *testing.T) {
 	}
 }
 
-// The record is one combat's bookkeeping: end_combat clears it with the
-// declarations it describes, so the next combat starts from nothing.
+// The record is one combat's bookkeeping: the end of combat step
+// clears it with the declarations it describes as that step ends
+// (CR 511.3), so the next combat starts from nothing.
 func TestClearCombatForgetsTheParticipationRecord(t *testing.T) {
 	g := newActiveGame(t)
 	atk := g.Seats[0]
@@ -516,7 +517,11 @@ func TestClearCombatForgetsTheParticipationRecord(t *testing.T) {
 		t.Fatal("no participation record after a combat with first strike in it")
 	}
 	passUntilStep(t, g, StepEndCombat)
+	if len(g.firstStrikeStepParticipants) == 0 {
+		t.Errorf("the record was dropped on ENTRY to end_combat; combat lasts through the step (CR 511.3)")
+	}
+	passUntilStep(t, g, StepPostcombatMain)
 	if len(g.firstStrikeStepParticipants) != 0 {
-		t.Errorf("the record survived end_combat: %v", g.firstStrikeStepParticipants)
+		t.Errorf("the record survived the end of combat step: %v", g.firstStrikeStepParticipants)
 	}
 }

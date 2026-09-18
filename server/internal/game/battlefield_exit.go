@@ -57,9 +57,10 @@ func (g *Game) battlefieldExitLocked(cardID uuid.UUID) {
 //
 //   - LoyaltyActivatedThisTurn — CR 606.3's "only one loyalty ability
 //     of a permanent, and only once each turn". The bug.
-//   - announcedAttacks / announcedBlocks / announcedBecameBlocked —
-//     what this combat has already announced about this creature
-//     (#830, #859). clearCombatLocked drops them at end of combat, so
+//   - announcedAttacks / announcedBlocks / blockedAttackers — what
+//     this combat has already announced about this creature, and
+//     whether it is blocked (#830, #859, #715). clearCombatLocked
+//     drops them when the combat ends, so
 //     a stale entry can only be read by the same combat the permanent
 //     left, which nothing in the engine can reach today: a permanent
 //     that leaves is removed from combat and comes back with no
@@ -98,8 +99,8 @@ func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
 	if len(g.announcedBlocks) == 0 {
 		g.announcedBlocks = nil
 	}
-	delete(g.announcedBecameBlocked, cardID)
-	if len(g.announcedBecameBlocked) == 0 {
-		g.announcedBecameBlocked = nil
+	delete(g.blockedAttackers, cardID)
+	if len(g.blockedAttackers) == 0 {
+		g.blockedAttackers = nil
 	}
 }
