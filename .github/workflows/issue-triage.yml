@@ -1,0 +1,101 @@
+name: cmd_and_ctrl issue triage
+
+permissions:
+  issues: write
+
+# Every issue that is not in a sprint must be visibly not in a sprint.
+#
+# This workflow does NOT guess a milestone, on purpose. S33-S49
+# (#879-#892) were planned by reading all 212 open issues in one pass
+# against docs/engine-seams.md, where the ordering came from dependency
+# chains and from how many catalog cards each seam unblocks -- #754 alone
+# gates 82. No keyword rule reproduces that, and a wrong milestone is
+# worse than none: it reads as "this work is scheduled" and the issue
+# stops being triaged.
+#
+# So the label is the whole mechanism. `needs-triage` means "no sprint
+# owns this yet", and the queue is the label's search. Filing the issue
+# into a milestone clears it; taking the milestone away brings it back.
+# That is why this listens to `milestoned`/`demilestoned` and not just
+# `opened` -- the queue drains itself as a side effect of normal filing,
+# with nobody remembering to remove a label.
+#
+# It exists because the tracker demonstrated the failure mode first.
+# Before the 2026-09-18 backlog pass, all 212 open issues had no
+# milestone at all, while docs/sprints.md ran to S35 -- so the milestone
+# list said the project was on S31 and the sprint doc said S35. The same
+# document warns that a stale status "is read by agents as *this mechanic
+# is unbuilt*, which is how several of them concluded that shipped
+# features were blocked".
+#
+# Exception: `Cards batch NN:` issues (#294-#467) are the rolling
+# deck-driven catalog track. They are deliberately milestone-less -- they
+# belong to no dated sprint, each shipping the subset of its 100 cards
+# that needs no new machinery. Flagging them would make the queue
+# permanent noise and train people to ignore it.
+#
+# Plain curl rather than `gh` or actions/github-script: no workflow in
+# this repo depends on either, and the runners are self-hosted. Writes
+# are idempotent, so no read-modify-write and no jq -- adding a label
+# that is already there and removing one that is absent are both fine.
+
+on:
+  issues:
+    types: [opened, reopened, milestoned, demilestoned]
+
+jobs:
+  triage-label:
+    runs-on: self-hosted
+    steps:
+      - name: needs-triage tracks whether a sprint owns this issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_API: ${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}
+          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          MILESTONE: ${{ github.event.issue.milestone.title }}
+          LABEL: needs-triage
+        run: |
+          set -eu
+
+          # %{http_code} with -o /dev/null: we care that GitHub accepted
+          # the write, not what it echoed back. 404 on a DELETE means the
+          # label was not there, which is the state we wanted anyway.
+          api() {
+            method="$1"; url="$2"; body="${3:-}"
+            if [ -n "${body}" ]; then
+              curl -sS -o /dev/null -w '%{http_code}' -X "${method}" \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                -d "${body}" "${url}"
+            else
+              curl -sS -o /dev/null -w '%{http_code}' -X "${method}" \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "${url}"
+            fi
+          }
+
+          if [ -n "${MILESTONE}" ]; then
+            code=$(api DELETE "${ISSUE_API}/labels/${LABEL}")
+            case "${code}" in
+              200|204|404) echo "#${NUMBER} is in '${MILESTONE}'; ${LABEL} cleared (HTTP ${code})." ;;
+              *) echo "::error::clearing ${LABEL} on #${NUMBER} failed with HTTP ${code}"; exit 1 ;;
+            esac
+            exit 0
+          fi
+
+          case "${TITLE}" in
+            "Cards batch "[0-9]*:*)
+              echo "#${NUMBER} is a rolling catalog batch, which belongs to no dated sprint. Leaving it unlabelled."
+              exit 0
+              ;;
+          esac
+
+          code=$(api POST "${ISSUE_API}/labels" '{"labels":["needs-triage"]}')
+          case "${code}" in
+            200|201) echo "#${NUMBER} has no milestone; ${LABEL} applied." ;;
+            *) echo "::error::applying ${LABEL} to #${NUMBER} failed with HTTP ${code}"; exit 1 ;;
+          esac
