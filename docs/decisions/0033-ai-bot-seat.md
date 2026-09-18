@@ -602,3 +602,45 @@ sections above:
   the funnel depends on which one is used. The objection recorded
   there still applies to any deployed server pointed at a model on a
   home network.
+
+## Amendment (2026-09-18, #810): the enumerator's X rule
+
+§1's contract is that every enumerated move is one `actions.Dispatch`
+accepts. A bug from the catalog soak showed that soundness is necessary and
+not sufficient — a move can be legal, accepted, and still not a move worth
+offering.
+
+**A zero-effect X=0 move is not a move.** CR 601.2b / 602.2b make
+X a number the caster announces and CR 107.3 leaves 0 legal wherever the
+printed text sets no floor, so the engine accepts Soothsaying's "{X}: Look
+at the top X cards of your library" at X=0 and is right to. It costs
+nothing, does nothing, and is back on the move list the moment it resolves —
+CR 732.2a's repeatable sequence of optional actions, which no player is ever
+made to keep repeating. A table of bots applied 79,519 actions in five
+minutes on turn 18 without the turn advancing.
+
+The rule is **one function**, `enumeratedXFloor` in
+`internal/legal/x.go`, shared by casts and activations because the mistake
+was identical on both sides: the smallest X the enumerator will announce for
+a cost carrying an {X} slot is 1 when the whole effect scales with X, and
+where that cannot be paid the move is not offered at all — the treatment
+Helm of Obedience's printed "X can't be 0" already got. Nothing about
+legality changes, and no card is special-cased.
+
+*"The whole effect scales with X" is declared, not guessed.*
+`effects.Spec.XMatters`, read through `game.XMattersFor`, is the catalog's
+one-bit answer to a question nothing else can derive. A card with a fixed
+RIDER — The Goose Mother's 2/2 flying body, Springleaf Parade's mana static
+— leaves it unset and keeps its X=0 offer, which is then made exactly when
+nothing larger is affordable, because the search takes the largest payable
+X. A source scan in `effects/x_matters_guard_test.go` fails the build on a
+Spec that reads `ctx.X()` without declaring, with an allowlist for riders.
+Thirty-four of the catalog's forty-two X cards declare; eight are riders.
+
+*Two gaps, both "the enumerator is not choosing X here".* An X announced by
+a cost that is not the mana cost — Toxic Deluge's "pay X life", Waterbender's
+Restoration's waterbend — is still announced as 0, because nothing in
+`internal/legal` prices those costs. And `CountFromX` on an activated
+ability has no engine support to mirror.
+
+**The bot's threat ordering (§1) is still not built** (#687). Unchanged.

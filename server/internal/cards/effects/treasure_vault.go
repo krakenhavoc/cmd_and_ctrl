@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3c43efd6-b1a8-452c-ae20-9a936c3340ab",
 		Name:         "Treasure Vault",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

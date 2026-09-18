@@ -165,6 +165,10 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// own and carries its own X.
 	spend := game.ManaSpendForCast(card)
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
+	// #810: the one X rule. A spell whose whole effect is X (Fireball,
+	// Stroke of Genius) is not offered at X=0, where it would resolve
+	// for nothing; a spell with a fixed rider still is. See x.go.
+	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
 	x := 0
 	if !perTarget {
 		priced, err := e.g.ApplyCostModifiersForEffect(cost, game.CostQuery{
@@ -176,7 +180,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 			return
 		}
 		var ok bool
-		x, ok = e.affordableX(priced, spend)
+		x, ok = e.affordableXFrom(priced, spend, xFloor)
 		if !ok {
 			return
 		}
@@ -262,7 +266,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					continue
 				}
 				var ok bool
-				setX, ok = e.affordableX(priced, spend)
+				setX, ok = e.affordableXFrom(priced, spend, xFloor)
 				if !ok {
 					continue
 				}
@@ -309,20 +313,18 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	}
 }
 
-// affordableX reports whether the seat can pay cost right now — from
-// the floating pool, or by the auto-tapper's plan — and, for an {X}
-// cost, the largest X it can pay up to MaxX. Mirrors the engine's
-// auto_tap + strict path: the pool is consulted first, then a plan
-// is sought for the WHOLE cost (the engine does not net floating
-// mana against the plan).
-func (e *enumerator) affordableX(cost game.ParsedCost, spend game.ManaSpendContext) (int, bool) {
-	return e.affordableXFrom(cost, spend, 0)
-}
-
-// affordableXFrom is affordableX with a floor on the announcement —
-// an activated ability whose printed text says "X can't be 0" (Helm
-// of Obedience) has a floor of 1, and a seat that cannot pay for
-// X=1 has no legal activation at all rather than a free one at X=0.
+// affordableXFrom reports whether the seat can pay cost right now —
+// from the floating pool, or by the auto-tapper's plan — and, for an
+// {X} cost, the largest X it can pay, at or above `floor`, up to MaxX.
+// Mirrors the engine's auto_tap + strict path: the pool is consulted
+// first, then a plan is sought for the WHOLE cost (the engine does not
+// net floating mana against the plan).
+//
+// The floor is the announcement's lower bound, and it has two sources,
+// both settled by enumeratedXFloor (x.go) before the call: a printed
+// "X can't be 0" (Helm of Obedience), and #810's rule that a move
+// whose whole effect is X is not worth offering at X=0. A seat that
+// cannot pay for the floor has no move at all rather than a free one.
 //
 // The scan still starts at the floor and still breaks on the first
 // unaffordable value, because the cost is monotonic in X: every

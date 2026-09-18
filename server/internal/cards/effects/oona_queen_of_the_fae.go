@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6052822d-47a2-4d69-a32d-40cdd600d7a9",
 		Name:         "Oona, Queen of the Fae",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   label,

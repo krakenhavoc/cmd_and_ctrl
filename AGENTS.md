@@ -1385,13 +1385,22 @@ stack above the ability and resolve first. Mana abilities do NOT go
 here (they skip the stack, CR 605.3b); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
-**An `{X}` in the cost:** put it in the mana component and read it
-back with `ctx.X()`. Nothing else needs declaring — the engine
-derives "this ability prompts for X" from the cost string, so the
-view, the enumerator and the client can never disagree with the card
-about whether there is an X:
+**An `{X}` in the cost:** put it in the mana component, read it back
+with `ctx.X()`, and declare `XMatters: true` on the Spec (#810). The
+engine still derives "this ability prompts for X" from the cost
+string, so the view, the enumerator and the client can never disagree
+with the card about whether there *is* an X; `XMatters` answers the
+other question, which nothing can derive — does the card do anything
+at X=0? "Look at the top X cards" does not, so the bot's enumerator
+declines to offer it there (CR 732.2a; `internal/legal/x.go`). Leave
+it unset only for a card with a fixed RIDER, something that happens
+whatever X is — The Goose Mother's 2/2 flying body — and add an entry
+to `xMattersAllowlist` in `effects/x_matters_guard_test.go` saying
+what the rider is, because that source scan fails the build on a Spec
+that reads `ctx.X()` without declaring:
 
 ```go
+XMatters: true,                                              // every card below
 Cost: Plus(ManaCost("{X}{X}"), TapCost(), SacrificeThis()),   // Treasure Vault
 Cost: Plus(ManaCost("{X}"), TapCost(), MinX(1)),              // Helm of Obedience
 ```
@@ -2343,6 +2352,13 @@ Three things to know if you touch priority, prompts or the tally:
   withdraws calls `dropChoiceLocked` instead** — the prune paths must
   not count as somebody deciding something, or a loop that queues and
   prunes a prompt each iteration never trips.
+- **An activation does not clear its OWN run** (#810).
+  `notePlayerActivationLocked` is `notePlayerDecisionLocked` with the
+  activated ability's key kept, because an activation loop is a loop
+  whose every iteration is a player decision — a free, repeatable
+  ability re-offered the moment it resolves. Without the exception the
+  run never got past 1 and the breaker never saw it. Every other key
+  is still cleared: the decision was real.
 - **A bare `pass_priority` is not a decision**, on purpose: if it were,
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.

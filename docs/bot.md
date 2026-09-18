@@ -820,6 +820,22 @@ every surviving window and a wider candidate list.
 conservative, on the grounds that a human playing a bot generally
 wants the finish.
 
+**A bot is never offered an {X} spell or ability at X=0 when X is the
+whole of what it does.** Soothsaying's "{X}: Look at the top X cards of
+your library" is free at X=0, does nothing, and is back on the list the
+moment it resolves — so a table of bots took it 79,519 times in five
+minutes and never got past turn 18
+([#810](https://github.com/krakenhavoc/cmd_and_ctrl/issues/810)). The
+enumerator's rule is one line of policy: the smallest X it will
+announce for such a cost is 1, and where X=1 cannot be paid for the
+move is not offered at all. A card with a fixed rider — The Goose
+Mother is a 2/2 flier before X buys anything — is still offered at X=0,
+and then only when nothing larger is affordable, because the enumerator
+always takes the largest X the seat can pay. Which cards are which is
+the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
+still makes X=0 a legal announcement and the engine still accepts one;
+this is about what is worth putting in front of a player.
+
 **A bot takes one CR 726 shortcut per loop per turn, then stops.** When
 the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
 repeating ability's controller is asked how many more times it should
@@ -832,3 +848,15 @@ guarantee is in the enumerator rather than in a policy on purpose: a
 policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
+
+**A loop the bot is feeding itself gets "stop" on the first ask, and
+the bot stops activating.** An activation loop is the other shape of
+runaway: nothing repeats on its own, the seat just keeps taking the
+same free ability. "Resolve it ten more times" is no kind of shortcut
+past a crank somebody has to keep turning, so for a loop whose
+repeating ability is an activated ability of the chooser's own
+permanent the enumerator offers only "stop here" — and while the notice
+stands, a bot runner holds on an activation of that permanent exactly
+as it holds on a pass. The table comes to rest at the threshold with
+the notice naming the ability, which is [ADR 0055
+§5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
