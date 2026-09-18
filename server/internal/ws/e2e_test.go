@@ -114,6 +114,10 @@ func (n *normalizer) player(p protocol.PlayerView, id string) protocol.PlayerVie
 		HandKept:       p.HandKept,
 		MulligansTaken: p.MulligansTaken,
 		MaxHandSize:    p.MaxHandSize,
+		// #500: carried through so the golden pins the real per-seat
+		// land-drop numbers rather than a normalizer zero.
+		LandDropsPerTurn:    p.LandDropsPerTurn,
+		LandsPlayedThisTurn: p.LandsPlayedThisTurn,
 	}
 	// Always initialise (possibly empty) — matches the wire shape
 	// emitted by protocol.viewOfPlayer, which always allocates the

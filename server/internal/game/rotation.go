@@ -164,6 +164,13 @@ func (g *Game) onTurnBeganLocked() {
 	if g.LandsPlayedThisTurn != nil {
 		g.LandsPlayedThisTurn = nil
 	}
+	// #500: one-turn "play an additional land this turn" grants
+	// expire here with the tally they were raising the ceiling over.
+	// A permanent's standing grant is derived from the battlefield
+	// every time it's asked, so it has nothing to reset.
+	if g.ExtraLandDropsThisTurn != nil {
+		g.ExtraLandDropsThisTurn = nil
+	}
 	if g.DrawnThisTurn != nil {
 		g.DrawnThisTurn = nil
 	}

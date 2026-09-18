@@ -135,6 +135,22 @@ var (
 	// S13.1.
 	ErrSorcerySpeedRequired = errors.New("game: sorcery speed required")
 
+	// ErrLandDropUnavailable is returned by cast_spell when a player
+	// plays a land having already used every land play they get this
+	// turn (CR 305.2). The allowance is not always one — a controlled
+	// Exploration or a one-turn grant raises it — so the message says
+	// "no land plays left", not "one land per turn"; the client pairs
+	// it with the per-seat count on the wire
+	// (PlayerView.LandDropsPerTurn / LandsPlayedThisTurn).
+	//
+	// Its own sentinel rather than ErrSorcerySpeedRequired or
+	// ErrInvalidParam: the player's timing was fine and their payload
+	// was fine — they are simply out of land plays, which is a
+	// different sentence and a different fix. Added for #500, the
+	// first refusal in the engine's move away from the sandbox
+	// posture on land drops.
+	ErrLandDropUnavailable = errors.New("game: no land plays left this turn")
+
 	// ErrNoPlayPermission is returned when a player tries to play a
 	// card from exile without a live impulse-exile grant — the grant
 	// belongs to someone else, has expired, was never made, or is

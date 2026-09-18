@@ -826,6 +826,15 @@ export interface PlayerView {
   // Always present on the wire; the field is non-omitempty so
   // clients know the cap even when it's the default.
   max_hand_size?: number;
+  // #500 (CR 305.2): how many lands this seat may play this turn,
+  // and how many it already has. The engine REFUSES a land play past
+  // the allowance, so a client should grey out the hand's lands when
+  // lands_played_this_turn >= land_drops_per_turn rather than only
+  // explain the rejection afterwards. land_drops_per_turn is the
+  // EFFECTIVE allowance — a controlled Exploration or a one-turn
+  // grant is already summed in. Normally 1 / 0.
+  land_drops_per_turn?: number;
+  lands_played_this_turn?: number;
   // S15: per-player mana pool. Each entry is an uppercase mana
   // letter ("W", "U", "B", "R", "G", "C") — order reflects
   // insertion order so the UI can highlight the most recent add.

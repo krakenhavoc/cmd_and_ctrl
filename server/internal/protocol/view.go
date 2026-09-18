@@ -680,6 +680,20 @@ type PlayerView struct {
 	// is (correctly) never going to prompt (#338).
 	MaxHandSize int `json:"max_hand_size"`
 
+	// LandDropsPerTurn / LandsPlayedThisTurn are the two halves of
+	// the land-drop badge (#500, CR 305.2): how many lands this seat
+	// may play this turn, and how many it already has. The engine
+	// REFUSES a land play past the allowance since #500, so the
+	// client needs both numbers to grey the hand's lands out before
+	// the player clicks rather than only explain the error after.
+	//
+	// LandDropsPerTurn is the EFFECTIVE allowance, not the raw
+	// Player.LandDropsPerTurn: a controlled Exploration or a
+	// one-turn grant is already summed in, exactly as MaxHandSize
+	// above reports the effective cap. Normally 1 / 0.
+	LandDropsPerTurn    int `json:"land_drops_per_turn"`
+	LandsPlayedThisTurn int `json:"lands_played_this_turn"`
+
 	// ManaPool is the player's current mana pool projection — one
 	// entry per floating mana token, in insertion order. Entries
 	// are uppercase single-character mana letters ("W", "U", "B",
@@ -2411,7 +2425,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		CommanderCasts:    cmdrCasts,
 		Counters:          cloneStringIntMap(p.Counters),
 		MaxHandSize:       g.EffectiveMaxHandSizeLocked(p),
-		ManaPool:          manaPool,
+		// Locked variants: this builder already runs under the
+		// game's read lock (see legal.EnumerateFor's note), and the
+		// public accessors would take it a second time.
+		LandDropsPerTurn:    g.EffectiveLandDropsLocked(p),
+		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
+		ManaPool:            manaPool,
 	}
 }
 

@@ -39,6 +39,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapStepRestrictions: spec.UntapStepRestrictions,
 		CantBeCountered:       spec.CantBeCountered,
 		NoMaxHandSize:         spec.NoMaxHandSize,
+		AdditionalLandPlays:   spec.AdditionalLandPlays,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

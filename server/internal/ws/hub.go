@@ -986,6 +986,14 @@ func classifyActionError(err error) (code, message string) {
 		// refusal attached.
 		body, _ := blockRefusalPayload(err, uuid.Nil)
 		return body.Code, body.Message
+	case errors.Is(err, game.ErrLandDropUnavailable):
+		// #500: the player is out of land plays for the turn. The
+		// allowance is not always one (Exploration, a one-turn
+		// grant), so the sentence names the state rather than the
+		// rule, and the seat's land_drops_per_turn /
+		// lands_played_this_turn on the wire carry the numbers.
+		return protocol.CodeBadRequest,
+			"you've already played all the lands you can this turn"
 	case errors.Is(err, game.ErrChoiceSetRejected):
 		// #624: the picks were individually fine but the card's rule
 		// about them as a set refused them. The prompt stays open, so
