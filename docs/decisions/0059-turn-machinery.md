@@ -653,8 +653,8 @@ Client changes that are not presentation choices:
   combat never pair with damage from another.
 - Per-step stops (`settings.ts`) stay keyed by step name. An added
   combat's declare attackers stops where the first one did.
-- The autopass safety belt (`Game.svelte:233-241`) keys on entering the
-  viewer's own `precombat_main`, which every turn, extra or not, has once.
+- The autopass safety belt (`autopassDecision.ts`, rule 2) keys on entering
+  the viewer's own `precombat_main`, which every turn, extra or not, has once.
 
 **How the board shows it** ([decided](#decided-2026-09-17), questions 1
 and 2):
