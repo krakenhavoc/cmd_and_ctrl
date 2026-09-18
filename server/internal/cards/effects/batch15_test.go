@@ -445,39 +445,80 @@ func TestB15SoulOfTheHarvestOffersADrawPerNontokenCreature(t *testing.T) {
 	}
 }
 
-func TestB15GalaGreetersTakesEachModeOncePerTurnInPrintedOrder(t *testing.T) {
+// #764: Gala Greeters is a MODAL TRIGGER. The mode is chosen as the
+// ability goes on the stack (CR 603.3c) through a mode_pick prompt —
+// not at resolution, and not by the engine picking for the player.
+// This is the untargeted half of the modal-trigger proof set; the
+// targeted half is Glissa Sunslayer.
+func TestB15GalaGreetersPromptsForItsModeAsItGoesOnTheStack(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	greeters := b12Push(g, me.ID, "Gala Greeters", "Creature — Elf Druid", b15GalaGreetersOracle, 1, 1)
 	life := me.Life
+
 	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
-	if n := counterCount(g, greeters, "+1/+1"); n != 1 {
-		t.Fatalf("the first creature: %d counters, want 1", n)
+
+	// The prompt is open and the ability is NOT on the stack yet: the
+	// mode is chosen as it is put there, so there is nothing to
+	// respond to until the controller has answered.
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the alliance trigger asks for its mode")
 	}
-	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	if triggerOnStack(g, greeters) != nil {
+		t.Error("CR 603.3c: the mode is chosen as the ability is put on the stack, not after")
+	}
+	if len(c.ModeOptionIndex) != 3 || c.ModeMin != 1 || c.ModeMax != 1 {
+		t.Fatalf("three bullets, choose one: %+v", c)
+	}
+	if c.ModeOptionLabel[1] != "Create a tapped Treasure token." {
+		t.Errorf("the bullets ride the prompt verbatim: %q", c.ModeOptionLabel[1])
+	}
+
+	// Take the Treasure first — the old shape could only ever give
+	// the counter to the first creature of the turn.
+	if err := g.ResolveModePick(c.ID, me.ID, []int{1}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	if triggerOnStack(g, greeters) == nil {
+		t.Fatal("answering puts the ability on the stack")
+	}
 	passPriorityAroundTable(t, g)
 	treasure := findBattlefieldByName(g, "Treasure")
 	if treasure == uuid.Nil || !b13Tapped(t, g, treasure) {
-		t.Fatal("the second creature: a tapped Treasure")
+		t.Fatal("the chosen mode resolved: a tapped Treasure")
 	}
+	if counterCount(g, greeters, "+1/+1") != 0 || me.Life != life {
+		t.Error("only the chosen bullet happens (CR 700.2c)")
+	}
+
+	// A second creature, and the controller takes a different bullet.
 	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
-	if me.Life != life+2 {
-		t.Errorf("the third creature: life %d → %d, want +2", life, me.Life)
+	c = modePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the second trigger asks again")
 	}
-	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	if err := g.ResolveModePick(c.ID, me.ID, []int{0}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
 	passPriorityAroundTable(t, g)
-	if counterCount(g, greeters, "+1/+1") != 1 || countBattlefieldNamed(g, me.ID, "Treasure") != 1 || me.Life != life+2 {
-		t.Error("the fourth creature: every mode is used up this turn")
+	if n := counterCount(g, greeters, "+1/+1"); n != 1 {
+		t.Errorf("the +1/+1 bullet: %d counters, want 1", n)
 	}
-	// A new turn resets the tally.
-	b12ToMyNextUpkeep(t, g)
-	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
-	passPriorityAroundTable(t, g)
-	if n := counterCount(g, greeters, "+1/+1"); n != 2 {
-		t.Errorf("next turn, the first mode again: %d counters, want 2", n)
+}
+
+// modePickChoiceFor is the open mode_pick prompt for a chooser, or
+// nil.
+func modePickChoiceFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c != nil && c.Kind == game.PendingChoiceModePick && c.Chooser == chooser {
+			return c
+		}
 	}
+	return nil
 }
 
 func TestB15SimulacrumSynthesizerScriesAndBuildsConstructsItSizes(t *testing.T) {

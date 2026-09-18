@@ -23,6 +23,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution; with no other permanent to receive them, the trigger
 // is dropped (CR 603.3d).
 //
+// The activated ability's two target slots are two CLAUSES (#764):
+// "target permanent you control" and "a SECOND target permanent you
+// control", the second marked Distinct, so the engine refuses naming
+// one permanent twice at announce (CR 601.2c) instead of resolving to
+// a no-op, and re-checks each slot against its own clause at
+// resolution (CR 608.2b).
+//
 // Sandbox simplifications, declared, both weaker than printed:
 //
 //   - The activated ability moves ALL the counters from the first
@@ -64,16 +71,20 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label:   "{4}{W}: Move any number of counters from target permanent you control onto a second target permanent you control.",
-			Cost:    ManaCost("{4}{W}"),
-			Targets: TargetPermanent("target permanent you control, then a second target permanent you control", YouControl()).WithCount(2, 2),
+			Label: "{4}{W}: Move any number of counters from target permanent you control onto a second target permanent you control.",
+			Cost:  ManaCost("{4}{W}"),
+			Targets: Clauses(
+				TargetPermanent("target permanent you control", YouControl()),
+				Distinct(TargetPermanent("a second target permanent you control", YouControl())),
+			),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				if len(item.Targets) < 2 {
+				from, ok := ctx.ClauseTarget(0)
+				if !ok {
 					return nil
 				}
-				from, to := item.Targets[0], item.Targets[1]
-				if !ctx.IsTargetLegal(from) || !ctx.IsTargetLegal(to) {
+				to, ok := ctx.ClauseTarget(1)
+				if !ok {
 					return nil
 				}
 				return b14MoveAllCounters(ctx, from.ID, to.ID)
