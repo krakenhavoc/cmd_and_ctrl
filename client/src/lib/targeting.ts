@@ -72,6 +72,13 @@ export interface CastChoices {
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // CR 107.4c/f (#916): how many of the cost's Phyrexian symbols are
+  // being paid with 2 life each instead of mana. Collected after the
+  // X picker — an {X} cost has to be sized before the rest of it can
+  // be priced — and bounded by `phyrexian_symbols` and the caster's
+  // life total (CR 119.4). Undefined and 0 are the same thing to the
+  // server: pay every symbol with its coloured half.
+  phyrexianLife?: number;
   // ADR 0034: which printed face of a modal DFC is being cast or
   // played. Undefined and 0 are both "the front face", which is
   // every single-faced card. The face is chosen FIRST — before the
@@ -116,6 +123,10 @@ export function applyCastChoices(
   if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
     params.alt_cost_ids = choices.altCostIDs;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // #916: omitted at 0, which is the server default and what every
+  // client that predates the stepper sends.
+  if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
+    params.phyrexian_life = choices.phyrexianLife;
   // Face 0 is omitted rather than sent explicitly: it is the server
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
@@ -163,6 +174,11 @@ export interface TargetingState {
     crewIDs: string[];
     xValue?: number;
     counter?: CounterPayment;
+    // #916, CR 107.4f: the Phyrexian symbols this activation pays
+    // with 2 life each. Announced with the rest of the cost, before
+    // the targets, and it rides the one activate_ability the confirm
+    // sends as `phyrexian_life`.
+    phyrexianLife?: number;
   };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
@@ -591,6 +607,7 @@ export function beginForAbility(
   xValue?: number,
   counter?: CounterPayment,
   modes?: number[],
+  phyrexianLife?: number,
 ): void {
   // #764: a modal activated ability announces its modes WITH its
   // targets (CR 602.2b), so the walk is built out of the chosen
@@ -616,7 +633,7 @@ export function beginForAbility(
       // CR 602.2b: X was announced before the targets were chosen and
       // cannot change now — it rides through to the one
       // activate_ability the confirm sends.
-      ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter },
+      ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife },
       modes,
     }),
   );

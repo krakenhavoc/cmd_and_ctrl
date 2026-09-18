@@ -96,6 +96,12 @@
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
+  import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
+  import {
+    phyrexianSymbolsForAbility,
+    phyrexianSymbolsForCast,
+    shouldAskPhyrexianLife,
+  } from "../../phyrexianLife";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -199,6 +205,11 @@
   const suggestedAbilityX = $derived.by(() =>
     xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX) : 0,
   );
+
+  // #916: the viewer's life total, which is CR 119.4's cap on a
+  // Phyrexian life payment. Read off the live snapshot so a life loss
+  // while a prompt is open shrinks its ceiling.
+  const viewerLife = $derived(view.seats.find((s) => s.id === viewerID)?.life ?? 0);
 
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
@@ -427,18 +438,53 @@
     afterXCost(card, choices);
   }
 
-  // afterXCost is the seam between the X prompt and targeting, and
-  // the only reason the tap picker isn't in afterCastCosts with the
-  // others: a waterbend {X} cost can't size its picker until X is
-  // known, so this step has to come after the X prompt rather than
-  // before it.
+  // afterXCost is the seam between the X prompt and the rest of the
+  // announcement, and the reason the tap picker isn't in
+  // afterCastCosts with the others: a waterbend {X} cost can't size
+  // its picker until X is known, so this step has to come after the X
+  // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // CR 107.4c/f (#916): "{U/P} can be paid with either {U} or 2
+    // life", and CR 601.2b makes which one part of announcing the
+    // spell. Asked after X for the same reason the tap picker is:
+    // the stepper's live readout prices the mana half, and an {X}
+    // cost has no size until X is announced. Skipped when the cost
+    // prints no Phyrexian symbol, and when CR 119.4 leaves the
+    // caster unable to buy even one — a prompt whose only answer is
+    // 0 is a click, not a choice.
+    const symbols = phyrexianSymbolsForCast(card, choices.altCost);
+    if (shouldAskPhyrexianLife(symbols, viewerLife)) {
+      phyrexianPrompt = { card, symbols, choices };
+      return;
+    }
+    afterPhyrexianLife(card, choices);
+  }
+
+  function afterPhyrexianLife(card: CardView, choices: CastChoices): void {
     if (tapCostOf(card)) {
       tapPromptChoices = choices;
       tapPromptCard = card;
       return;
     }
     continueCast(card, choices);
+  }
+
+  // #916: the cast's Phyrexian stepper. One reactive object rather
+  // than the card / choices pair the older stages use, because the
+  // modal reads the stashed choices (the announced X, the symbol
+  // count the chosen cost prints) as well as the card — the same
+  // shape xAbilityPrompt has, for the same reason.
+  let phyrexianPrompt = $state<{
+    card: CardView;
+    symbols: number;
+    choices: CastChoices;
+  } | null>(null);
+
+  function confirmPhyrexianLife(n: number): void {
+    const p = phyrexianPrompt;
+    phyrexianPrompt = null;
+    if (!p) return;
+    afterPhyrexianLife(p.card, n > 0 ? { ...p.choices, phyrexianLife: n } : p.choices);
   }
 
   // ADR 0034: a modal double-faced card asks which HALF first —
@@ -619,6 +665,9 @@
         targets,
       };
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
+      // #916, CR 107.4f: announced with the rest of the cost, before
+      // these targets, and sent in the same message.
+      if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
       sendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
@@ -879,6 +928,7 @@
     xValue?: number,
     counter?: CounterPayment,
     modes?: number[],
+    phyrexianLife?: number,
   ): void {
     // CR 602.2b: X is announced with the other choices and before
     // any cost is paid, so the picker opens after the cost picks
@@ -888,16 +938,36 @@
       xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
       return;
     }
+    // CR 107.4f / CR 602.2b (#917, #916): the ability's Phyrexian
+    // symbols. Same question the cast chain asks, in the same place —
+    // after X, before the modes and the targets — and the same
+    // stepper asks it, told to price the ABILITY's cost.
+    if (
+      phyrexianLife === undefined &&
+      shouldAskPhyrexianLife(phyrexianSymbolsForAbility(ability), viewerLife)
+    ) {
+      phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
+      return;
+    }
     // #764, CR 602.2b: a modal activated ability chooses its modes
     // with its targets, in the one announcement — so the mode picker
     // sits exactly where a modal cast's does, between the costs and
     // the targeting walk.
     if (ability.modes && modes === undefined) {
-      abilityModePrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter };
+      abilityModePrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife };
       return;
     }
     if (ability.legal_targets || ability.clauses?.length || (modes && modes.length > 0)) {
-      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue, counter, modes);
+      beginTargetingForAbility(
+        card,
+        ability,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        modes,
+        phyrexianLife,
+      );
       const t = $targeting;
       if (t && t.steps.length > 0 && (t.legal || t.steps.length > 1)) return;
       // A modal ability whose chosen bullets take no target falls
@@ -912,8 +982,38 @@
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
+    // #916: omitted at 0, which is the server default.
+    if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
     sendAction("activate_ability", params, viewerID ?? undefined);
+  }
+
+  // #916: the activation's Phyrexian stepper — the same modal the
+  // cast chain opens, priced against the ability's own mana cost.
+  let phyrexianAbilityPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+    modes?: number[];
+  } | null>(null);
+
+  function confirmAbilityPhyrexianLife(n: number): void {
+    const p = phyrexianAbilityPrompt;
+    phyrexianAbilityPrompt = null;
+    if (!p) return;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      p.modes,
+      n,
+    );
   }
 
   // #764: the mode picker for a modal ACTIVATED ability. It reuses
@@ -927,6 +1027,9 @@
     crewIDs: string[];
     xValue?: number;
     counter?: CounterPayment;
+    // #916: already answered by the time the modes are picked, so it
+    // rides through rather than being asked for again.
+    phyrexianLife?: number;
   } | null>(null);
   const abilityModeCard = $derived(
     abilityModePrompt
@@ -937,7 +1040,16 @@
     const p = abilityModePrompt;
     abilityModePrompt = null;
     if (!p) return;
-    continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, p.xValue, p.counter, modes);
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      modes,
+      p.phyrexianLife,
+    );
   }
 
   // S20 sub-PR 2: a pick_target pending choice addressed to the
@@ -1226,6 +1338,32 @@
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
+  />
+  <!-- CR 107.4c/f (#916): how many Phyrexian symbols the CAST pays
+       with 2 life each. Between the X picker and the convoke picker,
+       because it is announced with them and priced after X. -->
+  <PhyrexianCostModal
+    gameID={view.id}
+    card={phyrexianPrompt?.card ?? null}
+    symbols={phyrexianPrompt?.symbols ?? 0}
+    life={viewerLife}
+    xValue={phyrexianPrompt?.choices.xValue}
+    onConfirm={confirmPhyrexianLife}
+    onCancel={() => (phyrexianPrompt = null)}
+  />
+  <!-- The same stepper for an activated ability's mana component
+       (CR 602.2b), priced against the ABILITY's cost. -->
+  <PhyrexianCostModal
+    gameID={view.id}
+    card={phyrexianAbilityPrompt?.card ?? null}
+    symbols={phyrexianAbilityPrompt ? (phyrexianAbilityPrompt.ability.phyrexian_symbols ?? 0) : 0}
+    life={viewerLife}
+    xValue={phyrexianAbilityPrompt?.xValue}
+    abilityIndex={phyrexianAbilityPrompt?.ability.index}
+    costLabel={phyrexianAbilityPrompt?.ability.mana_cost}
+    confirmVerb="Activate"
+    onConfirm={confirmAbilityPhyrexianLife}
+    onCancel={() => (phyrexianAbilityPrompt = null)}
   />
   <TapCostModal
     card={tapPromptCard}

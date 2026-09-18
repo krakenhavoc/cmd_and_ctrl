@@ -620,3 +620,44 @@ for the same reason the cast's is not.
 - **Cards.** Birthing Pod's caveat loses its activation half and keeps
   only the board-button one. Solphim's names the one reason left —
   `AbilityCost` still has no discard component — rather than two.
+
+### #916 — a board control to pay it
+
+- **The offer comes from the server, as a count.**
+  `phyrexian_symbols` rides `CardView` (the printed cast cost),
+  `alternative_costs[i]` (an offer replaces the cost, so it replaces
+  the ceiling) and `activated_abilities[i]`. Shipped rather than
+  re-derived for the reason `demands_x` is: a client that parsed the
+  mana string to find out would be a second parser of a syntax whose
+  last extension (#787) is the bug this whole line of work started
+  from. Stamped with the other cast clauses on the viewer's own
+  castable cards and stripped with them, so nobody but the announcer
+  is told the ceiling.
+- **One stepper, two prompt chains.** `PhyrexianCostModal` offers
+  "pay N with life", default 0, bounded by the symbol count and by
+  CR 119.4 — the SAME bound the engine enforces (`2N <= life`, so
+  paying down to exactly 0 is offered, because the engine accepts it).
+  A narrower client rule would hide a legal announcement and a wider
+  one would collect a value the announce gate rejects, so there is one
+  rule and `maxPhyrexianLife` is it. The prompt does not open at all
+  when the cost prints no symbol, or when CR 119.4 leaves 0 as the
+  only answer: a modal with one answer is a click, not a choice.
+- **Where it sits.** After the X picker in both chains, and before the
+  convoke picker (cast) and the mode picker (activation). X first
+  because an `{X}` cost has no size until X is announced and the
+  stepper's readout prices what is left; everything that follows is a
+  choice the cost's size does not change.
+- **The preview shows the mana half.** `GET /auto-tap-preview` takes
+  `?phyrexian=<n>` and strikes through `game.PhyrexianLifePlan` before
+  planning — the same strike the payment makes, reading the same pool
+  — so the readout answers "what does this still cost me in mana" as
+  the player steps the claim up. It clamps an over-claim rather than
+  400ing: refusing a malformed announce is the announce gate's job,
+  not a read-only preview's.
+- **Cards.** Birthing Pod, Gitaxian Probe, Gut Shot, Mental Misstep
+  and Phyrexian Metamorph lose their "the board has no button"
+  caveats and are `CompletenessFull` — five cards out of `caveats` and
+  into `full`, and the census is regenerated.
+- **Still open.** The bot's cast enumerator still advertises no life
+  payment for a CAST (above), and Solphim's ability still waits on an
+  activation-cost discard component.

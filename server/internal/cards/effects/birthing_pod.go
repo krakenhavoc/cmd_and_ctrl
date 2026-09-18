@@ -24,14 +24,15 @@ package effects
 // is the point: a Phyrexian symbol is the cost engine's business, not
 // a card's.
 //
-// Declared simplification: the board has no button for the CAST
-// cost's {G/P} yet, so clicking this from hand still pays the {G}.
+// Both halves are reachable from the board since #916: the cast
+// prompt and the activation menu both offer "pay N with life", so a
+// player with no green casts this for {3} and two life and activates
+// it for {1} and two more.
 func init() {
 	Register(Spec{
 		OracleID:     "f8b9dd54-0837-47f4-ad14-7a0322d46d5f",
 		Name:         "Birthing Pod",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The board has no button for the {G/P} in the casting cost yet — casting it from hand pays {G}, not 2 life. The activated ability's {G/P} can be paid either way."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{G/P}, {T}, Sacrifice a creature: Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put it onto the battlefield, then shuffle.",
 			Cost:         Plus(ManaCost("{1}{G/P}"), TapCost(), SacrificeACreature()),

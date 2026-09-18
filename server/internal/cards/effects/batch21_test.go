@@ -296,8 +296,10 @@ func TestB21LightningStrikeAndGutShotBurnAnyTarget(t *testing.T) {
 	if me.Life != 39 {
 		t.Errorf("Gut Shot to yourself: life %d, want 39", me.Life)
 	}
-	if spec, _ := Lookup(b21GutShotOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the Phyrexian mana gap must be declared")
+	// #916 gave the cast prompt the stepper that pays {R/P} with 2
+	// life, which was the only thing this card declared.
+	if spec, _ := Lookup(b21GutShotOracle); spec.Completeness != CompletenessFull {
+		t.Error("the Phyrexian mana gap is closed; Gut Shot is complete")
 	}
 }
 
