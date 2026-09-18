@@ -49,9 +49,10 @@ package game
 // pass can make another creature lethally damaged on the next pass;
 // runStateChecksLocked waits for that before rotating.
 //
-// Must run BEFORE the cursor moves to the next turn: the turn-scoped
-// statics and impulse grants compare their stamp against the current
-// Turn.Number.
+// Must run BEFORE the cursor moves to the next turn: the impulse
+// grants compare their stamp against the current Turn.Number, and an
+// "until end of turn" continuous effect ends at the cleanup step of
+// the turn it was made in, not at the start of the next one.
 //
 // Caller must hold g.mu.
 func (g *Game) sweepTurnEndLocked() {
@@ -79,9 +80,16 @@ func (g *Game) sweepTurnEndLocked() {
 	// and by the same rule — CR 514.2 ends them during the cleanup
 	// step, before the turn-based discard. This is also what makes a
 	// grant created during the END step end this turn rather than
-	// next: the sweep keys on the turn number stamped at registration,
-	// not on "the next cleanup after the one I saw".
-	g.ClearExpiredTurnScopedStaticsLocked()
+	// next: the end step is not the end of the turn, so the cleanup
+	// sweep such a grant meets is this turn's own.
+	//
+	// S38 (ADR 0063): the same sweep now walks every CR 611.2
+	// duration, and the argument is what tells `durationExpiredLocked`
+	// that the current moment is a cleanup step. A "for as long as ~"
+	// or "until your next turn" effect passing through here is not
+	// ended by this turn being over — one function decides, and for
+	// those two it says no.
+	g.ClearEndOfTurnScopedStaticsLocked()
 	// S21 sub-PR 6: impulse-exile permissions ("you may play it this
 	// turn") lapse here for the same reason — the turn they were
 	// granted for is over. The exiled card stays exiled; it just stops
@@ -116,6 +124,12 @@ func (g *Game) beginNextTurnLocked() {
 	from.Step = StepCleanup
 	next := from.advance(n)
 	for i := 0; i < n && next.ActiveSeat >= 0 && next.ActiveSeat < n && g.Seats[next.ActiveSeat].Eliminated; i++ {
+		// CR 800.4m: an effect that lasts "until that player's next
+		// turn" lasts until the turn that WOULD have begun. Counting
+		// the skipped seat's never-taken turn here is what ends such
+		// an effect at the right moment instead of leaving it live
+		// for the rest of the game (ADR 0063 Decision 3).
+		g.noteTurnBegunLocked(next.ActiveSeat)
 		// Wrap again from this seat's (never-taken) cleanup.
 		skipped := next
 		skipped.Step = StepCleanup
@@ -123,7 +137,25 @@ func (g *Game) beginNextTurnLocked() {
 	}
 	g.Turn = next
 	g.DiscardPending = nil
+	g.noteTurnBegunLocked(next.ActiveSeat)
 	g.onTurnBeganLocked()
+}
+
+// noteTurnBegunLocked bumps `Player.TurnsBegun` for the seat whose
+// turn is beginning (ADR 0059 Decision 1, implemented here for
+// ADR 0063 / #755).
+//
+// It is the counter "until your next turn" ends on, and the reason it
+// exists rather than arithmetic on `Turn.Number` is that Turn.Number
+// counts ROUNDS: all four seats in a Commander game share one number,
+// so "your next turn" cannot be expressed with it.
+//
+// Caller must hold g.mu.
+func (g *Game) noteTurnBegunLocked(seat int) {
+	if seat < 0 || seat >= len(g.Seats) || g.Seats[seat] == nil {
+		return
+	}
+	g.Seats[seat].TurnsBegun++
 }
 
 // onTurnBeganLocked clears the per-turn caches as a turn begins. It
@@ -155,6 +187,15 @@ func (g *Game) onTurnBeganLocked() {
 	// Cost is one recompute per turn, against a cache that is already
 	// invalidated by every zone move and every counter placed.
 	g.layerVersion.Add(1)
+	// S38 (ADR 0063 Decision 2): "until your next turn" ends as that
+	// player's turn BEGINS. This hook runs from beginNextTurnLocked
+	// after the cursor is stamped on the new seat's untap step and
+	// before the step entry hooks untap anything, which is exactly
+	// CR 500.1 + CR 502.1: the turn has begun, and the untapping
+	// happens inside it. Putting the sweep in the untap turn-based
+	// action instead would order it against "doesn't untap" effects
+	// for no reason (ADR 0058).
+	g.ClearExpiredScopedStaticsLocked()
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}

@@ -201,11 +201,10 @@ sweep site. A new duration kind is a new case in one `switch`.
 
 - **`UntilEndOfTurn`** — expires in the cleanup sweep of the turn it
   was stamped in, exactly as ADR 0035 §3 describes, and at the latest
-  when the next turn begins. The belt-and-braces second clause matters
-  for the early turn ends the rotation seam introduced (ADR 0059
-  Decision 6): a turn that ends because its active player left runs
-  `sweepTurnEndLocked` at whatever step it was on, and the turn-begin
-  sweep catches anything that outlived it.
+  when its creating player's next turn begins. The second clause is a
+  backstop, not the mechanism: `sweepTurnEndLocked` runs on every path
+  a turn can end by, early ones included (ADR 0059 Decision 6), so the
+  cleanup sweep is what actually ends it.
 - **`UntilYourNextTurn`** — expires when `Player.TurnsBegun` reaches
   the value stamped at registration (`TurnsBegun + 1`). See Decision 3.
 - **`ForAsLongAs`** — re-evaluated on every layer pass. Two conditions,

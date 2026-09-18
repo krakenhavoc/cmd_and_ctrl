@@ -117,6 +117,23 @@ type Player struct {
 	// history is a UX affordance, not hidden information.
 	LifeHistory []LifeChange
 
+	// TurnsBegun counts the turns this seat has begun — and the turns
+	// it WOULD have begun after leaving the game, because the
+	// rotation bumps it for every eliminated seat it steps over
+	// (CR 800.4k / CR 800.4m).
+	//
+	// It is the counter an "until your next turn" continuous effect
+	// ends on (ADR 0063 Decision 3, #755): `Turn.Number` counts
+	// ROUNDS, so all four seats in a Commander game share one number
+	// and "your next turn" cannot be expressed with it. Defined by
+	// ADR 0059 Decision 1, which reserves the rest of that decision
+	// (`Turn.Seq`, `Round`, extra turns) for #753.
+	//
+	// The starting seat's first turn is stamped by `Start`, because
+	// it is the one turn that does not come through the rotation
+	// seam.
+	TurnsBegun int
+
 	// Eliminated is set when the player concedes (S08) or, in the
 	// future, loses to a state-based action (S13+ rules graft). An
 	// eliminated player still occupies their seat for spectating; the

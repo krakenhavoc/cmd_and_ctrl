@@ -440,15 +440,16 @@ type Game struct {
 	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
 	TurnScopedReplacements []ReplacementEffect
 
-	// TurnScopedStatics is the per-turn CONTINUOUS-EFFECT slot —
-	// the layer-engine twin of TurnScopedReplacements. Entries are
-	// floating static abilities with a duration rather than a
-	// battlefield source: Giant Growth's +3/+3, Overrun's mass pump
-	// and trample grant, a loyalty ability's "+2/+2 and first strike
-	// until end of turn". Consulted by activeStaticAbilitiesLocked
-	// alongside the battlefield walk and swept at StepCleanup
-	// (CR 514.2). See turn_scoped_statics.go. Added in S32.
-	TurnScopedStatics []ScopedStatic
+	// ScopedStatics is the CONTINUOUS-EFFECT slot for effects whose
+	// lifetime is a duration rather than a battlefield source: Giant
+	// Growth's +3/+3, Overrun's mass pump and trample grant, Act of
+	// Treason's theft, Agent of Treachery's. Consulted by
+	// activeStaticAbilitiesLocked alongside the battlefield walk and
+	// swept by the one duration sweep (CR 611.2). See
+	// scoped_statics.go and duration.go. Added in S32 as
+	// TurnScopedStatics; renamed in S38 when it stopped being
+	// turn-scoped (ADR 0063).
+	ScopedStatics []ScopedStatic
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -715,6 +716,9 @@ func (g *Game) start(key *[32]byte) error {
 	}
 	g.Turn = newStartingTurn()
 	g.StartingSeat = g.Turn.ActiveSeat
+	// The one turn that does not begin through the rotation seam
+	// still counts as a turn begun (ADR 0063 Decision 3).
+	g.noteTurnBegunLocked(g.StartingSeat)
 	g.State = StateActive
 	g.MulligansOpen = true
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do

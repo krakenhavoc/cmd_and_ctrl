@@ -249,8 +249,15 @@ type playerSnapshot struct {
 	// player-ID keys, which read as damage from commanders that do
 	// not exist: harmless (they render nowhere and can never reach
 	// 21 again) but not migrated.
-	CommanderDamage    map[uuid.UUID]int `json:"commanderDamage,omitempty"`
-	LifeHistory        []LifeChange      `json:"lifeHistory,omitempty"`
+	CommanderDamage map[uuid.UUID]int `json:"commanderDamage,omitempty"`
+	LifeHistory     []LifeChange      `json:"lifeHistory,omitempty"`
+	// TurnsBegun is the seat-turn counter "until your next turn"
+	// durations end on (ADR 0063). A file written before S38 restores
+	// with 0 for every seat, which is a relative counter reading as
+	// "nobody has had a turn yet" — an effect stamped after the
+	// restore still ends on that player's next turn, because the
+	// stamp is taken from the restored value.
+	TurnsBegun         int               `json:"turnsBegun,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -542,9 +549,12 @@ type ContinuationCensus struct {
 	// ChoiceResumeFrames is paused prompts holding a continuation.
 	ChoiceResumeFrames int `json:"choiceResumeFrames,omitempty"`
 
-	// TurnScopedStatics is floating until-end-of-turn continuous
-	// effects (Giant Growth's +3/+3).
-	TurnScopedStatics int `json:"turnScopedStatics,omitempty"`
+	// ScopedStatics is floating continuous effects with a duration
+	// (Giant Growth's +3/+3, Act of Treason's theft). The wire key
+	// stays `turnScopedStatics`, the name it had before the registry
+	// grew the other CR 611.2 durations, so a census written by an
+	// older binary still decodes.
+	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
 	// TurnScopedReplacements is floating until-end-of-turn
 	// replacement effects (Fog).
@@ -575,7 +585,7 @@ func (c ContinuationCensus) Empty() bool {
 		c.StackTargetSpecs == 0 &&
 		c.DelayedTriggerEffects == 0 &&
 		c.ChoiceResumeFrames == 0 &&
-		c.TurnScopedStatics == 0 &&
+		c.ScopedStatics == 0 &&
 		c.TurnScopedReplacements == 0 &&
 		c.IntrinsicAbilityCards == 0 &&
 		!c.UnpersistableRNG
@@ -584,7 +594,7 @@ func (c ContinuationCensus) Empty() bool {
 // Total is the number of individual continuations counted.
 func (c ContinuationCensus) Total() int {
 	n := c.StackEffects + c.StackTargetSpecs + c.DelayedTriggerEffects +
-		c.ChoiceResumeFrames + c.TurnScopedStatics +
+		c.ChoiceResumeFrames + c.ScopedStatics +
 		c.TurnScopedReplacements + c.IntrinsicAbilityCards
 	if c.UnpersistableRNG {
 		n++
@@ -748,9 +758,10 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
 	// worse than refusing the restore point, which is what this does.
-	for _, st := range g.TurnScopedStatics {
-		cen.TurnScopedStatics++
-		cen.note("turn-scoped static: %s", labelOr(st.Label, st.Source.Name))
+	for _, st := range g.ScopedStatics {
+		cen.ScopedStatics++
+		cen.note("scoped static (%s): %s", st.Duration.Kind,
+			labelOr(st.Label, st.Source.Name))
 	}
 	for _, re := range g.TurnScopedReplacements {
 		cen.TurnScopedReplacements++
@@ -879,6 +890,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Graveyard:          snapshotZone(p.Graveyard, cen),
 		Command:            snapshotZone(p.Command, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
+		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -1375,6 +1387,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Hand:               restoreZone(p.Hand, ZoneHand),
 		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
 		Command:            restoreZone(p.Command, ZoneCommand),
+		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,

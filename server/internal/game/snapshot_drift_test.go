@@ -144,7 +144,7 @@ var gameFields = plan(
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
-	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
+	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
@@ -253,6 +253,11 @@ var playerFields = plan(
 	"Command", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
+	// The seat-turn counter "until your next turn" durations end on
+	// (ADR 0063). Carried: a restore that dropped it would restart
+	// every such effect's clock, and a departed seat's skipped turns
+	// are not derivable from the board.
+	"TurnsBegun", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulligansTaken", carried, "",
@@ -274,6 +279,21 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
+)
+
+// scopedStaticFields classifies game.ScopedStatic — the floating
+// continuous-effect registry's entry type. It was not classified
+// before S38, so a field added to it used to vanish across a restore
+// with nothing complaining. The whole entry is dropped and censused;
+// `Duration` is the half of it that is plain data and could be
+// carried the day #515 makes the ability re-derivable, which is why
+// it is classified `carried` rather than sharing the closure's fate.
+var scopedStaticFields = plan(
+	"Ability", dropped, "two closures; counted by ContinuationCensus.ScopedStatics",
+	"Source", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Timestamp", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Duration", carried, "plain data (duration.go); carried by Clone and ready for #515",
+	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
 var zoneFields = plan(
@@ -425,6 +445,7 @@ func TestSnapshotCoversEveryDomainField(t *testing.T) {
 		{StackItem{}, stackItemFields},
 		{DelayedTrigger{}, delayedTriggerFields},
 		{PendingChoice{}, pendingChoiceFields},
+		{ScopedStatic{}, scopedStaticFields},
 	}
 
 	for _, tc := range cases {
@@ -481,6 +502,7 @@ func TestDroppedFieldsAreAllCensused(t *testing.T) {
 		"StackItem":      stackItemFields,
 		"DelayedTrigger": delayedTriggerFields,
 		"PendingChoice":  pendingChoiceFields,
+		"ScopedStatic":   scopedStaticFields,
 	}
 	censusFields := map[string]bool{}
 	ct := reflect.TypeOf(ContinuationCensus{})

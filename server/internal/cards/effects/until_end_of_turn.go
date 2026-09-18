@@ -8,14 +8,20 @@ import (
 
 // until_end_of_turn.go — the card-facing primitives for S32's
 // turn-scoped continuous effects (CR 611.2, CR 514.2). The registry
-// they install into lives in server/internal/game/
-// turn_scoped_statics.go; ADR 0035 has the design.
+// they install into lives in server/internal/game/scoped_statics.go;
+// ADR 0035 has the design, and ADR 0063 gave the registry the other
+// three CR 611.2 durations.
 //
 // Three primitives, one per shape a catalog card actually wants:
 //
 //	BoostUntilEOT         "gets +X/+Y until end of turn"     layer 7c
 //	GrantKeywordUntilEOT  "gains <keyword> until end of turn" layer 6
 //	StaticUntilEOT        anything else, raw StaticAbility
+//
+// For any duration OTHER than until end of turn — "until your next
+// turn", "for as long as ~ remains on the battlefield", no stated
+// duration — reach for `StaticForDuration` in control.go, which is
+// the same escape hatch with the duration spelled out.
 //
 // Each takes EITHER a pinned `Target` instance ID (Giant Growth,
 // a loyalty ability's "target creature") OR a `Match` predicate
@@ -128,7 +134,7 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 		return nil
 	}
 	power, toughness := b.Power, b.Toughness
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: set.appliesTo(),
@@ -136,7 +142,8 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 			c.Power += power
 			c.Toughness += toughness
 		},
-	}, ctx.Source(), eotLabel(b.Label, "pump until end of turn"))
+	}, ctx.Source(), eotLabel(b.Label, "pump until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
 
@@ -203,7 +210,7 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 		return nil
 	}
 	granted := append([]string(nil), k.Keywords...)
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		AppliesTo: set.appliesTo(),
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -213,7 +220,8 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 				}
 			}
 		},
-	}, ctx.Source(), eotLabel(k.Label, "keyword grant until end of turn"))
+	}, ctx.Source(), eotLabel(k.Label, "keyword grant until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
 
@@ -236,12 +244,11 @@ type StaticUntilEOT struct {
 }
 
 func (s StaticUntilEOT) Apply(ctx *Context) error {
-	if s.Ability.AppliesTo == nil || s.Ability.Apply == nil {
-		return nil
-	}
-	ctx.Game.RegisterTurnScopedStaticForEffect(s.Ability, ctx.Source(),
-		eotLabel(s.Label, "static until end of turn"))
-	return nil
+	return StaticForDuration{
+		Ability:  s.Ability,
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    eotLabel(s.Label, "static until end of turn"),
+	}.Apply(ctx)
 }
 
 // eotHasAbility reports whether the keyword is already present.

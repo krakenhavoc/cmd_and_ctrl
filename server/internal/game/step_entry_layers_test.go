@@ -20,12 +20,12 @@ import (
 func silenceUntilEndOfTurn(t *testing.T, g *Game, id uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+		g.RegisterScopedStaticForEffect(StaticAbility{
 			Layer:            Layer6Ability,
 			RemovesAbilities: true,
 			AppliesTo:        scopedPinnedTo(id),
 			Apply:            func(*Characteristic, *Card, *Game, *Card) {},
-		}, uuid.New(), "test — loses all abilities until end of turn")
+		}, uuid.New(), "test — loses all abilities until end of turn", g.UntilEndOfTurnDuration())
 	})
 	if key := CatalogAbilityKey(layeredBattlefieldCard(t, g, id)); key != "" {
 		t.Fatalf("setup: the permanent is not silenced (key %q)", key)
@@ -93,7 +93,7 @@ func TestUntapStepReadsLayersRefreshedByTheCleanupSweep(t *testing.T) {
 	if g.Turn.ActiveSeat != 1 {
 		t.Fatalf("seat %d is active, want 1", g.Turn.ActiveSeat)
 	}
-	if len(g.TurnScopedStatics) != 0 {
+	if len(g.ScopedStatics) != 0 {
 		t.Fatal("the ability loss did not end at cleanup")
 	}
 	if c, _ := battlefieldCardByID(g, rock); c.Tapped {
@@ -180,7 +180,7 @@ func TestSkipStepWindowReadsLayersRefreshedByTheCleanupSweep(t *testing.T) {
 	if g.Turn.ActiveSeat != 1 {
 		t.Fatalf("seat %d is active, want 1", g.Turn.ActiveSeat)
 	}
-	if len(g.TurnScopedStatics) != 0 {
+	if len(g.ScopedStatics) != 0 {
 		t.Fatal("the ability loss did not end at cleanup")
 	}
 	if c, _ := battlefieldCardByID(g, rock); !c.Tapped {

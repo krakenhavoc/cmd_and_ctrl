@@ -288,17 +288,17 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
 		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
 	}
-	// S32 turn-scoped statics — the layer-engine twin of the slice
+	// S32/S38 scoped statics — the layer-engine twin of the slice
 	// above, and the same reasoning: a ScopedStatic is written once
 	// at registration and never mutated (see the immutability
 	// contract on the type), so a fresh backing array is enough.
 	// What must not be shared is the array itself — the cleanup-step
-	// sweep replaces the slice rather than compacting in place
+	// sweeps replace the slice rather than compacting in place
 	// precisely so an undo snapshot taken mid-turn still holds the
 	// grants that were live when it was taken.
-	if len(g.TurnScopedStatics) > 0 {
-		out.TurnScopedStatics = make([]ScopedStatic, len(g.TurnScopedStatics))
-		copy(out.TurnScopedStatics, g.TurnScopedStatics)
+	if len(g.ScopedStatics) > 0 {
+		out.ScopedStatics = make([]ScopedStatic, len(g.ScopedStatics))
+		copy(out.ScopedStatics, g.ScopedStatics)
 	}
 	// CR 603.10 LKI snapshots (S19). Values are Characteristic copies
 	// that are never mutated after being stored, so a per-entry value
@@ -429,6 +429,7 @@ func clonePlayer(p *Player) *Player {
 		Life:              p.Life,
 		Poison:            p.Poison,
 		Energy:            p.Energy,
+		TurnsBegun:        p.TurnsBegun,
 		Eliminated:        p.Eliminated,
 		HandKept:          p.HandKept,
 		MulligansTaken:    p.MulligansTaken,
@@ -713,7 +714,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
-	g.TurnScopedStatics = src.TurnScopedStatics
+	g.ScopedStatics = src.ScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity
 	// #808: the paused events' once-per-event marks rewind with the

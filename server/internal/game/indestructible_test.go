@@ -212,7 +212,7 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 	id := pushVanillaGolem(g, owner, "Cardboard Golem")
 
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+		g.RegisterScopedStaticForEffect(StaticAbility{
 			Layer: Layer6Ability,
 			AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
 				return target.InstanceID == id
@@ -220,7 +220,7 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
 				c.Abilities = append(c.Abilities, "indestructible")
 			},
-		}, uuid.New(), "test — indestructible until end of turn")
+		}, uuid.New(), "test — indestructible until end of turn", g.UntilEndOfTurnDuration())
 
 		// No explicit recompute here on purpose: the destroy path
 		// owes us one.
@@ -236,7 +236,7 @@ func TestTurnScopedIndestructibleGrantProtectsUntilItExpires(t *testing.T) {
 	// cardboard again.
 	g.WithWriteLock(func() {
 		g.Turn.Number++
-		g.ClearExpiredTurnScopedStaticsLocked()
+		g.ClearEndOfTurnScopedStaticsLocked()
 		if err := g.DestroyPermanentForEffect(id); err != nil {
 			t.Fatalf("DestroyPermanentForEffect after expiry: %v", err)
 		}
@@ -330,7 +330,7 @@ func TestMassDestroySeesAGrantFromTheSameResolutionFrame(t *testing.T) {
 
 	var destroyed int
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+		g.RegisterScopedStaticForEffect(StaticAbility{
 			Layer: Layer6Ability,
 			AppliesTo: func(target *Card, _ *Game, _ *Card) bool {
 				return target.Controller == owner.ID
@@ -338,7 +338,7 @@ func TestMassDestroySeesAGrantFromTheSameResolutionFrame(t *testing.T) {
 			Apply: func(c *Characteristic, _ *Card, _ *Game, _ *Card) {
 				c.Abilities = append(c.Abilities, "indestructible")
 			},
-		}, uuid.New(), "test — Heroic Intervention")
+		}, uuid.New(), "test — Heroic Intervention", g.UntilEndOfTurnDuration())
 
 		destroyed = g.DestroyPermanentsForEffect([]uuid.UUID{first, second})
 	})

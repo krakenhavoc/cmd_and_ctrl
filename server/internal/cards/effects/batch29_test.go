@@ -219,9 +219,10 @@ func TestB29EmpyreanEaglePumpsOtherFliersYouControl(t *testing.T) {
 	}
 	// A creature that GAINS flying from a layer-6 grant is pumped too.
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedStaticForEffect(b16GrantKeywords(func(target *game.Card, _ *game.Game, _ *game.Card) bool {
+		g.RegisterScopedStaticForEffect(b16GrantKeywords(func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 			return target.InstanceID == ground
-		}, "flying"), uuid.Nil, "test — the ground creature gains flying")
+		}, "flying"), uuid.Nil, "test — the ground creature gains flying",
+			g.UntilEndOfTurnDuration())
 	})
 	if got := effectivePower(t, g, ground); got != 3 {
 		t.Errorf("a creature granted flying: power %d, want 3", got)
