@@ -2901,6 +2901,22 @@ a zone that is not theirs, and protocol's `redactChoiceCards` shows
 them only what is public, so an unrevealed pool reaches them as an
 empty prompt.
 
+**`ChoosePlayer{Chooser, Among, Except, Question, Then}`**
+([choose_player.go](server/internal/cards/effects/choose_player.go))
+is "choose a player" / "choose an opponent", also on `option_pick` —
+one option per eligible seat, labelled with that seat's name.
+`Among` is `Players`, `Opponents` or `OpponentsOf(id)`; `Except` is
+how "choose a SECOND player" is spelled, fed from
+`ctx.ChosenPlayers()`. `Then` reads the answer with
+`ctx.ChosenPlayer()`, and it runs even when no question could be
+asked — an empty pool or a chooser who has left — in which case
+`ctx.ChosenPlayer()` is `uuid.Nil`, so **every branch checks before it
+acts**. A chosen player is NOT a target: it is named mid-resolution,
+nothing may respond to it, and nothing re-checks it against the board.
+"As this enters, choose a player" (CR 614.12, True-Name Nemesis) is a
+different shape again and is designed but not built — see [ADR
+0018](docs/decisions/0018-triggers-on-the-stack.md)'s #929 amendment.
+
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
 `StackItem.Effect`'s reason: an undo restores a clone and the branch

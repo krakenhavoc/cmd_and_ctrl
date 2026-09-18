@@ -307,7 +307,19 @@ the token). The decision, for whoever lands it:
   carry a controller.
 
 Shipping the field with no writer would have put a dead branch in
-the one reader this ADR exists to keep small. It lands with #929.
+the one reader this ADR exists to keep small.
+
+**Correction (2026-09-19, #929).** This section said "It lands with
+#929." It does not, and the split is worth stating precisely. #929
+shipped only the RESOLUTION-time prompt — `QueueChoosePlayerForEffect`
+on the existing `option_pick` kind, whose answer lives on
+`StackItem.Payload` for the duration of one resolution. True-Name
+Nemesis needs the other half: a choice made AS the permanent enters
+(CR 614.12) and stored on the permanent for the rest of its life,
+which is a different mechanism with its own field, its own snapshot
+classification and its own clearing rule. That half, the player
+quality in the grammar and the card are **#980**; everything this
+section specifies above still stands as its design.
 
 ### 8. Bots read the reader
 

@@ -331,6 +331,26 @@ func (c *Context) PayloadCards() []uuid.UUID {
 	return out
 }
 
+// ChosenPlayer is the player most recently named by a
+// ChoosePlayer on this item (#929, choose_player.go), or uuid.Nil
+// when the last question could not be asked and when none was asked
+// at all.
+//
+// A chosen player is NOT a target: it is picked while the effect
+// resolves, nothing may respond to it, and nothing re-checks it
+// against the board. A branch that acts on a seat which may since
+// have left checks for itself, exactly as Payload's readers do.
+func (c *Context) ChosenPlayer() uuid.UUID {
+	return game.ChosenPlayerOn(c.Item)
+}
+
+// ChosenPlayers is every player named by a ChoosePlayer on this item,
+// in the order the card asked. The read behind "choose a SECOND
+// player": pass it back as ChoosePlayer.Except.
+func (c *Context) ChosenPlayers() []uuid.UUID {
+	return game.ChosenPlayersOn(c.Item)
+}
+
 // PlayerByID is a read-through to the live game. Returns nil if
 // the player is not seated / has left.
 func (c *Context) PlayerByID(id uuid.UUID) *game.Player {

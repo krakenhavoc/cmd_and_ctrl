@@ -157,11 +157,11 @@ anything but the bot's own hand (the battlefield, a library, an
 opponent's hand) carries nothing on the wire that says what naming a
 card costs, so the bot takes the first answer offered.
 
-### What a bot answers when somebody else's card asks (#796 / #568)
+### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
-Two prompt shapes reach a bot seat from a spell or ability it does not
-control, and neither is a card-from-hand pick, so the section above
-does not price them.
+Three prompt shapes reach a bot seat from a spell or ability it does
+not control, and none of them is a card-from-hand pick, so the section
+above does not price them.
 
 **A free yes/no at resolution (`confirm`, #796).** `MayChoice` is the
 "you may [do X]. If you do, [Y]" a resolving effect asks — Eden's
@@ -186,6 +186,25 @@ actually do (CR 608.2), and the branch it puts first is one that never
 fails ("lose 3 life", which needs no permanent and no card in hand).
 A policy with nothing better to say takes it, which terminates.
 
+**A choose-a-player prompt (`option_pick` again, #929).** "Choose a
+player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
+is an option pick whose branches are SEATS, one option per eligible
+player, labelled with that player's name. Nothing is hidden and
+nothing costs life, so there is no price to read; what decides the
+answer is the ORDER, and the order is the policy: **the eligible seats
+are offered most life first**, ties by seat, so the always-legal first
+offer a policy takes with nothing better to say is the player with the
+highest life total. `Game.QueueChoosePlayerForEffect` does the
+ordering, which is why there is no second copy of this judgement in
+`internal/aiseat`.
+
+It is a legality-and-termination policy, not a strength one, and the
+weakness is worth naming: the best pick is frequently not the
+highest-life seat (Slithermuse wants the opponent with the fullest
+hand; Skullwinder wants the one with the worst graveyard). A card
+whose clause makes that gap matter should change the ordering the
+prompt is queued with, not teach a policy to special-case the card.
+
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the
 existing card-set enumeration offers the subsets — including the empty
@@ -195,7 +214,7 @@ size. A heuristic that takes the first offer splits and then takes
 pile one; that is a weak split rather than an illegal one, and it
 terminates, which is the bar this list exists to clear.
 
-The general rule behind all three: a prompt from somebody else's card
+The general rule behind all four: a prompt from somebody else's card
 carries nothing on the wire that says what an answer is WORTH beyond
 its declared cost, so a bot prices what it can see and takes the first
 offer otherwise — the same posture the paragraph above takes for a

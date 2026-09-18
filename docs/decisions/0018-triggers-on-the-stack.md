@@ -423,6 +423,71 @@ damage (2 + 3, not 2 + 2), Professional Face-Breaker's first-strike
 Treasure is already made when the cursor reaches the regular step, and
 `TestB492…` is flipped to "afflict, then damage". Cyberman Patrol's
 caveat — the last of #388 — is gone with them.
+**Amendment (2026-09-18, #929): choosing a PLAYER is the same kind
+again.**
+
+"Choose a player" / "choose an opponent" (Gluntch, the Bestower;
+Skullwinder; Slithermuse; the still-unwritten "an opponent of your
+choice gains control") is a closed list of things with exactly one
+answer, which is the question `option_pick` already asks. So it gets
+**no kind of its own**: `Game.QueueChoosePlayerForEffect`
+(`server/internal/game/choose_player.go`) queues a
+`PendingChoiceOptionPick` with one option per eligible seat, labelled
+with that seat's name, and every consumer — the choice gate, the
+enumerator, the wire projection, the client modal — answers it
+unchanged. The card-facing shape is
+`effects.ChoosePlayer{Chooser, Among, Except, Question, Then}`
+(`cards/effects/choose_player.go`), with `Among` one of `Players`,
+`Opponents` or `OpponentsOf(id)`.
+
+**It is not a target, and it is not an ETB choice.** A target is named
+at announce (CR 601.2c), is public from that moment, and is re-checked
+at resolution (CR 608.2b); a chosen player is named while the effect
+resolves and nothing may respond to it — which is why a Slithermuse
+trigger cannot be fizzled by the opponent it was aimed at. The CR
+614.12 form ("AS this enters, choose a player" — True-Name Nemesis) is
+a third thing again: a replacement-time choice stored on the permanent
+and read for the rest of its life, the shape `ChooseColorAsEnters`
+already has for colours (#742, `Card.ChosenColor`).
+
+**It is designed elsewhere and is not built here.** Protection has
+since shipped ([ADR 0072](0072-protection.md), #662), and its §7
+already specifies this field down to the detail — `Card.ChosenPlayer`
+on `Card.ChosenColor`'s pattern, classified `carried`, cleared on every
+zone change, written by an as-enters (CR 614.12) sibling of
+`QueueChoosePlayerForEffect`, with the protection grammar resolving
+"the chosen player" against it so no raw UUID ever reaches a display
+string. That work is **#980**, and True-Name Nemesis waits on it; this
+amendment deliberately does not restate the design, because two copies
+of it would drift. What #929 owes #980 is the resolution-time prompt,
+and that is what it ships.
+
+**The answer rides `StackItem.Payload`.** #636 already carries "what
+the effect that created this item had to tell it" as `[]TargetRef`; a
+chosen player is a `TargetPlayer` ref and goes there rather than on a
+second payload field. `Targets` was not an option: a `pick_target`
+answer replaces `Targets` wholesale, so a player parked there would be
+erased by the next re-target prompt. A clause that asks twice appends
+twice in ask order, which is what makes Gluntch's "a SECOND player"
+expressible — `ctx.ChosenPlayers()` is the exclusion list and
+`ctx.ChosenPlayer()` is the most recent answer. A question that could
+not be asked records a `TargetNone` marker rather than nothing, so a
+later clause reads "nobody was chosen" instead of the previous
+clause's player.
+
+**Eligibility and order.** A seat that has left the game is not a
+player (CR 800.4a) and is never offered. The remaining seats are
+offered most-life-first, ties by seat, and that ordering IS the bot
+policy: `legal.choiceMoves` marks an option pick's first branch
+always-legal, and `docs/bot.md`'s posture for a prompt from somebody
+else's card is "price what you can see and take the first offer
+otherwise". Reassigning a prompt whose chooser leaves AFTER it is
+queued is `reassignChoiceLocked` (`game/pending_choice.go`, the CR
+800.4g/h/i function that landed with the CR 800.4 remainder in #959),
+not this primitive's business. What this primitive owns is the other
+moment — a chooser who is already gone when the question would be
+asked — and there the prompt is simply not queued and the absence is
+recorded.
 
 ## Out of scope (explicit deferrals)
 
