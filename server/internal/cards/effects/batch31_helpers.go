@@ -105,7 +105,11 @@ func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 				}
 			}
 			c.Types = kept
-			c.Subtypes = nil
+			// SetSubtypes, not a bare assignment: dropping the
+			// creature subtypes drops "is every creature type" with
+			// them, so a Maskwood Nexus does not leave the god a
+			// Goblin while it is not a creature (CR 205.1b, #670).
+			c.SetSubtypes(nil)
 		},
 	}
 }

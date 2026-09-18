@@ -531,7 +531,10 @@ func TestShieldsOfVelisVelGrantsAllCreatureTypesUntilEOT(t *testing.T) {
 	if got := effectiveToughness(t, g, bear); got != 3 {
 		t.Errorf("Bear toughness = %d, want 3 (+0/+1)", got)
 	}
-	if !hasAbility(effectiveAbilities(t, g, bear), game.KeywordChangeling) {
+	// The layer-4 FACT, not the keyword: since #670 "is every
+	// creature type" lives on the Characteristic, and the keyword is
+	// only what a printed changeling carries.
+	if !layeredCard(t, g, bear).Effective().AllCreatureTypes {
 		t.Fatal("Bear did not gain all creature types")
 	}
 	var isElf bool
