@@ -1438,6 +1438,16 @@ or via an effect's primitive.
 
 ### 7. `enterBattlefieldLocked` shared helper
 
+*Partly delivered 2026-09-18 by
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+(#762): TOKEN creation is the entry site this section promised and
+never got. A created token now runs `enterPermanentLocked` — the same
+entry body the land play and the stack resolution run — so
+enters-tapped, enters-with-counters, CR 614.12 self-replacement and
+`fireETBHookLocked` all reach a token. Token creation itself also
+became its own replacement event (`RepEventCreateTokens`), which this
+section did not anticipate.*
+
 All battlefield-entry sites (`mutations.go:364`, `:780`, `:1828`,
 plus `SearchLibraryForEffect`'s battlefield branch) consolidate
 into one helper. Required so the `RepEventMove.EntersTapped` and
@@ -1486,7 +1496,12 @@ because it watches arbitrary other moves.
 ### 10. Library of Leng scope limited to cleanup-step discard
 
 **Withdrawn 2026-09-16: this section misstates both the card and the
-rules. Read [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules) instead.**
+rules. Read [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules) instead —
+and then [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md),
+which is where the work §10a described landed: a discard is its own
+replacement event (`RepEventDiscard`) carrying the cause (effect, cost
+or cleanup) the rules actually distinguish, and Library of Leng is an
+ordinary catalog card on it.**
 The original text stays below as the record of what was decided.
 
 > CR 701.8a/c distinguishes voluntary vs involuntary discard. Library
@@ -1613,6 +1628,17 @@ replacement window arrives. `DiscardPending` is cleanup-only.
   madness, which needs #650's routing but not the cause.
 - Library of Leng itself becomes an ordinary catalog card once #650
   lands. It stays on #390's skip list until then.
+
+**Closed 2026-09-18 by
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+(#650).** The discard route opens `RepEventDiscard`, carrying
+`DiscardPlayer`, `DiscardCause` (`"effect"` / `"cost"` / `"cleanup"`)
+and the causing `Source`, alongside the move payload it already had.
+Library of Leng is in the catalog and reads the cause; madness (#657)
+needs only the event and can be written on it; the Obstinate Baloth
+family reads the cause plus the controller of `Source`. What ADR 0061
+deliberately does NOT close is search-to-graveyard and surveil, so Rest
+in Peace is still on #383's skip list.
 
 ### 11. Damage prevention hook only, no shield mechanic
 
