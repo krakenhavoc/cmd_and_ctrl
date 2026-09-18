@@ -80,7 +80,7 @@ func TestManagerInstallsOneDecisionLogPerGame(t *testing.T) {
 	}
 	mgr.StartBots(room, seats)
 
-	waitFor(t, "both seats to be observed", 5*time.Second, func() bool {
+	waitFor(t, "both seats to be observed", func() bool {
 		_, s, _ := gl.snapshot()
 		return s == 2
 	})
@@ -133,18 +133,18 @@ func TestManagerReplacingRunnersClosesTheOldDecisionLog(t *testing.T) {
 		{PlayerID: room.Game.Seats[1].ID, Tier: string(aiseat.TierRandom)},
 	}
 	mgr.StartBots(room, seats)
-	waitFor(t, "the first log to see a decision", 5*time.Second, func() bool {
+	waitFor(t, "the first log to see a decision", func() bool {
 		e, _, _ := first.snapshot()
 		return e > 0
 	})
 	mgr.StartBots(room, seats)
 	defer mgr.StopBots(room.Game.ID)
 
-	waitFor(t, "the first log to be closed", 5*time.Second, func() bool {
+	waitFor(t, "the first log to be closed", func() bool {
 		_, _, c := first.snapshot()
 		return c == 1
 	})
-	waitFor(t, "the second log to see a decision", 5*time.Second, func() bool {
+	waitFor(t, "the second log to see a decision", func() bool {
 		e, _, _ := second.snapshot()
 		return e > 0
 	})

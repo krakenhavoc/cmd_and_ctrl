@@ -278,3 +278,168 @@ func sylvanChainForTest(g *game.Game, controller uuid.UUID, remaining []uuid.UUI
 	})
 	return nil
 }
+
+// --- #798: which card a bot gives up --------------------------------
+//
+// The three shapes an effect discard reaches a bot in, end to end:
+// Mind Rot's forced count, a loot (draw, then discard), and a rummage
+// (discard, then draw). All three are one PendingChoiceChooseCards
+// over the discarder's own hand since #797, so what is being tested is
+// the same policy rule three times against the real engine — the bot
+// names the card it wants least, not the first one in hand order.
+
+// botCard mints a card owned and controlled by one seat.
+func botCard(owner uuid.UUID, name, typeLine, cost string, power, tough int) game.Card {
+	c := game.NewCard(name, owner)
+	c.TypeLine = typeLine
+	c.ManaCost = cost
+	c.Power, c.Toughness = power, tough
+	// A card dealt straight into a zone has no knowers, and a seat
+	// that is not a knower of its own hand card reads it as a blank
+	// (S13.5). The draw path does this for every card a player draws;
+	// a test that skips it hands the policy three anonymous cards and
+	// proves nothing about which one it would pitch.
+	c.AddKnower(owner)
+	return c
+}
+
+// seedDiscardBoard gives the seat a known hand, worst card LAST so
+// that hand order and card value disagree, and puts six untapped
+// Mountains on the battlefield: past Config.LandsWanted a seventh land
+// is the cheapest card the bot holds, which is what makes the answer
+// predictable without pinning the tuning numbers themselves.
+//
+// Caller must hold the write lock.
+func seedDiscardBoard(g *game.Game, seat *game.Player) {
+	seat.Hand.Cards = nil
+	seat.Hand.PushTop(botCard(seat.ID, "Dragon", "Creature — Dragon", "{4}{R}{R}", 6, 6))
+	seat.Hand.PushTop(botCard(seat.ID, "Bear", "Creature — Bear", "{1}{R}", 2, 2))
+	seat.Hand.PushTop(botCard(seat.ID, "Mountain", "Basic Land — Mountain", "", 0, 0))
+	for i := 0; i < 6; i++ {
+		g.Battlefield.PushTop(botCard(seat.ID, "Mountain", "Basic Land — Mountain", "", 0, 0))
+	}
+}
+
+// zoneNames reads the names in one of a seat's zones under the read
+// lock — the policy and the engine are both done by the time it runs,
+// but the lock is the contract.
+func zoneNames(g *game.Game, z *game.Zone) []string {
+	var out []string
+	g.ReadSnapshot(func() {
+		for _, c := range z.Cards {
+			out = append(out, c.Name)
+		}
+	})
+	return out
+}
+
+func TestHeuristicDiscardsItsWorstCardNotItsFirst(t *testing.T) {
+	g := newSettledTable(t, 17)
+	seat := g.Seats[0]
+	g.WithWriteLock(func() {
+		seedDiscardBoard(g, seat)
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player:   seat.ID,
+			N:        1,
+			Question: "Mind Rot — discard a card",
+		})
+	})
+
+	took := driveChoices(t, g, heuristic.New(), seat.ID, 4)
+	if len(took) != 1 {
+		t.Fatalf("took %d answers, want 1: %v", len(took), took)
+	}
+	if got := zoneNames(g, seat.Graveyard); len(got) != 1 || got[0] != "Mountain" {
+		t.Errorf("graveyard %v, want the Mountain — the bot pitched in hand order", got)
+	}
+	if got := zoneNames(g, seat.Hand); len(got) != 2 || got[0] != "Dragon" || got[1] != "Bear" {
+		t.Errorf("hand %v, want the Dragon and the Bear kept", got)
+	}
+}
+
+// "Discard up to two cards": the engine's floor is zero, so the bot
+// owes nothing and keeps everything. The prompt still has to be
+// answered — a seat owing a choice is offered nothing else (#544).
+func TestHeuristicDiscardsNoMoreThanItMustWhenThePromptSaysUpTo(t *testing.T) {
+	g := newSettledTable(t, 19)
+	seat := g.Seats[0]
+	g.WithWriteLock(func() {
+		seedDiscardBoard(g, seat)
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player:   seat.ID,
+			N:        2,
+			UpTo:     true,
+			Question: "Rummage — discard up to 2 cards",
+		})
+	})
+
+	driveChoices(t, g, heuristic.New(), seat.ID, 4)
+	if got := zoneNames(g, seat.Graveyard); len(got) != 0 {
+		t.Errorf("graveyard %v, want nothing discarded for an 'up to' prompt", got)
+	}
+	if got := zoneNames(g, seat.Hand); len(got) != 3 {
+		t.Errorf("hand %v, want all three cards kept", got)
+	}
+}
+
+// A loot draws first, so the card it just drew is in the hand the
+// prompt is built from: the bot keeps the better of the two and pitches
+// the other. Here the drawn card is the worst thing it holds, which is
+// the case a "discard what you just drew" bot gets wrong.
+func TestHeuristicLootKeepsTheBetterCard(t *testing.T) {
+	g := newSettledTable(t, 21)
+	seat := g.Seats[0]
+	g.WithWriteLock(func() {
+		seedDiscardBoard(g, seat)
+		// Two cards in hand, and the third drawn off the top by the
+		// loot itself.
+		seat.Hand.Cards = seat.Hand.Cards[:2]
+		seat.Library.PushTop(botCard(seat.ID, "Mountain", "Basic Land — Mountain", "", 0, 0))
+		if err := g.DrawNForEffect(seat.ID, 1); err != nil {
+			t.Fatalf("draw: %v", err)
+		}
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player:   seat.ID,
+			N:        1,
+			Question: "Faithless Looting — discard a card",
+		})
+	})
+
+	driveChoices(t, g, heuristic.New(), seat.ID, 4)
+	if got := zoneNames(g, seat.Graveyard); len(got) != 1 || got[0] != "Mountain" {
+		t.Errorf("graveyard %v, want the land it drew", got)
+	}
+	if got := zoneNames(g, seat.Hand); len(got) != 2 || got[0] != "Dragon" || got[1] != "Bear" {
+		t.Errorf("hand %v, want the two spells kept", got)
+	}
+}
+
+// A rummage discards and THEN draws: the prompt's continuation is the
+// draw, so answering it has to leave the bot one card better off with
+// its worst card in the graveyard.
+func TestHeuristicRummageDiscardsTheWorstCardThenDraws(t *testing.T) {
+	g := newSettledTable(t, 23)
+	seat := g.Seats[0]
+	var libBefore int
+	g.WithWriteLock(func() {
+		seedDiscardBoard(g, seat)
+		libBefore = seat.Library.Size()
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player:   seat.ID,
+			N:        1,
+			Question: "Syphon Mind — discard a card",
+			Then:     func(g *game.Game) error { return g.DrawNForEffect(seat.ID, 1) },
+		})
+	})
+
+	driveChoices(t, g, heuristic.New(), seat.ID, 4)
+	if got := zoneNames(g, seat.Graveyard); len(got) != 1 || got[0] != "Mountain" {
+		t.Errorf("graveyard %v, want the Mountain", got)
+	}
+	if got := zoneNames(g, seat.Hand); len(got) != 3 {
+		t.Errorf("hand %v, want three cards — two kept and one drawn", got)
+	}
+	if got := seat.Library.Size(); got != libBefore-1 {
+		t.Errorf("library %d, want %d — the draw after the discard never ran", got, libBefore-1)
+	}
+}

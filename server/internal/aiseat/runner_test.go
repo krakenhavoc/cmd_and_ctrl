@@ -154,26 +154,65 @@ func (b *recordingBroadcaster) BroadcastState(gameID uuid.UUID, seq uint64, _ pr
 
 // handKept reads Player.HandKept under the game's read lock — the
 // runners write it concurrently.
+//
+// PlayerByIDForEffect, not PlayerByID: the lock-free lookup, because
+// ReadSnapshot is already holding the read lock. Taking it a second
+// time from the same goroutine deadlocks outright whenever a writer
+// is queued between the two — Go's RWMutex blocks a new reader behind
+// a waiting Lock — and a bot runner dispatching a move is exactly
+// that writer. That is #848's first flake: a test that polls this
+// helper while two runners play wedges the seat mid-KeepHand and the
+// wait times out, which looks for all the world like a slow machine.
+// Anything called inside a ReadSnapshot body has to be a *ForEffect /
+// *Locked accessor or a plain field read, here as much as in the
+// engine.
 func handKept(g *game.Game, id uuid.UUID) bool {
 	var kept bool
 	g.ReadSnapshot(func() {
-		if p := g.PlayerByID(id); p != nil {
+		if p := g.PlayerByIDForEffect(id); p != nil {
 			kept = p.HandKept
 		}
 	})
 	return kept
 }
 
-func waitFor(t *testing.T, what string, timeout time.Duration, cond func() bool) {
+// waitFor polls cond until it holds. It is the ONE wait primitive in
+// this package's tests: every "has the bot got there yet" question is
+// asked through it, and none of them is asked with a sleep.
+//
+// waitForBudget is a backstop for a wedged runner, not a timing
+// assumption. That distinction is #848: a bot runs on a goroutine the
+// test does not schedule, so a budget tight enough to mean anything is
+// a budget a loaded machine blows, and a test that fails on how busy
+// the machine is tells you about the machine. Nothing here may depend
+// on the budget being reached — a test that needs to know a bot has
+// STOPPED asks Runner.Idle, and one that needs it gone cancels the
+// context and waits on Done.
+const waitForBudget = 30 * time.Second
+
+func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
+	deadline := time.Now().Add(waitForBudget)
 	for time.Now().Before(deadline) {
 		if cond() {
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	t.Fatalf("timed out waiting for %s", what)
+	t.Fatalf("timed out waiting for %s after %s", what, waitForBudget)
+}
+
+// botLandsLocked counts the lands a seat controls. Caller must hold
+// the game's read lock — the count is only worth anything when it is
+// read in the same snapshot as whatever else the assertion is about.
+func botLandsLocked(g *game.Game, seat uuid.UUID) int {
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == seat && c.IsLand() {
+			n++
+		}
+	}
+	return n
 }
 
 // --- single-runner behaviour ----------------------------------------
@@ -191,40 +230,45 @@ func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
 	r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{}, bc, testLogger())
 	// The "human" in seat 1 is a second runner that only ever keeps
 	// and passes, so priority actually comes back around.
-	aiseat.Start(ctx, room, human.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
+	h := aiseat.Start(ctx, room, human.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
 
-	waitFor(t, "both seats to keep", 2*time.Second, func() bool {
+	waitFor(t, "both seats to keep", func() bool {
 		return handKept(g, bot.ID) && handKept(g, human.ID)
 	})
 	// Seat 0 is active: upkeep → draw → main. The bot passes through
 	// upkeep and draw (nothing castable there), then plays a Mountain
 	// in main and, having nothing else, passes.
-	waitFor(t, "a land on the battlefield", 3*time.Second, func() bool {
+	waitFor(t, "a land on the battlefield", func() bool {
 		var n int
-		g.ReadSnapshot(func() {
-			for _, c := range g.Battlefield.Cards {
-				if c.Controller == bot.ID && c.IsLand() {
-					n++
-				}
-			}
-		})
+		g.ReadSnapshot(func() { n = botLandsLocked(g, bot.ID) })
 		return n == 1
 	})
-	waitFor(t, "the turn to pass to seat 1", 3*time.Second, func() bool {
-		return g.Snapshot().Turn.ActiveSeat == 1
-	})
-	// Only one land, even though the hand almost certainly holds more.
+	// One land per turn, even though the hand almost certainly holds
+	// more — and the count has to come out of the SAME snapshot as the
+	// handover it is about. Seat 1 only keeps and passes, so its whole
+	// turn is over in milliseconds and seat 0's second land drop is one
+	// scheduling hiccup away: a count read after the wait returns is a
+	// count of a board that has moved on (#848).
 	var lands int
-	g.ReadSnapshot(func() {
-		for _, c := range g.Battlefield.Cards {
-			if c.Controller == bot.ID && c.IsLand() {
-				lands++
-			}
-		}
+	waitFor(t, "the turn to pass to seat 1", func() bool {
+		handedOver := false
+		g.ReadSnapshot(func() {
+			handedOver = g.Turn.ActiveSeat == 1
+			lands = botLandsLocked(g, bot.ID)
+		})
+		return handedOver
 	})
 	if lands != 1 {
 		t.Errorf("bot played %d lands in one turn", lands)
 	}
+	// Stop both seats and wait for the goroutines to be gone before
+	// reading the counters. Stats and the broadcast log are two reads
+	// of a bot that is otherwise still playing, and a move landing
+	// between them fails the equality below with "13 broadcasts for 12
+	// applied" — a fact about the reads, not about the runner (#848).
+	cancel()
+	<-r.Done()
+	<-h.Done()
 	st := r.Stats()
 	if st.Rejected != 0 {
 		t.Errorf("rejected moves: %d", st.Rejected)
@@ -254,7 +298,7 @@ func TestRunnerFallsBackWhenPolicyFails(t *testing.T) {
 			r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{MaxThink: 30 * time.Millisecond}, nil, testLogger())
 			// In the mulligan window there is no pass move, so the
 			// fallback is the first legal move — "Keep hand".
-			waitFor(t, "fallback keep", 2*time.Second, func() bool { return handKept(g, bot.ID) })
+			waitFor(t, "fallback keep", func() bool { return handKept(g, bot.ID) })
 			st := r.Stats()
 			if st.Fallbacks == 0 || st.Decisions != 0 {
 				t.Errorf("expected only fallbacks, got %+v", st)
@@ -303,7 +347,7 @@ func TestRunnerPacesDecisions(t *testing.T) {
 	defer cancel()
 	start := time.Now()
 	aiseat.Start(ctx, room, bot.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{MinThink: 150 * time.Millisecond}, nil, testLogger())
-	waitFor(t, "paced keep", 2*time.Second, func() bool { return handKept(g, bot.ID) })
+	waitFor(t, "paced keep", func() bool { return handKept(g, bot.ID) })
 	if el := time.Since(start); el < 140*time.Millisecond {
 		t.Errorf("decision landed after %v; MinThink not honoured", el)
 	}
@@ -525,7 +569,7 @@ func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 	}
 	blocked := time.Now()
 	aiseat.Start(ctx, room, def.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
-	waitFor(t, "step to leave declare_blockers", 3*time.Second, func() bool {
+	waitFor(t, "step to leave declare_blockers", func() bool {
 		return g.Snapshot().Turn.Step != game.StepDeclareBlockers
 	})
 	if el := time.Since(blocked); el > grace {

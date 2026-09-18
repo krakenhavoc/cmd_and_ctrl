@@ -180,6 +180,12 @@ type Runner struct {
 	latencies                                       []time.Duration
 	latNext                                         int
 	done                                            chan struct{}
+
+	// idle is true while the loop is parked on its wake channel with
+	// no wake already pending. Guarded by idleMu because Idle is read
+	// from another goroutine. See Idle.
+	idleMu sync.Mutex
+	idle   bool
 }
 
 // Start launches a runner goroutine for seat in room. bc may be nil.
@@ -204,6 +210,39 @@ func Start(ctx context.Context, room *ws.Room, seat uuid.UUID, policy Policy, cf
 
 // Done is closed when the runner has exited.
 func (r *Runner) Done() <-chan struct{} { return r.done }
+
+// Idle reports whether the runner has finished acting and is parked
+// waiting for the next room commit, with no wake already pending. A
+// runner that has exited is idle too: it has nothing left to do
+// either.
+//
+// It exists for the tests, and it is the answer to #848. "Has the bot
+// finished?" was previously a sleep long enough to probably be true,
+// and a probably that fails on a loaded machine is a flake. Nothing
+// else observable says it: a room sequence standing still means only
+// that nothing has committed YET, and a runner that is mid-decision
+// looks exactly like one that has stopped. The runner knows, so it
+// says so.
+//
+// Idle is a fact about this instant. A commit from another seat can
+// wake the runner immediately afterwards, which is a bot with new work
+// rather than a bot that lied.
+func (r *Runner) Idle() bool {
+	select {
+	case <-r.done:
+		return true
+	default:
+	}
+	r.idleMu.Lock()
+	defer r.idleMu.Unlock()
+	return r.idle
+}
+
+func (r *Runner) setIdle(v bool) {
+	r.idleMu.Lock()
+	r.idle = v
+	r.idleMu.Unlock()
+}
 
 // Seat is the seat this runner plays.
 func (r *Runner) Seat() uuid.UUID { return r.seat }
@@ -255,10 +294,15 @@ func (r *Runner) loop(ctx context.Context) {
 		return
 	}
 	for {
+		// Parked. A wake already sitting in the channel is work in
+		// hand — the select below takes it without blocking — so it is
+		// not idleness, and Idle must not report it as such.
+		r.setIdle(len(wake) == 0)
 		select {
 		case <-ctx.Done():
 			return
 		case <-wake:
+			r.setIdle(false)
 			if !r.step(ctx) {
 				return
 			}

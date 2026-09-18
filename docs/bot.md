@@ -137,6 +137,26 @@ fallback whenever a model call times out, errors, or returns an
 unusable answer, which is why it had to be built before the model
 tiers and why it must stand alone.
 
+### What a bot gives up
+
+**A prompt that asks a bot to name cards in its own hand is scored by
+what the answer KEEPS**, so the bot pitches the cards it values least
+rather than the first ones it happens to be holding. Every effect
+discard arrives as that one prompt — Mind Rot's forced two, a loot's
+discard after the draw, a rummage's before it — and the valuation is
+the same one the cleanup-step discard to hand size uses, so "the worst
+card in hand" means one thing wherever a bot has to give a card up.
+Keeping is never worth less than nothing, so a prompt that says "up
+to" is answered with as few cards as it will accept.
+
+The rule is about giving cards up, and it reads every hand prompt that
+way: asked to name a card from hand for something *good* — "you may
+put a land from your hand onto the battlefield" — a bot names its
+worst one, or, where the prompt allows it, declines. A prompt over
+anything but the bot's own hand (the battlefield, a library, an
+opponent's hand) carries nothing on the wire that says what naming a
+card costs, so the bot takes the first answer offered.
+
 ### An unavailable tier is refused, not downgraded
 
 Every declared tier is listed by `GET /bot/options`, including the

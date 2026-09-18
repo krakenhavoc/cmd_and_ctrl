@@ -2,6 +2,7 @@ package heuristic
 
 import (
 	"context"
+	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
@@ -167,16 +168,35 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return v, "scry"
 
 	case choiceChooseCards:
-		// The chained-choice card-set pick. Which cards a bot WANTS to
-		// name depends entirely on what the card then does with them —
-		// Sylvan Library's picks are the cards it pays life for, so
-		// neither "take the best" nor "give up the worst" is right as
-		// a general rule, and the wire carries nothing that would say
-		// which. Score every offered set the same and let the
-		// enumerator's order decide. What matters here is that an
+		// The chained-choice card-set pick, and the one kind whose
+		// candidates say what naming them costs.
+		//
+		// #798: when the candidates are cards in the bot's OWN hand,
+		// naming one is giving it up. That is every effect discard
+		// since #797 — Mind Rot's forced two, a loot's discard after
+		// the draw, a rummage's discard before it — and it is Sylvan
+		// Library's "name two of the cards you drew" as well, which
+		// puts the named cards back unless the bot pays for them. So
+		// score such an answer by what it KEEPS: the total cardValue
+		// of the candidates it does not name. That is the same
+		// valuation the cleanup-step discard, the scry and the search
+		// already use, so "the worst card in hand" means one thing in
+		// this package rather than two. It settles the count for free,
+		// too — keeping a card is never worth less than nothing, so an
+		// "up to two" prompt takes the smallest legal answer, and a
+		// loot, whose count is fixed, has no count left to settle.
+		//
+		// Every other choose_cards keeps the flat score. Which cards a
+		// bot WANTS to name there depends entirely on what the card
+		// then does with them — a Ward sacrifice, a library pick, a
+		// reveal — and the wire carries nothing that would say which,
+		// so the enumerator's order decides. What matters is that an
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
+			return v, "name the worst, keep the rest"
+		}
 		return 0.5, "choose cards"
 
 	case choiceConfirm:
@@ -238,6 +258,44 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return 0.5, "declared order"
 	}
 	return 0, "unrecognised choice"
+}
+
+// valueKeptInHand scores one choose_cards answer over the bot's own
+// hand by the total cardValue of the candidates the answer does NOT
+// name — what the bot is left holding if it answers this way. The
+// second return is false for a prompt this rule has no opinion about:
+// candidates on the battlefield or in a library, or in a hand that is
+// not the bot's, where naming a card is not giving it up.
+//
+// Cost is one cardValue per candidate per answer, and cardValue is a
+// type-line switch over a card already in memory. The widest prompt
+// the engine queues is a seven-card hand with "choose two" — 21
+// answers, 147 of those calls — so this is linear in the answers the
+// enumerator already built, with nothing of its own that grows faster.
+func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
+	if ch == nil || len(ch.Options) == 0 || ch.FromPlayer != st.me || st.seat == nil {
+		return 0, false
+	}
+	hand := st.seatHand()
+	held := make(map[string]*protocol.CardView, len(hand))
+	for i := range hand {
+		held[hand[i].InstanceID] = &hand[i]
+	}
+	var kept float64
+	for i := range ch.Options {
+		id := ch.Options[i].InstanceID
+		c := held[id]
+		if c == nil {
+			// A candidate the bot is not holding: whatever this prompt
+			// is asking, it is not asking which cards to give up.
+			return 0, false
+		}
+		if slices.Contains(named, id) {
+			continue
+		}
+		kept += st.cardValue(cfg, c)
+	}
+	return kept, true
 }
 
 // seatHand is the bot's own hand, or nil. Used for colour-preference

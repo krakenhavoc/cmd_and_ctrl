@@ -3,7 +3,6 @@ package aiseat_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -95,6 +94,13 @@ func pushLoopToken(g *game.Game, name string, controller, owner uuid.UUID) {
 // hold — the room's commit sequence stops moving, which is the whole
 // point. The alternative was a table that spins until the process is
 // killed.
+//
+// "They stopped" used to be a 250ms sleep and a sequence that had not
+// moved (#848). It is now the runners' own answer: a bot that kept
+// passing would never PARK, because every pass commits and every
+// commit wakes it, so both seats reaching Idle is the assertion — and
+// once they are parked with nothing else writing to this room, the
+// sequence has stopped by construction rather than by hoping.
 func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 	installTriggerLoop(t)
 	room := newRoom(t, 2, 21)
@@ -105,9 +111,9 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 	g.WithWriteLock(func() { g.LoopThreshold = 5 })
 
 	pol := func() aiseat.Policy { return &scripted{prefer: []string{"Keep hand"}} }
-	aiseat.Start(ctx, room, g.Seats[0].ID, pol(), aiseat.Config{}, nil, testLogger())
-	aiseat.Start(ctx, room, g.Seats[1].ID, pol(), aiseat.Config{}, nil, testLogger())
-	waitFor(t, "both seats to keep", 3*time.Second, func() bool {
+	r0 := aiseat.Start(ctx, room, g.Seats[0].ID, pol(), aiseat.Config{}, nil, testLogger())
+	r1 := aiseat.Start(ctx, room, g.Seats[1].ID, pol(), aiseat.Config{}, nil, testLogger())
+	waitFor(t, "both seats to keep", func() bool {
 		return handKept(g, g.Seats[0].ID) && handKept(g, g.Seats[1].ID)
 	})
 
@@ -128,21 +134,26 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 		pushLoopToken(g, loopTokenA, owner, owner)
 	})
 
-	waitFor(t, "the loop breaker to fire", 5*time.Second, func() bool {
+	waitFor(t, "the loop breaker to fire", func() bool {
 		return g.AutoPassSuspended()
 	})
+	noticed := room.Seq()
 	notice := g.CurrentLoopNotice()
 	if notice == nil || notice.Count < 5 {
 		t.Fatalf("loop notice = %+v, want a count of at least the threshold", notice)
 	}
 
-	// With automatic passing suspended, nothing commits. A quarter of
-	// a second is many wakes at the runner's pacing; before this
-	// change the same window carried dozens of passes.
-	settled := room.Seq()
-	time.Sleep(250 * time.Millisecond)
-	if got := room.Seq(); got != settled {
-		t.Errorf("room sequence moved from %d to %d while the loop breaker was up — a bot kept passing", settled, got)
+	// With automatic passing suspended, both bots hold and park.
+	waitFor(t, "both bots to park with the notice up", func() bool {
+		return r0.Idle() && r1.Idle()
+	})
+	// Getting there may cost one commit per seat: a runner that read
+	// AutoPassSuspended a moment before the notice went up still
+	// dispatches the pass it had already decided on. After that,
+	// nothing — before #628's runner rule the same window carried
+	// dozens of passes and this table never came to rest at all.
+	if got := room.Seq(); got > noticed+2 {
+		t.Errorf("room sequence moved from %d to %d while the loop breaker was up — a bot kept passing", noticed, got)
 	}
 	if !g.AutoPassSuspended() {
 		t.Error("the notice cleared itself; only a player decision or a new turn should")

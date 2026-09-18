@@ -60,7 +60,7 @@ func runWithObserver(t *testing.T, policy aiseat.Policy, cfg aiseat.Config, want
 	cfg.Observer = c
 	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, policy, cfg, nil, testLogger())
 	aiseat.Start(ctx, room, room.Game.Seats[1].ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
-	waitFor(t, "observer events", 5*time.Second, func() bool { return c.len() >= want })
+	waitFor(t, "observer events", func() bool { return c.len() >= want })
 	cancel()
 	<-r.Done()
 	return c, r
@@ -280,7 +280,13 @@ func TestRunnerObserverReportsAWindowCancelledDuringPacing(t *testing.T) {
 	// certain to be inside pace() when the context ends.
 	cfg := aiseat.Config{MinThink: 2 * time.Second, Observer: c}
 	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, &scripted{prefer: []string{"Keep hand"}}, cfg, nil, testLogger())
-	time.Sleep(60 * time.Millisecond)
+	// The window is decided before it is paced, so a counted decision
+	// is the runner on its way into the 2s hold — the state this test
+	// needs, said by the runner instead of guessed at with a sleep
+	// short enough to lose a race on a busy machine (#848).
+	waitFor(t, "the runner to decide its first window", func() bool {
+		return r.Stats().Decisions > 0
+	})
 	cancel()
 	<-r.Done()
 
@@ -327,7 +333,7 @@ func TestRunnerObserverKeepsTheFallbackWhenItForcesAnAnswer(t *testing.T) {
 		MaxConsecutiveRejects: 2,
 		Observer:              c,
 	}, nil, testLogger())
-	waitFor(t, "the search prompt to clear", 5*time.Second, func() bool {
+	waitFor(t, "the search prompt to clear", func() bool {
 		open := true
 		room.Game.ReadSnapshot(func() { open = searchChoice(room.Game, me.ID) != nil })
 		return !open
