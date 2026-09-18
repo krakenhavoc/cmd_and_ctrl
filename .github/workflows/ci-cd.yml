@@ -74,6 +74,28 @@ jobs:
           go-version: "1.22"
           cache: false
 
+      # One self-hosted runner, no job-level cleanup: the Go build cache
+      # under $HOME and orphaned /tmp/go-build* trees left by cancelled
+      # runs grow without bound, and on 2026-09-18 the disk filled
+      # mid-test three branches in a row (#892). Trim before building.
+      # The cache is only dropped when the disk is actually low, so a
+      # healthy runner keeps its warm cache and the ~1-2 min rebuild
+      # cost is paid only when it would otherwise fail.
+      - name: Free runner disk
+        shell: bash
+        run: |
+          df -h / /tmp | sed 's/^/before: /'
+          rm -rf /tmp/go-build* 2>/dev/null || true
+          avail_kb=$(df --output=avail -k / | tail -1 | tr -d ' ')
+          if [ "${avail_kb:-0}" -lt 15728640 ]; then
+            echo "under 15 GB free: dropping the Go build and test caches"
+            go clean -cache -testcache
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            docker system prune -f >/dev/null 2>&1 || true
+          fi
+          df -h / /tmp | sed 's/^/after: /'
+
       # No `cache:` input, for the same reason as Go above -- ~/.npm
       # persists on a self-hosted runner and restoring over it fails the
       # same way. Note setup-node's `cache` is an enum of package
