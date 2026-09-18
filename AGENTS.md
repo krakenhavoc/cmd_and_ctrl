@@ -1201,6 +1201,21 @@ copy of target creature" (Follow the Spirit, Kiki-Jiki) is
 resolution-time effect that mints a new object, not a replacement of
 something's own entry.
 
+**Copying a SPELL is `CopySpell{StackID, Controller, Count,
+ChooseNewTargets}`** ([spell_copy.go](server/internal/cards/effects/spell_copy.go)),
+CR 707.10 — and `StackID` may be **this spell**, `ctx.Item.ID`. "That
+player may copy this spell and may choose a new target for that copy"
+(the Chain cycle) is a spell copying itself from inside its own
+resolution, which works because the engine keeps the resolving item's
+metadata reachable for the whole occurrence
+([resolving_item.go](server/internal/game/resolving_item.go), #920) —
+the item's `StackMeta` entry is deleted before `OnResolve` runs, and by
+the time the copy question is answered the spell is already in a
+graveyard, so the copy is built from last-known information. Set
+`Controller` to the player the card says makes the copy (CR 707.10b);
+it is **not** the copied spell's controller, and on the Chain cycle
+that asymmetry is the card.
+
 **Tests** — see
 [copy_effects_test.go](server/internal/cards/effects/copy_effects_test.go).
 The pattern is `castCatalogSpell` → `resolveWithCopyChoice(t, g,

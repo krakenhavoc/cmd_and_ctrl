@@ -225,3 +225,78 @@ of why #414 did not build it.
   declined Clone surviving as a 0/0, which is the engine's
   pre-existing printed-0-toughness SBA convention and not specific to
   copying.
+
+## Amendment (2026-09-18, #920): a resolving spell keeps its stack metadata until resolution finishes
+
+This ADR is about copying a PERMANENT as it enters; CR 707.10's copy
+of a SPELL on the stack shipped separately in S30
+(`server/internal/game/spell_copy.go`, #95). Both live here because
+they share the copiable-value rule, and this amendment is about the
+spell half.
+
+**The bug.** `resolveTopOfStackLocked` deletes the resolving item's
+`StackMeta` entry before it calls `OnResolve`, and
+`resolveTopAbilityLocked` does the same. `CopySpellForEffect` finds
+its source card and its announce-time choices through that map, so an
+effect that says "that player may copy THIS spell" — CR 707.10, where
+the copy is created by the resolving spell's own effect — found
+nothing and did nothing. The whole Chain cycle prints that sentence;
+Chain of Vapor is the card the #568 work stopped at.
+
+**Decision: one slot on the game, `Game.resolving`**
+(`server/internal/game/resolving_item.go`), holding the live
+`*StackItem` and a VALUE copy of the card the stack held.
+
+Two things are gone by the time the copy is actually made, and the
+slot answers for both:
+
+- the META, deleted above — the whole subject;
+- the CARD, because the copy decision is a PROMPT. Chain of Vapor's
+  "may sacrifice a land" pauses the resolution,
+  `resolveTopOfStackLocked` carries on and routes the spell to its
+  owner's graveyard, and the answer arrives afterwards. The copy is
+  therefore built from last-known information. In the rules the spell
+  is still on the stack at that moment — CR 608.2m puts it into the
+  graveyard as the final step of its own resolution — and LKI is how
+  that difference is spelled here.
+
+**The lifetime is one event batch, and that is the terminal
+outcome.** The slot is set when an item begins to resolve and cleared
+by `beginEventBatchLocked`, which runs at exactly the two points where
+play moves on (#829, CR 603.2c): the next resolution, and the cursor
+entering a step. So it survives any number of paused continuations
+belonging to the resolution that opened it — ADR 0013 §5's case — and
+not one event past it. It is safe because a resolution-time prompt
+BLOCKS the table (`choice_gate.go`): the cursor cannot walk past an
+open copy decision, and nothing else can resolve under it.
+
+A separate defer-clear at the end of `resolveTopOfStackLocked` was the
+obvious alternative and is wrong for exactly this reason — the
+function returns while the question is still open, so the clear would
+land before the answer.
+
+**It widens no other lookup.** `stackSpellLocked` falls through to the
+slot only when the requested ID is the resolving item's own, so
+Reverberate pointed at a spell that was countered in response still
+gets `ErrCardNotFound`, which is the outcome its callers are written
+for. The slot parks ABILITY items too, with no card, so that "the item
+currently resolving" has one answer rather than a hole; nothing copies
+an ability yet, and that remains its own seam.
+
+**Snapshot classification.** `resolving` is `dropped` in
+`snapshot_drift_test.go`, for the reason `enteringTokens` is: between
+actions it is set only for a resolution paused on a prompt, and that
+prompt's own resume frame is already counted in
+`ContinuationCensus.ChoiceResumeFrames`. Its `*StackItem` carries an
+`Effect` closure the snapshot could not represent anyway. `Clone`
+SHARES the pointer rather than deep-copying it, because the paused
+prompt's resume frame holds that same `*StackItem` (`may_choice.go`'s
+contract) and a second copy would be an item the frame is not writing
+through; the struct is replaced wholesale at each batch and never
+mutated in place, so nothing can diverge.
+
+**Cards.** Chain of Vapor (`CompletenessFull`) and Chain of Smog (one
+caveat: the two cards discarded are random, which is `DiscardCards`
+everywhere in the catalog and not this card's doing). Both give the
+copy to the player who chose to make it, per CR 707.10b, which is what
+lets the chain walk around the table.

@@ -154,9 +154,12 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 		b30ExtractFromDarknessOracle: "Extract from Darkness",
 		b30DocksideChefOracle:        "Dockside Chef",
 		b30GrimGuardianOracle:        "Grim Guardian",
+		// #920 shipped the resolving-item slot, which is the one
+		// thing "a spell copying itself at resolution" was waiting on.
+		b30ChainOfSmogSkipOracle: "Chain of Smog",
 	}
-	if len(want) != 28 {
-		t.Fatalf("the batch registers 27 cards plus one already on main, the table lists %d", len(want))
+	if len(want) != 29 {
+		t.Fatalf("the batch registers 28 cards plus one already on main, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -168,13 +171,12 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four declared skips must NOT be registered — each needs a
+	// The three declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
 	for _, skipped := range []string{
 		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
 		b30GemhideSliverSkipOracle,      // a mana ability granted to other permanents by a static
-		b30ChainOfSmogSkipOracle,        // a spell copying itself at resolution on the target player's say-so
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {

@@ -1910,6 +1910,13 @@ func (g *Game) resolveTopOfStackLocked() error {
 		return nil
 	}
 	delete(g.StackMeta, top.InstanceID)
+	// #920, CR 707.10: the item is off the stack, but a spell may copy
+	// ITSELF while it resolves, and the copy is built from this meta
+	// and this card. Both are unreachable a moment from now — the meta
+	// is gone from the map above, and the card is routed away below
+	// while the copy decision is still an open prompt — so they are
+	// parked for the rest of this occurrence. See resolving_item.go.
+	g.beginResolvingSpellLocked(item, top)
 	defer g.recomputeSplitSecondLocked()
 
 	// Target re-check (CR 608.2b). If the spell declared at least one
@@ -2230,6 +2237,11 @@ func (g *Game) resolveTopAbilityLocked() {
 		return
 	}
 	delete(g.StackMeta, top.ID)
+	// #920: the same park the spell path does, without a card — an
+	// ability has none on the stack. Nothing copies an ability yet
+	// (that is the ability-copy seam), but "the item currently
+	// resolving" has one answer or the next reader finds a hole.
+	g.beginResolvingLocked(top)
 	g.recomputeSplitSecondLocked()
 	if spellAllTargetsIllegalLocked(g, top) {
 		g.EmitEvent(Event{

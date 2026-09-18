@@ -347,6 +347,16 @@ func (g *Game) cloneLocked() *Game {
 		// marks the same paused window is holding.
 		out.enteringTokens = append([]Card(nil), g.enteringTokens...)
 	}
+	// #920: the item currently resolving, for the same reason — a
+	// spell copying ITSELF makes the copy from a prompt's answer, and
+	// an undo across that prompt has to hand the restored game the
+	// same source. The POINTER is shared rather than deep-copied,
+	// deliberately: the paused prompt's own resume frame holds that
+	// same *StackItem (may_choice.go's contract), so a second copy
+	// would be a second item the frame is not writing through. The
+	// struct is replaced wholesale at each event batch and never
+	// mutated in place, so nothing can diverge.
+	out.resolving = g.resolving
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -819,6 +829,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
 	g.enteringTokens = src.enteringTokens
+	// #920: the resolving item rewinds with the prompt that is reading
+	// it — see cloneLocked.
+	g.resolving = src.resolving
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

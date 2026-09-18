@@ -66,6 +66,13 @@ import "github.com/google/uuid"
 // CopySpellForEffect creates a copy of the spell `spellID` under
 // `controller`'s control, per CR 707.10.
 //
+// `spellID` may be a spell on the stack (Reverberate's target) or the
+// spell currently RESOLVING (#920) — "that player may copy this
+// spell", the Chain cycle's own clause, where the copy is created by
+// the resolving spell's effect and controlled by the player the card
+// says creates it (CR 707.10b), not by the copied spell's controller.
+// See stackSpellLocked for how the second one is still findable.
+//
 // When mayChooseNewTargets is set and the copied spell actually has
 // a target clause with at least one legal target on the current
 // board, the controller is prompted first and the copy is created
@@ -140,23 +147,39 @@ type copySpellFrame struct {
 	spec       *TargetSpec
 }
 
-// stackSpellLocked returns the card and stack item for a spell
-// currently on the stack. Caller must hold g.mu.
+// stackSpellLocked returns the card and stack item for a spell on the
+// stack — or for the spell currently RESOLVING, which is the same
+// object one step later in its life (#920).
+//
+// The resolving branch is CR 707.10's "copy this spell", the Chain
+// cycle's clause. A resolving spell is off the stack by every measure
+// this function used to take: its meta is out of StackMeta and, once
+// the copy decision pauses on a prompt, its card is out of the Stack
+// zone and in a graveyard. In the RULES it is still there — a spell is
+// put into its owner's graveyard as the final step of its own
+// resolution (CR 608.2m) — so the copy is made from last-known
+// information, which is what Game.resolving holds.
+//
+// It is narrow on purpose: resolvingSpellLocked answers only for the
+// resolving item's own ID, so Reverberate pointed at a spell that was
+// countered in response still gets ErrCardNotFound, which is the
+// outcome its callers are written for.
+//
+// Caller must hold g.mu.
 func (g *Game) stackSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) {
-	if g.Stack == nil {
-		return Card{}, nil, false
-	}
-	for _, c := range g.Stack.Cards {
-		if c.InstanceID != spellID {
-			continue
+	if g.Stack != nil {
+		for _, c := range g.Stack.Cards {
+			if c.InstanceID != spellID {
+				continue
+			}
+			item, ok := g.StackMeta[spellID]
+			if !ok || item == nil {
+				break
+			}
+			return c, item, true
 		}
-		item, ok := g.StackMeta[spellID]
-		if !ok || item == nil {
-			return Card{}, nil, false
-		}
-		return c, item, true
 	}
-	return Card{}, nil, false
+	return g.resolvingSpellLocked(spellID)
 }
 
 // itemHasChosenTarget reports whether the item names at least one
