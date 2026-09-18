@@ -122,10 +122,16 @@ type zoneRoute struct {
 	// prompt is answered.
 	Depth int
 
-	// FaceDown exiles the card face down (CR 406.3, Necropotence).
+	// FaceDown exiles the card face down in this state (CR 406.3a) —
+	// FaceDownExiled for Necropotence, FaceDownForetold for foretell
+	// (#658). The zero value, FaceDownNone, is an ordinary face-up
+	// move.
+	//
 	// Face-down exile is the one destination that must NOT mark the
-	// table as knowers — see ExileTopFaceDownForEffect.
-	FaceDown bool
+	// table as knowers: who may look is the kind's answer, written by
+	// applyFaceDownLandingLocked. See ADR 0069 decision 2 and
+	// ExileTopFaceDownForEffect.
+	FaceDown FaceDownKind
 
 	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
@@ -499,37 +505,52 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go.
 		g.battlefieldExitLocked(ev.CardID)
 	}
+	// The pre-move card, for CR 708.9 below: MoveCard clears the
+	// face-down state on the way through (CR 400.7), so "was this a
+	// face-down permanent" can only be asked before it runs.
+	before, hadBefore := g.cardInZoneLocked(src, ev.CardID)
 	if _, err := MoveCard(src, dstZone, ev.CardID); err != nil {
 		return err
+	}
+	// CR 708.9: a face-down PERMANENT that moves to another zone is
+	// revealed by its owner. FIRST, before the destination's own
+	// knowledge rule below, and that order is the rule: the reveal is
+	// what every player SAW, and the destination then decides what
+	// they still KNOW. A morph tucked into a library is revealed to
+	// the table and then lost in it (CR 401.2); one exiled face down
+	// is revealed and then unreadable again. Reveal last would leave
+	// every seat able to read a library card by position.
+	if hadBefore {
+		g.revealFaceDownExitLocked(before)
 	}
 
 	// Destination bookkeeping. All of it is keyed on where the card
 	// actually LANDED, so a redirect to the command zone cannot carry
 	// a face-down flag or a to-the-bottom instruction with it.
-	faceDown := r.FaceDown && !redirected && dstZone.Kind == ZoneExile
-	for i := range dstZone.Cards {
-		if dstZone.Cards[i].InstanceID != ev.CardID {
-			continue
+	//
+	// MoveCard has already cleared the face-down state for every
+	// destination (ADR 0069 decision 5), so the only thing left to do
+	// here is set it again when the destination IS a face-down state.
+	// The two former `FaceDown = false` arms are gone with it.
+	faceDown := r.FaceDown != FaceDownNone && !redirected && dstZone.Kind == ZoneExile
+	switch {
+	case faceDown:
+		// Who may look is the kind's answer (CR 406.3 for a plain
+		// exile: nobody, the player who exiled it included; CR
+		// 702.143d for a foretold card: its owner). Replacing the
+		// knowledge set rather than leaving it alone matters — a
+		// scryed library card has a knower, and carrying that in
+		// would let exactly one seat read a card nobody may.
+		g.applyFaceDownLandingLocked(dstZone, ev.CardID, r.FaceDown)
+	case dstZone.Kind == ZoneLibrary:
+		// A library is a hidden zone (CR 401.2). Whoever could read
+		// this card a moment ago cannot now.
+		for i := range dstZone.Cards {
+			if dstZone.Cards[i].InstanceID == ev.CardID {
+				dstZone.Cards[i].ClearKnown()
+				break
+			}
 		}
-		switch {
-		case faceDown:
-			// CR 406.3: nobody may look at it, including the player
-			// who exiled it. Clearing rather than leaving the set
-			// alone matters — a scryed library card has a knower.
-			dstZone.Cards[i].FaceDown = true
-			dstZone.Cards[i].ClearKnown()
-		case dstZone.Kind == ZoneLibrary:
-			// A library is a hidden zone (CR 401.2). Whoever could
-			// read this card a moment ago cannot now.
-			dstZone.Cards[i].FaceDown = false
-			dstZone.Cards[i].ClearKnown()
-		default:
-			// CR 400.7 / 708.2: "face down" belongs to an object in a
-			// zone, and a card that changes zones is a new object
-			// with no memory of it.
-			dstZone.Cards[i].FaceDown = false
-		}
-		break
 	}
 	if !faceDown {
 		g.markCardKnownInZoneLocked(dstZone, ev.CardID)

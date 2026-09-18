@@ -195,6 +195,12 @@ var cardFields = plan(
 	"GoadedBy", carried, "",
 	"DamageMarked", carried, "",
 	"FaceDown", carried, "",
+	// ADR 0069: carried — the kind is the rule. A restore that
+	// dropped it would bring back a face-down object with no viewers
+	// row, no CR 708.2 answer and no catalog suppression. restoreCard
+	// reads an ABSENT kind on a face-down card as FaceDownExiled, the
+	// only face-down object that could exist before the field did.
+	"FaceDownKind", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
 	"SummonedThisTurn", carried, "",

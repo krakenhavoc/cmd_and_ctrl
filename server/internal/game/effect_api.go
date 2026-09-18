@@ -1028,8 +1028,12 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // Exile is a public zone, so the ordinary path marks every seat a
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
-// the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set. An empty knowledge set is what
+// the player who exiled it — so its knowledge set is set to the
+// FaceDownExiled row of ADR 0069's viewers table, which is nobody,
+// and Card.FaceDown is set. (FaceDownForetold is the row foretell
+// uses, and its answer is the owner; the route takes the kind so the
+// two cannot be told apart by anything but the rule.) An empty
+// knowledge set is what
 // the wire keys on: protocol.redactCardForViewer strips every
 // identifying field (name, costs, abilities, catalog flags) for a
 // non-knower. Card.FaceDown is what the client keys on to draw a
@@ -1075,7 +1079,7 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 			CardID:   top,
 			Dst:      ZoneExile,
 			Actor:    playerID,
-			FaceDown: true,
+			FaceDown: FaceDownExiled,
 		})
 		if err != nil {
 			return out, err

@@ -35,6 +35,30 @@ import (
 // The cost, stated plainly: a call site that FORGETS CatalogKey
 // silently resolves to face 0's spec rather than erroring.
 func CatalogKey(c Card) string {
+	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
+	// TEXT — no triggered, activated, mana, static or replacement
+	// abilities, no cost modifiers, no "as enters" hook, no printed
+	// keywords, no catalog entry at all. catalogDef already reads the
+	// empty key as "this card has no entry", and every Catalog*
+	// reader already handles that, so the whole of CR 708.2a is this
+	// one predicate at the one place a Card becomes a catalog key.
+	//
+	// It is HERE rather than in CatalogAbilityKey (the documented
+	// "what does this permanent DO" accessor) because four ability
+	// readers deliberately bypass that accessor, each for a good
+	// reason — the layer pass's static gather, the LTB trigger's
+	// last-known identity, HasKeyword, and the ETB hook — and each
+	// would otherwise have needed its own face-down arm.
+	//
+	// Exile is deliberately NOT suppressed: FaceDownIsPermanent is
+	// false for the two exile kinds, so a foretold card keeps the
+	// CastableZones, AlternativeCosts and Targets its cast out of
+	// exile needs (#658). Nothing off the battlefield runs a trigger,
+	// static or replacement off a catalog entry (CR 113.6), so
+	// keeping it costs nothing.
+	if c.FaceDownIsPermanent() {
+		return ""
+	}
 	if c.ActiveFace == 0 || c.OracleID == "" {
 		return c.OracleID
 	}

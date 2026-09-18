@@ -251,6 +251,27 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.ExilePlay = ExilePlayPermission{}
 		c.Counters = nil
 	}
+	// CR 400.7 / CR 708: "face down" is a property of an OBJECT in a
+	// zone, and a card that changes zones is a new object with no
+	// memory of the old one. This is the ONE reset — #697. Before it,
+	// the flag was cleared per caller: the shared exit route did it
+	// itself after calling MoveCard, and so did the exile→battlefield
+	// return, while the sandbox move_card action (live) and the
+	// cast-from-exile push (latent, foretell's own path) did not. A
+	// card Necropotence exiled face down and a player then moved by
+	// hand landed in their hand still marked face down, and carried
+	// that into snapshots, onto the wire and into what the bots read.
+	//
+	// Unconditional, for every source and every destination, so a
+	// caller added later is covered by the rule rather than by a code
+	// review. A destination that is ITSELF a face-down state sets it
+	// back after the move — the exile route's face-down branch and
+	// the battlefield entry's, both through
+	// applyFaceDownLandingLocked (ADR 0069 decision 5). That
+	// ordering is also what keeps "a foretold card stays face down
+	// while it sits in exile" true with no special case: a move
+	// within a zone is not a move, and never reaches here.
+	c.ClearFaceDown()
 	// CR 712.8: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written

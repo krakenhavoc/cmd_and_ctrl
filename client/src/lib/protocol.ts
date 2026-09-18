@@ -1290,10 +1290,27 @@ export interface CardView {
   // game state and Card.svelte draws a back (cardBack.ts, #95); a
   // viewer who knows it still sees the face.
   face_down?: boolean;
+  // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
+  // "foretold" (CR 702.143b), or one of the CR 708.2 permanent states
+  // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
+  // everyone can see that a permanent is a morph — so it survives the
+  // non-knower redaction and labels the card back.
+  face_down_kind?: string;
+  // Whether THIS viewer may look at the face of a face-down object:
+  // its controller for a CR 708.5 permanent, its owner for a foretold
+  // card (CR 702.143d), nobody for a plain face-down exile (CR 406.3).
+  // Stamped per-viewer by the server; equals `face_down && known_by_you`.
+  // True means "draw the real face plus a face-down badge".
+  face_visible?: boolean;
   // S13.5 per-viewer knowledge flag. True when the viewer is in the
   // server-side KnownBy set for this card. When false, printed
   // characteristics (name, type_line, scryfall_id, power, toughness,
   // counters, is_commander) are zero/empty.
+  //
+  // A face-down PERMANENT is the one exception to "zero/empty": its
+  // CR 708.2 body (type line "Creature", 2/2, no name, no colours) is
+  // public and reaches every viewer, because an opponent has to see
+  // the 2/2 to block it.
   known_by_you?: boolean;
   // Normalised battlefield position in [0, 1], stamped by
   // `set_battlefield_position`.

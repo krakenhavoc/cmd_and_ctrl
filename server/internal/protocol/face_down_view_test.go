@@ -33,13 +33,17 @@ import (
 // `name` is here only because the field has no omitempty; its value
 // is checked separately.
 var redactedCardKeys = map[string]bool{
-	"instance_id":           true,
-	"name":                  true,
-	"owner":                 true,
-	"controller":            true,
-	"tapped":                true,
-	"damage_marked":         true,
-	"face_down":             true,
+	"instance_id":   true,
+	"name":          true,
+	"owner":         true,
+	"controller":    true,
+	"tapped":        true,
+	"damage_marked": true,
+	"face_down":     true,
+	// ADR 0069: WHY it is face down is public — everyone can see
+	// that a permanent is a morph and that an exiled card is
+	// foretold. The identity of the card under it is not.
+	"face_down_kind":        true,
 	"battle_x":              true,
 	"battle_y":              true,
 	"attacking_target":      true,
@@ -173,21 +177,28 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 	lt := &LegalTargetsView{Cards: []string{"target"}, Min: 1, Max: 1}
 	x, y := 0.25, 0.75
 	return CardView{
-		InstanceID:          uuid.NewString(),
-		Name:                "Hidden Name",
-		Owner:               owner,
-		Controller:          owner,
-		ScryfallID:          "scryfall",
-		TypeLine:            "Legendary Creature — Test",
-		Colors:              []string{"B", "R"},
-		NegativePower:       -2,
-		Power:               3,
-		Toughness:           3,
-		Tapped:              true,
-		Counters:            map[string]int{"+1/+1": 1},
-		IsCommander:         true,
-		DamageMarked:        1,
-		FaceDown:            true,
+		InstanceID:    uuid.NewString(),
+		Name:          "Hidden Name",
+		Owner:         owner,
+		Controller:    owner,
+		ScryfallID:    "scryfall",
+		TypeLine:      "Legendary Creature — Test",
+		Colors:        []string{"B", "R"},
+		NegativePower: -2,
+		Power:         3,
+		Toughness:     3,
+		Tapped:        true,
+		Counters:      map[string]int{"+1/+1": 1},
+		IsCommander:   true,
+		DamageMarked:  1,
+		FaceDown:      true,
+		// An EXILE kind on purpose: a CR 708.2 permanent kind would
+		// put the public 2/2 body back after the redaction (decision
+		// 6), and this table is the guard for every card that is NOT
+		// one. TestFaceDownPermanentShipsItsPublicBody covers that
+		// cell.
+		FaceDownKind:        "exiled",
+		FaceVisible:         true,
 		KnownByYou:          true,
 		knowers:             knowers,
 		oracleID:            "oracle",
@@ -358,5 +369,154 @@ func TestRedactionZoneByViewer(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestFaceDownPermanentShipsItsPublicBody is ADR 0069 decision 6 —
+// the one cell the table above deliberately does not cover.
+//
+// CR 708.2 makes a face-down permanent a 2/2 colourless creature with
+// no name, and that body is PUBLIC: an opponent has to see it to
+// block it, target it and count it. The #646 redaction strips name,
+// type line, colours and P/T because on an ordinary hidden card those
+// fields name it — on this one they ARE the projection and name
+// nothing, so they are put back after the redaction.
+//
+// What must still be gone is everything that identifies the card
+// underneath: the art, the cost, the faces, the ability lists, the
+// catalog flags.
+func TestFaceDownPermanentShipsItsPublicBody(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+
+	// A manifested Griselbrand: a 7/7 legendary Demon with keywords
+	// and a mana cost, so every field that could leak is loud.
+	loud := game.NewCard("Griselbrand", me.ID)
+	loud.TypeLine = "Legendary Creature — Demon"
+	loud.OracleID = "oracle-grissy"
+	loud.ScryfallID = "scryfall-grissy"
+	loud.ManaCost = "{4}{B}{B}"
+	loud.Colors = []string{"B"}
+	loud.Power, loud.Toughness = 7, 7
+	loud.Keywords = []string{"flying", "lifelink"}
+	id := loud.InstanceID
+	g.WithWriteLock(func() {
+		me.Library.PushTop(loud)
+		if _, err := g.ManifestForEffect(me.ID); err != nil {
+			t.Fatalf("manifest: %v", err)
+		}
+	})
+
+	find := func(viewer uuid.UUID) CardView {
+		t.Helper()
+		for _, c := range ViewOfGameFor(g, viewer.String()).Battlefield.Cards {
+			if c.InstanceID == id.String() {
+				return c
+			}
+		}
+		t.Fatalf("manifested card missing from %s's battlefield view", viewer)
+		return CardView{}
+	}
+
+	theirs := find(opp.ID)
+	if !theirs.FaceDown || theirs.FaceDownKind != "manifested" {
+		t.Errorf("opponent: face_down=%v kind=%q, want true/manifested", theirs.FaceDown, theirs.FaceDownKind)
+	}
+	if theirs.FaceVisible || theirs.KnownByYou {
+		t.Error("opponent: may look at a face-down permanent they do not control (CR 708.5)")
+	}
+	if theirs.TypeLine != "Creature" || theirs.Power != 2 || theirs.Toughness != 2 {
+		t.Errorf("opponent: %q %d/%d, want the public CR 708.2 body: Creature 2/2",
+			theirs.TypeLine, theirs.Power, theirs.Toughness)
+	}
+	if theirs.Name != "" || len(theirs.Colors) != 0 || len(theirs.Abilities) != 0 {
+		t.Errorf("opponent: name %q / colors %v / abilities %v, want a nameless colourless vanilla",
+			theirs.Name, theirs.Colors, theirs.Abilities)
+	}
+	// Identity: still gone, and mostly never stamped, because
+	// CatalogKey answers "" for a face-down permanent.
+	if theirs.ScryfallID != "" || theirs.ManaCost != "" || len(theirs.Faces) != 0 ||
+		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented ||
+		len(theirs.ManaAbilities) != 0 || len(theirs.ActivatedAbilities) != 0 {
+		t.Errorf("opponent: the card under the back leaked: %+v", theirs)
+	}
+
+	// The controller may look (CR 708.5): they get the art and the
+	// face, and face_visible says so — but the OBJECT is still the
+	// nameless 2/2, because that is what it is for both of them.
+	mine := find(me.ID)
+	if !mine.FaceVisible || !mine.KnownByYou {
+		t.Error("controller: may not look at their own face-down permanent (CR 708.5)")
+	}
+	if mine.ScryfallID != "scryfall-grissy" {
+		t.Errorf("controller: scryfall_id = %q, want the art so the client can show them their own card", mine.ScryfallID)
+	}
+	if mine.Name != "" || mine.TypeLine != "Creature" || mine.Power != 2 {
+		t.Errorf("controller: %q %q %d/%d, want the same CR 708.2 object the table sees",
+			mine.Name, mine.TypeLine, mine.Power, mine.Toughness)
+	}
+}
+
+// TestFaceVisibleTracksTheViewersRule pins the per-viewer field against
+// ADR 0069's table, for the two exile kinds the engine can make today.
+func TestFaceVisibleTracksTheViewersRule(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+
+	necro := game.NewCard("Forest", me.ID)
+	necro.TypeLine = "Basic Land — Forest"
+	foretold := game.NewCard("Saw It Coming", me.ID)
+	foretold.TypeLine = "Instant"
+	foretold.SetFaceDown(game.FaceDownForetold)
+	foretold.AddKnower(me.ID)
+
+	g.WithWriteLock(func() {
+		me.Library.PushTop(necro)
+		if _, err := g.ExileTopFaceDownForEffect(me.ID, 1); err != nil {
+			t.Fatalf("exile face down: %v", err)
+		}
+		g.Exile.PushTop(foretold)
+	})
+
+	find := func(viewer uuid.UUID, id uuid.UUID) CardView {
+		t.Helper()
+		for _, c := range ViewOfGameFor(g, viewer.String()).Exile.Cards {
+			if c.InstanceID == id.String() {
+				return c
+			}
+		}
+		t.Fatalf("card %s missing from %s's exile view", id, viewer)
+		return CardView{}
+	}
+
+	for _, tc := range []struct {
+		name     string
+		id       uuid.UUID
+		kind     string
+		ownerMay bool
+	}{
+		{"CR 406.3 Necropotence exile: nobody may look", necro.InstanceID, "exiled", false},
+		{"CR 702.143d foretold: the owner may look", foretold.InstanceID, "foretold", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mine := find(me.ID, tc.id)
+			if mine.FaceDownKind != tc.kind {
+				t.Errorf("owner: face_down_kind = %q, want %q", mine.FaceDownKind, tc.kind)
+			}
+			if mine.FaceVisible != tc.ownerMay {
+				t.Errorf("owner: face_visible = %v, want %v", mine.FaceVisible, tc.ownerMay)
+			}
+			theirs := find(opp.ID, tc.id)
+			if theirs.FaceVisible {
+				t.Error("opponent: face_visible on a face-down exiled card")
+			}
+			// An exiled card gets NO CR 708.2 body: it is not a
+			// permanent, and inventing a 2/2 in exile would be
+			// inventing a creature.
+			if theirs.TypeLine != "" || theirs.Power != 0 {
+				t.Errorf("opponent: a face-down EXILED card shipped %q %d/%d",
+					theirs.TypeLine, theirs.Power, theirs.Toughness)
+			}
+		})
 	}
 }
