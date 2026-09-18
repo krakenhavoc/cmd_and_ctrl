@@ -204,7 +204,7 @@ func TestRunnerTakesTheAlwaysLegalAnswerWhenEveryPickIsRejected(t *testing.T) {
 		MaxConsecutiveRejects: 2,
 	}, nil, testLogger())
 
-	waitFor(t, "the search prompt to clear", 5*time.Second, func() bool {
+	waitFor(t, "the search prompt to clear", func() bool {
 		// Under the read lock: the runner is mutating this game from
 		// its own goroutine.
 		open := true
