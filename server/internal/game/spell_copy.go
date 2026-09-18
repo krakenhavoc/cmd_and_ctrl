@@ -219,6 +219,13 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// CastFromZone is deliberately left empty. The copy was not cast
 	// from anywhere (CR 707.10), so Wash Away's "target spell that
 	// wasn't cast from its owner's hand" reads it as exactly that.
+	//
+	// Paid is left at its zero value for the same reason, and the
+	// zero value is a REAL answer rather than a gap (#761): mana is
+	// not an object, so nothing was spent to cast the copy (the
+	// Dawnglow Infusion ruling under CR 707.10). A copied Vexing
+	// Bauble trigger counters the copy, a copied converge spell
+	// converges for nothing, and both are correct.
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 

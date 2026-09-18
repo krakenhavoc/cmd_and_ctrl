@@ -12,6 +12,7 @@ export const COUNTER_MINUS_ONE = "-1/-1";
 export const COUNTER_LOYALTY = "loyalty";
 export const COUNTER_DEFENSE = "defense";
 export const COUNTER_CHARGE = "charge";
+export const COUNTER_STORAGE = "storage";
 export const COUNTER_STUN = "stun";
 export const COUNTER_SHIELD = "shield";
 export const COUNTER_LORE = "lore";
@@ -43,6 +44,7 @@ export const COUNTER_STYLES: Record<string, CounterStyle> = {
   [COUNTER_LOYALTY]: { abbr: "L", color: "#7a5fbf", glyph: "★" },
   [COUNTER_DEFENSE]: { abbr: "D", color: "#3f6e8a", glyph: "🛡" },
   [COUNTER_CHARGE]: { abbr: "C", color: "#bf9a5f", glyph: "⚡" },
+  [COUNTER_STORAGE]: { abbr: "St", color: "#8a7f5f", glyph: "🔋" },
   [COUNTER_STUN]: { abbr: "S", color: "#a5a5a5", glyph: "💫" },
   [COUNTER_SHIELD]: { abbr: "Sh", color: "#5f9abf", glyph: "🛡" },
   [COUNTER_LORE]: { abbr: "Lo", color: "#bfa55f", glyph: "📜" },

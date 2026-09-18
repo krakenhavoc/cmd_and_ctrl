@@ -764,8 +764,11 @@ func TestB30IronSpiderPumpsArtifactCreaturesAndVehicles(t *testing.T) {
 			t.Errorf("%s: %d counters, want %d", want.what, got, want.n)
 		}
 	}
-	if spec, _ := Lookup(b30IronSpiderOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the counter-removal draw is a declared gap")
+	// #789 made the draw ability real: "from among artifacts you
+	// control" is a counter removal split across permanents, and the
+	// card no longer ships with a gap.
+	if spec, _ := Lookup(b30IronSpiderOracle); len(spec.Activated) != 2 || spec.Completeness != CompletenessFull {
+		t.Error("the counter-removal draw should be live and the card complete (#789)")
 	}
 }
 

@@ -34,6 +34,13 @@ const (
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.
 	CounterCharge = "charge"
+	// CounterStorage is the storage counter (Mage-Ring Network,
+	// Crucible of the Spirit Dragon, the Mirrodin storage lands). A
+	// generic resource counter like CounterCharge, distinct because
+	// the cards that bank them spend them by the handful and print
+	// "storage counter" in the cost. No SBA. Added with #789's
+	// variable counter cost.
+	CounterStorage = "storage"
 	// CounterStun is the stun counter (post-NEO). A would-be untap
 	// removes one instead; untapPermanentLocked enforces it for every
 	// untap, not as a state-based action.
@@ -82,6 +89,7 @@ var KnownCardCounters = []string{
 	CounterLoyalty,
 	CounterDefense,
 	CounterCharge,
+	CounterStorage,
 	CounterStun,
 	CounterShield,
 	CounterLore,

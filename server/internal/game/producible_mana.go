@@ -100,10 +100,15 @@ func (g *Game) ProducibleManaLocked(c Card) []string {
 		if ab.DerivesFromOtherSources {
 			continue
 		}
-		produced := ab.Produced
-		if ab.ProducedFunc != nil {
-			produced = ab.ProducedFunc(g, c.Controller, c.InstanceID)
-		}
+		// #789: an ability whose output depends on what its cost paid
+		// is asked with the LARGEST payment it could make right now.
+		// "Could produce" is about the possible (CR 106.7), so a
+		// Mage-Ring Network holding three storage counters could
+		// produce {C} and one holding none could not — and a
+		// Reflecting Pool next to it has to see the same answer the
+		// activation would give.
+		produced := manaAbilityProducedLocked(g, c.Controller, c.InstanceID, &ab,
+			g.maxCounterPaymentLocked(c.Controller, c.InstanceID, ab.RemoveCounters))
 		slots, err := ParseProducedMana(produced)
 		if err != nil {
 			continue

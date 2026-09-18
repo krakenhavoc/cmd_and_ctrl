@@ -161,19 +161,7 @@ func Register(spec Spec) {
 		if ab.Cost.MinX < 0 {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
-		if rc := ab.Cost.RemoveCounters; rc != nil {
-			// #625: a counter cost that removes nothing would make the
-			// ability free, and an any-kind cost of more than one
-			// counter has no single kind to name at announce.
-			if rc.N <= 0 {
-				panic(fmt.Sprintf("effects.Register: %q ability %d removes %d counters — a counter cost removes at least one",
-					spec.Name, i, rc.N))
-			}
-			if rc.Counter == "" && rc.N > 1 {
-				panic(fmt.Sprintf("effects.Register: %q ability %d removes %d counters of any kind — only \"a counter\" (N = 1) has an any-kind shape",
-					spec.Name, i, rc.N))
-			}
-		}
+		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther)
 		if ab.Cost.MinX > 0 && !ab.Cost.DemandsX() {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets MinX %d but its cost %q has no {X} — a floor on a variable that cannot vary makes the ability unactivatable",
@@ -182,6 +170,15 @@ func Register(spec Spec) {
 	}
 	for i, ma := range spec.ManaAbilities {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
+		// #789: the counter components are one declaration with two
+		// owners, so they are checked by one function in both places.
+		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
+		if ma.Cost.Mana != "" {
+			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an unparseable mana cost %q: %v",
+					spec.Name, i, ma.Cost.Mana, err))
+			}
+		}
 	}
 	if spec.AdditionalCost != nil {
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
@@ -231,6 +228,61 @@ func Register(spec Spec) {
 // is built after registration and is not checked here. Every such
 // grant with a sacrifice clause today is a count of one, so nothing
 // escapes the guard yet; a grant with a variable count would.
+// checkCounterCost holds a counter cost to the shapes the engine can
+// actually pay, at boot rather than as a mysteriously-refused
+// activation mid-game. One function for both owners (#789), because
+// it is one component: an activated ability's and a mana ability's
+// counter costs are the same struct and must be declared the same
+// way.
+//
+// Five refusals, each naming a card file mistake that would
+// otherwise ship a card stronger or weaker than printed:
+//
+//   - a fixed cost that removes nothing makes the ability free;
+//   - "a counter" of any kind with N > 1 has no single kind to name
+//     at announce (#625);
+//   - an any-kind AMONG cost would need a kind per permanent and has
+//     no wire shape yet (Tekuthal, Inquiry Dominus — declared out of
+//     scope in the ADR 0020 #789 addendum);
+//   - Among without a From clause names no permanents to split
+//     across, and Among with Variable is a shape no card prints;
+//   - an add-a-counter cost with no kind, or none to add, would put
+//     nothing on and make the ability free.
+func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.CounterAddCost) {
+	if rc != nil {
+		switch {
+		case rc.Variable && rc.N < 0:
+			panic(fmt.Sprintf("effects.Register: %q %s sets a negative floor %d on a variable counter cost", card, where, rc.N))
+		case !rc.Variable && rc.N <= 0:
+			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
+		}
+		if rc.Counter == "" {
+			if rc.Among {
+				panic(fmt.Sprintf("effects.Register: %q %s removes counters of any kind from among several permanents — that needs a kind per permanent and has no shape yet (#789)", card, where))
+			}
+			if rc.N > 1 || rc.Variable {
+				panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind — only \"a counter\" (N = 1) has an any-kind shape", card, where, rc.N))
+			}
+		}
+		if rc.Among {
+			if rc.From == nil {
+				panic(fmt.Sprintf("effects.Register: %q %s splits a counter removal among nothing — an Among cost needs its \"from among …\" clause", card, where))
+			}
+			if rc.Variable {
+				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters from among several permanents — no printed card does, and it has no shape", card, where))
+			}
+		}
+	}
+	if ac != nil {
+		if ac.Counter == "" {
+			panic(fmt.Sprintf("effects.Register: %q %s puts a counter of no kind on as a cost", card, where))
+		}
+		if ac.N <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q %s puts %d counters on as a cost — it has to put at least one on", card, where, ac.N))
+		}
+	}
+}
+
 func checkSacrificeClause(card, where string, spec *game.TargetSpec) {
 	if spec == nil {
 		return

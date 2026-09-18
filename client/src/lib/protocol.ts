@@ -799,6 +799,20 @@ export interface StackItemView {
   // ability created by a trigger-doubling permanent.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #761: what paid for this spell — how many mana, and the distinct
+  // COLOURS among them in WUBRG order (colourless is not a colour, so
+  // it never appears here even though it counts in mana_spent). Mana
+  // is spent face up, so this is public, and a responder to a
+  // converge spell needs to see how wide it converged.
+  //
+  // mana_spent_unknown means the cast went through permissive mode or
+  // a strict-mode override: the engine never took the mana and has no
+  // record of what it was. Render that as unknown, never as zero —
+  // "nothing was spent" is a different and much stronger claim, and
+  // the one Vexing Bauble punishes.
+  mana_spent?: number;
+  colors_spent?: string[];
+  mana_spent_unknown?: boolean;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a
@@ -1153,13 +1167,34 @@ export interface ActivatedAbilityView {
   //     target, so hexproof permanents are included. Absent when
   //     nothing can pay.
   //
-  // The choice rides activate_ability as `counter_source_ids` (not for
-  // the self form) and `counter_kind` (only for the any-kind form).
+  //   - counter_cost_among (#789): "from AMONG artifacts you control".
+  //     The N counters may be split across any number of the listed
+  //     permanents, so the picker is many-pick with a running total
+  //     and the payload carries a count per permanent.
+  //   - counter_cost_variable (#789): "Remove X counters" / "any
+  //     number". counter_cost_n is then the FLOOR rather than the
+  //     amount, and counter_cost_max is the most the viewer could
+  //     name right now — the stepper's ceiling.
+  //   - counter_cost_add / counter_cost_add_kind (#789): a cost that
+  //     PUTS counters on the source (Devoted Druid's -1/-1). Nothing
+  //     is chosen; counter_add_blocked is CR 118.3 saying the
+  //     permanent can't have them, which greys the row.
+  //
+  // The choice rides activate_ability (or activate_mana_ability) as
+  // `counter_source_ids` (not for the self form), `counter_counts`
+  // (only for the among and variable forms) and `counter_kind` (only
+  // for the any-kind form).
   counter_cost_n?: number;
   counter_cost_kind?: string;
   counter_cost_self?: boolean;
   counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
   counter_cost_options?: CounterCostOptionView[];
+  counter_cost_add?: number;
+  counter_cost_add_kind?: string;
+  counter_add_blocked?: boolean;
   // {X} in the ability's mana cost (CR 602.2b) — Helm of Obedience,
   // Treasure Vault, Soothsaying. demands_x opens the X picker before
   // the targeting step, and the answer rides activate_ability as
@@ -1547,6 +1582,23 @@ export interface ManaAbilityView {
   // Temple's "only colorless Eldrazi". Informational; the server's
   // pool solver is what actually refuses an illegal payment.
   restrictions?: string[];
+  // #789: the counter half of the activation cost — Vivid Creek's
+  // "Remove a charge counter from this land", Ramos's five +1/+1
+  // counters, Mage-Ring Network's "any number of storage counters".
+  // The SAME field names an activated ability carries, and the same
+  // meanings, because it is the same component: counterCost.ts reads
+  // both through one structural type and builds one payload.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
+  counter_cost_add?: number;
+  counter_cost_add_kind?: string;
+  counter_add_blocked?: boolean;
 }
 
 // AttackTargetView is one legal attack target: the id to send as

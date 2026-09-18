@@ -963,3 +963,176 @@ on the owner's standing guidance. The chosen option is marked
    else.
 
    Applied in §17, *Out of scope* and the cards PR.
+
+## Addendum (2026-09-18): the rest of counter costs (#789)
+
+**Status:** Accepted · 2026-09-18 · S44 — Mana and cost components. Tracked
+on [#789](https://github.com/krakenhavoc/cmd_and_ctrl/issues/789). Finishes
+the seam the [#625 addendum](#addendum-625-counters-as-a-cost) opened, whose
+"Still out of scope" list is now empty.
+
+### Context
+
+#625 shipped `AbilityCost.RemoveCounters` in three printed shapes and named
+what it did not cover: counter costs on MANA abilities, a variable count, a
+removal split across permanents, and a cost that ADDS a counter. Those four
+blocked Vivid Creek and Vivid Grove (#451), Ramos (#391), Crucible of the
+Spirit Dragon (#402), Mage-Ring Network (#449) and Tekuthal (#304) outright,
+and shipped Devoted Druid (#301), Iron Spider (#393) and Hopeful Initiate
+(#460) with caveats.
+
+### 18. Four more answers to one question, not four more components
+
+The new shapes are not new components. They are more answers to the question
+the existing one already asks — *which counters come off, and from where* —
+so `CounterRemovalCost` gains two flags rather than growing two siblings:
+
+| Shape | Printed | Declared as |
+|---|---|---|
+| self | "Remove a gold counter from this artifact" | `RemoveCountersFromThis("gold", 1)` |
+| other permanent | "remove a loyalty counter from a planeswalker you control" | `RemoveCountersFrom(…)` |
+| any kind | "Remove a counter from a creature you control" | `Counter == ""` |
+| **variable** | "Remove any number of storage counters from this land" | `RemoveCountersXFromThis("storage", 0)` — `Variable` |
+| **among** | "Remove two +1/+1 counters from among artifacts you control" | `RemoveCountersAmong("+1/+1", 2, …)` — `Among` |
+
+One type means one validator (`validateCounterRemovalLocked`), one candidate
+walk (`CounterCostOptionsForEffect`), one enumerator arm, one protocol view
+and one client picker. The alternative — a sibling type per shape — is four
+validators that must agree about "you control it and it is not targeted",
+which is four chances to disagree; #544's lesson is that the enumerator and
+the engine disagreeing is the expensive bug.
+
+The constructor names still read like the printed text
+(`RemoveCountersXFromThis`, `RemoveCountersAmong`), because a card file
+should say what the card says. The flags are the engine's business.
+
+### 19. One component, two owners: `ManaAbilityShape.RemoveCounters`
+
+The same `*CounterRemovalCost` now hangs off a mana ability, with the same
+meaning and the same validator. `ManaAbilityCost.RemoveCounters` is built
+from the same constructors (`RemoveCountersFromThis("charge", 1).RemoveCounters`),
+and `ManaAbilityParams` carries the same three payment fields
+`ActivateAbilityParams` does.
+
+`AddCounter` rides along on both for the same reason, even though no printed
+mana ability has one: a component declared once and owned by one ability
+kind is a component the other kind has to learn about later.
+
+Payment order on a mana ability is the CR 602 path's, minus the components
+it does not have: **mana → tap → life → counters removed → counter added →
+sacrifice**. Counters before the sacrifice for #625's reason — a self
+removal has to find the source still on the battlefield.
+
+This empties the last of S15's "mana / life / counter sub-costs land with
+later sprints" note on `ManaAbilityCost`.
+
+### 20. The auto-tapper plans a counter cost only when it can both decide and afford it
+
+`autoTapAbilityFor`'s contract has always been "no further player decisions
+and no hidden costs". Applied to counters, that is three conditions, checked
+by `manaCounterCostPlannable` — one predicate shared by the planner
+(`gatherTapSources`) and the executor (`materializePlanLocked`), for the
+reason `manaTapBlockedBySickness` is shared: when the planner's copy is the
+laxer one, the executor strands whatever the plan had already tapped.
+
+- The counters come off the **source**. "From a creature you control" and
+  "from among artifacts you control" both ask *which permanent*.
+- The kind and the count are **printed**. An any-kind cost asks *which
+  kind*; a variable cost asks *how many*, and the answer changes how much
+  mana arrives.
+- The permanent **holds enough right now**. This is the "never plan a Vivid
+  land with no charge counters" rule, and the executor re-asks it, because
+  a plan can arrive stale.
+
+Vivid Creek and Vivid Grove pass all three, which is the point: the
+commonest counter-cost mana ability in the game auto-taps like any other
+land until its charge counters run out, and then quietly stops being a
+five-colour source — exactly as it stops being one in paper.
+
+A cost that ADDS a counter is never planned. It spends a resource the player
+never agreed to spend, like a life cost.
+
+### 21. A variable count is announced, and reaches the effect through the paid-cost record
+
+`Variable` makes `N` a FLOOR rather than an amount, the way `MinX` is a
+floor on an announced X, and for the same reason: what a cost's X can be is
+bounded by what the payer can actually pay and by nothing else. There is
+deliberately no maximum on the declaration — the permanent's own counters
+are the ceiling, and the validator enforces it.
+
+The count the activator announces is the payment itself, so it rides the
+payment fields rather than a second X slot. It reaches the effect through
+`StackItem.Paid.CountersRemoved` — **the same record [ADR 0068](0068-the-mana-spent-on-a-spell.md)
+introduces for the mana half**, designed once and landing in the same PR.
+An activated ability reads `ctx.CountersRemoved()`; a mana ability has no
+stack item (CR 605.3b), so its record is handed to
+`ManaAbilityShape.ProducedForPaid`, which is how "Add {C} for each storage
+counter removed this way" knows how many came off. That callback wins over
+`ProducedFunc`, which wins over `Produced`; CR 106.7's "could produce"
+reader evaluates it with the largest payment the source could make right
+now, because "could" is about the possible.
+
+### 22. One payment shape on the wire, validated as a set
+
+`counter_source_ids` (already a list since #625) is joined by
+`counter_counts`, the per-permanent split, and the existing `counter_kind`:
+
+```
+self / other, printed count   counter_source_ids (or nothing)
+among                         counter_source_ids + counter_counts, totalling N
+variable                      counter_counts, at or above the floor
+any kind                      + counter_kind
+```
+
+A fixed single-permanent payment still sends exactly what a #625 client
+sends, so nothing that already speaks this payload has to change.
+
+The among payment is validated as a SET, the crew shape: every permanent
+distinct, controlled by the activator, matched by the clause without the
+targeting gate (CR 601.2h), holding at least the count named against it, and
+the counts totalling exactly N. Any failure refuses the whole activation
+with no counter removed, per §3.
+
+The enumerator offers ONE among payment (drain the fullest permanents
+first) and ONE variable payment (every counter the permanent holds), for the
+reason `crewPayment` and `sacrificePayments` offer one: the sets differ only
+in which permanents are drained, and a policy has nothing to choose between
+them with. `MoveCost.Counters` gains an entry per permanent drained, so a
+bot sees what the payment costs it and not only what the card charges.
+
+### 23. Adding a counter is its own small type, and CR 118.3 is a predicate
+
+`AbilityCost.AddCounter` is a `CounterAddCost{Counter, N}`, always on the
+source: no printed card pays a cost by putting a counter on something else,
+and inventing the clause would mean inventing a picker for it.
+
+Two rules ride with it, both already this file's:
+
+- **Not replaceable.** `applyCounterLocked`, not `AddCounterForEffect`.
+  Paying a cost is not an effect (CR 121.1), so Doubling Season does NOT
+  double Devoted Druid's -1/-1 — which would double the price of a card
+  that is meant to be pure upside.
+- **Ordering.** Paid at announce with everything else (CR 118.3 / 602.2b),
+  after the removal half and before the sacrifices.
+
+**The "can't have counters" refusal is `canPlaceCounterLocked`**, one
+predicate the validator, the legal enumerator and the protocol view all
+read, so a greyed row, a skipped move and a refused activation are the same
+answer. Today it answers no for exactly one reason — the permanent is not on
+the battlefield under the payer's control — because the engine models no
+Solemnity-class prohibition yet. That is stated rather than hidden: this
+predicate is the one place such a static plugs in, and the refusal it drives
+is already wired end to end.
+
+### Still out of scope
+
+- **An any-kind removal spread across permanents.** Tekuthal, Inquiry
+  Dominus' "Remove three counters from among other artifacts, creatures,
+  and planeswalkers you control" needs a KIND per permanent as well as a
+  count. Tracked on #943. `effects.Register` refuses the combination rather than letting a
+  card file half-declare one, and the seam row says so. (Tekuthal is
+  blocked on two other things as well — proliferate doubling and
+  indestructible counters — so nothing is waiting only on this.)
+- **A counter cost as an ADDITIONAL cost to cast a spell.** The component
+  lives on `AbilityCost`; `AdditionalCost` has its own shape.
+- **A prohibition to refuse against.** §23.

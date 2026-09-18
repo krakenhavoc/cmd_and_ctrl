@@ -25,10 +25,14 @@ type activateParams struct {
 	// #625: the permanent a RemoveCounters cost removes from (omitted
 	// for the self form) and, for "a counter" of any kind, the kind.
 	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
-	CounterKind      string   `json:"counter_kind,omitempty"`
-	XValue           int      `json:"x_value,omitempty"`
-	Strict           bool     `json:"strict,omitempty"`
-	AutoTap          bool     `json:"auto_tap,omitempty"`
+	// #789: the per-permanent split, for a removal that is spread
+	// across several permanents or whose count the activator
+	// announces. Omitted for a fixed one-permanent cost.
+	CounterCounts []int  `json:"counter_counts,omitempty"`
+	CounterKind   string `json:"counter_kind,omitempty"`
+	XValue        int    `json:"x_value,omitempty"`
+	Strict        bool   `json:"strict,omitempty"`
+	AutoTap       bool   `json:"auto_tap,omitempty"`
 }
 
 // activatedMoves enumerates catalog activated abilities on the
@@ -184,6 +188,14 @@ func (e *enumerator) activatedMoves() {
 					continue
 				}
 			}
+			// #789: CR 118.3's other direction — a cost that PUTS a
+			// counter on cannot be paid by a permanent that can't
+			// have one. Same predicate ActivateCatalogAbility
+			// refuses on, so the list never offers what the engine
+			// bounces (#544).
+			if ac := ab.Cost.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+				continue
+			}
 			budget := e.opts.MaxExpansionPerSource
 			// #764: a modal activated ability announces its modes with
 			// its targets (CR 602.2b), so the enumerator expands the
@@ -235,8 +247,8 @@ func (e *enumerator) activatedMoves() {
 						label += cc.label(g)
 						label += targetLabel(g, targets)
 						cost := moveCost(ab.Cost.Life, loyalty)
-						if cc.n > 0 {
-							cost = withCounterPrice(cost, CounterPrice{CardID: cc.cardID, Counter: cc.kind, N: cc.n})
+						for _, price := range cc.prices() {
+							cost = withCounterPrice(cost, price)
 						}
 						e.add(Move{
 							Type:   TypeActivateAbility,
@@ -253,6 +265,7 @@ func (e *enumerator) activatedMoves() {
 								SacrificeIDs:     idStrings(sacs),
 								CrewIDs:          idStrings(crewIDs),
 								CounterSourceIDs: cc.wireIDs(),
+								CounterCounts:    cc.wireCounts(),
 								CounterKind:      cc.wireKind,
 								XValue:           xValue,
 								Strict:           true,
@@ -266,29 +279,113 @@ func (e *enumerator) activatedMoves() {
 	}
 }
 
+// counterPart is one permanent's share of a counter payment.
+type counterPart struct {
+	cardID uuid.UUID
+	n      int
+}
+
 // counterChoice is one way to pay a RemoveCounters cost: the zero
 // value stands for "the ability has no counter component".
 type counterChoice struct {
-	cardID uuid.UUID
-	kind   string
-	n      int
-	count  int
-	// fromOther is true for the "from a permanent you control" form,
-	// which names the permanent on the wire; the self form does not.
+	parts []counterPart
+	kind  string
+	total int
+	// count orders the choices: the counters on the permanent the
+	// payment comes off, so a capped budget spends itself on the
+	// payments that hurt least (a 6-loyalty walker before a
+	// 1-loyalty one).
+	count int
+	// fromOther is true for the "from a permanent you control" and
+	// "from among …" forms, which name the permanents on the wire;
+	// the self form does not.
 	fromOther bool
 	// wireKind is the kind sent as counter_kind: set only for "a
 	// counter" of any kind, where the engine needs to be told.
 	wireKind string
+	// explicitCounts is true when the payment has to spell out the
+	// per-permanent split — an among payment, and a variable one,
+	// where there is no printed count for the engine to assume.
+	explicitCounts bool
 }
 
-// counterPaymentChoices flattens the engine's (permanent, kinds)
-// options into one choice per (permanent, kind), most counters first
-// across the whole set.
+// counterPaymentChoices turns the engine's (permanent, kinds) options
+// into the payments the enumerator offers — one move per payment, and
+// the same "one answer, not every answer" discipline crewPayment and
+// sacrificePayments follow (#544: an expansion the budget cannot
+// afford starves the target loop).
+//
+//	fixed, one permanent   one choice per (permanent, kind), most
+//	                       counters first — unchanged from #625.
+//	among                  ONE payment: take from the permanents
+//	                       holding the most first until the clause's
+//	                       N is covered. The sets differ only in which
+//	                       permanents are drained, and the policy has
+//	                       nothing to choose between them with.
+//	variable               ONE payment per permanent: every counter it
+//	                       holds. A variable removal is printed on
+//	                       cards that turn counters into mana, so the
+//	                       largest payment is the only one worth
+//	                       offering — a bot that took fewer would be
+//	                       choosing to waste them.
+//
+// Empty when the cost cannot be paid at all, which is what stops the
+// ability being offered (#544).
 func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemovalCost) []counterChoice {
+	if rc == nil {
+		return []counterChoice{{}}
+	}
+	if rc.Among {
+		// The kind is printed (Register refuses an any-kind among),
+		// so there is one pool to draw from, biggest first.
+		var parts []counterPart
+		need, best := rc.N, 0
+		for _, o := range opts {
+			if need <= 0 {
+				break
+			}
+			for _, k := range o.Kinds {
+				if k.Kind != rc.Counter || need <= 0 {
+					continue
+				}
+				take := k.Count
+				if take > need {
+					take = need
+				}
+				parts = append(parts, counterPart{cardID: o.CardID, n: take})
+				need -= take
+				if k.Count > best {
+					best = k.Count
+				}
+			}
+		}
+		if need > 0 {
+			return nil
+		}
+		return []counterChoice{{
+			parts: parts, kind: rc.Counter, total: rc.N, count: best,
+			fromOther: true, explicitCounts: true,
+		}}
+	}
+	fromOther := rc.From != nil
 	var out []counterChoice
 	for _, o := range opts {
 		for _, k := range o.Kinds {
-			cc := counterChoice{cardID: o.CardID, kind: k.Kind, n: rc.N, count: k.Count, fromOther: rc.From != nil}
+			n := rc.N
+			if rc.Variable {
+				n = k.Count
+			}
+			if n < 1 {
+				continue
+			}
+			cc := counterChoice{
+				parts:          []counterPart{{cardID: o.CardID, n: n}},
+				kind:           k.Kind,
+				total:          n,
+				count:          k.Count,
+				fromOther:      fromOther,
+				explicitCounts: rc.Variable,
+			}
 			if rc.Counter == "" {
 				cc.wireKind = k.Kind
 			}
@@ -303,21 +400,66 @@ func (cc counterChoice) wireIDs() []string {
 	if !cc.fromOther {
 		return nil
 	}
-	return []string{cc.cardID.String()}
+	out := make([]string, 0, len(cc.parts))
+	for _, p := range cc.parts {
+		out = append(out, p.cardID.String())
+	}
+	return out
+}
+
+// wireCounts is the per-permanent split, sent only when the engine
+// cannot assume the printed count: an among payment and a variable
+// one. A fixed single-permanent payment sends nothing, which is the
+// shape every #625 client already speaks.
+func (cc counterChoice) wireCounts() []int {
+	if !cc.explicitCounts {
+		return nil
+	}
+	out := make([]int, 0, len(cc.parts))
+	for _, p := range cc.parts {
+		out = append(out, p.n)
+	}
+	return out
+}
+
+// prices is the counter component of the move's cost, one entry per
+// permanent the payment drains, so a policy sees what the payment
+// costs IT rather than only what the card charges.
+func (cc counterChoice) prices() []CounterPrice {
+	out := make([]CounterPrice, 0, len(cc.parts))
+	for _, p := range cc.parts {
+		out = append(out, CounterPrice{CardID: p.cardID, Counter: cc.kind, N: p.n})
+	}
+	return out
 }
 
 // label names the payment in the move label when it is a choice the
-// reader could not infer from the ability text: which permanent, and
-// for "a counter", which kind.
+// reader could not infer from the ability text: which permanents, how
+// many came off each, and for "a counter", which kind.
 func (cc counterChoice) label(g *game.Game) string {
-	if cc.n == 0 || (!cc.fromOther && cc.wireKind == "") {
+	if cc.total == 0 {
 		return ""
 	}
-	what := cc.kind + " counter"
-	if cc.n > 1 {
-		what = fmt.Sprintf("%d %s counters", cc.n, cc.kind)
+	if len(cc.parts) == 1 && !cc.fromOther && cc.wireKind == "" && !cc.explicitCounts {
+		// A printed self cost with a printed count: the ability text
+		// already says it.
+		return ""
 	}
-	return " (removing " + what + " from " + cardName(g, cc.cardID) + ")"
+	froms := make([]string, 0, len(cc.parts))
+	for _, p := range cc.parts {
+		name := cardName(g, p.cardID)
+		if len(cc.parts) > 1 || cc.total != p.n {
+			name = fmt.Sprintf("%d from %s", p.n, name)
+		} else {
+			name = "from " + name
+		}
+		froms = append(froms, name)
+	}
+	what := cc.kind + " counter"
+	if cc.total > 1 {
+		what = fmt.Sprintf("%d %s counters", cc.total, cc.kind)
+	}
+	return " (removing " + what + " " + strings.Join(froms, ", ") + ")"
 }
 
 // sacrificePool lists the seat's permanents that satisfy a
@@ -423,6 +565,12 @@ type manaParams struct {
 	CardID       string   `json:"card_id"`
 	AbilityIndex int      `json:"ability_index"`
 	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	// #789: a mana ability's counter cost is paid with exactly the
+	// fields an activated ability's is — one component, one payment
+	// shape, whichever ability kind carries it.
+	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+	CounterCounts    []int    `json:"counter_counts,omitempty"`
+	CounterKind      string   `json:"counter_kind,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents.
@@ -489,33 +637,60 @@ func (e *enumerator) manaMoves() {
 					continue
 				}
 			}
+			// #789: the counter components, enumerated by the SAME
+			// functions the activated path uses, because it is the
+			// same component. A Vivid land with no charge counters is
+			// not a five-colour move, and Ramos with four +1/+1
+			// counters is not a move at all.
+			counterChoices := []counterChoice{{}}
+			if rc := ab.RemoveCounters; rc != nil {
+				counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
+				if len(counterChoices) == 0 {
+					continue
+				}
+			}
+			if ac := ab.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+				continue
+			}
 			for _, sacs := range sacrificeSets {
-				label := source.Name + ": " + ab.Label
-				if ab.Label == "" {
-					label = source.Name + ": add " + ab.Produced
-				}
-				if len(sacs) > 0 {
-					names := make([]string, len(sacs))
-					for i, id := range sacs {
-						names[i] = cardName(g, id)
+				for _, cc := range counterChoices {
+					label := source.Name + ": " + ab.Label
+					if ab.Label == "" {
+						label = source.Name + ": add " + ab.Produced
 					}
-					label += " (sacrificing " + strings.Join(names, ", ") + ")"
-				}
-				e.add(Move{
-					Type:   TypeActivateManaAbility,
-					Player: e.seat,
-					Kind:   KindMana,
-					Label:  label,
-					Source: source.InstanceID,
+					if len(sacs) > 0 {
+						names := make([]string, len(sacs))
+						for i, id := range sacs {
+							names[i] = cardName(g, id)
+						}
+						label += " (sacrificing " + strings.Join(names, ", ") + ")"
+					}
+					label += cc.label(g)
 					// Mana Confluence's "Pay 1 life" is the same
-					// invisible cost an activated ability's is (#74).
-					Cost: moveCost(ab.LifeCost, 0),
-					Params: mustJSON(manaParams{
-						CardID:       source.InstanceID.String(),
-						AbilityIndex: idx,
-						SacrificeIDs: idStrings(sacs),
-					}),
-				})
+					// invisible cost an activated ability's is (#74),
+					// and so is a charge counter: the params name the
+					// permanent but never the price.
+					cost := moveCost(ab.LifeCost, 0)
+					for _, price := range cc.prices() {
+						cost = withCounterPrice(cost, price)
+					}
+					e.add(Move{
+						Type:   TypeActivateManaAbility,
+						Player: e.seat,
+						Kind:   KindMana,
+						Label:  label,
+						Source: source.InstanceID,
+						Cost:   cost,
+						Params: mustJSON(manaParams{
+							CardID:           source.InstanceID.String(),
+							AbilityIndex:     idx,
+							SacrificeIDs:     idStrings(sacs),
+							CounterSourceIDs: cc.wireIDs(),
+							CounterCounts:    cc.wireCounts(),
+							CounterKind:      cc.wireKind,
+						}),
+					})
+				}
 			}
 		}
 	}

@@ -42,6 +42,7 @@
   import { bucketForBattlefield, isCreature } from "../../cardTypes";
   import { battlefieldClickIntent } from "../../contextMenu.logic";
   import { canActivateSorcerySpeedAbility } from "../../timing";
+  import { counterCostNeedsPrompt } from "../../counterCost";
   import { openCardMenu } from "../../contextMenu";
   import BattlefieldRow from "./BattlefieldRow.svelte";
   import PileBar from "./PileBar.svelte";
@@ -86,11 +87,13 @@
     // the follow-up (sacrifice pick, targeting) because those are
     // board-wide modals. Only wired for the viewer's own panel.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
-    // S21: a mana ability on one of this seat's permanents needs a
-    // sacrifice chosen before it can be activated. Board owns that
-    // modal, so the panel forwards the click instead of sending the
-    // action. Only wired for the viewer's own panel.
-    onManaSacrificeCost?: (card: CardView, ability: ManaAbilityView) => void;
+    // S21, widened in #789: a mana ability on one of this seat's
+    // permanents needs a cost choice before it can be activated — a
+    // sacrifice (Ashnod's Altar), or which counters come off and how
+    // many (Mage-Ring Network, Iron Spider's cousin on a land). Board
+    // owns those modals, so the panel forwards the click instead of
+    // sending the action. Only wired for the viewer's own panel.
+    onManaAbilityCost?: (card: CardView, ability: ManaAbilityView) => void;
     // Priority controls forwarded to PhaseDisplay — only the
     // self panel mounts the widget, so these only matter when
     // isSelf=true but they're plumbed uniformly for prop typing.
@@ -134,7 +137,7 @@
     onPassPriority,
     onToggleAutopass,
     onActivateAbility,
-    onManaSacrificeCost,
+    onManaAbilityCost,
     flipped = false,
   }: Props = $props();
 
@@ -233,17 +236,27 @@
   // opponent panels pass undefined down so the context menu stays
   // closed on cards they don't control.
   //
-  // S21: a mana ability whose cost sacrifices ANOTHER permanent
-  // (Ashnod's Altar) needs a choice first, and that modal is
-  // board-wide — so the click is handed to Board, which owns the
-  // same SacrificeCostModal the CR 602 abilities use and sends the
-  // action itself once a card is picked.
+  // S21, widened in #789: a mana ability whose cost sacrifices
+  // ANOTHER permanent (Ashnod's Altar), or whose counter component
+  // still has a choice in it (which permanent, which kind, how many),
+  // needs an answer first — and those modals are board-wide. So the
+  // click is handed to Board, which owns the same SacrificeCostModal
+  // and CounterCostModal the CR 602 abilities use and sends the
+  // action itself once the cost is settled.
+  //
+  // manaAbilityNeedsPrompt is the one predicate; a plain "{T}: Add
+  // {G}", and a Vivid land with charge counters on it, go straight to
+  // the action as they always did.
   const activateManaAbility = $derived(
     isSelf
       ? (card: CardView, abilityIndex: number) => {
           const ability = (card.mana_abilities ?? []).find((a) => a.index === abilityIndex);
-          if (ability?.sacrifice_options && onManaSacrificeCost) {
-            onManaSacrificeCost(card, ability);
+          if (
+            ability &&
+            onManaAbilityCost &&
+            (ability.sacrifice_options || counterCostNeedsPrompt(ability))
+          ) {
+            onManaAbilityCost(card, ability);
             return;
           }
           sendAction(

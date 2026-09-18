@@ -395,6 +395,11 @@ const (
 	// from a caster's pool to pay for a spell. Actor = caster,
 	// Source = card being cast. Permissive / forced casts emit
 	// EventCostWarning instead. S15 sub-PR 3.
+	//
+	// #761: Amount is how many mana were spent and Colors the
+	// distinct COLOURS among them, in WUBRG order — the facts
+	// converge, sunburst and adamant read off the stack item, said
+	// out loud in the log as well.
 	EventManaSpent EventKind = "mana_spent"
 
 	// EventCostWarning — a cast_spell action proceeded under the S15
@@ -610,6 +615,17 @@ type Event struct {
 	// classification. Kept as a string so adding new counter kinds
 	// doesn't require a schema change.
 	Label string `json:"label,omitempty"`
+
+	// Colors are the distinct colours a payment spent, in WUBRG
+	// order, on EventManaSpent (#761). Colourless is not a colour
+	// (CR 105.1) and never appears; Amount carries the total number
+	// of mana, colourless included.
+	//
+	// Empty on a payment the engine waived (permissive mode, a
+	// ForceCast) and on a genuinely free cast, which the log tells
+	// apart by the EventCostWarning that accompanies the first.
+	// Empty on every other event kind.
+	Colors []string `json:"colors,omitempty"`
 
 	// Sides is the die size for EventRollDie. Call and Won describe an
 	// EventFlipCoin; Won is false for a face-only flip.

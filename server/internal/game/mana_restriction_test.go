@@ -57,7 +57,7 @@ func TestRefusedRestrictedSpendLeavesThePoolIntact(t *testing.T) {
 		Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
 	}}
 	cost, _ := ParseCost("{G}")
-	if pool.SpendManaFor(cost, 0, instantSpendContext()) {
+	if _, ok := pool.SpendManaFor(cost, 0, instantSpendContext()); ok {
 		t.Fatal("spend succeeded on a restriction mismatch")
 	}
 	if len(pool) != 1 {
@@ -89,7 +89,7 @@ func TestRestrictedManaIsSpentBeforeUnrestrictedMana(t *testing.T) {
 	pool := ManaPool{free, restricted}
 	cost, _ := ParseCost("{G}")
 
-	if !pool.SpendManaFor(cost, 0, creatureSpendContext()) {
+	if _, ok := pool.SpendManaFor(cost, 0, creatureSpendContext()); !ok {
 		t.Fatal("spend failed")
 	}
 	if len(pool) != 1 {

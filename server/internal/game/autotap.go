@@ -212,15 +212,22 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {
 			continue
 		}
+		// #789: a counter cost the planner can neither decide nor
+		// afford. A Vivid land with no charge counters left is not a
+		// mana source — planning it would produce a plan the
+		// executor refuses, stranding whatever it had already
+		// tapped, which is the same failure mode the sickness and
+		// gate checks above exist to prevent.
+		if !manaCounterCostPlannable(&c, picked) {
+			continue
+		}
 		// A derived or scaled ability declares nothing useful in
 		// Produced — Exotic Orchard's colours and Cabal Coffers'
 		// count only exist once computed. Read-only under the lock
 		// the caller already holds, same contract the activation
 		// path gives the callback.
-		producedStr := picked.Produced
-		if picked.ProducedFunc != nil {
-			producedStr = picked.ProducedFunc(g, controller, c.InstanceID)
-		}
+		producedStr := manaAbilityProducedLocked(g, controller, c.InstanceID, picked,
+			g.maxCounterPaymentLocked(controller, c.InstanceID, picked.RemoveCounters))
 		slots, err := ParseProducedMana(producedStr)
 		if err != nil || len(slots) == 0 {
 			continue
@@ -273,10 +280,12 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 // (materializePlanLocked) so the two can never disagree about which
 // ability index a planned card is going to be tapped for.
 //
-// Five exclusions, all for the same reason — the auto-tapper's
+// Six exclusions, all for the same reason — the auto-tapper's
 // contract is "no further player decisions and no hidden costs":
 //
 //   - a sacrifice cost needs a permanent named (S15's original note);
+//   - a cost that ADDS a counter spends a resource the player never
+//     agreed to spend, like a life cost (#789);
 //   - a life cost spends a resource the player never agreed to spend
 //     (Mana Confluence);
 //   - a rider spends one too, one the player can't decline (Ancient
@@ -328,9 +337,65 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 		if a.ManaCost != "" || len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 			continue
 		}
+		// #789: a cost that PUTS a counter on the source spends a
+		// resource the player never agreed to spend, exactly as a
+		// life cost does — Devoted Druid's -1/-1 is permanent and
+		// the planner must not decide to take it. A cost that
+		// REMOVES counters may be plannable; whether this particular
+		// one is depends on the permanent, so it is asked separately
+		// by manaCounterCostPlannable.
+		if a.AddCounter != nil {
+			continue
+		}
 		return &a
 	}
 	return nil
+}
+
+// manaCounterCostPlannable reports whether the auto-tapper may plan
+// this source for this ability given its RemoveCounters component
+// (#789). The one copy of the rule the planner (gatherTapSources)
+// and the executor (materializePlanLocked) share, for the same
+// reason autoTapAbilityFor and manaTapBlockedBySickness are shared:
+// two copies drift, and when the planner's is the laxer one the
+// executor strands whatever the plan had already tapped.
+//
+// Three conditions, and all three are the auto-tapper's standing
+// contract — "no further player decisions, no hidden costs" —
+// applied to counters:
+//
+//   - The counters must come off the SOURCE. "Remove a counter from
+//     a creature you control" and "from among artifacts you control"
+//     both ask which permanent pays, and the planner answers no
+//     questions.
+//   - The kind and the count must be PRINTED. An any-kind cost asks
+//     which kind; a variable cost ("Remove X storage counters", "any
+//     number") asks how many, and the answer changes how much mana
+//     arrives — the player decides that, not the planner.
+//   - The permanent must hold enough RIGHT NOW. This is the "never
+//     plan a Vivid land with no charge counters" rule, and it is
+//     re-asked by the executor because a plan can arrive stale.
+//
+// Vivid Creek and Vivid Grove pass all three, which is the point:
+// the commonest counter-cost mana ability in the game auto-taps like
+// any other land until its second charge counter is gone, and then
+// quietly stops being a five-colour source — exactly as it stops
+// being one in paper.
+func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
+	if ab == nil || c == nil {
+		return false
+	}
+	if ab.AddCounter != nil {
+		return false
+	}
+	rc := ab.RemoveCounters
+	if rc == nil {
+		return true
+	}
+	if rc.From != nil || rc.Among || rc.Variable || rc.Counter == "" || rc.N < 1 {
+		return false
+	}
+	return c.Counters[rc.Counter] >= rc.N
 }
 
 // manaTapBlockedBySickness reports whether CR 302.6 forbids tapping

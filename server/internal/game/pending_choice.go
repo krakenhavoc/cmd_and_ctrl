@@ -2716,14 +2716,15 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool 
 		}
 		g.materializePlanLocked(p, plan, cost)
 	}
-	if !p.ManaPool.SpendMana(cost, 0) {
+	spent, ok := p.ManaPool.SpendManaFor(cost, 0, ManaSpendContext{})
+	if !ok {
 		return false
 	}
-	g.EmitEvent(Event{
-		Kind:   EventManaSpent,
-		Actor:  p.ID,
-		Source: source,
-	})
+	// #761: the log line carries what was spent, like every other
+	// payment path. There is no stack item to hang the record on —
+	// this pays a PROMPT's cost, which is already resolving — so
+	// nothing else records it.
+	g.EmitEvent(manaSpentEvent(p.ID, source, spent))
 	return true
 }
 

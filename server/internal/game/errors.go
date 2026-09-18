@@ -354,4 +354,11 @@ var (
 	// ErrInvalidParam so the client can say what is missing. Added
 	// for #625.
 	ErrInsufficientCounters = errors.New("game: not enough counters to pay that cost")
+	// ErrCantPayCounterCost is returned when a cost that PUTS a
+	// counter on the source cannot be paid — CR 118.3's other
+	// direction, where the trouble is not a shortage but a
+	// prohibition. Devoted Druid cannot untap itself while something
+	// stops it having counters put on it, and the refusal has to
+	// happen before anything else is paid. Added for #789.
+	ErrCantPayCounterCost = errors.New("game: that permanent can't have those counters put on it")
 )

@@ -83,6 +83,12 @@ type CardDef struct {
 	// effects.Spec.XMatters and internal/legal/x.go.
 	XMatters bool
 
+	// WantsDistinctColors marks a spell that READS the colours of the
+	// mana that paid for it — converge (CR 702.86) and sunburst (CR
+	// 702.44), and nothing else today. It picks the colour-maximising
+	// payment strategy at the cast gate (#761).
+	WantsDistinctColors bool
+
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
@@ -240,6 +246,10 @@ func init() {
 	CatalogNoMaxHandSize = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.NoMaxHandSize
+	}
+	CatalogWantsDistinctColors = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.WantsDistinctColors
 	}
 	CatalogAdditionalLandPlays = func(key string) int {
 		if d := catalogDef(key); d != nil {

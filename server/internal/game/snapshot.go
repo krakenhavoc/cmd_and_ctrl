@@ -420,6 +420,12 @@ type stackItemSnapshot struct {
 	Seq           uint64            `json:"seq"`
 	Ordered       bool              `json:"ordered"`
 
+	// Paid is what the announcement cost (#789 / #761). Carried: a
+	// restore that lost it would resolve a converge spell for zero
+	// and a "for each counter removed this way" ability for nothing,
+	// and neither number is recoverable from the restored board.
+	Paid PaidCost `json:"paid,omitempty"`
+
 	// HasEffect / HasTargetSpec / HasModeSpec record the catalog
 	// slots so the census can count what restore had to drop.
 	HasEffect     bool `json:"hasEffect,omitempty"`
@@ -986,6 +992,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Paid:          clonePaidCost(s.Paid),
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
 		HasModeSpec:   s.modeSpec != nil,
@@ -1532,6 +1539,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Paid:          clonePaidCost(s.Paid),
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
 		// ability does, which is why a stack item with an Effect is
