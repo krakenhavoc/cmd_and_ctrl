@@ -535,6 +535,12 @@ func cloneStackItem(s *StackItem) *StackItem {
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
+		// #789 / #761: what the announcement paid. Deep-copied
+		// (clonePaidCost reallocates the token slice and each
+		// token's Restrictions) because an undo snapshot that
+		// aliased the live backing array would let a restore mutate
+		// the game it was taken from.
+		Paid: clonePaidCost(s.Paid),
 		// Effect takes the live *Game at resolve time rather than
 		// capturing one, so sharing the func between original and
 		// snapshot is safe — an undo that restores this item

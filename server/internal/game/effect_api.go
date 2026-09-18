@@ -42,6 +42,27 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 	return g.StackMeta[id]
 }
 
+// StackItemPaidForEffect is what the announcement that put `id` on
+// the stack actually paid (#761), and whether the engine charged at
+// all. The zero PaidCost for an item that is not on the stack — which
+// reads as "nothing was spent, and that is known", the right answer
+// for an object that was never cast.
+//
+// The read a CAST TRIGGER needs: for a spell, the stack item's ID IS
+// the card's instance ID, so EventCast.CardID is already the key.
+// Vexing Bauble's "whenever a player casts a spell, if no mana was
+// spent to cast it" is this accessor and PaidCost.NoManaSpent, and
+// nothing else.
+//
+// A value, not the item, deliberately: a trigger has no business
+// mutating the spell it is watching, and the record is small.
+func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
+	if item := g.StackItemForEffect(id); item != nil {
+		return item.Paid
+	}
+	return PaidCost{}
+}
+
 // LookupCardForEffect returns a value copy of the card with the
 // given instance ID from whichever zone holds it, plus ok=true.
 // Empty Card and ok=false when the card isn't in any tracked zone.

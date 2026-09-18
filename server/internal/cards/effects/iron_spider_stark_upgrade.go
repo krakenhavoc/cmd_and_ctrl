@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Iron Spider, Stark Upgrade — Legendary Artifact Creature — Spider
 // Hero {3}, 2/3 (EDHREC rank 3195):
 //
@@ -16,26 +18,34 @@ package effects
 // creature source, so the tap waits out summoning sickness (CR
 // 302.6), as printed.
 //
-// One declared simplification, weaker than printed: the draw
-// ability is not implemented. "Remove two +1/+1 counters from among
-// artifacts you control" is a counter-removal cost spread across
-// several permanents. AbilityCost.RemoveCounters (#625) removes from
-// the source or from ONE other permanent per payment, so it cannot say
-// "one from this artifact and one from that one".
-// Shipping the draw without its cost would be stronger than printed
-// (#259), so the ability is left off and the counters simply build
-// up.
+// The draw ability is live since #789, which taught
+// AbilityCost.RemoveCounters to split a removal across several
+// permanents: "from among artifacts you control" is
+// RemoveCountersAmong, and the payment names a count per artifact
+// totalling exactly two. The Spider itself is an artifact and a legal
+// part of that payment — it pays for its own draw out of the counters
+// its tap ability made, which is how the card is played.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "e123fd7d-ace9-48a4-9510-eedcc837d8e8",
 		Name:            "Iron Spider, Stark Upgrade",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The draw ability isn't implemented — removing two +1/+1 counters from among your artifacts isn't a cost the engine can pay, so only the tap-to-pump works."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Activated: []ActivatedAbility{{
 			Label:  "{T}: Put a +1/+1 counter on each artifact creature and/or Vehicle you control",
 			Cost:   TapCost(),
 			Effect: b30PutCounterOnEachArtifactCreatureOrVehicleYouControl,
+		}, {
+			Label: "{2}, Remove two +1/+1 counters from among artifacts you control: Draw a card.",
+			Cost: Plus(
+				ManaCost("{2}"),
+				RemoveCountersAmong(game.CounterPlusOne, 2, "artifacts you control", Artifact()),
+			),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{N: 1}.Apply(NewContext(g, item))
+			},
 		}},
 	})
 }

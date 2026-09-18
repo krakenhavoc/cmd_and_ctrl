@@ -68,6 +68,14 @@ var adoptableGaps = map[string]string{
 		(FreeIfYouControlCommander), but each needs its own free-cast
 		test, so they are their own piece of work rather than a
 		rider on the drift guard.`,
+	"Lux Artillery / converge and sunburst": `#761 gave a spell its own sunburst
+		(Etched Oracle). Lux Artillery GRANTS sunburst to every artifact
+		creature spell its controller casts, which is a static ability
+		over a cast rather than a keyword on one card — the counters
+		have to be added to somebody else's spell as it resolves, from
+		a permanent that is not its source. That is the "granted
+		keyword" seam, not this one, and the caveat stays true until it
+		lands.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.

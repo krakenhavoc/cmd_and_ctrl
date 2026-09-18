@@ -382,14 +382,23 @@ interface AbilityCost {
   // it. Mana abilities never carry either.
   crew_cost?: number;
   crew_options?: { players?: string[]; cards?: string[] };
-  // #625: a "remove N counters" cost — its shape and what can pay it
-  // right now. Mirrors ActivatedAbilityView in protocol.ts; mana
-  // abilities never carry it.
+  // #625, then #789: the counter components — a "remove N counters"
+  // cost's shape and what can pay it right now, and a cost that puts
+  // one on. Mirrors ActivatedAbilityView in protocol.ts, and since
+  // #789 ManaAbilityView carries the identical fields (Vivid Creek,
+  // Ramos, Mage-Ring Network), which is exactly why this type is
+  // structural: one predicate, both ability kinds.
   counter_cost_n?: number;
   counter_cost_kind?: string;
   counter_cost_self?: boolean;
   counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
   counter_cost_options?: { card_id: string; kinds: { kind: string; count: number }[] }[];
+  counter_cost_add?: number;
+  counter_cost_add_kind?: string;
+  counter_add_blocked?: boolean;
 }
 
 // ACTIVATION_CONDITION_UNMET is the hint on a row whose
@@ -429,8 +438,13 @@ export function abilityBlocked(
   }
   // #625: a counter-removal cost nothing can pay — Heart of Kiran's
   // alternative crew with no planeswalker holding a loyalty counter,
-  // Dragon's Hoard with no gold counter. Instant speed, like crew, so
-  // no timing arm: only the empty pool is judged.
+  // Dragon's Hoard with no gold counter, a Vivid land out of charge
+  // counters. Instant speed, like crew, so no timing arm: only the
+  // empty pool is judged — except for an "among" cost, where the
+  // pool can be non-empty and still short, which the row says
+  // because there is no running total anywhere else to read it from.
+  // #789 adds the other direction: a permanent that can't have the
+  // counter its cost would put on (CR 118.3).
   const counters = counterCostBlocked(a);
   if (counters) return counters;
   // CR 606: a loyalty ability answers to the sorcery-speed window,

@@ -124,6 +124,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.RemoveCounters != nil {
 			out.RemoveCounters = c.RemoveCounters
 		}
+		// #789: the same reasoning, the other direction — a composed
+		// "{T}, Put a -1/-1 counter on this creature" that dropped
+		// the counter would untap for free.
+		if c.AddCounter != nil {
+			out.AddCounter = c.AddCounter
+		}
 		if c.MinX != 0 {
 			out.MinX = c.MinX
 		}
@@ -169,4 +175,63 @@ func RemoveCountersFrom(kind string, n int, label string, preds ...CardPredicate
 		N:       n,
 		From:    TargetPermanent(label, preds...),
 	}}
+}
+
+// RemoveCountersXFromThis is "Remove X <kind> counters from this
+// permanent" and "Remove any number of <kind> counters from this
+// permanent" — they are the same cost, because what X can be is
+// bounded by what the permanent holds and by nothing else (#789).
+// Mage-Ring Network's "Remove any number of storage counters from
+// this land" is RemoveCountersXFromThis("storage", 0); a card that
+// printed a floor ("X can't be 0") passes 1.
+//
+// The count is announced at activation, the way MinX announces an
+// {X} in a mana component, and reaches the effect through the paid-
+// cost record: an activated ability reads ctx.CountersRemoved(), and
+// a mana ability's ProducedForPaid is handed the record directly.
+func RemoveCountersXFromThis(kind string, min int) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter:  kind,
+		N:        min,
+		Variable: true,
+	}}
+}
+
+// RemoveCountersAmong is "Remove N <kind> counters from among <a
+// clause>" — Iron Spider, Stark Upgrade's "from among artifacts you
+// control", Hopeful Initiate's "from among creatures you control"
+// (#789):
+//
+//	RemoveCountersAmong("+1/+1", 2, "artifacts you control", Artifact())
+//
+// The N counters may be split across any number of the permanents
+// the clause matches, in whatever amounts the activator names. Like
+// every other counter cost the permanents are chosen, not targeted,
+// and "you control" is the engine's rule rather than a predicate the
+// card file has to remember.
+//
+// The kind must be printed: "remove three counters from among …" of
+// ANY kind (Tekuthal, Inquiry Dominus) would need a kind per part
+// and has no shape yet — Register refuses it rather than letting a
+// card file half-declare one.
+func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter: kind,
+		N:       n,
+		From:    TargetPermanent(label, preds...),
+		Among:   true,
+	}}
+}
+
+// AddCounterToThis is "Put a <kind> counter on this permanent" as a
+// COST — Devoted Druid's "Put a -1/-1 counter on this creature:
+// Untap this creature" (#789).
+//
+// A cost, not an effect, with everything that follows from CR 121.1:
+// nothing doubles it (Doubling Season does not make the Druid's
+// untapper cost two counters), nothing replaces it, and an activator
+// who cannot have the counter put on cannot activate at all
+// (CR 118.3).
+func AddCounterToThis(kind string, n int) game.AbilityCost {
+	return game.AbilityCost{AddCounter: &game.CounterAddCost{Counter: kind, N: n}}
 }
