@@ -188,9 +188,10 @@ func (g *Game) ClearExpiredScopedStaticsLocked() {
 // history. That is the same trap `cloneCard` exists to avoid on the
 // card side.
 //
-// The sweep is idempotent, which matters because the cleanup hook
-// runs again after a discard pause drains and because the layer
-// recompute runs it on every pass.
+// The sweep is idempotent, which matters because CR 514.3a can give a
+// turn a second cleanup step and the hook runs again for it (#661),
+// because the cleanup hook runs again after a discard pause drains,
+// and because the layer recompute runs it on every pass.
 //
 // Caller must hold g.mu.
 func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {

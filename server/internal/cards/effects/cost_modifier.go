@@ -207,3 +207,19 @@ func OtherSpellsCastThisTurn() func(q game.CostQuery) int {
 		return q.Game.SpellsCastThisTurn[q.Controller].Total
 	}
 }
+
+// SpellWithKeyword passes on a spell that has `kw` as it sits on the
+// stack — "creature spells WITH FLYING you cast cost {1} less"
+// (Warden of Evos Isle), and the discount half of every tribal or
+// keyword lord that prices rather than pumps.
+//
+// Reads the keyword off the spell rather than off a battlefield
+// permanent, which is the whole point: game.HasKeyword falls back to
+// the card's own Keywords and then to CatalogPrintedKeywords for an
+// object that is not on the battlefield, and a spell being priced is
+// on the stack. A creature that only GAINS the keyword once it
+// resolves is not discounted, which is what CR 601.2f says — the cost
+// is locked in from the spell as it exists while it is being cast.
+func SpellWithKeyword(kw string) CostPredicate {
+	return func(q game.CostQuery) bool { return game.HasKeyword(&q.Card, kw) }
+}

@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6130f22d-7901-4f9f-b777-27bb0dacc063",
 		Name:         "Debt to the Deathless",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return b21DrainEachOpponentAndGainTheTotal(ctx.Game, item, 2*ctx.X())

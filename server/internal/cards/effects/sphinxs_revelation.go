@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "71d83fca-e40e-4d0e-956d-d0d6da9cc472",
 		Name:         "Sphinx's Revelation",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return b32GainLifeThenDraw(item, ctx, ctx.X())

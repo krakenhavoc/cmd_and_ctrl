@@ -661,12 +661,21 @@ func (e *enumerator) choiceMoves() bool {
 			//
 			// First ask: 10, then 100, then stop. A bot takes the
 			// first offer, which is why 10 leads. See docs/bot.md.
+			//
+			// #810 adds the second case that offers only stop: a loop
+			// the chooser is DRIVING, by activating an ability of
+			// their own permanent once per iteration. "Resolve it ten
+			// more times" is an answer about a loop that runs itself;
+			// for one the seat feeds by hand it buys nothing but ten
+			// more turns of the crank, and the crank is the thing the
+			// breaker is trying to stop. So a self-activated loop gets
+			// the termination answer on the FIRST ask.
 			offers := []int{
 				game.DefaultLoopShortcutIterations,
 				100,
 				0,
 			}
-			if c.LoopShortcutRepeat {
+			if c.LoopShortcutRepeat || e.loopIsSelfActivated(c) {
 				offers = []int{0}
 			}
 			for _, k := range offers {
@@ -737,6 +746,36 @@ func modeLabel(c *game.PendingChoice, sel []int) string {
 		out += label
 	}
 	return ": " + out
+}
+
+// loopIsSelfActivated reports whether the loop a CR 726 shortcut
+// prompt names is one its controller drives themselves, by activating
+// an ability once per iteration, rather than a trigger loop that runs
+// on its own once it starts (#810).
+//
+// Read off the ability the notice names: the prompt carries the
+// source permanent and the stack label the repeating item announced
+// with, and an ACTIVATED ability's stack label is its printed label
+// (ActivateCatalogAbility), so a label that matches one of the
+// source's activated abilities is an activation loop. A triggered
+// ability's label never does — the catalog's convention for one is
+// "<card> — <what happens>".
+//
+// No new state on the prompt for a fact the board already answers.
+func (e *enumerator) loopIsSelfActivated(c *game.PendingChoice) bool {
+	if c.Source == uuid.Nil || c.Reason == "" {
+		return false
+	}
+	src := findBattlefield(e.g, c.Source)
+	if src == nil {
+		return false
+	}
+	for _, ab := range game.ActivatedAbilitiesForCard(*src) {
+		if ab.Label == c.Reason {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *enumerator) addChoice(c *game.PendingChoice, label string, p choiceParams) {

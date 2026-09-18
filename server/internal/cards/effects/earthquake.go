@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9a40614b-50a3-422c-849e-53c8b7d3d204",
 		Name:         "Earthquake",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.X()

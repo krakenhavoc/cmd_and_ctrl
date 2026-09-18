@@ -206,3 +206,80 @@ the cursor on to Upkeep.
   flag works for the common case but doesn't survive a Concede-then-
   Pass-Turn that would land back on the starting seat at turn 1; a
   durable `StartingSeat` field is the simpler invariant.
+
+## Amendment (2026-09-18, #661): cleanup grants priority when something happens there (CR 514.3a)
+
+Decision 1's "`Turn.advance` lands on Untap and Cleanup with
+PriorityHolder set to `NoPriority`" is still how both steps BEGIN.
+Decision 2's "auto-advances on `StepCleanup`" is no longer
+unconditional, and CR 514.3a is why:
+
+> However, if any state-based actions are performed as a result of the
+> state-based action check, or if any triggered abilities are waiting
+> to be put onto the stack, those state-based actions are performed,
+> then those triggered abilities are put on the stack, then the active
+> player gets priority. Players may cast spells and activate
+> abilities. Once the stack is empty and all players pass in
+> succession, another cleanup step begins.
+
+The engine had no such window. The cleanup hook advanced out of the
+turn as soon as nobody owed a CR 514.1 discard, so a trigger queued by
+that discard — Sangromancer, Marauding Mako, Surly Badgersaur, Mary
+Read and Anne Bonny, Scrounging Skyray, and madness ([#657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/657)) —
+sat on `PendingTriggers` until the next priority boundary, which is
+the NEXT player's upkeep (untap grants none either). Everything those
+triggers then asked about "this turn" read the wrong turn.
+
+**What changed.**
+
+- **One cleanup exit**, `exitCleanupStepLocked`
+  ([server/internal/game/cleanup.go](../../server/internal/game/cleanup.go)),
+  called from the `StepCleanup` case of the step-entry hook and from
+  `DiscardSelection`'s resume — the two ways a cleanup step's
+  turn-based actions can finish. It used to be two sites making the
+  decision separately, which is how the discard path inherited the
+  bug.
+- **The condition is the rule's**: an SBA was performed, or a trigger
+  is waiting. `runStateChecksLocked` now reports the first (one body,
+  no reporting copy; every other caller ignores the value), and the
+  second is read off `PendingTriggers` before the drain empties it.
+  A trigger held behind its own CR 603.5 "you may" prompt counts as
+  waiting — `blockingChoiceLocked`, the same predicate #730 / #794
+  use — because an optional trigger reaches `PendingTriggers` only
+  once the answer arrives, and Sangromancer's prompt is exactly the
+  shape the issue reported.
+- **Priority in cleanup is ordinary priority.** `Turn.PriorityHolder`
+  becomes the active seat; `PassPriority`, the enumerator
+  (`holdsPriority`), the bot runner and the client's autopass chain
+  all read that field and needed no changes. The client's
+  `NO_PRIORITY_STEPS` is only consulted for the per-step *stops* grid
+  (you cannot pin a stop on cleanup), and `PhaseDisplay` derives
+  "somebody holds priority" from `priority_holder >= 0`, so the pass
+  button appears on its own.
+- **The wrap begins another cleanup step**, `repeatCleanupStepLocked`,
+  instead of ending the turn: hand size is checked again and the
+  CR 514.2 sweep runs again, which is what makes an "until end of
+  turn" effect created during cleanup end in its own turn (see the
+  amendment to [ADR 0035 §3](0035-until-end-of-turn-effects.md)).
+  The cursor does not move, so that function opens the event batch
+  itself — the third and last caller of `beginEventBatchLocked`,
+  alongside a resolution beginning and the cursor entering a step
+  (ADR 0049's #829 amendment). It is the only step the rules begin
+  again where the cursor does not; #717's second combat damage step
+  made the other one a real step, and took its hand-rolled boundary
+  with it.
+- **Nothing changes for a quiet cleanup.** No SBA, no trigger, no
+  prompt, nothing on the stack: the turn ends in the same call it
+  always did, with no priority window and no new auto-pass stop.
+
+**Not a loop.** A second cleanup step is a new step, not a repeated
+ability: ADR 0055's breaker counts RESOLUTIONS per `(source, label)`
+in `TurnTally.LoopRun`, so an ordinary extra cleanup adds at most one,
+and a card that really did re-trigger every cleanup step would be
+paced by a full priority round each time and trip the breaker at the
+threshold like any other loop.
+
+[ADR 0059](0059-turn-machinery.md) Decision 14 listed the extra
+cleanup step as out of scope for the turn-machinery work; it is built
+here instead, and needs nothing from that ADR's cursor — the step does
+not move, so there is no plan splice.

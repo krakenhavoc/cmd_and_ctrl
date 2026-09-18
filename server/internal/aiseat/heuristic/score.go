@@ -296,6 +296,18 @@ func (w Weights) LifeCostValue(life, pay int) float64 {
 
 // permanentValue prices one permanent on the battlefield.
 func (w Weights) permanentValue(c *protocol.CardView) float64 {
+	// ADR 0069: a face-down PERMANENT is not unknown — CR 708.2 makes
+	// it a public 2/2 colourless creature with no name, and the wire
+	// ships that body to every seat. Pricing it as `Unknown` would
+	// have a bot ignore a creature it can see, block and kill. What
+	// it must not read is the card underneath, and it cannot: the
+	// redaction strips the art, the cost and every ability list from
+	// a seat that may not look. The Unknown arm is left for cards
+	// that really are unreadable — an opponent's hand card surfaced
+	// by a prompt, a face-down exile.
+	if c.IsFaceDownPermanent() {
+		return w.CreatureValue(c)
+	}
 	if !c.KnownByYou && (c.FaceDown || c.Name == "") {
 		return w.Unknown
 	}

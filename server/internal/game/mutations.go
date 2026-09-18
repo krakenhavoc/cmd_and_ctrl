@@ -2672,8 +2672,16 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 // announced trigger followed by any state check overflowed the
 // stack.)
 //
+// Reports whether any state-based action was PERFORMED (CR 704.3's
+// "as a result of the check"), across every pass of the loop. Almost
+// every caller ignores it — the answer only matters where a rule asks
+// the question, and today that is CR 514.3a, which grants priority in
+// the cleanup step when an SBA fired even if nothing reached the
+// stack (cleanupGrantsPriorityLocked, cleanup.go). One body rather
+// than a reporting copy, so the two can never drift.
+//
 // Caller must hold g.mu.
-func (g *Game) runStateChecksLocked() {
+func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// #830 / CR 509.2a: a player is about to receive priority, so the
 	// block declaration is complete. Lock it in first, so the
 	// "becomes blocked" and "blocks" triggers it produces are on
@@ -2700,6 +2708,7 @@ func (g *Game) runStateChecksLocked() {
 		// which is nearly every call. See trigger_target_timing.go.
 		g.refreshTargetChoicesLocked()
 		fired, left := g.stateBasedActionsLocked()
+		sbaFired = sbaFired || fired
 		// #864: belt-and-braces backstop, run every pass so nothing can
 		// leave this function about to hand a seat priority while a
 		// choice sits pending for a chooser this same pass (or an
@@ -2721,14 +2730,15 @@ func (g *Game) runStateChecksLocked() {
 		}
 		hasPending := len(g.PendingTriggers) > 0
 		if !fired && !hasPending {
-			return
+			return sbaFired
 		}
 		if hasPending && !g.drainPendingTriggersAPNAPLocked() && !fired {
 			// Held behind a CR 603.3b ordering prompt and SBAs are
 			// quiet — nothing more to do until the chooser answers.
-			return
+			return sbaFired
 		}
 	}
+	return sbaFired
 }
 
 // eliminatePlayerLocked is one player leaving the game on their own:
@@ -3283,12 +3293,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	default:
 		return ErrZoneNotFound
 	}
-	// The LKI snapshot is taken here, while the permanent is still on
-	// the battlefield with everything that was true of it — including
-	// the damage that killed it, which MoveCard's exit cleanup zeroes
-	// a line later (#816). CR 603.10: an LTB trigger is judged on what
-	// the permanent looked like while it was still there.
-	g.snapshotLKILocked(cardID)
+	// The exit runs here, while the permanent is still on the
+	// battlefield with everything that was true of it: the CR 603.10
+	// LKI snapshot an LTB trigger is judged on — including the damage
+	// that killed it, which MoveCard's exit cleanup zeroes a line
+	// later (#816) — and the Game-side forget of what this object did
+	// this turn (#630, CR 400.7). See battlefield_exit.go.
+	g.battlefieldExitLocked(cardID)
 	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
 		return err
 	}
@@ -3525,8 +3536,11 @@ func (g *Game) hasTriggerOrderPromptLocked(chooser uuid.UUID) bool {
 // hand, and that the count exactly matches the over-max amount the
 // engine recorded at cleanup entry. On success, moves each card to
 // the caller's graveyard and clears their pending entry. When the
-// pending map drains, re-fires the cleanup hook so the cursor
-// resumes its auto-advance.
+// pending map drains, the cleanup step's turn-based actions are
+// finished, so it takes the one cleanup exit (exitCleanupStepLocked,
+// cleanup.go) — which either ends the turn or, if this discard put a
+// trigger on the queue, gives the active player priority right here
+// (CR 514.3a).
 //
 // Returns ErrInvalidParam for wrong count, ErrCardNotFound for IDs
 // not in the caller's hand. Returns nil and a no-op for callers not
@@ -3571,13 +3585,18 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 			if len(g.DiscardPending) == 0 {
 				g.DiscardPending = nil
 			}
-			// Resume the cleanup auto-advance if the pending map is
-			// now empty. Re-fires runStepEntryHooksLocked which
-			// rechecks DiscardPending; with the map empty, the
-			// auto-advance branch runs and the cursor walks on to the
-			// next seat's Untap.
-			if len(g.DiscardPending) == 0 && g.Turn.Step == StepCleanup {
-				g.runStepEntryHooksLocked()
+			// The cleanup step's turn-based actions are finished now
+			// that the discard has landed, so take the one cleanup
+			// exit (cleanup.go): with the pending map empty it runs
+			// the CR 514.3a check and then either ends the turn or
+			// gives the active player priority here. This is where a
+			// trigger watching the hand-size discard gets onto the
+			// stack in the turn it belongs to (#661) — before, this
+			// re-fired the whole step entry, which advanced straight
+			// out of the turn and left the trigger waiting for the
+			// next player's upkeep.
+			if g.Turn.Step == StepCleanup {
+				g.exitCleanupStepLocked()
 			}
 			return nil
 		},
@@ -3852,7 +3871,11 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		return nil
 	}
 	if srcZone.Kind == ZoneBattlefield {
-		g.snapshotLKILocked(cardID)
+		// LKI, and the CR 400.7 forget — battlefield_exit.go. The
+		// sandbox move is a battlefield exit like any other: a
+		// planeswalker shoved to hand from the context menu is as new
+		// an object when it comes back as one Venser bounced.
+		g.battlefieldExitLocked(cardID)
 	}
 	if _, err := MoveCard(srcZone, dstZone, cardID); err != nil {
 		return err
@@ -4901,6 +4924,11 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 // skipped during the rotation so a 4-player game with one dead seat
 // still terminates the priority loop on the survivors' wrap.
 //
+// #661 / CR 514.3a is cleanup's exception, on both halves: the step
+// DOES grant priority when a state-based action fired or a trigger
+// was waiting there, and the wrap that ends that window begins
+// another cleanup step instead of the next turn.
+//
 // Stack-aware semantics (priority resets to active seat whenever a
 // spell resolves) are deferred to the S13+ rules graft.
 func (g *Game) PassPriority() error {
@@ -4988,6 +5016,16 @@ func (g *Game) PassPriority() error {
 		// Priority returns to the active player after a resolution
 		// (CR 117.3b). The step doesn't change.
 		g.Turn.PriorityHolder = g.Turn.ActiveSeat
+		return nil
+	}
+	// CR 514.3a (#661): the pass that closes a priority window in the
+	// CLEANUP step does not end the turn. "Once the stack is empty and
+	// all players pass in succession, another cleanup step begins" —
+	// hand size is checked again and the CR 514.2 sweep runs again,
+	// which is how an effect created during cleanup still ends this
+	// turn. See cleanup.go.
+	if g.Turn.Step == StepCleanup {
+		g.repeatCleanupStepLocked()
 		return nil
 	}
 	g.advanceCursorLocked()

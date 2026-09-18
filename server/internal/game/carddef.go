@@ -77,6 +77,12 @@ type CardDef struct {
 	// See emblem.go and ADR 0064. Added in S40 (#623).
 	Emblem *EmblemDef
 
+	// XMatters says everything the card does scales with the
+	// announced X, so X=0 does nothing at all. Read only by the
+	// legal-move enumerator, through XMattersFor; see
+	// effects.Spec.XMatters and internal/legal/x.go.
+	XMatters bool
+
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
@@ -240,5 +246,9 @@ func init() {
 			return d.AdditionalLandPlays
 		}
 		return 0
+	}
+	CatalogXMatters = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.XMatters
 	}
 }

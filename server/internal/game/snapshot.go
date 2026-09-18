@@ -365,6 +365,7 @@ type cardSnapshot struct {
 	GoadedBy                 uuid.UUID           `json:"goadedBy"`
 	DamageMarked             int                 `json:"damageMarked"`
 	FaceDown                 bool                `json:"faceDown"`
+	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
 	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
 	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
@@ -885,6 +886,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
 		FaceDown:                 c.FaceDown,
+		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		SummonedThisTurn:         c.SummonedThisTurn,
@@ -1385,6 +1387,7 @@ func restoreCard(c *cardSnapshot) Card {
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
 		FaceDown:                 c.FaceDown,
+		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		SummonedThisTurn:         c.SummonedThisTurn,
@@ -1420,6 +1423,17 @@ func restoreCard(c *cardSnapshot) Card {
 		if c.ActivatedAbilityCount > 0 && CatalogActivatedAbilities != nil {
 			out.ActivatedAbilities = CatalogActivatedAbilities(c.OracleID)
 		}
+	}
+	// ADR 0069: a snapshot written before FaceDownKind existed carries
+	// no kind, and a face-down card with no kind has no rule attached
+	// — no viewers row, no CR 708.2 answer. The only face-down object
+	// that could exist in such a file is a Necropotence exile, so it
+	// restores as one and comes back with the visibility it had
+	// (nobody may look) rather than as an unclassified flag. No schema
+	// bump: this is the field zero-valuing correctly, which
+	// SnapshotSchemaVersion's policy says does not need one.
+	if out.FaceDown && out.FaceDownKind == FaceDownNone {
+		out.FaceDownKind = FaceDownExiled
 	}
 	// `effective` is intentionally left nil: it is a derived cache,
 	// and restoreGame bumps layerVersion so the next read recomputes.
