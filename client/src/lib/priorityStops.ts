@@ -8,9 +8,12 @@
 //
 // Semantics in order of precedence (strongest first):
 //   1. Manual stop set on this step → cursor holds. Overrides
-//      autoPassPriority, stepStops, and smartAutoPass. This is the
-//      "fake a game action" case: the viewer wants to think /
-//      respond / bluff even though the engine sees nothing to do.
+//      autoPassPriority, stepStops, smartAutoPass, and the session
+//      autopass toggle (#526 — it used to lose to the toggle, which
+//      made the pin dead in the one state a player most needs it).
+//      This is the "fake a game action" case: the viewer wants to
+//      think / respond / bluff even though the engine sees nothing
+//      to do. The full chain is autopassDecision.ts.
 //   2. stepStops[step] === true  → cursor holds, subject to
 //      smartAutoPass (S13.6) which skips when no legal response.
 //   3. stepStops[step] === false → cursor auto-passes.
