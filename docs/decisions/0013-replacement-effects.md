@@ -1219,6 +1219,81 @@ contract is §5k's and `paused_exile_continuations_test.go` pins it on
 the card: rewind into the open prompt, answer the other way, and the
 board follows that answer.
 
+### 5n. Amendment, 2026-09-18: a tuck waits for the CR 903.9 answer
+
+*Amendment, 2026-09-18, branch `fix/783-478-tuck-and-fetch-pause`.
+Closes [#783](https://github.com/krakenhavoc/cmd_and_ctrl/issues/783),
+filed while reviewing PR #773.*
+
+A library is a CR 903.9 destination. §5f made a tuck pausable and §5m
+made the exile's callers wait; the tuck's callers were still writing the
+next instruction on the next line, because `TuckToLibraryForEffect`
+returns `nil` whether the card moved or a prompt was queued. Three
+catalog cards read straight past the question.
+
+**1. Chaos Warp, and CR 608.2c.** "The owner of target permanent
+shuffles it into their library, then reveals the top card of their
+library. If it's a permanent card, they put it onto the battlefield."
+The instructions run in order, and the shuffle-in cannot be finished
+while it is still a question. The old code shuffled and revealed with
+the commander still on the battlefield; an owner who then declined had
+their commander land on **top** of the already-shuffled library rather
+than shuffled into it. That was the card's declared caveat and the only
+reason it was not `full`. The shuffle and the reveal are now the tuck's
+continuation, and the answer is deliberately **ignored**: the shuffle is
+one sentence about the library, not an "if you do", so a commander that
+goes to the command zone instead still leaves its owner shuffling and
+revealing. Chaos Warp is `full`.
+
+**2. The God-Eternals, and a positioned landing.** "Put it into its
+owner's library third from the top" was a tuck to the TOP followed by a
+remove-and-reinsert on the next line. With the prompt open the card was
+still in the graveyard or in exile, so the reinsert's `Remove` returned
+`ErrCardNotFound` and the trigger logged an `EventEffectError`; when the
+owner then declined, the God-Eternal landed on top. God-Eternals are
+commonly commanders, so this was a normal path rather than a corner.
+`TuckToLibraryAtDepthForEffect` already existed (§5f's `zoneRoute.Depth`
+rides the route and is applied against the SETTLED destination);
+`b22TuckThirdFromTop` simply predated it. The reposition is now a
+**positioned landing** — the card is placed once, where the card says —
+and no continuation is needed, because nothing follows the tuck.
+
+**3. Aetherspouts counts what landed.** Each owner's "top or bottom for
+each" is asked as a scry over the cards that reached their library, and
+the count included an attacking commander whose tuck had merely PAUSED.
+The owner scried a library card they had no right to look at, and the
+commander landed on top afterwards, never ordered. The scry is now the
+batch's continuation over the LANDED list — CR 400.7's reading, §5k's.
+
+**4. Sylvan Library's chain.** The put-back leg tucked and then asked
+the next card's question on the next line, so a drawn commander put back
+was asked about the command zone while the second "pay 4 life or put it
+back" was already on the table. The next link now hangs off the tuck's
+continuation, for the same reason the first link hangs off the answer
+before it.
+
+**5. One route template, two halves.** Rather than a fifth copy of the
+sequencing, the tuck is a `zoneRoute` template beside `destroyRoute`,
+`exileRoute`, `bounceRoute` and `millRoute` (§5k, §5l), with `TuckOptions`
+naming the position (top, bottom, Nth from the top). Both halves are
+built from it: `TuckCardsToLibraryThenForEffect` /
+`TuckToLibraryThenForEffect` sequence through `routeAllThenLocked`, and
+the fire-and-forget `TuckToLibraryForEffect` /
+`TuckToLibraryAtDepthForEffect` keep their signatures and their single
+`routeCardToZoneLocked` call. The single-card `Then` form is a wrapper
+over the batch, exactly as `ExileCardThenForEffect` is (#870).
+
+**6. What was deliberately NOT converted.** Sensei's Divining Top
+("draw a card, then put this artifact on top of its owner's library")
+and Mistveil Plains — in both the tuck is the LAST instruction, so
+fire-and-forget is the right form and a pause costs nothing. Teferi,
+Hero of Dominaria was already on the at-depth entry point.
+
+**7. Nothing new is snapshotted.** The tuck rides `zoneRoute.then` and
+the `replacementResume` frame from §5g, with §5k's undo contract;
+`paused_tuck_continuation_test.go` (engine) and
+`paused_tuck_continuations_test.go` (catalog) pin it.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

@@ -1097,6 +1097,31 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 	return err
 }
 
+// TuckOptions is WHERE on the library a tuck lands. The zero value is
+// the top, which is what "put it on top of its owner's library" and the
+// bare "shuffles it into their library" (tuck, then shuffle) both want.
+//
+// It is one struct rather than two positional arguments because the
+// position is a property of the ROUTE — it rides across a CR 903.9
+// pause and is applied against the SETTLED destination — and because a
+// third position (Depth) already existed on its own entry point. The
+// `Then` forms take it once and the fire-and-forget forms build it from
+// their older positional arguments, so there is one description of a
+// tuck and two ways to ask for one.
+//
+// ToBottom wins if both are set, matching zoneRoute.
+type TuckOptions struct {
+	// ToBottom sends the card to the BOTTOM of the library
+	// (Condemn, Mistveil Plains).
+	ToBottom bool
+
+	// Depth places the card N cards down from the top — the
+	// God-Eternals' and Teferi's "third from the top" is 3. Zero and
+	// 1 both mean the top. A library shorter than the depth takes the
+	// card on the bottom.
+	Depth int
+}
+
 // TuckToLibraryForEffect moves a card from wherever it is onto its
 // owner's library — the top (`toBottom` false) or the bottom.
 //
@@ -1121,12 +1146,19 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 // `toBottom` rides along on the route rather than being applied here,
 // which is what lets it survive a queued prompt: a commander tucked
 // to the bottom whose owner declines still lands on the bottom.
+//
+// #783: this is the FIRE-AND-FORGET half of the pair, on the same
+// route template (tuckRoute) as TuckToLibraryThenForEffect. It returns
+// nil whether the card moved or a prompt was queued, which is fine for
+// a caller with nothing left to do — Sensei's Divining Top putting
+// itself back is the last instruction on its ability — and wrong for
+// any caller that reads the card's zone, counts what arrived or asks
+// the next question. Those use the `Then` form. The same split the
+// mill has, for the same reason.
 func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:   cardID,
-		Dst:      ZoneLibrary,
-		ToBottom: toBottom,
-	})
+	r := tuckRoute(TuckOptions{ToBottom: toBottom})
+	r.CardID = cardID
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 
@@ -1145,11 +1177,9 @@ func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
 //
 // Caller must hold g.mu.
 func (g *Game) TuckToLibraryAtDepthForEffect(cardID uuid.UUID, depth int) error {
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID: cardID,
-		Dst:    ZoneLibrary,
-		Depth:  depth,
-	})
+	r := tuckRoute(TuckOptions{Depth: depth})
+	r.CardID = cardID
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 

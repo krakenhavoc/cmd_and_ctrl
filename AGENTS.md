@@ -745,6 +745,20 @@ CR 601.2h pays a spell's costs as one indivisible step, so it sets
 `zoneRoute.MustSettleNow` and settles without asking, which means a
 commander pitched to a cost goes to the graveyard.
 
+**A tuck can pause, so read what LANDED** (#783). A library is a
+CR 903.9 destination like every other, so "put it into its owner's
+library" opens the window and can stop to ask a commander's owner about
+the command zone. If your card has anything to do AFTER the tuck —
+shuffle, reveal, scry, ask the next question, read the card's zone —
+hand it over as a continuation (`TuckToLibraryThenForEffect`, or
+`TuckCardsToLibraryThenForEffect` for a batch, which reports the cards
+that really reached a library). `TuckToLibraryForEffect` stays
+fire-and-forget and is right only when the tuck is the LAST instruction
+on the card. A printed position ("on the bottom", "third from the top")
+goes in `game.TuckOptions` so it rides the route and survives the
+prompt — never reposition the card yourself on the next line. See
+[ADR 0013 §5n](docs/decisions/0013-replacement-effects.md).
+
 **A discard still can't be replaced *as a discard*.** What the window
 sees is an ordinary `RepEventMove` hand → graveyard with no cause on it
 (effect, cost or turn-based action), so the cause-sensitive family —
