@@ -260,6 +260,13 @@ var cardFields = plan(
 	// #742: the colour named as the permanent entered. A player's
 	// choice, so nothing can rebuild it.
 	"ChosenColor", carried, "",
+	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
+	// designations. Carried, and the reason is sharper than for the
+	// two above — both zero values are LEGAL states ("level 1",
+	// "unsolved"), so a restore that dropped them would come back
+	// wrong and say nothing about it.
+	"ClassLevel", carried, "",
+	"Solved", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and

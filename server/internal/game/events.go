@@ -463,6 +463,34 @@ const (
 	// Added in S27.
 	EventSagaChapter EventKind = "saga_chapter"
 
+	// EventClassLevel — a Class permanent's level designation became
+	// Amount (CR 716.2). Source / CardID / Target = the Class, Actor
+	// = its controller, Amount = the new level.
+	//
+	// It is what "When this Class becomes level N" watches, and it is
+	// also the layer-invalidation signal: a level change turns gated
+	// statics on, and the layer listener bumps on this kind (ADR
+	// 0071 decision 1).
+	//
+	// A dedicated kind rather than a predicate over
+	// EventCounterPlaced, for the reason EventSagaChapter is one and
+	// then some: a level is NOT a counter (CR 716.2b), so there is no
+	// counter event to predicate over in the first place.
+	//
+	// Added in S46 (#757).
+	EventClassLevel EventKind = "class_level"
+
+	// EventCaseSolved — a Case became solved (CR 719.3). Source /
+	// CardID / Target = the Case, Actor = its controller.
+	//
+	// Emitted once: a solved Case stays solved while it is on the
+	// battlefield, and SolveCaseForEffect is idempotent, so nothing
+	// watching this fires twice. Bumps the layer version for the same
+	// reason EventClassLevel does.
+	//
+	// Added in S46 (#757).
+	EventCaseSolved EventKind = "case_solved"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn number and
 	// Label the step name. Emitted from runStepEntryHooksLocked AFTER

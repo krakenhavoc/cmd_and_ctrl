@@ -220,7 +220,7 @@ func (g *Game) emblemContinuousEffectsLocked() []ContinuousEffect {
 		}
 		for i := range p.Emblems.Cards {
 			src := &p.Emblems.Cards[i]
-			abilities := CatalogStaticAbilities(CatalogKey(*src))
+			abilities := StaticAbilitiesForCard(*src)
 			for _, ab := range abilities {
 				out = append(out, staticContinuousEffect{
 					ability:   ab,

@@ -144,7 +144,13 @@ func activeOnly[T any](c Card, all []T, gate func(T) Designation) []T
 ```
 
 so there is one gate function and one predicate, and adding a fifth slot is a
-field and a one-line accessor. An inactive ability is simply **not in the list
+field and a one-line accessor. Adding a new *caller* — a walk over a zone the
+harvest did not use to visit — is nothing at all, as long as it asks the
+accessor: #925's declared-zone harvest (`game/trigger_zones.go`) reads a card
+as it sits in a graveyard or in exile, and goes through `TriggersForCard` for
+exactly this reason. A second, parallel `CatalogTriggers` read there would fire
+a Case's "Solved — …" ability off a Case in a graveyard, where CR 400.7 has
+already taken the designation away. An inactive ability is simply **not in the list
 the object hands back**, so the layer pass, the trigger harvester, the
 activation path, the legal-move enumerator, the cost pricer and the wire view
 all agree with no second filter anywhere — the same property ADR 0046 bought

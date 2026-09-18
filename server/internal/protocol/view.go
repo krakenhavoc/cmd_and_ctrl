@@ -1209,6 +1209,28 @@ type CardView struct {
 	// Game.LoyaltyActivatedThisTurn map, which is why the client's
 	// canActivateLoyalty had to guess. Added in S27 (#329, #334).
 	LoyaltyActivated bool `json:"loyalty_activated,omitempty"`
+	// ClassLevel is a Class permanent's CR 716.2 level designation —
+	// 1 for a Class nobody has levelled, up from there (ADR 0071).
+	// Present only for a Class on the battlefield, absent for every
+	// other card, so the client can render the badge on presence
+	// rather than having to parse the type line.
+	//
+	// Public: a level is visible to everyone in paper, and it is what
+	// says which of the card's printed lines are live. An
+	// UNCATALOGUED Class still carries it — the levels are engine
+	// state, not catalog state — exactly as an uncatalogued Saga
+	// still shows its lore counters.
+	ClassLevel int `json:"class_level,omitempty"`
+	// Solved is a Case permanent's CR 719.3 solved designation
+	// (ADR 0071). Public for the same reason, and absent — not
+	// `false` — for every card that is not a solved Case.
+	//
+	// There is no wire field for "which printed abilities are active":
+	// an inactive ACTIVATED ability is already absent from
+	// activated_abilities, because the gate lives in the one accessor
+	// that list is built from, and an inactive static or trigger has
+	// no per-ability representation on the wire to grey out.
+	Solved bool `json:"solved,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -3322,6 +3344,12 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.LoyaltyActivated = false
 	out.Defense = 0
 	out.ProtectorPlayer = ""
+	// ADR 0071: a level says "Class" and a solved flag says "Case",
+	// each as loudly as loyalty says "planeswalker" — and CR 708.2
+	// gives a face-down permanent no subtypes at all, so it is
+	// neither. Cleared with the rest of the type-derived bits.
+	out.ClassLevel = 0
+	out.Solved = false
 	return stampFaceDownPublicBody(out, c)
 }
 
@@ -3531,6 +3559,27 @@ func viewOfCard(c game.Card) CardView {
 	}
 	if c.IsBattle() {
 		view.Defense = c.Counters[game.CounterDefense]
+	}
+	// ADR 0071. Both read straight off the card, like the battle pair
+	// above. EnteredBattlefieldAt is the battlefield test viewOfCard
+	// has — it is stamped on entry and cleared on exit — and it is
+	// what keeps a Class in a hand or a graveyard from claiming a
+	// level it does not have (CR 400.7 cleared the designation on the
+	// way out; this stops the derived "level 1" from showing up in
+	// its place).
+	//
+	// Both are gated on the permanent still BEING what the badge
+	// names, because that is what the client renders: a permanent an
+	// effect turned into a creature keeps whatever designation it
+	// had, but a level badge on it would be describing a card that
+	// is not there any more.
+	if c.EnteredBattlefieldAt != 0 {
+		if game.IsClass(c) {
+			view.ClassLevel = game.ClassLevelOf(c)
+		}
+		if game.IsCase(c) {
+			view.Solved = c.Solved
+		}
 	}
 	if c.BlockingTarget != uuid.Nil {
 		view.BlockingTarget = c.BlockingTarget.String()

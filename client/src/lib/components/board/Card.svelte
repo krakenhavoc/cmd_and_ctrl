@@ -176,6 +176,23 @@
   const showPT = $derived(!showBack && (isCreature || isPlaneswalker));
   const showNoUntap = $derived(noUntapAppliesToController(card));
 
+  // ADR 0071 — the designation badge. A Class's level (CR 716.2) and
+  // a Case's solved marker (CR 719.3) say WHICH of the printed lines
+  // on the card are live right now, which is the one thing a player
+  // cannot read off the art. Both are public, and the server sends
+  // `class_level` only for a Class on the battlefield, so presence is
+  // the whole test.
+  //
+  // One badge slot, not two: no printed permanent is both a Class and
+  // a Case, so they cannot collide, and giving them one slot keeps
+  // the top edge of the card readable next to CMD and GOAD.
+  const designationBadge = $derived(
+    card.solved ? "SOLVED" : (card.class_level ?? 0) > 0 ? `LVL ${card.class_level}` : "",
+  );
+  const designationTitle = $derived(
+    card.solved ? "this Case is solved" : `Class level ${card.class_level ?? 1}`,
+  );
+
   // Hover delay (settings.display.hoverDelayMs) defers the write to
   // the hoveredCard store until the user has rested on the card for
   // the configured duration. Defaults to 300ms so a fast mouse-over
@@ -474,6 +491,14 @@
   {#if showNoUntap}
     <span class="badge no-untap" title="won't untap" aria-label="won't untap">WON'T UNTAP</span>
   {/if}
+  {#if designationBadge}
+    <!-- ADR 0071: outside the art / name-fallback branches on
+         purpose — a Class or a Case says the same thing whether or
+         not its art loaded. -->
+    <span class="badge designation" title={designationTitle} aria-label={designationTitle}>
+      {designationBadge}
+    </span>
+  {/if}
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
@@ -645,6 +670,25 @@
     background: rgba(12, 35, 70, 0.9);
     border-color: rgba(145, 195, 255, 0.55);
     letter-spacing: 0.01em;
+    font-size: 7px;
+  }
+  .badge.designation {
+    /* ADR 0071 — top-centre, between the CMD pip (top-left) and the
+       GOAD / face-down pip (top-right), so a levelled Class that is
+       also somebody's commander reads cleanly. Cool blue rather than
+       gold: like WON'T UNTAP, it is a state the card is IN, not a
+       property printed on it. */
+    top: 3px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 44px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 35, 70, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
     font-size: 7px;
   }
   .badge.curse {

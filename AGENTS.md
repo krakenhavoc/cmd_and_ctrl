@@ -3175,6 +3175,43 @@ Three things to know:
   board draws chips beside the player identity; the command-zone pile
   stays commander-only.
 
+### Designations: Class levels, solved Cases, station thresholds (#757, #759)
+
+A **designation** is a marker a permanent has on the battlefield that
+switches some of its own printed abilities on — a Class's level
+(CR 716.2), a Case being solved (CR 719.3), a station card's charge
+counters (CR 721.2), and later a Room's unlocked door (CR 709.5). Four
+printed mechanics, one gate:
+[ADR 0071](docs/decisions/0071-designations-that-switch-abilities-on.md).
+
+**Write the gate, never an `if` inside the ability.** Every entry in
+`Spec.Static`, `Spec.Triggered`, `Spec.Activated` and
+`Spec.CostModifiers` may carry `ActiveWhen`; the constructors are
+`Level(n)`, `Solved()` and `AtChargeCounters(n)` in
+[designations.go](server/internal/cards/effects/designations.go), with
+`AtLevel(n, trigger)` and `WhenSolved(trigger)` for the common
+trigger case. An ability whose gate is unsatisfied **does not exist**:
+it is not gathered by the layer pass, not matched by the trigger
+harvester, not offered by the activation path or the legal-move
+enumerator, and not on the wire. A predicate inside `AppliesTo` is a
+weaker and different statement — it would still have prompted for a
+target — so do not write one.
+
+**Use the constructors for the lifecycle, too.** `LevelUp(n, cost)`
+is the whole "{cost}: Level N" ability, carrying CR 716.2d's sorcery
+timing and CR 716.2e's "only from level N-1"; `ToSolve(label, cond)`
+is the whole "To solve —" clause, an end-step trigger whose condition
+is re-checked on resolution (CR 603.4). `SpacecraftAt(n, p, t)` and
+`ThresholdKeywords(n, kw…)` are the two station threshold shapes.
+
+Three things follow from the designation living on `game.Card`
+(`ClassLevel`, `Solved`) rather than in `Counters`: nothing
+proliferates or doubles it, a copy does not take it (CR 716.2c,
+719.3b), and it is cleared when the permanent leaves the battlefield
+(CR 400.7). A new designation needs a kind, an arm in
+`Designation.Active`, and a layer-version bump on the event that
+changes it — nothing else.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

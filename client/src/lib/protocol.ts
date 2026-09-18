@@ -1529,6 +1529,20 @@ export interface CardView {
   // was server-only, which is why canActivateLoyalty had to take
   // the caller's guess as an argument.
   loyalty_activated?: boolean;
+  // ADR 0071 (CR 716.2): a Class permanent's level designation — 1
+  // for a Class nobody has levelled, up from there. Present only for
+  // a Class on the battlefield, so the badge renders on presence
+  // rather than on parsing the type line. An uncatalogued Class
+  // carries it too: the level is engine state, not catalog state.
+  class_level?: number;
+  // ADR 0071 (CR 719.3): this Case is solved, and its "Solved —"
+  // lines are on. Absent — not `false` — for everything else.
+  //
+  // There is no field for "which printed abilities are active": an
+  // inactive ACTIVATED ability is already missing from
+  // `activated_abilities`, and an inactive static or trigger has no
+  // per-ability representation here to grey out.
+  solved?: boolean;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

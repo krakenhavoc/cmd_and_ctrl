@@ -144,6 +144,10 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 		// line only on commas and demanding an exact keyword match on
 		// every part is what stops a station threshold impersonating
 		// a keyword-ability line.
+		//
+		// The card has a Spec since S46 (#759), and this case is
+		// unaffected: NeedsCatalogEffect is a TEXT scan, and the text
+		// still needs one.
 		name:     "#337 The Seriema",
 		typeLine: "Legendary Artifact — Spacecraft",
 		texts: []string{"When The Seriema enters, search your library for a " +

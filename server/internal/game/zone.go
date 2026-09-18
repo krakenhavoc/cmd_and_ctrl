@@ -231,6 +231,14 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
+		// ADR 0071 / CR 400.7: the level and solved designations are
+		// battlefield state on a permanent, not characteristics of a
+		// card. A Wizard Class that is bounced and replayed is level 1
+		// again, and a Case that dies is a card in a graveyard with no
+		// solved marker — which is also what makes them non-copiable
+		// without anything in the copy path having to know.
+		c.ClassLevel = 0
+		c.Solved = false
 		// S27 / CR 400.7: a battle that leaves and returns is a new
 		// object and chooses a new protector. Keeping the old one
 		// would make the returning battle defended by whoever

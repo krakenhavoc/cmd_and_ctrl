@@ -393,7 +393,19 @@ type cardSnapshot struct {
 	// ChosenColor is the "as this enters, choose a color" answer
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
-	ChosenColor       string    `json:"chosenColor,omitempty"`
+	ChosenColor string `json:"chosenColor,omitempty"`
+	// ClassLevel is the CR 716.2 level designation and Solved the
+	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
+	// for NamedTribe's reason and one more: they are legal zero
+	// values, so a restore that dropped them would bring back a
+	// level-3 Wizard Class as a level-1 one with two of its three
+	// abilities gone, and a solved Case unsolved — silently, with
+	// nothing in the state to say anything was lost. Old snapshots
+	// have neither key, and their zero values read correctly as
+	// "level 1, unsolved", which is why snapshot_backfill.go needs no
+	// arm for them.
+	ClassLevel        int       `json:"classLevel,omitempty"`
+	Solved            bool      `json:"solved,omitempty"`
 	StartingDefense   int       `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
 
@@ -928,6 +940,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		ChosenColor:              c.ChosenColor,
+		ClassLevel:               c.ClassLevel,
+		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
@@ -1440,6 +1454,8 @@ func restoreCard(c *cardSnapshot) Card {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		ChosenColor:              c.ChosenColor,
+		ClassLevel:               c.ClassLevel,
+		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 	}

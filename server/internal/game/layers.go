@@ -204,6 +204,17 @@ type StaticAbility struct {
 	// invalidating on it universally makes the recompute much hotter
 	// for every table that has no such card in play.
 	DependsOnHandSize bool
+
+	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
+	// this static exists only while its source permanent has the
+	// designation named — level N or greater, solved, N or more
+	// charge counters, that door unlocked. The zero value is "no
+	// gate", which is every static in the catalog but a handful.
+	//
+	// Evaluated in StaticAbilitiesForCard and nowhere else, so a
+	// gated-off static is never gathered, never sorted into a bucket
+	// and never applied. See designations.go and ADR 0071.
+	ActiveWhen Designation
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
@@ -314,12 +325,20 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		// CatalogKey, not CatalogAbilityKey: the pass resets every
-		// effective characteristic to printed before it gathers, so
-		// there is nothing for the removal accessor to read yet —
-		// and nothing for it to say, because a removal that has not
-		// been applied in this pass has not happened.
-		abilities := CatalogStaticAbilities(CatalogKey(*src))
+		// StaticAbilitiesForCard, not the raw hook: it is the ONE
+		// place an object is turned into its statics, so a static
+		// gated on a designation the permanent does not have (a
+		// level-3 anthem on a level-1 Class, a 7+ P/T set on a
+		// Spacecraft with five charge counters) is never gathered at
+		// all. ADR 0071.
+		//
+		// It reads CatalogKey, not CatalogAbilityKey, and
+		// deliberately: the pass resets every effective characteristic
+		// to printed before it gathers, so there is nothing for the
+		// removal accessor to read yet — and nothing for it to say,
+		// because a removal that has not been applied in this pass has
+		// not happened.
+		abilities := StaticAbilitiesForCard(*src)
 		if len(abilities) == 0 {
 			continue
 		}
