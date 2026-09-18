@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0065 modal and multi-target clauses) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0070 untap-step choices) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -2494,6 +2494,41 @@ the kind and the file; `TestEveryChoiceKindHasAReassignmentDecision`
 third is. If either goes red on a kind you just added, that is the gate
 working.
 
+### Cumulative upkeep (#567, CR 702.24)
+
+One constructor, `CumulativeUpkeep(label, cost)`
+([cumulative_upkeep.go](server/internal/cards/effects/cumulative_upkeep.go)),
+over primitives that already existed: an `AtYourUpkeep` trigger, the
+counter primitive for the age counter (`game.CounterAge`), and
+`PayUnless` for "sacrifice it unless you pay". The counter goes on
+FIRST and the cost is then charged once **per counter** — built as
+`strings.Repeat(cost, age)` at resolution, because a cumulative upkeep
+of `{1}{U}` at three counters is three separate `{U}` symbols to pay
+and not a number to multiply. `ParseCost` accumulates the repeated
+string.
+
+Two things that are not obvious:
+
+- **The prompt blocks the table**, which no other `pay_unless` does.
+  Set `PayUnless.Blocking`, which rides `PendingChoice.ForceBlocks` and
+  is read through `game.ChoicePromptBlocksTable` by the engine gate and
+  by `internal/legal` alike. ADR 0018 §6's latitude is Rhystic Study's:
+  a question to a *different* player after the ability left the stack.
+  Cumulative upkeep asks the active player during their own upkeep, and
+  the answer decides whether a permanent is still on the battlefield.
+  The override is one-way and per prompt — the `pay_unless` **kind** is
+  unchanged, so Rhystic Study still plays as it did.
+- **"Cumulative upkeep" is not a `canonicalKeywords` token**, for
+  ward's reason (ward.go): the keyword carries a cost and a bare string
+  in `Characteristic.Abilities` has nowhere to put one, so a token
+  would tell the ADR 0037 coverage signal that every cumulative-upkeep
+  card is implemented. The cost lives on the `Spec`.
+
+Mana costs only. "Cumulative upkeep—Pay 2 life" (Glacial Chasm) and
+"—Sacrifice a creature" (Phyrexian Soulgorger) are the same trigger
+with a payment the pay-or-else prompt cannot parse; they wait for those
+payment shapes rather than being approximated.
+
 ### The CR 726 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
@@ -2594,14 +2629,42 @@ player's step. The constructors live in
 [untap_restrictions.go](server/internal/cards/effects/untap_restrictions.go),
 beside the permission helpers.
 
+`Spec.UntapCaps` and `Spec.UntapOptOuts` (#826, [ADR 0070](docs/decisions/0070-untap-step-choices.md))
+are the two clauses that make CR 502.3's *first* sentence a decision —
+"players can't untap more than one land during their untap steps"
+(Winter Orb, Static Orb, Winter Moon) and "you may choose not to untap
+this during your untap step" (Rust Tick, Amber Prison). Constructors in
+[untap_caps.go](server/internal/cards/effects/untap_caps.go). A cap is
+a ceiling, not a restriction: it only asks when more permanents are
+eligible than it allows, several caps compose (a chosen set has to
+satisfy every one), and both families share ONE prompt, the
+`untap_choice` kind. Caps and opt-outs are scoped by the engine to the
+active player's own determination, because every printed card says
+"during **their** untap steps" — so a Seedborn Muse untap on somebody
+else's turn is uncapped, and the predicate never asks whose step it is.
+
+**A turn-based action that can pause has ONE exit function.** The untap
+step's is `exitUntapStepLocked`
+([untap_choice.go](server/internal/game/untap_choice.go)), called from
+the `StepUntap` case of the step-entry hook and from the prompt's
+continuation; the cleanup step's is `exitCleanupStepLocked`
+([cleanup.go](server/internal/game/cleanup.go)); the step ENTRY's is
+`finishStepEntryLocked` (#710). Two sites that decide separately how a
+step ends is how #661's discard path inherited a bug. `performUntapStepLocked`
+returns whether it paused, and a paused step has untapped nothing and
+moved no cursor — CR 502.3 is "determine, *then* untap them all
+simultaneously", so the whole set untaps in one loop from the answer.
+
 For one-shot effects use `DoesntUntapNextUntapStep` or `TapAndFreeze`.
 `Player == uuid.Nil` follows the permanent's controller; a player ID
 names that player's next untap step. Markers expire at that actual step,
 even on an untapped permanent, survive skipped steps, and disappear on
 zone changes. They are data on `Card`, not turn-scoped closures, so undo
-and persisted snapshots retain them. Exert's action/cost and choose-N
-untap effects such as Winter Orb remain separate work. See
-[ADR 0058](docs/decisions/0058-doesnt-untap.md).
+and persisted snapshots retain them. Exert's action/cost, and a restriction
+that lasts "for as long as ~ remains tapped" (Rust Tick's and Amber
+Prison's tap abilities), remain separate work. See
+[ADR 0058](docs/decisions/0058-doesnt-untap.md) and
+[ADR 0070](docs/decisions/0070-untap-step-choices.md).
 
 Two things to know when you touch the untap path at all:
 

@@ -1401,6 +1401,12 @@ func Dispatch(g *game.Game, a Action) error {
 				// rather than a missing field — which is why it is
 				// routed here by kind, ahead of the count guards.
 				return g.ResolveChooseCards(choiceID, a.Player, ids)
+			case game.PendingChoiceUntapChoice:
+				// #826, CR 502.3: "choose which of these untap". Same
+				// payload and same floor-can-be-zero reason as the
+				// line above — a board of nothing but "you may choose
+				// not to untap" permanents accepts the empty answer.
+				return g.ResolveUntapChoice(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for

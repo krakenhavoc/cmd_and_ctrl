@@ -47,6 +47,12 @@ const (
 	CounterStun = "stun"
 	// CounterShield is the shield counter (post-MOM).
 	CounterShield = "shield"
+	// CounterAge is the age counter (CR 122.1d), placed by cumulative
+	// upkeep (CR 702.24a) and by nothing else in the catalog. No SBA:
+	// its whole job is to be COUNTED, once a turn, by the keyword's
+	// own upkeep trigger, which then charges its cost that many
+	// times. See cards/effects/cumulative_upkeep.go (#567).
+	CounterAge = "age"
 	// CounterLore is the saga lore counter (CR 714). SBA: a saga
 	// whose final-chapter lore counter is set is sacrificed by
 	// its controller (CR 704.5s). The advance-chapter trigger
@@ -93,6 +99,7 @@ var KnownCardCounters = []string{
 	CounterStun,
 	CounterShield,
 	CounterLore,
+	CounterAge,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

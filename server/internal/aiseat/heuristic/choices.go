@@ -38,6 +38,7 @@ const (
 	choiceEntryPayLife        = "entry_pay_life"
 	choiceConfirm             = "confirm"
 	choiceChooseCards         = "choose_cards"
+	choiceUntapChoice         = "untap_choice"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 )
@@ -198,6 +199,29 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			return v, "name the worst, keep the rest"
 		}
 		return 0.5, "choose cards"
+
+	case choiceUntapChoice:
+		// #826, CR 502.3: "choose which of these untap." The one
+		// card-set pick whose sign is unambiguous — a permanent the
+		// bot names UNTAPS, so the answer is worth what it untaps.
+		// Scored with permanentValue, the same valuation the sacrifice
+		// branch uses with the opposite sign, so "the best permanent"
+		// means one thing in this package rather than two.
+		//
+		// That settles the count for free as well: untapping is never
+		// worth less than nothing, so under a Winter Orb cap the bot
+		// takes a full legal set rather than a short one, and among
+		// full sets it takes the most valuable. The enumerator has
+		// already filtered to sets the engine accepts (the cap solver
+		// is ChooseCardsPickLegalLocked), so this is a preference over
+		// legal answers and never a filter.
+		var v float64
+		for _, id := range cp.CardIDs {
+			if c := lookup(id); c != nil {
+				v += st.w.permanentValue(c)
+			}
+		}
+		return v, "untap the best"
 
 	case choiceConfirm:
 		// The chained-choice two-way prompt. Both branches are always

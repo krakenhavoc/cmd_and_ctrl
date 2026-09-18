@@ -191,6 +191,35 @@ while one is open, and the auto-tapper refuses to create one precisely
 because its contract is "no further player decisions required". It
 blocks.
 
+**Amendment (2026-09-18, #567): the latitude is per PROMPT, not per
+kind, and cumulative upkeep's does not take it.** CR 702.24's "put an
+age counter on this permanent, then sacrifice it unless you pay its
+upkeep cost for each age counter on it" is a `pay_unless` — the same
+prompt Rhystic Study raises, with the cost rebuilt each upkeep from the
+counters. Every reason this section gives for letting the table walk
+past one is Rhystic Study's and none of them survives the move: the
+question is addressed to the **active player**, during their **own**
+upkeep, and what hangs on the answer is whether a permanent is still on
+the battlefield for the rest of the turn. So this prompt blocks.
+
+It blocks through `PendingChoice.ForceBlocks`, a per-prompt flag read
+by the one predicate `game.ChoicePromptBlocksTable`, which the engine's
+gated verbs and `internal/legal` both call — the #794 rule that there is
+exactly one answer to "does this stop the table" is preserved, and
+`ChoiceBlocksTable(kind)` stays the answer for a KIND and stays what
+`TestEveryChoiceKindIsClassifiedAndEnumerated` checks. The override is
+**one-way**: it can only make a prompt block, never let one through, so
+the deny-by-default direction is intact and the allowlist above is
+still the whole of it. `pay_unless` remains the one non-blocking kind,
+and Rhystic Study, Smothering Tithe and Esper Sentinel play exactly as
+they did.
+
+Queue a blocking one with `Game.QueueBlockingPayUnlessForEffect`
+(card side: `PayUnless{Blocking: true}`). The rule of thumb the two
+cases give: a pay-unless addressed to somebody ELSE after the ability
+has resolved does not block; one addressed to the player whose turn it
+is, about their own permanent, does.
+
 What the gate does **not** do: answering a prompt (`resolve_choice`
 and its kin), `concede`, chat, undo, and the admin context menu's raw
 sandbox moves (`move_card`, `change_life`, `add_counter`,

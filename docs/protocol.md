@@ -331,6 +331,39 @@ condition — check its text and choose again"`. (`search_library` still
 answers with the generic `"invalid parameter"`.) Every set listed in
 `legal_moves` for such a prompt already passes the rule.
 
+### `untap_choice` — the untap step's own determination (#826, CR 502.3)
+
+`pending_choices` may carry `kind: "untap_choice"`. It is CR 502.3's
+first sentence — "the active player determines which permanents they
+control will untap" — asked when a card makes it a real decision:
+a cap ("players can't untap more than one land during their untap
+steps", Winter Orb) or an opt-out ("you may choose not to untap this
+during your untap step", Rust Tick).
+
+It carries and is answered exactly like `choose_cards`: `options[]` are
+the permanents in question, `choose_min` / `choose_max` bound the pick,
+and `resolve_choice { choice_id, card_ids }` names the ones that untap.
+The set-level rule above applies — several caps compose, and a set that
+breaks one, or that leaves a mandatory untap on the table, comes back
+as a `bad_request` with the prompt still open.
+
+Two things differ from `choose_cards`:
+
+- **The options and the bounds reach every seat**, not just the
+  chooser. The candidates are tapped permanents on the battlefield,
+  which everyone can already see; `choose_cards` hides both because its
+  candidates are usually a hand.
+- **It opens in a step that grants nobody priority.** `priority_holder`
+  is `-1` and the turn cursor sits on `untap` until the prompt is
+  answered; `advance_step`, `pass_priority` and `pass_turn` are refused
+  while it is open. Answering it untaps the whole determined set at
+  once and carries the cursor on to the upkeep in the same frame.
+
+Permanents that *cannot* untap — held by a "doesn't untap" static or a
+"next untap step" marker (`CardView.no_untap`) — are never among the
+options. A chosen permanent with a stun counter still spends the
+counter instead of untapping (CR 122.1d).
+
 ### `chat` (both directions) — added in S07
 
 A chat message addressed to every client bound to the same game.

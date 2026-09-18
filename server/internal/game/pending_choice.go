@@ -574,6 +574,26 @@ type PendingChoice struct {
 	confirmResume  *confirmFrame
 	coinFlipResume *coinFlipFrame
 
+	// ForceBlocks makes THIS prompt stop the table even though its
+	// KIND does not (choice_gate.go). One-way on purpose: it can
+	// tighten the gate's answer for one prompt and can never loosen
+	// it, so the deny-by-default direction is preserved and a kind
+	// classified `true` is unaffected by anything set here.
+	//
+	// The one caller is cumulative upkeep (#567, CR 702.24). Its
+	// "sacrifice it unless you pay" question is a pay_unless, and
+	// pay_unless is the one kind ADR 0018 §6 allows the table to walk
+	// past — for a reason that is entirely about Rhystic Study: the
+	// ability has resolved, the question is addressed to a DIFFERENT
+	// player, and the answer spends from that player's pool or runs
+	// OnDecline, neither of which reads the step. None of that is
+	// true here. Cumulative upkeep asks the ACTIVE player, during
+	// their own upkeep, and what hangs on the answer is whether a
+	// permanent is still on the battlefield for the rest of the turn.
+	// So this prompt blocks and Rhystic Study's does not, which is a
+	// difference between two prompts rather than between two kinds.
+	ForceBlocks bool
+
 	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
 	// in the order the client should render them. Wire-serialised via
 	// PendingChoiceView.Options and redacted per viewer like every
@@ -2448,6 +2468,37 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, false)
+}
+
+// QueueBlockingPayUnlessForEffect is QueuePayUnlessForEffect for a
+// pay-unless the table must NOT walk past — cumulative upkeep's
+// "sacrifice this unless you pay" (#567, CR 702.24).
+//
+// ADR 0018 §6 let the pay_unless KIND be walked past for reasons that
+// are entirely Rhystic Study's: the ability has resolved, the question
+// is addressed to a different player, and neither answer reads the
+// step. Cumulative upkeep asks the ACTIVE player during their own
+// upkeep, and the answer decides whether a permanent is still on the
+// battlefield for the rest of the turn. So the difference is between
+// two prompts, not between two kinds, and it rides
+// PendingChoice.ForceBlocks rather than a row in choiceGateDecisions.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueBlockingPayUnlessForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onDecline func(g *Game) error,
+) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, true)
+}
+
+func (g *Game) queuePayUnlessLocked(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onDecline func(g *Game) error,
+	blocks bool,
+) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
 		g.EmitEvent(Event{
@@ -2467,12 +2518,13 @@ func (g *Game) QueuePayUnlessForEffect(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoicePayUnless,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  question,
-		PayCost: cost,
+		Kind:        PendingChoicePayUnless,
+		Chooser:     chooser,
+		Count:       1,
+		Source:      source,
+		Reason:      question,
+		PayCost:     cost,
+		ForceBlocks: blocks,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,

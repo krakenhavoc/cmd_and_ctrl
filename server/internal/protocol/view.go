@@ -2368,7 +2368,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// made a knower by whatever effect queued the prompt, and a
 		// seat that is not a knower sees nothing at all rather than a
 		// count.
-		if c.Kind == game.PendingChoiceChooseCards {
+		//
+		// #826's untap_choice (CR 502.3, "choose which of these
+		// untap") carries the same payload and projects the same way.
+		// What it does NOT share is the redaction below: its
+		// candidates are tapped permanents on the battlefield, which
+		// every seat can already see.
+		if c.Kind == game.PendingChoiceChooseCards || c.Kind == game.PendingChoiceUntapChoice {
 			v.ChooseMin = c.ChooseMin
 			v.ChooseMax = c.ChooseMax
 			v.Options = make([]CardView, 0, len(c.ChooseCards))

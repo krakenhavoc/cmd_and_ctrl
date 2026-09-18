@@ -557,12 +557,24 @@ type PayUnless struct {
 	Cost      string
 	Question  string
 	OnDecline func(ctx *Context) error
+	// Blocking stops the table until this prompt is answered, which
+	// the pay_unless KIND does not do by default (ADR 0018 §6, whose
+	// reasoning is Rhystic Study's: a question to a DIFFERENT player
+	// after the ability has left the stack). Set it when the question
+	// is the chooser's own and the rest of their turn depends on the
+	// answer — cumulative upkeep's "sacrifice this unless you pay"
+	// (#567). See Game.QueueBlockingPayUnlessForEffect.
+	Blocking bool
 }
 
 func (p PayUnless) Apply(ctx *Context) error {
 	item := ctx.Item
 	decline := p.OnDecline
-	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
+	queue := ctx.Game.QueuePayUnlessForEffect
+	if p.Blocking {
+		queue = ctx.Game.QueueBlockingPayUnlessForEffect
+	}
+	return queue(p.Chooser, ctx.Source(), p.Cost, p.Question,
 		func(g *game.Game) error {
 			if decline == nil {
 				return nil

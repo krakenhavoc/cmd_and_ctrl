@@ -434,6 +434,11 @@ var pendingChoiceFields = plan(
 	"ScryCards", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",
+	// #567: a prompt that stops the table though its kind does not
+	// (cumulative upkeep's "sacrifice this unless you pay"). Carried
+	// so a restored game gates exactly as the live one did; clone.go
+	// gets it from the value copy every PendingChoice starts from.
+	"ForceBlocks", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
 	// S28 cascade: which card the "you may cast it without paying

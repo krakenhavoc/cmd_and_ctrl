@@ -440,6 +440,19 @@ var choiceReassignDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceCoinCall: false,
 	// CR 726: the allowance is on THEIR loop's tally key.
 	PendingChoiceLoopShortcut: false,
+	// untap_choice is CR 502.3's determination, and it is doubly
+	// theirs: the permanents in question are the ones they control
+	// (ADR 0070 Decision 4 scopes the caps and opt-outs to the active
+	// player's own set), and CR 800.4a has taken those out of the
+	// game with them. It is also CR 800.4h's shape rather than
+	// 800.4g's — a rule asks it, not an object — and the next player
+	// in turn order does not inherit it, because the step it pauses
+	// is the departed player's own and their turn ends with them
+	// (CR 800.4a, advancePastEliminatedLocked). Dropping it cannot
+	// wedge the cursor: the departure sweep ends the turn and the
+	// rotation re-enters the next seat's untap step, which makes its
+	// own determination.
+	PendingChoiceUntapChoice: false,
 	// confirm carries no record of whose material it is about —
 	// QueueConfirmForEffect sets FromPlayer to the chooser
 	// unconditionally — so the engine cannot tell a self-question from

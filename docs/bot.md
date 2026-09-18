@@ -201,6 +201,26 @@ its declared cost, so a bot prices what it can see and takes the first
 offer otherwise — the same posture the paragraph above takes for a
 prompt over anything but the bot's own hand.
 
+**Which permanents untap (`untap_choice`, #826, CR 502.3).** The one
+card-set pick whose sign is never in doubt. Under a Winter Orb or a
+Static Orb the untap step stops and asks the active player which of
+their permanents untap, and a permanent the bot names is a permanent it
+gets back — so the heuristic scores an answer as the total
+`permanentValue` of the cards it names and takes the best, the same
+valuation the sacrifice prompt uses with the opposite sign. That
+settles the count as well as the choice: untapping is never worth less
+than nothing, so a bot under a cap takes a full legal set rather than a
+short one, and among full sets the most valuable.
+
+It is a greedy pick over legal sets, not a plan — the bot does not know
+which colours its hand will want three spells from now, and the wire
+carries nothing that would say. What it does guarantee is that the
+answer is always legal and the table always moves: the enumerator
+offers only sets the engine accepts (the cap solver runs inside
+`ChooseCardsPickLegalLocked`), and this is the one prompt that can open
+in a step where nobody holds priority, so a seat with no answer here
+would stop the game outright rather than merely stall its own turn.
+
 ### An unavailable tier is refused, not downgraded
 
 Every declared tier is listed by `GET /bot/options`, including the
