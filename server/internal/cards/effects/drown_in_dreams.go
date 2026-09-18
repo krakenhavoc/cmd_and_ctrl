@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d3cec4b5-bc93-44a2-a29d-3478f0a5dac6",
 		Name:         "Drown in Dreams",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Choosing both modes when you control a commander isn't implemented — you always choose one."},
 		Modes: ChooseOne(

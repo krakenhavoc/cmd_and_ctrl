@@ -240,3 +240,60 @@ notice is a question about nothing.
   one turn does not happen in those games, so nothing goes red — but if a
   looping pair is ever added, those tests are where it will surface, which
   is the right place for it to.
+
+## Amendment (2026-09-18, #810): the breaker counts repeated activations
+
+§3's table said "activate an ability → `ActivateCatalogAbility`", with no
+qualification, and §1's tradeoff list said in as many words that a loop
+managing a player decision every iteration is not detected and that this is
+deliberate. Both were written about a TRIGGER loop, which runs itself — and
+for that shape they are right. An **activation** loop is the other shape,
+and it is a runaway too: nothing repeats on its own, a seat simply keeps
+taking the same free, repeatable ability, because the ability is back on its
+move list the instant it resolves. `internal/legal` offered Soothsaying's
+"{X}: Look at the top X cards of your library" at X=0 to a table of bots,
+which took it 79,519 times in five minutes and never finished turn 18.
+
+*The change is one exception, in one function.* `notePlayerActivationLocked`
+is `notePlayerDecisionLocked` with the run of the ability **being
+activated** kept, and every other run cleared as before. An activation is
+still a player decision about everything else — alternating two abilities
+never trips the breaker, and neither does a turn with a cast in the middle
+of it — but it is not a decision about the loop it *is*. Before this, the
+activation cleared the very run its own resolution was about to add to, so
+`LoopRun` never got past 1 and `loopSuspectedLocked` never saw a thing. The
+detector, the threshold, the notice and the tally are untouched: the
+resolution still notches through `turnTallyListener` on `EventResolve`,
+keyed by `TallyKey(source, label)` like everything else. The CR 726
+allowance for that key survives the activation too, for the same reason
+`grantLoopShortcutLocked` re-arms the run: a shortcut is about one ability,
+and the activations that spend it must not be what cancels it.
+
+*Two bot-side rules make the table actually stop*, which is what §5 asks of
+a bot-only table and what the notice alone could not deliver here. A trigger
+loop is fed by passes and the breaker starves it by suspending automatic
+passing; an activation loop is fed by activations, which are not passes, so
+the runner would have gone on feeding it with the notice up.
+
+- `internal/legal` offers **only "stop here"** on the *first* ask for a loop
+  whose repeating ability is an activated ability of the chooser's own
+  permanent — derived from the prompt's source and label against the board,
+  no new field. "Resolve it ten more times" is an answer about a loop that
+  runs itself; for one somebody has to crank it buys ten more turns of the
+  crank.
+- The **runner holds** on an activation of the permanent the notice names,
+  exactly as it holds on a pass (§4). It matches on the permanent rather
+  than the ability, which is the conservative direction — the notice means
+  "stop feeding this card" — and, like the pass rule, it parks the seat
+  rather than choosing a different move.
+
+*Tradeoff.* A human stepping their own activation loop by hand is asked the
+CR 726 question again each time round, where a trigger loop's notice simply
+stays up. That is the honest consequence of an activation being a real
+decision: it clears the notice, and the next resolution raises it again. A
+player who wants to keep going answers with a number and gets it.
+
+*Where the fix actually belongs.* This amendment is the belt. The braces are
+in the enumerator, which since #810 does not offer an {X} move at X=0 when X
+is the whole of what it does — so the Soothsaying table has no loop to
+break. See [ADR 0033](0033-ai-bot-seat.md)'s amendment of the same date.

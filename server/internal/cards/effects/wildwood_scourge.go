@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b9dec104-c636-4770-a7fc-7a3331face15",
 		Name:         "Wildwood Scourge",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The X +1/+1 counters are put on the Scourge as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

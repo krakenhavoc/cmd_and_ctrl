@@ -1342,6 +1342,21 @@ attacking (CR 506.3c) is not declared and announces nothing. See
 [ADR 0045](docs/decisions/0045-combat-restrictions.md), amendment
 Decisions 19-21 and 22.
 
+**A trigger in the cleanup step gets priority (#661, CR 514.3a).**
+Cleanup normally grants nobody priority, so a trigger queued there —
+the hand-size discard is the usual one — used to wait for the next
+player's upkeep. It doesn't now: if a state-based action is performed
+or a trigger is waiting, the SBAs happen, the triggers go on the
+stack, the active player gets priority **in** the cleanup step, and
+once the stack is empty and everyone passes, **another cleanup step
+begins** (hand size checked again, the CR 514.2 sweep run again, so an
+"until end of turn" effect a cleanup trigger creates still ends this
+turn). One exit decides it, `exitCleanupStepLocked`
+(`server/internal/game/cleanup.go`), called from the cleanup step-entry
+hook and from `DiscardSelection`'s resume. Nothing changes for a quiet
+cleanup: it ends the turn in the same call it always did, so no new
+auto-pass stop appears.
+
 **"This turn" (#586):** anything a card asks about the current turn
 is read off `Game.TurnTally`, never by walking `g.Events`:
 `g.TurnTallyFor(player)` carries `LifeGained`, `LifeLost`, `CardsDrawn`,
@@ -1385,13 +1400,22 @@ stack above the ability and resolve first. Mana abilities do NOT go
 here (they skip the stack, CR 605.3b); they stay in `ManaAbilities`.
 See [ADR 0020](docs/decisions/0020-activated-abilities.md).
 
-**An `{X}` in the cost:** put it in the mana component and read it
-back with `ctx.X()`. Nothing else needs declaring — the engine
-derives "this ability prompts for X" from the cost string, so the
-view, the enumerator and the client can never disagree with the card
-about whether there is an X:
+**An `{X}` in the cost:** put it in the mana component, read it back
+with `ctx.X()`, and declare `XMatters: true` on the Spec (#810). The
+engine still derives "this ability prompts for X" from the cost
+string, so the view, the enumerator and the client can never disagree
+with the card about whether there *is* an X; `XMatters` answers the
+other question, which nothing can derive — does the card do anything
+at X=0? "Look at the top X cards" does not, so the bot's enumerator
+declines to offer it there (CR 732.2a; `internal/legal/x.go`). Leave
+it unset only for a card with a fixed RIDER, something that happens
+whatever X is — The Goose Mother's 2/2 flying body — and add an entry
+to `xMattersAllowlist` in `effects/x_matters_guard_test.go` saying
+what the rider is, because that source scan fails the build on a Spec
+that reads `ctx.X()` without declaring:
 
 ```go
+XMatters: true,                                              // every card below
 Cost: Plus(ManaCost("{X}{X}"), TapCost(), SacrificeThis()),   // Treasure Vault
 Cost: Plus(ManaCost("{X}"), TapCost(), MinX(1)),              // Helm of Obedience
 ```
@@ -1579,6 +1603,51 @@ Two other things the engine handles so a card never has to:
 - **An empty library is not an error.** The scry looks at nothing,
   queues no prompt, and `Then` still runs — the instruction after
   "then" isn't conditional on there having been cards to look at.
+
+**Face-down objects (CR 406.3a / 708, [ADR 0069](docs/decisions/0069-face-down-objects.md)).**
+A card is face down because of a *kind*, and the kind answers every
+question about it. `Card.SetFaceDown(kind)` and `Card.ClearFaceDown()`
+are the only writers of `FaceDown` + `FaceDownKind`; never set either
+field directly. Six kinds, in two families:
+
+- **exile** — `FaceDownExiled` (CR 406.3: nobody may look, not even
+  the player who exiled it — Necropotence) and `FaceDownForetold`
+  (CR 702.143d: the OWNER may look). An exiled face-down card keeps
+  its real characteristics and its catalog entry, because the cast out
+  of exile needs them.
+- **CR 708.2 permanents** — `FaceDownManifested`, `FaceDownMorphed`,
+  `FaceDownDisguised`, `FaceDownCloaked` (CR 708.5: the CONTROLLER may
+  look). `Card.FaceDownIsPermanent()` is that partition, and for one
+  of these the object **is** a 2/2 colourless creature with no name,
+  text, subtypes or mana cost — whatever the card underneath says.
+
+Four things a card therefore never has to do:
+
+- **Who may look is written into `KnownBy`, not kept separately.** The
+  face-down landing (`applyFaceDownLandingLocked`) REPLACES the
+  knowledge set with the kind's answer, and skips
+  `markCardKnownInZoneLocked` — exile and the battlefield are public
+  ZONES, and that skip is the only thing that makes a face-down object
+  private in one.
+- **The 2/2 is layer 0.** `printedCharacteristic` returns it, so
+  `Effective()`, targeting, "creature you control" predicates, combat,
+  the SBAs and the wire all see a 2/2 with no further plumbing. Don't
+  add a layer-1 override. `PrintedIsCreature` / `PrintedIsLand` stay
+  the real card: they are the CR 707.2 copiable surface.
+- **The catalog is silent.** `CatalogKey` returns the EMPTY key for a
+  face-down permanent, so every `Catalog*` reader answers "no entry"
+  (CR 708.2a: no text). A face-down permanent runs no trigger, static,
+  replacement, activated or mana ability, fires no ETB hook and has no
+  printed keywords. Turning it face up needs no restore step — the
+  key simply answers again.
+- **`MoveCard` clears the state on every zone change** (CR 400.7), so
+  a new mover is covered by the rule and not by a code review; the
+  DESTINATION sets it back if the destination is itself a face-down
+  state. A face-down permanent that leaves the battlefield is revealed
+  through the S22 reveal frame (CR 708.9), and `ManifestForEffect` is
+  the primitive that makes one (CR 701.40a). The mechanics — the
+  `turn_face_up` special action (CR 116.2g), the face-down cast
+  (CR 708.4), morph and foretell themselves — are #95 and #658.
 
 **Life changes: "that much life" comes from a continuation, never from
 a read-back (#793).** A life change runs the CR 614 window (#482), so
@@ -1770,6 +1839,20 @@ dies-trigger reads the creature that died (the LKI `Characteristic` has
 never carried marked damage, and the `source` card a trigger is handed
 is the new object, which by CR 400.7 has none). Don't clear damage in a
 card's effect: if your card leaves the battlefield, it is already done.
+
+**Per-object state the ENGINE keeps is cleared by the other half of
+that exit (#630).** `MoveCard` is a package-level function over two
+zones, so it cannot reach a map on `Game` — and those maps are keyed by
+instance ID, which survives a zone change. `battlefieldExitLocked`
+(`server/internal/game/battlefield_exit.go`) is the Game-side half: it
+takes the LKI snapshot and then forgets what the leaving OBJECT did —
+`LoyaltyActivatedThisTurn` (CR 606.3, so a planeswalker bounced and
+recast the same turn may activate again) and the combat announcement
+maps. All three battlefield exits call it, and a new per-object
+registry goes in it rather than growing a fourth clearing site. What
+deliberately stays is `TurnTally`'s per-ability counts: they are per
+object too, but clearing them would give ADR 0055's loop breaker's
+`LoopRun` an escape hatch on every blink loop.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
@@ -2343,6 +2426,13 @@ Three things to know if you touch priority, prompts or the tally:
   withdraws calls `dropChoiceLocked` instead** — the prune paths must
   not count as somebody deciding something, or a loop that queues and
   prunes a prompt each iteration never trips.
+- **An activation does not clear its OWN run** (#810).
+  `notePlayerActivationLocked` is `notePlayerDecisionLocked` with the
+  activated ability's key kept, because an activation loop is a loop
+  whose every iteration is a player decision — a free, repeatable
+  ability re-offered the moment it resolves. Without the exception the
+  run never got past 1 and the breaker never saw it. Every other key
+  is still cleared: the decision was real.
 - **A bare `pass_priority` is not a decision**, on purpose: if it were,
   the first manual "next" would clear the notice and four autopassing
   clients would spin the loop straight back up.

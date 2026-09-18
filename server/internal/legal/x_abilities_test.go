@@ -91,21 +91,52 @@ func TestActivatedXCannotTapItsOwnSourceForMana(t *testing.T) {
 	vault := battlefieldCard(g, active, game.Card{
 		Name: "Treasure Vault", TypeLine: "Artifact Land", OracleID: oracleTreasureVault,
 	})
-	// One other source. If the Vault could tap for {C} as well, the
-	// enumerator would read two mana and offer X=1 — an activation
-	// the engine refuses, because the same permanent cannot pay both
-	// the {T} and part of the {X}{X}.
-	mana(g, active, 1)
+	// Three other sources. "{X}{X}" is two slots, so three outside
+	// mana buys X=1. If the Vault could tap for {C} as well the
+	// enumerator would read four and offer X=2 — an activation the
+	// engine refuses, because the same permanent cannot pay both the
+	// {T} and part of the {X}{X}.
+	//
+	// Three rather than one since #810: X=0 makes no Treasures and
+	// sacrifices the land for nothing, so it is not offered at all
+	// and a one-source board proves nothing about the exclusion.
+	mana(g, active, 3)
 	advanceTo(t, g, game.StepPrecombatMain)
 
 	acts := activationsOf(legal.EnumerateFor(g, active.ID), vault)
 	if len(acts) != 1 {
 		t.Fatalf("want one activation, got %d", len(acts))
 	}
-	if got := xValueOf(t, acts[0]); got != 0 {
-		t.Errorf("X = %d, want 0 — one outside source cannot fund {X}{X} at X=1", got)
+	if got := xValueOf(t, acts[0]); got != 1 {
+		t.Errorf("X = %d, want 1 — three outside sources fund {X}{X} at X=1 and no further", got)
 	}
 	dispatchAll(t, g, active.ID, legal.EnumerateFor(g, active.ID))
+}
+
+// The other half of the same board: with one outside source the
+// Vault's only legal announcement is X=0, which creates no Treasures
+// and still sacrifices the land, so the ability is not a move at all
+// (#810, CR 732.2a).
+func TestActivatedXIsNotOfferedWhenOnlyXZeroIsPayable(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	vault := battlefieldCard(g, active, game.Card{
+		Name: "Treasure Vault", TypeLine: "Artifact Land", OracleID: oracleTreasureVault,
+	})
+	mana(g, active, 1)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	moves := legal.EnumerateFor(g, active.ID)
+	if acts := activationsOf(moves, vault); len(acts) != 0 {
+		t.Fatalf("one mana buys no Treasures, so the Vault has no activation worth offering, got %v", labels(acts))
+	}
+	// The Vault's own mana ability is untouched: a zero-effect {X}
+	// activation is not a move, tapping for colourless still is.
+	if !hasLabel(moves, "Treasure Vault: Add") {
+		t.Errorf("the Vault's mana ability went missing with its {X} ability: %v", labels(moves))
+	}
+	dispatchAll(t, g, active.ID, moves)
 }
 
 func TestHelmOfObedienceIsNotOfferedBelowItsPrintedFloor(t *testing.T) {

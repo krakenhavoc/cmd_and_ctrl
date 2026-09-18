@@ -46,6 +46,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "dde55256-5259-44e7-a267-fca45a7f0d04",
 		Name:         "Hangarback Walker",
+		XMatters:     true,
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The X +1/+1 counters are put on the Walker as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

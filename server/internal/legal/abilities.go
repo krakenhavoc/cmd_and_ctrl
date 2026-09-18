@@ -104,11 +104,18 @@ func (e *enumerator) activatedMoves() {
 			// activations of the first target and never reach the
 			// second. X consumes no budget at all here.
 			//
-			// The floor is the other half. Helm of Obedience's "X
-			// can't be 0" means an activator who cannot afford X=1
-			// has no legal activation, and offering one at X=0 would
-			// be exactly the bug #544 describes — an enumeration the
-			// engine refuses.
+			// The floor is the other half, and since #810 it has two
+			// sources, both settled by enumeratedXFloor (x.go).
+			// Helm of Obedience's printed "X can't be 0" means an
+			// activator who cannot afford X=1 has no legal
+			// activation, and offering one at X=0 would be exactly
+			// the bug #544 describes — an enumeration the engine
+			// refuses. Soothsaying's "{X}: Look at the top X cards"
+			// prints no floor, so X=0 IS legal (CR 602.2b) and the
+			// engine accepts it — but it costs nothing, does
+			// nothing, and comes straight back, which is CR 732.2a's
+			// repeatable no-op. Neither is a move worth offering, so
+			// both are answered by the same floor.
 			xValue := 0
 			if ab.Cost.Mana != "" {
 				cost, err := game.ParseCost(ab.Cost.Mana)
@@ -125,7 +132,8 @@ func (e *enumerator) activatedMoves() {
 				if ab.Cost.Tap {
 					excluded = map[uuid.UUID]bool{source.InstanceID: true}
 				}
-				x, ok := e.affordableXExcluding(cost, game.ManaSpendForAbility(*source), ab.Cost.FloorX(), excluded)
+				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+				x, ok := e.affordableXExcluding(cost, game.ManaSpendForAbility(*source), floor, excluded)
 				if !ok {
 					continue
 				}

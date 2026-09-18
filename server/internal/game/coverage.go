@@ -90,6 +90,15 @@ func NeedsCatalogEffect(typeLine string, texts ...string) bool {
 // this predicate — with no catalog wired, nothing auto-resolves, and
 // every card really is unimplemented in that binary.
 func Unimplemented(c Card) bool {
+	// CR 708.2a: a face-down permanent has no printed rules for the
+	// engine to fail to carry out, so it is never flagged. The guard
+	// is explicit rather than left to CatalogKey's empty key, which
+	// would make the answer `c.NeedsEffect` — flagging every
+	// face-down permanent that happens to be a card with text, and
+	// telling the table something about a card it cannot read.
+	if c.FaceDownIsPermanent() {
+		return false
+	}
 	return c.NeedsEffect && !IsAutoCard(CatalogKey(c))
 }
 

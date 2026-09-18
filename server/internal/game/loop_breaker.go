@@ -280,6 +280,53 @@ func (g *Game) notePlayerDecisionLocked() {
 	g.dropLoopShortcutPromptsLocked()
 }
 
+// notePlayerActivationLocked is notePlayerDecisionLocked for the one
+// decision that can be the loop (#810).
+//
+// Activating an ability is a player decision and stays one: it
+// restarts every run and clears the notice, exactly as casting a spell
+// does. The exception is the ability being activated. ADR 0055 §3
+// counted an activation as a decision without qualification, and for a
+// TRIGGER loop that is right — a trigger loop runs itself, so anything
+// its controller does instead is progress. An ACTIVATION loop is the
+// other shape: the decision IS the loop. Soothsaying's "{X}: Look at
+// the top X cards" at X=0 costs nothing, does nothing, and can be
+// taken again the instant it resolves, and the run it should be
+// counted against was being cleared by the very activation that added
+// to it — so `LoopRun` never got past 1 and the breaker never fired
+// while a bot table spun for five minutes (#810).
+//
+// So this key's run survives, and every other key's is cleared. The
+// resolution that follows bumps it (turnTallyListener, EventResolve),
+// and a repeated free activation reaches the threshold in exactly the
+// number of iterations the threshold names.
+//
+// The CR 726 allowance for this key survives with it, for the same
+// reason grantLoopShortcutLocked re-arms the run rather than letting
+// the answer reset it: a shortcut its controller agreed to is about
+// this ability, and the activations that spend it must not be what
+// cancels it.
+//
+// `key` is TallyKey(source, label) for the ability being activated; an
+// empty key falls back to the ordinary decision.
+//
+// Caller must hold g.mu.
+func (g *Game) notePlayerActivationLocked(key string) {
+	if key == "" {
+		g.notePlayerDecisionLocked()
+		return
+	}
+	run := g.TurnTally.LoopRun[key]
+	allowance, granted := g.TurnTally.LoopAllowance[key]
+	g.notePlayerDecisionLocked()
+	if run > 0 {
+		g.TurnTally.LoopRun = map[string]int{key: run}
+	}
+	if granted {
+		g.TurnTally.LoopAllowance = map[string]int{key: allowance}
+	}
+}
+
 // dropLoopShortcutPromptsLocked withdraws any outstanding CR 726
 // shortcut prompt (#804). Called from notePlayerDecisionLocked,
 // because the question it asks — "this loop is going nowhere, how many

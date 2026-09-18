@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID: "0cc6d683-366f-4ae4-be60-20ad9621fdaf",
 		Name:     "Stroke of Genius",
+		XMatters: true,
 		Targets:  TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
