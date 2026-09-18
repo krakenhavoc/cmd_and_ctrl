@@ -26,16 +26,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // death was replaced by exile makes no tokens. Today only the
 // graveyard check exists, which is the same test.
 //
-// Sandbox simplification, inherited from CreateTokenCopy (Hashaton's
-// posture): a copied card's Spec.AsEnters hook does not fire on the
-// tokens — its Triggered EventETB abilities do, which is what the
-// modern catalog uses, so a Sawed Mulldrifter still draws four.
+// Both halves of a copied card's "enters the battlefield" clause fire
+// on the tokens since #762 — its Triggered EventETB abilities, which
+// is what the modern catalog uses (a Sawed Mulldrifter draws four),
+// and its CR 614.12 Spec.AsEnters clause, which token creation used to
+// skip.
 func init() {
 	Register(Spec{
 		OracleID:     "eea18c55-8695-4ba1-9b38-3e7638692f5f",
 		Name:         "Saw in Half",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Token copies skip the enters-the-battlefield effect on some cards."},
+		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

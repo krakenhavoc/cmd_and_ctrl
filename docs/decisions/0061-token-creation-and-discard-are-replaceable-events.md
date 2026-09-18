@@ -92,19 +92,25 @@ orderings agree and CR 616 gives them the choice.
 ### 2. Every created token then takes the ordinary battlefield-entry pipeline
 
 After the creation window settles, each token the instruction produced enters
-through the same code a cast creature, a reanimated one and a fetched land enter
-through: a `RepEventMove` with `NewZone: ZoneBattlefield`, then
-`enterPermanentLocked` — `EntersTapped`, `EntersWithCounters` (through the CR 614
-counter pipeline, so a Doubling Season doubles them and All Will Be One sees them
-placed), CR 614.12 self-replacement, `applyEntersAsCopyLocked`, the ETB event and
-`fireETBHookLocked`.
+through `enterBattlefieldThroughPipelineLocked` — the one effect-side entry
+primitive [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478) built for
+the library search, the exile return and the reanimation, landed in PR #919 while
+this work was in flight. **A created token is a fourth caller of it and nothing
+more.** There is no token entry path: the same `executeEntryToBattlefieldLocked`
+finishes it, on the inline path and on the resumed one, so a token gets
+`EntersTapped`, `EntersWithCounters` (through the CR 614 counter pipeline, so a
+Doubling Season doubles them and All Will Be One sees them placed), CR 614.12
+self-replacement, `applyEntersAsCopyLocked`, the ETB event and
+`fireETBHookLocked` — the same list, in the same order, as everything else that
+enters.
 
 **`OldZone` is empty**, because a token comes from no zone at all (CR 111.1 — it is
 created on the battlefield). Every entry replacement in the catalog keys on
-`NewZone`, so none of them notices, and the empty old zone is what the entry body
-reads to decide that the arrival announces `EventTokenCreated` rather than
-`EventZoneMove`. One event per arrival, never two: a token that emitted both would
-be counted twice by everything that watches permanents arrive.
+`NewZone`, so none of them notices, and the empty old zone is what the shared
+finisher reads twice: once to push the staged token instead of moving a card out of
+a zone, and once to decide that the arrival announces `EventTokenCreated` rather
+than `EventZoneMove`. One event per arrival, never two: a token that emitted both
+would be counted twice by everything that watches permanents arrive.
 
 **The token is staged in `Game.enteringTokens` while its window is open.** A card
 entering the battlefield sits in the zone it is leaving while its entry
@@ -123,17 +129,22 @@ created**; the resume mints the tokens when the prompt is answered
 (`applyResolvedReplacementEventLocked` gains a `RepEventCreateTokens` case, which
 calls exactly the function the unpaused path calls). An individual token's ENTRY can
 pause the same way — two distinct enters-tapped effects on one opponent's token —
-and it resumes through the entry branch of the same frame, because token entries are
-flagged `entryResumable`: nothing is skipped by resuming one, since there is no
-shuffle owed and no new object identity to mint, which are the two reasons the
-remaining entry sites still decline that flag.
+and it resumes through **#478's entry frame**, the one every other effect-side entry
+already uses. Token entries are flagged `entryResumable`, and nothing is skipped by
+resuming one: there is no shuffle owed and no new object identity to mint.
 
 The tokens *behind* a paused one are that entry's continuation rather than the next
-line of a loop, so they land on the far side of the prompt. That is `tokenTail`, the
-token half's answer to `lifeTail`, `damageTail` and `zoneRoute.then`, and it is what
-`CreateTokensThenForEffect(spec, then)` hands over: `then` receives the IDs of the
-tokens that actually landed, and runs from the landing on every terminal outcome —
-created, cancelled, or abandoned because the prompt was taken away.
+line of a loop, so they land on the far side of the prompt — and that continuation
+is #478's `entryTail`, not a token-shaped copy of it. `tokenTail` exists only for
+the CREATION event in Decision 1, which has no entry to hang a tail on yet; it is
+what `CreateTokensThenForEffect(spec, then)` hands over, and `then` receives the IDs
+of the tokens that actually landed, running from the landing on every terminal
+outcome — created, cancelled, or abandoned because the prompt was taken away.
+
+One necessary widening in #478's code: a paused entry is pruned when its card has
+left the zone the window opened over (`pausedZoneChangeStaleLocked`), and a staged
+token is in no zone at all. A token whose entry is paused is not stale — it is
+exactly where the paused entry left it.
 
 `CreateTokensForEffect` keeps its `([]uuid.UUID, error)` signature for the ~200
 callers that create a token and stop there, and its returned slice is **empty when
@@ -255,7 +266,8 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   with the cause the rules actually distinguish.
 - A created token is now indistinguishable from any other permanent from the entry
   pipeline's point of view, so the next entry replacement anybody writes covers
-  tokens for free.
+  tokens for free. Thalia, Heretic Cathar's card file already claimed a token
+  entered tapped; the claim is now true.
 
 ### Tradeoffs
 
@@ -270,8 +282,10 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   already counted by `ContinuationCensus`.
 - A token's entry now runs `fireETBHookLocked`, which it never did. For a plain
   token that is a no-op (no oracle ID), and for a token COPY it means the copied
-  card's `Spec.AsEnters` fires — closing a gap `token_copy.go` documented, and a
-  behaviour change for anybody who had learned to expect the old one.
+  card's `Spec.AsEnters` fires — closing a gap `token_copy.go`, Saw in Half and
+  Hashaton, Scarab's Fist all documented, and a behaviour change for anybody who had
+  learned to expect the old one. A token copy of Adaptive Automaton now names a
+  creature type as it enters.
 - Sequencing. The tokens of one instruction enter one at a time, so a paused one
   puts the rest on the far side of a prompt. They were already sequential; what is
   new is that the sequence can now be interrupted. CR 701.7b creates them

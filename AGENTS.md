@@ -828,6 +828,7 @@ func init() {
 | Card draw | `RepEventDraw` | `DrawPlayer` |
 | Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
+| Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **`AppliesTo` patterns:**
@@ -843,6 +844,34 @@ func init() {
 - Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
 - Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+
+**A token creation is a replaceable event** (#762,
+[ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
+`RepEventCreateTokens` is opened once per creation **instruction**
+(CR 701.7b), so "create two Treasures" is one event a doubler turns
+into four Treasures. It carries GROUPS — a template, a count and the
+creation's entry clause per KIND — because Academy Manufactor changes
+*which* tokens are made and a bare count could not say so. Write a
+doubler as `TokensDoubled(label)` (or `AnyPlayersTokensDoubled` for
+Primal Vigor's symmetrical one); write anything else with
+`ev.MultiplyTokens(n)`, `ev.ReplaceTokenKindsWhere(pred, templates…)`
+and `ev.TokenTemplatesMatch(pred)` — never by reading `ev.TokenGroups`
+directly.
+
+Once that window settles, every token it makes goes through
+`enterBattlefieldThroughPipelineLocked` — **the same entry primitive a
+library search, an exile return and a reanimation use** (#478) — as a
+`RepEventMove` into `ZoneBattlefield` with an empty `OldZone` (a token
+comes from no zone, CR 111.1). So an
+enters-tapped or enters-with-counters replacement you write for cards
+covers tokens for free, and `fireETBHookLocked` runs for a token copy.
+A creation CAN PAUSE — two different effects in the window is a CR 616
+ordering prompt — and so can a single token's entry, so
+`CreateTokensForEffect`'s returned IDs are EMPTY when it paused. If
+your card's sentence continues past the tokens ("create a Treasure,
+then sacrifice it"), hand that over as
+`CreateTokensThenForEffect(spec, then)` rather than reading the slice
+on the next line.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog

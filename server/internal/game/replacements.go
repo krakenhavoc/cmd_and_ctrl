@@ -24,6 +24,9 @@ import (
 //   - drawCardLocked → RepEventDraw
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
+//   - createTokensLocked → RepEventCreateTokens, then one
+//     RepEventMove battlefield entry per token created (CR 701.7b,
+//     #762)
 //   - ChangePlayerLife → RepEventLife
 //   - MarkDamage / MarkCombatDamage → RepEventDamage
 //   - AddCounter → RepEventCounter
@@ -40,20 +43,34 @@ import (
 // ReplacementEventKind narrows the meaningful fields on a
 // ReplacementEvent. Values:
 //
-//	"draw"    — RepEventDraw    — DrawPlayer
-//	"move"    — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
-//	"counter" — RepEventCounter — CounterTarget, CounterName, CounterDelta
-//	"life"    — RepEventLife    — LifePlayer, LifeDelta
-//	"damage"  — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
-//	"step"    — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
+//	"draw"         — RepEventDraw    — DrawPlayer
+//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
+//	"counter"      — RepEventCounter — CounterTarget, CounterName, CounterDelta
+//	"life"         — RepEventLife    — LifePlayer, LifeDelta
+//	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
+//	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
+//	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
 const (
-	RepEventDraw           ReplacementEventKind = "draw"
-	RepEventMove           ReplacementEventKind = "move"
-	RepEventCounter        ReplacementEventKind = "counter"
-	RepEventLife           ReplacementEventKind = "life"
-	RepEventDamage         ReplacementEventKind = "damage"
+	RepEventDraw    ReplacementEventKind = "draw"
+	RepEventMove    ReplacementEventKind = "move"
+	RepEventCounter ReplacementEventKind = "counter"
+	RepEventLife    ReplacementEventKind = "life"
+	RepEventDamage  ReplacementEventKind = "damage"
+
+	// RepEventCreateTokens is one "create N tokens" INSTRUCTION
+	// (CR 701.7b), opened once however many tokens it makes, so a
+	// doubler modifies the instruction rather than each token: "create
+	// two tokens" with Parallel Lives out is one event that becomes
+	// four tokens, not two events of two. See #762 and ADR 0061.
+	//
+	// The tokens it settles on each run the ordinary battlefield-ENTRY
+	// pipeline afterwards (a RepEventMove with no old zone), so
+	// enters-tapped, enters-with-counters and the ETB hook reach a
+	// token exactly as they reach every other permanent.
+	RepEventCreateTokens ReplacementEventKind = "create_tokens"
+
 	RepEventStepTransition ReplacementEventKind = "step"
 )
 
@@ -149,9 +166,15 @@ type ReplacementEvent struct {
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
 	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
-	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
-	// builds a RepEventMove yet: every discard moves the card directly
-	// and bypasses this pipeline (#650).
+	// built-in, Stone of Erech's graveyard → exile, etc.). No discard builds one
+	// yet: the discard route opens a plain move with no cause on it
+	// (#650).
+	//
+	// A created TOKEN enters with OldZone empty: it came from no zone
+	// at all (CR 111.1 — a token is created on the battlefield), which
+	// is the honest spelling and the one every "enters the
+	// battlefield" replacement already reads past, because they key on
+	// NewZone.
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
@@ -280,6 +303,49 @@ type ReplacementEvent struct {
 	// flavor flag on the manual move_card action. Unexported because
 	// the catalog should never read or set it.
 	asCommanderMove bool
+
+	// --- RepEventCreateTokens fields ---
+
+	// TokenController is the player the tokens are created under the
+	// control of. Actor carries the same value; this is the name the
+	// rules use ("create one or more tokens UNDER YOUR CONTROL"), and
+	// a doubler's AppliesTo reads it.
+	TokenController uuid.UUID
+
+	// TokenGroups is what the instruction creates, one entry per KIND
+	// of token: a template, how many of it, and the creation-time
+	// entry options the instruction asked for.
+	//
+	// Groups rather than a bare count because the printed cards need
+	// both halves. Parallel Lives, Anointed Procession, Doubling
+	// Season, Primal Vigor and Mondrak multiply the COUNTS
+	// (MultiplyTokens); Academy Manufactor rewrites the KIND SET
+	// (ReplaceTokenKinds) — "if you would create a Clue, Food or
+	// Treasure token, instead create one of each" turns one group into
+	// three. A count alone could not express the second.
+	TokenGroups []TokenGroup
+
+	// TokenAttacking is the player the tokens are created attacking
+	// (CR 506.3c — put onto the battlefield attacking, never
+	// declared, so nothing sees an attack declaration). uuid.Nil for
+	// the ordinary creation.
+	TokenAttacking uuid.UUID
+
+	// tokenTail is the token half's answer to lifeTail and damageTail:
+	// the rest of the effect that asked for the creation, run with the
+	// IDs of the tokens that were actually made once the pipeline
+	// settles. Set by CreateTokensThenForEffect and read only by
+	// runTokenTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// It exists because a creation can now PAUSE: a Doubling Season
+	// and an Academy Manufactor in the same window is a CR 616
+	// ordering prompt, and a caller that says "create a token, then
+	// sacrifice it" cannot write the second half on the next line.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See token_create.go.
+	tokenTail *tokenTail
 
 	// --- RepEventCounter fields ---
 
@@ -1343,6 +1409,8 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		want = EventDrawCard
 	case RepEventMove:
 		want = EventZoneMove
+	case RepEventCreateTokens:
+		want = EventTokenCreated
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:

@@ -331,6 +331,13 @@ func (g *Game) cloneLocked() *Game {
 	// answer with the mark gone — and the effect would fire a second
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
+	if len(g.enteringTokens) > 0 {
+		// #762: a token whose entry paused on a replacement prompt is
+		// here and nowhere else. An undo across that prompt has to
+		// bring it back, exactly as it brings back the once-per-event
+		// marks the same paused window is holding.
+		out.enteringTokens = append([]Card(nil), g.enteringTokens...)
+	}
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -600,6 +607,22 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			t := *f.ev.damageTail
 			ev.damageTail = &t
 		}
+		if f.ev.tokenTail != nil {
+			// #762, the same reason as the two below: the token tail is
+			// cleared THROUGH the pointer as it runs, so sharing it
+			// would let the live game's run consume the snapshot's
+			// continuation and an undone-then-redone answer would make
+			// the tokens and skip the rest of the card.
+			t := *f.ev.tokenTail
+			ev.tokenTail = &t
+		}
+		if len(f.ev.TokenGroups) > 0 {
+			// The settled creation itself — how many of which kinds —
+			// is what the resume is holding. Its own slice, so a
+			// doubler applied on the live game cannot reach back into
+			// the snapshot's copy of the event.
+			ev.TokenGroups = append([]TokenGroup(nil), f.ev.TokenGroups...)
+		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
 			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
@@ -726,6 +749,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
+	g.enteringTokens = src.enteringTokens
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

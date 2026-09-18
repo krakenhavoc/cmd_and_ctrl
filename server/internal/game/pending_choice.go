@@ -1566,6 +1566,14 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// this branch only when it is flagged ViaBattlefieldLeave —
 		// every other exit went to executeZoneRouteLocked above.
 		return g.finishBattlefieldLeaveLocked(ev, owner)
+	case RepEventCreateTokens:
+		// #762: the CR 701.7b window has settled on how many tokens of
+		// which kinds this instruction makes. Creating them is the
+		// same function the unpaused path runs, so a creation that
+		// paused on an ordering prompt and one that did not cannot
+		// drift apart — and each token then takes the ordinary
+		// battlefield entry, which may pause again on its own.
+		return g.applyResolvedTokenCreationLocked(ev)
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is
@@ -1642,6 +1650,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if ev.Kind == RepEventDamage {
 		return g.runDamageTailLocked(ev, 0)
 	}
+	// #762: a cancelled or replaced-away token CREATION makes nothing,
+	// and the rest of the card ("create a Treasure, then sacrifice
+	// it") has to be told so rather than wait for tokens that will
+	// never arrive.
+	if ev.Kind == RepEventCreateTokens {
+		return g.runTokenTailLocked(ev, nil)
+	}
 	// #853: and the same for a cancelled EXIT that carries a route.
 	// The card stays where it is, but a multi-card discard sequenced
 	// through the route's continuation has to be told, or the rest of
@@ -1654,6 +1669,12 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// Only one of the two is ever set, so running both is one call and
 	// a no-op.
 	if ev.Kind == RepEventMove {
+		// #762: a cancelled ENTRY of a created token is the one move
+		// that leaves an object behind. A token exists only on the
+		// battlefield (CR 111.1), so one whose entry was replaced away
+		// simply ceases to be; the rest of its batch still lands,
+		// through the entry tail below.
+		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
 		}
@@ -2697,7 +2718,12 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 	}
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
-		return true
+		// #762: a CREATED TOKEN whose entry is paused is in no zone at
+		// all — minted, staged, not yet pushed. That is not a card that
+		// has left by another route; it is exactly where the paused
+		// entry left it.
+		_, staged := g.enteringTokenLocked(ev.CardID)
+		return !staged
 	}
 	if ev.NewZone == ZoneBattlefield && src == g.Battlefield {
 		return false

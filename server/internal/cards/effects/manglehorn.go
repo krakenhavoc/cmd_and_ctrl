@@ -24,19 +24,15 @@ import (
 //     arrives tapped, as printed; an artifact creature is an
 //     artifact and counts.
 //
-// Sandbox simplification, declared — the Urabrask / Kismet gap: an
-// opponent's artifact TOKEN enters untapped. Token creation does not
-// go through the CR 614 zone-move pipeline at all (a token has no
-// previous zone to move from, and CreateTokensForEffect pushes it
-// straight onto the battlefield), so no enters-tapped replacement in
-// the catalog sees a Treasure or a Clue. Weaker than printed, never
-// stronger.
+// An opponent's artifact TOKEN — a Treasure, a Clue — enters tapped
+// too, since #762: a created token now runs the same
+// battlefield-entry pipeline every other permanent runs, so this
+// replacement sees it exactly as it sees a cast artifact.
 func init() {
 	Register(Spec{
 		OracleID:     "b67db32b-30a9-49d2-b4c2-90a9f80c36eb",
 		Name:         "Manglehorn",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An opponent's artifact token (a Treasure, a Clue) enters untapped — only cast, reanimated or returned artifacts enter tapped."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches:        []game.EventKind{game.EventETB},
 			AppliesTo:      b06SelfETB,

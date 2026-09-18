@@ -304,9 +304,19 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	// The CR 614.5 once-per-event bookkeeping the abandoned event was
 	// holding: nothing else will release it now.
 	g.clearReplacementEventLocked(ev.ID)
+	if ev.Kind == RepEventCreateTokens {
+		// #762: an abandoned CREATION makes nothing, and the rest of
+		// the card behind it still has to be told. Nothing is staged
+		// yet — the tokens are not minted until the window settles.
+		return g.runTokenTailLocked(ev, nil)
+	}
 	if ev.Kind != RepEventMove {
 		return nil
 	}
+	// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
+	// staged and unentered. It never reached the battlefield, so it
+	// never existed (CR 111.1). A no-op for every other entry.
+	g.dropEnteringTokenLocked(ev.CardID)
 	if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 		return err
 	}
@@ -316,7 +326,8 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	// question was open — moved nothing, and the search behind it has
 	// to be told so, or its shuffle and its caller's Then wait forever.
 	// A move carries a route or a tail, never both, so this is one call
-	// and a no-op for every exit.
+	// and a no-op for every exit. Since #762 a token creation threads
+	// the rest of its batch through the same tail.
 	return g.runEntryTailLocked(ev, uuid.Nil)
 }
 
