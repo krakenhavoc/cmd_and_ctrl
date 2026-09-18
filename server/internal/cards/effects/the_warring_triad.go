@@ -45,7 +45,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The tap-and-mill ability isn't implemented — it can't add mana for a player.",
-			"If you controlled a Maskwood Nexus before The Warring Triad entered, it counts as every creature type even while it isn't a creature.",
 		},
 		PrintedKeywords: []string{"flying", "trample", "haste"},
 		Static: []game.StaticAbility{

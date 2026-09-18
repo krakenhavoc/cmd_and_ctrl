@@ -51,23 +51,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // as something other than its land types would shadow the type
 // half. No card in the catalog is in that position today.
 //
-// DECLARED GAP, CR 613.8: "each land" reads a type that other layer-4
-// effects write, so Urborg depends on any effect that makes something
-// a land and should apply after it whatever the timestamps. The layer
-// engine orders layer 4 by timestamp only, so a permanent made a land
-// by an effect NEWER than Urborg is not a Swamp. The catalog pairs
-// today are Song of the Dryads attached after Urborg entered and
-// Arixmethes, Slumbering Isle entering after Urborg; both are pinned,
-// skipped, in layer_dependency_pairs_test.go. The caveat goes when
-// dependency ordering lands.
+// CR 613.8a: "each land" reads a type that other layer-4 effects
+// write, so Urborg DEPENDS on any effect that makes something a land
+// and applies after it whichever entered first. A Sol Ring a Song of
+// the Dryads turned into a Forest is a Forest Swamp, and a slumbering
+// Arixmethes, Slumbering Isle is a Swamp, whenever either arrived;
+// both orders of both pairs are pinned in
+// layer_dependency_pairs_test.go.
+//
+// The dependency is the APPLICABILITY change and nothing else. Urborg
+// and a Song on a permanent that was already a land are independent —
+// the Song does not change whether Urborg applies to it, and "add
+// Swamp" is the same instruction either way — so those settle by
+// timestamp and the Song's type set wins.
 func init() {
 	Register(Spec{
 		OracleID:     "db6174d7-211d-4817-b8e4-8384594c83f9",
 		Name:         "Urborg, Tomb of Yawgmoth",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A permanent that becomes a land after Urborg is already on the battlefield — such as one enchanted by a later Song of the Dryads, or an Arixmethes, Slumbering Isle that entered after Urborg — isn't a Swamp and doesn't tap for {B}.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,
@@ -75,13 +76,11 @@ func init() {
 				// just the controller's. Reading IsLand through the
 				// effective view is deliberate: a permanent that
 				// some other Layer-4 effect has made a land is one.
-				// Timestamp order should NOT decide which of the two
+				// Timestamp order does not decide which of the two
 				// saw the other: under CR 613.8a Urborg depends on
-				// any effect that makes something a land, so it
-				// applies after that effect whichever entered first.
-				// The engine orders layer 4 by timestamp only, so a
-				// Song of the Dryads or an Arixmethes newer than
-				// Urborg leaves its permanent without Swamp (#668).
+				// any effect that makes something a land, so the
+				// pass applies it after that effect whichever
+				// entered first (ADR 0067).
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.IsLand()
 				},
