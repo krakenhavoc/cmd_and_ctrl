@@ -1129,7 +1129,7 @@ is already wired end to end.
 - **An any-kind removal spread across permanents.** Tekuthal, Inquiry
   Dominus' "Remove three counters from among other artifacts, creatures,
   and planeswalkers you control" needs a KIND per permanent as well as a
-  count. `effects.Register` refuses the combination rather than letting a
+  count. Tracked on #943. `effects.Register` refuses the combination rather than letting a
   card file half-declare one, and the seam row says so. (Tekuthal is
   blocked on two other things as well — proliferate doubling and
   indestructible counters — so nothing is waiting only on this.)
