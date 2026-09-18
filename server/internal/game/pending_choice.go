@@ -1930,13 +1930,23 @@ func (g *Game) queueTriggerPromptLocked(
 }
 
 // queuePickTargetLocked queues the CR 603.3d target choice for a
-// targeted trigger. The legal set is computed now (the caller
-// already confirmed it's non-empty) and frozen onto the prompt;
-// ResolvePickTarget re-validates the pick against the spec anyway,
-// since the board can change while the prompt is open. Caller must
-// hold g.mu. Added in S20 sub-PR 2.
+// targeted trigger. The legal set is computed now and frozen onto the
+// prompt; ResolvePickTarget re-validates the pick against the spec
+// anyway, since the board can change while the prompt is open, and
+// refreshTargetChoicesLocked re-reads the frozen set at the next
+// priority-grant boundary (#809). Caller must hold g.mu. Added in S20
+// sub-PR 2.
 func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
 	lt := g.legalTargetsLocked(source.Controller, t.Targets)
+	// CR 603.3d: no legal target ⇒ the ability is removed from the
+	// stack and does nothing. dispatchTriggerInstanceLocked already
+	// checked this at harvest time, but the OPTIONAL path comes back
+	// through here from ResolveTriggerPrompt, an arbitrary time later,
+	// and a prompt with an empty option list is a prompt nobody can
+	// answer — which since #791 is a table that cannot move.
+	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+		return
+	}
 	label := t.Targets.Label
 	if label == "" {
 		label = "Choose a target"
