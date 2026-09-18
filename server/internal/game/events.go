@@ -295,6 +295,22 @@ const (
 	// dropped "pick_target" from a dropped "trigger_prompt". #864.
 	EventPendingChoiceDropped EventKind = "pending_choice_dropped"
 
+	// EventPendingChoiceReassigned — a choice owed by a player who has
+	// left the game was handed to somebody else instead of being
+	// dropped (CR 800.4g/h). Actor is the departed chooser, Target is
+	// the player who inherits the prompt, Source is the choice's card
+	// (when known), and Label carries the PendingChoiceKind — the same
+	// three fields EventPendingChoiceDropped uses, so a stall dump can
+	// read the two side by side and see which prompts moved and which
+	// ended.
+	//
+	// The engine's event log is not on the wire (docs/protocol.md), and
+	// this one is deliberately not projected into the public `log`
+	// either: the reassignment is already visible to the table as the
+	// prompt itself, which the next snapshot renders to its new
+	// chooser. #902.
+	EventPendingChoiceReassigned EventKind = "pending_choice_reassigned"
+
 	// EventStepTransition is an engine-internal sentinel used only
 	// by the S17 replacement-effect pipeline. Fired from the top of
 	// runStepEntryHooksLocked so skip-step replacements (Stasis

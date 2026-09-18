@@ -2889,14 +2889,24 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 	}
 }
 
-// dropChoicesForPlayerLocked removes every PendingChoice owed by
+// dropChoicesForPlayerLocked settles every PendingChoice owed by
 // playerID — the same-name cleanup-discard pause in their name is
-// left to the caller — and returns the replacementResume frames those
-// choices were holding, for the caller to finish via
+// left to the caller — and returns the replacementResume frames the
+// choices it DROPPED were holding, for the caller to finish via
 // finishDroppedReplacementLocked (#808). Shared by
 // cleanupStackForEliminatedLocked (the instant a player leaves) and
 // sweepEliminatedChoicesLocked (#864's defensive backstop, below) so
-// the two run the identical drop. Caller must hold g.mu.
+// the two settle a departed chooser's queue identically — the #794
+// lesson, one answer and no second list.
+//
+// #902 / CR 800.4g/h: "settles", not "drops". A prompt an object
+// requires and a player still in the game can answer is REASSIGNED
+// rather than dropped, and stays in the queue under its new chooser.
+// reassignDepartedChoiceLocked (leave_game.go) holds the whole policy
+// — which kinds move, and who inherits — and reports false for
+// everything else, which is the pre-#902 drop, event and all.
+//
+// Caller must hold g.mu.
 func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResumeFrame {
 	if len(g.PendingChoices) == 0 {
 		return nil
@@ -2908,9 +2918,16 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 			kept = append(kept, c)
 			continue
 		}
+		if g.reassignDepartedChoiceLocked(c) {
+			// Same entry, new chooser. It is still owed, so it still
+			// blocks the table and the enumerator still offers it —
+			// to a seat that can answer.
+			kept = append(kept, c)
+			continue
+		}
 		g.EmitEvent(Event{
 			Kind:   EventPendingChoiceDropped,
-			Actor:  c.Chooser,
+			Actor:  playerID,
 			Source: c.Source,
 			Label:  string(c.Kind),
 		})
