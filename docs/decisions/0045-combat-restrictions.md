@@ -1420,3 +1420,159 @@ un-declared by `ClearCombat` before any priority boundary now
 announces nothing at all, which it should not have before either.
 
 Unchanged: everything about blocks, and the client.
+
+---
+
+## Amendment (2026-09-18): two combat damage steps with a priority window between them (#717, #716)
+
+Amends nothing above — Decisions 1-23 are about which declarations are
+legal and when they are announced, and none of them moves. This adds
+the step AFTER the declarations: CR 510.4's second combat damage step,
+tracked on [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717),
+and the participation rule that goes with it,
+[#716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/716). It is
+the answer [ADR 0053](0053-combat-damage-beats.md) Decision 5 deferred
+when #187 shipped presentation-only.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 506.1: "there are two combat damage steps" in a combat where a
+creature has first strike or double strike. CR 510.4: if at least one
+attacking or blocking creature has first strike or double strike **as
+the combat damage step begins**, the phase gets an extra combat damage
+step, the first one for those creatures, and the second for the
+creatures that had NEITHER keyword then plus the ones that have double
+strike now (CR 702.4b, 702.7b, 702.7c). CR 510.3 / 510.3a give the
+active player priority after each step, with the damage triggers put on
+the stack first.
+
+The engine had one `combat_damage` step running two passes back to
+back, so a "whenever this deals combat damage" trigger from first-strike
+damage resolved after regular damage, and nobody could respond in
+between.
+
+### Decision 24. The first-strike damage step is a step, and a turn may not have it
+
+`StepFirstStrikeDamage` (`first_strike_damage`) is a thirteenth entry in
+`turnSequence`, between `declare_blockers` and `combat_damage`, in
+`PhaseCombat`. `StepCombatDamage` keeps its name, its wire value and its
+meaning: it is the regular damage step, the second one when the first
+happened and the only one when it did not. Every combat has it.
+
+**It is skipped by the mechanism the engine already had for a step it
+does not need.** `finishStepEntryLocked` already handles a step
+cancelled by a CR 614 replacement (Stasis, Necropotence) by advancing
+past it and recursing into the next step's entry — a skipped step
+(CR 500.11). `runStepEntryHooksLocked` now asks `stepExistsLocked`
+first and makes exactly that move for a step this turn does not have:
+nothing announces, no turn-based action runs, and no player gets
+priority in it. The check is ahead of the replacement window on purpose
+— a step that does not exist is not a step anything can replace.
+
+`stepExistsLocked` answers false for one step today: `first_strike_damage`
+when no attacking or blocking creature has first strike or double strike.
+It is a live board read, not a flag set at declare-blockers, because
+CR 510.4 asks the question as the damage step begins and a creature can
+gain or lose first strike in the declare-blockers priority window.
+
+**No client special case.** The client's step list gains one entry and
+its phase strip one icon; nothing on the client decides whether the step
+happens.
+
+**Rejected: a `Sub` tag on a spliced second `combat_damage`**, which is
+what [ADR 0059](0059-turn-machinery.md) Decision 12 sketched. That design
+belongs to ADR 0059's `TurnPlan` — a planned list of steps with
+insertion — and none of that machinery exists yet; building it here would
+have made #717 the vehicle for extra turns and extra phases. A step that
+a turn has or does not have is the same idea one layer down, and it is
+the shape the plan can absorb: when the plan lands, `first_strike_damage`
+is a plan entry that is present or absent, and `stepExistsLocked` is the
+predicate that decides. ADR 0059 Decision 12 is superseded on the SHAPE
+and stands on everything else (both steps count for `combat_damage`'s
+ordinal; no card reads it; the client's stops treat the pair as one).
+
+### Decision 25. One participation record, taken as the first step begins
+
+`Game.firstStrikeStepParticipants` (unexported, `map[uuid.UUID]bool`) is
+the combatants that had first strike or double strike as the FIRST
+combat damage step began. `firstStrikeStepParticipantSetLocked` is the
+one scan that produces it, and it answers both questions CR 510.4 asks
+at that instant: whether the step exists (the set is non-empty) and who
+deals damage in it.
+
+`participatesInStepLocked` reads only that record:
+
+- first step — the creatures in the record;
+- second step — the creatures NOT in the record, plus any that have
+  double strike now.
+
+That second line is #716. The old `participatesInSubstep` re-read
+`HasKeyword` after the layer recompute between the passes, so a creature
+whose granted first strike died with its lord looked like a
+non-first-striker and dealt its damage a second time; one that gained
+first strike in between was skipped by a step it had never dealt damage
+in. With a real priority window between the steps those are no longer
+edge cases — the window is exactly where a lord dies and a pump lands.
+The live keyword read that remains is the one CR 702.7c asks for:
+"plus the ones that have double strike now".
+
+**It is combat-scoped state**, cleared by `clearCombatLocked` with the
+declarations it describes, and carried by `Clone` / `RestoreFrom` and the
+persisted snapshot — classified `carried` in `clone.go`, `snapshot.go`
+and `snapshot_drift_test.go` next to `announcedBlocks` and
+`announcedAttacks`. It is carried for one more reason than they are: the
+window between the steps is a priority window, so an undo or a deploy
+restore can land inside it, and a record dropped there would let every
+first-striker hit twice. An older snapshot restores with an empty
+record, which reads as "there was no first-strike step" — right for
+every file written before the steps existed.
+
+### What this fixes along the way
+
+**[#702](https://github.com/krakenhavoc/cmd_and_ctrl/issues/702) — the
+regular pass no longer overtakes a first-strike assignment prompt.** A
+CR 510.1c multi-blocker damage-assignment prompt blocks the table
+(`choice_gate.go`), and the cursor cannot leave a step while a blocking
+prompt is open (#730). With the two passes in two steps, that gate is
+the fix: the regular step cannot begin until the first step's assignment
+is answered. `TestCombatStepFirstStrikeAssignmentPromptOrder` loses its
+skip. `DamageAssignmentFrame.FirstStrike` keeps its meaning as the
+frame's record of which step queued it.
+
+**The hand-rolled event batch between the passes is gone.** #784 opened
+a batch by hand in `resolveCombatDamageLocked` because the rules split a
+step the cursor did not. The cursor splits it now, so the ordinary "the
+cursor enters a new step" boundary produces both batches and
+[ADR 0049](0049-card-engine-seam-review.md)'s boundary rule is one
+sentence with nothing named beside it. Professional Face-Breaker still
+makes three Treasures for (first strike, A) / (regular, A) /
+(regular, B).
+
+### What it leaves
+
+**[#914](https://github.com/krakenhavoc/cmd_and_ctrl/issues/914) is not
+fixed here**, and the new step widens it by one case: `advance_step`
+walks past a non-empty stack, so a seat that clicks it in the
+first-strike damage step takes regular damage before the first-strike
+damage triggers resolve — the same shape as the `declare_blockers`
+caveat #914 already records. Ordinary priority play is correct, because
+passing priority resolves the stack. The fix is a turn-structure
+decision (#914 lists three options), and the version scoped to this
+amendment's steps is not a one-liner: gating `advance_step` on "the
+stack is not empty" in `declare_blockers` and the two damage steps was
+tried on this branch and refuses the advance in **11 existing tests**
+in `internal/cards/effects` — attack and upkeep triggers that are still
+on the stack when the test walks the cursor into combat damage, plus
+`TestB492AdvanceStepOutOfDeclareBlockersStillTakesDamageFirst`, which
+pins today's behaviour on purpose. That is a change to what the verb
+MEANS, and it needs the sentinel error, the `internal/legal` rule and
+the client message #914 asks for. It stays #914's call.
+
+**[#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715) is
+unchanged**: a blocked attacker whose blockers have all left combat is
+still treated as unblocked in the second step. Its test keeps its skip.
+
+**The beat animation is not rebuilt.** [ADR 0053](0053-combat-damage-beats.md) Decision 5 now carries a note saying what #717 changed for the client beat sequencer: it keys a combat's beats on the first damage step entry, keeps the arrow cache through the new step, and keeps everything else.

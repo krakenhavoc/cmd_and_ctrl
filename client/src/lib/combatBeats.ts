@@ -19,12 +19,16 @@
 //   - a frame whose highest `seq` is lower than the highest seen is a
 //     rewind (undo): the handled watermark drops to it and the frame
 //     cues nothing, so the replayed entries are cued when they return.
-//   - a `combat_damage` step is keyed by the `seq` of its `step`
-//     entry. A beat is that step's tagged combat damage entries for one
-//     tag, plus the non-damage entries that follow the nearest tagged
-//     damage entry among the same frame's new entries (deaths,
-//     lifelink). A step that dealt no damage for a tag has no beat
-//     (Decision 3).
+//   - a combat's damage beats are keyed by the `seq` of the FIRST
+//     damage `step` entry of that combat. Since #717 the rules' two
+//     combat damage steps are two real steps on the wire
+//     (`first_strike_damage` then `combat_damage`, CR 510.4), and both
+//     beats key on the first of them so the pair stays a pair — one
+//     text cue per combat, and the pause below still pairs. A beat is
+//     that combat's tagged damage entries for one tag, plus the
+//     non-damage entries that follow the nearest tagged damage entry
+//     among the same frame's new entries (deaths, lifelink). A step
+//     that dealt no damage for a tag has no beat (Decision 3).
 //   - beat 2 waits BEAT_PAUSE_MS × animations.speed only when beat 1's
 //     entries came before it in the SAME frame. Across frames the time
 //     between frames is the pause. A beat already cued in an earlier
@@ -172,7 +176,9 @@ export function track(
 // ---- Beats: grouping new entries ----
 
 export interface Beat {
-  // seq of the combat_damage step entry this beat belongs to.
+  // seq of the step entry that keys this beat's combat — the
+  // first-strike damage step's when there was one, else the regular
+  // combat damage step's.
   stepSeq: number;
   tag: BeatTag;
   // Every member, in log order: the tagged damage entries and the
@@ -208,35 +214,47 @@ export function splitBeats(
   const freshSeqs = new Set(fresh.map((e) => e.seq));
   const beats: Beat[] = [];
   const byKey = new Map<string, Beat>();
-  let step: { seq: number; name: string } | null = null;
+  // The seq that keys this combat's beats: the first-strike damage
+  // step's when the combat had one, otherwise the regular step's. Null
+  // between combats and for entries whose step entry fell out of the
+  // 200-entry window.
+  let damageStepSeq: number | null = null;
   let current: Beat | null = null;
 
   for (const e of log ?? []) {
     if (e.kind === "step") {
-      step = { seq: e.seq, name: e.step ?? "" };
+      const name = e.step ?? "";
+      if (name === "first_strike_damage") {
+        damageStepSeq = e.seq;
+      } else if (name === "combat_damage") {
+        // Keep the first-strike step's seq when it preceded this one:
+        // the two steps of one combat are one pair of beats.
+        damageStepSeq ??= e.seq;
+      } else {
+        damageStepSeq = null;
+      }
       current = null;
       continue;
     }
     if (!freshSeqs.has(e.seq)) continue;
-    // Entries whose step entry fell out of the 200-entry window, or
-    // that are outside combat damage, belong to no beat.
-    if (step === null || step.name !== "combat_damage") continue;
+    // Entries outside a combat damage step belong to no beat.
+    if (damageStepSeq === null) continue;
     const tag = combatTagOf(e);
     if (tag === null) {
       current?.entries.push(e);
       continue;
     }
-    const key = `${step.seq}:${tag}`;
+    const key = `${damageStepSeq}:${tag}`;
     let beat = byKey.get(key);
     if (!beat) {
       beat = {
-        stepSeq: step.seq,
+        stepSeq: damageStepSeq,
         tag,
         entries: [],
         damage: [],
         arrows: [],
         arrowIDs: [],
-        continuation: prev.cued.get(step.seq)?.has(tag) ?? false,
+        continuation: prev.cued.get(damageStepSeq)?.has(tag) ?? false,
         pauseBefore: false,
       };
       byKey.set(key, beat);
@@ -633,7 +651,12 @@ export function cueAnchor(geos: readonly ArrowGeometry[], board: BoardSize): Poi
 
 // The steps during which attack and block arrows exist, so their
 // geometry is worth keeping.
-const COMBAT_ARROW_STEPS = new Set(["declare_attackers", "declare_blockers", "combat_damage"]);
+const COMBAT_ARROW_STEPS = new Set([
+  "declare_attackers",
+  "declare_blockers",
+  "first_strike_damage",
+  "combat_damage",
+]);
 
 // keepArrowCache: the geometry cache lives through combat and until
 // the last scheduled cue has played, even after the game has moved on

@@ -98,10 +98,11 @@ func b35CountersOnArtifactsAndCreaturesYouControl(g *game.Game, controller uuid.
 // no attack of its own, so it reads as not attacking, as printed.
 func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool {
 	inCombat := map[string]bool{
-		string(game.StepDeclareAttackers): true,
-		string(game.StepDeclareBlockers):  true,
-		string(game.StepCombatDamage):     true,
-		string(game.StepEndCombat):        true,
+		string(game.StepDeclareAttackers):  true,
+		string(game.StepDeclareBlockers):   true,
+		string(game.StepFirstStrikeDamage): true,
+		string(game.StepCombatDamage):      true,
+		string(game.StepEndCombat):         true,
 	}
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]

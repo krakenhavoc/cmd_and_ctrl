@@ -71,6 +71,7 @@ export const COMBAT_STEPS: ReadonlySet<string> = new Set([
   "begin_combat",
   "declare_attackers",
   "declare_blockers",
+  "first_strike_damage",
   "combat_damage",
   "end_combat",
 ]);

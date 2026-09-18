@@ -12,7 +12,7 @@
     importSettings,
     fingerprintSettings,
   } from "../settings";
-  import { STEP_IDS, STEP_LABELS, NO_PRIORITY_STEPS, type StepID } from "../turn";
+  import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import {
     SHORTCUTS,
     GROUP_ORDER,
@@ -36,7 +36,7 @@
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
   // sentinel (priority_holder = -1) makes them un-stoppable anyway.
-  const STOPPABLE_STEPS: readonly StepID[] = STEP_IDS.filter((id) => !NO_PRIORITY_STEPS.has(id));
+  const STOPPABLE_STEPS: readonly StepID[] = STEP_IDS.filter((id) => hasOwnStop(id));
 
   // toggleStepStop flips one entry in the stepStops map and flashes
   // the saved indicator next to the row. Path uses the step ID as

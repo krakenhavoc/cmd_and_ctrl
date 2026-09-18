@@ -5,7 +5,7 @@
   //
   // Three stacked rows:
   //   1. Turn number + active player (dot + name)
-  //   2. Phase track — 12 step dots in canonical turn order, with the
+  //   2. Phase track — one dot per step in canonical turn order, with the
   //      current step highlighted. Phase boundaries (beginning /
   //      precombat main / combat / postcombat / ending) are separated
   //      by a faint gap so the structure of a turn is visible at a
@@ -81,7 +81,11 @@
   // Phase-group boundaries: a faint separator between groups of steps
   // makes the five MTG phases (beginning / precombat main / combat /
   // postcombat / ending) visually distinct without labels.
-  const BOUNDARIES: ReadonlySet<number> = new Set([3, 4, 8, 9]);
+  // Indices into STEP_IDS: before precombat_main, before begin_combat,
+  // before end_combat and before postcombat_main. They move whenever a
+  // step is added to the list — first_strike_damage (#717) pushed the
+  // last two along by one.
+  const BOUNDARIES: ReadonlySet<number> = new Set([3, 4, 9, 10]);
 
   // Per-seat accent colour, keyed by player id. Seeded synchronously
   // from seatColor() so first paint has the right shape; avatarColor

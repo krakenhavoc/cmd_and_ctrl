@@ -271,6 +271,11 @@ func (g *Game) cloneLocked() *Game {
 	// the same reason — an undo across a re-point that kept them
 	// would swallow the re-done attack trigger.
 	out.announcedAttacks = copyBoolMap(g.announcedAttacks)
+	// #716: and the combat damage steps' participation record rewinds
+	// with the combat it belongs to. An undo back into the priority
+	// window between the two steps that dropped it would let every
+	// first-striker deal its damage a second time in the regular step.
+	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -709,6 +714,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.announcedBlocks = src.announcedBlocks
 	g.announcedBecameBlocked = src.announcedBecameBlocked
 	g.announcedAttacks = src.announcedAttacks
+	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

@@ -127,6 +127,13 @@ var gameFields = plan(
 	// that has already attacked, and one that invented it would
 	// swallow a declaration the battlefield is still carrying.
 	"announcedAttacks", carried, "",
+	// #716 combat damage step participation. Carried for the reason
+	// the three above are, and for one more: the window between the
+	// two combat damage steps is a priority window, so an undo or a
+	// deploy restore can land inside it. A restore that dropped the
+	// record would let every first-striker deal its damage again in
+	// the regular step.
+	"firstStrikeStepParticipants", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
