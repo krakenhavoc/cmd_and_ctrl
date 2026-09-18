@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0059 turn machinery) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0060 leaving the game) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -1537,6 +1537,19 @@ and the leg counted as nothing. So write the clause to handle an empty
 list; it will always run exactly once, and "the batch stalled" is not
 one of the things that can happen to it. See
 [ADR 0013 §5j](docs/decisions/0013-replacement-effects.md).
+
+**A player who leaves takes their objects with them (#769, CR 800.4a).**
+Conceding or losing removes every card that player OWNS from every zone —
+battlefield, command zone, hand, library, graveyard, exile and the stack —
+ends the control effects they were the source of, and exiles anything of
+somebody else's they were still controlling. It is not a zone change: no
+`EventZoneMove`, no `EventLTB`, no dies trigger. So an effect that stashed
+an instance ID and looks it up later must handle `LookupCardForEffect`
+returning `ok == false`, and a "for each creature you control" predicate
+must not assume a player named earlier in the same resolution still has a
+board. The one exception is the departure that ENDS the game, which keeps
+the final board on purpose. See
+[ADR 0060](docs/decisions/0060-leaving-the-game.md).
 
 **And EVERY battlefield exit clears it, not just a destruction
 (#816).** The clear lives in `MoveCard`'s one battlefield-exit cleanup

@@ -2433,9 +2433,11 @@ func TestS131CommanderZoneReplacementOnlyForCommanders(t *testing.T) {
 
 // TestS131ConcedeClearsStackItems covers CR 800.4a — when a player
 // leaves the game, every spell + ability they control on the stack
-// ceases to exist. Spell items move to exile (closest sandbox
-// analogue to "cease to exist"); ability items + pending triggers
-// disappear from StackMeta / PendingTriggers.
+// ceases to exist. Ability items + pending triggers disappear from
+// StackMeta / PendingTriggers, and a spell card the departed player
+// OWNS leaves the game with the rest of what they own (#769): S13.1
+// exiled it as the closest analogue to "cease to exist", and since
+// the CR 800.4a sweep landed it does not stop in exile either.
 func TestS131ConcedeClearsStackItems(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
@@ -2465,12 +2467,16 @@ func TestS131ConcedeClearsStackItems(t *testing.T) {
 		t.Fatalf("Concede: %v", err)
 	}
 
-	// Leaver's spell should be exiled; other's spell should still be on stack.
+	// Leaver's spell should be out of the game entirely; other's spell
+	// should still be on the stack.
 	if g.Stack.Contains(leaverSpell) {
 		t.Errorf("leaver's spell still on stack after concede")
 	}
-	if !g.Exile.Contains(leaverSpell) {
-		t.Errorf("leaver's spell did not move to exile (cease-to-exist analogue)")
+	if g.Exile.Contains(leaverSpell) {
+		t.Errorf("leaver's spell stopped in exile: a card its owner owns leaves the game (CR 800.4a)")
+	}
+	if zone := zoneHoldingCard(g, leaverSpell); zone != "" {
+		t.Errorf("leaver's spell survived in %s", zone)
 	}
 	if !g.Stack.Contains(otherSpell) {
 		t.Errorf("other's spell wrongly removed by concede")

@@ -191,9 +191,9 @@ func (g *Game) onTurnBeganLocked() {
 // do not happen, so the other players' "at the beginning of each end
 // step" triggers skip that one turn, and delayed triggers scheduled
 // for its end step wait for the next player's. The discard to hand
-// size is skipped too; the player it belonged to has left. The
-// departed player's permanents stay on the battlefield (CR 800.4a is
-// #769's).
+// size is skipped too; the player it belonged to has left. Their
+// objects are already gone by the time this runs — CR 800.4a is
+// performed inside leaveGameLocked, not here (#769, leave_game.go).
 //
 // When the departure comes from an SBA pass, all repeated checks have
 // destroyed what they had to before this runs. Those deaths are counted
