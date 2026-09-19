@@ -255,6 +255,137 @@ func TestPrintedZeroZeroHeldUpByAnAnthemLives(t *testing.T) {
 	}
 }
 
+// --- copies (#967's copiable values) ---------------------------------
+
+// A Clone of a coded `*`/`*` creature is that creature: the copy
+// carries the copied printing's `*` stand-in AND its oracle ID, so
+// the layer pass gathers the SAME characteristic-defining ability for
+// the copy and stamps PTDefined on it. The copy therefore answers
+// branch 2, not branch 3, and dies with the original at a computed 0.
+//
+// It is the branch that has to work per OBJECT rather than per card:
+// `PTDefined` is recomputed for every object the effect applies to,
+// and the copy's AppliesTo names itself.
+func TestCopyOfACodedStarCarriesPTDefined(t *testing.T) {
+	withCodedCDA(t)
+
+	for _, tc := range []struct {
+		name string
+		size int
+		dies bool
+	}{
+		{"computed 0", 0, true},
+		{"computed 3", 3, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cdaSizeForTest = tc.size
+			g := newActiveGame(t)
+			me := g.Seats[0]
+			star := pushCodedStar(g, me)
+			clone := pushTypedTestCard(g, Card{
+				Name: "Clone", TypeLine: "Creature — Shapeshifter",
+				Owner: me.ID, Controller: me.ID,
+			})
+
+			g.mu.Lock()
+			src, _ := g.battlefieldCardLocked(star)
+			dst, _ := g.battlefieldCardLocked(clone)
+			dst.applyCopy(CopiableValuesOf(*src), *src)
+			g.layerVersion.Add(1)
+			g.mu.Unlock()
+
+			// The copy took the stand-in 0 and the bit that says so,
+			// which is what makes branch 2 load-bearing here.
+			if c := findBattlefieldCard(g, clone); c == nil || !c.VariableToughness {
+				t.Fatal("the copy did not carry VariableToughness off the copied printing")
+			}
+
+			runSBAsForTest(g)
+			if got := g.Battlefield.Contains(clone); got == tc.dies {
+				t.Errorf("copy on the battlefield = %v at computed toughness %d, want %v", got, tc.size, !tc.dies)
+			}
+			if g.Battlefield.Contains(star) == tc.dies {
+				t.Error("the original and its copy disagreed")
+			}
+		})
+	}
+}
+
+// CR 608.3f: a resolving copy of a permanent spell becomes a token,
+// and `tokenCopyOfSpell` builds it out of `CopiableValuesOf`. That
+// carries the copied card's ScryfallID along with its body, and the
+// two travel together — which is the answer for this rule rather than
+// a hazard: a token copy of a Hangarback Walker IS the printed 0/0 it
+// copied and dies with no counters (branch 5), while a token copy of
+// an uncoded `*` carries the stand-in bit with the stand-in 0 and
+// stays skipped (branch 3).
+//
+// The case to guard against is a token that takes the printing
+// WITHOUT the body it belongs to; these two rows are what say it
+// cannot happen.
+func TestTokenCopyOfAPermanentSpellReadsTheCopiedBody(t *testing.T) {
+	printing := uuid.New().String()
+	for _, tc := range []struct {
+		name string
+		src  Card
+		want bool
+	}{
+		{
+			name: "a printed 0/0",
+			src: Card{
+				Name: "Hangarback Walker", TypeLine: "Artifact Creature — Construct",
+				ScryfallID: printing,
+			},
+			want: true,
+		},
+		{
+			name: "an uncoded `*`",
+			src: Card{
+				Name: "Mortivore", TypeLine: "Creature — Lhurgoyf",
+				ScryfallID: printing, VariableToughness: true,
+			},
+			want: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tok := tokenCopyOfSpell(tc.src)
+			if !tok.IsToken() {
+				t.Fatal("tokenCopyOfSpell did not make a token")
+			}
+			if tok.ScryfallID != tc.src.ScryfallID {
+				t.Errorf("token ScryfallID = %q, want the copied printing %q", tok.ScryfallID, tc.src.ScryfallID)
+			}
+			if tok.VariableToughness != tc.src.VariableToughness {
+				t.Errorf("token VariableToughness = %v, want the copied %v — the printing must not travel without the bit that reads it",
+					tok.VariableToughness, tc.src.VariableToughness)
+			}
+			if got := tok.ToughnessIsKnown(); got != tc.want {
+				t.Errorf("ToughnessIsKnown = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// And the same through the real resolution path: a token copy of a
+// printed 0/0 permanent spell is swept by CR 704.5f the moment it
+// lands, rather than sitting on the battlefield as an unkillable 0/0.
+func TestTokenCopyOfAPrintedZeroZeroDiesOnArrival(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	tok := tokenCopyOfSpell(Card{
+		Name: "Hangarback Walker", TypeLine: "Artifact Creature — Construct",
+		ScryfallID: uuid.New().String(),
+	})
+	tok.InstanceID = uuid.New()
+	tok.Owner, tok.Controller = me.ID, me.ID
+	g.Battlefield.PushTop(tok)
+
+	runSBAsForTest(g)
+	if g.Battlefield.Contains(tok.InstanceID) {
+		t.Error("a CR 608.3f token copy of a printed 0/0 stayed on the battlefield — CR 704.5f")
+	}
+}
+
 // A layer 7b "set" defines the body too (CR 613.4b), so a 0/0 token
 // that a Hallowed Haunting sizes is out of the skip while the
 // enchantment is there — and a 7b set to 0/0 kills it.
