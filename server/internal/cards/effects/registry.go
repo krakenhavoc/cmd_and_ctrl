@@ -95,6 +95,19 @@ func Register(spec Spec) {
 				spec.Name, ac.Key, ac.FromZone))
 		}
 	}
+	// #659: a card may not declare exile castable. S29 allowed it "for
+	// the shape suspend and foretell will use"; they do not use it and
+	// could not, because a CARD-level declaration opens exile for
+	// every copy of the card at any time, however the copy got there.
+	// Every exile cast in this engine is a per-instance
+	// game.CastPermission (ADR 0066). Refused at boot so the retired
+	// shape cannot come back through a card file.
+	for _, z := range spec.CastableZones {
+		if z == game.ZoneExile {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
+				spec.Name))
+		}
+	}
 	// S22: a tap-permanents cost with no pool of legal permanents can
 	// never be paid, and one whose extra cost doesn't parse would
 	// silently charge nothing — both are copy-paste mistakes in a
@@ -277,8 +290,14 @@ func Register(spec Spec) {
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
 	registry[spec.OracleID] = spec
-	defs[spec.OracleID] = buildDef(spec)
-	game.IndexTriggerZones(spec.OracleID, spec.Triggered)
+	def := buildDef(spec)
+	defs[spec.OracleID] = def
+	// #925 + #659: the index has to see the triggers the ENGINE will
+	// harvest, not the ones the card file wrote. A suspend
+	// declaration grows the exile countdown in buildDef — the keyword
+	// owns it, not the card — and an index built from spec.Triggered
+	// would never walk exile for it.
+	game.IndexTriggerZones(spec.OracleID, def.Triggered)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's

@@ -282,6 +282,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 	switch kind {
 	case SpecialActionForetell:
 		return (*Game).foretellLocked
+	case SpecialActionSuspend:
+		return (*Game).suspendLocked
 	}
 	return nil
 }

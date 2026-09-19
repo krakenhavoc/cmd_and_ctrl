@@ -21,11 +21,6 @@ func init() {
 		SpecialActions: []game.SpecialAction{
 			Foretell("{1}{U}"),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
-		},
+		OnResolve: counterTheTargetSpell,
 	})
 }

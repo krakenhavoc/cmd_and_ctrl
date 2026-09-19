@@ -137,6 +137,15 @@ var canonicalKeywords = map[string]bool{
 	// a badge promising foretell on a card the engine can only
 	// hard-cast is the half-a-card failure ADR 0037 §5 forbids.
 	"foretell": true,
+	// suspend (CR 702.62) joins with #659, in the same change that
+	// teaches the engine to honour it: the special action, the time
+	// counters, the exile-zone upkeep countdown (#925's
+	// TriggeredAbility.Zones), the free cast when the last one comes
+	// off and CR 702.62e's haste. Same reasoning as foretell above —
+	// the consumer is the card, not a table in this file, so the
+	// token's job is the badge and the ADR 0037 coverage signal, and
+	// it must not arrive before the mechanic does.
+	"suspend": true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

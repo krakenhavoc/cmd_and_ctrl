@@ -506,3 +506,25 @@ func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
 		Dest:   game.ZoneBattlefield,
 	}.Apply(NewContext(g, item))
 }
+
+// damageToFirstTarget is "~ deals N damage to any target" — the whole
+// body of Lightning Bolt and of Rift Bolt, which print the same
+// sentence at different prices and with a keyword between them.
+//
+// It reads the FIRST target slot and nothing else, which is what a
+// single "any target" clause fills, and does nothing when the slot is
+// empty (CR 608.2b — every target became illegal, so the spell was
+// countered by game rules before it got here; the guard is belt and
+// braces).
+func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if len(item.Targets) == 0 {
+			return nil
+		}
+		return DealDamage{
+			Source: ctx.Source(),
+			Target: item.Targets[0].ID,
+			Amount: amount,
+		}.Apply(ctx)
+	}
+}

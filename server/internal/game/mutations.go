@@ -544,6 +544,13 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// the card moves: CR 406.3a turns a foretold card face up as it is
 	// cast, which ADR 0069 decision 5 makes MoveCard's business.
 	foretold := CardIsForetold(card)
+	// CR 702.62e (#659): a permanent cast from a suspended card has
+	// haste. It is the PERMISSION that says so, not the card, so it is
+	// read here where the permission is consumed and registered
+	// against the object the cast produces. See
+	// grantHasteForCastLocked for the layer-6 grant and its declared
+	// duration simplification.
+	grantsHaste := grant != nil && grant.GrantsHaste
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, g.Turn.Number)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -566,24 +573,25 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// it's the one that decides whether the card is yours to touch at
 	// all.
 	//
-	// S29 softened the "no grant, no cast" half by exactly one case:
-	// a card whose own text declares ZoneExile castable does not need
-	// a permission. That declaration is a CARD-level one, so it opens
-	// exile for every copy of the card at any time, and no catalog
-	// card declares it today. Suspend and foretell are NOT this
-	// shape: CR 702.62a allows a suspended card's cast only while its
-	// last-time-counter trigger resolves, and CR 702.143 makes
-	// foretold status belong to the exiled instance. Both want a
-	// per-instance CastPermission, the way cascade's free cast works.
+	// #659 RETIRED the one exception S29 carved out here. A card whose
+	// own text declared ZoneExile used to need no permission, on the
+	// theory that suspend and foretell would use that shape. They do
+	// not, and could not: a CARD-level declaration opens exile for
+	// every copy of the card, at any time, however the copy got there
+	// — so a Path to Exile'd Rift Bolt would be castable for free and
+	// a Bojuka Bog'd Saw It Coming would be castable for its foretell
+	// cost. Both keywords are per-INSTANCE permissions (ADR 0066), and
+	// so is every other way a card gets cast out of exile in this
+	// engine: impulse exile, airbend, warp, cascade, a defeated
+	// Siege's back face. No catalog card ever declared ZoneExile, so
+	// nothing shipped through the hole.
 	//
 	// The graveyard and the library reach the same question through
 	// validateCastPathLocked below, which is handed `grant`; exile
 	// keeps its own sentinel because ErrNoPlayPermission is what its
 	// clients (the impulse button, the zone browser) already read.
-	if src.Kind == ZoneExile {
-		if grant == nil && !CardCastableFromZone(CatalogKey(card), ZoneExile) {
-			return ErrNoPlayPermission
-		}
+	if src.Kind == ZoneExile && grant == nil {
+		return ErrNoPlayPermission
 	}
 	// "You may CAST that card" (Ragavan) does not let you play a
 	// land: playing a land is a special action, not a cast
@@ -1056,6 +1064,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// resolved back to the clause it answered.
 		targetSpec: spec,
 		modeSpec:   modeSpec,
+	}
+	// CR 702.62e (#659): the permanent this cast produces has haste.
+	// Registered here rather than at resolution because the grant that
+	// says so has been consumed by now — the card has left exile and
+	// the permission no longer covers the object. The static matches
+	// the instance and its controller, so it does nothing while the
+	// spell is on the stack and everything the moment it lands.
+	if grantsHaste {
+		g.grantHasteForCastLocked(playerID, cardID)
 	}
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is

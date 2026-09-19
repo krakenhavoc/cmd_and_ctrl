@@ -296,6 +296,17 @@ type CastPermission struct {
 	// sorcery-speed gate unless it says so.
 	Timing GrantTiming `json:"timing,omitempty"`
 
+	// GrantsHaste gives the permanent this cast produces haste —
+	// suspend's CR 702.62e. A property of the PERMISSION rather than
+	// of the card, because it is the effect that granted the cast
+	// that grants the haste: the same Rift Bolt hard-cast from hand
+	// has none.
+	//
+	// Read once, in CastSpell, where the permission is consumed. See
+	// Game.grantHasteForCastLocked for the layer-6 grant it becomes
+	// and for the declared duration simplification.
+	GrantsHaste bool `json:"grantsHaste,omitempty"`
+
 	// CastOnly restricts the permission to CASTING. Ragavan says "you
 	// may CAST that card", and a land exiled by Ragavan is stranded
 	// because playing a land is not casting (CR 305.1, 116.2a).
