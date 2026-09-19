@@ -728,9 +728,16 @@ func b33DistributeCountersRoundRobin(g *game.Game, item *game.StackItem) error {
 // controller's is sacrificed, then the controller draws one card per
 // permanent sacrificed. Bontu himself is never among them — the
 // target clause excludes his name.
+//
+// #910: one batch with the draw as its continuation, not a loop with a
+// tally. "That many" is a number about permanents that really left the
+// battlefield, and a sacrificed COMMANDER stops to answer CR 903.9 —
+// so counted on the line after the loop it was one card too many, drawn
+// on the strength of a question having been asked. The sacrifices are
+// also one simultaneous exit now, which is what a single instruction
+// should look like to a Blood Artist.
 func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	n := 0
+	var doomed []uuid.UUID
 	for _, t := range item.Targets {
 		if t.Kind != game.TargetCard || t.ID == item.SourceCardID || !g.TargetStillLegalForEffect(item, t) {
 			continue
@@ -739,12 +746,11 @@ func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) erro
 		if !ok || c.Controller != item.Controller || !onBattlefield(g, t.ID) {
 			continue
 		}
-		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		n++
+		doomed = append(doomed, t.ID)
 	}
-	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
+	return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, sacrificed []uuid.UUID) error {
+		return DrawCards{Player: item.Controller, N: len(sacrificed)}.Apply(NewContext(g, item))
+	})
 }
 
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —

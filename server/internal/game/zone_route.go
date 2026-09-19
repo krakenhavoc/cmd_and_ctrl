@@ -166,8 +166,10 @@ type zoneRoute struct {
 	DiscardCause DiscardCause
 
 	// Source is the card whose effect asked for the move, stamped on
-	// the emitted event. Read only by the Discard leg today, which is
-	// the only route whose event has ever carried one; uuid.Nil
+	// the emitted event. The Discard leg has always carried one; #931
+	// gave the plain move and the mill one too, because surveil's
+	// graveyard leg names the card that surveilled and its EventMill
+	// carried that before the leg went through this route. uuid.Nil
 	// everywhere else leaves the event exactly as it was.
 	Source uuid.UUID
 
@@ -192,6 +194,22 @@ type zoneRoute struct {
 	// count). DropStackMeta additionally retires the stack item.
 	Countered     bool
 	DropStackMeta bool
+
+	// Sacrifice says this battlefield exit is a SACRIFICE (CR 701.17a)
+	// rather than a destruction, so the leg announces EventSacrifice
+	// while the permanent is still on the battlefield, before the
+	// window opens over its move. Only meaningful with
+	// ViaBattlefieldLeave, which is the only route a sacrifice takes.
+	//
+	// It also picks the rule the leg's "this way" answer is read by:
+	// routeLegLandedLocked sends a sacrifice to sacrificedThisWayLocked
+	// rather than to destroyedThisWayLocked. #910.
+	//
+	// It is deliberately NOT a flavour of Destruction below, and the
+	// template says so by building on battlefieldExitRoute: a sacrifice
+	// is not a destruction (CR 701.17a), so the CR 701.19 regeneration
+	// built-in must never see one.
+	Sacrifice bool
 
 	// ViaBattlefieldLeave says the physical move belongs to
 	// executeBattlefieldLeaveLocked rather than to
@@ -625,6 +643,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		g.EmitEvent(Event{
 			Kind:    kind,
 			Actor:   actor,
+			Source:  r.Source,
 			CardID:  ev.CardID,
 			OldZone: src.Kind,
 			NewZone: dstZone.Kind,

@@ -1824,9 +1824,14 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 }
 
 // executeSearchTakeLocked moves the chosen cards out of the library
-// and returns the IDs that actually made it. Shared by the
-// no-decision path and by ResolveSearchLibrary, so a fetched
-// permanent enters identically either way.
+// and finishes the search with the ones that actually got there.
+// Shared by the no-decision path and by ResolveSearchLibrary, so a
+// fetched permanent enters identically either way.
+//
+// It does not return the found list, because it cannot: both the
+// battlefield branch (#478) and the hand / graveyard branch (#931) can
+// PAUSE on a player prompt, so the search finishes from a
+// continuation. finishSearchLocked is the single place it ends.
 //
 // Caller must hold g.mu.
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
@@ -1868,25 +1873,34 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		// an undo across the prompt replay identically.
 		return g.searchEnterEachThenFinishLocked(spec, ids, nil)
 	}
-	found := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if !p.Library.Contains(id) {
-			continue
+	// #931: a hand or graveyard destination is an EXIT, and every exit
+	// in the engine goes through the one primitive. This used to be a
+	// raw MoveCard loop, which is exactly the shape zone_route.go was
+	// written to delete: no CR 614 window, so "if a card would be put
+	// into a graveyard from anywhere, exile it instead" (Rest in Peace,
+	// Leyline of the Void) could not see an Entomb, and no CR 903.9
+	// offer for a tutored commander.
+	//
+	// It is the shared batch body (routeAllThenLocked), not a loop,
+	// because a leg can now PAUSE: the takes are sequenced, each from
+	// the previous one's continuation, and the search finishes — the
+	// EventSearchLibrary, the shuffle, spec.Then — only once they have
+	// all settled. The same sequencing the battlefield branch above got
+	// in #478, for the same reason.
+	//
+	// `found` is what the batch reports: the cards that ARRIVED where
+	// the search asked (CR 400.7, landedInZoneLocked). A card an
+	// "exile it instead" replacement took, and a commander that took
+	// CR 903.9's offer, are not in it — the same reading the
+	// battlefield branch has used since #478, where a fetched permanent
+	// whose entry was replaced away is not "found" either.
+	return g.routeAllThenLocked(searchRoute(spec.Player, spec.Dest), ids, func(g *Game, found []uuid.UUID) error {
+		p := g.playerByIDLocked(spec.Player)
+		if p == nil {
+			return ErrPlayerNotFound
 		}
-		if _, err := MoveCard(p.Library, destZone, id); err != nil {
-			continue
-		}
-		g.markCardKnownInZoneLocked(destZone, id)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   spec.Player,
-			CardID:  id,
-			OldZone: ZoneLibrary,
-			NewZone: destZone.Kind,
-		})
-		found = append(found, id)
-	}
-	return g.finishSearchLocked(spec, p, found)
+		return g.finishSearchLocked(spec, p, found)
+	})
 }
 
 // searchEnterEachThenFinishLocked puts the head of `ids` onto the

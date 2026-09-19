@@ -102,23 +102,29 @@ func b08EachOpponentDraws(g *game.Game, item *game.StackItem) (int, error) {
 }
 
 // b08SacrificeAllMatching is "each player sacrifices all <predicate>"
-// — All Is Dust. A sacrifice, not a destruction, so indestructible
-// does not save anything and no "destroyed" count is needed. The set
-// is snapshotted before anything moves (CR 608.2), then sacrificed
-// one permanent at a time in battlefield order: the engine's
-// simultaneous-exit batch is destroy / exile / bounce only, so a
-// dies-watcher swept by the same spell sees only the permanents that
-// left after it. Weaker than printed for that watcher's controller,
-// never stronger, and declared on the card.
+// — All Is Dust, Slaughter the Strong. A sacrifice, not a destruction,
+// so indestructible does not save anything and no "destroyed" count is
+// needed. The set is snapshotted before anything moves (CR 608.2) and
+// then sacrificed as ONE simultaneous exit.
+//
+// #910 is what made that possible: the engine's simultaneous-exit
+// batch used to be destroy / exile / bounce only, so this was a loop
+// of single sacrifices and a dies-watcher swept by the same spell saw
+// only the permanents that left after it — All Is Dust's declared
+// caveat, now gone. A Blood Artist caught in the sweep sees every
+// death including its own (CR 603.10).
+//
+// Fire-and-forget, because nothing in either card reads the count: the
+// batch skips a permanent that has already left rather than routing
+// it, and a sacrificed commander answers CR 903.9 on its own time
+// without holding anything up.
 func b08SacrificeAllMatching(ctx *Context, match CardPredicate) error {
-	for _, c := range MatchingBattlefield(ctx, match) {
-		if z := ctx.Game.FindCardZoneForEffect(c.InstanceID); z == nil || z.Kind != game.ZoneBattlefield {
-			continue
-		}
-		if err := (SacrificePermanent{Target: c.InstanceID}).Apply(ctx); err != nil {
-			return err
-		}
+	matched := MatchingBattlefield(ctx, match)
+	doomed := make([]uuid.UUID, 0, len(matched))
+	for _, c := range matched {
+		doomed = append(doomed, c.InstanceID)
 	}
+	ctx.Game.SacrificeAllForEffect(ctx.Source(), doomed)
 	return nil
 }
 
