@@ -1256,9 +1256,22 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		}
 	case PendingChoiceOptionPick:
 		// The branches are labelled sentences and survive on their own;
-		// only the piles they name can go.
+		// only the piles they name, and the SEATS they name, can go.
 		for i := range c.PickOptions {
 			c.PickOptions[i].Cards = keep(c.PickOptions[i].Cards)
+		}
+		// #994 / CR 800.4a: a seat option naming the player who is
+		// leaving is not an answer any more — they are not a player.
+		// Pruned here as well as in pruneDepartedSeatOptionsLocked
+		// because this path runs FIRST, before that sweep, and must
+		// not hand the new chooser a list it would then have to
+		// re-prune. If that empties the question the prompt does not
+		// move, which is the same rule the card arms above keep:
+		// handing a seat a prompt with no answers is the #544 wedge.
+		if opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool { return id != gone }); ok {
+			c.PickOptions = opts
+		} else {
+			return false
 		}
 	}
 
@@ -1271,6 +1284,43 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		Label:  string(c.Kind),
 	})
 	return true
+}
+
+// keepSeats filters the SEAT options of an option list, leaving every
+// option that is not about a seat exactly where it is.
+//
+// The second return is "there is still a question here". False means
+// every option named a seat and every one of those seats failed the
+// test, so the prompt has no legal answer left; the caller decides what
+// to do about it, because the two callers do different things (the
+// reassignment refuses to move the prompt, the departure sweep drops
+// it). It is never false for a list with a non-seat option in it, which
+// is why a Fact or Fiction pile split cannot be emptied by this.
+//
+// `keep` is asked only about options that carry a seat (#994). An
+// option with a zero Player is not about a player and is kept without
+// being asked.
+func keepSeats(in []ChoiceOption, keep func(uuid.UUID) bool) ([]ChoiceOption, bool) {
+	dropped := 0
+	for _, opt := range in {
+		if opt.Player != uuid.Nil && !keep(opt.Player) {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		return in, true
+	}
+	if dropped == len(in) {
+		return nil, false
+	}
+	out := make([]ChoiceOption, 0, len(in)-dropped)
+	for _, opt := range in {
+		if opt.Player != uuid.Nil && !keep(opt.Player) {
+			continue
+		}
+		out = append(out, opt)
+	}
+	return out, true
 }
 
 // queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
@@ -3236,6 +3286,61 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 			continue
 		}
 		c.SacrificeOptions = live
+	}
+}
+
+// pruneDepartedSeatOptionsLocked takes the seats that have left the
+// game off every open option-pick prompt (#994, CR 800.4a).
+//
+// THE OTHER HALF of reassignChoiceLocked's seat prune, and the reason
+// both exist. That one runs when the CHOOSER leaves and is about the
+// prompt changing hands; this one runs when ANYBODY leaves and is about
+// the prompt's own option list, including the far commoner case — a
+// prompt owed by a survivor that offers a seat somebody else has just
+// vacated. Nothing ran for that case before: eligibility was filtered
+// once, at queue time (eligibleChosenPlayersLocked), and a seat that
+// left afterwards stayed on the buttons. "Choose a player" could then
+// name somebody who was not a player, which CR 800.4a says it cannot.
+//
+// It prunes and does not re-ask. A player choice is a choice among
+// seats, so a shorter list is the same question with one fewer answer;
+// there is no continuation to re-run and no card to re-read.
+//
+// An emptied prompt is DROPPED rather than left unanswerable. That is
+// the state QueueChoosePlayerForEffect refuses to queue in the first
+// place — no eligible seat, no question — and an option_pick blocks the
+// table (choice_gate.go), so a prompt with nothing on it is the #544
+// wedge rather than a harmless leftover. The drop is the departure
+// table's own default for this kind (choiceDepartureDecisions:
+// option_pick is dropDiscard), reached from a second direction.
+//
+// Card options are NOT touched here. A card that left with its owner is
+// removeObjectsOwnedByLocked's business and reaches the prompts through
+// the prunes beside this one; keepSeats only ever asks about an option
+// that names a seat.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneDepartedSeatOptionsLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || c.Kind != PendingChoiceOptionPick || len(c.PickOptions) == 0 {
+			continue
+		}
+		opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool {
+			p := g.playerByIDLocked(id)
+			return p != nil && !p.Eliminated
+		})
+		if !ok {
+			g.EmitEvent(Event{
+				Kind:   EventPendingChoiceDropped,
+				Actor:  c.Chooser,
+				Source: c.Source,
+				Label:  string(c.Kind),
+			})
+			g.dropChoiceLocked(i)
+			continue
+		}
+		c.PickOptions = opts
 	}
 }
 

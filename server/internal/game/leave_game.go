@@ -90,14 +90,24 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	g.dropDelayedTriggersForLocked(playerID)
 	g.dropPendingTriggersForLocked(playerID)
 
+	// #994 / CR 800.4a: a prompt that OFFERS this seat is offering
+	// somebody who is no longer a player. Ahead of the `removed` guard
+	// below, and not under it, because this one is not about objects:
+	// a player with nothing left on the board is still a player who has
+	// left, and a "choose a player" prompt at another seat still has to
+	// stop naming them. The prompts this seat itself owed were settled
+	// one step earlier, by dropChoicesForPlayerLocked.
+	g.pruneDepartedSeatOptionsLocked()
+
 	if removed == 0 {
 		return
 	}
-	// Two prompt families can be left asking about objects that are no
-	// longer there. Both are the same re-checks executeBattlefieldLeaveLocked
-	// runs after any other permanent leaves the battlefield, for the
-	// same reason: a queued choice stops priority from passing, so the
-	// state-check loop is exactly what does NOT run while one is open.
+	// Two more prompt families can be left asking about objects that
+	// are no longer there. Both are the same re-checks
+	// executeBattlefieldLeaveLocked runs after any other permanent
+	// leaves the battlefield, for the same reason: a queued choice
+	// stops priority from passing, so the state-check loop is exactly
+	// what does NOT run while one is open.
 	g.pruneSacrificeChoicesLocked()
 	g.pruneStaleZoneChangeChoicesLocked()
 }

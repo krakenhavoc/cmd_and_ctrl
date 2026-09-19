@@ -127,10 +127,7 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 		recordChosenPlayer(p.Item, uuid.Nil)
 		return uuid.Nil
 	}
-	options := make([]ChoiceOption, len(eligible))
-	for i, id := range eligible {
-		options[i] = ChoiceOption{Label: g.seatLabelLocked(id)}
-	}
+	options := g.seatChoiceOptionsLocked(eligible)
 	item := p.Item
 	then := p.Then
 	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
@@ -138,14 +135,19 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 		Source:   p.Source,
 		Question: p.Question,
 		Options:  options,
-		// A frozen slice of scalars and a detached item pointer —
-		// the StackItem.Effect contract, so the branch resolves
-		// against whichever *Game an undo restores.
-		Then: func(g *Game, index int) error {
-			if index < 0 || index >= len(eligible) {
+		// ThenSeat, not Then: the answer is the option's own seat and
+		// never an index into a slice captured here (#994). A seat that
+		// leaves the game is pruned off this prompt while it is open
+		// (CR 800.4a, pruneDepartedSeatOptionsLocked), which renumbers
+		// every option after it — so a captured candidate list would
+		// record the player one seat along from the one the chooser
+		// clicked. Only a detached item pointer is closed over, which
+		// is the StackItem.Effect contract: the branch resolves against
+		// whichever *Game an undo restores.
+		ThenSeat: func(g *Game, chosen uuid.UUID) error {
+			if chosen == uuid.Nil {
 				return ErrInvalidParam
 			}
-			chosen := eligible[index]
 			recordChosenPlayer(item, chosen)
 			if then == nil {
 				return nil
@@ -199,6 +201,25 @@ func (g *Game) eligibleChosenPlayersLocked(ids []uuid.UUID) []uuid.UUID {
 		out[i] = s.id
 	}
 	return out
+}
+
+// seatChoiceOptionsLocked turns an ordered, already-eligible seat list
+// into the option list a player prompt offers.
+//
+// THE ONE PLACE A SEAT BECOMES AN OPTION, for both forms of the
+// question — the resolution-time prompt above and the CR 614.12
+// as-enters one below. Label is what the chooser reads and Player is
+// what the engine re-checks (#994), and they are set together here so
+// a prompt can never carry a name the pruning paths cannot match back
+// to a seat.
+//
+// Caller must hold g.mu.
+func (g *Game) seatChoiceOptionsLocked(seats []uuid.UUID) []ChoiceOption {
+	options := make([]ChoiceOption, len(seats))
+	for i, id := range seats {
+		options[i] = ChoiceOption{Label: g.seatLabelLocked(id), Player: id}
+	}
+	return options
 }
 
 // seatLabelLocked is what a seat is called on an option button. The

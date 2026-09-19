@@ -370,6 +370,16 @@ type PickOptionView struct {
 	Label    string     `json:"label"`
 	Cards    []CardView `json:"cards,omitempty"`
 	LifeCost int        `json:"life_cost,omitempty"`
+	// Player is the seat this option is about, for the prompts whose
+	// branches ARE players — "choose a player", "choose an opponent"
+	// (#929) and True-Name Nemesis's as-enters sibling (#980).
+	// Absent on every other option, which is all of them.
+	//
+	// Public by CR 400.2: who is seated is not hidden information, so
+	// this rides no redaction. The client may render a seat chip with
+	// it instead of only the rendered Label — and may do nothing with
+	// it, which is what it does today. #994.
+	Player string `json:"player,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -3004,6 +3014,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
+				if opt.Player != uuid.Nil {
+					out.Player = opt.Player.String()
+				}
 				for _, id := range opt.Cards {
 					if card, ok := g.LookupCardForEffect(id); ok {
 						out.Cards = append(out.Cards, viewOfCard(card))
