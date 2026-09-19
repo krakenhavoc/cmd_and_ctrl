@@ -949,6 +949,40 @@ func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game
 	return g.routeAllThenLocked(bounceRoute, ids, then)
 }
 
+// BounceToHandThenForEffect is the SINGLE-CARD form: return one card
+// to its owner's hand and tell `then` whether it actually reached a
+// hand.
+//
+// The fourth of the single-card wrappers, beside ExileCardThenForEffect
+// (#870), SacrificeThenForEffect (#910) and TuckToLibraryThenForEffect
+// (#783), and a WRAPPER over the batch for the reason the first of them
+// gives: a one-card read-back is the same bug as a batch one — the one
+// leg is the leg that can pause — and a second bounce path with its own
+// notion of what landed is how two verbs drift. A batch of one
+// publishes a one-card simultaneous exit, which no watcher can observe.
+//
+// #993 is why it exists. A hand is a CR 903.9 destination, so every
+// bounce can pause, and the catalog had no way to say "return it, THEN
+// …" for one card: Boomerang Basics drew its card and Chain of Vapor
+// opened its chain on the next line, with the bounced commander still
+// on the battlefield and its owner's question still open.
+//
+// `bounced` is false when the CR 614 window cancelled the move, when a
+// replacement sent the card somewhere else, and when a commander took
+// CR 903.9's offer — it left, but not to a hand. The continuation runs
+// on every one of those outcomes, because a caller that is waiting has
+// to be told even when the answer is "nothing happened".
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) BounceToHandThenForEffect(cardID uuid.UUID, then func(g *Game, bounced bool) error) error {
+	return g.BounceCardsToHandThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
 // TuckCardsToLibraryThenForEffect puts every card in `ids` into its
 // OWNER's library as one simultaneous exit and hands `then` the ones
 // that actually reached a LIBRARY — Aetherspouts' "put all attacking
