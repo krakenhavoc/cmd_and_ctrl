@@ -849,6 +849,63 @@ of the old key sees nothing rather than something wrong — the field
 was advisory, because the server settles the face from the grant
 rather than from the request.
 
+## One list of cast prices, and the printed cost's place in it (#1012, #1015)
+
+One additive field on `CardView`, and a sharper meaning for two that
+were already there. A client that ignores the new one behaves exactly
+as it did.
+
+- **`CardView.alternative_cost_required`** (bool, omitted when false)
+  says the PRINTED mana cost is not one of the prices this cast may
+  claim out of the zone the card is sitting in, so the caster must name
+  one of `alternative_costs`. A Faithless Looting in the graveyard is
+  castable at its flashback cost and at nothing else (CR 702.34b), and
+  a card whose zone a PERMISSION prices — a Snapcaster'd instant, a
+  library top under Bolas's Citadel — is the same shape.
+
+  Absent, which is every hand cast, every command-zone cast and a
+  Gravecrawler whose graveyard permission carries no price, means the
+  printed cost is on the menu as usual.
+
+  Read it in the cost picker: the "its mana cost" row is not an option
+  the player declined, it is one the card does not offer from here, so
+  it is DROPPED rather than greyed, and the picker's default becomes
+  the first offer. Before this field the client inferred the answer
+  from the shape of the offer list, which is right for the two common
+  cards and wrong for a Gravecrawler under an Underworld Breach, where
+  the printed cost and the granted escape cost are both live.
+
+  Stamped and stripped with `alternative_costs`: it is only meaningful
+  beside the list it qualifies, so a bystander who gets no offers for
+  an exiled card gets no flag either, and a non-knower's redaction
+  clears it.
+
+- **`castable_here` is now derived from the price list and the cast
+  gate, and from nothing else** (#1015). It used to be set the moment
+  a card's own text or a permission opened the zone, and never revisited
+  when the offers that followed came back EMPTY — so an escape card in
+  a graveyard too small to pay for it rendered a cast button with no
+  offer behind it and the announce path refused the click with
+  "an alternative cost must be claimed to cast this card from here".
+  The bit is now `no cant_cast && at least one claimable price`, which
+  covers the #978 gate case as a special case of the same sentence.
+
+  Unchanged: it is never set on a hand or command-zone card (both are
+  cast surfaces for everything in them), exile keys its button off
+  `exile_play`, and the bit stays PUBLIC.
+
+- **`alternative_costs` is `game.CastOffersForLocked`'s answer**, the
+  same list the bot enumerator walks and `cast_spell` validates against
+  (#673). The view used to build its own, and the two disagreed twice:
+  the offer a permission synthesised was stamped first and then
+  OVERWRITTEN wholesale by the card's printed set, so a card that both
+  prints and is granted a price showed only the printed one; and the
+  precedence between them was stated in two places. Both are now one
+  read, so the picker and the move list are the same set by
+  construction. A granted key the card also prints is dropped rather
+  than listed twice, which is the precedence
+  `resolveAlternativeCostLocked` applies at announce.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client
