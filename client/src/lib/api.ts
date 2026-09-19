@@ -15,6 +15,7 @@ import {
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
+import type { MyDecksResponse } from "./myDecks";
 import type { AutoTapCastParams } from "./castPreview";
 
 // Re-export the violation shape so consumers of api.ts don't also
@@ -497,6 +498,32 @@ export async function installPrebuiltDeck(
   const res = await authFetch(`/games/${gameID}/decks`, {
     method: "POST",
     body: JSON.stringify({ player_id: playerID, deck: deckID }),
+  });
+  return (await res.json()) as UploadDeckResponse;
+}
+
+// fetchMyDecks reads the signed-in caller's deck library (ADR 0051
+// decision 7, S34 sub-PR 5, GET /me/decks). 401s for anyone without a
+// user_id (a guest, an admin, or — on a deployment with no database —
+// everyone); callers should gate on myDecks.isSignedIn(principal.
+// user_id) before calling this rather than relying on the 401 alone,
+// since a picker that flashes and then disappears reads as broken.
+export async function fetchMyDecks(): Promise<MyDecksResponse> {
+  const res = await authFetch("/me/decks");
+  return (await res.json()) as MyDecksResponse;
+}
+
+// seatLibraryDeck installs a deck already in the caller's library
+// (POST /games/{id}/decks/{deck_id}) without re-pasting it. No body:
+// unlike uploadDeck/installPrebuiltDeck, a player session already
+// names exactly one seat, so there is no player_id to send. Same
+// response shape and the same 422-with-violations failure shape as
+// uploadDeck — the stored decklist is re-parsed and re-validated
+// against the current catalog at seat time, so a card that stopped
+// resolving since it was saved surfaces exactly like an upload would.
+export async function seatLibraryDeck(gameID: string, deckID: string): Promise<UploadDeckResponse> {
+  const res = await authFetch(`/games/${gameID}/decks/${encodeURIComponent(deckID)}`, {
+    method: "POST",
   });
   return (await res.json()) as UploadDeckResponse;
 }

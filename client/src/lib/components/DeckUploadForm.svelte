@@ -3,22 +3,29 @@
   import { LobbyApiError, type ApiViolation } from "../session";
   import Icon from "./Icon.svelte";
   import PrebuiltDeckPicker from "./PrebuiltDeckPicker.svelte";
+  import YourDecksPicker from "./YourDecksPicker.svelte";
 
   // DeckUploadForm is the shared deck panel used by both Lobby.svelte
   // and the in-game DeckImportModal in Game.svelte (S08.5 wave 1):
-  // the pre-built deck picker, then the deck-import textarea + URL
-  // field + submit button + violation/warning rendering. Owns its own
-  // input + feedback state so callers don't have to thread a
-  // Record<gameID, ...> shape through.
+  // the deck-library picker, then the pre-built deck picker, then the
+  // deck-import textarea + URL field + submit button + violation/
+  // warning rendering. Owns its own input + feedback state so callers
+  // don't have to thread a Record<gameID, ...> shape through.
   //
-  // The picker is mounted HERE rather than beside each call site so
-  // that both places get it and neither can drift. It is first
-  // because it is the answer for a player who has no decklist and
-  // wants a working game — until it existed, that player's only path
-  // was to go and build one, and take their chances on catalog
-  // coverage when they came back. It hides itself when the server
-  // offers no pre-built decks, and the paste box below is unchanged
-  // either way.
+  // Both pickers are mounted HERE rather than beside each call site so
+  // that both places get them and neither can drift.
+  //
+  // YourDecksPicker (ADR 0051 decision 7, S34 sub-PR 5) is first: for
+  // a signed-in player with a saved deck, it is the fastest path and
+  // needs no explanation. It renders nothing for a guest, an admin, or
+  // a signed-in player with an empty library.
+  //
+  // PrebuiltDeckPicker is next — the answer for a player who has no
+  // decklist and wants a working game — until it existed, that
+  // player's only path was to go and build one, and take their
+  // chances on catalog coverage when they came back. It hides itself
+  // when the server offers no pre-built decks, and the paste box below
+  // is unchanged either way.
   //
   // The submit path posts to POST /games/{id}/decks via api.uploadDeck;
   // the server's StateLobby gate rejects post-Start uploads, so the
@@ -106,6 +113,7 @@
 </script>
 
 <div class="deck-upload-form">
+  <YourDecksPicker {gameID} {playerID} {onSuccess} />
   <PrebuiltDeckPicker {gameID} {playerID} {onSuccess} />
   <p class="own-list">
     Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a

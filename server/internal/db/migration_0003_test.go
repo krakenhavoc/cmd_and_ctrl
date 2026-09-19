@@ -90,7 +90,12 @@ func referencesOf(t *testing.T, d *sql.DB, table string) map[string]string {
 }
 
 func TestMigration0003FromEmpty(t *testing.T) {
-	d := openAtVersion(t, 0)
+	// Pinned to v3, not "latest" (openAtVersion(t, 0)): this test locks
+	// down what migration 0003 itself leaves behind — in particular
+	// that seats.deck_id stays unenforced — and migration 0005 (S34
+	// sub-PR 5) changes exactly that once it exists. Its own tests
+	// (migration_0005_test.go) cover the schema from there.
+	d := openAtVersion(t, 3)
 
 	for _, table := range []string{"users", "identities", "games", "seats", "invites"} {
 		if n := countRows(t, d, table); n != 0 {
@@ -118,8 +123,12 @@ func TestMigration0003PreservesAPopulatedV2Database(t *testing.T) {
 		       (x'02', 'g1', 'spectator', NULL, 1000, NULL, NULL),
 		       (x'03', 'g2', 'player', NULL, 2000, 9000, 2400)`)
 
-	if err := migrate(context.Background(), d); err != nil {
-		t.Fatalf("migrate v2 -> latest: %v", err)
+	// Pinned to v3 for the same reason as TestMigration0003FromEmpty
+	// above: migration 0005 (S34 sub-PR 5) enforces seats.deck_id,
+	// which this test's fixture data (an unenforced deck_id string)
+	// predates on purpose.
+	if err := migrateTo(context.Background(), d, 3); err != nil {
+		t.Fatalf("migrate v2 -> v3: %v", err)
 	}
 
 	// Every row survived — in particular DROP TABLE games did not

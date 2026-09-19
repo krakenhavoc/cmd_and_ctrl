@@ -21,6 +21,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -123,6 +124,18 @@ type Config struct {
 	// upgrade is refused.
 	SessionEvictor UserSessionEvictor
 
+	// DeckLibrary is a signed-in player's saved decks (ADR 0051
+	// decision 7, S34 sub-PR 5). POST /games/{id}/decks saves or
+	// updates a row here for a caller with a non-zero
+	// Principal.UserID; POST /games/{id}/decks/{deck_id} and
+	// GET /me/decks read it back. Nil behaves as
+	// decklibrary.NoStore: since Users nil (or unconfigured) already
+	// means every principal carries a zero UserID, nothing calls these
+	// methods in that deployment shape — this exists so the fallback
+	// is total rather than a nil-check the handlers would otherwise
+	// need to duplicate.
+	DeckLibrary decklibrary.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -189,7 +202,9 @@ type GameEvictor interface {
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
+//	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
+//	GET  /me/decks          — authenticated: the caller's deck library
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -319,6 +334,11 @@ func Handler(c Config) http.Handler {
 	// confirm. Read-only — no game state mutates.
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
+	// Seat a deck already in the caller's library (ADR 0051 decision
+	// 7, S34 sub-PR 5) without re-pasting it. Same rate bucket as
+	// /decks — it re-parses and re-validates a decklist just like an
+	// upload does.
+	mux.Handle("POST /games/{id}/decks/{deck_id}", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, seatLibraryDeck))))
 	// S31: bot seats. Same deck pipeline (and the same rate bucket —
 	// the body is a decklist) as /decks; authorised for admin or any
 	// player already seated at the table.
@@ -350,6 +370,11 @@ func Handler(c Config) http.Handler {
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
+	// The caller's deck library (ADR 0051 decision 7, S34 sub-PR 5).
+	// Any authenticated role reaches the handler; it 401s itself for a
+	// principal with no UserID (a guest, an admin, or an identified
+	// session from a no-database deployment).
+	mux.Handle("GET /me/decks", auth.Middleware(c.Auth)(handlerFunc(c, myDecks)))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
@@ -1609,10 +1634,12 @@ type uploadDeckResponse struct {
 	Game      GameMeta `json:"game"`
 	DeckName  string   `json:"deck_name"`
 	CardCount int      `json:"card_count"`
-	// DeckID echoes the pre-built deck that was installed, and is
-	// empty for an uploaded list. The client uses it to confirm the
-	// seat is holding the deck the player picked rather than guessing
-	// from the name.
+	// DeckID echoes the pre-built deck that was installed on
+	// POST /games/{id}/decks (empty for an uploaded list), or the
+	// library deck id on POST /games/{id}/decks/{deck_id} — see
+	// seatLibraryDeck. The client uses it to confirm the seat is
+	// holding the deck the player picked rather than guessing from the
+	// name.
 	DeckID     string   `json:"deck_id,omitempty"`
 	Commanders []string `json:"commanders"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
@@ -1637,25 +1664,36 @@ type uploadDeckResponse struct {
 	Unimplemented []string `json:"unimplemented,omitempty"`
 }
 
+// detectDeckFormat guesses a decklist's format from its first non-
+// whitespace bytes, for a caller that left Format empty. URLs are
+// detected first since they're unambiguous ("http://" or "https://"
+// prefix); JSON next (leading `{`); everything else is plain text.
+//
+// Shared by resolveDeckSource, so parsing agrees with its own
+// default, and by uploadDeck, which needs to know the format that was
+// actually used to decide whether — and as what — a signed-in
+// player's paste is worth saving to their deck library (ADR 0051
+// decision 7, S34 sub-PR 5).
+func detectDeckFormat(source string) string {
+	trimmed := strings.TrimLeft(source, " \t\r\n")
+	switch {
+	case strings.HasPrefix(trimmed, "http://"), strings.HasPrefix(trimmed, "https://"):
+		return "url"
+	case strings.HasPrefix(trimmed, "{"):
+		return "moxfield"
+	default:
+		return "text"
+	}
+}
+
 // resolveDeckSource is the shared parse → resolve → validate pipeline
 // behind POST /games/{id}/decks and POST /games/{id}/seats/bot. It
 // returns the installed-ready list and any non-fatal warnings. When
 // `written` is true the handler has already answered the request (a
 // 422 with the violation list) and the caller must return nil.
 func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, format, source string) (*deck.List, []deck.Violation, bool, error) {
-	// Parse: auto-detect if Format is empty. URLs are detected first
-	// since they're unambiguous ("http://" or "https://" prefix);
-	// JSON next (leading `{`); everything else is plain text.
-	trimmed := strings.TrimLeft(source, " \t\r\n")
 	if format == "" {
-		switch {
-		case strings.HasPrefix(trimmed, "http://"), strings.HasPrefix(trimmed, "https://"):
-			format = "url"
-		case strings.HasPrefix(trimmed, "{"):
-			format = "moxfield"
-		default:
-			format = "text"
-		}
+		format = detectDeckFormat(source)
 	}
 
 	var (
@@ -1845,6 +1883,15 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	for _, cc := range list.Commanders {
 		commanders = append(commanders, cc.Name)
 	}
+
+	// Save to the caller's deck library (ADR 0051 decision 7, S34
+	// sub-PR 5) — see saveToLibrary for exactly when this does
+	// something and the seats.deck_id it leaves behind.
+	libraryDeckID := saveToLibrary(r.Context(), c, p, deckID, format, source, list, commanders)
+	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
+		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
+	}
+
 	return writeJSON(w, http.StatusOK, uploadDeckResponse{
 		Game:          meta,
 		DeckName:      list.Name,
@@ -1854,6 +1901,231 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})
+}
+
+// saveToLibrary creates or updates the caller's deck-library row for
+// this upload (ADR 0051 decision 7, S34 sub-PR 5), and returns the
+// library deck id the seat should now be linked to — "" when nothing
+// was saved.
+//
+// Only three things gate a save, all deliberate:
+//
+//   - deckID must be "" — a pre-built catalog pick (uploadDeckRequest.
+//     Deck) has its own id system and is never a library row; the
+//     "source" it hands resolveDeckSource is the catalog's TEXT, not
+//     anything the player pasted.
+//   - p.UserID must be non-zero — guests have nowhere to own a row.
+//   - resolvedFormat must be "moxfield" or "text", matching
+//     decks.source_format. A "url" request's source is a link, not
+//     the decklist text decision 7 means by "what the player pasted";
+//     re-seating from it would mean a network call at seat time
+//     rather than a re-parse of stored text, which is not what a
+//     library is for.
+//
+// A save failure is logged and does not fail the request: SetDeck has
+// already installed the deck on the seat by the time this runs, and
+// telling the player their upload failed when it didn't would be
+// worse than a library row they can save again by re-uploading.
+//
+// The update rule (documented on decklibrary.Store.Upsert and in
+// docs/lobby.md): a row already owned by this caller with the same
+// name is updated in place; anything else inserts a new one. A
+// plain-text paste carries no name of its own (deck.ParseText has
+// nowhere to put one), so an empty list.Name falls back to the first
+// commander's name rather than saving a blank row every time.
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, deckID, format, source string, list *deck.List, commanders []string) string {
+	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
+		return ""
+	}
+	resolvedFormat := format
+	if resolvedFormat == "" {
+		resolvedFormat = detectDeckFormat(source)
+	}
+	if resolvedFormat != "text" && resolvedFormat != "moxfield" {
+		return ""
+	}
+	name := list.Name
+	if name == "" {
+		name = libraryFallbackName(list)
+	}
+	cardCount := len(list.Commanders) + len(list.Mainboard)
+	saved, err := c.DeckLibrary.Upsert(ctx, p.UserID, name, resolvedFormat, source, commanders, cardCount)
+	if err != nil {
+		logDeckLibraryWarning(c, "save deck to library failed", err, "user_id", p.UserID)
+		return ""
+	}
+	return saved.ID.String()
+}
+
+// libraryFallbackName names a deck being saved to the library when
+// its parsed List carries no name — every plain-text paste, since
+// that format has nowhere to put one (deck.ParseText). The first
+// commander is a more useful label than a blank row. Two different
+// decks on the same commander and no other name collide under the
+// update rule (same owner, same name) exactly as two Moxfield exports
+// named identically would; a player who wants both kept separate
+// names one of them.
+func libraryFallbackName(list *deck.List) string {
+	if len(list.Commanders) > 0 {
+		return list.Commanders[0].Name
+	}
+	return "Untitled deck"
+}
+
+// logDeckLibraryWarning logs a non-fatal deck-library failure (see
+// saveToLibrary). Mirrors logReplayWarning: c.Log is nil in tests that
+// don't wire one, and a swallowed warning there is fine — nothing in
+// the request path depends on it.
+func logDeckLibraryWarning(c Config, what string, err error, args ...any) {
+	if c.Log == nil {
+		return
+	}
+	c.Log.Warn("decklibrary: "+what, append([]any{"err", err}, args...)...)
+}
+
+// seatLibraryDeck handles POST /games/{id}/decks/{deck_id}: seat a
+// deck already saved to the caller's library (ADR 0051 decision 7,
+// S34 sub-PR 5), without re-pasting it.
+//
+// Only a RolePlayer session already seated in this game may call it,
+// and only for their own seat — there is no player_id in the body,
+// unlike POST /games/{id}/decks, because a RolePlayer session names
+// exactly one seat and there is nothing to disambiguate. RoleAdmin is
+// refused outright rather than allowed "any seat" the way it is on
+// the paste-upload route: the authorization that matters here is deck
+// ownership (below), and an admin session never owns a deck — it has
+// no UserID (ADR 0051 decision 2) — so admin access to this route
+// could never do anything but 403 one step later anyway.
+//
+// The stored source_text is re-parsed through the same
+// parse → resolve → validate pipeline an upload takes
+// (resolveDeckSource), against the catalog THIS server has loaded
+// right now — never the catalog at save time — so a card that
+// stopped resolving (a rename, a ban, a dump that dropped it) surfaces
+// as the same 422 violation list an upload would give, rather than
+// installing something that silently changed.
+func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
+	if c.Cards == nil || c.Cards.Count() == 0 {
+		return httpError(http.StatusServiceUnavailable, "card index not loaded; run scripts/scryfall-refresh.sh")
+	}
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	deckID, err := uuid.Parse(r.PathValue("deck_id"))
+	if err != nil {
+		return httpError(http.StatusBadRequest, "invalid deck id")
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.Role != auth.RolePlayer || p.GameID != id {
+		return httpError(http.StatusForbidden, "not a seat in this game")
+	}
+	if c.DeckLibrary == nil {
+		return httpError(http.StatusServiceUnavailable, "deck library not configured")
+	}
+
+	saved, err := c.DeckLibrary.Get(r.Context(), deckID)
+	if errors.Is(err, decklibrary.ErrNotFound) {
+		return httpError(http.StatusNotFound, "deck not found")
+	}
+	if err != nil {
+		return err
+	}
+	if saved.OwnerID != p.UserID {
+		return httpError(http.StatusForbidden, "not your deck")
+	}
+
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, saved.SourceFormat, saved.SourceText)
+	if written || err != nil {
+		return err
+	}
+	// The library's display name is authoritative, regardless of
+	// whether the re-parse recovers one of its own — a plain-text
+	// source never carries one (deck.ParseText), which would otherwise
+	// re-label a renamed library deck back to blank on every reseat.
+	list.Name = saved.Name
+
+	gameCards := list.ToGameCards()
+	meta, err := c.Lobby.SetDeck(id, p.PlayerID, list.Name, gameCards)
+	if err != nil {
+		return err
+	}
+	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String()); serr != nil {
+		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", p.PlayerID)
+	}
+
+	commanders := make([]string, 0, len(list.Commanders))
+	for _, cc := range list.Commanders {
+		commanders = append(commanders, cc.Name)
+	}
+	return writeJSON(w, http.StatusOK, uploadDeckResponse{
+		Game:          meta,
+		DeckName:      list.Name,
+		CardCount:     len(list.Commanders) + len(list.Mainboard),
+		DeckID:        saved.ID.String(),
+		Commanders:    commanders,
+		Warnings:      warnings,
+		Unimplemented: game.UnimplementedNames(gameCards),
+	})
+}
+
+// myDeckInfo is one entry in GET /me/decks.
+type myDeckInfo struct {
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Commanders []string  `json:"commanders"`
+	CardCount  int       `json:"card_count"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// myDecksResponse is the body of GET /me/decks.
+type myDecksResponse struct {
+	Decks []myDeckInfo `json:"decks"`
+}
+
+// myDecks handles GET /me/decks: the caller's saved decks (ADR 0051
+// decision 7, S34 sub-PR 5), newest updated first.
+//
+// 401 for any principal without a UserID — a guest's RolePlayer
+// session, an admin session, or an identified session minted by a
+// deployment with no database — not only for a missing credential,
+// which auth.Middleware already turns into a 401 on its own. There is
+// nothing partial to show: a UserID-less principal owns no decks by
+// construction (decklibrary.Store.Upsert requires one).
+func myDecks(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if p.UserID == uuid.Nil {
+		return httpError(http.StatusUnauthorized, "sign-in required")
+	}
+	library := c.DeckLibrary
+	if library == nil {
+		library = decklibrary.NoStore{}
+	}
+	decks, err := library.List(r.Context(), p.UserID)
+	if err != nil {
+		return err
+	}
+	out := make([]myDeckInfo, 0, len(decks))
+	for _, d := range decks {
+		commanders := d.Commanders
+		if commanders == nil {
+			commanders = []string{}
+		}
+		out = append(out, myDeckInfo{
+			ID:         d.ID.String(),
+			Name:       d.Name,
+			Commanders: commanders,
+			CardCount:  d.CardCount,
+			UpdatedAt:  d.UpdatedAt,
+		})
+	}
+	return writeJSON(w, http.StatusOK, myDecksResponse{Decks: out})
 }
 
 // addBotRequest is the request shape for POST /games/{id}/seats/bot.

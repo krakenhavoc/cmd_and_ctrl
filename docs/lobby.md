@@ -488,6 +488,84 @@ Violation codes (stable strings, keyable by the client):
   under `warnings` on both success and 422 responses (the server
   ignores the sideboard either way)
 
+### The deck library (ADR 0051 decision 7, S34 sub-PR 5)
+
+A signed-in caller — a `player` or `identified` session whose
+principal carries a non-zero `user_id` (ADR 0051 decision 3) — gets a
+saved copy of every deck they paste, so it can be seated again without
+re-pasting.
+
+**`POST /games/{id}/decks` saves or updates a library row.** Unchanged
+for a guest (no `user_id`): still installs the deck on the seat and
+nothing else. For a signed-in caller it *additionally*:
+
+- Creates or updates a `decks` row for **`format: "text"` or
+  `"moxfield"` requests only** — not a `deck` (pre-built catalog) pick,
+  which has its own id system and is never a library row, and not
+  `format: "url"`, whose `source` is a link rather than the decklist
+  text the library re-parses later. A URL-based import still installs
+  the deck on the seat; it is just never saved to the library.
+- Sets the seat's `deck_id` to the saved deck. Any other outcome
+  (a guest, a catalog pick, a URL import, or a failed save) leaves the
+  seat's `deck_id` empty, clearing a previous one if there was one.
+
+**The update rule:** a caller's existing deck with the **same name**
+is updated in place — `source_text`, `source_format`, `commanders`,
+`card_count` and `updated_at` all overwrite the stored row, the
+`decks.id` does not change, and no duplicate row is created. Anything
+else (a new name, or no existing deck by that name) inserts a new row.
+`name` is the parsed deck's name (Moxfield exports carry one); a
+plain-text paste has none (`ParseText` has nowhere to put one), so it
+falls back to the deck's first commander's name. Two different
+plain-text pastes with the same commander and no other name therefore
+collide under this rule — rename one to keep both, the same as two
+Moxfield exports named identically would.
+
+A save (or setting the seat's `deck_id`) that fails for its own
+reasons (a transient store error) is logged and does **not** fail the
+upload — the deck is already installed on the seat by that point.
+
+**`GET /games/{id}/decks`'s response is unchanged** by any of this —
+`deck_id` in the response still means the pre-built catalog id, per
+`uploadDeckResponse` above. The library deck's own id isn't echoed
+there; find it via `GET /me/decks`.
+
+### `POST /games/{id}/decks/{deck_id}`
+
+Seat a deck already in the caller's library, without re-pasting it.
+`{deck_id}` is one of `GET /me/decks`' ids. No request body.
+
+Only a `player` session already seated in this game may call it
+(`session.game_id` must match the path), for their own seat — there is
+no `player_id` field, unlike `POST /games/{id}/decks`, because a
+`player` session already names exactly one seat. Admin sessions are
+refused outright (403): the check that matters is deck ownership, and
+an admin session never has a `user_id` to own a deck with (ADR 0051
+decision 2), so admin access here could never do anything but fail
+ownership one step later anyway.
+
+The stored `source_text` is re-parsed through the same
+parse → resolve → validate pipeline an upload takes, against the
+catalog **this server has loaded right now** — not the catalog at save
+time — so a card that stopped resolving (a rename, a ban, a dump that
+dropped it) surfaces as the same 422 violation list an upload would
+give, rather than silently installing something that changed.
+
+**Response 200** — the same shape as `POST /games/{id}/decks`
+(`uploadDeckResponse`), with `deck_id` echoing the library deck's id
+(not a pre-built catalog id, though the field is the same one).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | invalid `deck_id` in the path |
+| 403 | caller is not a `player` session seated in this game, or the deck belongs to someone else |
+| 404 | game not found, or no such deck id |
+| 422 | the stored deck no longer validates against the current catalog — same violation shape as an upload |
+| 429 | too many requests — shares `/decks`' rate bucket |
+| 503 | card index not loaded, or no deck library configured on this deployment |
+
 ### `GET /decks`
 
 The pre-built deck catalog the lobby's deck picker renders from, with
@@ -970,6 +1048,38 @@ Both invite tokens are stripped from the embedded `game`.
 | 409 | the table has been archived |
 
 ---
+
+### `GET /me/decks` (ADR 0051 decision 7, S34 sub-PR 5)
+
+The caller's deck library — see "The deck library" under
+`POST /games/{id}/decks` above for how a row gets there and the update
+rule. Newest updated first.
+
+**401** for any principal with no `user_id` — a guest's `player`
+session, an admin session, or an `identified` session on a deployment
+with no database — not only for a missing credential. There is
+nothing partial to show: a `user_id`-less principal owns no decks by
+construction.
+
+**Response 200**
+
+```json
+{
+  "decks": [
+    {
+      "id": "<uuid>",
+      "name": "Atraxa Superfriends",
+      "commanders": ["Atraxa, Praetors' Voice"],
+      "card_count": 100,
+      "updated_at": "2026-09-19T08:00:00Z"
+    }
+  ]
+}
+```
+
+`source_text` and `source_format` are not included here — this is the
+picker's list, not the re-seat payload; seating reads them server-side
+via `POST /games/{id}/decks/{deck_id}`.
 
 ## Signing out
 

@@ -667,6 +667,85 @@ needs none beyond the session.
   `user_id` as "signed in" only when it is non-nil. `uuid.UUID` has no
   `omitempty`, so a guest's principal spells it as the nil uuid.
 
+### Implementation notes — sub-PR 5 (deck library)
+
+Recorded where the code settled a detail decision 7 left open, or did
+something differently from how it reads.
+
+- **`seats.deck_id` becomes a real foreign key.** Migration 0002 left
+  it a plain TEXT column with a comment that nothing would write it
+  until `decks` existed; migration 0003's rebuild carried that forward
+  unchanged for the same reason. Migration 0005 creates `decks` and
+  rebuilds `seats` a second time (same procedure as 0003: temp table,
+  copy every row, drop, rename, recreate indexes, `foreign_keys` off
+  for the rebuild with `PRAGMA foreign_key_check` before commit) so
+  `deck_id REFERENCES decks(id)`. Nothing had ever written a value
+  into the column, so there was nothing for the check to trip over.
+  Also adds `CREATE INDEX decks_owner_id ON decks (owner_id)`, for
+  `GET /me/decks` and the update rule below.
+- **Only a pasted or Moxfield-JSON upload is saved to the library.** A
+  pre-built catalog pick (`POST /games/{id}/decks`'s `deck` field) is
+  never saved — it already has its own id system in `internal/decks`
+  and is not "what the player pasted". Neither is a `format: "url"`
+  request: `source` there is a link, and decision 7's whole point is
+  re-parsing *stored text*, not making a network call at seat time.
+  Both still install normally; they just never create a `decks` row.
+  This narrows decision 7's "for a signed-in user it additionally
+  creates or updates a decks row" from every upload to the subset that
+  is actually a paste.
+- **The update rule is same owner, same name.** A caller's existing
+  deck with the same `name` is overwritten in place (source, commanders,
+  card_count, updated_at; the id and created_at do not move); anything
+  else inserts a new row. `name` comes from the parsed deck (Moxfield
+  carries one); a plain-text paste has none — `deck.ParseText` has
+  nowhere to put one — so the fallback is the first commander's name.
+  Two plain-text decks on the same commander with no other name
+  collide under this rule, same as two identically-named Moxfield
+  exports would; a player who wants both kept renames one, which is
+  the same thing they would already do to tell two decks apart in
+  Moxfield's own library.
+- **A library save is best-effort.** `SetDeck` has already installed
+  the parsed cards on the seat by the time the library write runs. A
+  failed `decks` upsert, or a failed write of the seat's `deck_id`
+  afterwards, is logged (`c.Log`, nil-safe like `logReplayWarning`) and
+  does not fail the request — telling the player their upload failed
+  when the deck is actually sitting on their seat would be worse than
+  a library row they can produce again with one more paste.
+- **`POST /games/{id}/decks/{deck_id}` takes no body and no
+  `player_id`.** Unlike the upload route, a `player` session already
+  names exactly one seat, so there is nothing to disambiguate; the
+  seat is always the caller's own. `RoleAdmin` is refused outright
+  (403) rather than allowed "any seat" the way it is on the upload
+  route — the check that matters here is deck ownership
+  (`principal.UserID == decks.owner_id`), and an admin session never
+  has a `UserID` (decision 2), so letting it through the role gate
+  would only move the 403 one line later.
+- **`seats.deck_id` is set on both the library-save path and the
+  seat-from-library path, and cleared (set to `""`, i.e. `NULL`) on
+  every other outcome** — a guest, a catalog pick, a URL import, or a
+  save that failed. `Lobby.SetSeatDeckID` is a new method rather than
+  a parameter on `SetDeck`, since `SetDeck` mutates the engine and is
+  shared by every deck-install caller, while a library id is pure
+  lobby bookkeeping only the two new HTTP handlers know about.
+  `SeatInfo.DeckID` carries it in memory and through `ReplaceSeats` /
+  `LoadGame` for restart survival, but is not on the wire
+  (`json:"-"`) — nothing in the client reads it yet.
+- **`Principal.UserID` (and every other `uuid.UUID` field on
+  `Principal`) is never actually omitted by its `omitempty` tag.**
+  `encoding/json` only treats an array as empty when its length is
+  zero; `uuid.UUID` is `[16]byte`, always length 16, so a zero
+  `Principal.UserID` serialises as the literal string
+  `"00000000-0000-0000-0000-000000000000"` rather than being left out
+  of the response — confirmed against `GET /me`'s actual JSON, not
+  assumed. This sub-PR is the first client code to branch on
+  `principal.user_id`, so it is the one that has to know: the client
+  compares against that literal zero-UUID string
+  (`client/src/lib/myDecks.ts`'s `isSignedIn`), not against
+  "falsy"/`undefined`. Pre-existing on every other `uuid.UUID` field
+  on `Principal` (`admin_id`, `game_id`, `player_id`); not something
+  this sub-PR changed, just the first place it needed to be handled
+  correctly.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the

@@ -140,6 +140,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -260,6 +261,11 @@ func main() {
 	// the user's id. Without a database there is nowhere to put them,
 	// and sign-in mints a session with a zero UserID, as before.
 	userStore := newUserStore(log, database)
+	// Decks (ADR 0051 decision 7, S34 sub-PR 5): a signed-in player's
+	// saved decklists. Without a database there is nowhere to put
+	// them, and every principal already carries a zero UserID (see
+	// newUserStore above), so nothing ever calls this store.
+	deckLibrary := newDeckLibraryStore(database)
 
 	// Per-user revocation (ADR 0051 decision 6, S34 sub-PR 7). Every
 	// watermark is read once here; from then on the authenticator
@@ -487,6 +493,7 @@ func main() {
 		Users:             userStore,
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
+		DeckLibrary:       deckLibrary,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
@@ -800,6 +807,17 @@ func lobbyRevoker(r *users.Revocations) lobby.SessionRevoker {
 		return nil
 	}
 	return r
+}
+
+// newDeckLibraryStore builds the deck-library store (ADR 0051
+// decision 7, S34 sub-PR 5). No database means no library — the same
+// shape as newUserStore, and the same reason: without a users table
+// nothing ever carries a non-zero UserID to own a deck.
+func newDeckLibraryStore(database *db.DB) decklibrary.Store {
+	if database == nil {
+		return decklibrary.NoStore{}
+	}
+	return decklibrary.NewSQLStore(database)
 }
 
 func envOr(key, dflt string) string {
