@@ -138,6 +138,11 @@ type Stats struct {
 	// the most recent 1024 windows — #505's "latency percentiles",
 	// which until now were unreachable from outside the runner.
 	Latency Percentiles `json:"latency"`
+	// Spend is what this seat has cost in model calls and tokens,
+	// split into deciding and improvising (#735, ADR 0033 §5). Zero
+	// for every policy that is not a Spender — which is every tier
+	// with no model in it, and the true answer for them.
+	Spend Spend `json:"spend"`
 }
 
 // Rejection is one move the dispatcher refused.
@@ -315,7 +320,24 @@ func (r *Runner) Stats() Stats {
 		ImprovRefused:  r.improvRefused.Load(),
 		Rejections:     rej,
 		Latency:        PercentilesOf(r.latencySnapshot()),
+		Spend:          r.spend(),
 	}
+}
+
+// spend asks the policy what this seat has cost so far, through the
+// wrapper chain — the shipped model tiers implement Spender on the
+// funnel itself, but a seat wrapped by a harness or a test must not
+// stop reporting. That is #1060's hole, one interface later, and the
+// reason every lookup in this package goes through Capability.
+//
+// A policy that cannot reach a model is not a Spender and contributes
+// a zero Spend, which is what a `random` or `heuristic` seat costs.
+func (r *Runner) spend() Spend {
+	sp, ok := Capability[Spender](r.policy)
+	if !ok {
+		return Spend{}
+	}
+	return sp.Spend()
 }
 
 func (r *Runner) recordRejection(mv legal.Move, err error) {

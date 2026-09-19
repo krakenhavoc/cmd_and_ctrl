@@ -384,9 +384,20 @@ func TestArenaPlaysOneHeuristicGame(t *testing.T) {
 	if res.DecisionLog == "" {
 		t.Fatal("no decision log path was recorded")
 	}
-	records := 0
-	if err := decisionlog.Scan(res.DecisionLog, func(rec decisionlog.Record) error {
+	// ScanAll rather than Scan: a game file holds its decision
+	// windows AND, since #735, one end-of-game spend record, and the
+	// writer's own tally counts both. Scan filters the spend record
+	// out so that a reader counting windows keeps counting windows,
+	// which is exactly why the two have to be added up here.
+	records, spends := 0, 0
+	if err := decisionlog.ScanAll(res.DecisionLog, func(rec decisionlog.Record) error {
 		records++
+		if rec.Kind == decisionlog.KindSpend {
+			spends++
+			if rec.Spend == nil {
+				t.Error("the spend record carries no spend")
+			}
+		}
 		if rec.Game != res.GameID.String() {
 			t.Errorf("record names game %s, want %s", rec.Game, res.GameID)
 		}
@@ -395,10 +406,13 @@ func TestArenaPlaysOneHeuristicGame(t *testing.T) {
 		}
 		return nil
 	}); err != nil {
-		t.Fatalf("Scan(%s): %v", res.DecisionLog, err)
+		t.Fatalf("ScanAll(%s): %v", res.DecisionLog, err)
 	}
 	if records == 0 {
 		t.Error("the decision log is empty")
+	}
+	if spends != 1 {
+		t.Errorf("the game wrote %d spend records, want exactly 1 (#735)", spends)
 	}
 	// The writer is asynchronous and drops rather than blocks a bot
 	// seat, so a run has to be able to say whether its corpus is

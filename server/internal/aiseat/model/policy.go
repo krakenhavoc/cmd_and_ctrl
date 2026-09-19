@@ -316,6 +316,36 @@ func (p *Policy) Stats() Stats { return p.rec.snapshot() }
 // Records returns the retained per-decision records, oldest first.
 func (p *Policy) Records() []DecisionRecord { return p.rec.records() }
 
+// Compile-time assertion: the funnel reports its own spend (#735).
+var _ aiseat.Spender = (*Policy)(nil)
+
+// Spend is what this seat has cost so far, split into the two
+// purposes a funnel dials a model for: deciding a window, and writing
+// an improvisation bundle (ADR 0033 §5 and §8).
+//
+// It is the SAME counters Stats already publishes, projected into the
+// package-neutral shape the runner, the decision log and the admin
+// summary all read — see aiseat/spend.go. It is a projection rather
+// than a second tally on purpose: two counters for one fact drift,
+// and the one that drifts is always the one somebody is quoting.
+//
+// Safe to call while the seat plays; the recorder has its own lock.
+func (p *Policy) Spend() aiseat.Spend {
+	st := p.rec.snapshot()
+	return aiseat.Spend{
+		Decision: aiseat.PurposeSpend{
+			Calls:   st.ModelCalls,
+			Usage:   traceUsage(st.Usage),
+			Latency: st.ModelLatency,
+		},
+		Improvisation: aiseat.PurposeSpend{
+			Calls:   st.ImprovCalls,
+			Usage:   traceUsage(st.ImprovUsage),
+			Latency: st.ImprovLatency,
+		},
+	}
+}
+
 // Unwrap is Layer B, the policy underneath the funnel.
 //
 // It is what keeps every OPTIONAL Policy extension alive through this

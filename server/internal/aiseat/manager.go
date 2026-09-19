@@ -63,6 +63,7 @@ type Manager struct {
 }
 
 type botGame struct {
+	game    uuid.UUID
 	cancel  context.CancelFunc
 	runners []*Runner
 	// dlog is this game's decision log, nil when logging is off. It
@@ -72,15 +73,41 @@ type botGame struct {
 	// StateActive and return), or when a second StartBots replaces
 	// this set.
 	dlog     GameDecisionLog
-	closeLog sync.Once
+	finished sync.Once
 }
 
-// finishLog closes the game's decision log, once.
-func (b *botGame) finishLog(log *slog.Logger) {
-	if b.dlog == nil {
-		return
-	}
-	b.closeLog.Do(func() {
+// finish is everything that happens once, when a game's bots are
+// done: the spend record, and the decision log's close.
+//
+// Both belong to the same moment and therefore to the same
+// sync.Once. The spend record is #735's measurement — ONE per game,
+// read off the runners after every seat has exited, so the numbers
+// are final rather than a snapshot of a table still playing — and it
+// has to be written into the decision log BEFORE the log is closed,
+// which is the whole reason the two are not separate methods anybody
+// could call in the wrong order.
+//
+// Called with no locks held: it logs, and it closes a file.
+func (b *botGame) finish(log *slog.Logger) {
+	b.finished.Do(func() {
+		gs := SpendOfRunners(b.game, b.runners)
+		if len(gs.Seats) > 0 {
+			// The game's admin summary line. Emitted for every bot
+			// table, including the ones that spent nothing: "this
+			// table cost nothing" is a measurement too, and a line
+			// that only appears when there is a bill is a line
+			// nobody can tell from a line that failed to be written.
+			log.Info("bot model spend for the game", gs.LogAttrs()...)
+		}
+		if b.dlog == nil {
+			return
+		}
+		// The decision log's own copy, structured, for a tool. An
+		// optional extension rather than a widening of
+		// GameDecisionLog — see aiseat.SpendObserver.
+		if so, ok := b.dlog.(SpendObserver); ok {
+			so.ObserveSpend(gs)
+		}
 		if err := b.dlog.Close(); err != nil {
 			log.Error("closing the bot decision log failed", "err", err)
 		}
@@ -236,14 +263,14 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 		for _, r := range old.runners {
 			<-r.Done()
 		}
-		old.finishLog(m.log)
+		old.finish(m.log)
 	}
 	factory := m.factory // holding m.mu; see policyFactory
 	if factory == nil {
 		factory = builtinFactory{}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	bg := &botGame{cancel: cancel, dlog: glog}
+	bg := &botGame{game: gameID, cancel: cancel, dlog: glog}
 	for _, seat := range seats {
 		tier, ok := LookupTier(seat.Tier)
 		if !ok {
@@ -274,23 +301,28 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 	}
 	if len(bg.runners) == 0 {
 		cancel()
-		bg.finishLog(m.log)
+		bg.finish(m.log)
 		return
 	}
 	m.games[gameID] = bg
 	// A game that ENDS is never stopped: the runners watch the room,
 	// see the state leave StateActive and return on their own. So the
-	// log's normal close is here rather than in StopBots — which
-	// closes it too, for the game that is deleted or the process that
-	// is going away, hence the sync.Once.
-	if bg.dlog != nil {
-		go func(bg *botGame, log *slog.Logger) {
-			for _, r := range bg.runners {
-				<-r.Done()
-			}
-			bg.finishLog(log)
-		}(bg, m.log)
-	}
+	// normal end-of-game work — #735's spend record, and the decision
+	// log's close — happens here rather than in StopBots, which does
+	// it too for the game that is deleted or the process that is
+	// going away, hence the sync.Once.
+	//
+	// The watcher used to be started only for a game with a decision
+	// log, because closing that file was the only thing it had to do.
+	// It now runs for every bot game: a table that simply finishes is
+	// the ordinary case, and a spend record only a DELETED game
+	// produced would miss almost every game played.
+	go func(bg *botGame, log *slog.Logger) {
+		for _, r := range bg.runners {
+			<-r.Done()
+		}
+		bg.finish(log)
+	}(bg, m.log)
 	m.log.Info("bot runners started", "game", gameID.String(), "seats", len(bg.runners))
 }
 
@@ -308,7 +340,7 @@ func (m *Manager) StopBots(gameID uuid.UUID) {
 		for _, r := range bg.runners {
 			<-r.Done()
 		}
-		bg.finishLog(m.log)
+		bg.finish(m.log)
 		m.log.Info("bot runners stopped", "game", gameID.String())
 	}
 }

@@ -448,6 +448,10 @@ func mergeRunner(dst *aiseat.Stats, s aiseat.Stats) {
 	dst.Passes += s.Passes
 	dst.Improvisations += s.Improvisations
 	dst.ImprovRefused += s.ImprovRefused
+	// #735: a run's spend is the sum of its games'. Folded here
+	// rather than recomputed from the funnel stats so that one
+	// definition of "what this cost" reaches summary.json.
+	dst.Spend = dst.Spend.Add(s.Spend)
 	// Bounded: the rejection list is evidence, not a tally, and a
 	// hundred-game run would otherwise carry thousands of them into
 	// summary.json.

@@ -38,6 +38,7 @@ type capabilities struct {
 	conceder      bool // concede.go — the seat scoops
 	tracer        bool // runner.go — DecideTraced for the decision log
 	improviser    bool // improvise.go — ADR 0033 §8 (#686)
+	spender       bool // runner.go Stats — per-game model spend (#735)
 }
 
 func capabilitiesOf(p aiseat.Policy) capabilities {
@@ -47,6 +48,7 @@ func capabilitiesOf(p aiseat.Policy) capabilities {
 	_, c.conceder = aiseat.Capability[aiseat.Conceder](p)
 	_, c.tracer = aiseat.Capability[aiseat.Tracer](p)
 	_, c.improviser = aiseat.Capability[aiseat.Improviser](p)
+	_, c.spender = aiseat.Capability[aiseat.Spender](p)
 	return c
 }
 
@@ -68,11 +70,11 @@ func TestEveryShippedTierForwardsItsOptionalHooks(t *testing.T) {
 		},
 		aiseat.TierAssisted: {
 			targetOrderer: true, fuelPricer: true, conceder: true, tracer: true,
-			improviser: true,
+			improviser: true, spender: true,
 		},
 		aiseat.TierStrong: {
 			targetOrderer: true, fuelPricer: true, conceder: true, tracer: true,
-			improviser: true,
+			improviser: true, spender: true,
 		},
 	}
 
