@@ -151,6 +151,16 @@ type Store interface {
 	// RevokeInvite stamps revoked_at on one invite. ErrStoreNotFound
 	// if there is none.
 	RevokeInvite(ctx context.Context, hash InviteHash, at time.Time) error
+	// RotateInvite replaces every still-live invite of kind for gameID
+	// with newInvite, atomically: the old one(s) are revoked and the
+	// new one is inserted in one transaction, so a mid-rotation
+	// failure never leaves a game with no live invite of that kind.
+	// There is normally at most one live invite per (game, kind), but
+	// this revokes by (game, kind) rather than by hash on purpose —
+	// see Lobby.RotateInvite for why a hash isn't always available to
+	// the caller. newInvite.GameID and newInvite.Kind must agree with
+	// gameID and kind. ErrStoreNotFound if the game does not exist.
+	RotateInvite(ctx context.Context, gameID uuid.UUID, kind InviteKind, newInvite InviteRecord, at time.Time) error
 	// Durable reports whether what is written survives the process.
 	// RestoreFromDisk refuses to pair engine restore points with a
 	// store that cannot have their metadata.
@@ -273,5 +283,25 @@ func (s *memoryStore) RevokeInvite(_ context.Context, hash InviteHash, at time.T
 	at = at.UTC()
 	inv.RevokedAt = &at
 	s.invites[hash] = inv
+	return nil
+}
+
+func (s *memoryStore) RotateInvite(_ context.Context, gameID uuid.UUID, kind InviteKind, newInvite InviteRecord, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.games[gameID]; !ok {
+		return ErrStoreNotFound
+	}
+	if _, ok := s.invites[newInvite.Hash]; ok {
+		return errors.New("lobby store: invite already exists")
+	}
+	at = at.UTC()
+	for h, inv := range s.invites {
+		if inv.GameID == gameID && inv.Kind == kind && inv.RevokedAt == nil {
+			inv.RevokedAt = &at
+			s.invites[h] = inv
+		}
+	}
+	s.invites[newInvite.Hash] = newInvite
 	return nil
 }

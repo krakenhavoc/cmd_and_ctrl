@@ -52,6 +52,10 @@ var (
 	// ErrUnknownBotTier is returned when a bot is added with a tier
 	// the host doesn't offer.
 	ErrUnknownBotTier = errors.New("lobby: unknown bot tier")
+
+	// ErrInvalidInviteKind is returned by RotateInvite for a kind
+	// other than InvitePlayer or InviteSpectator.
+	ErrInvalidInviteKind = errors.New("lobby: invalid invite kind")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -382,6 +386,74 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 	l.mu.Unlock()
 
 	return copyMeta(meta), nil
+}
+
+// RotateInvite replaces a game's invite of the given kind: the
+// current invite of that kind is revoked and a new one is minted,
+// hashed and stored — atomically, via Store.RotateInvite — and the
+// in-memory plaintext on this process's entry is updated so GET
+// /games/{id} keeps showing a usable link without a restart.
+//
+// This is the escape hatch ADR 0051 decision 4 left open. Create's
+// plaintext tokens live only in the memory of the process that
+// minted them (see the comment there), so a link lost after a
+// restart could never be shown again — the game just sat there with
+// an invite nobody could read. Rotating needs nothing from the OLD
+// token to do this: Store.RotateInvite revokes by (game, kind), not
+// by hash, which is exactly what makes it work when the old
+// plaintext is gone. The trade is that the old link — wherever it
+// was already shared — stops working the moment this returns.
+//
+// The new plaintext is returned once, like Create's and
+// MintReclaim's; it is not retrievable again after this call except
+// from this same process's memory, and not at all after this process
+// restarts.
+//
+// Held under l.mu for the whole call, like every other lobby
+// mutation, so two concurrent rotations of the same kind serialize
+// (the second sees the first's replacement as "current" and revokes
+// that one instead), and a Join/Spectate/Preview racing a rotation
+// resolves against the invite as it stood strictly before or
+// strictly after this call, never a half-updated state.
+func (l *Lobby) RotateInvite(id uuid.UUID, kind InviteKind) (string, GameMeta, error) {
+	if kind != InvitePlayer && kind != InviteSpectator {
+		return "", GameMeta{}, ErrInvalidInviteKind
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return "", GameMeta{}, ErrGameNotFound
+	}
+
+	newToken, err := token.Random(16)
+	if err != nil {
+		return "", GameMeta{}, err
+	}
+	newHash, _ := hashInvite(newToken)
+	now := time.Now().UTC()
+
+	ctx, cancel := storeCtx()
+	err = l.store.RotateInvite(ctx, id, kind, InviteRecord{
+		Hash: newHash, GameID: id, Kind: kind, CreatedAt: now,
+	}, now)
+	cancel()
+	if err != nil {
+		// Mirrors Create: an invite that never reached the store
+		// cannot be redeemed at all, even in this process, since
+		// resolveInvite always checks the store — so the in-memory
+		// plaintext must not be updated on this path.
+		return "", GameMeta{}, err
+	}
+
+	switch kind {
+	case InvitePlayer:
+		entry.meta.InviteToken = newToken
+	case InviteSpectator:
+		entry.meta.SpectatorInvite = newToken
+	}
+	return newToken, copyMeta(entry.meta), nil
 }
 
 // Join claims a seat in game `id` on behalf of `playerName`, guarded

@@ -298,6 +298,27 @@ func (s *SQLStore) RevokeInvite(ctx context.Context, hash InviteHash, at time.Ti
 	return nil
 }
 
+func (s *SQLStore) RotateInvite(ctx context.Context, gameID uuid.UUID, kind InviteKind, newInvite InviteRecord, at time.Time) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		ok, err := gameExists(ctx, tx, gameID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrStoreNotFound
+		}
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE invites SET revoked_at = ? WHERE game_id = ? AND kind = ? AND revoked_at IS NULL`,
+			toMillis(at), gameID.String(), string(kind)); err != nil {
+			return fmt.Errorf("revoke live invites: %w", err)
+		}
+		if err := insertInvites(ctx, tx, []InviteRecord{newInvite}); err != nil {
+			return fmt.Errorf("insert rotated invite: %w", err)
+		}
+		return nil
+	})
+}
+
 // gameExists reports whether a games row exists, inside tx.
 func gameExists(ctx context.Context, tx *sql.Tx, id uuid.UUID) (bool, error) {
 	var one int
