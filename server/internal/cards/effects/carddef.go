@@ -82,17 +82,33 @@ func buildDef(spec Spec) *game.CardDef {
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
 	}
-	// #659 / CR 702.62b: suspend's upkeep countdown is the KEYWORD's
-	// triggered ability, not the card's. Grown here from the
-	// declaration so three card files cannot spell it three ways and
-	// the fourth cannot forget it, exactly as the Cycling constructor
-	// stamps its own zone and discard cost.
+	// #659 / CR 702.62b: suspend's two triggered abilities are the
+	// KEYWORD's, not the card's. Grown here from the declaration so
+	// three card files cannot spell them three ways and the fourth
+	// cannot forget one, exactly as the Cycling constructor stamps
+	// its own zone and discard cost.
+	//
+	// #990 made it two: the upkeep countdown and "when the last time
+	// counter is removed". They are separate abilities in print, they
+	// go on the stack at different moments and either can be
+	// countered without the other — see game/suspend.go's header.
 	for _, sa := range spec.SpecialActions {
 		if sa.Kind == game.SpecialActionSuspend {
 			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
-				game.SuspendUpkeepTrigger())
+				game.SuspendUpkeepTrigger(), game.SuspendLastCounterTrigger())
 			break
 		}
+	}
+	// #657 / CR 702.35a: madness is a replacement and a trigger, and
+	// both belong to the KEYWORD. Grown here from the one-string
+	// declaration for the reason suspend's pair is, and appended to
+	// whatever the card declares itself — Big Game Hunter has an ETB
+	// trigger of its own and keeps it.
+	if spec.Madness != "" {
+		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
+			game.MadnessReplacement())
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+			game.MadnessTrigger(spec.Madness))
 	}
 	// S20: a structured TargetSpec is the source of truth for the
 	// client hint too.

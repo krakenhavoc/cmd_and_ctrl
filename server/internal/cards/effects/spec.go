@@ -484,6 +484,24 @@ type Spec struct {
 	// suspend declaring no time counters, at boot.
 	SpecialActions []game.SpecialAction
 
+	// Madness is the card's madness cost (CR 702.35), as printed:
+	//
+	//	Madness: "{R}",   // Fiery Temper
+	//	Madness: "{B}",   // Big Game Hunter
+	//	Madness: "{0}",   // Basking Rootwalla — a real free cost
+	//
+	// One string, because that is the only thing a madness card says
+	// that another madness card does not. Both halves of the keyword
+	// — the CR 702.35a discard replacement and the exile-zone trigger
+	// that offers the cast — are grown from this by buildDef
+	// (game.MadnessReplacement, game.MadnessTrigger), so no card file
+	// writes either and none can forget one. Register refuses an
+	// unparseable cost at boot.
+	//
+	// Empty — every card but a handful — means the card has no
+	// madness.
+	Madness string
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

@@ -12,11 +12,12 @@ import (
 // counters, the exile-zone upkeep countdown, the free cast when the
 // last counter comes off, and the haste on the creature that results.
 //
-// In particular the card file does NOT write the countdown trigger.
-// `buildDef` grows it from the declaration (game.SuspendUpkeepTrigger),
-// so three cards cannot spell it three ways and the fourth cannot
-// forget it — the same bargain `Cycling` makes for its zone and its
-// discard cost.
+// In particular the card file does NOT write the two triggers.
+// `buildDef` grows them from the declaration
+// (game.SuspendUpkeepTrigger and, since #990, game.
+// SuspendLastCounterTrigger), so three cards cannot spell them three
+// ways and the fourth cannot forget one — the same bargain `Cycling`
+// makes for its zone and its discard cost.
 
 // Suspend is "Suspend N—<cost>" — CR 702.62a. `n` is the number of
 // time counters and `cost` is the printed suspend cost.

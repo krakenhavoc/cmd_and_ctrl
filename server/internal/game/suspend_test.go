@@ -31,7 +31,7 @@ func withSuspendCard(t *testing.T, n int, cost string) {
 			Kind: SpecialActionSuspend, Cost: cost, Counters: n, Label: SuspendLabel(n, cost),
 		}}
 	})
-	withZoneTriggerCard(t, suspendOracle, []TriggeredAbility{SuspendUpkeepTrigger()})
+	withZoneTriggerCard(t, suspendOracle, []TriggeredAbility{SuspendUpkeepTrigger(), SuspendLastCounterTrigger()})
 }
 
 // suspendIt seeds a suspendable card in the seat's hand and takes the
@@ -422,5 +422,240 @@ func TestSuspendedStateSurvivesASnapshotRoundTrip(t *testing.T) {
 	_, restored := roundTrip(t, g)
 	if n := timeCounters(restored, id); n != 2 {
 		t.Errorf("time counters after the round trip: got %d, want 2", n)
+	}
+}
+
+// --- the two triggers (#990) ------------------------------------------
+
+// suspendItemsWaiting counts the stack items — queued or already on
+// the stack — carrying `label`. Both halves are counted because a
+// harvested trigger spends a moment in PendingTriggers before the
+// next priority check drains it onto the stack, and which of the two
+// a caller catches it in is not the thing under test.
+func suspendItemsWaiting(g *Game, label string) int {
+	n := 0
+	for _, it := range g.PendingTriggers {
+		if it != nil && it.Label == label {
+			n++
+		}
+	}
+	for _, it := range g.StackMeta {
+		if it != nil && it.Label == label {
+			n++
+		}
+	}
+	return n
+}
+
+// passUntil passes priority until `done` or the budget runs out.
+func passUntil(t *testing.T, g *Game, done func() bool) {
+	t.Helper()
+	for i := 0; i < 32; i++ {
+		if done() {
+			return
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority iter %d: %v", i, err)
+		}
+	}
+	t.Fatal("condition never held after 32 priority passes")
+}
+
+// CR 702.62b prints TWO triggered abilities and #990 gave the engine
+// two. The natural countdown's last tick reaches the cast offer the
+// long way round — through the counter event — so the offer is its
+// own object on the stack, which is what makes it separately
+// counterable, and it is made exactly once.
+func TestTheCountdownAndTheCastAreTwoTriggers(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withSuspendCard(t, 1, "{R}")
+	advanceTo(t, g, StepPrecombatMain)
+	me.ManaPool.AddMana(ManaToken{Color: "R"})
+	id := suspendIt(t, g, me, "Rift Bolt", "Sorcery", "{2}{R}")
+
+	upkeepFor(t, g, 0)
+	// Drain the upkeep trigger only.
+	passUntil(t, g, func() bool { return timeCounters(g, id) == 0 })
+
+	if pendingChoiceOfKind(g, PendingChoiceMayCast) != nil {
+		t.Error("the upkeep trigger made the cast offer itself; the second trigger is what offers it")
+	}
+	if n := suspendItemsWaiting(g, SuspendFreeCastLabel); n != 1 {
+		t.Errorf("last-counter triggers waiting: got %d, want 1 — a separate ability on the stack (CR 702.62b)", n)
+	}
+
+	settleStack(t, g)
+	if pendingChoiceOfKind(g, PendingChoiceMayCast) == nil {
+		t.Fatal("the last-counter trigger made no cast offer")
+	}
+	offers := 0
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceMayCast {
+			offers++
+		}
+	}
+	if offers != 1 {
+		t.Errorf("cast offers queued: got %d, want 1 — the two triggers must not both offer", offers)
+	}
+}
+
+// The second trigger fires on ANY removal of the last time counter,
+// not only the upkeep one: Jhoira's Timebug, Clockspinning and
+// Vampire Hexmage all end a countdown early, and #990 is what lets
+// them. No upkeep is involved here at all.
+func TestAnExternalRemovalFiresTheLastCounterTrigger(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withSuspendCard(t, 1, "{R}")
+	advanceTo(t, g, StepPrecombatMain)
+	me.ManaPool.AddMana(ManaToken{Color: "R"})
+	id := suspendIt(t, g, me, "Rift Bolt", "Sorcery", "{2}{R}")
+
+	// Clockspinning, in one line: remove a time counter, in a main
+	// phase, from something else's effect.
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(id, CounterTime, -1); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+	})
+	settleStack(t, g)
+
+	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("removing the last time counter outside an upkeep offered no cast (CR 702.62b)")
+	}
+	if offer.Chooser != me.ID {
+		t.Errorf("offer chooser = %s, want the owner %s", offer.Chooser, me.ID)
+	}
+	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	if perm := grantOn(g, me.ID, id, ZoneExile); perm == nil {
+		t.Error("the externally-ended countdown granted no free cast")
+	}
+}
+
+// A removal that is NOT the last one offers nothing: the trigger reads
+// the post-change count, so 3 → 2 is a countdown and 1 → 0 is a cast.
+func TestAnEarlierRemovalOffersNothing(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withSuspendCard(t, 3, "{R}")
+	advanceTo(t, g, StepPrecombatMain)
+	me.ManaPool.AddMana(ManaToken{Color: "R"})
+	id := suspendIt(t, g, me, "Rift Bolt", "Sorcery", "{2}{R}")
+
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(id, CounterTime, -1); err != nil {
+			t.Fatalf("AddCounterForEffect: %v", err)
+		}
+	})
+	settleStack(t, g)
+	if n := timeCounters(g, id); n != 2 {
+		t.Fatalf("time counters: got %d, want 2", n)
+	}
+	if pendingChoiceOfKind(g, PendingChoiceMayCast) != nil {
+		t.Error("a removal that left counters behind offered the cast")
+	}
+}
+
+// --- the haste (#990) --------------------------------------------------
+
+// castTheSuspendedCreature runs the whole keyword for a creature and
+// returns it on the battlefield: suspend it, tick the counter off,
+// take the offer, cast it, resolve it.
+func castTheSuspendedCreature(t *testing.T, g *Game, me *Player) uuid.UUID {
+	t.Helper()
+	advanceTo(t, g, StepPrecombatMain)
+	me.ManaPool.AddMana(ManaToken{Color: "R"})
+	id := suspendIt(t, g, me, "Test Goblin", "Creature — Goblin", "{2}{R}")
+	setHandOrExilePT(g, me, id, 2, 2)
+
+	upkeepFor(t, g, 0)
+	settleStack(t, g)
+	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatal("no cast offer on the last tick")
+	}
+	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	settleStack(t, g)
+	return id
+}
+
+// hasteOn reads the keyword off the live battlefield object.
+func hasteOn(t *testing.T, g *Game, id uuid.UUID) bool {
+	t.Helper()
+	c, ok := battlefieldCardByID(g, id)
+	if !ok {
+		t.Fatalf("card %s is not on the battlefield", id)
+	}
+	return HasKeyword(&c, "haste")
+}
+
+// CR 702.62e: "it gains haste until you lose control of it" — not
+// until end of turn, which is what #659 shipped and #990 retired. The
+// cleanup step sweeps every UntilEndOfTurn effect there is, and this
+// one is still standing on the far side of it.
+func TestSuspendHasteOutlivesTheTurn(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	withSuspendCard(t, 1, "{R}")
+	id := castTheSuspendedCreature(t, g, me)
+
+	if !hasteOn(t, g, id) {
+		t.Fatal("the suspended creature has no haste on the turn it arrived")
+	}
+	advancePastScopedCleanup(t, g)
+	if !hasteOn(t, g, id) {
+		t.Error("the haste was swept at the cleanup step; CR 702.62e ends it on a control change, not on a turn")
+	}
+}
+
+// And it ends the moment control changes — permanently, because a
+// ForAsLongAs duration that has gone false is dropped rather than
+// re-evaluated back to life. Getting the creature back does not get
+// the haste back, which is what "until that player loses control of
+// it" says.
+func TestSuspendHasteEndsWhenControlIsLost(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	withSuspendCard(t, 1, "{R}")
+	id := castTheSuspendedCreature(t, g, me)
+	if !hasteOn(t, g, id) {
+		t.Fatal("the suspended creature has no haste to lose")
+	}
+
+	g.WithWriteLock(func() {
+		if !g.GainControlForEffect(uuid.New(), id, opp.ID, IndefiniteDuration(), "test — steal it") {
+			t.Fatal("GainControlForEffect refused the creature")
+		}
+	})
+	if controllerOfCard(t, g, id) != opp.ID {
+		t.Fatal("the theft did not take")
+	}
+	if hasteOn(t, g, id) {
+		t.Error("the creature kept its suspend haste under a new controller (CR 702.62e)")
+	}
+
+	// Give it back. The grant is gone for good.
+	g.WithWriteLock(func() {
+		g.GainControlForEffect(uuid.New(), id, me.ID, IndefiniteDuration(), "test — give it back")
+	})
+	if controllerOfCard(t, g, id) != me.ID {
+		t.Fatal("the creature did not come back")
+	}
+	if hasteOn(t, g, id) {
+		t.Error("the suspend haste came back with the creature; CR 702.62e ended it the first time control left")
+	}
+	for _, s := range g.ScopedStatics {
+		if s.Label == "Suspend — haste (CR 702.62e)" {
+			t.Error("the ended haste grant is still in the registry")
+		}
 	}
 }

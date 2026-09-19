@@ -102,6 +102,24 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
+	case EventControlChanged:
+		// #990: who controls a permanent is an AppliesTo input for
+		// every "creatures you control" static and for every
+		// ForAsLongAs duration keyed on control (suspend's haste,
+		// CR 702.62e). The pass that MOVES control cannot see its own
+		// answer — materialiseControlLocked writes Card.Controller
+		// after the layer walk has already run against the old one —
+		// so without this bump the stale resolution survives until
+		// some unrelated event invalidates it, and a creature keeps
+		// the grant it just lost.
+		//
+		// Safe at this point in the pass for the reason
+		// emitControlChangesLocked gives: the deltas are emitted
+		// AFTER lastResolvedVersion is stored, so this schedules the
+		// next pass rather than re-entering the current one. That
+		// second pass produces no further delta and so no further
+		// bump.
+		g.layerVersion.Add(1)
 	case EventClassLevel, EventCaseSolved:
 		// ADR 0071: a designation switches printed statics on and off,
 		// so a level-up or a solve changes which continuous effects

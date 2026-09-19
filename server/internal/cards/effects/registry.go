@@ -255,6 +255,16 @@ func Register(spec Spec) {
 				spec.Name, sa.Counters))
 		}
 	}
+	// #657 / CR 702.35a: the madness cost is the price of a cast the
+	// engine will offer, so an unparseable one is refused at boot
+	// rather than at the moment the offer is taken — which is after
+	// the card has already been exiled and cannot go back.
+	if spec.Madness != "" {
+		if _, err := game.ParseCost(spec.Madness); err != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares an unparseable madness cost %q: %v",
+				spec.Name, spec.Madness, err))
+		}
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both

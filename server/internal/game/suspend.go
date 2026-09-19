@@ -17,9 +17,9 @@ import (
 //     "whenever you could begin to cast the card" — so a sorcery may
 //     be suspended only at sorcery speed, and neither kind may be
 //     suspended under split second (CR 702.62c).
-//  2. An UPKEEP TRIGGER THAT WORKS IN EXILE (CR 702.62b). That is
-//     #925's `TriggeredAbility.Zones = {ZoneExile}`, built for
-//     exactly this and for cycling's graveyard trigger.
+//  2. TWO TRIGGERS THAT WORK IN EXILE (CR 702.62b). Both are #925's
+//     `TriggeredAbility.Zones = {ZoneExile}`, built for exactly this
+//     and for cycling's graveyard trigger.
 //  3. A FREE CAST when the last counter comes off (CR 702.62b/c,
 //     CR 608.2g) — ADR 0066's per-instance `CastPermission` with a
 //     `{0}` price, `TimingFlash` (a trigger resolving in an upkeep is
@@ -38,26 +38,45 @@ import (
 // `CastableZones: exile` declaration got that exactly backwards: it
 // opened exile for every copy of the card at any time.
 //
-// # One trigger, not two
+// # Two triggers, as printed (#990)
 //
-// CR 702.62b prints two triggered abilities — "at the beginning of
-// your upkeep, remove a time counter" and "when the last time counter
-// is removed, cast it". The engine fires ONE, and the last-counter
-// half happens inside its resolution. Declared, not accidental:
+// CR 702.62b prints two triggered abilities and the engine has two:
 //
-//   - The two are inseparable in practice. Nothing else in the game
-//     removes a time counter from a suspended card in this engine —
-//     no proliferate target, no Clockspinning — so the only moment
-//     the second trigger could ever fire is inside the first one's
-//     resolution.
-//   - CR 608.2g's "cast it during the resolution of that trigger" is
-//     satisfied either way, because the offer is made from inside a
-//     resolution in both readings.
+//	SuspendUpkeepTrigger()        "at the beginning of your upkeep,
+//	                               if this card is suspended, remove
+//	                               a time counter from it"
+//	SuspendLastCounterTrigger()   "when the last time counter is
+//	                               removed from this card, if it's
+//	                               exiled, cast it without paying its
+//	                               mana cost"
 //
-// What it costs: a future card that removes a time counter some other
-// way would not offer the cast. That card does not exist here, and
-// when it does the fix is to split the second half out — the offer is
-// already a standalone function.
+// #659 shipped ONE, with the last-counter half folded into the
+// upkeep trigger's resolution, on the argument that nothing else in
+// the engine removes a time counter. That argument was about the
+// catalog rather than about the rules, and it cost two things the
+// second trigger buys back:
+//
+//   - A removal from ANYWHERE fires it. Jhoira's Timebug,
+//     Clockspinning and Vampire Hexmage take counters off a
+//     suspended card without an upkeep anywhere near, and each of
+//     them ends the countdown early — which is the whole reason
+//     those cards see play alongside suspend.
+//   - It is INDEPENDENTLY COUNTERABLE. Two abilities go on the stack
+//     at two different moments, so Stifle can answer the free cast
+//     and leave the countdown alone, or the other way round.
+//
+// THEY CANNOT DOUBLE-FIRE, and the shape is what guarantees it
+// rather than a guard: the upkeep trigger removes a counter and
+// stops. The offer lives in the second trigger and nowhere else, so
+// the natural countdown's last tick reaches it the same way
+// Clockspinning does — through the `EventCounterPlaced` the removal
+// emits. One removal, one event, one offer.
+//
+// What the second trigger watches is that event with a post-change
+// count of ZERO, which is exactly "the last time counter was
+// removed": the counter map deletes a key the moment it hits zero,
+// so a stored count is always ≥ 1, and a post-change 0 can only be a
+// removal that emptied a non-empty pile.
 //
 // # The free cast is a grant, not an inline cast
 //
@@ -116,10 +135,12 @@ func CardIsSuspended(c Card) bool {
 	return c.Counters[CounterTime] > 0
 }
 
-// SuspendUpkeepTrigger builds the exile-zone trigger every suspended
-// card carries (CR 702.62b). The catalog attaches it from the card's
-// suspend declaration rather than the card file writing it out, so
-// the countdown cannot be spelled differently on two cards.
+// SuspendUpkeepTrigger builds the first of the two exile-zone
+// triggers every suspended card carries (CR 702.62b): "at the
+// beginning of your upkeep, if this card is suspended, remove a time
+// counter from it". The catalog attaches it from the card's suspend
+// declaration rather than the card file writing it out, so the
+// countdown cannot be spelled differently on two cards.
 //
 // It watches `EventBeginUpkeep` from ZoneExile — #925's zone
 // dimension, which exists for exactly this — and only fires while the
@@ -144,9 +165,14 @@ func SuspendUpkeepTrigger() TriggeredAbility {
 	}
 }
 
-// suspendTick is the trigger's resolution: remove one time counter
-// and, if it was the last, offer the free cast (CR 702.62b/c,
-// CR 608.2g).
+// suspendTick is the upkeep trigger's resolution, and the whole of it:
+// remove one time counter (CR 702.62b).
+//
+// It does NOT offer the cast. Taking the last counter off emits the
+// `EventCounterPlaced` that SuspendLastCounterTrigger watches, so the
+// offer arrives by the same road an external removal takes — see the
+// file header. Before #990 the offer was made inline from here, which
+// is what made a Clockspinning removal a dead end.
 //
 // Everything is re-read at resolution rather than captured at
 // announce, because CR 608.2 resolves against the game as it is: the
@@ -161,14 +187,51 @@ func suspendTick(g *Game, item *StackItem) error {
 		// nothing.
 		return nil
 	}
-	if err := g.AddCounterForEffect(cardID, CounterTime, -1); err != nil {
-		return err
+	return g.AddCounterForEffect(cardID, CounterTime, -1)
+}
+
+// SuspendLastCounterTrigger builds the second exile-zone trigger
+// (CR 702.62b): "when the last time counter is removed from this
+// card, if it's exiled, cast it without paying its mana cost". Like
+// its sibling the catalog attaches it from the suspend declaration.
+//
+// It watches the COUNTER EVENT rather than the upkeep, which is the
+// point of #990: the upkeep removal, Jhoira's Timebug, Clockspinning
+// and Vampire Hexmage all reach it the same way, and none of them
+// needs to know suspend exists.
+//
+// `Amount` on EventCounterPlaced is the post-change count, so zero is
+// "the pile is now empty" — and only a removal can produce it,
+// because applyCounterLocked deletes a counter key the moment it
+// stops being positive and an addition of zero emits nothing. There
+// is deliberately no `CardIsSuspended` guard: by the time this fires
+// the card is not suspended any more, which is the condition.
+//
+// The "if it's exiled" clause is the harvest itself — the zone walk
+// only offers this ability to a card sitting in exile (CR 113.6) —
+// and it is re-checked at resolution (CR 603.4) by
+// offerSuspendedCastLocked.
+func SuspendLastCounterTrigger() TriggeredAbility {
+	return TriggeredAbility{
+		Zones:   []ZoneKind{ZoneExile},
+		Watches: []EventKind{EventCounterPlaced},
+		Key:     SuspendFreeCastLabel,
+		AppliesTo: func(ev Event, source *Card, _ Characteristic, _ *Game) bool {
+			return ev.Target == source.InstanceID && ev.Label == CounterTime && ev.Amount == 0
+		},
+		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+			return NewTriggeredItem(source, SuspendFreeCastLabel, suspendLastCounterRemoved)
+		},
 	}
-	c = exiledCardByIDLocked(g, cardID)
-	if c == nil || CardIsSuspended(*c) {
-		return nil
-	}
-	return g.offerSuspendedCastLocked(item.Controller, cardID)
+}
+
+// suspendLastCounterRemoved is the second trigger's resolution: the
+// CR 702.62b/c offer, made against the game as it is now (CR 608.2).
+// A card that left exile while the trigger was on the stack is not
+// offered anything, which is the intervening "if it's exiled" read at
+// resolution.
+func suspendLastCounterRemoved(g *Game, item *StackItem) error {
+	return g.offerSuspendedCastLocked(item.Controller, item.SourceCardID)
 }
 
 // offerSuspendedCastLocked is CR 702.62b's second half: "when the last
@@ -244,14 +307,24 @@ func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
 // it, which is the clause CR 702.62e actually writes ("until that
 // player loses control of it").
 //
-// SIMPLIFICATION, declared: the duration is UNTIL END OF TURN rather
-// than "for as long as that player controls it". The two differ only
-// when control of the creature changes during the turn it arrived,
-// because a creature its controller has had since their turn began is
-// not summoning sick anyway (CR 302.6). The honest version would need
-// a ForAsLongAs duration keyed on a battlefield object, and the
-// permanent is still on the stack when the grant is made — there is
-// no entry stamp to key it to yet. #659 records the trade.
+// #990 RETIRED THE UNTIL-END-OF-TURN SIMPLIFICATION #659 shipped.
+// The duration is CR 611.2b's "for as long as", through ADR 0063's
+// one model: `UntilYouLoseControlOfDuration`, whose condition is
+// false the moment the named player stops controlling the named
+// object, and whose GRACE PERIOD — the spell is still on the stack
+// when this runs — is what let the grant move onto the model at all
+// (see duration.go's WhileYouControlSourceOnceItLands).
+//
+// Two things follow, and both are the rule rather than a bonus:
+//
+//   - The haste OUTLIVES THE TURN. A suspended creature stolen on a
+//     later turn and given back is summoning sick for its original
+//     controller, because the grant ended the first time control
+//     left them and a ForAsLongAs duration that has gone false is
+//     swept rather than re-evaluated back to life.
+//   - A card that never becomes a permanent — Rift Bolt, Ancestral
+//     Vision — drops its grant the moment the spell leaves the
+//     stack, instead of sitting in the registry until cleanup.
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantHasteForCastLocked(player, cardID uuid.UUID) {
@@ -268,7 +341,7 @@ func (g *Game) grantHasteForCastLocked(player, cardID uuid.UUID) {
 			}
 			ch.Abilities = append(ch.Abilities, "haste")
 		},
-	}, cardID, "Suspend — haste (CR 702.62e)", g.UntilEndOfTurnDuration())
+	}, cardID, "Suspend — haste (CR 702.62e)", UntilYouLoseControlOfDuration(cardID, player))
 }
 
 // SuspendLabel is the printed keyword line — "Suspend 3—{R}" — built

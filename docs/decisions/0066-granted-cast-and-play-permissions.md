@@ -362,6 +362,7 @@ Mm'menon-style "not cast from hand" restrictions will read `library` and
 - **Foretell (#658), madness (#657), suspend (#659)** — each is a
   `CastPermission` with a key and, for madness, `TimingFlash`; none is built
   here. The point of the model is that they are card work plus a key.
+  (All three have since shipped on it — see the amendments below.)
 
 ## Consequences
 
@@ -681,3 +682,68 @@ is.
   requires one", which needs `zoneBoundAlternativeCosts` at the view and is
   a third thing #695 was not asked for. Filed as #1015; the predicate it
   would call already exists.
+
+## Amendment — 2026-09-19 (#657): madness is the third keyword on the model, and `TimingFlash`'s first user
+
+"Out of scope, stated" listed madness as card work plus a key, and
+predicted the one field it would need that nothing else did. Both
+halves held. Madness (CR 702.35) shipped on this model with no change
+to `CastPermission` at all; what it added lives in
+`server/internal/game/madness.go`, and this amendment records the four
+decisions taken while building it.
+
+**1. The grant is the whole of "cast it by paying its madness cost".**
+`CastPermission{Zone: ZoneExile, AltCostKey: "madness", Cost: <the
+madness cost>, Timing: TimingFlash, CastOnly: true}`, over the ONE
+exiled object the trigger was about, for the rest of the turn. The key
+is the ADR's Decision 3 working as designed: `StackItem.AltCost` reads
+back `"madness"`, so CR 702.35b's "if its madness cost was paid"
+([#653](https://github.com/krakenhavoc/cmd_and_ctrl/issues/653),
+Avacyn's Judgment) will work off the same field a printed keyword
+writes. The price is a real alternative cost, so CR 107.3b locks X at
+0 through the shared `CastCostFor` rule with nothing madness-specific.
+
+**2. `TimingFlash` is now used, and it means CR 608.2g.** The value
+was added by this ADR "for the shape madness will want" and had no
+user until now (suspend's grant took it second, for the narrower
+reason that its trigger resolves in an upkeep). What it expresses here
+is the general clause: a card cast during the resolution of a
+triggered ability ignores timing restrictions. A madness sorcery
+discarded on an opponent's turn is castable on that turn, and the
+sorcery-speed gate in `CastSpell` reads the permission rather than
+growing a second branch — which is what the field was for.
+
+**3. The window is bounded on BOTH sides, and the far side is a
+delayed trigger.** The ADR's windows all end by expiring. Madness is
+the first permission whose card must not merely stop being castable
+when the window shuts: CR 702.35b says an uncast card goes to its
+owner's graveyard. Declining says so immediately, inside the trigger's
+resolution. Accepting and then not casting is the case the
+grant-instead-of-inline-cast simplification invents, and it is closed
+the way cascade closes its twin — a `DelayedTrigger` at the beginning
+of the next end step puts a card still sitting in exile under a
+madness grant into its owner's graveyard. The narrowing check is the
+grant itself (`AltCostKey == "madness"`), so a card that was cast,
+re-exiled or re-granted is left alone.
+
+**4. A keyword that installs a REPLACEMENT as well as a permission
+belongs in the engine, not on the card.** Foretell and suspend each
+needed one declaration (`Spec.SpecialActions`) because a special
+action is one verb. Madness needs two abilities that must agree —
+the CR 702.35a replacement over `RepEventDiscard` and the exile-zone
+trigger that offers this permission — so the card declares the PRICE
+and nothing else (`Spec.Madness string`), and `effects.buildDef` grows
+`game.MadnessReplacement()` and `game.MadnessTrigger(cost)` from it.
+That is the same bargain the suspend declaration makes for its two
+triggers, and it is the reason a madness card file is one field: two
+cards cannot spell the keyword two ways and a third cannot forget
+half of it.
+
+Declared and unchanged from the ADR's posture on cascade: the accepted
+cast is a grant rather than an inline cast, so a CR 117.3b response
+window exists between the offer and the cast that paper does not have.
+One narrow looseness is recorded in `madness.go`: the trigger cannot
+tell a madness exile from a Rest in Peace exile of the same discard,
+and offers the cast for both — a choice CR 616.1 gives the discarding
+player, where the two lines produce the same board state in this
+engine.
