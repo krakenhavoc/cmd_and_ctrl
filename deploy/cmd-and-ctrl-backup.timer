@@ -1,0 +1,22 @@
+# Nightly trigger for cmd-and-ctrl-backup.service (#1031). See that unit
+# for what runs, and docs/environments.md#backups for the runbook.
+#
+# Enabled by CD ("Ensure off-site backup") only when every backup secret
+# and variable for the host's environment is set; disabled otherwise.
+#
+#   systemctl list-timers cmd-and-ctrl-backup.timer
+
+[Unit]
+Description=Nightly cmd_and_ctrl off-site backup
+
+[Timer]
+# 03:30 host time, spread over half an hour so prod and dev (same
+# Proxmox node, same uplink) do not start on the same second.
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=30min
+# A night missed while the VM was down runs at the next boot.
+Persistent=true
+Unit=cmd-and-ctrl-backup.service
+
+[Install]
+WantedBy=timers.target

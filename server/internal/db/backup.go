@@ -10,9 +10,9 @@ import (
 )
 
 // DefaultBackupInterval is used when CMDCTRL_DB_BACKUP_INTERVAL is
-// unset. Hourly is frequent enough that the nightly off-node HomeLab
-// sweep (ADR 0051 decision 1 — that sweep is the owner's job, not this
-// package's) never picks up a backup more than an hour stale, and
+// unset. Hourly is frequent enough that the nightly off-node backup
+// (ADR 0051 decision 1, scripts/backup-offsite.sh — not this
+// package's job) never picks up a backup more than an hour stale, and
 // cheap enough at this project's scale (eight people, one small
 // database) that running VACUUM INTO every hour costs nothing anyone
 // would notice.

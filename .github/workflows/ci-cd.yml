@@ -867,3 +867,170 @@ jobs:
               ;;
           esac
           echo "Confirmed: ${CMDCTRL_HOST} is running ${SERVICE} as ${APP_ENV}."
+
+      # Nightly off-node backup of the data dir to Cloudflare R2 with
+      # restic (#1031, ADR 0051 decision 1). Runs on BOTH hosts, each into
+      # its own bucket. Runbook: docs/environments.md#backups.
+      #
+      # Last on purpose: the game is already deployed and verified above,
+      # so nothing here can leave a half-deployed server. A real failure
+      # (ssh, apt, install) still fails the run, because a backup that
+      # silently stopped being installed is the failure this exists to
+      # prevent. A MISSING secret or variable does not fail it: each one is
+      # named in a ::warning:: and the timer is stopped and disabled, so an
+      # unconfigured host deploys green and does not fail every night.
+      #
+      # Per-host values follow the repo's naming, not GitHub environments:
+      # production reads CMDCTRL_R2_* / CMDCTRL_RESTIC_PASSWORD and the
+      # preview CMDCTRL_DEV_R2_* / CMDCTRL_DEV_RESTIC_PASSWORD. Picked in
+      # shell, never with a `${{ cond && a || b }}` ternary, for the reason
+      # on "Resolve deploy target": an unset production value would fall
+      # through to the preview's and back production up into dev's bucket.
+      #
+      # Secrets travel to the host on ssh STDIN only: the env file is built
+      # with printf (a bash builtin, so no argv on the runner either) and
+      # piped into `sudo tee` on a root-only temp file, then chowned and
+      # renamed into place. They never appear on a command line, in `ps`,
+      # or in this log (Actions masks them regardless).
+      #
+      # backup.env is rewritten on every deploy: the Actions secrets are
+      # the source of truth. The ONE value that must never change once the
+      # repository exists is the restic password -- restic cannot open a
+      # repository with a different one, so changing the secret makes every
+      # later backup fail ("wrong password or no key found"). It is also
+      # stored in the owner's password manager, which is the recovery path:
+      # GitHub secrets are write-only.
+      - name: Ensure off-site backup
+        env:
+          PROD_R2_REPOSITORY: ${{ vars.CMDCTRL_R2_REPOSITORY }}
+          PROD_R2_ACCESS_KEY_ID: ${{ secrets.CMDCTRL_R2_ACCESS_KEY_ID }}
+          PROD_R2_SECRET_ACCESS_KEY: ${{ secrets.CMDCTRL_R2_SECRET_ACCESS_KEY }}
+          PROD_RESTIC_PASSWORD: ${{ secrets.CMDCTRL_RESTIC_PASSWORD }}
+          DEV_R2_REPOSITORY: ${{ vars.CMDCTRL_DEV_R2_REPOSITORY }}
+          DEV_R2_ACCESS_KEY_ID: ${{ secrets.CMDCTRL_DEV_R2_ACCESS_KEY_ID }}
+          DEV_R2_SECRET_ACCESS_KEY: ${{ secrets.CMDCTRL_DEV_R2_SECRET_ACCESS_KEY }}
+          DEV_RESTIC_PASSWORD: ${{ secrets.CMDCTRL_DEV_RESTIC_PASSWORD }}
+          BACKUP_ENV_FILE: /etc/cmd_and_ctrl/backup.env
+          BACKUP_UNIT: cmd-and-ctrl-backup
+        run: |
+          if [ "${IS_DEV}" = "true" ]; then
+            prefix="CMDCTRL_DEV_"; side="DEV"
+          else
+            prefix="CMDCTRL_"; side="PROD"
+          fi
+          repository_var="${side}_R2_REPOSITORY"
+          access_key_var="${side}_R2_ACCESS_KEY_ID"
+          secret_key_var="${side}_R2_SECRET_ACCESS_KEY"
+          password_var="${side}_RESTIC_PASSWORD"
+          RESTIC_REPOSITORY="${!repository_var}"
+          AWS_ACCESS_KEY_ID="${!access_key_var}"
+          AWS_SECRET_ACCESS_KEY="${!secret_key_var}"
+          RESTIC_PASSWORD="${!password_var}"
+
+          # 1. Units. Installed whether or not backups are configured, so
+          # a host is one secret away from backing up; installed and
+          # daemon-reloaded only when content, owner or mode changed (the
+          # "Install bot systemd unit" pattern). The script itself came
+          # with "Deploy scripts".
+          rsync -a -e "ssh ${SSH_OPTS}" \
+            deploy/${BACKUP_UNIT}.service deploy/${BACKUP_UNIT}.timer \
+            krkn@${CMDCTRL_HOST}:/tmp/
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            changed=0
+            for u in ${BACKUP_UNIT}.service ${BACKUP_UNIT}.timer; do
+              new=/tmp/\$u; dst=/etc/systemd/system/\$u
+              if [ -f \"\$dst\" ] && cmp -s \"\$new\" \"\$dst\" \
+                 && [ \"\$(stat -c '%U:%G %a' \"\$dst\")\" = 'root:root 644' ]; then
+                echo \"\$u unchanged.\"
+              else
+                sudo install -o root -g root -m 0644 \"\$new\" \"\$dst\"
+                echo \"\$u installed.\"
+                changed=1
+              fi
+              rm -f \"\$new\"
+            done
+            if [ \"\$changed\" = 1 ]; then sudo systemctl daemon-reload; echo 'daemon reloaded.'; fi
+          "
+
+          # 2. Configured? Name every missing value, then stand down.
+          missing=()
+          [ -n "${RESTIC_REPOSITORY}" ] || missing+=("variable ${prefix}R2_REPOSITORY")
+          [ -n "${AWS_ACCESS_KEY_ID}" ] || missing+=("secret ${prefix}R2_ACCESS_KEY_ID")
+          [ -n "${AWS_SECRET_ACCESS_KEY}" ] || missing+=("secret ${prefix}R2_SECRET_ACCESS_KEY")
+          [ -n "${RESTIC_PASSWORD}" ] || missing+=("secret ${prefix}RESTIC_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            for m in "${missing[@]}"; do
+              echo "::warning title=Off-site backup not configured::${m} is not set, so ${CMDCTRL_HOST} (${APP_ENV}) has NO off-site backup. See docs/environments.md#backups."
+            done
+            ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo systemctl disable --now ${BACKUP_UNIT}.timer 2>/dev/null || true"
+            echo "${BACKUP_UNIT}.timer stopped and disabled until all four values are set."
+            exit 0
+          fi
+
+          # systemd EnvironmentFile= and a bash `.` both read a
+          # single-quoted value literally, so quote every value and refuse
+          # the two characters that would break out of that.
+          for KEY in RESTIC_REPOSITORY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RESTIC_PASSWORD; do
+            VALUE="${!KEY}"
+            case "${VALUE}" in
+              *"'"*|*$'\n'*)
+                echo "::error::${KEY} for ${APP_ENV} contains a single quote or a newline, which ${BACKUP_ENV_FILE} cannot carry. Regenerate it without (for the restic password only BEFORE the repository is first initialised -- see docs/environments.md#backups)."
+                exit 1
+                ;;
+            esac
+          done
+          case "${RESTIC_REPOSITORY}" in
+            s3:https://*.r2.cloudflarestorage.com/*) ;;
+            *) echo "::warning::${prefix}R2_REPOSITORY does not look like s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>; using it as given." ;;
+          esac
+
+          # 3. restic, once. Rebuilt hosts get it from the HomeLab
+          # cloud-init template (HomeLab#58); existing hosts get it here.
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} '
+            set -eu
+            if command -v restic >/dev/null 2>&1; then
+              restic version
+            else
+              sudo apt-get update -qq
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq restic
+              restic version
+            fi
+          '
+
+          # 4. backup.env, root:cmdctrl 0640, atomically. Values on stdin.
+          {
+            printf '# Written by CD ("Ensure off-site backup") on every deploy. Do not edit.\n'
+            printf '# RESTIC_PASSWORD must never change once the repository is initialised.\n'
+            printf "RESTIC_REPOSITORY='%s'\n" "${RESTIC_REPOSITORY}"
+            printf "AWS_ACCESS_KEY_ID='%s'\n" "${AWS_ACCESS_KEY_ID}"
+            printf "AWS_SECRET_ACCESS_KEY='%s'\n" "${AWS_SECRET_ACCESS_KEY}"
+            printf "AWS_DEFAULT_REGION='auto'\n"
+            printf "RESTIC_PASSWORD='%s'\n" "${RESTIC_PASSWORD}"
+            printf "CMDCTRL_BACKUP_ENV='%s'\n" "${APP_ENV}"
+          } | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            tmp=\$(sudo mktemp ${BACKUP_ENV_FILE}.XXXXXX)
+            trap 'sudo rm -f \"\$tmp\"' EXIT
+            sudo tee \"\$tmp\" >/dev/null
+            sudo chown root:cmdctrl \"\$tmp\"
+            sudo chmod 0640 \"\$tmp\"
+            sudo mv \"\$tmp\" ${BACKUP_ENV_FILE}
+            trap - EXIT
+            echo 'wrote ${BACKUP_ENV_FILE} (root:cmdctrl 0640)'
+          "
+
+          # 5. Timer on. Report the next run, and warn (not fail) if the
+          # last run failed -- that is the only place a broken nightly
+          # backup surfaces without someone reading the journal.
+          last=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            sudo systemctl enable --now ${BACKUP_UNIT}.timer >&2
+            systemctl list-timers ${BACKUP_UNIT}.timer --no-pager >&2
+            systemctl show -p Result --value ${BACKUP_UNIT}.service
+          ")
+          case "${last}" in
+            success|'') echo "${BACKUP_UNIT}.timer enabled; last run: ${last:-never}." ;;
+            *) echo "::warning title=Off-site backup failing::The last ${BACKUP_UNIT} run on ${CMDCTRL_HOST} ended with '${last}'. Check journalctl -u ${BACKUP_UNIT} on that host (docs/environments.md#backups)." ;;
+          esac

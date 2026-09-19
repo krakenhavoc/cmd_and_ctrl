@@ -1,0 +1,81 @@
+# cmd_and_ctrl off-site backup — nightly restic snapshot of the data dir
+# to Cloudflare R2 (#1031, ADR 0051 decision 1). Started by
+# cmd-and-ctrl-backup.timer; runs scripts/backup-offsite.sh once and
+# exits. A failed run leaves this unit in the failed state:
+#
+#   systemctl status cmd-and-ctrl-backup
+#   journalctl -u cmd-and-ctrl-backup -n 100 --no-pager
+#
+# Installed on BOTH hosts by CD on every deploy ("Ensure off-site
+# backup" in .github/workflows/ci-cd.yml), which also writes
+# /etc/cmd_and_ctrl/backup.env and enables the timer -- or, when a
+# backup secret or variable is missing, warns and disables it. Runbook:
+# docs/environments.md#backups.
+
+[Unit]
+Description=cmd_and_ctrl off-site backup (restic to R2)
+Documentation=https://github.com/krakenhavoc/cmd_and_ctrl/blob/main/docs/environments.md#backups
+Wants=network-online.target
+After=network-online.target
+# Nothing to back up without the data disk.
+RequiresMountsFor=/var/lib/cmd_and_ctrl/data
+
+[Service]
+Type=oneshot
+# The server's user, so it can read the 0600 database backup and the
+# 0600 lobby files. It gets no write access to any of them (below).
+User=cmdctrl
+Group=cmdctrl
+# R2 credentials and the restic password. A SEPARATE file from the
+# server's /etc/cmd_and_ctrl/env (root:cmdctrl 0640, written by CD) so
+# the game server process never loads them. Read by systemd as root,
+# before the sandbox below applies.
+EnvironmentFile=/etc/cmd_and_ctrl/backup.env
+Environment=CMDCTRL_DATA_DIR=/var/lib/cmd_and_ctrl/data
+# restic's local index/metadata cache. Without a persistent cache every
+# run re-downloads the repository's indexes from R2. %C is /var/cache;
+# systemd creates the directory, owned by User=, and it survives reboots.
+CacheDirectory=cmd-and-ctrl-backup
+CacheDirectoryMode=0700
+Environment=RESTIC_CACHE_DIR=%C/cmd-and-ctrl-backup
+ExecStart=/opt/cmd_and_ctrl/scripts/backup-offsite.sh
+# A first backup of a large replays/ over a home uplink can take a
+# while; a hung one must not run into the next night's.
+TimeoutStartSec=4h
+# Stay out of the game server's way.
+Nice=10
+IOSchedulingClass=idle
+CPUSchedulingPolicy=batch
+StandardOutput=journal
+StandardError=journal
+
+# Hardening. restic needs: read the data dir, write its cache and /tmp,
+# and outbound HTTPS to R2. Everything else is locked down.
+ProtectSystem=strict
+ReadOnlyPaths=/var/lib/cmd_and_ctrl/data
+# cmdctrl can read the server's env file (root:cmdctrl 0640) and has no
+# business doing so here.
+InaccessiblePaths=-/etc/cmd_and_ctrl/env -/etc/cmd_and_ctrl/bot.env
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+NoNewPrivileges=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
