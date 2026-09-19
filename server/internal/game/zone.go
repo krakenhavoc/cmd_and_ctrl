@@ -259,17 +259,6 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.SummonedThisTurn = false
 	}
 	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
-	// memory of the old one. The epoch is that sentence, counted.
-	//
-	// It is what ends a granted cast or play permission (ADR 0066):
-	// a permission names {instance, epoch}, so the bump below revokes
-	// every grant against this card, by every route out of every
-	// zone, without a single call site having to remember to. The six
-	// hand-written "zero the grant" sites this replaced each covered
-	// one route, and the one that was missing — a sandbox move from
-	// exile to hand — let an airbended card still pay airbend's {2}
-	// for a hand cast.
-	c.ObjectEpoch++
 	// Counters go with the exile exit specifically. Nothing in the
 	// engine puts counters on an exiled card yet, but a player can by
 	// hand, and suspend's time counters will. A suspended creature
@@ -308,7 +297,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Live from S32, when a `transform` card could first be on the
 	// battlefield showing its back: a defeated Siege's back face is
 	// cast out of exile and resolves as the back face
-	// (ExilePlayPermission.Face, faceOnResolve). Without this, a
+	// (CastPermission.Face, faceOnResolve). Without this, a
 	// Refraction Elemental that died would sit in the graveyard as a
 	// CREATURE card rather than as the battle card Invasion of
 	// Karsus, and "return target creature card from your graveyard"

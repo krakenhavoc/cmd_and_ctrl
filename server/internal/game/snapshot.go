@@ -388,7 +388,6 @@ type cardSnapshot struct {
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
-	ObjectEpoch              int                 `json:"objectEpoch,omitempty"`
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
@@ -943,7 +942,6 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ObjectEpoch:              c.ObjectEpoch,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
@@ -1459,7 +1457,6 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ObjectEpoch:              c.ObjectEpoch,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,

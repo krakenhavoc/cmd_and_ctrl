@@ -1645,7 +1645,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 //
 // This lookup grants NOTHING on its own — it answers "which pile",
 // not "may you". S29's validateCastPathLocked is the permission
-// half, and for exile the per-instance ExilePlay grant is checked in
+// half, and for exile the per-instance permission is checked in
 // CastSpell before anything moves.
 //
 // Graveyard and hand resolve to the CALLER's own zone, which is

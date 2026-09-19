@@ -13,8 +13,9 @@
 control) and `0064` (emblems) were held by in-flight branches, and `0065`
 (modal and multi-target clauses) was claimed by a fifth parallel agent that
 had not pushed. All five merged to `develop` while this branch was in flight,
-and the sweep was repeated immediately before pushing: `0066` is still the
-first free number, with `0067` and `0069` now held by other branches. `0005`, `0024`, `0029` and `0030` stay permanently unused.
+and so have `0067`-`0071`; the sweep was repeated immediately before each
+push. `0066` is still the first free number, and is now the one gap in the
+sequence on `develop` — this ADR fills it. `0005`, `0024`, `0029` and `0030` stay permanently unused.
 
 ## Context
 
@@ -139,7 +140,11 @@ discipline works only as long as every author remembers it, and moving the
 store off the card would have multiplied the sites rather than removed them.
 
 So identity is stamped instead: `Card.ObjectEpoch` is an integer `MoveCard`
-increments on every zone change, and `PermissionCardRef` is `{ID, Epoch}`. A
+increments on every zone change, and `PermissionCardRef` is `{ID, Epoch}`.
+This branch and #973 (the CR 726 loop breaker's per-object tally key) reached
+for the same field independently and named it the same thing; #973 merged
+first, so the field and its bump are theirs and this ADR is its second
+reader. That two seams converged on it is the argument for it. A
 named permission applies to the object it was granted to and to no other. A
 Snapcaster target that is exiled and returned to the graveyard is a new object
 with a new epoch and has no flashback (CR 400.7); a cascade hit that is cast
