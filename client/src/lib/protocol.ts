@@ -429,7 +429,15 @@ export type LogKind =
   // roll or coin flip. The event text is already redacted and ready
   // for both the log and the attention strip.
   | "roll"
-  | "flip";
+  | "flip"
+  // #984: a player answered a "choose a ..." prompt out loud. The
+  // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
+  // PLAYER is `target_seat`, like every other player in the log. All
+  // three carry `card_id` — the card the answer was given for, and the
+  // card whose later abilities read it back (CR 607.2d).
+  | "choose_color"
+  | "choose_type"
+  | "choose_player";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -471,6 +479,13 @@ export interface LogEvent {
   // presence alone means there are two beats. Read it, don't derive it
   // from keywords (#187, ADR 0053 Decision 1).
   combat_step?: "first_strike" | "regular";
+  // #984: the value named at a "choose a ..." prompt — the colour
+  // LETTER on a `choose_color` entry ("G"), the creature type on a
+  // `choose_type` one ("Elf"). Absent on a `choose_player` entry,
+  // whose answer is `target_seat`, and absent when the viewer is not a
+  // knower of the card that asked: the answer identifies the card as
+  // loudly as its name does, so it is redacted with it.
+  choice?: string;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;

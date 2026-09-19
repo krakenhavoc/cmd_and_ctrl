@@ -996,6 +996,21 @@ Every one of those failures is silent, so
 reads the switches out of the source and fails until each has an arm.
 Naming a kind that owes NOTHING is a written arm, not an omission.
 
+**Adding a plain `game.EventKind` owes the public log an answer** (#984).
+`projectEvent` ([log.go](server/internal/protocol/log.go)) is the one
+switch that decides whether the table is told about an event, and its
+default arm is a silence — so a kind that should have produced a line
+looks exactly like a kind that should not.
+`TestEveryEventKindIsNarratedOrDeliberatelySilent`
+([log_event_kind_gate_test.go](server/internal/protocol/log_event_kind_gate_test.go))
+reads every declared kind and fails until each one either has an arm in
+`projectEvent` or an entry in that file's `silentEventKinds` table with
+a written reason. The two are exclusive and the test says so, so a kind
+that grows a line has to lose its excuse. It was written because
+`EventColorChosen`, `EventCreatureTypeChosen` and `EventPlayerChosen`
+each shipped with a card, a view field and a test, and none of the three
+ever reached the log.
+
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`

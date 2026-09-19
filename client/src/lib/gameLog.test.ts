@@ -111,6 +111,9 @@ describe("logTone", () => {
       "reveal",
       "roll",
       "flip",
+      "choose_color",
+      "choose_type",
+      "choose_player",
     ];
     for (const k of kinds) expect(logTone(k)).toMatch(/^tone-/);
   });
