@@ -280,6 +280,8 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 // effects.Register refuses a card that declares it at boot.
 func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UUID, SpecialAction) error {
 	switch kind {
+	case SpecialActionForetell:
+		return (*Game).foretellLocked
 	}
 	return nil
 }

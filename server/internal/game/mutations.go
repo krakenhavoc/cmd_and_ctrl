@@ -539,6 +539,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// text already opens the zone — Gravecrawler and a printed
 	// flashback need no permission and must not be repriced by one.
 	grant := g.CastPermissionForLocked(playerID, card, src.Kind)
+	// CR 702.143c, #658. Asked here, of the card as it sits in its
+	// source zone, because the answer stops being readable the moment
+	// the card moves: CR 406.3a turns a foretold card face up as it is
+	// cast, which ADR 0069 decision 5 makes MoveCard's business.
+	foretold := CardIsForetold(card)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, g.Turn.Number)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -1024,6 +1029,13 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  params.SplitSecond,
 		AltCost:      params.AlternativeCost,
+		// CR 702.143c, #658: a spell cast from a foretold card is a
+		// foretold spell, whatever cost paid for it. Read off the
+		// value copy taken out of the source zone above, which is the
+		// last object that still carries the face-down state —
+		// CR 406.3a turns the card face up as it is cast, and
+		// MoveCard has already done so by here.
+		Foretold: foretold,
 		// CR 702.34a / CR 400.7g, ADR 0066. The fact travels with the
 		// stack object because the catalog cannot answer for it: a
 		// card given flashback by Snapcaster was cast for a cost the
@@ -2975,6 +2987,10 @@ func (g *Game) settleDeparturesLocked() {
 // begin a turn nobody takes. Caller must hold g.mu.
 func (g *Game) endGameIfDecidedLocked() bool {
 	if g.survivingSeatsLocked() <= 1 {
+		// CR 702.143f, #658: all face-down foretold cards are
+		// revealed as the game ends. Before the state flips, so the
+		// reveal listeners still see an active game.
+		g.revealForetoldAtGameEndLocked()
 		g.State = StateEnded
 		return true
 	}
