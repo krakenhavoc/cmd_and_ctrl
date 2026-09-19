@@ -1242,14 +1242,30 @@ func (h *Hub) EvictUserSessions(userID uuid.UUID, before time.Time) int {
 	return len(victims)
 }
 
+// closeGracePeriod bounds how long Shutdown waits, per client, after a
+// successful close-frame write before it forces the connection shut.
+//
+// #518: WriteControl returning nil only means the kernel accepted the
+// close frame's bytes — it says nothing about whether they reached the
+// peer before the FIN (or RST) that an immediately following Close()
+// sends on the same socket. Racing those two is exactly what let a
+// client observe 1001 on one deploy and 1006 (abnormal closure) on the
+// next of the same binary. Waiting here — for the peer's own close
+// response to land (which unblocks readPump and closes the connection
+// first, making our own Close a no-op) or for closeGracePeriod to
+// elapse, whichever is sooner — gives the write time to actually leave
+// the process before we would otherwise sever it ourselves.
+const closeGracePeriod = 250 * time.Millisecond
+
 // Shutdown marks the hub as closed (so new registrations are rejected),
 // closes every connected client, and waits for their read/write pumps
 // to exit, or ctx to cancel — whichever comes first. With zero clients,
 // this returns essentially immediately. Safe to call once.
 //
-// The per-client WriteControl + Close loop honours ctx: if the caller's
-// deadline elapses mid-loop we stop cleanly rather than burning through
-// writeWait-many seconds on every dead client.
+// Each client is closed on its own goroutine so one slow write (or one
+// client waiting out its closeGracePeriod) cannot delay the rest; ctx
+// still bounds the whole operation, both here and in the final wait on
+// h.wg below.
 func (h *Hub) Shutdown(ctx context.Context) {
 	h.mu.Lock()
 	h.closed = true
@@ -1259,17 +1275,19 @@ func (h *Hub) Shutdown(ctx context.Context) {
 	}
 	h.mu.Unlock()
 
+	var wg sync.WaitGroup
 	for _, c := range clients {
 		if ctx.Err() != nil {
 			break
 		}
-		_ = c.conn.WriteControl(
-			websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
-			time.Now().Add(writeWait),
-		)
-		_ = c.conn.Close()
+		c := c
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			h.closeAndDrop(ctx, c)
+		}()
 	}
+	wg.Wait()
 
 	done := make(chan struct{})
 	go func() {
@@ -1280,4 +1298,29 @@ func (h *Hub) Shutdown(ctx context.Context) {
 	case <-done:
 	case <-ctx.Done():
 	}
+}
+
+// closeAndDrop sends c the shutdown close frame and only then drops the
+// connection. If the write itself fails, the peer is already gone (or
+// the pipe is broken) and there is nothing left to flush, so it closes
+// immediately. Otherwise it gives the write closeGracePeriod — or less,
+// if ctx is shorter — to actually reach the peer before Close tears the
+// socket down. c's own readPump typically wins this race in practice
+// (the peer's close response, or its read erroring out, makes readPump
+// call Close first), and Close is safe to call more than once.
+func (h *Hub) closeAndDrop(ctx context.Context, c *Client) {
+	err := c.conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
+		time.Now().Add(writeWait),
+	)
+	if err == nil {
+		timer := time.NewTimer(closeGracePeriod)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+		}
+	}
+	_ = c.conn.Close()
 }
