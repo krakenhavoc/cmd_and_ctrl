@@ -414,6 +414,28 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// PaidOptionalCosts is CR 400.7d's narrow slice of cast
+	// provenance: the optional additional costs paid for the SPELL
+	// that became this permanent (ADR 0073 §5), as positions in the
+	// card's OptionalCosts slice, one entry per payment.
+	//
+	// It exists because an entering permanent's own trigger cannot
+	// reach the stack item. "When Gatekeeper of Malakir enters, IF IT
+	// WAS KICKED" is a TriggeredAbility whose AppliesTo receives the
+	// game, the source and the event — and by the time the ETB event
+	// is emitted the item is out of StackMeta. So the resolution path
+	// stamps the record here, in the one moment that holds both the
+	// landed permanent and the item: after MoveCard and before the
+	// EventZoneMove / EventETB pair.
+	//
+	// Per-INSTANCE and cleared on the way out with NamedTribe,
+	// ChosenColor and ClassLevel (CR 400.7): a Gatekeeper that dies
+	// and is reanimated was not kicked, because the spell that
+	// reanimated it was not the spell that was kicked. Read with
+	// CardKickedTimes / CardPaidOptionalCost. Carried by clone and
+	// the snapshot.
+	PaidOptionalCosts []int
+
 	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
 	// exactly when FaceDown is false; the two are written only by
 	// SetFaceDown / ClearFaceDown, so "face down with no rule

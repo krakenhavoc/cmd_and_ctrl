@@ -259,6 +259,36 @@ type Spec struct {
 	// cards with no additional cost.
 	AdditionalCost *game.AdditionalCost
 
+	// OptionalCosts are the additional costs the caster may CHOOSE to
+	// pay while announcing the spell (CR 601.2b) — kicker
+	// (CR 702.33), multikicker (CR 702.33d), buyback (CR 702.27).
+	// ADR 0073.
+	//
+	//	OptionalCosts: []game.AdditionalCost{Kicker("{4}")},                       // Burst Lightning
+	//	OptionalCosts: []game.AdditionalCost{Multikicker("{G}")},                  // Wolfbriar Elemental
+	//	OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                      // Capsize
+	//	OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", MatchLand)}, // Constant Mists
+	//	OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())}, // Gatekeeper of Malakir
+	//
+	// A SEPARATE slot from AdditionalCost, not a widening of it,
+	// because an optional cost has an INDEX: the announcement names
+	// positions in this slice, and so does the record the engine
+	// keeps of what was paid. Register cross-checks the two slots, so
+	// an entry here without Optional set — or an Optional cost in the
+	// mandatory slot — fails at boot rather than silently.
+	//
+	// Build the entries with the keyword constructors in
+	// additional_cost.go, never by hand: each one carries the Key the
+	// engine reads (ctx.WasKicked, and buyback's return-to-hand
+	// route), and a hand-rolled game.AdditionalCost{Optional: true}
+	// compiles and does nothing.
+	//
+	// OnResolve reads the choice back with ctx.WasKicked() /
+	// ctx.KickedTimes(), or ctx.OptionalCostTimes(key) for a cost
+	// with another name. A permanent's own "when this enters, if it
+	// was kicked" trigger reads game.CardKickedTimes(*source).
+	OptionalCosts []game.AdditionalCost
+
 	// CantBeCountered is the S23 "This spell can't be countered"
 	// rider (Supreme Verdict). A spell that declares it is still a
 	// legal target for Counterspell — the counter resolves and does

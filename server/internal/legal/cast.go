@@ -24,8 +24,12 @@ type castParams struct {
 	XValue          int          `json:"x_value,omitempty"`
 	DiscardIDs      []string     `json:"discard_ids,omitempty"`
 	SacrificeIDs    []string     `json:"sacrifice_ids,omitempty"`
-	Strict          bool         `json:"strict,omitempty"`
-	AutoTap         bool         `json:"auto_tap,omitempty"`
+	// OptionalCosts are the optional additional costs this move pays
+	// (CR 601.2b, ADR 0073), as positions in the card's OptionalCosts
+	// slice, repeated once per payment for a multikicker.
+	OptionalCosts []int `json:"optional_costs,omitempty"`
+	Strict        bool  `json:"strict,omitempty"`
+	AutoTap       bool  `json:"auto_tap,omitempty"`
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
@@ -203,6 +207,133 @@ func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
 // every legal (modes × targets × additional-cost payment) combination
 // the seat can afford, capped at MaxExpansionPerSource.
 func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, perm *game.CastPermission) {
+	// ADR 0073 §9: a card with optional additional costs is several
+	// casts, not one — an unkicked Burst Lightning and a kicked one
+	// are different moves at different prices with different effects,
+	// and a bot that was only ever offered the cheap one would never
+	// kick anything. Each announced set walks the whole expansion
+	// below on its own.
+	//
+	// optionalCostSets is [nil] for every card that offers none,
+	// which is every card in the catalog before #664 — so this loop
+	// runs exactly once for them and the enumeration is unchanged.
+	for _, chosen := range optionalCostSets(game.OptionalCostsFor(game.CatalogKey(card)), e.opts.MaxExpansionPerSource) {
+		e.castMovesPayingOptional(card, from, speed, perm, chosen)
+	}
+}
+
+// maxEnumeratedRepeats caps how many times the enumerator will offer
+// to pay one REPEATABLE optional cost (multikicker) in a single
+// announcement. Not a rule — multikicker is unbounded in paper — but
+// the expansion here is already modes × targets × cost payments, and
+// multiplying it by the seat's available mana is how a bot decision
+// stops terminating. Documented as policy in docs/bot.md.
+const maxEnumeratedRepeats = 3
+
+// optionalCostSets is the bot's announcement policy for optional
+// additional costs (ADR 0073 §9): decline everything, or pay exactly
+// ONE of the offered costs — once, or up to maxEnumeratedRepeats
+// times for a repeatable one.
+//
+// NOT enumerated, deliberately and for the reason escape's card
+// component is not: paying TWO different optional costs at once
+// (Thornscape Battlemage's "Kicker {R} and/or {W}") is a power-set
+// search whose every member also needs its own affordability probe,
+// and no card in the catalog offers two. A bot simply does not take
+// that line yet; it is never offered one it cannot pay for.
+func optionalCostSets(costs []game.AdditionalCost, budget int) [][]int {
+	if len(costs) == 0 {
+		return [][]int{nil}
+	}
+	out := [][]int{nil}
+	for i := range costs {
+		reps := min(costs[i].MaxPayments(), maxEnumeratedRepeats)
+		for k := 1; k <= reps; k++ {
+			if budget > 0 && len(out) >= budget {
+				return out
+			}
+			set := make([]int, k)
+			for j := range set {
+				set[j] = i
+			}
+			out = append(out, set)
+		}
+	}
+	return out
+}
+
+// optionalCostLabel spells the announced optional costs into the
+// move's label — " (Kicker {4})", " (Multikicker {G} ×3)" — so the
+// kicked and unkicked casts of one card are distinguishable in the
+// move log and in a bot-eval trace. Empty for a move that pays none.
+func optionalCostLabel(optional []game.AdditionalCost, chosen []int) string {
+	if len(chosen) == 0 {
+		return ""
+	}
+	counts := make(map[int]int, len(chosen))
+	for _, i := range chosen {
+		counts[i]++
+	}
+	out := ""
+	for i := range optional {
+		n, ok := counts[i]
+		if !ok {
+			continue
+		}
+		if out != "" {
+			out += ", "
+		}
+		out += optional[i].Label
+		if n > 1 {
+			out += fmt.Sprintf(" ×%d", n)
+		}
+	}
+	if out == "" {
+		return ""
+	}
+	return " (" + out + ")"
+}
+
+// costPaymentDemands sums what one cast owes in CARDS across its
+// CR 601.2f payment plan (ADR 0073 §4): the mandatory additional cost
+// plus each announced optional one. Reports the total discard count
+// and the single sacrifice clause to expand.
+//
+// `ok` is false when the plan carries TWO sacrifice clauses, which
+// this package does not enumerate — see the call site.
+func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (discards int, sacrifice *game.TargetSpec, ok bool) {
+	add := func(c *game.AdditionalCost) bool {
+		if c == nil || c.Empty() {
+			return true
+		}
+		discards += c.DiscardCards
+		if c.Sacrifice == nil {
+			return true
+		}
+		if sacrifice != nil {
+			return false
+		}
+		sacrifice = c.Sacrifice
+		return true
+	}
+	if !add(mandatory) {
+		return 0, nil, false
+	}
+	for _, i := range chosen {
+		if i < 0 || i >= len(optional) {
+			continue
+		}
+		if !add(&optional[i]) {
+			return 0, nil, false
+		}
+	}
+	return discards, sacrifice, true
+}
+
+// castMovesPayingOptional is castMovesForCard for ONE announced set
+// of optional additional costs — the unkicked cast, or the kicked
+// one. `chosen` is nil for every card that offers none.
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed bool, perm *game.CastPermission, chosen []int) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -260,6 +391,16 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 	}
 	if from == "command" {
 		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
+	}
+	// ADR 0073 §3: the mana half of the optional costs this move is
+	// announcing, added where CR 601.2f puts it — after the
+	// alternative-cost swap and the commander tax, before the cost
+	// modifiers below. The SAME helper the engine prices with, so a
+	// kicked move is never offered at the unkicked price (#544).
+	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	cost, err = game.AddOptionalCostMana(cost, optional, chosen)
+	if err != nil {
+		return
 	}
 	// S28: the board's cost modifiers (CR 601.2f). Same reasoning as
 	// the parse gate above — a move enumerated at the printed price
@@ -347,36 +488,50 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 	// seat's own permanents matching the clause. A pay-X-life needs no
 	// payment set of its own — the announced X is the payment, and it
 	// was priced with the rest of X above.
+	//
+	// ADR 0073: the demands are summed across the mandatory cost AND
+	// whichever optional ones this move announces, so a kicked
+	// Gatekeeper of Malakir expands its kicker's sacrifice exactly as
+	// a mandatory one would. The wire lists are flat and the engine
+	// walks them in the same order.
+	discards, sacrifice, ok := costPaymentDemands(addCost, optional, chosen)
+	if !ok {
+		// Two card-shaped sacrifice clauses on one cast (a mandatory
+		// one AND a kicker's). Not enumerated, for the reason
+		// escape's exile-from-graveyard cost is not: the two pools
+		// have to be searched together and written into one flat
+		// list, and no card in the catalog asks for it. The bot does
+		// not take the line; it is never offered one it cannot pay.
+		return
+	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
-	if addCost != nil && !addCost.Empty() {
-		if addCost.DiscardCards > 0 {
-			var pool []uuid.UUID
-			for _, h := range p.Hand.Cards {
-				if h.InstanceID != card.InstanceID {
-					pool = append(pool, h.InstanceID)
-				}
-			}
-			discardSets = combinations(pool, addCost.DiscardCards, addCost.DiscardCards, e.opts.MaxExpansionPerSource)
-			if len(discardSets) == 0 {
-				return
+	if discards > 0 {
+		var pool []uuid.UUID
+		for _, h := range p.Hand.Cards {
+			if h.InstanceID != card.InstanceID {
+				pool = append(pool, h.InstanceID)
 			}
 		}
-		if addCost.Sacrifice != nil {
-			// Cost, not target — see SpecCandidatesForEffect.
-			lt := g.SpecCandidatesForEffect(e.seat, addCost.Sacrifice)
-			var pool []uuid.UUID
-			for _, id := range lt.Cards {
-				if c := findBattlefield(g, id); c != nil && c.Controller == e.seat {
-					pool = append(pool, id)
-				}
+		discardSets = combinations(pool, discards, discards, e.opts.MaxExpansionPerSource)
+		if len(discardSets) == 0 {
+			return
+		}
+	}
+	if sacrifice != nil {
+		// Cost, not target — see SpecCandidatesForEffect.
+		lt := g.SpecCandidatesForEffect(e.seat, sacrifice)
+		var pool []uuid.UUID
+		for _, id := range lt.Cards {
+			if c := findBattlefield(g, id); c != nil && c.Controller == e.seat {
+				pool = append(pool, id)
 			}
-			// #747: N from the clause, one payment per cast for N ≥ 2,
-			// nothing offered when the caster controls fewer than N.
-			sacrificeSets = e.sacrificePayments(pool, addCost.Sacrifice, uuid.Nil)
-			if len(sacrificeSets) == 0 {
-				return
-			}
+		}
+		// #747: N from the clause, one payment per cast for N ≥ 2,
+		// nothing offered when the caster controls fewer than N.
+		sacrificeSets = e.sacrificePayments(pool, sacrifice, uuid.Nil)
+		if len(sacrificeSets) == 0 {
+			return
 		}
 	}
 
@@ -477,6 +632,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 					if setX > 0 {
 						label += fmt.Sprintf(" for X=%d", setX)
 					}
+					// ADR 0073: the kicked and unkicked casts are
+					// otherwise the same line in the move log, and a
+					// bot eval that cannot tell them apart cannot
+					// explain why the bot kicked.
+					label += optionalCostLabel(optional, chosen)
 					label += targetLabel(g, targets)
 					e.add(Move{
 						Type:   TypeCastSpell,
@@ -493,6 +653,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 							XValue:          setX,
 							DiscardIDs:      idStrings(discards),
 							SacrificeIDs:    idStrings(sacs),
+							OptionalCosts:   chosen,
 							Strict:          true,
 							AutoTap:         true,
 							// ADR 0034: `card` has already had

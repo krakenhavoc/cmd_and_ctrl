@@ -30,6 +30,7 @@ func buildDef(spec Spec) *game.CardDef {
 		Triggered:             spec.Triggered,
 		TriggerDoublers:       spec.TriggerDoublers,
 		AdditionalCost:        spec.AdditionalCost,
+		OptionalCosts:         spec.OptionalCosts,
 		AlternativeCosts:      spec.AlternativeCosts,
 		TapCost:               spec.TapCost,
 		CostModifiers:         spec.CostModifiers,

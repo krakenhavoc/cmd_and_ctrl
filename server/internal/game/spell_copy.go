@@ -223,12 +223,22 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// from anywhere (CR 707.10), so Wash Away's "target spell that
 	// wasn't cast from its owner's hand" reads it as exactly that.
 	//
-	// Paid is left at its zero value for the same reason, and the
-	// zero value is a REAL answer rather than a gap (#761): mana is
-	// not an object, so nothing was spent to cast the copy (the
-	// Dawnglow Infusion ruling under CR 707.10). A copied Vexing
+	// Paid's MANA half is left at its zero value for the same reason,
+	// and the zero value is a REAL answer rather than a gap (#761):
+	// mana is not an object, so nothing was spent to cast the copy
+	// (the Dawnglow Infusion ruling under CR 707.10). A copied Vexing
 	// Bauble trigger counters the copy, a copied converge spell
 	// converges for nothing, and both are correct.
+	//
+	// #664 is the one part of the record that DOES travel. CR 707.10
+	// copies the choices made when the spell was cast, and "was it
+	// kicked" is one of them — a copy of a kicked Rite of Replication
+	// is kicked, the same way it keeps the modes and the X above.
+	// Copied through paidWithOptionalCosts' output rather than the
+	// wire list so a copy of a copy stays stable.
+	if len(item.Paid.OptionalCosts) > 0 {
+		meta.Paid.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 

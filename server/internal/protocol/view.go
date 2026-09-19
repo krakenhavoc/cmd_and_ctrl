@@ -467,6 +467,45 @@ type AdditionalCostView struct {
 	Label string `json:"label,omitempty"`
 }
 
+// OptionalCostView is the wire shape of one optional additional cost
+// — kicker, multikicker, buyback (CR 601.2b, ADR 0073) — on a card
+// the viewer could cast.
+//
+// Like AlternativeCostView it is an OFFER rather than a demand, and
+// unlike it the offers COMPOSE: a cast may claim one alternative cost
+// and any number of these, which is why the client renders them as
+// toggles beside the alternative-cost radio list rather than as a
+// fourth modal in the chain. They are the same question asked at the
+// same moment.
+//
+// `index` is what rides back on cast_spell as an entry in
+// `optional_costs`, repeated once per payment for a repeatable one.
+// It is a POSITION and not a key, because that is what the engine's
+// paid record holds; `key` is here for the client's own labelling.
+type OptionalCostView struct {
+	// Index is the cost's position in the card's OptionalCosts slice
+	// — the value the announcement names.
+	Index int `json:"index"`
+	// Key is "kicker", "multikicker" or "buyback".
+	Key string `json:"key"`
+	// Label is the clause as printed ("Kicker {4}").
+	Label string `json:"label,omitempty"`
+	// ManaCost is the mana half, in brace notation. Empty for a
+	// purely non-mana cost (Constant Mists' "Buyback—Sacrifice a
+	// land").
+	ManaCost string `json:"mana_cost,omitempty"`
+	// MaxTimes is how many times this cost may be paid for one cast:
+	// 1 for kicker and buyback, the multikicker cap for multikicker.
+	// The client renders a checkbox at 1 and a stepper above it.
+	MaxTimes int `json:"max_times,omitempty"`
+	// DiscardCards and SacrificeOptions are the card-shaped halves,
+	// in the same shape and with the same meaning AdditionalCostView
+	// gives them — present-and-empty SacrificeOptions means this
+	// offer cannot be taken right now.
+	DiscardCards     int               `json:"discard_cards,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+}
+
 // AlternativeCostView is the wire shape of one game.AlternativeCost
 // — "you may cast this spell for its overload / evoke / cleave cost"
 // — on a card in the viewer's own hand or command zone. Added in
@@ -1220,6 +1259,12 @@ type CardView struct {
 	// zone and a flashback cost is printed on the card, so the bit
 	// is stamped on every viewer's copy rather than only the owner's.
 	CastableHere bool `json:"castable_here,omitempty"`
+	// OptionalCosts are the "you may pay an additional cost" offers
+	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
+	// buyback. Absent for nearly every card. Stamped alongside
+	// `alternative_costs`, because the client asks both questions in
+	// one modal.
+	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -2146,6 +2191,11 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 						c.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
 					}
 				}
+				// ADR 0073: the optional costs this card OFFERS.
+				// Stamped next to the mandatory one and read by the
+				// same modal the alternative costs open, because CR
+				// 601.2b announces all of them together.
+				c.OptionalCosts = viewOfOptionalCosts(g, caster, c)
 				// S22: convoke / waterbend. Stamped before the target
 				// clause because the caster pays it first, and the
 				// count of a "X target creatures" clause depends on
@@ -2357,6 +2407,44 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfOptionalCosts projects a card's "you may pay an additional
+// cost" offers (CR 601.2b, ADR 0073) for one caster. Nil for nearly
+// every card.
+//
+// Next to viewOfAlternativeCosts because the client asks both
+// questions in one modal: an alternative cost REPLACES the mana cost
+// and an optional one ADDS to it, so the two compose and CR 601.2b
+// announces them together.
+//
+// The sacrifice pool goes through sacrificeCostOptions, the same
+// helper the mandatory cost uses, so a non-mana kicker's picker is
+// the picker every other sacrifice cost opens — filtered to the
+// caster's own permanents (CR 701.21a), in payment order. A
+// present-and-empty list is how the client knows the offer cannot be
+// taken right now, exactly as it is for the mandatory cost.
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, c *CardView) []OptionalCostView {
+	costs := game.OptionalCostsFor(c.oracleID)
+	if len(costs) == 0 {
+		return nil
+	}
+	out := make([]OptionalCostView, 0, len(costs))
+	for i, oc := range costs {
+		v := OptionalCostView{
+			Index:        i,
+			Key:          oc.Key,
+			Label:        oc.Label,
+			ManaCost:     oc.ManaCost,
+			MaxTimes:     oc.MaxPayments(),
+			DiscardCards: oc.DiscardCards,
+		}
+		if oc.Sacrifice != nil {
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
 		}
 		out = append(out, v)
 	}
@@ -3614,6 +3702,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// cost does — "Overload {6}{U}" on a face-down card would give
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
+	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
+	// cost does, and CR 708.2 leaves a face-down object with no text
+	// to offer it from.
+	out.OptionalCosts = nil
 	out.TapCost = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card

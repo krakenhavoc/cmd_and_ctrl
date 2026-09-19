@@ -370,6 +370,17 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		if ev.EntersTapped {
 			g.Battlefield.Cards[i].Tapped = true
 		}
+		// CR 400.7d / ADR 0073 §5, the twin of the stamp in
+		// resolveTopOfStackLocked: a kicked permanent spell whose
+		// entry PAUSED on a prompt is still a kicked permanent when
+		// it lands, and its "if it was kicked" trigger is harvested
+		// off the EventETB emitted below. Stamped after the CR 400.7
+		// reset above, which would otherwise wipe it.
+		if ev.stackItem != nil && len(ev.stackItem.Paid.OptionalCosts) > 0 {
+			g.Battlefield.Cards[i].PaidOptionalCosts =
+				append([]int(nil), ev.stackItem.Paid.OptionalCosts...)
+			moved.PaidOptionalCosts = g.Battlefield.Cards[i].PaidOptionalCosts
+		}
 		break
 	}
 	g.markCardKnownInZoneLocked(g.Battlefield, entered)

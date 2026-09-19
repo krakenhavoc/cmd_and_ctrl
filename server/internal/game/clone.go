@@ -428,6 +428,14 @@ func cloneCard(c Card) Card {
 	} else {
 		out.NextUntapSkips = nil
 	}
+	// ADR 0073: the kicked record the resolution path carried onto
+	// this permanent. A value copy would alias the live slice into
+	// every undo snapshot.
+	if len(c.PaidOptionalCosts) > 0 {
+		out.PaidOptionalCosts = append([]int(nil), c.PaidOptionalCosts...)
+	} else {
+		out.PaidOptionalCosts = nil
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.

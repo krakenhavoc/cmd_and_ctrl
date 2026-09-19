@@ -390,6 +390,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
 			// creature" additional cost (Village Rites).
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// ADR 0073 (#664) — the optional additional costs being
+			// paid (CR 601.2b): kicker, multikicker, buyback, as
+			// POSITIONS in the card's OptionalCosts slice, repeated
+			// once per payment for a multikicker. Absent is the
+			// ordinary "decline them all" case, and absent on a card
+			// that offers none is every cast the engine has ever had.
+			OptionalCosts []int `json:"optional_costs,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -457,6 +464,13 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
 			}
+		}
+		// ADR 0073: indices, not IDs, so there is nothing to parse —
+		// but they are copied rather than aliased, because the
+		// decoded payload does not outlive the dispatch and the
+		// engine stamps this slice onto a stack item that does.
+		if len(p.OptionalCosts) > 0 {
+			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 		}
 		if len(p.AltCostIDs) > 0 {
 			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))

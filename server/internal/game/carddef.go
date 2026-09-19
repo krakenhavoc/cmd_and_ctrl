@@ -54,7 +54,12 @@ type CardDef struct {
 	Triggered       []TriggeredAbility
 	TriggerDoublers []TriggerDoubler
 
-	AdditionalCost   *AdditionalCost
+	AdditionalCost *AdditionalCost
+	// OptionalCosts are the additional costs the caster may CHOOSE to
+	// pay (ADR 0073) — kicker, multikicker, buyback. The slice order
+	// is the index space the announcement and PaidCost.OptionalCosts
+	// both name, so it is never re-sorted.
+	OptionalCosts    []AdditionalCost
 	AlternativeCosts []AlternativeCost
 	TapCost          *TapPermanentsCost
 	CostModifiers    []CostModifier
@@ -231,6 +236,12 @@ func init() {
 	CatalogAdditionalCost = func(key string) *AdditionalCost {
 		if d := catalogDef(key); d != nil {
 			return d.AdditionalCost
+		}
+		return nil
+	}
+	CatalogOptionalCosts = func(key string) []AdditionalCost {
+		if d := catalogDef(key); d != nil {
+			return d.OptionalCosts
 		}
 		return nil
 	}

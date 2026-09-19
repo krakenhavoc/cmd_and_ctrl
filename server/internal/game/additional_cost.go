@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // additional_cost.go — S21: "As an additional cost to cast this
 // spell, discard a card" (sub-PR 5) or "sacrifice a creature"
@@ -70,11 +74,82 @@ type AdditionalCost struct {
 	// in the client's cost picker so the prompt reads like the card
 	// rather than like a schema.
 	Label string
+
+	// Optional marks a cost the caster CHOOSES whether to pay while
+	// announcing the spell (CR 601.2b) — kicker (CR 702.33), buyback
+	// (CR 702.27). ADR 0073 §1.
+	//
+	// A flag on this struct rather than a type of its own, for the
+	// reason ADR 0021 gave the sacrifice component: Constant Mists'
+	// "Buyback—Sacrifice a land" IS the Sacrifice clause above with
+	// this bool set, and a separate type would have had to grow its
+	// own copy of every component and its own validator. What changes
+	// is WHEN the cost is settled, not what it is made of.
+	//
+	// An optional cost is declared in Spec.OptionalCosts and is
+	// INDEXED there, because the announcement names which ones were
+	// paid; the mandatory one stays in Spec.AdditionalCost. Register
+	// cross-checks the flag against the slot, so the two cannot
+	// disagree.
+	Optional bool
+
+	// Key is the stable identity of an optional cost — "kicker",
+	// "multikicker", "buyback". It never crosses the wire (the
+	// announcement names indices, not keys) and it is not what makes
+	// the cost payable; it is what a card's own OnResolve asks for
+	// through ctx.WasKicked / ctx.OptionalCostTimes, so a resolution
+	// never has to know its own declaration order.
+	//
+	// Required and unique per card on an optional cost, meaningless
+	// on a mandatory one. Register enforces both.
+	Key string
+
+	// ManaCost is the mana half of the clause — kicker {4}, buyback
+	// {3} — in the same Scryfall brace notation Card.ManaCost uses.
+	// Empty for a purely non-mana cost (Constant Mists' buyback,
+	// Gatekeeper of Malakir's kicker).
+	//
+	// The one component ADR 0073 genuinely adds rather than reuses:
+	// every additional cost the engine had before was non-mana,
+	// because ADR 0021 shipped discard and sacrifice. It joins the
+	// total at CR 601.2f, where an additional cost has always gone —
+	// after the alternative-cost swap and the commander tax, before
+	// the cost modifiers.
+	ManaCost string
+
+	// Repeat is CR 702.33d's multikicker: the maximum number of times
+	// this cost may be paid for one cast. 0 and 1 both mean "once".
+	//
+	// Only a MANA-ONLY cost may repeat. Register panics on a Repeat
+	// above 1 that also carries a card- or permanent-shaped
+	// component, because every printed multikicker is mana and N
+	// independent card payments per cast is a wire shape nothing asks
+	// for (ADR 0073 §4).
+	Repeat int
+}
+
+// MaxPayments is how many times this cost may be paid for one cast:
+// 1 for a mandatory or ordinary optional cost, Repeat for a
+// multikicker. Nil-safe.
+func (c *AdditionalCost) MaxPayments() int {
+	if c == nil || c.Repeat < 1 {
+		return 1
+	}
+	return c.Repeat
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX)
+	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "")
+}
+
+// CardsDemanded reports whether paying this cost needs the caster to
+// NAME something — cards to discard, permanents to sacrifice. A
+// mana-only cost needs no payment list, which is what lets a
+// multikicker be paid N times off one announcement (ADR 0073 §4).
+// Nil-safe.
+func (c *AdditionalCost) CardsDemanded() bool {
+	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -90,18 +165,189 @@ func AdditionalCostFor(oracleID string) *AdditionalCost {
 	return CatalogAdditionalCost(oracleID)
 }
 
+// CatalogOptionalCosts is the catalog hook for the costs a card lets
+// the caster CHOOSE to pay (ADR 0073) — kicker, multikicker, buyback.
+// The slice order is the card's declaration order, and it is the
+// INDEX SPACE the announcement names: CastSpellParams.OptionalCosts
+// and PaidCost.OptionalCosts both hold positions in this slice.
+//
+// A separate hook from CatalogAdditionalCost, not a widening of it,
+// because the mandatory cost has no index and ~20 card files already
+// read it as "the one cost this spell demands".
+var CatalogOptionalCosts func(oracleID string) []AdditionalCost
+
+// OptionalCostsFor returns the optional additional costs a card
+// offers, in declaration order, or nil.
+func OptionalCostsFor(oracleID string) []AdditionalCost {
+	if CatalogOptionalCosts == nil || oracleID == "" {
+		return nil
+	}
+	return CatalogOptionalCosts(oracleID)
+}
+
+// The three optional-cost keys the engine itself knows about. A card
+// may use any key it likes — the engine only ever compares strings —
+// but these three are the ones the ENGINE reads rather than the card:
+// kicker and multikicker because CR 702.33 counts them together, and
+// buyback because CR 702.27b changes where the spell goes.
+const (
+	// KickerKey is CR 702.33's kicker, paid at most once.
+	KickerKey = "kicker"
+	// MultikickerKey is CR 702.33d's multikicker, paid any number of
+	// times. Counted with KickerKey by KickedTimesPaid, because "the
+	// number of times it was kicked" does not distinguish them.
+	MultikickerKey = "multikicker"
+	// BuybackKey is CR 702.27's buyback. Read by the stack-exit route
+	// and by nothing else.
+	BuybackKey = "buyback"
+)
+
+// OptionalCostTimesPaid counts how many times the optional cost whose
+// Key is `key` was paid, given the card it belongs to and a list of
+// paid indices — PaidCost.OptionalCosts for a spell on the stack,
+// Card.PaidOptionalCosts for a permanent that has already entered.
+//
+// Keyed rather than indexed so a card's own resolution never has to
+// know its declaration order, and so the two readers above share one
+// lookup.
+func OptionalCostTimesPaid(card Card, paid []int, key string) int {
+	if len(paid) == 0 || key == "" {
+		return 0
+	}
+	costs := OptionalCostsFor(CatalogKey(card))
+	if len(costs) == 0 {
+		return 0
+	}
+	n := 0
+	for _, i := range paid {
+		if i >= 0 && i < len(costs) && costs[i].Key == key {
+			n++
+		}
+	}
+	return n
+}
+
+// KickedTimesPaid is CR 702.33's "the number of times it was kicked":
+// kicker and multikicker together, because no rules text tells them
+// apart and no card prints both.
+func KickedTimesPaid(card Card, paid []int) int {
+	return OptionalCostTimesPaid(card, paid, KickerKey) +
+		OptionalCostTimesPaid(card, paid, MultikickerKey)
+}
+
+// CardKickedTimes is KickedTimesPaid for a permanent that has already
+// entered, reading the record the resolution path carried onto it
+// (CR 400.7d, ADR 0073 §5). Zero for a permanent that did not arrive
+// by resolving a kicked spell — including one reanimated out of a
+// graveyard, whose record was cleared on the way out.
+func CardKickedTimes(c Card) int {
+	return KickedTimesPaid(c, c.PaidOptionalCosts)
+}
+
+// costPayment is one component of a cast's CR 601.2f cost: the card's
+// mandatory additional cost, or ONE payment of one optional cost. A
+// multikicker paid three times contributes three entries.
+//
+// The plan exists so there is still exactly one validator and one
+// payer (ADR 0073 §4): the caster's discard_ids and sacrifice_ids are
+// flat wire lists, and the plan is the ORDER they are walked in —
+// mandatory first, then each chosen optional cost in index order.
+type costPayment struct {
+	cost AdditionalCost
+	// index is -1 for the mandatory cost, else the cost's position in
+	// the card's OptionalCosts slice.
+	index int
+}
+
+// castCostPayments builds the CR 601.2f payment plan for one cast:
+// the mandatory cost (if any), then one entry per announced payment
+// of an optional cost, in index order so the flat payment lists are
+// walked deterministically whatever order the client sent the
+// indices in.
+//
+// `chosen` is CastSpellParams.OptionalCosts, already validated by
+// validateOptionalCostChoice. A nil mandatory cost and an empty
+// choice produce a nil plan, which is every cast in the catalog that
+// predates ADR 0073.
+func castCostPayments(mandatory *AdditionalCost, optional []AdditionalCost, chosen []int) []costPayment {
+	var plan []costPayment
+	if !mandatory.Empty() {
+		plan = append(plan, costPayment{cost: *mandatory, index: -1})
+	}
+	if len(chosen) == 0 || len(optional) == 0 {
+		return plan
+	}
+	counts := make([]int, len(optional))
+	for _, i := range chosen {
+		if i >= 0 && i < len(counts) {
+			counts[i]++
+		}
+	}
+	for i, n := range counts {
+		for range n {
+			plan = append(plan, costPayment{cost: optional[i], index: i})
+		}
+	}
+	return plan
+}
+
+// paidWithOptionalCosts folds the plan's optional-cost payments into
+// the payment record that lands on the stack item. The indices come
+// out of the plan rather than straight off the wire, so they arrive
+// in ascending order however the client sent them — two clients
+// announcing the same multikicker produce the same record, which is
+// what makes the snapshot round-trip and the undo comparison stable.
+func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
+	for _, pay := range plan {
+		if pay.index >= 0 {
+			paid.OptionalCosts = append(paid.OptionalCosts, pay.index)
+		}
+	}
+	return paid
+}
+
+// validateOptionalCostChoice checks the ANNOUNCEMENT itself (CR
+// 601.2b) before anything is priced or paid: every index names a cost
+// the card offers, and no cost is named more times than it may be
+// paid (CR 702.33d's multikicker cap, 1 for everything else).
+//
+// Pure, so the bot enumerator and the view can ask the same question
+// the cast path asks.
+func validateOptionalCostChoice(optional []AdditionalCost, chosen []int) error {
+	if len(chosen) == 0 {
+		return nil
+	}
+	if len(optional) == 0 {
+		return ErrInvalidParam
+	}
+	counts := make([]int, len(optional))
+	for _, i := range chosen {
+		if i < 0 || i >= len(optional) {
+			return ErrInvalidParam
+		}
+		counts[i]++
+		if counts[i] > optional[i].MaxPayments() {
+			return ErrInvalidParam
+		}
+	}
+	return nil
+}
+
 // validateAdditionalCostLocked checks that the caster named exactly
-// the right cards to pay `cost`, without paying anything — the same
+// the right cards to pay `plan`, without paying anything — the same
 // validate-all-then-pay discipline ActivateCatalogAbility uses, so a
 // rejected cast never leaves a half-paid cost behind. `castID` is
 // the spell being cast, which is never a legal discard.
 //
-// A card with no additional cost that arrives WITH discard IDs is a
-// client bug, not a no-op: rejecting it keeps the wire honest.
+// The flat discard and sacrifice lists are walked in plan order and
+// must be consumed EXACTLY: a card with no additional cost that
+// arrives with discard IDs is a client bug, not a no-op, and so is a
+// kicked Gatekeeper of Malakir that sends two creatures for a
+// one-creature kicker.
 //
 // Caller must hold g.mu.
-func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *AdditionalCost, discardIDs, sacrificeIDs []uuid.UUID, xValue int) error {
-	if cost.Empty() {
+func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []costPayment, discardIDs, sacrificeIDs []uuid.UUID, xValue int) error {
+	if len(plan) == 0 {
 		if len(discardIDs) > 0 || len(sacrificeIDs) > 0 {
 			return ErrInvalidParam
 		}
@@ -111,40 +357,95 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, cost *Ad
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// CR 119.4: a player may pay N life only with a life total of at
-	// least N. Checked at announce with the rest of the choices, so
-	// an unpayable X is a rejected cast rather than a player at -3.
-	if cost.PayLifeX && xValue > p.Life {
-		return ErrInvalidParam
-	}
-	if len(discardIDs) != cost.DiscardCards {
-		return ErrInvalidParam
-	}
-	seen := make(map[uuid.UUID]bool, len(discardIDs))
-	for _, id := range discardIDs {
-		if id == castID || seen[id] {
+	// One `seen` set across the whole plan: a card in hand pays one
+	// discard and a permanent pays one sacrifice, however many
+	// clauses are demanding them.
+	discarded := make(map[uuid.UUID]bool, len(discardIDs))
+	sacrificed := make(map[uuid.UUID]bool, len(sacrificeIDs))
+	di, si := 0, 0
+	for _, pay := range plan {
+		cost := pay.cost
+		// CR 119.4: a player may pay N life only with a life total of
+		// at least N. Checked at announce with the rest of the
+		// choices, so an unpayable X is a rejected cast rather than a
+		// player at -3.
+		if cost.PayLifeX && xValue > p.Life {
 			return ErrInvalidParam
 		}
-		seen[id] = true
-		if !p.Hand.Contains(id) {
-			return ErrCardNotFound
-		}
-	}
-	// The sacrifice clause reuses the activated-ability validator, so
-	// "you may only sacrifice what you control" (CR 701.21a) and the
-	// spec's own predicate are enforced in one place rather than two.
-	if cost.Sacrifice == nil {
-		if len(sacrificeIDs) > 0 {
+		if di+cost.DiscardCards > len(discardIDs) {
 			return ErrInvalidParam
 		}
-		return nil
+		for _, id := range discardIDs[di : di+cost.DiscardCards] {
+			if id == castID || discarded[id] {
+				return ErrInvalidParam
+			}
+			discarded[id] = true
+			if !p.Hand.Contains(id) {
+				return ErrCardNotFound
+			}
+		}
+		di += cost.DiscardCards
+		if cost.Sacrifice == nil {
+			continue
+		}
+		n := SacrificeCostCount(cost.Sacrifice)
+		if si+n > len(sacrificeIDs) {
+			return ErrInvalidParam
+		}
+		slice := sacrificeIDs[si : si+n]
+		for _, id := range slice {
+			if sacrificed[id] {
+				return ErrInvalidParam
+			}
+			sacrificed[id] = true
+		}
+		// The sacrifice clause reuses the activated-ability validator,
+		// so "you may only sacrifice what you control" (CR 701.21a)
+		// and the spec's own predicate are enforced in one place
+		// rather than two.
+		if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
+			SacrificeOther: cost.Sacrifice,
+		}, slice); err != nil {
+			return err
+		}
+		si += n
 	}
-	if _, err := g.validateSacrificeCostLocked(playerID, castID, AbilityCost{
-		SacrificeOther: cost.Sacrifice,
-	}, sacrificeIDs); err != nil {
-		return err
+	if di != len(discardIDs) || si != len(sacrificeIDs) {
+		return ErrInvalidParam
 	}
 	return nil
+}
+
+// AddOptionalCostMana is the mana half of the announced optional
+// costs, added into `cost` at CR 601.2f. ONE helper, so the cast
+// path, the auto-tapper and the bot enumerator price a kicked spell
+// identically and a bot is never offered a kicked move at the
+// unkicked price (ADR 0073 §3, #544).
+//
+// Exported because the enumerator lives in another package and there
+// is no second copy of this arithmetic to be had.
+//
+// An unparseable optional cost string refuses the cast for the same
+// reason an unparseable printed cost does (#289): there is no price
+// for the player to have paid. Register refuses the same string at
+// boot, so reaching this branch means a card was built around the
+// catalog.
+func AddOptionalCostMana(cost ParsedCost, optional []AdditionalCost, chosen []int) (ParsedCost, error) {
+	for _, i := range chosen {
+		if i < 0 || i >= len(optional) || optional[i].ManaCost == "" {
+			continue
+		}
+		add, err := ParseCost(optional[i].ManaCost)
+		if err != nil {
+			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, optional[i].Label, err)
+		}
+		cost.Generic += add.Generic
+		cost.Required = append(cost.Required, add.Required...)
+		cost.XSlots += add.XSlots
+		cost.HasPhyrexian = cost.HasPhyrexian || add.HasPhyrexian
+		cost.HasSnow = cost.HasSnow || add.HasSnow
+	}
+	return cost, nil
 }
 
 // payAdditionalCostLocked pays the cost's components: sacrifices the

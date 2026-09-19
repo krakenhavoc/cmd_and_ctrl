@@ -108,6 +108,48 @@ func Register(spec Spec) {
 				spec.Name))
 		}
 	}
+	// ADR 0073: the optional additional costs. Six boot checks, each
+	// for a shape that compiles and then behaves as something the card
+	// does not print.
+	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
+		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
+	}
+	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
+	for i, oc := range spec.OptionalCosts {
+		// Without the flag the cast path prices it and never offers
+		// the choice, which is a card that always kicks itself.
+		if !oc.Optional {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %d is not marked Optional — build it with Kicker / Multikicker / Buyback, never by hand", spec.Name, i))
+		}
+		// The Key is what OnResolve and the buyback route ask for. A
+		// blank or duplicated one is unaddressable.
+		if oc.Key == "" {
+			panic(fmt.Sprintf("effects.Register: %q declares an optional cost with no Key", spec.Name))
+		}
+		if seenOptional[oc.Key] {
+			panic(fmt.Sprintf("effects.Register: %q declares two optional costs keyed %q", spec.Name, oc.Key))
+		}
+		seenOptional[oc.Key] = true
+		if oc.ManaCost != "" {
+			if _, err := game.ParseCost(oc.ManaCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q declares an unparseable optional cost %q: %v", spec.Name, oc.ManaCost, err))
+			}
+		}
+		if oc.Empty() {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
+		}
+		// ADR 0073 §4: only a mana-only cost may be paid more than
+		// once. Every printed multikicker is mana, and N card-shaped
+		// payments per cast is a wire shape nothing asks for.
+		if oc.MaxPayments() > 1 && oc.CardsDemanded() {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q repeats and demands cards or permanents — only a mana-only cost may repeat", spec.Name, oc.Key))
+		}
+		// PayLifeX rides the shared XValue slot (ADR 0021 §3), and two
+		// claimants on one number is a bug waiting to be written.
+		if oc.PayLifeX {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays X life — an optional cost cannot claim the shared X slot", spec.Name, oc.Key))
+		}
+	}
 	// S22: a tap-permanents cost with no pool of legal permanents can
 	// never be paid, and one whose extra cost doesn't parse would
 	// silently charge nothing — both are copy-paste mistakes in a
