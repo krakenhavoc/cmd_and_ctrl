@@ -581,7 +581,7 @@ func TestActivatedAbilityCarriesItsLifeCost(t *testing.T) {
 }
 
 // The trap in full: at exactly seven life Griselbrand's ability is
-// still a LEGAL move — CR 118.4 lets a player pay life down to zero —
+// still a LEGAL move — CR 119.4 lets a player pay life down to zero —
 // so the enumerator offers it and the engine would accept it. Nothing
 // below this package can save a policy that cannot see the price.
 func TestLethalLifeCostIsStillEnumeratedAndSaysSo(t *testing.T) {

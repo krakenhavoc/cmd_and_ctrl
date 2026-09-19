@@ -95,10 +95,13 @@ type AlternativeCost struct {
 	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
 	// A COST, not a drawback: it is validated before anything is
-	// paid, so a player below N life cannot claim the offer at all.
-	// (CR 118.4 lets a player pay life down to exactly zero, and the
-	// state-based action kills them afterwards — that is a legal, if
-	// unwise, Force of Will.)
+	// paid, so a player below N life cannot claim the offer at all —
+	// and #695 made that true of the OFFER as well as the payment.
+	// AlternativeCostPayableLocked is the predicate; LifePayableBy is
+	// the line. (CR 119.4 lets a player pay life down to exactly
+	// zero, and the state-based action kills them afterwards — that
+	// is a legal, if unwise, Force of Will. The stale 118.4 citation
+	// here was the #693 renumbering tail.)
 	Life int
 
 	// ExileFromHand is "exile a blue card from your hand" (Force of
