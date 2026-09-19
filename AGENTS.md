@@ -90,7 +90,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0074 triggered mana abilities) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0075 table settings) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -242,7 +242,7 @@ unused — they can be removed in a later cleanup PR.)
 - Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
-  - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache). Holds `db/cmdctrl.sqlite` (ADR 0051, S34 sub-PR 1 — the persistent user/game/deck store, `internal/db`) and its `db/cmdctrl.backup.sqlite` VACUUM INTO copy, alongside the existing `scryfall/`, `images/`, `avatars/`, `bugreports/`, `lobby/`, `restore/`, `replays/` and `games/`.
+  - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache). Holds `db/cmdctrl.sqlite` (ADR 0051, S34 sub-PR 1 — the persistent user/game/deck store, `internal/db`) and its `db/cmdctrl.backup.sqlite` VACUUM INTO copy, alongside the existing `scryfall/`, `images/`, `avatars/`, `bugreports/`, `restore/`, `replays/` and `games/`. Since S34 sub-PR 3 the lobby's games, seats and invites are rows in that database, and invites are stored as hashes. `lobby/` holds only the `<id>.json.imported` files the one-time importer renamed and left for a rollback (docs/environments.md).
   - `CMDCTRL_DB_BACKUP_INTERVAL` — Go duration between the database's in-process `VACUUM INTO` backup sweeps (default `1h`; `<= 0` disables the sweep). The sweep writes `db/cmdctrl.backup.sqlite` beside the live file so a disk-level backup picks up a consistent copy. This is the same-disk copy only. The nightly off-node copy is `scripts/backup-offsite.sh` (restic to Cloudflare R2, #1031, ADR 0051 decision 1 as amended), run by `cmd-and-ctrl-backup.timer` on both hosts, not by this server. Runbook: [docs/environments.md](docs/environments.md#backups).
   - `CMDCTRL_ADMIN_TOKEN` — **required**. Shared admin secret for `POST /admin/login`. At least 16 characters.
   - `CMDCTRL_SESSION_TTL` — session lifetime as a Go duration (default `12h`)
@@ -267,7 +267,7 @@ unused — they can be removed in a later cleanup PR.)
   - `CMDCTRL_BOT_DECISION_LOG` — directory for the per-game bot decision log (one JSONL line per decision window per bot seat: prompt, reply, heuristic ranking, fallback cause, latency). Empty (the default) is **off**. **Operator-only**: each record is the seat's own filtered view, but the file aggregates every bot seat at the table, so it is never served over HTTP and never attached to a bug report. Directory `0700`, files `0600`, 256 MiB per game. See [docs/bot.md](docs/bot.md#decision-log).
   - `CMDCTRL_BOT_DECISION_LOG_MODE` — `escalated` (default: full board view only for windows that left Layer A) | `all` | `model` (only the windows a model answered). An unrecognised value fails the boot **when the log is on**, like `CMDCTRL_BOT_MAX_THINK`; with the log off it is a warning, because refusing to start over a variable that changes nothing is a server that does not come back after a rollback.
 - Cron: `scripts/scryfall-refresh.sh` — weekly refresh of the Scryfall default-cards dump (suggested cron: `0 5 * * 0`)
-- Off-site backup: `scripts/backup-offsite.sh`, run nightly by `deploy/cmd-and-ctrl-backup.service` + `.timer` (as `cmdctrl`, data dir read-only) on both hosts. It uses restic to back up the data dir to a per-host Cloudflare R2 bucket, taking `db/cmdctrl.backup.sqlite` but never the live db, and skipping the `scryfall/`, `images/` and `avatars/` caches. Credentials are in `/etc/cmd_and_ctrl/backup.env` (`root:cmdctrl 0640`, separate from the server's env), written by the CD step "Ensure off-site backup" from the `CMDCTRL_[DEV_]R2_*` and `CMDCTRL_[DEV_]RESTIC_PASSWORD` Actions values. A missing value is a `::warning::` and a disabled timer, never a failed deploy. **The restic password must never change once a repository exists**; its recovery copy is the owner's password manager. Runbook, including the restore: [docs/environments.md](docs/environments.md#backups) (#1031).
+- Off-site backup: `scripts/backup-offsite.sh`, run nightly by `deploy/cmd-and-ctrl-backup.service` + `.timer` (as `cmdctrl`, data dir read-only) on both hosts. It uses restic to back up the data dir to a per-host Cloudflare R2 bucket, taking `db/cmdctrl.backup.sqlite` but never the live db, and skipping the `scryfall/`, `images/` and `avatars/` caches. Credentials are in `/etc/cmd_and_ctrl/backup.env` (`root:cmdctrl 0640`, separate from the server's env), written by the CD step "Ensure off-site backup" from the `CMDCTRL_R2_*` and `CMDCTRL_RESTIC_PASSWORD` values in the `prod` / `dev` GitHub environments. A missing value, or one still containing `REPLACE_ME`, is a `::warning::` and a disabled timer, never a failed deploy. **The restic password must never change once a repository exists**; its recovery copy is the owner's password manager. Runbook, including the restore: [docs/environments.md](docs/environments.md#backups) (#1031).
 
 ### AI bot seat (Go, `server/internal/aiseat/`)
 
@@ -1062,6 +1062,19 @@ reaches for the payment record itself.
 A permanent that did not come from a spell — reanimated, put onto the
 battlefield, a token — enters with none, because the seeding site is
 the spell's entry and nothing else (CR 107.3b).
+
+Whatever seeds them, the settled map is **drained by one helper**,
+`(*Game).applyEntryCountersLocked`
+([game/entry_counters.go](server/internal/game/entry_counters.go)) —
+never with a bare `range` over `ev.EntersWithCounters` (#1010). Each
+kind opens its own `RepEventCounter` window, so with two KINDS on one
+entry the drain order is the order those windows open, the order a
+CR 616 prompt inside them is asked in, and the order the events land in
+the log; Go randomises map iteration, so a bare range made all three
+differ run to run. The order is canonical — counter name, ascending —
+and is not a CR 616 choice: the window that produced the map has
+already closed, and two kinds on one entry are one settled event with
+two components.
 
 **A token creation is a replaceable event** (#762,
 [ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
@@ -1865,12 +1878,35 @@ takes which;
 entered under a player's control with a subtype, judged as they entered
 rather than as they are now (a changeling counts for every creature
 type; a type granted by another permanent's static at that moment is
-not seen, so a card reading it declares that weaker gap). A filtered question the tally
+not seen, so a card reading it declares that weaker gap);
+`g.EnteredThisTurn(cardID)` is the same record's per-**object** cell —
+"each green creature that **entered this turn**" (Oran-Rief), and the
+"is the source itself one of them" half of an "another X entered this
+turn" clause (Éowyn);
+`g.PlayersDealtCombatDamageThisTurnByName(controller, name)` and
+`g.PlayersDealtCombatDamageThisTurnBySubtype(controller, subtype)` are
+the set of players a creature of yours hit in combat this turn, for the
+target predicate of a "whenever … deals combat damage to a player …
+**that player**" trigger, which is not handed the trigger's event
+(Trygon Predator, Alela). Those three and the two subtype tallies are
+recorded **as the event happens**, not read back later: the permanent
+being asked about is usually gone by the time anything asks, and a
+token is gone from every zone (CR 704.5d). A filtered question the tally
 does not carry ("you sacrificed a *Food* this turn") ranges over
 `g.EventsThisTurn()`, which is bounded at the real turn boundary — the
-old upkeep-bounded scans missed the untap step. A counter the tally
+old upkeep-bounded scans missed the untap step, which is where #1009
+finally bit. A counter the tally
 should carry and does not is a field on `PlayerTurnTally` plus one case
 in `turnTallyListener`, not a new scan.
+
+**Never anchor a "this turn" question on `EventBeginUpkeep`.** The turn
+begins at `onTurnBeganLocked`, which resets the tally *before* the untap
+step; the upkeep event comes after it, and an untap-step trigger or
+choice (ADR 0070) can put a permanent onto the battlefield or otherwise
+act in between. Every such walk in the catalog is gone (#1009); the two
+shapes that remain legitimate are a **cursor-bounded** walk (`ev.Seq`,
+"what happened after this point") and a **most-recent-X** walk, neither
+of which is a "this turn" question.
 
 **Adding an activated ability (S21+):** put it in
 `Spec.Activated`, one entry per printed ability, with the cost built

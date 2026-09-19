@@ -20,6 +20,14 @@ import (
 // per-turn tallies (SpellsCastThisTurn, LandsPlayedThisTurn,
 // LoyaltyActivatedThisTurn); this is the rest of them, in one place.
 //
+// Two dimensions the counters cannot carry are recorded AS THE EVENT
+// HAPPENS rather than counted: EnteredSubtypes / SacrificedSubtypes /
+// CombatDamagedPlayers read the permanent while it is still there to
+// read, because "a Faerie you control dealt combat damage to that
+// player this turn" is asked after the Faerie has traded and, if it
+// was a token, ceased to exist (CR 704.5d). Entered is the third: a
+// per-OBJECT cell for "did this permanent enter this turn".
+//
 // One built-in listener (turnTallyListener) bumps the counters from
 // the same events every other consumer reads, and onTurnBeganLocked
 // resets the whole thing where the other three reset. Nothing at an
@@ -86,6 +94,29 @@ type TurnTally struct {
 	// as it entered: one that has since died, or since gained or lost
 	// a type, answers as it was then (#743, Lilypad Village).
 	EnteredSubtypes map[string]int `json:"enteredSubtypes,omitempty"`
+	// Entered counts the battlefield entries each permanent made this
+	// turn, keyed by the instance ID the entry produced. Read through
+	// Game.EnteredThisTurn.
+	//
+	// The OBJECT dimension EnteredSubtypes does not have, and the
+	// reason both exist: "each green creature that entered this turn"
+	// (Oran-Rief) and "another Human entered this turn" (Éowyn, which
+	// has to know whether the source is one of the entries
+	// EnteredSubtypes counted) are questions about a named permanent,
+	// not about a type.
+	//
+	// The boundary is the REAL turn boundary (#1009). resetTurnTallyLocked
+	// runs from onTurnBeganLocked, before the untap step, so a permanent
+	// that entered during the untap step — an untap-step choice or an
+	// untap-step trigger putting one onto the battlefield (ADR 0059
+	// Decision 7, ADR 0070) — is counted. The event-log walk this
+	// replaces stopped at EventBeginUpkeep and answered "no" for it.
+	//
+	// Counted per ENTRY, not per object: a permanent blinked twice in
+	// one turn has two. Nothing reads the count today; it is an int
+	// because every other cell of the tally is, and because "how many
+	// times" is the question the next card asks.
+	Entered map[uuid.UUID]int `json:"entered,omitempty"`
 	// SacrificedSubtypes is the same tally for the other end of a
 	// permanent's life: the permanents each player SACRIFICED this
 	// turn, per subtype they had as they were sacrificed. Read
@@ -101,6 +132,26 @@ type TurnTally struct {
 	// condition silently stopped being true for the commonest case
 	// the card was printed for.
 	SacrificedSubtypes map[string]int `json:"sacrificedSubtypes,omitempty"`
+	// CombatDamagedPlayers records which players were dealt combat
+	// damage this turn and by WHAT, keyed by combatDamageTallyKey:
+	// one cell per (the dealing creature's controller, an identity it
+	// had as it dealt the damage, the damaged player). The identity is
+	// the creature's NAME (Trygon Predator's "that player") or one of
+	// its SUBTYPES (Alela's "one or more Faeries you control"), tagged
+	// apart so a name and a subtype that spell the same cannot
+	// collide. Read through PlayersDealtCombatDamageThisTurnByName and
+	// PlayersDealtCombatDamageThisTurnBySubtype.
+	//
+	// Recorded at the damage for SacrificedSubtypes' reason (#596),
+	// and combat is where that reason bites hardest: combat damage
+	// kills the creature that dealt it at the very next state-based
+	// check, and CR 704.5d then takes a TOKEN out of the graveyard
+	// altogether. The walk this replaces looked the dealer up wherever
+	// it had landed, so a Faerie token that traded in combat silently
+	// dropped the player it hit out of the set — the set that a
+	// trigger's target predicate reads, because a target predicate is
+	// not handed the trigger's event.
+	CombatDamagedPlayers map[string]int `json:"combatDamagedPlayers,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 726 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -313,6 +364,125 @@ func (g *Game) SacrificedWithSubtypeThisTurn(playerID uuid.UUID, subtype string)
 	return subtypeTallyCount(g.TurnTally.SacrificedSubtypes, playerID, subtype)
 }
 
+// EnteredThisTurn reports whether the permanent `cardID` names
+// entered the battlefield this turn — Oran-Rief's "each green
+// creature that entered this turn".
+//
+// A tally of ENTRY EVENTS and not a walk of the log (#1009): the
+// walk it replaces stopped at EventBeginUpkeep, so a permanent that
+// entered during the untap step, before that event, answered "no".
+// This answers from the turn boundary the tally is reset at, which
+// is the real one.
+//
+// It is also not summoning sickness: a creature that entered during
+// an opponent's turn still carries Card.SummonedThisTurn on yours
+// (CR 302.6), and it did not enter this turn.
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredThisTurn(cardID uuid.UUID) bool {
+	return cardID != uuid.Nil && g.TurnTally.Entered[cardID] > 0
+}
+
+// PlayersDealtCombatDamageThisTurnByName is the set of players a
+// creature NAMED `name` under `controller`'s control dealt combat
+// damage to this turn — Trygon Predator's "target artifact or
+// enchantment THAT PLAYER controls", read by a target predicate that
+// is not handed the trigger's event.
+//
+// Caller must hold g.mu.
+func (g *Game) PlayersDealtCombatDamageThisTurnByName(controller uuid.UUID, name string) map[uuid.UUID]bool {
+	if name == "" {
+		return map[uuid.UUID]bool{}
+	}
+	return g.combatDamagedPlayersLocked(controller, combatDamageNameKey(name), false)
+}
+
+// PlayersDealtCombatDamageThisTurnBySubtype is the same set for a
+// SUBTYPE — Alela, Cunning Conqueror's "whenever one or more Faeries
+// you control deal combat damage to a player, goad target creature
+// that player controls". A creature that had every creature type as
+// it dealt the damage (changeling, CR 702.73a) counts for any
+// creature type.
+//
+// Caller must hold g.mu.
+func (g *Game) PlayersDealtCombatDamageThisTurnBySubtype(controller uuid.UUID, subtype string) map[uuid.UUID]bool {
+	if subtype == "" {
+		return map[uuid.UUID]bool{}
+	}
+	return g.combatDamagedPlayersLocked(controller, combatDamageSubtypeKey(subtype), IsCreatureType(subtype))
+}
+
+// combatDamagedPlayersLocked collects the seated players with a
+// non-empty cell under one identity, folding in the changeling
+// bucket when the caller asked about a creature type. Seats are
+// walked rather than the map parsed: the map's key is three fields
+// glued together and the set of players is short and already to hand.
+func (g *Game) combatDamagedPlayersLocked(controller uuid.UUID, identity string, foldChangeling bool) map[uuid.UUID]bool {
+	out := map[uuid.UUID]bool{}
+	if controller == uuid.Nil || len(g.TurnTally.CombatDamagedPlayers) == 0 {
+		return out
+	}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		n := g.TurnTally.CombatDamagedPlayers[combatDamageTallyKey(controller, identity, p.ID)]
+		if foldChangeling {
+			n += g.TurnTally.CombatDamagedPlayers[combatDamageTallyKey(controller, combatDamageSubtypeKey(enteredAllCreatureTypes), p.ID)]
+		}
+		if n > 0 {
+			out[p.ID] = true
+		}
+	}
+	return out
+}
+
+// combatDamageTallyKey names one (dealer's controller, dealer
+// identity, damaged player) cell of TurnTally.CombatDamagedPlayers.
+func combatDamageTallyKey(controller uuid.UUID, identity string, victim uuid.UUID) string {
+	return controller.String() + "|" + identity + "|" + victim.String()
+}
+
+// combatDamageNameKey and combatDamageSubtypeKey are the two tagged
+// identities a dealing creature is recorded under. The tag is what
+// keeps a card named "Faerie Mastermind" and the subtype "Faerie" in
+// different cells. Folded to lower case, as every name and subtype
+// comparison in the engine is.
+func combatDamageNameKey(name string) string { return "n:" + strings.ToLower(name) }
+
+func combatDamageSubtypeKey(subtype string) string { return "s:" + strings.ToLower(subtype) }
+
+// recordCombatDamageToPlayerLocked records one creature's combat
+// damage to one player under every identity a reader may ask for: its
+// name, and each subtype it has right now. A creature with every
+// creature type is recorded once under enteredAllCreatureTypes
+// instead of once per creature type, exactly as recordSubtypeTally
+// does for entries.
+func (g *Game) recordCombatDamageToPlayerLocked(controller uuid.UUID, dealer *Card, victim uuid.UUID) {
+	if controller == uuid.Nil || dealer == nil || victim == uuid.Nil {
+		return
+	}
+	bump := func(identity string) {
+		if g.TurnTally.CombatDamagedPlayers == nil {
+			g.TurnTally.CombatDamagedPlayers = map[string]int{}
+		}
+		g.TurnTally.CombatDamagedPlayers[combatDamageTallyKey(controller, identity, victim)]++
+	}
+	if dealer.Name != "" {
+		bump(combatDamageNameKey(dealer.Name))
+	}
+	all := HasAllCreatureTypes(dealer)
+	for _, s := range dealer.Effective().Subtypes {
+		if all && IsCreatureType(s) {
+			continue
+		}
+		bump(combatDamageSubtypeKey(s))
+	}
+	if all {
+		bump(combatDamageSubtypeKey(enteredAllCreatureTypes))
+	}
+}
+
 // subtypeTallyCount reads one (player, subtype) cell, folding in the
 // changeling bucket for a creature type.
 func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int {
@@ -398,7 +568,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
+	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
@@ -434,6 +606,16 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += ev.Amount })
 		if ev.Combat && ev.Actor != uuid.Nil {
 			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CombatDamageToPlayers += ev.Amount })
+			// #596, and the reason EventSacrifice records below: WHAT
+			// dealt the damage is readable here and nowhere later.
+			// Combat damage kills the creature that dealt it at the
+			// next state-based check, and a token is gone from every
+			// zone one check after that — so "which players did my
+			// Faeries hit this turn", asked at the trigger's target
+			// prompt, has to be answered from a record taken now.
+			if src := g.findCardByIDLocked(ev.Source); src != nil {
+				g.recordCombatDamageToPlayerLocked(ev.Actor, src, ev.Target)
+			}
 		}
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
@@ -472,6 +654,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.CardID == uuid.Nil {
 			return
 		}
+		// #1009: the per-object "entered this turn" cell. Bumped off
+		// the EVENT and before the lookup, so an entry whose object
+		// the engine can no longer find is still an entry.
+		if g.TurnTally.Entered == nil {
+			g.TurnTally.Entered = map[uuid.UUID]int{}
+		}
+		g.TurnTally.Entered[ev.CardID]++
 		c := g.findCardByIDLocked(ev.CardID)
 		if c == nil {
 			return
@@ -543,6 +732,20 @@ func (g *Game) bumpPlayerTally(playerID uuid.UUID, fn func(*PlayerTurnTally)) {
 	p := g.TurnTally.Players[playerID]
 	fn(&p)
 	g.TurnTally.Players[playerID] = p
+}
+
+// copyUUIDIntMap is copyStringIntMap for a map keyed by instance ID
+// (TurnTally.Entered). Same contract: an empty map copies to nil, so
+// a cloned tally with nothing counted is the zero value.
+func copyUUIDIntMap(in map[uuid.UUID]int) map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 func hasTypeFold(types []string, want string) bool {

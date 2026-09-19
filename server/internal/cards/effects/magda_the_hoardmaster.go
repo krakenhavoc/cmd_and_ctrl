@@ -20,9 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // opponent's graveyard qualifies (b18CommittedCrime, CR 700.13).
 // The trigger goes on the stack above the spell that targeted, as
 // printed — Magda pays out even if the spell is then countered.
-// "Only once each turn" is the Exemplar of Light tally: the log is
-// walked back to the turn's upkeep for an earlier announce of this
-// same ability (b11TriggeredThisTurn). The Treasure enters tapped
+// "Only once each turn" is the Exemplar of Light tally: the per-turn
+// tally is asked for an earlier announce of this same ability
+// (b11TriggeredThisTurn). The Treasure enters tapped
 // through the shared tapped template.
 //
 // "Sacrifice three Treasures: Create a 4/4 red Scorpion Dragon" is a

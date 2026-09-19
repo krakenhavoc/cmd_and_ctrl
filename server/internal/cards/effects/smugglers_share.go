@@ -15,8 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // nothing when nobody qualified. Cards first, then Treasures, in
 // printed order.
 //
-// The engine keeps no per-turn draw or land tally, so both counts
-// are read off the event log since the current turn's upkeep began
+// Both counts are cells of the engine's per-turn tally
 // (b15CardsDrawnThisTurn, b15LandsEnteredThisTurn). Draws are one
 // event per card with the drawer stamped; lands are looked up where
 // they sit now for their type and controller, so a fetchland that

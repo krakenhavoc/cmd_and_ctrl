@@ -11,11 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 func TestArchiveHidesTheTableAndUnarchiveBringsItBack(t *testing.T) {
@@ -145,8 +144,7 @@ func TestArchivedStateSurvivesARestartAndDoesNotRelaunchBots(t *testing.T) {
 	dir := t.TempDir()
 	log := quietLogger()
 
-	mgr := ws.NewRoomManager(log, dir)
-	l := NewLobby(mgr)
+	l, _ := newDurableLobby(t, dir)
 	host := newFakeBotHost()
 	l.SetBotHost(host)
 
@@ -170,8 +168,7 @@ func TestArchivedStateSurvivesARestartAndDoesNotRelaunchBots(t *testing.T) {
 	}
 
 	// --- the deploy -----------------------------------------------
-	mgr2 := ws.NewRoomManager(log, dir)
-	l2 := NewLobby(mgr2)
+	l2, _ := newDurableLobby(t, dir)
 	host2 := newFakeBotHost()
 	l2.SetBotHost(host2)
 	l2.RestoreFromDisk(log)
@@ -193,8 +190,8 @@ func TestArchivedStateSurvivesARestartAndDoesNotRelaunchBots(t *testing.T) {
 		t.Error("restore relaunched bot runners for an archived game")
 	}
 	// The engine snapshot is still on disk — archive removes nothing.
-	if _, err := os.Stat(metaPath(dir, meta.ID)); err != nil {
-		t.Errorf("lobby metadata missing after archive: %v", err)
+	if _, err := os.Stat(filepath.Join(dir, "restore", meta.ID.String()+".json")); err != nil {
+		t.Errorf("restore point missing after archive: %v", err)
 	}
 }
 

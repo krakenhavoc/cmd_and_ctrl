@@ -66,6 +66,11 @@ func b20GolemToken(keyword string) game.Card {
 //     an earlier return this turn makes that arithmetic ambiguous
 //     the answer is "not a play" — weaker than printed for the one
 //     turn, never stronger. Declared on both cards.
+//
+// "Earlier this turn" is g.EventsThisTurn(), bounded at the real turn
+// boundary. It used to stop at the turn's upkeep (#1009), which would
+// have missed a land entering during the untap step and read the
+// tally one too high for the next land that turn.
 func b20LandPlayed(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || ev.Actor == uuid.Nil {
 		return false
@@ -81,12 +86,8 @@ func b20LandPlayed(ev game.Event, g *game.Game) bool {
 		return true
 	}
 	prior := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		e := g.Events[i]
+	for _, e := range g.EventsThisTurn() {
 		if e.Seq >= ev.Seq {
-			continue
-		}
-		if e.Kind == game.EventBeginUpkeep {
 			break
 		}
 		if e.Kind != game.EventZoneMove || e.NewZone != game.ZoneBattlefield || e.Actor != ev.Actor || !b20LandPlayOrigin(e.OldZone) {

@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     trigger per batch of deaths and at most one per turn. The
 //     engine emits one EventLTB per creature, and the harvester
 //     emits EventTrigger the moment it queues an item, so
-//     b11TriggeredThisTurn — a walk back to the turn's upkeep for a
+//     b11TriggeredThisTurn — the per-turn tally's count for a
 //     trigger with this label — answers both clauses at once: the
 //     second death in a wipe finds the first death's trigger already
 //     recorded, and so does a death later in the same turn.

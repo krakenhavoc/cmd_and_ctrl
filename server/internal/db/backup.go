@@ -73,6 +73,14 @@ func (d *DB) Backup(ctx context.Context) error {
 	return nil
 }
 
+// backupTimeout bounds one Backup call. It is deliberately not the
+// loop interval: a short interval (tests, or a small
+// CMDCTRL_DB_BACKUP_INTERVAL) would cancel every VACUUM INTO before it
+// finished, and the loop would log failures forever. A backup that
+// outruns the interval just delays the next tick; the ticker drops
+// ticks rather than queueing them.
+const backupTimeout = 10 * time.Minute
+
 // RunBackupLoop calls Backup on interval until ctx is canceled. It
 // runs in the caller's goroutine — callers start it with `go`. A
 // failed backup is logged and never stops the loop or the server: a
@@ -93,7 +101,7 @@ func (d *DB) RunBackupLoop(ctx context.Context, log *slog.Logger, interval time.
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			backupCtx, cancel := context.WithTimeout(ctx, interval)
+			backupCtx, cancel := context.WithTimeout(ctx, backupTimeout)
 			err := d.Backup(backupCtx)
 			cancel()
 			if err != nil {

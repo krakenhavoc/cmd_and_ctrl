@@ -282,3 +282,76 @@ from a file written before this shipped reads every card at epoch
 zero, which merges the current turn's counts for a permanent that had
 already returned — one turn, in a game that was mid-turn when the
 server went down.
+
+## Amendment (2026-09-19, #1009): the turn boundary is not the upkeep, and two dimensions the counters could not carry
+
+*Branch `fix/1009-1010-turn-boundary-and-entry-counter-order`. Closes
+[#1009](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1009).*
+
+D2.1 above shipped `TurnTally` to replace "about thirty near-identical
+helpers in the catalog … each **blind to anything that happened in the
+untap step, which is before the upkeep event**". Four of those helpers
+were never migrated, and one of them is the helper the others cite by
+name. `b06EnteredThisTurn` still walked `g.Events` backwards to
+`EventBeginUpkeep`, on a stated argument — "nothing can enter during
+the untap step before it" — that ADR 0070 and #70 had already made
+false: an untap-step trigger or an untap-step choice can put a
+permanent onto the battlefield, and the walk stopped short of it and
+answered "it did not enter this turn".
+
+**Every "this turn" question in the catalog now reads the tally, and
+no reader anchors on `EventBeginUpkeep`.** The four migrated:
+
+| Reader | Was | Is |
+|---|---|---|
+| `b06EnteredThisTurn` (Oran-Rief, Éowyn) | walk to `EventBeginUpkeep` | `Game.EnteredThisTurn` |
+| `b18AttackedThisTurn` (Chart a Course) | walk to `EventBeginUpkeep` | `PlayerTurnTally.AttacksDeclared` |
+| `b20LandPlayed`'s prior-plays count (Horn of Greed, Prosper) | walk to `EventBeginUpkeep` | `g.EventsThisTurn()` |
+| `b35WasAttackingWhenItLeft` (Garna) | walk with an `EventBeginUpkeep` barrier | `g.EventsThisTurn()`, barrier dropped as redundant — `EventStepBegan` announces the upkeep too |
+
+Two walks over `g.Events` that are NOT "this turn" questions stay, and
+are the only two shapes that may: a **cursor-bounded** walk
+(`ev.Seq` — "what happened after this point": `b25DiscardedByAfter`,
+`b27DamageDealtToAfter`, `b17MilledCreatureCards`) and a
+**most-recent-X** walk (`b16EnteredFromStack`, `b30CastFromHand`,
+`b12CounterTotalBefore`, `b13ResolutionInProgressBy`,
+`b32CardsInExileLastExiledDuring`).
+
+### Two new cells, and why they are records rather than counters
+
+- **`TurnTally.Entered map[uuid.UUID]int`** — battlefield entries this
+  turn, per OBJECT. `EnteredSubtypes` (#743) answers "how many Humans
+  entered under your control"; this answers "did *that* permanent
+  enter", which Oran-Rief's "each green creature that entered this
+  turn" needs and which Éowyn needs on top of the subtype count, to
+  know whether she is one of the entries it counted.
+- **`TurnTally.CombatDamagedPlayers map[string]int`** — which players
+  were dealt combat damage this turn and by what, keyed by (the
+  dealer's controller, a tagged identity, the damaged player), with one
+  cell per NAME and one per SUBTYPE the dealing creature had as it
+  dealt the damage. This is the #596 shape, and combat is where that
+  shape bites hardest: combat damage kills the creature that dealt it
+  at the very next state-based check, and CR 704.5d then takes a TOKEN
+  out of the graveyard entirely. The scan it replaces looked the dealer
+  up wherever it had landed, so **a Faerie Rogue token that connected
+  and traded dropped the player it hit out of Alela, Cunning
+  Conqueror's goad set** — the commonest case the card is printed for,
+  since Alela makes the Faeries herself. Trygon Predator reads the same
+  record by name. #1011's report left this alone as "a bigger change
+  than either issue"; it is the same change as the entry tally, one
+  dimension over, and doing it here is what makes "one tally model"
+  true rather than nearly true.
+
+Both are `carried`: they are inside `Game.TurnTally`, which the drift
+test already classifies, and `cloneTurnTally` copies them (a new
+`copyUUIDIntMap` for the object-keyed one, which round-trips through
+JSON on `uuid.UUID`'s `MarshalText`).
+
+### The rule, stated so the next reader does not re-derive it
+
+`onTurnBeganLocked` resets the tally, and it runs from
+`beginNextTurnLocked` **before** the untap step's turn-based actions
+(ADR 0059 Decision 7). `EventBeginUpkeep` comes after that, so it is
+never the turn boundary; `g.TurnTally.FirstEvent` and
+`g.EventsThisTurn()` are. AGENTS.md §"This turn" carries the same
+sentence for the catalog side.

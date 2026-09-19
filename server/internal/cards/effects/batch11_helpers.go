@@ -14,8 +14,8 @@ import (
 // What is NOT here, because main already had it: "this permanent
 // enters" is b06SelfETB, the reveal-and-tutor body is
 // b06TutorToHand, the Overlook land shape is b08OverlookLand, the
-// entered-this-turn event walk is b06EnteredThisTurn (the two
-// per-turn walks below follow its shape), "sacrifice ANOTHER
+// entered-this-turn read is b06EnteredThisTurn (the two per-turn
+// reads below are the same tally), "sacrifice ANOTHER
 // creature" by name is b03NotNamed, and the Treasure and Food are
 // tokens.go's.
 
@@ -79,16 +79,11 @@ func b11CreatureCardsInGraveyard(g *game.Game, controller uuid.UUID) int {
 }
 
 // b11CreaturesDiedThisTurn counts the creatures that died this turn
-// — Mahadi, Emporium Master's Treasure count. The engine keeps no
-// per-turn death tally, so this is the b06EnteredThisTurn walk over
-// the event log: every EventLTB into a graveyard since the current
-// turn's upkeep began, kept when the card — looked up where it sits
-// now — is a creature. Tokens stay in the graveyard (no CR 704.5d
-// sweep), so a dead Saproling counts as printed.
-//
-// Weaker, never stronger: a creature card that has since left every
-// tracked zone, or a permanent that was a creature only through a
-// layer effect when it died, is not counted.
+// — Mahadi, Emporium Master's Treasure count. The table-wide cell of
+// the per-turn tally, bumped at each EventLTB into a graveyard off
+// the last-known battlefield characteristics, so a token that died
+// counts and a permanent that was a creature only through a layer
+// effect when it died counts too.
 func b11CreaturesDiedThisTurn(g *game.Game) int {
 	return g.TurnTally.CreaturesDied
 }
@@ -97,9 +92,8 @@ func b11CreaturesDiedThisTurn(g *game.Game) int {
 // the given stack label has already been put on the stack this turn
 // — "This ability triggers only once each turn" (Exemplar of Light).
 // The harvester emits EventTrigger, carrying the source and the
-// label, the moment it queues an item, so a walk back to the current
-// turn's upkeep is the tally; a trigger that was countered still
-// counts, as printed.
+// label, the moment it queues an item, and the per-turn tally counts
+// it there; a trigger that was countered still counts, as printed.
 func b11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
 	return g.TriggeredThisTurn(source, label) > 0
 }
