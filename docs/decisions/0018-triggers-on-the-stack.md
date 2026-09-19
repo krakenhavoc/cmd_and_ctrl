@@ -586,7 +586,68 @@ upkeep, sacrifice Stasis unless you pay {U}") and Pact of Negation
 rather than this one — the active player, their own upkeep, a
 consequence that is not a stack object — and neither sets
 `PayUnless.Blocking` today. They are a separate judgement about the
-same section and are left for one.
+same section and are left for one. *(That judgement is the amendment
+below, 2026-09-19 / #997, which also retired `PayUnless.Blocking`.)*
+
+**Amendment (2026-09-19, #997): the upkeep shape blocks, and it blocks
+because the ENGINE reads the cursor — `PayUnless.Blocking` and
+`PendingChoice.ForceBlocks` are gone.**
+
+The judgement the amendment above deferred: **yes, it blocks.** "At the
+beginning of your upkeep, pay <cost> or <lose something you cannot get
+back>" — Stasis, Pact of Negation, every cumulative upkeep — is asked
+of the **active player**, during their **own upkeep**, and what hangs
+on the answer is whether a permanent is on the battlefield for the rest
+of the turn, or whether the player is still in the game. That is the
+reasoning the #567 amendment already accepted for CR 702.24; nothing
+about it is specific to cumulative upkeep. CR 117.3 does not pass
+priority on with a required action outstanding, and CR 500.4 does not
+end a step until it has been taken.
+
+**The interesting half is why the fix is not "set the flag on two more
+cards".** #567 shipped exactly that flag. Stasis and Pact of Negation
+were both written afterwards, with the same sentence printed on them,
+and neither author found it — which is #951's argument, arriving a
+second time: a card says what its text says, and the engine works out
+what that means for the cursor. So the halt is **derived** here too.
+
+`PendingChoice.OwedInStep` is a `TurnStep` — the cursor's turn number
+and step, frozen together when the prompt is queued — and
+`Game.ChoicePromptBlocksTable` blocks while the game is still standing
+in that step. It sits beside `GuardsStackItem` and is read through the
+same one predicate, so #794's rule that "does this stop the table" has
+exactly one answer is intact, and `ChoiceBlocksTable(kind)` is still
+the answer for a KIND and still what
+`TestEveryChoiceKindIsClassifiedAndEnumerated` checks. Both narrowings
+are still one-way.
+
+**Both narrowings are now facts about the BOARD, and that is what stops
+either being a wedge.** #951's lifts when the guarded object leaves the
+stack; this one lifts when the cursor leaves the step. Neither can
+outlive the thing it is about, so an undo, a restore or an admin
+walking the cursor by hand frees the table without anybody answering.
+
+One door, `Game.QueueUpkeepPayUnlessForEffect`
+(`server/internal/game/upkeep_pay_unless.go`), with
+`effects.UpkeepPayUnless` as its card-side primitive. Stasis, Pact of
+Negation and `CumulativeUpkeep` go through it. `PayUnless.Blocking`,
+`Game.QueueBlockingPayUnlessForEffect` and `PendingChoice.ForceBlocks`
+are **removed**: with the last declared halt derived, there is no
+card-level "please block" switch left to miss, which was the whole
+lesson of this amendment and of #951's.
+
+The step is read off the cursor rather than hard-coded to the upkeep,
+so a beginning-of-end-step pay-or-else is owed before the end step ends
+for the same reason. The primitive is named for the family every
+printed card of it belongs to.
+
+**What is unchanged.** `pay_unless` is still the one kind classified
+non-blocking, and Rhystic Study, Smothering Tithe, Esper Sentinel,
+Mystic Remora's Rhystic half and Kazuul play exactly as they did — they
+are asked of somebody else, about nothing the cursor cares about. A
+departed payer is still settled by the departure table's `dropDecline`
+column (CR 800.4f), and a bot seat answers the upkeep prompt through
+the ordinary pay-unless policy.
 
 ## Out of scope (explicit deferrals)
 

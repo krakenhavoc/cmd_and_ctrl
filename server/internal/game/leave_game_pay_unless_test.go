@@ -85,12 +85,17 @@ func TestDroppedPayUnlessOnTheirOwnObjectRunsNothing(t *testing.T) {
 
 	ran := false
 	g.WithWriteLock(func() {
-		if err := g.QueueBlockingPayUnlessForEffect(leaver.ID, sourceID, "{1}",
-			"Mystic Remora — cumulative upkeep {1}", func(*Game) error {
+		if err := g.QueueUpkeepPayUnlessForEffect(UpkeepPayUnlessPrompt{
+			Chooser:  leaver.ID,
+			Source:   sourceID,
+			Cost:     "{1}",
+			Question: "Mystic Remora — cumulative upkeep {1}",
+			OnDecline: func(*Game) error {
 				ran = true
 				return nil
-			}); err != nil {
-			t.Fatalf("QueueBlockingPayUnlessForEffect: %v", err)
+			},
+		}); err != nil {
+			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(leaver.ID); err != nil {

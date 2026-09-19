@@ -131,6 +131,35 @@ type Turn struct {
 	Step           Step
 }
 
+// TurnStep names ONE step of ONE turn — the cursor's Turn.Number and
+// Turn.Step frozen together, so a later read can ask "is the game
+// still standing there?" rather than only "which step is this?".
+//
+// The zero value names no step at all, which is what makes it usable
+// as an OPTIONAL anchor on a struct that mostly does not carry one:
+// PendingChoice.OwedInStep, the step a pay-or-else prompt must be
+// answered in (upkeep_pay_unless.go, CR 500.4).
+type TurnStep struct {
+	// Turn is the turn number this anchor is about, 1-indexed like
+	// Turn.Number. Zero means the anchor names no step.
+	Turn int
+	// Step is the step within that turn.
+	Step Step
+}
+
+// NamesAStep reports whether this anchor names one — false for the
+// zero value, which is the "no anchor" case every optional user of
+// the type has to be able to tell apart from a real step.
+func (ts TurnStep) NamesAStep() bool { return ts.Turn > 0 }
+
+// IsCurrent reports whether `cursor` is still standing in the step
+// this anchor names. Always false for an anchor that names no step,
+// so an unanchored caller gets "no" rather than an accidental match
+// on turn zero.
+func (ts TurnStep) IsCurrent(cursor Turn) bool {
+	return ts.NamesAStep() && cursor.Number == ts.Turn && cursor.Step == ts.Step
+}
+
 // stepGrantsPriority reports whether the given step grants priority
 // to the active player on entry (CR 117). Untap and Cleanup are the
 // only steps that do not.

@@ -3396,11 +3396,16 @@ they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
 that does not (ADR 0018 §6). That row answers for the KIND; a live
 PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
-adds two one-way narrowings on top of it — `PendingChoice.ForceBlocks`,
-a prompt that asks to block anyway (#567), and
-`PendingChoice.GuardsStackItem`, a prompt whose decline counters an
-object still on the stack (#951, `counter_unless_paid.go`). Both can
-only make a prompt block, never let one through. **Two:** a case in
+adds two one-way narrowings on top of it, both DERIVED from the board
+rather than declared by a card — `PendingChoice.GuardsStackItem`, a
+prompt whose decline counters an object still on the stack (#951,
+`counter_unless_paid.go`), and `PendingChoice.OwedInStep`, a prompt the
+payer owes before the step it was asked in can end (#997,
+`upkeep_pay_unless.go`). Both can only make a prompt block, never let
+one through, and both lift by themselves when the thing they are about
+has gone — which is what stops either being a wedge. There is no
+card-level "please block" switch: #567 shipped one and the next two
+cards with the same printed sentence both missed it (#997 removed it). **Two:** a case in
 `choiceMoves`
 (`server/internal/legal/choices.go`), or every seat owing one is
 offered no answer *and* no pass — the #499 / #618 wedge that stopped
@@ -3416,10 +3421,15 @@ is dropped, which is the pre-#902 behaviour and cannot wedge. The row's
 second column is the **drop action**: when the prompt is dropped, does
 the rule that ends it say what happens *instead*? `pay_unless` declares
 `dropDecline` — CR 800.4f's cost is not paid, so the "unless" branch
-runs from inside the elimination sweep, and Rhystic Study still draws —
-and a future kind with a default action of its own declares it in the
-same table rather than in the sweep. The table and its reasoning are
-printed in the ADR 0060 amendments.
+runs, and Rhystic Study still draws — and `option_pick` declares
+`dropDefault` (#1006), which runs the frame with `game.NoChoiceIndex`
+so the rest of the card finishes even though the question ended
+unanswered. Declare a new kind's action in the table, never in a
+caller: the actions are performed in one place
+(`runChoiceDropActionLocked`, `pending_choice.go`), reached both from
+the departure sweep and from `dropChoiceLocked`, which is the door
+every prune in the tree uses to withdraw a prompt. The table and its
+reasoning are printed in the ADR 0060 amendments.
 
 `TestEveryChoiceKindIsClassifiedAndEnumerated`
 (`server/internal/legal/choice_gate_test.go`) reads the kind constants
@@ -3445,14 +3455,19 @@ string.
 Two things that are not obvious:
 
 - **The prompt blocks the table**, which no other `pay_unless` does.
-  Set `PayUnless.Blocking`, which rides `PendingChoice.ForceBlocks` and
-  is read through `game.ChoicePromptBlocksTable` by the engine gate and
-  by `internal/legal` alike. ADR 0018 §6's latitude is Rhystic Study's:
-  a question to a *different* player after the ability left the stack.
-  Cumulative upkeep asks the active player during their own upkeep, and
-  the answer decides whether a permanent is still on the battlefield.
-  The override is one-way and per prompt — the `pay_unless` **kind** is
-  unchanged, so Rhystic Study still plays as it did.
+  Use `effects.UpkeepPayUnless` (never `PayUnless`) for "at the
+  beginning of your upkeep, pay or else": it goes through
+  `Game.QueueUpkeepPayUnlessForEffect`, which anchors the prompt to the
+  step it was raised in (`PendingChoice.OwedInStep`), and
+  `game.ChoicePromptBlocksTable` holds the table there until it is
+  answered — read by the engine gate and by `internal/legal` alike.
+  ADR 0018 §6's latitude is Rhystic Study's: a question to a *different*
+  player after the ability left the stack. This one asks the active
+  player during their own upkeep, and the answer decides whether a
+  permanent is still on the battlefield. The narrowing is one-way and
+  per prompt — the `pay_unless` **kind** is unchanged, so Rhystic Study
+  still plays as it did. Stasis and Pact of Negation are the same door
+  (#997); nothing declares a halt on the card.
 - **"Cumulative upkeep" is not a `canonicalKeywords` token**, for
   ward's reason (ward.go): the keyword carries a cost and a bare string
   in `Characteristic.Abilities` has nowhere to put one, so a token

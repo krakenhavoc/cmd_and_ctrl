@@ -69,6 +69,33 @@ import (
 // fail is a prompt a seat can be stuck on (#544).
 const PendingChoiceOptionPick PendingChoiceKind = "option_pick"
 
+// NoChoiceIndex is the index a frame's continuation is run with when
+// the question could not be put, or could not be kept up: "nobody
+// chose". Not an answer a client may send — ResolveOptionPick refuses
+// a negative index — and not an offset into anything.
+//
+// It is the #544 rule in one value. A continuation is the rest of the
+// card, so an option pick that ends without an answer still has to run
+// it; what it must not do is silently pick a branch on the chooser's
+// behalf. Every continuation the engine queues already handles it,
+// because the card-side primitive has always had to
+// (effects.PickOption's Then is documented as "the index of the chosen
+// option, or -1 when no question could be asked"): a pile pick takes
+// the first pile, Torment of Hailfire moves on to the next victim, a
+// player choice records the absence.
+//
+// Reached from two places, and #1006 is the second. The first is QUEUE
+// time — an empty option list, or a chooser who has already left, so
+// nothing is queued and the caller runs its own continuation. The
+// second is DROP time: a prompt the engine withdraws unanswered runs
+// the frame with this (dropDefault, leave_game.go).
+//
+// A SEAT continuation (optionPickFrame.thenSeat, #994) spells the same
+// absence as uuid.Nil rather than as an index, because that is the
+// currency it speaks; runWithNoChoice is the one place both are
+// written.
+const NoChoiceIndex = -1
+
 // ChoiceOption is one branch of a PendingChoiceOptionPick: the card's
 // own words for it, the cards it is about (a pile, or nothing), and
 // what it costs the chooser in life.
@@ -173,6 +200,64 @@ type optionPickFrame struct {
 	thenSeat func(g *Game, seat uuid.UUID) error
 }
 
+// runWithNoChoice runs the frame as though nobody chose. Reports the
+// error the continuation returned, for the caller to report the way it
+// reports every other continuation failure.
+//
+// The one place "nobody chose" is handed to a frame, so what a question
+// that ended without an answer does is one line rather than one line
+// per drop path — and so the two continuation shapes cannot drift: an
+// index frame is run with NoChoiceIndex, a SEAT frame with uuid.Nil
+// (#994's thenSeat), which is the same absence spelled in the currency
+// each one speaks. Both are values their continuations already had to
+// handle, and neither is an answer a client can send.
+func (f *optionPickFrame) runWithNoChoice(g *Game) error {
+	switch {
+	case f == nil:
+		return nil
+	case f.thenSeat != nil:
+		return f.thenSeat(g, uuid.Nil)
+	case f.then != nil:
+		return f.then(g, NoChoiceIndex)
+	}
+	return nil
+}
+
+// defaultDroppedChoiceLocked runs an option pick's continuation with
+// the no-choice outcome because the prompt has been dropped rather
+// than answered. It is the dropDefault action of the departure table
+// (choiceDepartureDecisions, leave_game.go) and the CR 800.4f/#544
+// pair applied to this kind: the question ends, and the rest of the
+// card does not.
+//
+// Before #1006 the drop took the frame with it, and the effect that
+// was paused mid-resolution never finished — Fact or Fiction put
+// neither pile anywhere, a Torment of Hailfire stopped at the victim
+// who left, a "choose a player" never ran the sentence printed after
+// it. QueuePileSplitForEffect and QueueChoosePlayerForEffect were
+// already careful about exactly this at QUEUE time; nothing was
+// careful about it at drop time.
+//
+// This is the SAME continuation ResolveOptionPick runs for an answer,
+// reached from a withdrawal rather than from one — the #808 shape, and
+// the same one declineDepartedChoiceLocked is. It cannot re-queue a
+// prompt to a departed seat (QueueChoiceForEffect refuses an
+// eliminated chooser, #864), and it takes no branch on the chooser's
+// behalf, which is why it needs no claim about whose material the
+// options were.
+//
+// Caller must hold g.mu, and must already have taken the prompt out of
+// the queue: the continuation may queue the next link of the chain and
+// must not land behind the question it is replacing.
+func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
+	if c == nil {
+		return
+	}
+	if err := c.optionPickResume.runWithNoChoice(g); err != nil {
+		g.emitChoiceEffectErrorLocked(c.Chooser, c.Source, err)
+	}
+}
+
 // OptionPickPrompt is the queue-side description of a
 // PendingChoiceOptionPick.
 type OptionPickPrompt struct {
@@ -196,8 +281,17 @@ type OptionPickPrompt struct {
 	// must be a branch that can always be taken.
 	Options []ChoiceOption
 
-	// Then receives the index of the chosen option. Runs with g.mu
-	// held; may queue further choices, which is how a chain continues.
+	// Then receives the index of the chosen option, or NoChoiceIndex
+	// when the prompt ended without an answer — dropped because its
+	// chooser left the game or because it had no legal answer left
+	// (#1006). Runs with g.mu held; may queue further choices, which
+	// is how a chain continues.
+	//
+	// HANDLE NoChoiceIndex. It is the rest of the card running with
+	// the question unanswered, and a continuation that indexes
+	// straight into a captured slice with it is a card that stops
+	// halfway — which is the #544 rule this kind is otherwise careful
+	// about.
 	Then func(g *Game, index int) error
 
 	// ThenSeat is Then for an option list whose branches are SEATS:
@@ -291,6 +385,15 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	// pruned since it was built, so the index is only meaningful
 	// against the list the chooser was shown, which is this one.
 	seat := choice.PickOptions[index].Player
+	if frame != nil && frame.thenSeat != nil && seat == uuid.Nil {
+		// A seat continuation answered with an option that names no
+		// seat is a bug in whoever built the list, and it must not
+		// reach the frame: uuid.Nil is how a DROP says nobody was
+		// chosen (#1006, runWithNoChoice), so passing it here would
+		// report an answer as an absence. Refused before the dequeue,
+		// like an out-of-range index, so the prompt stays open.
+		return ErrInvalidParam
+	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || (frame.then == nil && frame.thenSeat == nil) {
 		// Nothing to run. The prompt is gone either way rather than

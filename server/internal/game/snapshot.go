@@ -566,14 +566,14 @@ type pendingChoiceSnapshot struct {
 	AcceptLabel          string                 `json:"acceptLabel,omitempty"`
 	LifeCost             int                    `json:"lifeCost,omitempty"`
 	DeclineLabel         string                 `json:"declineLabel,omitempty"`
-	// ForceBlocks: a prompt that stops the table though its kind does
-	// not (#567). Carried so a restored game gates the same way,
-	// cheap and honest even though every prompt that sets it today
-	// also holds a continuation and so blocks the restore point.
-	ForceBlocks bool `json:"forceBlocks,omitempty"`
+	// OwedInStep: the step a pay-or-else prompt has to be answered in
+	// (#997). Carried so a restored game gates the same way, cheap
+	// and honest even though every prompt that sets it today also
+	// holds a continuation and so blocks the restore point.
+	OwedInStep TurnStep `json:"owedInStep,omitempty"`
 	// GuardsStackItem: the object on the stack whose fate a
 	// counter-unless-pays prompt decides (#951). Carried for
-	// ForceBlocks' reason — a restored game gates the same way —
+	// OwedInStep's reason — a restored game gates the same way —
 	// and because the ID is the only route back to what the
 	// question was about.
 	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
@@ -1201,7 +1201,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
-		ForceBlocks:          c.ForceBlocks,
+		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
@@ -1733,7 +1733,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
-		ForceBlocks:          c.ForceBlocks,
+		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,

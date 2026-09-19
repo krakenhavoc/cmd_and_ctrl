@@ -80,11 +80,14 @@ func TestAWardTaxHaltsTheStack(t *testing.T) {
 	if prompt.GuardsStackItem != spell {
 		t.Errorf("GuardsStackItem = %s, want %s", prompt.GuardsStackItem, spell)
 	}
-	// It blocks WITHOUT the #567 override — the gate works the halt
+	// It blocks off the guarded object alone — the gate works the halt
 	// out from the board, which is what stops the seventh card of this
-	// shape being wrong again.
-	if prompt.ForceBlocks {
-		t.Error("the ward tax set ForceBlocks; the halt is supposed to be derived, not declared")
+	// shape being wrong again. It is NOT the upkeep narrowing (#997):
+	// the two derived reasons are about different parts of the board
+	// and no prompt claims both.
+	if prompt.OwedInStep.NamesAStep() {
+		t.Errorf("the ward tax anchored itself to %v; its halt comes from the stack, not the cursor",
+			prompt.OwedInStep)
 	}
 	if !g.ChoicePromptBlocksTable(prompt) {
 		t.Fatal("a pay-unless guarding a spell on the stack does not block the table")

@@ -99,7 +99,9 @@ type ChoosePlayerPrompt struct {
 	// records nothing.
 	Item *StackItem
 
-	// Then receives the chosen player. Runs with g.mu held; may queue
+	// Then receives the chosen player, or uuid.Nil when nobody was
+	// chosen — no eligible seat at queue time, or a prompt dropped
+	// before it was answered (#1006). Runs with g.mu held; may queue
 	// further choices, which is how a chain continues.
 	Then func(g *Game, chosen uuid.UUID) error
 }
@@ -144,10 +146,17 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 		// clicked. Only a detached item pointer is closed over, which
 		// is the StackItem.Effect contract: the branch resolves against
 		// whichever *Game an undo restores.
+		//
+		// uuid.Nil is NOBODY WAS CHOSEN, not an error: the prompt was
+		// dropped rather than answered (#1006), and the absence is
+		// recorded on the item exactly as it is when there was no
+		// eligible seat to ask about in the first place, so a card that
+		// asks twice does not read this clause's answer off the last
+		// one. An ANSWER can never arrive with a zero seat —
+		// ResolveOptionPick refuses a seat-less option before the frame
+		// runs — which is what leaves this value free to mean the
+		// absence.
 		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				return ErrInvalidParam
-			}
 			recordChosenPlayer(item, chosen)
 			if then == nil {
 				return nil
