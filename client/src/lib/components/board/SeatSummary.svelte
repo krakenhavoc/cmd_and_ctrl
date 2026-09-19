@@ -3,13 +3,16 @@
   // than as cards. It is what `settings.display.opponentDetail =
   // "summary"` (the default) mounts in place of PlayerPanel.
   //
-  //   ┌────────────────────────────────────────────┐
-  //   │ ⭕ Name              40 ♥   7 cards in hand   │
-  //   │    ● ● ● ○ ○  4 sources                       │
-  //   │    5 creatures · 12 power (3 untapped, 7)     │
-  //   │    [2/2 ⚔] [4/4 ✈] [1/1] [6/6 ⛨] [3/3]        │
-  //   │    ◈ Jace 4   ◈ Commander   ◈ enchanted bear  │
-  //   └────────────────────────────────────────────┘
+  // Rows, top to bottom:
+  //
+  //   1. identity   avatar, name, life, active/priority marks
+  //   2. mana       one pip per colour with a count, then a dashed
+  //                 "?" pip for anything whose colour is unknown
+  //   3. counts     untapped creatures / total / untapped power,
+  //                 hand size, library and graveyard counts
+  //   4. creatures  one pip per body: P/T plus combat keywords
+  //   5. structural one tile per planeswalker, commander, or
+  //                 permanent wearing an attachment
   //
   // WHY. See the header of seatSummary.ts: card size is a share of
   // panel height with a clamp() floor, so a small panel stops
