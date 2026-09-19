@@ -215,6 +215,14 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    # GitHub environment, for secrets and variables that differ per host
+    # (today: the off-site backup's). `prod` accepts deployments from main
+    # only and `dev` from develop only (deployment branch policies), so a
+    # topic branch can never read production's values. Both arms are
+    # non-empty literals, so the ternary fall-through hazard described on
+    # "Resolve deploy target" cannot occur here. Repo-level secrets and
+    # variables are still visible to the job exactly as before.
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
     env:
       # Production and the develop preview are two VMs on the same
       # Proxmox node, identical below the fqdn (ADR 0023). So this job
@@ -880,12 +888,13 @@ jobs:
       # named in a ::warning:: and the timer is stopped and disabled, so an
       # unconfigured host deploys green and does not fail every night.
       #
-      # Per-host values follow the repo's naming, not GitHub environments:
-      # production reads CMDCTRL_R2_* / CMDCTRL_RESTIC_PASSWORD and the
-      # preview CMDCTRL_DEV_R2_* / CMDCTRL_DEV_RESTIC_PASSWORD. Picked in
-      # shell, never with a `${{ cond && a || b }}` ternary, for the reason
-      # on "Resolve deploy target": an unset production value would fall
-      # through to the preview's and back production up into dev's bucket.
+      # Per-host values live in the job's GitHub environment (`prod` or
+      # `dev`, see the job's `environment:`), under the same four names in
+      # each: variable CMDCTRL_R2_REPOSITORY, secrets CMDCTRL_R2_ACCESS_KEY_ID,
+      # CMDCTRL_R2_SECRET_ACCESS_KEY and CMDCTRL_RESTIC_PASSWORD. A value
+      # that still contains REPLACE_ME is a placeholder and counts as unset,
+      # so a half-filled environment never enables the timer -- and, above
+      # all, never initialises a repository under a placeholder password.
       #
       # Secrets travel to the host on ssh STDIN only: the env file is built
       # with printf (a bash builtin, so no argv on the runner either) and
@@ -902,30 +911,15 @@ jobs:
       # GitHub secrets are write-only.
       - name: Ensure off-site backup
         env:
-          PROD_R2_REPOSITORY: ${{ vars.CMDCTRL_R2_REPOSITORY }}
-          PROD_R2_ACCESS_KEY_ID: ${{ secrets.CMDCTRL_R2_ACCESS_KEY_ID }}
-          PROD_R2_SECRET_ACCESS_KEY: ${{ secrets.CMDCTRL_R2_SECRET_ACCESS_KEY }}
-          PROD_RESTIC_PASSWORD: ${{ secrets.CMDCTRL_RESTIC_PASSWORD }}
-          DEV_R2_REPOSITORY: ${{ vars.CMDCTRL_DEV_R2_REPOSITORY }}
-          DEV_R2_ACCESS_KEY_ID: ${{ secrets.CMDCTRL_DEV_R2_ACCESS_KEY_ID }}
-          DEV_R2_SECRET_ACCESS_KEY: ${{ secrets.CMDCTRL_DEV_R2_SECRET_ACCESS_KEY }}
-          DEV_RESTIC_PASSWORD: ${{ secrets.CMDCTRL_DEV_RESTIC_PASSWORD }}
+          RESTIC_REPOSITORY: ${{ vars.CMDCTRL_R2_REPOSITORY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CMDCTRL_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CMDCTRL_R2_SECRET_ACCESS_KEY }}
+          RESTIC_PASSWORD: ${{ secrets.CMDCTRL_RESTIC_PASSWORD }}
           BACKUP_ENV_FILE: /etc/cmd_and_ctrl/backup.env
           BACKUP_UNIT: cmd-and-ctrl-backup
         run: |
-          if [ "${IS_DEV}" = "true" ]; then
-            prefix="CMDCTRL_DEV_"; side="DEV"
-          else
-            prefix="CMDCTRL_"; side="PROD"
-          fi
-          repository_var="${side}_R2_REPOSITORY"
-          access_key_var="${side}_R2_ACCESS_KEY_ID"
-          secret_key_var="${side}_R2_SECRET_ACCESS_KEY"
-          password_var="${side}_RESTIC_PASSWORD"
-          RESTIC_REPOSITORY="${!repository_var}"
-          AWS_ACCESS_KEY_ID="${!access_key_var}"
-          AWS_SECRET_ACCESS_KEY="${!secret_key_var}"
-          RESTIC_PASSWORD="${!password_var}"
+          # Where each value lives, for the messages below.
+          where="GitHub environment '${APP_ENV}'"
 
           # 1. Units. Installed whether or not backups are configured, so
           # a host is one secret away from backing up; installed and
@@ -953,15 +947,19 @@ jobs:
             if [ \"\$changed\" = 1 ]; then sudo systemctl daemon-reload; echo 'daemon reloaded.'; fi
           "
 
-          # 2. Configured? Name every missing value, then stand down.
+          # 2. Configured? Name every missing or placeholder value, then
+          # stand down.
           missing=()
-          [ -n "${RESTIC_REPOSITORY}" ] || missing+=("variable ${prefix}R2_REPOSITORY")
-          [ -n "${AWS_ACCESS_KEY_ID}" ] || missing+=("secret ${prefix}R2_ACCESS_KEY_ID")
-          [ -n "${AWS_SECRET_ACCESS_KEY}" ] || missing+=("secret ${prefix}R2_SECRET_ACCESS_KEY")
-          [ -n "${RESTIC_PASSWORD}" ] || missing+=("secret ${prefix}RESTIC_PASSWORD")
+          unset_or_placeholder() {
+            [ -z "$1" ] || case "$1" in *REPLACE_ME*) true ;; *) false ;; esac
+          }
+          unset_or_placeholder "${RESTIC_REPOSITORY}" && missing+=("variable CMDCTRL_R2_REPOSITORY")
+          unset_or_placeholder "${AWS_ACCESS_KEY_ID}" && missing+=("secret CMDCTRL_R2_ACCESS_KEY_ID")
+          unset_or_placeholder "${AWS_SECRET_ACCESS_KEY}" && missing+=("secret CMDCTRL_R2_SECRET_ACCESS_KEY")
+          unset_or_placeholder "${RESTIC_PASSWORD}" && missing+=("secret CMDCTRL_RESTIC_PASSWORD")
           if [ "${#missing[@]}" -gt 0 ]; then
             for m in "${missing[@]}"; do
-              echo "::warning title=Off-site backup not configured::${m} is not set, so ${CMDCTRL_HOST} (${APP_ENV}) has NO off-site backup. See docs/environments.md#backups."
+              echo "::warning title=Off-site backup not configured::${m} in ${where} is unset or still a REPLACE_ME placeholder, so ${CMDCTRL_HOST} (${APP_ENV}) has NO off-site backup. See docs/environments.md#backups."
             done
             ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo systemctl disable --now ${BACKUP_UNIT}.timer 2>/dev/null || true"
@@ -983,7 +981,7 @@ jobs:
           done
           case "${RESTIC_REPOSITORY}" in
             s3:https://*.r2.cloudflarestorage.com/*) ;;
-            *) echo "::warning::${prefix}R2_REPOSITORY does not look like s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>; using it as given." ;;
+            *) echo "::warning::CMDCTRL_R2_REPOSITORY in ${where} does not look like s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>; using it as given." ;;
           esac
 
           # 3. restic, once. Rebuilt hosts get it from the HomeLab
