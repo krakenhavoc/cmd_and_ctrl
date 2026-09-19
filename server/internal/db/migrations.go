@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"errors"
 	"fmt"
@@ -38,6 +39,13 @@ type migration struct {
 // database. Idempotent: calling it again with nothing new to apply is
 // a single read and no writes.
 func migrate(ctx context.Context, sqlDB *sql.DB) error {
+	return migrateTo(ctx, sqlDB, 0)
+}
+
+// migrateTo is migrate with a ceiling: target > 0 stops after that
+// version, so a test can build a database exactly as an older binary
+// left it and then run the rest. target <= 0 means "everything".
+func migrateTo(ctx context.Context, sqlDB *sql.DB, target int) error {
 	migs, err := loadMigrations()
 	if err != nil {
 		return err
@@ -59,6 +67,9 @@ func migrate(ctx context.Context, sqlDB *sql.DB) error {
 	for _, m := range migs {
 		if m.version <= current {
 			continue
+		}
+		if target > 0 && m.version > target {
+			break
 		}
 		if err := applyMigration(ctx, sqlDB, m); err != nil {
 			return fmt.Errorf("db: migration %04d_%s: %w", m.version, m.name, err)
@@ -95,8 +106,55 @@ func isNoSuchTable(err error) bool {
 // applyMigration runs one migration's SQL and records it, atomically:
 // either both happen or neither does, so a crash mid-migration never
 // leaves schema_migrations disagreeing with the schema it describes.
-func applyMigration(ctx context.Context, sqlDB *sql.DB, m migration) error {
-	tx, err := sqlDB.BeginTx(ctx, nil)
+//
+// # Foreign keys are off while a migration runs
+//
+// Every pooled connection has foreign_keys on (see dsn). A migration
+// runs on one pinned connection with it switched OFF for the duration,
+// and checks the result with PRAGMA foreign_key_check before it
+// commits. This is SQLite's documented procedure for changing a table
+// definition (https://sqlite.org/lang_altertable.html#otheralter), and
+// it is not optional once a migration rebuilds a parent table:
+//
+//   - PRAGMA foreign_keys cannot be changed inside a transaction — it
+//     is a silent no-op there — so it has to be set on the connection
+//     BEFORE BEGIN, which is why the connection is pinned.
+//   - With it on, DROP TABLE on a parent does an implicit DELETE FROM
+//     that fires ON DELETE CASCADE on its children: rebuilding `games`
+//     would delete every seat and invite. PRAGMA defer_foreign_keys
+//     does not help; it defers the constraint check, not the cascade.
+//   - With it on, ALTER TABLE ... RENAME rewrites the REFERENCES
+//     clauses of other tables to follow the renamed table.
+//
+// The check before COMMIT is what keeps "off" honest: a migration that
+// leaves a dangling reference fails and rolls back, exactly as if the
+// constraint had been enforced row by row.
+//
+// The connection goes back to the pool with foreign_keys on again. If
+// switching it back fails, the connection is discarded rather than
+// returned, so no later query can run on it with enforcement off.
+func applyMigration(ctx context.Context, sqlDB *sql.DB, m migration) (err error) {
+	conn, err := sqlDB.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+	defer func() {
+		// A fresh context: ctx being cancelled may be why we are
+		// unwinding, and this must still run.
+		if _, rerr := conn.ExecContext(context.Background(), `PRAGMA foreign_keys = ON`); rerr != nil {
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+			if err == nil {
+				err = fmt.Errorf("re-enable foreign keys: %w", rerr)
+			}
+		}
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -105,12 +163,51 @@ func applyMigration(ctx context.Context, sqlDB *sql.DB, m migration) error {
 	if _, err := tx.ExecContext(ctx, m.sql); err != nil {
 		return err
 	}
+	if err := foreignKeyCheck(ctx, tx); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)`,
 		m.version, m.name, time.Now().Unix()); err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+// foreignKeyCheck runs PRAGMA foreign_key_check over the whole
+// database and turns any violation into an error naming the first few.
+func foreignKeyCheck(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `PRAGMA foreign_key_check`)
+	if err != nil {
+		return fmt.Errorf("foreign_key_check: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var (
+		violations []string
+		total      int
+	)
+	for rows.Next() {
+		var (
+			table, parent string
+			rowid         sql.NullInt64
+			fkid          int
+		)
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return fmt.Errorf("foreign_key_check: %w", err)
+		}
+		total++
+		if len(violations) < 5 {
+			violations = append(violations, fmt.Sprintf("%s rowid %d -> %s", table, rowid.Int64, parent))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("foreign_key_check: %w", err)
+	}
+	if total > 0 {
+		return fmt.Errorf("migration leaves %d dangling foreign key(s): %s", total, strings.Join(violations, "; "))
+	}
+	return nil
 }
 
 // loadMigrations reads every embedded *.sql file, parses its version

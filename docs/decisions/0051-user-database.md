@@ -436,6 +436,72 @@ Sub-PRs 2 and 3 are independent of each other and can run in
 parallel. Nothing here blocks S33's remaining sub-PRs, and sub-PR 2
 should land *after* #517 rather than race it.
 
+### Implementation notes — sub-PR 2 (users and identities)
+
+Recorded where the code settled a detail the decisions above left
+open, or did something differently from how they read.
+
+- **The person columns are rebuilt into real foreign keys.** Migration
+  0002 (sub-PR 3) left `games.created_by`, `invites.created_by` and
+  `seats.user_id` as plain TEXT because `users` did not exist yet.
+  Migration 0003 creates `users` and `identities` and rebuilds those
+  three tables with `REFERENCES users(id)`, keeping every row and
+  index. `seats.deck_id` stays unenforced until `decks` exists (sub-PR
+  5).
+- **Migrations run with `foreign_keys` off, then checked.** SQLite's
+  documented table-rebuild procedure needs `PRAGMA foreign_keys = OFF`,
+  and that pragma is a silent no-op inside a transaction. With it on,
+  `DROP TABLE games` fires `ON DELETE CASCADE` and deletes every seat
+  and invite. `PRAGMA defer_foreign_keys` defers the check, not the
+  cascade, so it does not help. The runner now pins one connection,
+  switches enforcement off before `BEGIN`, runs the migration and
+  `PRAGMA foreign_key_check` in the transaction (a violation rolls the
+  migration back), and switches enforcement back on before the
+  connection returns to the pool. This applies to every migration, not
+  only 0003. A dangling reference is still refused. It is caught once
+  at the end of the migration instead of row by row.
+- **Key format.** `CMDCTRL_IDENTITY_KEY` has the same format as
+  `CMDCTRL_SESSION_KEY`: a random string of at least 32 bytes, used as
+  text rather than decoded. The AES-256 key is SHA-256 of a fixed label
+  followed by that string. A sealed value is a version byte (`1`), then
+  a 12-byte random nonce, then the ciphertext and GCM tag. The
+  identity's `provider` and `subject` are bound in as associated data,
+  so a blob copied to another row does not open. The key must differ
+  from the admin token and the session key, and the boot fails
+  otherwise.
+- **Key absent.** The refresh token is discarded and `refresh_token`
+  is written NULL, including over a value sealed while a key was
+  configured. With a key, a sign-in that returns no refresh token
+  leaves the stored one in place.
+- **The OAuth exchange did not keep a refresh token before this
+  sub-PR.** Discord returns one on every authorization-code grant.
+  `TokenResponse` now reads it. The requested scope is unchanged
+  (`identify`). `identities.scopes` records the scope Discord reports
+  granting, falling back to the requested one if Discord omits it.
+- **`users.avatar_url`** is the same-origin proxy path
+  `/avatars/<snowflake>/<hash>.png` that the client already renders,
+  not a Discord CDN URL. It is NULL for an account with no custom
+  avatar. Both `users.display_name` and `identities.display_name` hold
+  Discord's global name, falling back to the username.
+- **A failed user-store write fails the sign-in** with a 500. It does
+  not degrade to a session with a zero `UserID`. With no database at
+  all (`CMDCTRL_DATA_DIR` empty) the store is a no-op, sign-in works,
+  and sessions carry a zero `UserID`, as before this ADR.
+- **"Create a game needs a signed-in user" (decision 2) is already
+  true.** `POST /games` is admin-only. The only other ways a game comes
+  into being are `CMDCTRL_SEED_DEMO`, which is boot-time and bypasses
+  the lobby, and the one-time `lobby/*.json` import. No non-admin path
+  exists, so nothing new is enforced. `games.created_by` (and both
+  invites' `created_by`) is taken from the creating principal's
+  `UserID`, which is NULL for an admin. Opening the route to signed-in
+  users later is a change to its middleware and nothing else.
+- **Left for later sub-PRs.** `seats.user_id` is still never written:
+  linking a seat to its person is sub-PR 4, alongside
+  `pending_discord_id`. `sessions_invalid_before` exists but nothing
+  reads it until sub-PR 7. Decision 3's 30-day `identified` TTL
+  (`CMDCTRL_IDENTITY_TTL`) is not in any sub-PR's scope yet. Identity
+  sessions still use `CMDCTRL_SESSION_TTL`.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the

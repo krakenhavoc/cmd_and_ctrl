@@ -26,7 +26,16 @@
 //	                        are in memory and die with the process, with a
 //	                        warning on every boot. Too short: boot fails.
 //	                        Rotating it logs everyone out.
-//	CMDCTRL_SEED_DEMO     — if "1", seed a 4-player demo game at startup.
+//	CMDCTRL_IDENTITY_KEY  — AES-256-GCM key (same format as the session key:
+//	                        a random string of at least 32 bytes, distinct
+//	                        from the admin token and the session key) that
+//	                        encrypts Discord refresh tokens in the database
+//	                        (ADR 0051 decision 5). Unset: sign-in still
+//	                        works, the refresh token is discarded and stored
+//	                        as NULL, with a warning on every boot. Too short
+//	                        or reused: boot fails. Rotating it makes stored
+//	                        refresh tokens unreadable; nothing else breaks.
+//	CMDCTRL_SEED_DEMO    — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
 //
@@ -124,6 +133,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -232,6 +242,12 @@ func main() {
 	} else {
 		l = lobby.NewLobby(mgr)
 	}
+
+	// People (ADR 0051 decisions 2 and 5, S34 sub-PR 2). A Discord
+	// sign-in upserts a users + identities row and the session carries
+	// the user's id. Without a database there is nowhere to put them,
+	// and sign-in mints a session with a zero UserID, as before.
+	userStore := newUserStore(log, database)
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
@@ -440,6 +456,7 @@ func main() {
 		Discord:           discordCfg,
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
+		Users:             userStore,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
@@ -677,6 +694,30 @@ func newAuthenticator(log *slog.Logger, cfg config) auth.Authenticator {
 		log.Info("sessions are HMAC-signed and survive a restart", "var", auth.SessionKeyEnv)
 	}
 	return a
+}
+
+// newUserStore builds the user store and its refresh-token key, and
+// exits on a misconfigured key rather than booting on a weak or
+// shared one (users.NewSealerFromEnv). The key is checked whether or
+// not there is a database, as the session key is: a bad value in the
+// env file is an operator mistake worth hearing about on any boot.
+//
+// With the key absent the store still works and refresh tokens are
+// discarded (ADR 0051 decision 5); NewSealerFromEnv has already
+// warned, naming the variable.
+func newUserStore(log *slog.Logger, database *db.DB) users.Store {
+	sealer, err := users.NewSealerFromEnv(os.Getenv, log)
+	if err != nil {
+		log.Error("identity key invalid", "var", users.IdentityKeyEnv, "err", err)
+		os.Exit(1)
+	}
+	if database == nil {
+		return users.NoStore{}
+	}
+	if sealer != nil {
+		log.Info("Discord refresh tokens are stored encrypted", "var", users.IdentityKeyEnv)
+	}
+	return users.NewSQLStore(database, sealer)
 }
 
 func envOr(key, dflt string) string {

@@ -305,7 +305,20 @@ func (l *Lobby) resolveInvite(want uuid.UUID, invite string) (InviteRecord, erro
 //
 // The display name is purely cosmetic at S04 — it appears in the
 // lobby listing UI.
+//
+// Create records no creator (games.created_by NULL); it is CreateBy
+// with a zero user.
 func (l *Lobby) Create(name string) (GameMeta, error) {
+	return l.CreateBy(name, uuid.Nil)
+}
+
+// CreateBy is Create with the creating user recorded (ADR 0051
+// decision 2): games.created_by and both invites' created_by are
+// createdBy, or NULL when it is uuid.Nil — an admin session, which is
+// a server credential and not a person. A non-zero createdBy must be
+// a users row: the column is a foreign key, and a user that does not
+// exist fails the create.
+func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 	name = trimToLimit(name, 80)
 	if name == "" {
 		return GameMeta{}, ErrEmptyName
@@ -339,15 +352,20 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 	// validated only against the store, so a failed write is a failed
 	// Create: the game would be unjoinable even in this process.
 	created := g.CreatedAt.UTC()
+	var creator string
+	if createdBy != uuid.Nil {
+		creator = createdBy.String()
+	}
 	ctx, cancel := storeCtx()
 	err = l.store.CreateGame(ctx, GameRecord{
 		ID:        g.ID,
 		Name:      name,
+		CreatedBy: creator,
 		State:     string(g.State),
 		CreatedAt: created,
 	}, []InviteRecord{
-		{Hash: playerHash, GameID: g.ID, Kind: InvitePlayer, CreatedAt: created},
-		{Hash: specHash, GameID: g.ID, Kind: InviteSpectator, CreatedAt: created},
+		{Hash: playerHash, GameID: g.ID, Kind: InvitePlayer, CreatedBy: creator, CreatedAt: created},
+		{Hash: specHash, GameID: g.ID, Kind: InviteSpectator, CreatedBy: creator, CreatedAt: created},
 	})
 	cancel()
 	if err != nil {
@@ -358,7 +376,7 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 	// The plaintext tokens stay on this entry for the life of the
 	// process, so GET /games/{id} can still show them to the admin and
 	// seated players. Only their hashes are persisted.
-	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true}
+	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true, createdBy: creator}
 	l.mu.Lock()
 	l.games[g.ID] = entry
 	l.mu.Unlock()

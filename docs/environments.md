@@ -147,11 +147,23 @@ on its own VM. Read it with
 `CMDCTRL_SESSION_KEY`, the session signing key (#517,
 [ADR 0044](decisions/0044-surviving-a-deploy.md) decision 3), is in
 neither table because it lives nowhere but the host. CD's "Ensure server
-env (session signing key)" step generates it on the VM the first time it
+env (session signing and identity keys)" step generates it on the VM the first time it
 finds it missing, and leaves it alone after that. Each host has its own,
 so a preview session does not validate on production. Rotating it logs
 every player out: delete the line from `/etc/cmd_and_ctrl/env` and
 redeploy.
+
+`CMDCTRL_IDENTITY_KEY`, the key that encrypts Discord refresh tokens in
+the database (S34 sub-PR 2, [ADR 0051](decisions/0051-user-database.md)
+decision 5), is provisioned the same way by the same CD step, "Ensure
+server env (session signing and identity keys)": generated on the host
+the first time it is missing, never rewritten, one per host. It must be
+at least 32 bytes and differ from both the admin token and the session
+key, or the server refuses to boot. Without it, Discord sign-in still
+works and the user row is still written, but the refresh token is
+dropped and the boot log warns. Rotating it (delete the line, redeploy)
+makes the stored refresh tokens unreadable; nothing reads them yet, and
+no one is logged out.
 
 ## Dev-only features
 
