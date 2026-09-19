@@ -10,9 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The go-wide deck's one-sided wrath. The engine has no prompt for
 // "choose a set of your permanents under a sum constraint" — the
-// sacrifice prompt picks one permanent and carries no continuation,
-// so it cannot be asked repeatedly until the survivors fit — and the
-// choice is made FOR each player instead: they keep their creatures
+// sacrifice prompt picks ONE permanent, and the run's continuation
+// (#1019) tells a caller what landed rather than re-asking until the
+// survivors fit — and the choice is made FOR each player instead: they keep their creatures
 // lowest power first (battlefield order on a tie) while the total
 // stays at four or less, which keeps as many as possible, and
 // sacrifice the rest. Every keep set is fixed before anything is

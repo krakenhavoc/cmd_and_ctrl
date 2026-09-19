@@ -17,13 +17,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // land you control can never be an illegal pick); the search is the
 // S22 chooser with Harrow's "up to two" and Cultivate's tapped flag.
 //
-// The ordering is the printed one, and it is why the land is chosen
-// as a trigger target rather than through a sacrifice prompt queued
-// at resolution: a sacrifice prompt has no continuation, so the
-// search would have to be queued alongside it, and with a small
-// library the search resolves synchronously — the basics would enter
-// BEFORE the sacrifice, and the prompt would offer them as the land
-// to sacrifice. Choosing at trigger time keeps sacrifice-then-search.
+// The ordering is the printed one, and the land is chosen as a
+// trigger target rather than through a resolution-time sacrifice
+// prompt because that was the only way to get it before #1019: a
+// sacrifice prompt carried no continuation, so the search had to be
+// queued alongside it, and with a small library the search resolves
+// synchronously — the basics would enter BEFORE the sacrifice, and
+// the prompt would offer them as the land to sacrifice. The prompt
+// has a continuation now (PlayerSacrificesThenForEffect), so the
+// caveat below is closable; it is left as it is because moving the
+// choice from trigger time to resolution time is a change to WHICH
+// land can be sacrificed, not to the ordering this paragraph is
+// about. Tracked separately.
 //
 // Sandbox simplification, weaker than printed: the land is chosen
 // when the trigger goes on the stack, not on resolution, so an

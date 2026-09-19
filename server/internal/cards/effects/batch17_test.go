@@ -365,12 +365,20 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) == nil {
 		t.Fatal("each player with a creature is asked to sacrifice one")
 	}
-	if !g.Battlefield.Contains(rock) || controllerOf(t, g, rock) != me.ID {
-		t.Error("the picked permanent card returns to the battlefield")
+	// #1019: "if you sacrificed a creature this way" is about the
+	// SACRIFICE, so nothing comes back while the prompts are open.
+	if g.Battlefield.Contains(rock) {
+		t.Error("the permanent came back before anybody had chosen a creature")
 	}
 	answerSacrifice(t, g, me.ID, mine)
+	if g.Battlefield.Contains(rock) {
+		t.Error("the run waits for every asked seat, not just the controller")
+	}
 	answerSacrifice(t, g, opp.ID, theirs)
 	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(rock) || controllerOf(t, g, rock) != me.ID {
+		t.Error("the picked permanent card returns to the battlefield once the sacrifices have landed")
+	}
 	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
 		t.Error("the sacrifices happen")
 	}

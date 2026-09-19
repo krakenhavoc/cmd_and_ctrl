@@ -354,11 +354,10 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 // corner is declared on the card.
 func b14PlayerSacrificesAllButN(g *game.Game, source, player uuid.UUID, keep int, reason string) {
 	excess := b14CreaturesControlled(g, player) - keep
-	for i := 0; i < excess; i++ {
-		if g.PlayerSacrificesForEffect(source, player, sacrificeSpec("a creature", Creature()), reason) == 0 {
-			return
-		}
+	if excess < 1 {
+		return
 	}
+	g.PlayerSacrificesNForEffect(source, player, sacrificeSpec("a creature", Creature()), reason, excess)
 }
 
 // b14MoveAllCounters moves every counter on `from` onto `to`, kind

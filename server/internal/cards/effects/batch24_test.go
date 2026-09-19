@@ -401,15 +401,14 @@ func TestB24LichKnightsConquestSacrificesThatManyAndReanimates(t *testing.T) {
 	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: deadA}, {Kind: game.TargetCard, ID: deadB}})
 	passPriorityAroundTable(t, g)
-	if !g.Battlefield.Contains(deadA) || !g.Battlefield.Contains(deadB) {
-		t.Fatal("both chosen creature cards return")
-	}
-	if g.Battlefield.Contains(deadC) {
-		t.Error("only the chosen cards return")
+	// #1019: "that many" is how many were SACRIFICED, so nothing comes
+	// back while the prompts are open.
+	if g.Battlefield.Contains(deadA) || g.Battlefield.Contains(deadB) {
+		t.Fatal("the creature cards came back before a single Treasure had been chosen")
 	}
 	// Two sacrifice prompts, each over the artifacts, enchantments
 	// and tokens — never the nontoken creature, and never the
-	// artifact creature that just came back.
+	// artifact creature that is going to come back.
 	prompts := 0
 	for _, c := range g.PendingChoices {
 		if c == nil || c.Kind != game.PendingChoiceSacrifice || c.Chooser != me.ID {
@@ -427,9 +426,18 @@ func TestB24LichKnightsConquestSacrificesThatManyAndReanimates(t *testing.T) {
 		t.Fatalf("two cards returned, two sacrifices owed: %d prompts", prompts)
 	}
 	answerSacrifice(t, g, me.ID, treasure)
+	if g.Battlefield.Contains(deadA) || g.Battlefield.Contains(deadB) {
+		t.Error("the run waits for BOTH prompts before it returns anything")
+	}
 	answerSacrifice(t, g, me.ID, aura)
 	if g.Battlefield.Contains(treasure) || g.Battlefield.Contains(aura) || !g.Battlefield.Contains(signet) {
 		t.Error("exactly the two chosen permanents are sacrificed")
+	}
+	if !g.Battlefield.Contains(deadA) || !g.Battlefield.Contains(deadB) {
+		t.Fatal("both chosen creature cards return once the sacrifices have landed")
+	}
+	if g.Battlefield.Contains(deadC) {
+		t.Error("only the chosen cards return")
 	}
 	if sacrificeChoiceFor(g, me.ID) != nil {
 		t.Error("no third prompt")
@@ -443,10 +451,10 @@ func TestB24LichKnightsConquestSacrificesThatManyAndReanimates(t *testing.T) {
 	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: deadC}, {Kind: game.TargetCard, ID: deadD}})
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, signet)
 	if !g.Battlefield.Contains(deadC) || g.Battlefield.Contains(deadD) {
 		t.Error("one eligible permanent: the first chosen card returns, the second does not")
 	}
-	answerSacrifice(t, g, me.ID, signet)
 	if spec, _ := Lookup(b24LichKnightsConquestOracle); spec.Completeness != CompletenessCaveats {
 		t.Error("the choice order is a declared gap")
 	}
@@ -468,8 +476,11 @@ func TestB24WillOfTheAbzanEdictsTheBiggestOrReanimates(t *testing.T) {
 	castModal(t, g, "Will of the Abzan", "Sorcery", b24WillOfTheAbzanOracle, []int{0},
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: a.ID}, {Kind: game.TargetPlayer, ID: b.ID}})
 	passPriorityAroundTable(t, g)
-	if a.Life != aLife-3 || b.Life != bLife-3 {
-		t.Errorf("each targeted opponent loses 3: %d→%d, %d→%d", aLife, a.Life, bLife, b.Life)
+	// #1019: the loss is a clause about a PLAYER, so it happens either
+	// way — but it happens AFTER the sacrifice it is printed after.
+	if a.Life != aLife || b.Life != bLife {
+		t.Errorf("the life loss landed while the sacrifice prompts were open: %d→%d, %d→%d",
+			aLife, a.Life, bLife, b.Life)
 	}
 	pa := sacrificeChoiceFor(g, a.ID)
 	if pa == nil || len(pa.SacrificeOptions) != 1 || pa.SacrificeOptions[0] != aBig {
@@ -483,6 +494,10 @@ func TestB24WillOfTheAbzanEdictsTheBiggestOrReanimates(t *testing.T) {
 	answerSacrifice(t, g, b.ID, bTwo)
 	if g.Battlefield.Contains(aBig) || !g.Battlefield.Contains(aSmall) || !g.Battlefield.Contains(bOne) || g.Battlefield.Contains(bTwo) {
 		t.Error("exactly the chosen creatures are sacrificed")
+	}
+	if a.Life != aLife-3 || b.Life != bLife-3 {
+		t.Errorf("each targeted opponent loses 3 once they have answered: %d→%d, %d→%d",
+			aLife, a.Life, bLife, b.Life)
 	}
 	// Mode two: reanimate.
 	advanceToPrecombatMainOf(t, g, 0)

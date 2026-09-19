@@ -364,29 +364,33 @@ func b33GainLifeThenDraw(life, draw int) func(g *game.Game, item *game.StackItem
 
 // b33SacrificeLandsThenSearchBasicsTapped is Planar Engineering's
 // body: two sacrifice prompts over the controller's lands (their own
-// pick, one land per prompt, the b17PlayerSacrificesN shape — a
-// player with one land sacrifices it and the second prompt is
-// skipped), then a search for up to `n` basic land cards put onto
-// the battlefield tapped, then a shuffle. The search prompt is
-// queued alongside the sacrifice prompts rather than after them —
-// the sacrifice prompt has no continuation — which is harmless: the
-// lands come from the battlefield and the basics from the library.
+// pick, one land per prompt — a player with one land sacrifices it
+// and the second prompt is withdrawn), THEN a search for up to `n`
+// basic land cards put onto the battlefield tapped, then a shuffle.
+//
+// The "then" is the printed one since #1019: the two prompts are one
+// run and the search is its continuation, so the basics arrive after
+// the lands have gone. The search used to be queued alongside the
+// sacrifice prompts because the sacrifice prompt had no continuation
+// to hang it on, which put a land-count trigger and a landfall watcher
+// in the wrong order relative to each other.
 func b33SacrificeLandsThenSearchBasicsTapped(item *game.StackItem, ctx *Context, lands, n int) error {
-	for i := 0; i < lands; i++ {
-		if ctx.Game.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
-			sacrificeSpec("a land", Land()), "Planar Engineering — sacrifice a land") == 0 {
-			break
-		}
-	}
-	return SearchLibrary{
-		Player:        item.Controller,
-		Predicate:     b30IsBasicLandCard,
-		Dest:          game.ZoneBattlefield,
-		Limit:         n,
-		Shuffle:       true,
-		TappedOnEntry: true,
-		Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
-	}.Apply(ctx)
+	return ctx.Game.PlayerSacrificesThenForEffect(
+		item.SourceCardID, item.Controller,
+		sacrificeSpec("a land", Land()),
+		"Planar Engineering — sacrifice a land",
+		lands,
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			return SearchLibrary{
+				Player:        item.Controller,
+				Predicate:     b30IsBasicLandCard,
+				Dest:          game.ZoneBattlefield,
+				Limit:         n,
+				Shuffle:       true,
+				TappedOnEntry: true,
+				Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
+			}.Apply(NewContext(g, item))
+		})
 }
 
 // b33DoubleUnspentMana is Doubling Cube's ProducedFunc: one slot of

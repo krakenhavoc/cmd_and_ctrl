@@ -866,6 +866,25 @@ type EachPlayerSacrifices struct {
 
 	// Label is the picker's banner copy: "a creature".
 	Label string
+
+	// Then is the clause printed after the edict — "if you sacrificed
+	// a creature this way, …", "then you draw a card". Optional; leave
+	// it nil for an edict with nothing hanging off it, which is most
+	// of them.
+	//
+	// #1019, and the same shape as SacrificePermanent.Then (#993). The
+	// prompts are a QUESTION per seat and return how many seats were
+	// asked, so a clause written on the next line pays out before
+	// anybody has chosen anything. This one runs once every asked seat
+	// has answered AND the permanents they named have finished moving
+	// — so a sacrificed commander's CR 903.9 prompt holds it too.
+	//
+	// `sacrificed` carries one entry per seat that was ASKED, in APNAP
+	// ask order, with the permanents that really left the battlefield
+	// (game.PromptedSacrifices). A commander that took the command
+	// zone is in it; a leg the CR 614 window cancelled is not. Write
+	// the clause as something that acts on what it is told.
+	Then func(ctx *Context, sacrificed game.PromptedSacrifices) error
 }
 
 func (e EachPlayerSacrifices) Apply(ctx *Context) error {
@@ -881,8 +900,19 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	if label == "" {
 		label = "a permanent"
 	}
-	ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
-	return nil
+	if e.Then == nil {
+		ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
+		return nil
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), except, spec, "Sacrifice "+label,
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			return e.Then(NewContext(g, item), sacrificed)
+		})
 }
 
 // Scry is "scry N" (CR 701.22) — look at the top N cards of your

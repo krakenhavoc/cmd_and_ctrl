@@ -401,11 +401,10 @@ func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) er
 // trimmed after every answer; a player with fewer permanents than
 // owed sacrifices what they have and the rest are dropped.
 func b17PlayerSacrificesN(g *game.Game, source, player uuid.UUID, n int, reason string) {
-	for i := 0; i < n; i++ {
-		if g.PlayerSacrificesForEffect(source, player, nil, reason) == 0 {
-			return
-		}
+	if n < 1 {
+		return
 	}
+	g.PlayerSacrificesNForEffect(source, player, nil, reason, n)
 }
 
 // b17WheelToGreatestDiscard is Jace's Archivist's body: each player

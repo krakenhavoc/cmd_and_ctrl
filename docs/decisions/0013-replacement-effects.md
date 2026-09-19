@@ -2308,6 +2308,136 @@ two-kind entry 60 times and asserts one order, asserts the order does
 not depend on which clause seeded first, and pins Doubling Season
 doubling both kinds through their separate windows.
 
+### 5x. Amendment, 2026-09-19: a prompted sacrifice is a RUN, and its continuation waits for every seat
+
+*Amendment, 2026-09-19, branch
+`feat/1019-1013-player-sacrifice-continuation-and-bot-cost-choice`.
+Closes [#1019](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1019).
+§5v's item 8 named one hole and left it open: the two PROMPT-driven
+sacrifices are out of the lint's tables "because a lint whose message
+names a fix that does not exist is worse than no lint". This is the
+fix, and the tables now carry them.*
+
+**1. What was wrong.** `g.PlayerSacrificesForEffect` and
+`g.EachPlayerSacrificesForEffect` do not sacrifice anything. They queue
+a `PendingChoiceSacrifice` per seat and return **how many seats were
+asked**; the permanent leaves the battlefield when a player answers,
+which is one or more actions later. Every clause a card wrote on the
+next line was therefore the §5t shape arriving through a prompt — Rise
+of the Witch-king's "if you sacrificed a creature this way" was really
+"was the controller handed a prompt", and the permanent came back from
+the graveyard before anybody had chosen a creature.
+
+It is a worse hole than a fire-and-forget exit's, because a count of
+QUESTIONS is not even an incomplete outcome. A seat that is asked and
+then has its prompt withdrawn — its only creature died to somebody
+else's answer — sacrificed nothing, and the count says it did.
+
+**2. The form: a RUN.** One run is **one printed instruction**, however
+many prompts it takes to ask it: "each player sacrifices a creature of
+their choice" over four seats, "sacrifice two lands" over one seat
+twice. Its continuation runs ONCE, after the LAST of those prompts has
+settled, and is handed `game.PromptedSacrifices` — one entry per seat
+that was ASKED, in ask order, carrying the permanents that really left
+the battlefield.
+
+Four entry points, one body (`server/internal/game/sacrifice_run.go`):
+
+| entry point | the instruction |
+| --- | --- |
+| `EachPlayerSacrificesThenForEffect` | the APNAP fan-out, Rise of the Witch-king |
+| `PlayersSacrificeThenForEffect` | a named set of seats, Priest of Forgotten Gods' two targets |
+| `PlayerSacrificesThenForEffect` | one seat asked `count` times, Lich-Knights' Conquest |
+| `PlayerSacrificesNForEffect` | the same ask with nothing waiting on it |
+
+`EachPlayerSacrifices.Then` is the catalog side, shaped exactly like
+`SacrificePermanent.Then` (§5v item 7).
+
+**3. It waits for the MOVE, not for the answer.** `ResolveSacrificeChoice`
+routes the picked permanent through `SacrificeThenForEffect` rather than
+the fire-and-forget `sacrificePermanentLocked`, so the leg rides
+`sacrificeRoute` (#910, #964) like every other sacrifice. A sacrificed
+commander is still ON the battlefield while its owner answers CR 903.9,
+and the run waits for that too. What lands in the run is
+`sacrificedThisWayLocked`'s answer, so a commander that takes the
+command zone counts — CR 701.17a's keyword action is the controller's
+move off the battlefield, and a replacement rewrites only where the card
+goes — and a leg the CR 614 window cancelled does not.
+
+**4. A withdrawn prompt settles its leg.** This is #1016's `dropDefault`
+at a second kind, and the reason `PendingChoiceSacrifice` grows an
+`onDrop` in the departure table: the question ends, the rest of the card
+does not. Both withdrawal paths reach it —
+`pruneSacrificeChoicesLocked` when a seat's board empties under an open
+prompt, and the departure sweep when a seat leaves — through the one
+action, `runChoiceDropActionLocked`. The departure sweep's gate is
+unchanged (`choiceObjectSurvivesLocked`), so a run whose own source left
+the game with its controller is abandoned rather than paid out, which is
+right: the payout belonged to the seat that has gone.
+
+**5. The run state is on the GAME, not in a frame on the prompt.** The
+prompts of one run are answered in any order, so the run is SHARED by
+all of them and MUTATED as each settles. A server-only frame shared by
+pointer is copied per prompt by `cloneLocked`, which would hand an undo
+snapshot as many half-finished runs as the run had prompts; keyed by a
+plain uuid on the choice, the link survives a value copy for free and
+`cloneSacrificeRuns` deep-copies each run once. The counter and the
+landed lists then rewind together with the queue, and an undone answer
+replays to the same place. It is `Game.replacementsAppliedThisEvent`'s
+shape, for #808's reason. Both fields are `dropped` in the snapshot plan
+with the run counted in `ContinuationCensus.ChoiceResumeFrames`.
+
+**6. Six catalog callers, three kinds of debt.** `git grep` finds
+fourteen files calling the two entry points; ten have nothing hanging
+off the answer and are untouched.
+
+- **The ANSWER.** Rise of the Witch-king, above. The only changed
+  outcome, and the one the lint surfaced.
+- **The COUNT.** Lich-Knights' Conquest's "return that many" was how
+  many prompts went up, so a prompt withdrawn because its Treasure had
+  already gone still bought a creature card. It is
+  `sacrificed.Count()` now.
+- **The ORDER.** Planar Engineering (the search was queued alongside the
+  prompts, so with a small library the basics entered before the
+  sacrifice and were offered as the land to sacrifice), Cornered by
+  Black Mages, Will of the Abzan and Priest of Forgotten Gods. Each is
+  §5v item 2's second bullet: a clause about a PLAYER, true whichever
+  way the prompt is answered, moved into the continuation with the
+  answer deliberately ignored, for the ordering alone.
+
+Deliberately NOT migrated: Archon of Cruelty
+(`batch09_helpers.go:128`). Its printed order is sacrifice, discard,
+lose life, and the discard prompt has no continuation of its own — the
+`discardVerb` row of the lint says so — so the sequence cannot be made
+right by this change alone, and moving half of it would trade one wrong
+order for another.
+
+**7. The lint's tables, and a second scan.** Both entry points are in
+`exitStartsTheClock` with `sacrificePromptVerb`, and
+`EachPlayerSacrifices` is in `exitPrimitives`. The existing scan is not
+enough on its own: it keys on a gate reading a local assigned BEFORE the
+exit, and Rise of the Witch-king had no such local — it read the call's
+own return value. So `questionCountGatesIn` is a second, narrow scan for
+exactly that, in both spellings (`if g.PlayerSacrificesForEffect(…) ==
+0` and `asked := …; if asked == 0`), and it is scoped to the verbs whose
+return is a count of QUESTIONS rather than of permanents. The other
+verbs' counts are outcomes — incomplete ones, which is what the rest of
+§5t is about — and reading them is a different judgement.
+
+The stop rule a fire-and-forget caller needed the count for — "ask N
+times, stop when the seat has nothing" — is `PlayerSacrificesNForEffect`
+now, so no legitimate caller reads it and the new scan needs no
+allowlist entry. Archfiend of Depravity, Phyrexian Obliterator and Lotus
+Field lost their hand-written loops to it.
+
+**8. Still open, with the seam named.** Springbloom Druid
+(`springbloom_druid.go`) chose its land as a TRIGGER TARGET rather than
+through a resolution-time prompt precisely because the prompt had no
+continuation; it does now, so that caveat is closable. It is left alone
+here because moving the choice from trigger time to resolution time
+changes WHICH land can be sacrificed, not the ordering the comment was
+about, and that is a card decision rather than this mechanic's.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
