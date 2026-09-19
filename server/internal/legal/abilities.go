@@ -30,7 +30,11 @@ type activateParams struct {
 	// announces. Omitted for a fixed one-permanent cost.
 	CounterCounts []int  `json:"counter_counts,omitempty"`
 	CounterKind   string `json:"counter_kind,omitempty"`
-	XValue        int    `json:"x_value,omitempty"`
+	// #943: the per-permanent kind, for the one printed cost whose
+	// parts may differ in kind (Tekuthal). Omitted whenever the
+	// payment is of one kind, which counter_kind says.
+	CounterKinds []string `json:"counter_kinds,omitempty"`
+	XValue       int      `json:"x_value,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -285,7 +289,8 @@ func (e *enumerator) activatedMoves() {
 								CrewIDs:          idStrings(crewIDs),
 								CounterSourceIDs: cc.wireIDs(),
 								CounterCounts:    cc.wireCounts(),
-								CounterKind:      cc.wireKind,
+								CounterKind:      cc.wireKind(),
+								CounterKinds:     cc.wireKinds(),
 								XValue:           xValue,
 								PhyrexianLife:    phyrexianLife,
 								Strict:           true,
@@ -348,9 +353,13 @@ func (e *enumerator) affordablePayment(
 	return 0, 0, false
 }
 
-// counterPart is one permanent's share of a counter payment.
+// counterPart is one permanent's share of a counter payment: which
+// kind comes off it, and how many. The kind is per part because
+// #943's any-kind among cost is paid in whatever kinds the
+// permanents hold; every other shape repeats one kind.
 type counterPart struct {
 	cardID uuid.UUID
+	kind   string
 	n      int
 }
 
@@ -358,7 +367,6 @@ type counterPart struct {
 // value stands for "the ability has no counter component".
 type counterChoice struct {
 	parts []counterPart
-	kind  string
 	total int
 	// count orders the choices: the counters on the permanent the
 	// payment comes off, so a capped budget spends itself on the
@@ -369,13 +377,29 @@ type counterChoice struct {
 	// "from among …" forms, which name the permanents on the wire;
 	// the self form does not.
 	fromOther bool
-	// wireKind is the kind sent as counter_kind: set only for "a
-	// counter" of any kind, where the engine needs to be told.
-	wireKind string
+	// anyKind is true when the COST prints no kind, so the payment
+	// has to name the kinds it removed — counter_kind when the parts
+	// share one, counter_kinds when they do not (#943).
+	anyKind bool
 	// explicitCounts is true when the payment has to spell out the
 	// per-permanent split — an among payment, and a variable one,
 	// where there is no printed count for the engine to assume.
 	explicitCounts bool
+}
+
+// oneKind is the kind every part removes, or "" when the parts mix
+// kinds — which only an any-kind among payment can do.
+func (cc counterChoice) oneKind() string {
+	if len(cc.parts) == 0 {
+		return ""
+	}
+	kind := cc.parts[0].kind
+	for _, p := range cc.parts[1:] {
+		if p.kind != kind {
+			return ""
+		}
+	}
+	return kind
 }
 
 // counterPaymentChoices turns the engine's (permanent, kinds) options
@@ -391,6 +415,11 @@ type counterChoice struct {
 //	                       N is covered. The sets differ only in which
 //	                       permanents are drained, and the policy has
 //	                       nothing to choose between them with.
+//	any-kind among         the same walk, with every kind in the pool
+//	                       rather than one (#943, Tekuthal): the parts
+//	                       carry the kinds they drain, and the order
+//	                       is still most counters first, within a
+//	                       permanent as well as across them.
 //	variable               ONE payment per permanent: every counter it
 //	                       holds. A variable removal is printed on
 //	                       cards that turn counters into mana, so the
@@ -405,8 +434,12 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 		return []counterChoice{{}}
 	}
 	if rc.Among {
-		// The kind is printed (Register refuses an any-kind among),
-		// so there is one pool to draw from, biggest first.
+		// One pool, drained biggest first. For a printed kind the
+		// pool is that kind's counters; for an any-kind among cost
+		// every kind on every matched permanent is in it, and a part
+		// records which kind it took (#943). Bounded by the board
+		// either way: at most one part per (permanent, kind), and
+		// still exactly ONE payment.
 		var parts []counterPart
 		need, best := rc.N, 0
 		for _, o := range opts {
@@ -414,14 +447,17 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 				break
 			}
 			for _, k := range o.Kinds {
-				if k.Kind != rc.Counter || need <= 0 {
+				if need <= 0 {
+					break
+				}
+				if rc.Counter != "" && k.Kind != rc.Counter {
 					continue
 				}
 				take := k.Count
 				if take > need {
 					take = need
 				}
-				parts = append(parts, counterPart{cardID: o.CardID, n: take})
+				parts = append(parts, counterPart{cardID: o.CardID, kind: k.Kind, n: take})
 				need -= take
 				if k.Count > best {
 					best = k.Count
@@ -432,8 +468,8 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 			return nil
 		}
 		return []counterChoice{{
-			parts: parts, kind: rc.Counter, total: rc.N, count: best,
-			fromOther: true, explicitCounts: true,
+			parts: parts, total: rc.N, count: best,
+			fromOther: true, anyKind: rc.Counter == "", explicitCounts: true,
 		}}
 	}
 	fromOther := rc.From != nil
@@ -447,18 +483,14 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 			if n < 1 {
 				continue
 			}
-			cc := counterChoice{
-				parts:          []counterPart{{cardID: o.CardID, n: n}},
-				kind:           k.Kind,
+			out = append(out, counterChoice{
+				parts:          []counterPart{{cardID: o.CardID, kind: k.Kind, n: n}},
 				total:          n,
 				count:          k.Count,
 				fromOther:      fromOther,
+				anyKind:        rc.Counter == "",
 				explicitCounts: rc.Variable,
-			}
-			if rc.Counter == "" {
-				cc.wireKind = k.Kind
-			}
-			out = append(out, cc)
+			})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].count > out[j].count })
@@ -491,13 +523,39 @@ func (cc counterChoice) wireCounts() []int {
 	return out
 }
 
+// wireKind is the kind sent as counter_kind: set only when the COST
+// prints no kind and the payment is of ONE kind, which is every
+// any-kind payment but a mixed Tekuthal split.
+func (cc counterChoice) wireKind() string {
+	if !cc.anyKind {
+		return ""
+	}
+	return cc.oneKind()
+}
+
+// wireKinds is #943's per-part kind array, sent only when the parts
+// do not share a kind — an any-kind AMONG payment that mixes them.
+// Everything else says its kind once in counter_kind, so a move this
+// enumerator builds is a payload every client already speaks.
+func (cc counterChoice) wireKinds() []string {
+	if !cc.anyKind || cc.oneKind() != "" {
+		return nil
+	}
+	out := make([]string, 0, len(cc.parts))
+	for _, p := range cc.parts {
+		out = append(out, p.kind)
+	}
+	return out
+}
+
 // prices is the counter component of the move's cost, one entry per
-// permanent the payment drains, so a policy sees what the payment
-// costs IT rather than only what the card charges.
+// permanent the payment drains, in the kind it drains, so a policy
+// sees what the payment costs IT rather than only what the card
+// charges.
 func (cc counterChoice) prices() []CounterPrice {
 	out := make([]CounterPrice, 0, len(cc.parts))
 	for _, p := range cc.parts {
-		out = append(out, CounterPrice{CardID: p.cardID, Counter: cc.kind, N: p.n})
+		out = append(out, CounterPrice{CardID: p.cardID, Counter: p.kind, N: p.n})
 	}
 	return out
 }
@@ -509,24 +567,35 @@ func (cc counterChoice) label(g *game.Game) string {
 	if cc.total == 0 {
 		return ""
 	}
-	if len(cc.parts) == 1 && !cc.fromOther && cc.wireKind == "" && !cc.explicitCounts {
+	if len(cc.parts) == 1 && !cc.fromOther && !cc.anyKind && !cc.explicitCounts {
 		// A printed self cost with a printed count: the ability text
 		// already says it.
 		return ""
 	}
+	kind := cc.oneKind()
 	froms := make([]string, 0, len(cc.parts))
 	for _, p := range cc.parts {
 		name := cardName(g, p.cardID)
-		if len(cc.parts) > 1 || cc.total != p.n {
+		switch {
+		case kind == "":
+			// A payment that mixes kinds names the kind per part —
+			// "2 +1/+1 from Bear, 1 loyalty from Jace" — because the
+			// reader cannot infer it from the ability text or from
+			// the total (#943).
+			name = fmt.Sprintf("%d %s from %s", p.n, p.kind, name)
+		case len(cc.parts) > 1 || cc.total != p.n:
 			name = fmt.Sprintf("%d from %s", p.n, name)
-		} else {
+		default:
 			name = "from " + name
 		}
 		froms = append(froms, name)
 	}
-	what := cc.kind + " counter"
+	if kind == "" {
+		return fmt.Sprintf(" (removing %d counters: %s)", cc.total, strings.Join(froms, ", "))
+	}
+	what := kind + " counter"
 	if cc.total > 1 {
-		what = fmt.Sprintf("%d %s counters", cc.total, cc.kind)
+		what = fmt.Sprintf("%d %s counters", cc.total, kind)
 	}
 	return " (removing " + what + " " + strings.Join(froms, ", ") + ")"
 }
@@ -640,6 +709,7 @@ type manaParams struct {
 	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
 	CounterCounts    []int    `json:"counter_counts,omitempty"`
 	CounterKind      string   `json:"counter_kind,omitempty"`
+	CounterKinds     []string `json:"counter_kinds,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents.
@@ -756,7 +826,8 @@ func (e *enumerator) manaMoves() {
 							SacrificeIDs:     idStrings(sacs),
 							CounterSourceIDs: cc.wireIDs(),
 							CounterCounts:    cc.wireCounts(),
-							CounterKind:      cc.wireKind,
+							CounterKind:      cc.wireKind(),
+							CounterKinds:     cc.wireKinds(),
 						}),
 					})
 				}

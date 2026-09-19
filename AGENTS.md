@@ -3015,7 +3015,14 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   (`RemoveCountersFromThis(kind, n)` for "from this",
   `RemoveCountersFrom(kind, n, "a planeswalker you control", preds…)`
   for another permanent you control, kind `""` for "a counter" of any
-  kind — [ADR 0020](docs/decisions/0020-activated-abilities.md) addendum)
+  kind, `RemoveCountersXFromThis(kind, floor)` for "remove X / any
+  number", and `RemoveCountersAmong(kind, n, label, preds…)` for "from
+  among …" — with kind `""` there too since #943, the any-kind split
+  (Tekuthal's "three counters from among other artifacts, creatures,
+  and planeswalkers you control"), where the activator names a kind
+  per permanent as well as a count and the payment sends
+  `counter_kinds` beside `counter_source_ids` only when the kinds
+  actually differ — [ADR 0020](docs/decisions/0020-activated-abilities.md) addendum)
   ([activated.go](server/internal/game/activated.go)) and nothing else.
   Equip needs no component of its own — `EquipAbility("{2}")` is a mana
   cost plus a target clause. **"Rather than pay" on an activated
@@ -3024,11 +3031,11 @@ batch's skips to it in the batch PR (Discussion #559 item 6).
   what Heart of Kiran does ("Crew 3" and "Crew — remove a loyalty counter
   from a planeswalker you control"). The second entry must have a cost
   that can actually go unpaid, or it is the #259 mistake below. Still
-  no shape: cycling, **convoke / waterbend on an ACTIVATED ability**, a
-  counter removal **split across several permanents** (Iron Spider,
-  Stark Upgrade's "from among artifacts you control"), and a cost that
-  **adds** a counter (Devoted Druid) —
-  don't invent one. (Convoke and waterbend on a *spell* do have one since
+  no shape: cycling and **convoke / waterbend on an ACTIVATED ability**
+  — don't invent one. (Two things that used to be on this list are not
+  any more: a counter removal **split across several permanents**
+  shipped with #789 and #943's any-kind form, and a cost that **adds**
+  a counter — `AddCounterToThis(kind, n)`, Devoted Druid — with #789.) (Convoke and waterbend on a *spell* do have one since
   S22: `Spec.TapCost`, built with `Convoke()` / `Waterbend("{X}")`. The
   activated-ability seam is separate and still open — Katara, Water
   Tribe's Hope is the card waiting on it.) (Ordinary activated abilities built from

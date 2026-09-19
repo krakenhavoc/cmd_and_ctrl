@@ -1,8 +1,8 @@
-// counterCost.ts — #625, then #789: the choices behind a counter
-// activation cost, kept out of the modal so they can be tested without
-// a component harness.
+// counterCost.ts — #625, then #789, then #943: the choices behind a
+// counter activation cost, kept out of the modal so they can be
+// tested without a component harness.
 //
-// Five printed shapes arrive on ActivatedAbilityView — and, since
+// Six printed shapes arrive on ActivatedAbilityView — and, since
 // #789, on ManaAbilityView too, with the same field names, because
 // the server carries ONE component with two owners:
 //
@@ -18,11 +18,21 @@
 //   variable  "Remove any number of storage counters from this land"
 //             counter_cost_variable; counter_cost_n is the FLOOR and
 //             counter_cost_max the ceiling, and the count is sent.
+//   any-kind  "Remove three counters from among other artifacts,
+//   among     creatures, and planeswalkers you control" (Tekuthal)
+//             counter_cost_among with NO counter_cost_kind: the kinds
+//             may differ per permanent, so a mixed payment sends
+//             counter_kinds beside counter_source_ids.
 //
 // The server lists what can pay right now in counter_cost_options —
 // permanents the viewer controls holding enough counters, each with the
 // kinds that could pay, most counters first — from the same candidate
 // walk it validates against. The client only has to choose among them.
+//
+// That list is why #943 needs no new picker: a row has always been a
+// (permanent, KIND) pair, so the many-pick modal's stepper per row IS
+// the kind selector the any-kind among form asks for, and one
+// permanent holding two kinds simply offers two rows.
 //
 // The sixth shape has no choice in it at all: counter_cost_add is a
 // cost that PUTS a counter on the source (Devoted Druid). There is
@@ -177,11 +187,19 @@ export function counterCostBlocked(a: CounterCostShape): string {
 // payload half for a chosen payment: `counter_source_ids` for every
 // form but the self one, `counter_counts` when the engine cannot
 // assume the printed count (among and variable), and `counter_kind`
-// for the any-kind form.
+// for the any-kind form — or `counter_kinds`, one per permanent, when
+// an any-kind payment actually mixes them (#943).
+//
+// One kind whenever one kind will do. The parallel array is the
+// EXTENSION the last printed shape needs, not a second encoding of
+// the first: a payment of one kind sends exactly the bytes a #625
+// client sends, so every earlier client and every earlier server
+// test keeps reading the same payload.
 export interface CounterPayment {
   counter_source_ids?: string[];
   counter_counts?: number[];
   counter_kind?: string;
+  counter_kinds?: string[];
 }
 
 export function counterPaymentParams(
@@ -196,7 +214,11 @@ export function counterPaymentParams(
   if (a.counter_cost_among || a.counter_cost_variable) {
     out.counter_counts = picks.map((c) => c.n ?? a.counter_cost_n ?? 1);
   }
-  if (!a.counter_cost_kind) out.counter_kind = picks[0].kind;
+  if (!a.counter_cost_kind) {
+    const kinds = picks.map((c) => c.kind);
+    if (kinds.every((k) => k === kinds[0])) out.counter_kind = kinds[0];
+    else out.counter_kinds = kinds;
+  }
   return out;
 }
 

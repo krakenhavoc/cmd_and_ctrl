@@ -1487,7 +1487,11 @@ type ActivatedAbilityView struct {
 //
 //   - CounterCostKind is the printed kind ("loyalty", "charge");
 //     empty means "a counter" of ANY kind, and the client asks for
-//     the kind as well as the permanent.
+//     the kind as well as the permanent. Empty WITH CounterCostAmong
+//     is #943's last shape (Tekuthal): the kind is asked once per
+//     permanent, which the option list below already answers —
+//     nothing new is projected for it, because a row is a
+//     (permanent, kind) pair and always was.
 //   - CounterCostSelf is the "from this" form: the counters come off
 //     the source, and no permanent is sent.
 //   - CounterCostLabel is the "from" clause of the other and among
@@ -1495,7 +1499,9 @@ type ActivatedAbilityView struct {
 //     empty for the self form.
 //   - CounterCostAmong is "from AMONG …" (#789): the N counters may
 //     be split across any number of the listed permanents, and the
-//     client sends a count per permanent in `counter_counts`.
+//     client sends a count per permanent in `counter_counts`. With
+//     an empty CounterCostKind the kinds may differ too, and the
+//     client sends `counter_kinds` beside them (#943).
 //   - CounterCostVariable is "Remove X counters" / "any number"
 //     (#789): the count is announced, CounterCostN is the FLOOR
 //     rather than the amount, and CounterCostMax is the most the
@@ -1517,7 +1523,8 @@ type ActivatedAbilityView struct {
 // The client sends the chosen permanents as `counter_source_ids`
 // (omitted for the self form), the split as `counter_counts` (only
 // for the among and variable forms) and, for the any-kind form, the
-// chosen kind as `counter_kind`.
+// chosen kind as `counter_kind` — or, when an any-kind among payment
+// mixes kinds, one kind per permanent as `counter_kinds` (#943).
 type CounterCostView struct {
 	CounterCostN        int                     `json:"counter_cost_n,omitempty"`
 	CounterCostKind     string                  `json:"counter_cost_kind,omitempty"`

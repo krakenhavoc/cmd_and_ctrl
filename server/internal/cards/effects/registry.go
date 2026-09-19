@@ -264,15 +264,15 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 // counter costs are the same struct and must be declared the same
 // way.
 //
-// Five refusals, each naming a card file mistake that would
+// Four refusals, each naming a card file mistake that would
 // otherwise ship a card stronger or weaker than printed:
 //
 //   - a fixed cost that removes nothing makes the ability free;
-//   - "a counter" of any kind with N > 1 has no single kind to name
-//     at announce (#625);
-//   - an any-kind AMONG cost would need a kind per permanent and has
-//     no wire shape yet (Tekuthal, Inquiry Dominus — declared out of
-//     scope in the ADR 0020 #789 addendum);
+//   - "a counter" of any kind with N > 1, off ONE permanent, has no
+//     single kind to name at announce (#625). Split across
+//     permanents it has one: #943 asks the kind per part, so an
+//     any-kind AMONG cost is a shape (Tekuthal, Inquiry Dominus) and
+//     is no longer refused here;
 //   - Among without a From clause names no permanents to split
 //     across, and Among with Variable is a shape no card prints;
 //   - an add-a-counter cost with no kind, or none to add, would put
@@ -285,13 +285,8 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 		case !rc.Variable && rc.N <= 0:
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
 		}
-		if rc.Counter == "" {
-			if rc.Among {
-				panic(fmt.Sprintf("effects.Register: %q %s removes counters of any kind from among several permanents — that needs a kind per permanent and has no shape yet (#789)", card, where))
-			}
-			if rc.N > 1 || rc.Variable {
-				panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind — only \"a counter\" (N = 1) has an any-kind shape", card, where, rc.N))
-			}
+		if rc.Counter == "" && !rc.Among && (rc.N > 1 || rc.Variable) {
+			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind off one permanent — only \"a counter\" (N = 1) has an any-kind shape there; a removal that may mix kinds is spread across permanents (Among, #943)", card, where, rc.N))
 		}
 		if rc.Among {
 			if rc.From == nil {

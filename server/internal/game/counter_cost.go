@@ -6,23 +6,32 @@ import (
 	"github.com/google/uuid"
 )
 
-// counter_cost.go — #625, then #789: counters as part of paying a
-// cost (CR 602.2b / 118.3).
+// counter_cost.go — #625, then #789, then #943: counters as part of
+// paying a cost (CR 602.2b / 118.3).
 //
 // #625 made "remove N counters" a component of an ACTIVATED
-// ability's cost, in three printed shapes. #789 finishes the seam,
-// and the shapes it adds are not new components — they are more
-// answers to the one question the component already asks, "which
-// counters come off, and from where":
+// ability's cost, in three printed shapes. #789 and #943 finish the
+// seam, and the shapes they add are not new components — they are
+// more answers to the one question the component already asks,
+// "which counters come off, and from where":
 //
 //	self       "Remove a gold counter from this artifact"   From == nil
 //	other      "remove a loyalty counter from a planeswalker you control"
 //	any kind   "Remove a counter from a creature you control"  Counter == ""
 //	variable   "Remove any number of storage counters from this land"  Variable
 //	among      "Remove two +1/+1 counters from among artifacts you control"  Among
+//	any-kind
+//	among      "Remove three counters from among other artifacts,
+//	           creatures, and planeswalkers you control"  Counter == "" && Among
+//
+// The last one is #943's, and it is the seam's final printed shape:
+// Tekuthal, Inquiry Dominus removes three counters of WHATEVER kinds
+// happen to be there, so the payment names a kind per permanent as
+// well as a count. It is the among form with the kind question asked
+// once per part instead of once per payment — not a sixth component.
 //
 // One type, one validator, one candidate walk, one client picker and
-// one enumerator arm cover all five. The alternative — a sibling
+// one enumerator arm cover all six. The alternative — a sibling
 // type per shape — was rejected in the ADR 0020 addendum: four
 // validators that must agree about "you control it and it is not
 // targeted" is four chances to disagree, and #544's lesson is that
@@ -51,10 +60,16 @@ type CounterRemovalCost struct {
 	// Counter is the kind removed ("loyalty", "+1/+1", "charge",
 	// "storage"). Empty means "a counter" of ANY kind, and the
 	// activator names the kind at announce alongside the permanent
-	// (Fain, the Broker). An any-kind cost removes N counters of the
-	// ONE kind chosen; a printed "remove two counters" that may mix
-	// kinds has no shape here, and effects.Register refuses N > 1
-	// with an empty Counter so a card file cannot claim one.
+	// (Fain, the Broker).
+	//
+	// An any-kind cost from ONE permanent removes N counters of the
+	// one kind chosen, and effects.Register refuses N > 1 for it: a
+	// single kind choice could not say how a mixed payment was made.
+	// With Among set the kinds are asked per permanent instead
+	// (#943), so "remove three counters from among …" of any kind is
+	// a shape — Tekuthal, Inquiry Dominus prints it, and a loyalty
+	// counter off a planeswalker plus two +1/+1 counters off a
+	// creature is a legal payment.
 	Counter string
 
 	// N is how many counters are removed — or, when Variable is set,
@@ -87,10 +102,18 @@ type CounterRemovalCost struct {
 	// count); Register refuses both.
 	//
 	// The payment is validated as a SET, the way a crew payment is:
-	// every named permanent must be distinct, controlled by the
-	// activator, matched by From and hold at least the count named
-	// against it, and the counts must sum to exactly N. Any failure
-	// refuses the whole activation with no counter removed.
+	// every named (permanent, kind) must be distinct, the permanent
+	// controlled by the activator, matched by From and holding at
+	// least the count named against it, and the counts must sum to
+	// exactly N. Any failure refuses the whole activation with no
+	// counter removed.
+	//
+	// The set's key is (permanent, KIND) rather than the permanent
+	// alone because of #943's any-kind form: one creature carrying a
+	// +1/+1 and a shield counter may pay both, and those are two
+	// parts of one payment. For a printed kind the two keys are the
+	// same thing, so a fixed-kind among payment that names one
+	// permanent twice is refused exactly as it was before.
 	Among bool
 
 	// Variable is "Remove X counters" / "Remove any number of
@@ -223,9 +246,10 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 //
 // For the single-permanent forms that is "some option exists". For
 // the among form it is the extra question the option list does not
-// answer: do the counters of ONE kind, across the matched
-// permanents, total at least N? (One kind, because an among cost
-// with an any-kind clause has no shape — Register refuses it.)
+// answer: do the counters that could pay, across the matched
+// permanents, total at least N? For a printed kind that is one kind's
+// total; for #943's any-kind among (Tekuthal) every kind counts,
+// because every kind can pay.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CounterCostPayable(playerID, sourceID uuid.UUID, rc *CounterRemovalCost) bool {
@@ -239,12 +263,10 @@ func (g *Game) CounterCostPayable(playerID, sourceID uuid.UUID, rc *CounterRemov
 	if !rc.Among {
 		return true
 	}
-	// Among: the kind is printed (Register refuses an any-kind
-	// among), so one total over every matched permanent answers it.
 	total := 0
 	for _, o := range opts {
 		for _, k := range o.Kinds {
-			if k.Kind == rc.Counter {
+			if rc.Counter == "" || k.Kind == rc.Counter {
 				total += k.Count
 			}
 		}
@@ -282,19 +304,34 @@ func counterKindsPaying(c *Card, kind string, floor int) []CounterCostKind {
 }
 
 // counterPaymentPart is one permanent's share of a counter-removal
-// payment: how many counters come off it.
+// payment: which kind comes off it, and how many.
+//
+// The kind lives on the PART rather than on the payment because of
+// #943: an any-kind among cost is paid in whatever kinds the
+// permanents hold. Every other shape simply repeats one kind across
+// its parts, which is what makes this one field rather than two
+// payment types.
 type counterPaymentPart struct {
 	cardID uuid.UUID
+	kind   string
 	n      int
 }
 
-// counterPayment is a validated CounterRemovalCost: the kind, and
-// the per-permanent split. The zero value (no parts) means the
-// ability has no counter component.
+// counterPayment is a validated CounterRemovalCost: the per-part
+// split, each part naming its permanent, kind and count. The zero
+// value (no parts) means the ability has no counter component.
 type counterPayment struct {
-	kind  string
 	parts []counterPaymentPart
 	total int
+}
+
+// counterPartKey is the identity of one part of a payment. A
+// permanent may appear in two parts only with two different kinds
+// (#943); naming the same (permanent, kind) twice is refused, so a
+// fixed-kind payment still cannot name one permanent twice.
+type counterPartKey struct {
+	cardID uuid.UUID
+	kind   string
 }
 
 // CounterCostPayment is the announce-time payment for a counter
@@ -308,16 +345,25 @@ type counterPayment struct {
 //   - Counts is the per-permanent split, parallel to SourceIDs.
 //     Empty means "the printed count, from the one named permanent"
 //     — the shape every #625 client already sends.
-//   - Kind is the counter kind, for the any-kind form.
+//   - Kind is the counter kind, for the any-kind form: ONE kind for
+//     the whole payment.
+//   - Kinds is #943's parallel array, one kind per part, for the
+//     any-kind AMONG form where the parts may differ. It is an
+//     EXTENSION of the triple above rather than a rival encoding of
+//     it: a payment whose parts all share a kind still sends Kind and
+//     no Kinds, so every client that already speaks this payload
+//     keeps working untouched, and the array appears only on the one
+//     printed cost that needs it.
 type CounterCostPayment struct {
 	SourceIDs []uuid.UUID
 	Counts    []int
 	Kind      string
+	Kinds     []string
 }
 
 // empty reports a payment the client did not send at all.
 func (p CounterCostPayment) empty() bool {
-	return len(p.SourceIDs) == 0 && len(p.Counts) == 0 && p.Kind == ""
+	return len(p.SourceIDs) == 0 && len(p.Counts) == 0 && p.Kind == "" && len(p.Kinds) == 0
 }
 
 // validateCounterRemovalLocked resolves a RemoveCounters component
@@ -339,9 +385,12 @@ func (p CounterCostPayment) empty() bool {
 //     (ErrCardCallerMismatch) and matched by From WITHOUT the
 //     targeting gate (ErrIllegalTarget) — a cost does not target
 //     (CR 601.2h).
-//   - No permanent may be named twice. Naming one twice would let a
-//     single artifact pay both halves of "remove two counters from
-//     among artifacts you control".
+//   - No (permanent, KIND) may be named twice. Naming one twice
+//     would let a single artifact pay both halves of "remove two
+//     +1/+1 counters from among artifacts you control". The kind is
+//     part of the key only because #943's any-kind among cost lets
+//     one permanent pay in two kinds; for a printed kind the rule is
+//     the old one, one part per permanent.
 //   - The counts must total exactly N — or at least N, for a
 //     variable cost, where the announced total IS the payment.
 //   - Every permanent must hold at least the count named against it,
@@ -359,17 +408,6 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 	if rc.N < 0 || (rc.N == 0 && !rc.Variable) {
 		// Register refuses this at boot; an intrinsic ability built in
 		// a test or a token template could still carry one.
-		return counterPayment{}, ErrInvalidParam
-	}
-
-	// --- the kind ------------------------------------------------
-	kind := rc.Counter
-	if kind == "" {
-		if pay.Kind == "" {
-			return counterPayment{}, ErrInvalidParam
-		}
-		kind = pay.Kind
-	} else if pay.Kind != "" && pay.Kind != kind {
 		return counterPayment{}, ErrInvalidParam
 	}
 
@@ -405,21 +443,28 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		return counterPayment{}, ErrInvalidParam
 	}
 
+	// --- the kinds -----------------------------------------------
+	kinds, err := counterPaymentKinds(rc, pay, len(ids))
+	if err != nil {
+		return counterPayment{}, err
+	}
+
 	total := 0
-	seen := make(map[uuid.UUID]bool, len(ids))
+	seen := make(map[counterPartKey]bool, len(ids))
 	parts := make([]counterPaymentPart, 0, len(ids))
 	for i, id := range ids {
-		n := counts[i]
+		n, kind := counts[i], kinds[i]
 		if n < 1 {
 			// A part that removes nothing is not a part. Refusing it
 			// keeps the total honest and stops a client padding the
 			// list with permanents it never paid from.
 			return counterPayment{}, ErrInvalidParam
 		}
-		if seen[id] {
+		key := counterPartKey{cardID: id, kind: kind}
+		if seen[key] {
 			return counterPayment{}, ErrInvalidParam
 		}
-		seen[id] = true
+		seen[key] = true
 		c := findBattlefieldCard(g, id)
 		if c == nil {
 			return counterPayment{}, ErrCardNotFound
@@ -440,7 +485,7 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 			return counterPayment{}, ErrInsufficientCounters
 		}
 		total += n
-		parts = append(parts, counterPaymentPart{cardID: id, n: n})
+		parts = append(parts, counterPaymentPart{cardID: id, kind: kind, n: n})
 	}
 
 	// --- the total -----------------------------------------------
@@ -457,7 +502,60 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 	} else if total != rc.N {
 		return counterPayment{}, ErrInvalidParam
 	}
-	return counterPayment{kind: kind, parts: parts, total: total}, nil
+	return counterPayment{parts: parts, total: total}, nil
+}
+
+// counterPaymentKinds resolves the counter kind each part of a
+// payment removes — one per named permanent, in the same order
+// (#943).
+//
+//	printed kind        rc.Counter, for every part.
+//	any kind, one kind  pay.Kind, for every part — the #625 shape,
+//	                    and still what a payment sends whenever its
+//	                    parts happen to share a kind.
+//	any kind, mixed     pay.Kinds, one per part. Only an any-kind
+//	                    AMONG cost can produce this, because only it
+//	                    asks the kind question more than once.
+//
+// A payment may send both fields; they must then agree, so the two
+// can never describe different payments. An empty kind in the array
+// is refused rather than defaulted: "a counter of no kind" is not a
+// thing a permanent holds, and letting it fall through to
+// Counters[""] would read a map entry no counter ever writes.
+func counterPaymentKinds(rc *CounterRemovalCost, pay CounterCostPayment, n int) ([]string, error) {
+	if len(pay.Kinds) > 0 {
+		if len(pay.Kinds) != n {
+			return nil, ErrInvalidParam
+		}
+		out := make([]string, n)
+		for i, k := range pay.Kinds {
+			if k == "" {
+				return nil, ErrInvalidParam
+			}
+			if rc.Counter != "" && k != rc.Counter {
+				return nil, ErrInvalidParam
+			}
+			if pay.Kind != "" && k != pay.Kind {
+				return nil, ErrInvalidParam
+			}
+			out[i] = k
+		}
+		return out, nil
+	}
+	kind := rc.Counter
+	if kind == "" {
+		if pay.Kind == "" {
+			return nil, ErrInvalidParam
+		}
+		kind = pay.Kind
+	} else if pay.Kind != "" && pay.Kind != kind {
+		return nil, ErrInvalidParam
+	}
+	out := make([]string, n)
+	for i := range out {
+		out[i] = kind
+	}
+	return out, nil
 }
 
 // validateCounterRemovalCostLocked is validateCounterRemovalLocked
@@ -486,8 +584,9 @@ func (g *Game) validateCounterRemovalCostLocked(playerID, sourceID uuid.UUID, co
 // state-based action the activation runs on its way out — after the
 // ability is on the stack.
 //
-// The parts come off in the order the activator named them. They are
-// all part of one payment, so nothing can happen between them.
+// The parts come off in the order the activator named them, each in
+// its own kind (#943: an any-kind among payment mixes kinds). They
+// are all part of one payment, so nothing can happen between them.
 //
 // Caller must hold g.mu.
 func (g *Game) payCounterRemovalLocked(pay counterPayment) error {
@@ -495,7 +594,7 @@ func (g *Game) payCounterRemovalLocked(pay counterPayment) error {
 		if part.n <= 0 {
 			continue
 		}
-		if err := g.applyCounterLocked(part.cardID, pay.kind, -part.n); err != nil {
+		if err := g.applyCounterLocked(part.cardID, part.kind, -part.n); err != nil {
 			return err
 		}
 	}
