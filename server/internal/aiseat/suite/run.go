@@ -212,7 +212,7 @@ func Run(ctx context.Context, positions []Position, policy aiseat.Policy, opt Ru
 		opt.Parallel = 1
 	}
 	results := make([]Result, len(positions))
-	tracer, _ := policy.(aiseat.Tracer)
+	tracer, _ := aiseat.Capability[aiseat.Tracer](policy)
 
 	var (
 		wg   sync.WaitGroup

@@ -186,6 +186,21 @@ func (m Models) SingleModel() bool {
 	return r.Routine != "" && r.Routine == r.Frontier
 }
 
+// Every wrapper this package assembles declares what it wraps, so
+// that an OPTIONAL Policy extension implemented anywhere in the stack
+// is still found by the runner and the enumerator. That is the whole
+// fix for #1060, held here rather than in each wrapper because this
+// is the one place a tier is assembled: adding a layer to New below
+// without teaching it aiseat.Unwrapper is a BUILD failure, not a
+// feature that quietly stops happening on every seat the lobby
+// creates. See aiseat/capability.go for the mechanism, and
+// TestEveryShippedTierForwardsItsOptionalHooks in factory_test.go for
+// the runtime half.
+var (
+	_ aiseat.Unwrapper = (*rules.Filter)(nil)
+	_ aiseat.Unwrapper = (*model.Policy)(nil)
+)
+
 // New builds a policy for the tier.
 func New(t Tier, opt Options) (aiseat.Policy, error) {
 	switch t {

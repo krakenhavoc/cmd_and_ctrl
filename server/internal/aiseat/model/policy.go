@@ -316,12 +316,58 @@ func (p *Policy) Stats() Stats { return p.rec.snapshot() }
 // Records returns the retained per-decision records, oldest first.
 func (p *Policy) Records() []DecisionRecord { return p.rec.records() }
 
+// Compile-time assertion: the funnel reports its own spend (#735).
+var _ aiseat.Spender = (*Policy)(nil)
+
+// Spend is what this seat has cost so far, split into the two
+// purposes a funnel dials a model for: deciding a window, and writing
+// an improvisation bundle (ADR 0033 §5 and §8).
+//
+// It is the SAME counters Stats already publishes, projected into the
+// package-neutral shape the runner, the decision log and the admin
+// summary all read — see aiseat/spend.go. It is a projection rather
+// than a second tally on purpose: two counters for one fact drift,
+// and the one that drifts is always the one somebody is quoting.
+//
+// Safe to call while the seat plays; the recorder has its own lock.
+func (p *Policy) Spend() aiseat.Spend {
+	st := p.rec.snapshot()
+	return aiseat.Spend{
+		Decision: aiseat.PurposeSpend{
+			Calls:   st.ModelCalls,
+			Usage:   traceUsage(st.Usage),
+			Latency: st.ModelLatency,
+		},
+		Improvisation: aiseat.PurposeSpend{
+			Calls:   st.ImprovCalls,
+			Usage:   traceUsage(st.ImprovUsage),
+			Latency: st.ImprovLatency,
+		},
+	}
+}
+
+// Unwrap is Layer B, the policy underneath the funnel.
+//
+// It is what keeps every OPTIONAL Policy extension alive through this
+// wrapper — #687's TargetOrderer, #1013's CostFuelPricer, and the one
+// written next year — without the funnel having to name any of them.
+// aiseat.Capability walks the chain and takes the outermost
+// implementer, so an extension the funnel DOES implement (Tracer,
+// Conceder, Improviser, Spender) is still the funnel's own. See
+// aiseat/capability.go, and #1060 for what the absence of this cost:
+// the `assisted` and `strong` seats ordered no targets and priced no
+// fuel for a month, on every table the lobby could build.
+func (p *Policy) Unwrap() aiseat.Policy { return p.cfg.Fallback }
+
+// Compile-time assertion: the funnel says what it wraps.
+var _ aiseat.Unwrapper = (*Policy)(nil)
+
 // ShouldConcede forwards to Layer B. Conceding is a judgement about
 // the position and the heuristic already makes it conservatively; a
 // model call to decide whether to scoop would be the most expensive
 // possible way to answer the question least often asked.
 func (p *Policy) ShouldConcede(in aiseat.Input) bool {
-	c, ok := p.cfg.Fallback.(aiseat.Conceder)
+	c, ok := aiseat.Capability[aiseat.Conceder](p.cfg.Fallback)
 	return ok && c.ShouldConcede(in)
 }
 
@@ -373,7 +419,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 
 	// --- Layer B ---------------------------------------------------
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	tr.Candidates = traceCandidates(cands)
@@ -523,7 +569,7 @@ func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []
 		return Request{}, nil, v
 	}
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	fallback := 0

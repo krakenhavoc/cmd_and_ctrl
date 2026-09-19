@@ -735,6 +735,100 @@ turn it on.
 Whole-game tests have the same knob under `AISEAT_DECISION_LOG=<dir>`,
 which is how the position corpus gets harvested.
 
+A decision log also carries **one extra line at the end of each
+game**: the spend record, `{"kind":"spend", ...}`. Every other line is
+a decision window and has no `kind` at all. `decisionlog.Scan` hands
+out the windows and skips the rest, so a reader that was counting
+decisions counts the same number it always did; `decisionlog.ScanAll`
+is the way in when you want the spend line.
+
+---
+
+## Per-game model spend (#735)
+
+**Where to read it:** the server logs one line per bot game, at INFO,
+when the table's last bot seat exits.
+
+```
+bot model spend for the game game=6a1f… seats=4 tiers="assisted x2, heuristic x2"
+  calls=228 decision_calls=226 improv_calls=2
+  input_tokens=87743 output_tokens=2736 cache_read_tokens=0 cache_write_tokens=0
+  cached_prompt_tokens=0 model_time=41.2s
+  per_seat="assisted 113c/1i 43811in/1368out; assisted 113c/1i 43932in/1368out; heuristic 0c/0i 0in/0out; heuristic 0c/0i 0in/0out"
+```
+
+It is emitted for **every** bot game, including the ones that spent
+nothing. "This table cost nothing" is a measurement, and a line that
+appeared only when there was a bill could not be told from a line that
+failed to be written.
+
+Three surfaces, same numbers:
+
+| Surface | What it is for |
+|---|---|
+| The log line above | The operator's answer to "what did last night cost". One line per game, no configuration. |
+| `aiseat.Runner.Stats().Spend` | One seat, live, while it plays. It is in `summary.json` for every `boteval arena` run, and in the arena's per-policy totals. |
+| The decision log's `kind:"spend"` record | The machine-readable per-game copy: every seat, split by purpose, written just before the file closes. Needs `CMDCTRL_BOT_DECISION_LOG`. |
+
+**Deciding and improvising are counted apart and never averaged
+together.** They are two different calls with two different caps: a
+decision asks for one integer against a prompt-cached prefix, and
+[improvisation](#improvisation-and-why-an-undo-is-free) asks for a
+whole bundle written from oracle text, with `MaxTokens` an order of
+magnitude larger and a hard cap of eight calls per seat per game. A
+single tokens-per-call number over the two would describe neither.
+`Spend.Total()` adds them when what you want is the bill.
+
+**A call that failed is still spend.** Timeouts, malformed replies and
+out-of-range answers are all counted, because they were all billed.
+That is the number that makes a too-slow self-hosted model visible:
+read it next to `ModelTimeouts` in the funnel stats.
+
+**What the tokens are.** `input_tokens` / `output_tokens` are the
+provider's own usage fields as the transport reported them, not an
+estimate — a provider that reports none leaves them at zero, which is
+a measurement that could not be taken rather than a call that was
+free. `cache_read_tokens` and `cache_write_tokens` are Anthropic's
+explicit prompt-cache breakpoints; `cached_prompt_tokens` is a local
+server's own prefix-cache hit count (Ollama's
+`prompt_tokens_details.cached_tokens`), which is an optimisation
+nobody is charged for and is deliberately not added to the other two.
+
+### S31 exit criterion 4
+
+> "Per-game model spend is measured and recorded, not estimated."
+
+**The measurement path is built and proven end to end against the fake
+client; the NUMBER is pending a keyed run.** Every deployment so far
+has run a local model (Ollama), which reports tokens but has no bill,
+and there is no API key in CI — so the figure that belongs in [ADR
+0033](decisions/0033-ai-bot-seat.md) §5 in place of its
+order-of-magnitude estimate cannot be taken here. What is settled is
+that there is now one place to read it from, for any game, with no
+extra flags.
+
+To take it, point a seat at a keyed endpoint and play:
+
+```bash
+CMDCTRL_ANTHROPIC_API_KEY=sk-… \
+  ./server/bin/boteval arena --seats assisted,heuristic,heuristic,heuristic \
+    --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+    --games 4 --seed 1 --rotate --out ./arena-out
+```
+
+and read `spend` off each seat in `summary.json`, or run a server with
+`CMDCTRL_BOT_DECISION_LOG` set and read the `kind:"spend"` line of
+each game file. Record the model ids with the numbers: a spend figure
+without the model that produced it is not a measurement of anything.
+Four-bot and one-human-plus-three-bots tables are both wanted — a
+human at the table changes how many windows a bot sees.
+
+The reference point to check the result against is ADR 0033 §5's
+estimate of "cents per game", and the two facts that are already
+measured: Layer A absorbs ~90% of windows, and ~60–70% of the
+survivors escalate to the frontier model rather than the ~20% the ADR
+guessed.
+
 ---
 
 ## Measuring the bot
@@ -1200,6 +1294,44 @@ Two things it deliberately does not do:
 The sort is stable, so equal scores keep the engine's order and two
 enumerations of one board produce the same move list — which is what
 makes a decision log replayable.
+
+### A wrapper forwards what it wraps (#1060)
+
+Both hooks are **optional Policy extensions**, found by type assertion
+on the policy the runner holds — and an assertion that answers false
+is indistinguishable from a policy with no opinion. No error, no log
+line, no failing test: the feature simply does not happen.
+
+That is exactly what happened. Every shipped tier is the heuristic
+inside a wrapper (`rules.Filter` for `heuristic`, `model.Policy` for
+`assisted` and `strong`), neither wrapper forwarded either hook, and
+both orderings were dead on every seat the lobby could create — for a
+month, while the pin tests went on passing against a bare
+`heuristic.New()` that no seat is ever given.
+
+The fix is one mechanism rather than two forwarding methods. A wrapper
+declares **what it wraps**, once:
+
+```go
+func (f *Filter) Unwrap() aiseat.Policy { return f.Inner }
+```
+
+and every lookup goes through `aiseat.Capability[T]`, which walks that
+chain outward-in and takes the **outermost** implementer. Outward-in
+is the whole of the semantics, and it is right in both directions: a
+wrapper that implements an extension itself means to override it
+(`rules.Filter` is a `Tracer`, and Layer A's own verdict is the one
+that must be reported), and one that does not means to be transparent.
+An optional interface added next year is forwarded by every wrapper
+without anybody editing one.
+
+`tiers/tiers.go` holds a compile-time assertion that each layer it
+assembles is an `aiseat.Unwrapper`, so adding a wrapper to a tier
+without teaching it the chain is a build failure rather than a feature
+that quietly stops happening. The runtime half is
+`TestEveryShippedTierForwardsItsOptionalHooks`, which builds every
+tier through the factory and asks it everything the runner and the
+enumerator will ask it.
 
 ## Never offered a banned cast (#760)
 
