@@ -1,8 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { adminLogin, discordAuthEnabled, discordLoginHref, joinByCode } from "../lib/api";
+  import {
+    adminLogin,
+    discordAuthEnabled,
+    discordLoginHref,
+    joinByCode,
+    logout,
+    logoutEverywhere,
+  } from "../lib/api";
   import { navigate } from "../lib/router";
-  import { expiryNotice, LobbyApiError, session } from "../lib/session";
+  import { canSignOutEverywhere, expiryNotice, LobbyApiError, session } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
 
   // Player-first landing: Discord sign-in and the invite box are
@@ -25,6 +32,7 @@
   let error = $state("");
   let busy = $state(false);
   let joining = $state(false);
+  let signOutError = $state("");
 
   // discordEnabled gates the sign-in button. Probed once from
   // /auth/discord/config: a deploy without the three CMDCTRL_DISCORD_*
@@ -48,6 +56,25 @@
   // field. Without this the manual path would post an empty name and
   // take a 400 the user could do nothing about.
   const needsName = $derived(!identity && invite.trim() !== "" && inviteHash(invite.trim()) === "");
+
+  // A Discord sign-in now lasts 30 days (ADR 0051 decision 3), so the
+  // login page, where an identity session lives until it joins a
+  // table, needs its own way out. "Everywhere" also signs out every
+  // other browser this account is signed in on (decision 6); it is
+  // offered only when the server can do that (canSignOutEverywhere).
+  async function signOut(): Promise<void> {
+    signOutError = "";
+    await logout();
+  }
+
+  async function signOutEverywhere(): Promise<void> {
+    signOutError = "";
+    try {
+      await logoutEverywhere();
+    } catch (err) {
+      signOutError = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
+    }
+  }
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -140,6 +167,20 @@
           <p class="signed-in" role="status">
             Signed in as {identity.name ?? "your Discord account"}.
           </p>
+          <div class="signout">
+            <button type="button" class="ghost" onclick={signOut}>sign out</button>
+            {#if canSignOutEverywhere($session)}
+              <button
+                type="button"
+                class="ghost"
+                title="sign out of every browser signed in with this Discord account"
+                onclick={signOutEverywhere}>sign out everywhere</button
+              >
+            {/if}
+          </div>
+          {#if signOutError}
+            <p class="error" role="alert">{signOutError}</p>
+          {/if}
         {/if}
         <form class="fcol" onsubmit={submitInvite}>
           <div class="frow">
@@ -406,6 +447,11 @@
     margin: 0;
     font-size: 12.5px;
     color: var(--fg-muted);
+  }
+  .signout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .help {
     margin: 0;

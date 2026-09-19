@@ -104,10 +104,17 @@ type Hub struct {
 // rejected with bad_request. Admin spectators (admin session, no
 // `?player=`) keep ReadOnly = false because admins legitimately
 // need to mutate state on a player's behalf.
+//
+// UserID and IssuedAt identify the session behind the connection, for
+// EvictUserSessions (ADR 0051 decision 6). The hub does not interpret
+// them otherwise. UserID is uuid.Nil for admin, spectator and guest
+// sessions, which can never be evicted that way.
 type Binding struct {
 	GameID   uuid.UUID
 	PlayerID uuid.UUID
 	ReadOnly bool
+	UserID   uuid.UUID
+	IssuedAt time.Time
 }
 
 // UpgradeAuthorizer validates an incoming WebSocket upgrade and
@@ -352,6 +359,8 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		gameID:   gameID,
 		playerID: playerID,
 		readOnly: binding.ReadOnly,
+		userID:   binding.UserID,
+		issuedAt: binding.IssuedAt,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
@@ -670,6 +679,12 @@ type Client struct {
 	// because admins need to drive state on a player's behalf. Added
 	// in S11.
 	readOnly bool
+
+	// userID and issuedAt are the session this connection was opened
+	// with, copied from Binding. Read only by EvictUserSessions; the
+	// hub makes no other decision on them.
+	userID   uuid.UUID
+	issuedAt time.Time
 }
 
 func (c *Client) readPump() {
@@ -1175,6 +1190,46 @@ func (h *Hub) EvictGame(gameID uuid.UUID) int {
 		_ = c.conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "game deleted"),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// SessionRevokedReason is the close-frame reason EvictUserSessions
+// sends, with code 1000. 1000 is terminal on the client (ADR 0044
+// decision 2), which is right: redialling would present the same
+// revoked token and be refused.
+const SessionRevokedReason = "session revoked"
+
+// EvictUserSessions closes every connection opened with a session of
+// userID issued at or before before — the same rule the authenticator
+// applies to a revoked token (ADR 0051 decision 6). The lobby calls it
+// after a logout-everywhere or an admin revoke, so a revoked session
+// does not keep playing on a socket it opened while it was still good.
+// Returns the number of connections closed.
+//
+// uuid.Nil matches nothing: sessions with no user are not revocable.
+// Cleanup is the same as EvictGame's: close the socket and let the read
+// pump's deferred unregister drain it.
+func (h *Hub) EvictUserSessions(userID uuid.UUID, before time.Time) int {
+	if userID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.userID == userID && !c.issuedAt.After(before) {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SessionRevokedReason),
 			time.Now().Add(writeWait),
 		)
 		_ = c.conn.Close()

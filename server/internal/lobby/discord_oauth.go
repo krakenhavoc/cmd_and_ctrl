@@ -163,7 +163,11 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 			DiscordGlobalName: user.GlobalName,
 			DiscordAvatarHash: user.Avatar,
 		}
-		tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+		// The long-lived one (ADR 0051 decision 3): CMDCTRL_IDENTITY_TTL,
+		// 30 days by default, where every other session gets
+		// SessionTTL. Handler fills the default, so IdentityTTL is
+		// never zero here.
+		tok, issued, err := c.Auth.Issue(r.Context(), p, c.IdentityTTL)
 		if err != nil {
 			return fmt.Errorf("issue session: %w", err)
 		}
@@ -173,6 +177,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		frag.Set("token", tok)
 		frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
 		frag.Set("name", identity.DisplayName())
+		setUserIDFragment(frag, u.ID)
 		http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
 		return nil
 	}
@@ -214,8 +219,20 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	frag.Set("game", meta.ID.String())
 	frag.Set("player_id", playerID.String())
 	frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
+	setUserIDFragment(frag, u.ID)
 	http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
 	return nil
+}
+
+// setUserIDFragment adds user_id to the oauth-complete fragment when the
+// session carries one. The client builds its principal from the
+// fragment rather than calling /me, and user_id is how it knows the
+// session is revocable, so whether to offer "sign out everywhere"
+// (ADR 0051 decision 6). Absent with no database.
+func setUserIDFragment(frag url.Values, id uuid.UUID) {
+	if id != uuid.Nil {
+		frag.Set("user_id", id.String())
+	}
 }
 
 // discordAvatar serves a cached Discord avatar PNG. Path shape

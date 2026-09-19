@@ -807,6 +807,75 @@ stranger from calling it at all.
 Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
 
+## Signing out
+
+Session lifetimes: the identity session a Discord sign-in mints from
+the login page lasts `CMDCTRL_IDENTITY_TTL` (30 days by default). Every
+other session (seat, spectator, admin) lasts `CMDCTRL_SESSION_TTL`
+(12 hours by default). See
+[ADR 0051](decisions/0051-user-database.md) decision 3.
+
+### `POST /logout`
+
+No credential required. Clears the session cookie and asks the
+authenticator to revoke the presented token. Under HMAC sessions that
+revoke is advisory ([ADR 0044](decisions/0044-surviving-a-deploy.md)
+decision 3): a copy of the token held elsewhere stays valid until it
+expires. Always **204**.
+
+### `POST /logout/everywhere`
+
+Requires a session **with a user**: a Discord sign-in, or a seat
+claimed from one. Withdraws every session that user holds, in every
+browser, including the caller's. It sets `users.sessions_invalid_before`
+to now, closes the user's open game WebSockets, and clears the cookie
+([ADR 0051](decisions/0051-user-database.md) decision 6). From then on,
+any token of theirs issued at or before that instant fails with
+`401 {"error":"session revoked"}`, on every route and on the WS upgrade.
+A new Discord sign-in works straight away.
+
+The route only acts on the caller's own user. There is no way to name
+another one.
+
+**Response 204**, with a `Set-Cookie` that evicts the session cookie.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session, or one that is already expired or revoked |
+| 403 | the session has no user: admin, guest or spectator, or any session on a server with no database. `POST /logout` is their sign-out |
+| 404 | the user row no longer exists |
+| 503 | the server has a user session but no revocation list (not a production configuration) |
+
+### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
+
+ADR 0051's "admin remove-user". It does what the name says and nothing
+more: the same revocation as `/logout/everywhere`, for the user `{id}`.
+Every row stays: the user, identities, seats, games and decks. The
+person can sign in with Discord again. Admin sessions have no user and
+are unaffected, including the caller's.
+
+**Response 200**
+
+```json
+{
+  "user_id": "<uuid>",
+  "sessions_invalid_before": "2026-09-19T12:00:00.123Z",
+  "sockets_closed": 2
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `{id}` is not a uuid, or is the zero uuid |
+| 401 | no session |
+| 403 | caller is not an admin |
+| 404 | no such user |
+| 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
+
 ---
 
 ## Bug reports

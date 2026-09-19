@@ -36,6 +36,14 @@ import (
 // "please log in again" mid-match.
 const sessionTTL = 12 * time.Hour
 
+// identityTTL is the default lifetime of a RoleIdentified session, the
+// one the Discord callback mints when no invite is in hand (ADR 0051
+// decision 3: "long TTL (30 days, CMDCTRL_IDENTITY_TTL)"). It is long
+// because it is the credential a browser keeps across games; it is
+// safe to be long because it carries a UserID and so can be revoked
+// (decision 6). Every other session keeps SessionTTL.
+const identityTTL = 30 * 24 * time.Hour
+
 // maxDeckBodyBytes caps the payload accepted by POST /games/{id}/decks.
 // A 100-card Moxfield JSON export is typically well under 200 KiB; 2 MiB
 // is generous headroom and still prohibitive as a DoS primitive.
@@ -57,7 +65,11 @@ type Config struct {
 	// Always the zero value in production; see package appenv.
 	Features   appenv.Features
 	SessionTTL time.Duration
-	AllowAnon  bool // allow unauthenticated /games/{id}/join via invite (default: true)
+	// IdentityTTL is the lifetime of the RoleIdentified session minted
+	// at Discord sign-in (CMDCTRL_IDENTITY_TTL). Zero means identityTTL,
+	// 30 days. Seat, spectator and admin sessions use SessionTTL.
+	IdentityTTL time.Duration
+	AllowAnon   bool // allow unauthenticated /games/{id}/join via invite (default: true)
 	// Cards is the Scryfall index used by the deck-upload endpoint.
 	// When nil, POST /games/{id}/decks returns 503 so a fresh
 	// deployment (no Scryfall dump yet) surfaces a clear "run
@@ -98,6 +110,18 @@ type Config struct {
 	// behaves as users.NoStore: sign-in works and the session carries
 	// a zero UserID, which is what a deployment with no database gets.
 	Users users.Store
+	// Revocations is ADR 0051 decision 6's per-user revocation: the
+	// write side behind POST /logout/everywhere and POST
+	// /admin/users/{id}/revoke-sessions. The read side is not here; it
+	// is Auth, which main wraps with auth.WithRevocation over the same
+	// *users.Revocations. Nil (no database): the admin route answers
+	// 503. Logout-everywhere answers 403 first, because with no
+	// database no session has a user, and 503 only if one somehow does.
+	Revocations SessionRevoker
+	// SessionEvictor closes the WebSockets a revoked user still has
+	// open. Nil leaves them up until they next reconnect, when the
+	// upgrade is refused.
+	SessionEvictor UserSessionEvictor
 
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
@@ -167,12 +191,17 @@ type GameEvictor interface {
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	POST /logout            — revoke the caller's session server-side
+//	POST /logout/everywhere — withdraw every session the caller's user holds
+//	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
 func Handler(c Config) http.Handler {
 	if c.SessionTTL == 0 {
 		c.SessionTTL = sessionTTL
+	}
+	if c.IdentityTTL == 0 {
+		c.IdentityTTL = identityTTL
 	}
 	mux := http.NewServeMux()
 
@@ -354,6 +383,13 @@ func Handler(c Config) http.Handler {
 	// browser state without a 401 dead-end. We just revoke whatever
 	// credential is on the request (if any) and drop the cookie.
 	mux.Handle("POST /logout", handlerFunc(c, logout))
+	// Per-user revocation (ADR 0051 decision 6, S34 sub-PR 7). Unlike
+	// /logout these need a valid session: logout-everywhere acts on
+	// the caller's own user, and only an admin may revoke someone
+	// else's. /logout/* is its own entry in deploy/Caddyfile's @api
+	// matcher, because Caddy's /logout matches that path exactly.
+	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
+	mux.Handle("POST /admin/users/{id}/revoke-sessions", auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, adminRevokeUserSessions)))
 
 	return mux
 }
@@ -1994,7 +2030,9 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 // that is auth.HMACAuthenticator, whose Revoke is advisory (ADR 0044
 // decision 3): the token stays valid until it expires, and logout
 // ends the session by clearing the cookie here and the client's
-// stored copy. TestLogoutWithStatelessSessions pins that.
+// stored copy. TestLogoutWithStatelessSessions pins that. For a
+// session with a user, POST /logout/everywhere (revocation.go) is the
+// stronger version, and does kill every copy.
 func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 	if cred := auth.CredentialFromRequest(r); cred != "" {
 		// Ignore Revoke errors: the stateless authenticator always
@@ -2193,6 +2231,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),
 		errors.Is(err, auth.ErrExpiredCredential),
+		errors.Is(err, auth.ErrRevokedCredential),
 		errors.Is(err, auth.ErrUnknownPrincipal):
 		status = http.StatusUnauthorized
 	}

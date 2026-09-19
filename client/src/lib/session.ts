@@ -13,6 +13,13 @@ export interface Session {
     // thing — POST /join with an invite code, which swaps it for a
     // player session — so no game-facing route ever sees one.
     role: "player" | "admin" | "spectator" | "identified";
+    // user_id is the server's users-table row (ADR 0051 decision 3).
+    // Present on a Discord sign-in, and on a seat claimed from one,
+    // when the server has a user database. Its presence is what makes
+    // the session revocable, so it is what gates "sign out everywhere"
+    // (canSignOutEverywhere). Absent for admin, guest and spectator
+    // sessions, and for everyone on a server with no database.
+    user_id?: string;
     admin_id?: string;
     game_id?: string;
     player_id?: string;
@@ -73,16 +80,78 @@ function scheduleExpiry(s: Session | null): void {
     expiryTimer = setTimeout(() => expireSession(), 0);
     return;
   }
-  // setTimeout caps at ~24 days on most runtimes — well above our
-  // 12h default TTL. Clamp defensively so tabs left open across a
-  // browser suspend don't fire with a negative delay on resume.
-  expiryTimer = setTimeout(() => expireSession(), Math.min(ms, 2_000_000_000));
+  // setTimeout overflows past 2^31-1 ms (~24.8 days) and fires at
+  // once, so the delay is clamped. A Discord sign-in lives 30 days
+  // (CMDCTRL_IDENTITY_TTL, ADR 0051 decision 3), which is past the
+  // clamp — so when the clamped timer fires early, it re-arms for the
+  // remainder instead of clearing a session that is still good.
+  expiryTimer = setTimeout(() => onExpiryTimer(s), Math.min(ms, MAX_TIMER_MS));
+}
+
+// MAX_TIMER_MS is the longest delay handed to setTimeout, below the
+// 2^31-1 overflow with room to spare.
+export const MAX_TIMER_MS = 2_000_000_000;
+
+function onExpiryTimer(s: Session): void {
+  expiryTimer = null;
+  // Only the session this timer was armed for. scheduleExpiry cancels
+  // a stale timer when a new session is installed, so this is belt and
+  // braces: a mismatch is a no-op, never a logout.
+  if (get(session) !== s) return;
+  if (Date.parse(s.expiresAt) > Date.now()) {
+    scheduleExpiry(s);
+    return;
+  }
+  expireSession();
 }
 
 function expireSession(): void {
   expiryTimer = null;
   session.set(null);
   expiryNotice.set("Your session expired — please sign in again.");
+}
+
+// canSignOutEverywhere reports whether "sign out everywhere" means
+// anything for s: only a session tied to a user (user_id) can be
+// revoked server-side (POST /logout/everywhere, ADR 0051 decision 6).
+// A guest, admin or spectator session, or any session on a server with
+// no user database, gets the plain sign-out only.
+export function canSignOutEverywhere(s: Session | null): boolean {
+  return Boolean(s?.principal.user_id);
+}
+
+// OAuthFragment is what the server's Discord callback puts in the
+// #/oauth-complete fragment (router.ts parses it).
+export interface OAuthFragment {
+  token: string;
+  expiresAt: string;
+  gameID?: string;
+  playerID?: string;
+  displayName?: string;
+  userID?: string;
+}
+
+// sessionFromOAuth builds the Session the SPA installs from the
+// oauth-complete fragment, without a round trip to /me. With game and
+// player_id the seat is already claimed (a player session); with
+// neither it is the identity-only session from the login page.
+export function sessionFromOAuth(f: OAuthFragment, now: Date = new Date()): Session {
+  const seated = Boolean(f.gameID && f.playerID);
+  return {
+    token: f.token,
+    expiresAt: f.expiresAt,
+    principal: {
+      role: seated ? "player" : "identified",
+      user_id: f.userID,
+      game_id: f.gameID,
+      player_id: f.playerID,
+      name: f.displayName,
+      issued_at: now.toISOString(),
+      expires_at: f.expiresAt,
+    },
+    playerID: f.playerID,
+    gameID: f.gameID,
+  };
 }
 
 // Persist store writes to localStorage so a page reload restores

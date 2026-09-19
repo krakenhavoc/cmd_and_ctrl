@@ -8,6 +8,7 @@
     fetchBotOptions,
     listGames,
     logout as apiLogout,
+    logoutEverywhere as apiLogoutEverywhere,
     mintSeatReclaim,
     removeBotSeat,
     replayURL,
@@ -20,7 +21,7 @@
     type SeatInfo,
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
-  import { session, LobbyApiError } from "../lib/session";
+  import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
@@ -359,6 +360,20 @@
     navigate("#/login");
   }
 
+  // Sign out everywhere (ADR 0051 decision 6): every browser this
+  // Discord account is signed in on, this one included. Offered only
+  // for a session tied to a user; a failure stays on the page so the
+  // player knows their other browsers are still signed in.
+  async function logoutEverywhere(): Promise<void> {
+    error = "";
+    try {
+      await apiLogoutEverywhere();
+      navigate("#/login");
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
+    }
+  }
+
   // mySeat returns the seat this user occupies in game g, or null if
   // the session isn't bound to a seat in g (admin viewing someone
   // else's game, or a RolePlayer viewing a different game entirely).
@@ -474,6 +489,13 @@
       onclick={() => openSettings()}><Icon name="gear" size={17} /></button
     >
     <button class="ghost" onclick={logout}>log out</button>
+    {#if canSignOutEverywhere($session)}
+      <button
+        class="ghost"
+        title="sign out of every browser signed in with this Discord account"
+        onclick={logoutEverywhere}>log out everywhere</button
+      >
+    {/if}
   </header>
 
   <div class="head">

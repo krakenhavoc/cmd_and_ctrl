@@ -312,6 +312,34 @@ that already has a row, the row wins, so a change the older binary made
 to that game's seats in the meantime is not carried forward. A game
 created during the rollback is imported as new.
 
+**Session lifetimes.** A Discord sign-in from the login page mints an
+identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
+days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,
+spectator and admin sessions last `CMDCTRL_SESSION_TTL` (default `12h`).
+Neither is set in `/etc/cmd_and_ctrl/env` by CD. Add the line by hand
+to override one, then restart the service.
+
+**Signing someone out.** A session that belongs to a user can be
+withdrawn (ADR 0051 decision 6). That is every Discord sign-in, and every
+seat claimed from one. The player can do it themselves with **log out
+everywhere** in the lobby, or **sign out everywhere** on the login page.
+An admin can do it for anyone:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $ADMIN_SESSION" \
+  https://cmd.labxp.io/admin/users/<user-id>/revoke-sessions
+```
+
+Take `<user-id>` from `sqlite3 db/cmdctrl.sqlite 'SELECT id, display_name FROM users'`.
+The command is revocation only. Every session that user holds stops
+validating at once, their open game sockets close, and no rows are
+deleted. They can sign in with Discord again straight away. It survives
+a restart, because it is `users.sessions_invalid_before`. Admin, guest
+and spectator sessions have no user and cannot be revoked this way.
+The only way to end one early is rotating `CMDCTRL_SESSION_KEY`, which
+logs everyone out. A server with no database (`CMDCTRL_DATA_DIR` empty)
+has no users, so both routes answer 503 or 403 there.
+
 **A deploy failed at "Verify reported environment".** The service is
 running but reports the wrong `CMDCTRL_ENV`. Check the env file on that
 host. This failing on `main` is the serious direction — production came

@@ -18,7 +18,7 @@
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
   import EnvBadge from "./lib/components/EnvBadge.svelte";
   import { route, navigate } from "./lib/router";
-  import { session, setSession } from "./lib/session";
+  import { session, sessionFromOAuth, setSession } from "./lib/session";
   import { settings } from "./lib/settings";
   import { armMusicOnFirstGesture } from "./lib/music";
   import { loadAppConfig } from "./lib/env";
@@ -78,26 +78,13 @@
   $effect(() => {
     const r = $route;
     if (r.name !== "oauthComplete") return;
-    const seated = Boolean(r.gameID && r.playerID);
-    setSession({
-      token: r.token,
-      expiresAt: r.expiresAt,
-      principal: {
-        // The server's /me returns the full principal, but we
-        // don't block navigation on fetching it — game_id +
-        // player_id is enough for Game, and the identity variant
-        // needs only the name it was handed.
-        role: seated ? "player" : "identified",
-        game_id: r.gameID,
-        player_id: r.playerID,
-        name: r.displayName,
-        issued_at: new Date().toISOString(),
-        expires_at: r.expiresAt,
-      },
-      playerID: r.playerID,
-      gameID: r.gameID,
-    });
-    navigate(seated ? `#/games/${r.gameID}` : "#/login");
+    // The server's /me returns the full principal, but we don't block
+    // navigation on fetching it — game_id + player_id is enough for
+    // Game, and the identity variant needs only the name and user id
+    // it was handed.
+    const s = sessionFromOAuth(r);
+    setSession(s);
+    navigate(s.principal.role === "player" ? `#/games/${r.gameID}` : "#/login");
   });
 
   // Apply the subset of settings that hang off :root as CSS
