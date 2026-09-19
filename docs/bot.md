@@ -133,6 +133,26 @@ table does not feel precognitive. `MaxThink` is a hard deadline, not a
 target — on expiry the runner takes the fallback answer and logs the
 miss. **The table never waits on a model.**
 
+**The table's own pace setting overrides both, per decision.** ADR
+0075's host controls add a `bot_pace` table setting —
+`fast` / `normal` / `slow` — and the runner re-reads it before every
+single decision a bot makes, not once when the seat was added, so a
+host changing it mid-game is live on the bot's very next move:
+
+| Table pace | `MinThink` | `MaxThink` |
+|---|---|---|
+| `fast` | 0 | 2s |
+| `normal` (default) | 700ms | 2s |
+| `slow` | 2s | 8s |
+
+`strong`'s longer 5s deadline is never shortened by the table pace —
+a `fast` table still gives a model-backed seat its full budget, and
+`MaxThink` is always the larger of the table's preset and the tier's
+own deadline. Only `slow` (8s) lengthens it further. A game whose
+settings were never given a pace (an old snapshot, or a raw `Game`
+built outside the normal lobby path) behaves exactly as before this
+setting existed.
+
 Those `MaxThink` figures are sized for a hosted model. A model running
 on your own hardware is usually slower than either, so the deadline is
 a deployment setting (`CMDCTRL_BOT_MAX_THINK`) and defaults to **20s**

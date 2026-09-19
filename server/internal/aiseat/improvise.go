@@ -282,7 +282,11 @@ func (im Improvisation) RefusalAnnouncement() string {
 // Mirrors concede's shape deliberately: both are things a policy
 // expresses outside Decision, both go through the room, both are
 // logged.
-func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) bool {
+//
+// minThink and maxThink are this decision window's pacing
+// (runner.pacingNow, not necessarily r.cfg's own values) — the same
+// pair the runner's own decide/pace calls use for this window.
+func (r *Runner) improvise(ctx context.Context, in Input, started time.Time, minThink, maxThink time.Duration) bool {
 	p, ok := Capability[Improviser](r.policy)
 	if !ok {
 		return false
@@ -290,7 +294,7 @@ func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) boo
 	// The policy gets the runner's own hard deadline. Improvisation
 	// is a decision the table is waiting on exactly like any other,
 	// and the production improviser dials a model inside this call.
-	ictx, cancel := context.WithTimeout(ctx, r.cfg.MaxThink)
+	ictx, cancel := context.WithTimeout(ctx, maxThink)
 	im, want := p.Improvise(ictx, in)
 	cancel()
 	if !want {
@@ -346,7 +350,7 @@ func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) boo
 		})
 	}
 
-	r.pace(ctx, started)
+	r.pace(ctx, started, minThink)
 	if ctx.Err() != nil {
 		return false
 	}
