@@ -371,6 +371,120 @@ func TestLogNarratesASurveilWithoutNamingACard(t *testing.T) {
 	assertNoUUID(t, entry.Text)
 }
 
+// --- 5b. the size of the scry (#1036) ---------------------------------
+//
+// #1021 shipped the three lines above saying the MOTION only, because
+// the size of the action was on no event. game.Event.LookedAt carries
+// it now and the line says both numbers — "scry 2" is what a player
+// announces out loud, and it is the half an opponent cannot infer from
+// watching one card go to the bottom.
+//
+// The three tests above are deliberately left alone: they build an
+// event with no size, which is what a scry recorded before the field
+// decodes as, and they pin the sentence that case still renders.
+
+func TestLogSaysTheSizeOfAScryAndWhatMoved(t *testing.T) {
+	g := buildActiveGame(t)
+	actor := g.Seats[0]
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventScry, Actor: actor.ID, Amount: 1, LookedAt: 2,
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogScry)
+	if want := "P1 scried 2 and put 1 card on the bottom"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	if entry.LookedAt != 2 || entry.Amount != 1 {
+		t.Errorf("looked_at/amount: got %d/%d, want 2/1", entry.LookedAt, entry.Amount)
+	}
+	if entry.CardID != "" || entry.Target != "" {
+		t.Errorf("a scry entry names a card: card_id %q target %q", entry.CardID, entry.Target)
+	}
+	assertNoUUID(t, entry.Text)
+}
+
+// A scry that moved nothing is the case the size earns its keep on:
+// without it the line says only that a scry happened.
+func TestLogSaysTheSizeOfAScryThatKeptEverything(t *testing.T) {
+	g := buildActiveGame(t)
+	actor := g.Seats[0]
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventScry, Actor: actor.ID, Amount: 0, LookedAt: 3,
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogScry)
+	if want := "P1 scried 3 and kept every card on top"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+}
+
+func TestLogSaysTheSizeOfASurveil(t *testing.T) {
+	g := buildActiveGame(t)
+	actor := g.Seats[0]
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventSurveil, Actor: actor.ID, Amount: 2, LookedAt: 3,
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogSurveil)
+	if want := "P1 surveilled 3 and put 2 cards into their graveyard"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	if entry.LookedAt != 3 {
+		t.Errorf("looked_at: got %d, want 3", entry.LookedAt)
+	}
+	assertNoUUID(t, entry.Text)
+}
+
+// The whole chain on one real scry, with #976's keyword-action window
+// in it: "if you would scry, scry that many plus one instead" settles
+// the count at 3 before the prompt is queued, and the LINE says 3 —
+// the amount actually scried, not the 2 the effect asked for.
+func TestLogSaysTheReplacedSizeOfARealScry(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+
+	var choiceID uuid.UUID
+	var cards []uuid.UUID
+	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(game.ReplacementEffect{
+			Watches: []game.EventKind{game.EventKeywordAction},
+			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
+				return ev.Kind == game.RepEventKeywordAction &&
+					ev.KeywordAction == game.KeywordActionScry
+			},
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				ev.KeywordActionCount++
+				return nil
+			},
+			Label: "scry one more",
+		})
+		g.ScryForEffect(me.ID, uuid.Nil, 2)
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceScry {
+				choiceID, cards = c.ID, c.ScryCards
+			}
+		}
+	})
+	if len(cards) != 3 {
+		t.Fatalf("the prompt offers %d cards, want 3 — the window settled on 2+1", len(cards))
+	}
+	if err := g.ResolveScry(choiceID, me.ID, cards[:1], cards[1:]); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
+	}
+
+	entry := findLog(t, ViewOfGame(g).Log, LogScry)
+	if want := "P1 scried 3 and put 1 card on the bottom"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	assertNoUUID(t, entry.Text)
+}
+
 // --- 6. Saga chapters and Class levels --------------------------------
 
 func TestLogNarratesASagaChapter(t *testing.T) {

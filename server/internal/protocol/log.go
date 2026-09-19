@@ -175,9 +175,10 @@ const (
 	// LogScry / LogSurveil — a player finished a scry (CR 701.22)
 	// or a surveil (CR 701.25). NEVER a card, for anyone: the cards
 	// are hidden at both ends and the entry carries no card
-	// reference at all. `Amount` is the public half — how many the
-	// table watched go to the bottom of the library, or into the
-	// graveyard.
+	// reference at all. `Amount` is how many the table watched go to
+	// the bottom of the library, or into the graveyard, and
+	// `LookedAt` is the size of the action — "scry 2". Both halves
+	// are public; neither identifies a card.
 	LogScry    LogKind = "scry"
 	LogSurveil LogKind = "surveil"
 	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
@@ -266,6 +267,13 @@ type LogEvent struct {
 	// bit, on an entry that happens at most three times a game, was
 	// not worth the wire bytes.
 	Amount int `json:"amount,omitempty"`
+	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
+	// action — the "2" in "scry 2" — where Amount is how many cards
+	// the table then watched move. Zero on every other kind, and
+	// zero on a scry whose event predates the field. Copied from
+	// game.Event.LookedAt, which says why the two are separate
+	// numbers. #1036.
+	LookedAt int `json:"looked_at,omitempty"`
 	// OldZone / NewZone are set on LogZone entries.
 	OldZone string `json:"old_zone,omitempty"`
 	NewZone string `json:"new_zone,omitempty"`
@@ -724,16 +732,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// already named. An entry that carries no card reference
 		// cannot leak one.
 		//
-		// What is public is the MOTION the table watched: how many
-		// cards went to the bottom of the library, or into the
-		// graveyard. That is the count the engine's event carries —
-		// NOT the size of the scry, which is printed on the card and
-		// is not on the event (see game.EventScry).
+		// Two counts, and the line says both (#1036). Amount is the
+		// MOTION the table watched — how many cards went to the
+		// bottom of the library, or into the graveyard. LookedAt is
+		// the SIZE of the action, the "scry 2" a player announces out
+		// loud; #1021 shipped without it because it was on no event,
+		// and it is on the event now.
+		//
+		// Neither of them names a card, which is the reason the size
+		// is safe to say: "scry 2" tells the table how big the look
+		// was, not what was in it.
 		base.Kind = LogScry
 		if ev.Kind == game.EventSurveil {
 			base.Kind = LogSurveil
 		}
 		base.Amount = ev.Amount
+		base.LookedAt = ev.LookedAt
 		return base, true
 
 	case game.EventSagaChapter:
@@ -1165,17 +1179,27 @@ func renderCountersText(e LogEvent, card string) string {
 }
 
 // renderLookText words a finished scry or surveil. It says the keyword
-// and a COUNT and never a card — see the arm in projectEvent.
+// and two COUNTS and never a card — see the arm in projectEvent.
 //
-// The count is what the table watched happen: cards going to the
-// bottom of the library (CR 701.22b), or into the graveyard
-// (CR 701.25a). A scry that moved nothing still happened and still
-// says so, because "they kept what was on top" is the half of the
-// decision an opponent gets to read.
+// The size (`LookedAt`) is the number the player announced: "scry 2".
+// The motion (`Amount`) is what the table then watched happen — cards
+// going to the bottom of the library (CR 701.22b), or into the
+// graveyard (CR 701.25a). A scry that moved nothing still happened and
+// still says so, because "they kept what was on top" is the half of
+// the decision an opponent gets to read.
+//
+// A size of zero drops the number rather than printing "scried 0":
+// that is what an EventScry recorded before #1036 decodes as, and what
+// a hand-built event in a test carries, and "P1 scried and put 1 card
+// on the bottom" is the honest line for an event that does not know
+// how big the look was.
 func renderLookText(e LogEvent, actor string) string {
 	verb, where := "scried", "on the bottom"
 	if e.Kind == LogSurveil {
 		verb, where = "surveilled", "into their graveyard"
+	}
+	if e.LookedAt > 0 {
+		verb = fmt.Sprintf("%s %d", verb, e.LookedAt)
 	}
 	if e.Amount <= 0 {
 		return fmt.Sprintf("%s %s and kept every card on top", actor, verb)

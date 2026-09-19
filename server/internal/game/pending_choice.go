@@ -3659,6 +3659,12 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 		Actor:  chooserID,
 		Source: choice.Source,
 		Amount: len(bottom),
+		// The size of the scry, not the size of the motion: the cards
+		// the prompt was asking about, which is what the CR 614
+		// keyword-action window settled on clamped to the library
+		// (see Event.LookedAt). Both numbers are on the event because
+		// the log says both.
+		LookedAt: len(choice.ScryCards),
 	})
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
@@ -3888,6 +3894,10 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 	// continuation below may run an action later, from the resume of a
 	// CR 903.9 prompt, and must not close over a dequeued frame.
 	resume := choice.scryResume
+	// The size of the surveil, read off the frame for the same reason
+	// the resume is: the continuation below runs later, possibly from
+	// the resume of a CR 903.9 prompt, with the frame dequeued.
+	lookedAt := len(choice.ScryCards)
 
 	// Pull all of them out first, then place them, so the
 	// intermediate state can't depend on removal order.
@@ -3920,6 +3930,11 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 			Actor:  chooserID,
 			Source: source,
 			Amount: len(milled),
+			// `milled` is what the route actually put in the
+			// graveyard — a leg a Rest in Peace exiled instead is not
+			// in it — while the size of the surveil is the whole
+			// looked-at set and does not move with the replacement.
+			LookedAt: lookedAt,
 		})
 		// The rest of the effect, now that the library is in the order
 		// the player chose and every card that was going to a graveyard
