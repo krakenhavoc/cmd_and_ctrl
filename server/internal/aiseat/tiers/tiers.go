@@ -135,6 +135,17 @@ type Options struct {
 	// the funnel's per-call budget, because a deadline the call is
 	// not allowed to use is not a deadline that was raised.
 	MaxThink time.Duration
+	// NoImprovise turns ADR 0033 §8 improvisation OFF for the model
+	// tiers, which have it on by default since #686.
+	//
+	// Spelled as a negative so that the zero Options keeps the tier's
+	// own default. A seat with it set is a complete seat that never
+	// improvises: it casts an uncatalogued card, the card resolves
+	// into silence, and a human applies the text by hand — which is
+	// what every tier did before #686 and is a perfectly reasonable
+	// posture for a table that would rather not have a model touching
+	// the board.
+	NoImprovise bool
 	// Config overrides the model funnel's tuning. Nil takes the
 	// tier's default.
 	Config *model.Config
@@ -205,6 +216,14 @@ func New(t Tier, opt Options) (aiseat.Policy, error) {
 		if ids := opt.Models.resolve(); ids.Routine != "" {
 			cfg.Routine.ID = ids.Routine
 			cfg.Frontier.ID = ids.Frontier
+			// Improvisation asks the frontier slot (ADR 0033 §8,
+			// amended #686), so a deployment that named its own
+			// models must not be left dialling the shipped default
+			// for the one call that reaches an opponent's board.
+			cfg.Improv.ID = ids.Frontier
+		}
+		if opt.NoImprovise {
+			cfg.Improvise = false
 		}
 		if think := opt.MaxThink; think > t.MaxThink() {
 			// The runner's deadline moved, so the call budget inside

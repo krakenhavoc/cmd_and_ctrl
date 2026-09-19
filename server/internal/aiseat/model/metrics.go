@@ -109,6 +109,24 @@ type Stats struct {
 	// MaxThink is in danger.
 	ModelLatency    time.Duration
 	MaxModelLatency time.Duration
+
+	// ByImprov counts the outcomes of ADR 0033 §8's improvisation
+	// windows — one entry per window in which this seat had an
+	// uncatalogued spell it could have improvised. ImprovOffered is
+	// the only one that produced a bundle, and even that one says
+	// only what was OFFERED: whether the rail then applied it is the
+	// runner's counter (aiseat.Stats.Improvisations).
+	ByImprov map[string]int64
+	// ImprovCalls and ImprovUsage are the improvisation half of the
+	// spend, kept apart from ModelCalls and Usage rather than folded
+	// in. They are a different question with a different cap
+	// (Config.MaxImprovCalls) and a much larger reply, so averaging
+	// them into the decision numbers would make both unreadable.
+	// TOTAL SPEND FOR A SEAT IS Usage PLUS ImprovUsage.
+	ImprovCalls int64
+	ImprovUsage Usage
+	// ImprovLatency totals the time spent inside improvisation calls.
+	ImprovLatency time.Duration
 }
 
 // AbsorptionRate is the share of windows Layer A answered — ADR 0033
@@ -171,8 +189,27 @@ func newRecorder(keep int) *recorder {
 			ByLayer:      map[string]int64{},
 			ByEscalation: map[string]int64{},
 			ByFallback:   map[string]int64{},
+			ByImprov:     map[string]int64{},
 		},
 	}
+}
+
+// improv records one improvisation window. latency and usage are zero
+// for the outcomes that never reached the endpoint.
+func (r *recorder) improv(outcome string, latency time.Duration, u Usage) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.stats.ByImprov[outcome]++
+	if latency == 0 && u == (Usage{}) {
+		return
+	}
+	r.stats.ImprovCalls++
+	r.stats.ImprovLatency += latency
+	r.stats.ImprovUsage.InputTokens += u.InputTokens
+	r.stats.ImprovUsage.OutputTokens += u.OutputTokens
+	r.stats.ImprovUsage.CacheReadTokens += u.CacheReadTokens
+	r.stats.ImprovUsage.CacheWriteTokens += u.CacheWriteTokens
+	r.stats.ImprovUsage.CachedPromptTokens += u.CachedPromptTokens
 }
 
 func (r *recorder) record(rec DecisionRecord) {
@@ -219,6 +256,7 @@ func (r *recorder) snapshot() Stats {
 	out.ByLayer = copyCounts(r.stats.ByLayer)
 	out.ByEscalation = copyCounts(r.stats.ByEscalation)
 	out.ByFallback = copyCounts(r.stats.ByFallback)
+	out.ByImprov = copyCounts(r.stats.ByImprov)
 	return out
 }
 

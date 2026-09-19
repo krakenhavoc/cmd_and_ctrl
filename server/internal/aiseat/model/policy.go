@@ -83,6 +83,26 @@ type Config struct {
 	// the frontier model. This is the `strong` tier.
 	AlwaysEscalate bool
 
+	// Improvise turns ADR 0033 §8 improvisation on for this seat: an
+	// uncatalogued spell of the seat's own that resolves into silence
+	// is applied by hand, through a validated, announced, undoable
+	// bundle. See improvise.go. On for the model tiers by default;
+	// `false` is a complete, supported seat that simply never
+	// improvises — which is what every tier did before #686.
+	Improvise bool
+	// Improv is the model profile an improvisation call uses. The
+	// FRONTIER model, not the routine one: writing a bundle from
+	// oracle text is the hardest thing a seat is ever asked to do and
+	// the rarest, and MaxTokens is larger because a bundle is a
+	// paragraph where a decision is a number. Empty ID takes
+	// Frontier.ID.
+	Improv ModelProfile
+	// MaxImprovCalls is the hard per-game, per-seat cap on
+	// improvisation model calls — the thing that makes improvisation
+	// spend bounded rather than merely rare. Zero takes
+	// defaultMaxImprovCalls.
+	MaxImprovCalls int
+
 	// Reserve is held back from the runner's deadline so that a
 	// model call which runs long still leaves time to return Layer
 	// B's answer and dispatch it. ADR 0033 §10: the table never
@@ -145,6 +165,11 @@ func DefaultConfig() Config {
 		// that lands after the deadline is worth exactly as much as
 		// no answer at all.
 		Frontier: ModelProfile{ID: "claude-opus-5", Effort: "low", MaxTokens: 256},
+		// ADR 0033 §8 (amended 2026-09-19, #686). The frontier model,
+		// with room for a bundle rather than an index.
+		Improvise:      true,
+		Improv:         ModelProfile{ID: "claude-opus-5", Effort: "low", MaxTokens: 1024},
+		MaxImprovCalls: defaultMaxImprovCalls,
 
 		MaxCandidates:   24,
 		MaxZoneCards:    24,
@@ -181,6 +206,7 @@ func StrongConfig() Config {
 	c.MaxCandidates = 40
 	c.MaxZoneCards = 40
 	c.Frontier.Effort = "medium"
+	c.Improv.Effort = "medium"
 	c.MaxCall = 4 * time.Second
 	return c
 }
@@ -225,6 +251,15 @@ func (c Config) withDefaults() Config {
 	if c.RecordsKept <= 0 {
 		c.RecordsKept = 256
 	}
+	if c.Improv.ID == "" {
+		c.Improv.ID = c.Frontier.ID
+	}
+	if c.Improv.MaxTokens <= 0 {
+		c.Improv.MaxTokens = 1024
+	}
+	if c.MaxImprovCalls <= 0 {
+		c.MaxImprovCalls = defaultMaxImprovCalls
+	}
 	if c.Log == nil {
 		c.Log = slog.Default()
 	}
@@ -245,16 +280,30 @@ type Policy struct {
 	cfg    Config
 	static []Block
 	rec    *recorder
+	// improv is ADR 0033 §8's tracker: which of this seat's own
+	// uncatalogued spells have crossed the stack. See improvise.go.
+	improv *improvTracker
+	// deckIndex is cfg.Deck.Cards by lowercased name, which is how
+	// the improviser gets a card's oracle text. Built once: the
+	// profile is configuration and does not change for the life of
+	// the seat.
+	deckIndex map[string]DeckCard
 }
 
 // New returns a funnel policy. cfg.Client may be nil, in which case
 // this is Layer A + Layer B wearing the tier's name.
 func New(cfg Config) *Policy {
 	cfg = cfg.withDefaults()
+	idx := make(map[string]DeckCard, len(cfg.Deck.Cards))
+	for _, c := range cfg.Deck.Cards {
+		idx[strings.ToLower(strings.TrimSpace(c.Name))] = c
+	}
 	return &Policy{
-		cfg:    cfg,
-		static: cfg.Deck.staticBlocks(),
-		rec:    newRecorder(cfg.RecordsKept),
+		cfg:       cfg,
+		static:    cfg.Deck.staticBlocks(),
+		rec:       newRecorder(cfg.RecordsKept),
+		improv:    newImprovTracker(),
+		deckIndex: idx,
 	}
 }
 
