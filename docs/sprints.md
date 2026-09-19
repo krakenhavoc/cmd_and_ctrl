@@ -78,7 +78,7 @@ planned just-in-time from the S12 pain-point triage.
 | S32      | Playtest stabilisation, round 1                                      | 6     | [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) | —          | partial     |
 | S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | partial     |
 | S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | partial     |
-| S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | planned     |
+| S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | partial     |
 
 ### How to read the status column
 
@@ -2684,5 +2684,76 @@ The server has only ever had seats. A session bound one socket to one game and o
 **On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
 
 **Not built:** sub-PR 6 (tablemates, invite picker, DM invites) and its follow-on, [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613).
+
+---
+
+## S35 — Playtest stabilisation, round 2
+
+**Phase:** 6 · **Goal:** turn the in-app bug reports from the games since S32 into closed issues or named decisions. Tracking issue [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734).
+
+S32's exit criterion 6 said the reports from the 2026-09-11 and 2026-09-14 games would become the next sprint. That number went to S33 ([#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515), surviving a deploy) and S34 ([#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607), the user database), so they become S35. #734 was built on 2026-09-16 from the [#534](https://github.com/krakenhavoc/cmd_and_ctrl/issues/534) triage and the 18 open `[in-app]` issues, each re-checked against `origin/develop` that day. **Lanes are split so parallel agents don't collide**: *engine rules* is `internal/game`, *cards* is `internal/cards/effects` one file per card, *autopass and stops* is `Game.svelte` and `priorityStops.ts`, *client UX* is the rest of `client/`. This is a tracker sprint, not a design one: most of its items are a verdict, not a feature.
+
+### Engine rules
+
+- [x] **[#540](https://github.com/krakenhavoc/cmd_and_ctrl/issues/540) — a mana creature tapped the turn it entered.** The auto-tapper checked summoning sickness in neither the planner nor the executor, so paying by auto-tap tapped a sick creature that `ActivateManaAbility` would have refused. Fixed in [#896](https://github.com/krakenhavoc/cmd_and_ctrl/pull/896) (`66f2162a`), CR 302.6
+- [x] **[#596](https://github.com/krakenhavoc/cmd_and_ctrl/issues/596) — a bounced token stayed in hand as a card.** `internal/game` had no token concept on zone moves: `IsToken` lived only in `cards/effects` and there was no CR 704.5d state-based action. Both now exist — `game.Card.IsToken()` and `game/token_existence.go` — in [#898](https://github.com/krakenhavoc/cmd_and_ctrl/pull/898) (`9996c815`). Found when a bot's Cyclonic Rift bounced a Bird token
+- [x] **[#375](https://github.com/krakenhavoc/cmd_and_ctrl/issues/375) — the monarch didn't move on combat damage and gave no end-step draw.** `SetMonarch` only assigned a marker. The monarch is now two triggered abilities rather than a marker, in [#899](https://github.com/krakenhavoc/cmd_and_ctrl/pull/899) (`49379165`), with a follow-up test in [#908](https://github.com/krakenhavoc/cmd_and_ctrl/pull/908) pinning that the eliminated-monarch probe cannot be the departed seat's hand
+- [x] **[#500](https://github.com/krakenhavoc/cmd_and_ctrl/issues/500) — land drops per turn weren't enforced.** #734 put this to the owner as "keep the sandbox posture and close, or enforce it". **The decision was to enforce**, with a raisable limit so Exploration and Azusa have something to raise: [#900](https://github.com/krakenhavoc/cmd_and_ctrl/pull/900) (`a4d6e7e6`)
+- [ ] **[#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343) — Aang, Swift Savior can't transform.** ADR 0034 step 5, the transform verb. **Left this sprint:** it now carries the S46 milestone ("Permanents that change what they are"), where the verb is the sprint rather than one report in it
+
+### Autopass and stops
+
+- [x] **[#526](https://github.com/krakenhavoc/cmd_and_ctrl/issues/526) — smart autopass ran through a manual stop.** The `$manualStops.has(step)` check sat inside `if (!autopass)`, so the toggle beat the one-time stop. A manual one-time stop now beats the toggle, in [#904](https://github.com/krakenhavoc/cmd_and_ctrl/pull/904) (`f561f7fe`), without regressing [#599](https://github.com/krakenhavoc/cmd_and_ctrl/issues/599)'s declare-attackers window
+
+### Cards
+
+- [x] Close [#533](https://github.com/krakenhavoc/cmd_and_ctrl/issues/533) as a duplicate of [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333) — done. Its public body also carried a live-format session token, which is [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)
+- [x] **Five trigger reports triaged to a verdict each** in [#1018](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1018) (`fb24372f`), which **fixes no bug and lands the evidence**. Four — [#373](https://github.com/krakenhavoc/cmd_and_ctrl/issues/373) The Mighty Thor, [#369](https://github.com/krakenhavoc/cmd_and_ctrl/issues/369) Monument to Endurance, [#366](https://github.com/krakenhavoc/cmd_and_ctrl/issues/366) Brass's Tunnel-Grinder, [#508](https://github.com/krakenhavoc/cmd_and_ctrl/issues/508) Ambrosia Whiteheart — are one fact: the card has no registered `Spec`, so there was no trigger to fail to fire. Each is now pinned in `TestImporterStampsNeedsEffect` and `TestNeedsCatalogEffectCatchesRealRules` so the `manual` chip cannot quietly stop flagging them. The fifth, [#370](https://github.com/krakenhavoc/cmd_and_ctrl/issues/370) Mary Read and Anne Bonny, was real and was already fixed by [#797](https://github.com/krakenhavoc/cmd_and_ctrl/pull/797): the Vehicle arm worked, but the discard answer returned without running state checks, so the Treasure trigger sat on `PendingTriggers` in exactly the snapshot the reporter was looking at. Measured against `e5fc440d`, the build the game came from, and pinned by `TestIssue370MaryReadVehicleDiscardMakesATappedTreasure`
+- [ ] **Cards whose blocker has lifted:** [#321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/321) Enduring Curiosity and [#339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/339) Ty Lee (verify the untap hook, which now runs through one path in `game/untap.go`). Both still open and still absent from the catalog
+- [ ] **Cards that wait on a primitive**, each to be placed on [`docs/decklists/card-coverage-roadmap.md`](decklists/card-coverage-roadmap.md) with its blocker named: [#332](https://github.com/krakenhavoc/cmd_and_ctrl/issues/332) Lotus Field (same-colour mana), [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333) Fortune Teller's Talent (Class levels), [#337](https://github.com/krakenhavoc/cmd_and_ctrl/issues/337) The Seriema (station), [#324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/324) Anticausal Vestige ([#654](https://github.com/krakenhavoc/cmd_and_ctrl/issues/654)). **Only Monument to Endurance is on the roadmap today**; the other placements are outstanding
+- [ ] **[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) — 21 token templates declare no colour where the printed token is coloured**, plus two other mismatches. Found by [ADR 0078](decisions/0078-token-art.md)'s matching rule and split out of it as a rules bug on its own terms: colour is read by removal, lords, protection, cost reduction and devotion regardless of art. Per-card review, not a bulk edit — a caller may have wanted "colorless" and should move key rather than have its key change underneath it
+- [ ] Sweep [ADR 0037](decisions/0037-unimplemented-card-signal.md) and [ADR 0027](decisions/0027-attack-triggers.md) for the blockers #534 found expired. #1018 landed a dated amendment to ADR 0027 as part of #373's verdict
+
+### Client UX
+
+- [x] **#508 follow-up — does the ADR 0037 `manual` chip show for an uncatalogued card with an ETB?** It does, and #1018 pinned it: `NeedsCatalogEffect` is the only thing between a player and filing that report again, and all four of the no-`Spec` cards are now in `TestNeedsCatalogEffectCatchesRealRules` so a change to the line scanner cannot quietly un-flag them
+
+### Token art
+
+Not on #734 — added to this sprint on 2026-09-19 with [ADR 0078](decisions/0078-token-art.md). It spans the lanes above (`internal/cards`, `internal/game`, `internal/protocol`, `client/`), so it is listed apart from them rather than inside one.
+
+- [ ] **[#1115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1115) — tokens have no art.** A token renders as its name on a grey card-shaped div because it is created with an empty `ScryfallID`. The dump already holds 2,957 `layout:"token"` records with full `image_uris`, `GET /cards/{id}/image` already serves them, and the service worker already caches that URL shape; the missing piece is choosing an id. [ADR 0078](decisions/0078-token-art.md) resolves a printing at runtime by a fixed rule, stamps it on the existing `Card.ScryfallID` at token creation so it survives restore and replay, and adds `is_token` to `CardView`. The rule is a seam a later per-player or per-game art override sits in front of, which is why it is a rule and not an id pinned per template
+- [ ] ADR 0078 is **Proposed** and awaiting the owner's approval; no resolver, server or client change ships until it is accepted. Its sub-PR 0 is this section, the ADR and the AGENTS.md §3 range line
+
+### Also shipped under the S35 name
+
+Work that carries `Sprint: S35` in its commit trailer and is not on #734's checklist:
+
+- **[ADR 0075](decisions/0075-table-settings-and-host-controls.md) — table settings and host controls** (`cca3e1b1`), and its implementation: `Game.Settings` replacing `UndoLimit` (sub-PR 1, [#1042](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1042)), `HostPlayerID`, host transfer, auto-pass and `CanManageTable` (sub-PR 2, [#1043](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1043)), the `PATCH` route, `set_table_settings` and log narration ([#1110](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1110)), and the bot runner following the table's `BotPace` ([#1104](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1104))
+- **CI: `actions/setup-go` bumped to v6**, off the deprecated Node 20 runtime ([#1109](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1109), against [#474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/474), which is still open)
+
+### Exit criteria
+
+1. **Partly met.** Every report in #734's table is closed, a duplicate, closed by an owner decision, or moved onto the coverage roadmap with its blocker named. Six card reports are still open (#321, #324, #332, #333, #337, #339) and only one of the roadmap placements has been made, so no report is *unexplained* but several have no landed next step yet
+2. **Met.** #540, #596 and #526 are each closed by a merged PR with a regression test — #896, #898 and #904
+3. **Met.** #375 is closed by #899, with a test, plus the #908 follow-up
+4. **Not met.** Of the unblocked cards, #373 and #508 closed as coverage gaps with pins rather than catalog entries (#1018), and #321 and #339 are still open and still absent
+5. **Not met.** One real **4-player** game on the result. This box has carried from S12 through S32 criterion 6 and is still not on record
+6. **Open.** The sprint index on `main` matches issue state: this section and the S35 index row go to `develop` first, and the criterion names `main`
+
+### Status
+
+**Partial.** Load-bearing work has shipped under the S35 name — the token-existence SBA (#596), the autopass stop fix (#526), and ADR 0075's table settings and host controls with its four PRs — while exit criteria 1, 4, 5 and 6 are demonstrably unmet. By [the status legend](#how-to-read-the-status-column) that makes the row `partial` rather than `planned`, and the `planned` row is the one that does real damage when it is stale: it is read as "this mechanic is unbuilt".
+
+**What is still open**, each with its issue:
+
+- **Six card reports:** [#321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/321), [#324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/324), [#332](https://github.com/krakenhavoc/cmd_and_ctrl/issues/332), [#333](https://github.com/krakenhavoc/cmd_and_ctrl/issues/333), [#337](https://github.com/krakenhavoc/cmd_and_ctrl/issues/337), [#339](https://github.com/krakenhavoc/cmd_and_ctrl/issues/339) — four waiting on a primitive, two whose blocker has lifted
+- **Token art:** [#1115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1115) with [ADR 0078](decisions/0078-token-art.md), Proposed
+- **Token colours:** [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127), independent of the art work in both directions
+- **The 4-player table**, carried from S12 through S32 and now here
+
+**Left this sprint:** [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343), the transform verb, moved to S46. The five non-report engine items #534 raised and #734 left to the owner were taken into later sprints rather than this one: [#492](https://github.com/krakenhavoc/cmd_and_ctrl/issues/492) into S37, [#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489), [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478) and [#360](https://github.com/krakenhavoc/cmd_and_ctrl/issues/360) into S39; [#482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/482) is closed with no milestone.
+
+**Explicitly not in this sprint**, per #734: S33's deploy survival ([#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515)), S34's user database ([#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607)), store and boundary hardening ([#720](https://github.com/krakenhavoc/cmd_and_ctrl/issues/720)), token redaction in bug reports ([#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)), `pruneOrphanMeta` ([#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525)), adventure cards ([#719](https://github.com/krakenhavoc/cmd_and_ctrl/issues/719)), and catalog growth beyond the reported cards.
 
 ---

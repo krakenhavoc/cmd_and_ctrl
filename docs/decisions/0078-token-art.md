@@ -11,6 +11,10 @@ shared token-creation path this stamps on).
 **Related, and deliberately after this:**
 [#521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/521) (S33 sub-PR 5,
 synthetic token catalog keys).
+**Split out of this, and independent in both directions:**
+[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) — 21 token
+templates declare no colour where the printed token is coloured. Found by this
+ADR's matching rule, and a rules bug on its own terms; see decision 3d.
 
 **Numbering:** `git fetch origin` then `git ls-tree docs/decisions/` over every
 remote head (`git branch -r`, 385 heads, HEAD excluded) on 2026-09-19. The
@@ -218,8 +222,8 @@ Simulated against all 123 rows of `tokens_table.go` and the 2,722-record pool:
 | Rows where no candidate matches keywords exactly | 2 |
 | Table rows that resolve to **nothing** | **23** |
 
-**The 23 misses are a `tokens_table.go` audit, not a resolver failure**, and
-that is the most useful thing this work produces before it produces a single
+**The 23 misses are a `tokens_table.go` bug, not a resolver failure**, and
+finding them is the most useful thing this work does before it produces a single
 picture. 21 of them are rows whose `Colors` is empty where every printed version
 of that token is coloured — `1/1 colorless Soldier`, `1/1 colorless Human`,
 `2/2 colorless Zombie`, `3/3 colorless Beast`, `4/4 colorless Angel with flying
@@ -233,8 +237,39 @@ and vigilance` and sixteen more. The other two are sharper:
 - **`0/0 white Spirit Cleric`** — printed as **`*/*`**, so no numeric P/T can
   match it.
 
-Both are real and neither wants the rule bent. They want an override, and the
-seam in decision 6 is where the repo takes one.
+### They are not fixed here — they are [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127)
+
+**Owner decision, 2026-09-19: leave all 23 templates exactly as they are, ship
+art for the 100 that match, and fix the colours separately.** This ADR edits no
+template and this work changes no token's characteristics.
+
+The reason is that a colourless template is a **rules** bug that exists today
+whether or not tokens ever get art. Colour is a characteristic the engine reads:
+a colourless Soldier is not hit by "destroy target white creature", is not
+pumped by a white lord, dodges protection from white and colour-based cost
+reduction, and counts wrongly for devotion and anything else reading `Colors`.
+Correcting 21 of them changes what those tokens **are**, and that review belongs
+in a PR whose subject is the rules and whose reviewer is looking at each calling
+card — not in a PR about pictures. It is filed as
+[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127), which carries
+the full list, the two non-colour cases and the per-card review it needs.
+
+Two consequences for this ADR, both good:
+
+1. **Until #1127 lands, those 23 templates render as text, and that is expected
+   rather than a failure.** Decision 8's test treats them as a named, listed set
+   (see there); the suite is green while #1127 is open.
+2. **When #1127 lands, their art resolves under this rule with no further work
+   here.** A corrected `Colors` is exactly what the identity match in 3b needs —
+   a white Soldier lands in the 69-printing white Soldier bucket and decision 4
+   picks from it. No resolver change, no new override, no follow-up PR in this
+   ADR's scope. The two non-colour cases (`Wurm`, `*/*` Spirit Cleric) are
+   decided in #1127; if it chooses to keep either name as-is, that template
+   stays on the text fallback permanently and takes a pinned id through the
+   override seam in decision 6 whenever somebody wants it to.
+
+Neither case wants the *rule* bent to reach them, which is why the rule stays
+strict.
 
 ## Decision 4 — The tie-break is the **lowest Scryfall UUID** among the best candidates
 
@@ -333,11 +368,14 @@ falls through to it:
    [ADR 0051](0051-user-database.md) built.
 3. The rule.
 
-The repo's own escape hatch for decision 3d's 23 misses is the same mechanism at
-a fourth, lowest precedence: an optional pinned id on a `tokens_table.go` row,
-consulted before the rule for the handful of templates the rule cannot reach.
-**Nothing about that feature is designed here** beyond the shape of the request
-and the order of the fall-through.
+The repo's own escape hatch is the same mechanism at a fourth, lowest
+precedence: an optional pinned id on a `tokens_table.go` row, consulted before
+the rule for a template the rule cannot reach. **Nothing here builds it**, and
+it is not what decision 3d's 23 misses use — 21 of those are a colour bug that
+[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) fixes at the
+source, after which the rule reaches them unaided. A pinned id is for the
+residue: a template #1127 decides to leave mismatched, such as the Wurmcoil
+`Wurm` rename, if somebody later wants art on it.
 
 ## Decision 7 — `CardView` gains `is_token`
 
@@ -388,25 +426,45 @@ It is not invisible to us:
 - **Counted** on the resolver, as a plain expvar-style counter beside the
   memo, so "how many token creations rendered as text today" is answerable
   without grepping logs.
-- **Tested exhaustively.** `TestEveryTokenTemplateResolvesToAPrinting` walks
-  `effects.TokenKeys()` and the behaviour-token constructors and asserts a
-  non-empty id for each, **listing every miss by key** rather than failing on
-  the first. It lives in a `*_manual_test.go` gated on `CMDCTRL_SCRYFALL_DUMP`,
-  the convention
+- **Tested against an expected-miss list, not against zero misses.**
+  `TestEveryTokenTemplateResolvesToAPrinting` walks `effects.TokenKeys()` and
+  the behaviour-token constructors, resolves each, and compares the set of
+  template keys that resolved to nothing against a checked-in
+  `knownUnresolvedTokens` list — the 23 keys of decision 3d, each with a
+  one-line comment naming
+  [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) and why that
+  row misses. It fails on a **set difference in either direction**, and reports
+  both halves by key rather than failing on the first:
+  - a template **not** on the list that stops resolving — a new row added
+    without checking it, or a printing that left the dump — is a failure, which
+    is the guard this test exists to be;
+  - a template **on** the list that starts resolving is also a failure, with the
+    message "remove it from `knownUnresolvedTokens`" — so #1127's fix cannot
+    land and leave a stale exemption behind.
+
+  The list shrinks to empty as #1127 corrects templates and is deleted with the
+  last entry. **The suite is green the whole time #1127 is open**, and a
+  regression is still caught the day it happens.
+
+  It lives in a `*_manual_test.go` gated on `CMDCTRL_SCRYFALL_DUMP`, the
+  convention
   [`realdump_manual_test.go`](../../server/internal/deck/realdump_manual_test.go)
   set, because the 510 MB dump is not in the repo and ordinary CI has no copy.
   **`e2e-nightly.yml` does have one** — it caches `data/scryfall` by date and
-  runs `scripts/scryfall-refresh.sh` — so the exhaustive test runs nightly at
-  08:30 UTC, three and a half hours after the Sunday 05:00 UTC refresh. A
-  template that goes dark because a printing left the dump is caught within a
-  day, not at the next playtest.
+  runs `scripts/scryfall-refresh.sh` — so the test runs nightly at 08:30 UTC,
+  three and a half hours after the Sunday 05:00 UTC refresh. A template that
+  goes dark because a printing left the dump is caught within a day, not at the
+  next playtest.
   A hermetic unit test over a small hand-written pool pins the *rule*; the
   manual test pins that the rule still reaches the real data.
 
-**The 23 known misses are fixed before this test is switched on**, in the sub-PR
-that adds it, by correcting `tokens_table.go` — 21 `Colors` fields and two
-pinned overrides. The test then starts green and stays a guard rather than a
-permanently-failing reminder.
+**No template is edited to make this test pass.** The 23 known misses go on the
+list as data, `tokens_table.go` is untouched by this ADR's work, and
+[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) empties the
+list on its own schedule. That is the difference between a guard and a
+permanently-failing reminder, and it is what lets the art ship for the 100
+templates that already match without waiting on a per-card rules review of the
+other 23.
 
 ## Decision 9 — `GET /catalog/image/{id}` does not change
 
@@ -518,6 +576,14 @@ rules question of whether a 0/0 token *should* die is real and is **not settled
 here** — it is a separate change to a separate decision, and folding it into an
 art PR would be the worst way to make it.
 
+**[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) does not
+change this requirement, and does not substitute for it.** #1127 corrects
+`Colors`, which is a different field on a different set of templates; the two
+0/0 rows this paragraph names are not colour bugs, and `&& !c.IsToken()` is
+needed the moment *any* token carries a stamped `ScryfallID` — which is sub-PR
+2, regardless of what #1127 has or has not done by then. Both predicates are
+fixed in the same commit as the stamping, as stated.
+
 **`Card.fromScryfallPrinting()`
 ([`mutations.go:5659`](../../server/internal/game/mutations.go))**, read by
 `printedIdentityOf` for commander colour identity, asks "was this instance
@@ -563,15 +629,21 @@ parallel.
 
 | # | Scope | Depends on |
 |---|---|---|
-| 0 | This ADR and the AGENTS.md §3 range line. `docs/sprints.md` has an S35 row in its index table but no section yet; this lands there when the sprint opens | — |
+| 0 | This ADR, the AGENTS.md §3 range line, and the `docs/sprints.md` S35 section | — |
 | 1 | `cards.Card` gains `Colors` and `Keywords`; `Index.Load` builds the eligible pool and the 714 identity buckets; `cards/tokenart` with the rule, the memo and the counter; unit tests over a hermetic fixture pool | 0 |
 | 2 | `game.TokenArtResolver` + `TokenArtRequest` in `effect_hooks.go`; `main.go` wires it; stamping in `token_create.go`; `ToughnessIsKnown` and `fromScryfallPrinting` gain `&& !c.IsToken()`, with tests | 1 |
 | 3 | `CardView.is_token`, `viewOfCard`, the `face_down_view_test.go` allowlist, `client/src/lib/protocol.ts`, `docs/protocol.md`; the client styles a token as a token | 0 |
-| 4 | The `tokens_table.go` audit: 21 `Colors` corrections and 2 pinned overrides, plus `TestEveryTokenTemplateResolvesToAPrinting` in a `*_manual_test.go` and its wiring into `e2e-nightly.yml` | 2 |
+| 4 | `TestEveryTokenTemplateResolvesToAPrinting` with its `knownUnresolvedTokens` list in a `*_manual_test.go`, and its wiring into `e2e-nightly.yml`. **No template edits** | 2 |
 | 5 | Delete the stale comment at `tokens.go:10-13`; a soak-game screenshot pass confirming Treasure, Food, Clue, Blood, Gold, Eldrazi Spawn and the common creature tokens all render art | 2, 3, 4 |
 
-Sub-PR 4 is the one with the surprises in it, and it is the one to review
-carefully: it changes what 21 templates *are*, not only what they look like.
+**No sub-PR here touches `tokens_table.go`.** The 23 templates that resolve to
+nothing keep today's text fallback and are corrected under
+[#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127), which is a
+rules-correctness bug with its own per-card review and its own sprint slot.
+#1127 and this work are independent in both directions: art ships for 100
+templates without it, and when it lands the remaining art appears with no PR in
+this ADR's scope. Sub-PR 2 is the one to review carefully — it is the one that
+changes engine predicates.
 
 ## Consequences
 
@@ -588,10 +660,15 @@ carefully: it changes what 21 templates *are*, not only what they look like.
 - Two engine predicates stop meaning "conjured object" and have to be told so
   explicitly. That is a small, permanent tax on reusing `ScryfallID`, and it is
   cheaper than a second id field.
-- The 23-row `tokens_table.go` audit is surfaced, and 21 templates are corrected
-  to the colours they should always have had. The engine's behaviour changes for
-  those 21 — a "colorless" Zombie becomes black — which is a *rules* correction
-  arriving inside an art PR and must be called out in its description.
+- **23 templates keep the text fallback until
+  [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) lands**, so
+  the board is mixed for a while: most tokens have art, a colourless Soldier
+  does not. Accepted deliberately — the alternative was holding every token's
+  art behind a per-card rules review.
+- **No token's characteristics change in this work.** The 21 colourless
+  templates are a rules bug this work *found* and handed to #1127; correcting
+  them there makes their art appear under this ADR's rule with no further change
+  here.
 - The catalog page gains nothing and its unauthenticated surface does not grow.
 - CI does not verify that every template resolves; the nightly e2e run does,
   because only it has the dump. A regression is caught within a day, not within
@@ -613,6 +690,11 @@ carefully: it changes what 21 templates *are*, not only what they look like.
   this.
 - **Whether a 0/0 token with no counters should die.** Exposed by the
   `ToughnessIsKnown` change and deliberately left exactly as it is today.
+- **The 21 colourless token templates**, and the two other mismatches — handed
+  to [#1127](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1127) as a
+  rules-correctness bug in its own right. Deferred *out of* this work rather
+  than *by* it: #1127 can land before, after or alongside, and the only coupling
+  is that `knownUnresolvedTokens` shrinks as it goes.
 - **Art for emblems** (ADR 0064) and for the face-down 2/2 (ADR 0069). Both are
   objects with no printing and neither is a token; neither is touched here.
 
