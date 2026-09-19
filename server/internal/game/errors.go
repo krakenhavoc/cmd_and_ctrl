@@ -373,4 +373,25 @@ var (
 	// stops it having counters put on it, and the refusal has to
 	// happen before anything else is paid. Added for #789.
 	ErrCantPayCounterCost = errors.New("game: that permanent can't have those counters put on it")
+
+	// ErrSpecialActionNotOffered is returned by PerformSpecialAction
+	// when the named card does not offer that CR 116.2 special action
+	// — a foretell on a card that prints no foretell, a suspend on a
+	// card that prints no suspend, or a kind the engine does not
+	// carry out. Refused before the cost is paid. ADR 0062
+	// Decision 4, #658 / #659.
+	ErrSpecialActionNotOffered = errors.New("game: this card offers no such special action")
+
+	// ErrSpecialActionTiming is returned by PerformSpecialAction when
+	// the special action's window is shut: foretell outside its
+	// owner's own turn (CR 702.143a, 116.2h), or suspend at a moment
+	// the card could not begin to be cast — sorcery timing for a
+	// sorcery, and under split second for either (CR 702.62c,
+	// 116.2f).
+	//
+	// Its own sentinel rather than ErrSorcerySpeedRequired: the
+	// window is the KIND's, not the card's, and a client that says
+	// "it isn't your turn" for foretell is saying something
+	// ErrSorcerySpeedRequired would have got wrong.
+	ErrSpecialActionTiming = errors.New("game: that special action cannot be taken right now")
 )

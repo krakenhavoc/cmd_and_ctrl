@@ -123,6 +123,29 @@ var canonicalKeywords = map[string]bool{
 	// that does not say what it protects from is a promise the rules
 	// layer cannot keep. See docs/decisions/0072-protection.md §1.
 	KeywordProtection: true,
+	// foretell (CR 702.143) joins with #658, in the same change that
+	// teaches the engine to honour it: foretelling is a real CR 116.2
+	// special action now (game.PerformSpecialAction), the exiled card
+	// is a CR 702.143b face-down object its owner may look at, and
+	// the cast out of exile rides a per-instance CastPermission
+	// priced at the foretell cost.
+	//
+	// Like cycling, its consumer is not a table in this file — the
+	// keyword is on the card, not in the combat or targeting paths —
+	// so the token's job is the badge and the ADR 0037 coverage
+	// signal. What it must NOT do is join before the mechanic works:
+	// a badge promising foretell on a card the engine can only
+	// hard-cast is the half-a-card failure ADR 0037 §5 forbids.
+	"foretell": true,
+	// suspend (CR 702.62) joins with #659, in the same change that
+	// teaches the engine to honour it: the special action, the time
+	// counters, the exile-zone upkeep countdown (#925's
+	// TriggeredAbility.Zones), the free cast when the last one comes
+	// off and CR 702.62e's haste. Same reasoning as foretell above —
+	// the consumer is the card, not a table in this file, so the
+	// token's job is the badge and the ADR 0037 coverage signal, and
+	// it must not arrive before the mechanic does.
+	"suspend": true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

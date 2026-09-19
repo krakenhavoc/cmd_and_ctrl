@@ -379,6 +379,21 @@ type Spec struct {
 	// instance instead, through game.CastPermission.
 	CastableZones []game.ZoneKind
 
+	// SpecialActions are the CR 116.2 special actions this card
+	// offers from its owner's hand — foretell (CR 702.143) and
+	// suspend (CR 702.62). A special action does NOT use the stack
+	// and is not an ability, which is why it is its own slot rather
+	// than an entry in Activated or an AlternativeCost.
+	//
+	// Declare them with the keyword constructors, never by hand:
+	//
+	//	SpecialActions: []game.SpecialAction{Foretell("{1}{U}")},
+	//	SpecialActions: []game.SpecialAction{Suspend(1, "{R}")},
+	//
+	// Register refuses a kind the engine cannot carry out, and a
+	// suspend declaring no time counters, at boot.
+	SpecialActions []game.SpecialAction
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

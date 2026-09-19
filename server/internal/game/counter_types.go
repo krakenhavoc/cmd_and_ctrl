@@ -58,6 +58,15 @@ const (
 	// its controller (CR 704.5s). The advance-chapter trigger
 	// lands in S14+ with the effect catalog.
 	CounterLore = "lore"
+	// CounterTime is the time counter (CR 122.1d), placed by suspend
+	// (CR 702.62a) and removed one per upkeep by the suspended card's
+	// own exile trigger. No SBA: it is a countdown that one trigger
+	// reads, and having any at all is what "suspended" MEANS
+	// (CR 702.62b) — which is why suspend needs no per-card flag
+	// beside it. MoveCard clears counters on the way out of exile
+	// (CR 400.7), so a suspended creature never enters the
+	// battlefield carrying them.
+	CounterTime = "time"
 )
 
 // Player-level counter type identifiers.
@@ -100,6 +109,7 @@ var KnownCardCounters = []string{
 	CounterShield,
 	CounterLore,
 	CounterAge,
+	CounterTime,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

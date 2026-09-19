@@ -99,6 +99,18 @@ type Config struct {
 	// casts auto-tap, so floating mana is waste.
 	ManaFloat float64
 
+	// SpecialActionValue prices a CR 116.2 special action —
+	// foretelling a card, suspending one. Positive and modest: both
+	// keywords trade this turn's mana for a cheaper or free cast
+	// later, which is real value a seat should take when it has
+	// nothing better to do with the mana, and never a reason to skip
+	// casting the spell outright (a cast is priced by what it does,
+	// and is usually worth more). It is the one price that makes
+	// Lotus Bloom and Ancestral Vision playable at all: a card with
+	// no mana cost can never be cast from hand (CR 118.6), so
+	// suspending it is the only move it will ever have.
+	SpecialActionValue float64
+
 	// RemovalConfidence discounts the assumption that a spell which
 	// may legally target an opponent's permanent is removal. It is
 	// not always true (an unrestricted "target creature gets +3/+3"
@@ -186,6 +198,8 @@ func DefaultConfig() Config {
 		LifePayoff:     0.35,
 		LifeFloor:      1,
 		ManaFloat:      -0.50,
+
+		SpecialActionValue: 1.00,
 
 		RemovalConfidence:  0.80,
 		LeaderBoost:        1.50,

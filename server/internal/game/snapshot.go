@@ -443,6 +443,7 @@ type stackItemSnapshot struct {
 	HoldPriority  bool              `json:"holdPriority"`
 	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost       string            `json:"altCost,omitempty"`
+	Foretold      bool              `json:"foretold,omitempty"`
 	AltCostExiles bool              `json:"altCostExiles,omitempty"`
 	SplitSecond   bool              `json:"splitSecond"`
 	IsCopy        bool              `json:"isCopy,omitempty"`
@@ -1035,6 +1036,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		Foretold:      s.Foretold,
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
@@ -1597,6 +1599,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		Foretold:      s.Foretold,
 		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,

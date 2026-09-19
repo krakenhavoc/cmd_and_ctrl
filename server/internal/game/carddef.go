@@ -61,8 +61,16 @@ type CardDef struct {
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
-	SelfCostModifiers     []CostModifier
-	CastableZones         []ZoneKind
+	SelfCostModifiers []CostModifier
+	CastableZones     []ZoneKind
+
+	// SpecialActions are the CR 116.2 special actions the card offers
+	// from its owner's hand — foretell (CR 702.143a) and suspend
+	// (CR 702.62a). Read by PerformSpecialAction and by the
+	// legal-move enumerator through SpecialActionsFor. ADR 0062
+	// Decision 4.
+	SpecialActions []SpecialAction
+
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
 	UntapCaps             []UntapCap
@@ -247,6 +255,12 @@ func init() {
 	CatalogCastableZones = func(key string) []ZoneKind {
 		if d := catalogDef(key); d != nil {
 			return d.CastableZones
+		}
+		return nil
+	}
+	CatalogSpecialActions = func(key string) []SpecialAction {
+		if d := catalogDef(key); d != nil {
+			return d.SpecialActions
 		}
 		return nil
 	}

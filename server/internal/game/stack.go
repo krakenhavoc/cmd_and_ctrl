@@ -226,6 +226,22 @@ type StackItem struct {
 	// CR 608.2b re-check's choice of target clause. Added in S22.
 	AltCost string
 
+	// Foretold marks a spell cast from a FORETOLD CARD — CR 702.143c's
+	// "if this spell was foretold", which Poison the Cup, Haunting
+	// Voyage and Starnheim Unleashed read.
+	//
+	// Distinct from `AltCost == "foretell"`, and the difference is the
+	// rule: a spell is foretold because the CARD was foretold, not
+	// because the foretell cost was the one paid. An effect that let
+	// its owner cast a foretold card some other way would still be
+	// casting a foretold card.
+	//
+	// Stamped at announce from the card in its source zone, because
+	// that is the last moment the fact is readable: CR 406.3a turns
+	// the card face up as it is cast, and ADR 0069 decision 5 makes
+	// that MoveCard's unconditional ClearFaceDown. Added for #658.
+	Foretold bool
+
 	// AltCostExiles is CR 702.34a's flashback clause as a FACT about
 	// this stack object: "exile this card instead of putting it
 	// anywhere else any time it would leave the stack".

@@ -95,6 +95,19 @@ func Register(spec Spec) {
 				spec.Name, ac.Key, ac.FromZone))
 		}
 	}
+	// #659: a card may not declare exile castable. S29 allowed it "for
+	// the shape suspend and foretell will use"; they do not use it and
+	// could not, because a CARD-level declaration opens exile for
+	// every copy of the card at any time, however the copy got there.
+	// Every exile cast in this engine is a per-instance
+	// game.CastPermission (ADR 0066). Refused at boot so the retired
+	// shape cannot come back through a card file.
+	for _, z := range spec.CastableZones {
+		if z == game.ZoneExile {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
+				spec.Name))
+		}
+	}
 	// S22: a tap-permanents cost with no pool of legal permanents can
 	// never be paid, and one whose extra cost doesn't parse would
 	// silently charge nothing — both are copy-paste mistakes in a
@@ -155,6 +168,34 @@ func Register(spec Spec) {
 	for _, d := range specDesignations(spec) {
 		if d.Kind == game.DesignationDoorUnlocked {
 			panic(fmt.Sprintf("effects.Register: %q gates an ability on an unlocked Room door, which is designed but not built (ADR 0071 decision 3, #886)", spec.Name))
+		}
+	}
+	// ADR 0062 Decision 4: a special action the engine cannot carry
+	// out would take a card out of a hand and do nothing with it, so
+	// the declaration fails at boot rather than mid-game. The cost
+	// is parsed here for the same reason an ability's is: an
+	// unparseable one is refused at payment time, which is after the
+	// timing check has already said yes.
+	for i, sa := range spec.SpecialActions {
+		if !game.SpecialActionKindBuilt(sa.Kind) {
+			panic(fmt.Sprintf("effects.Register: %q special action %d declares kind %q, which the engine cannot carry out (ADR 0062 Decision 4)",
+				spec.Name, i, sa.Kind))
+		}
+		if sa.Cost != "" {
+			if _, err := game.ParseCost(sa.Cost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q special action %d declares an unparseable cost %q: %v",
+					spec.Name, i, sa.Cost, err))
+			}
+		}
+		if sa.CastCost != "" {
+			if _, err := game.ParseCost(sa.CastCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q special action %d declares an unparseable cast cost %q: %v",
+					spec.Name, i, sa.CastCost, err))
+			}
+		}
+		if sa.Kind == game.SpecialActionSuspend && sa.Counters <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q suspends with %d time counters — suspend N is at least one (CR 702.62a)",
+				spec.Name, sa.Counters))
 		}
 	}
 	// An activated ability's mana component is the only place an X
@@ -249,8 +290,14 @@ func Register(spec Spec) {
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
 	registry[spec.OracleID] = spec
-	defs[spec.OracleID] = buildDef(spec)
-	game.IndexTriggerZones(spec.OracleID, spec.Triggered)
+	def := buildDef(spec)
+	defs[spec.OracleID] = def
+	// #925 + #659: the index has to see the triggers the ENGINE will
+	// harvest, not the ones the card file wrote. A suspend
+	// declaration grows the exile countdown in buildDef — the keyword
+	// owns it, not the card — and an index built from spec.Triggered
+	// would never walk exile for it.
+	game.IndexTriggerZones(spec.OracleID, def.Triggered)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's

@@ -868,6 +868,36 @@ function moveItems(card: CardView, location: CardLocation): MenuItem[] {
   return items;
 }
 
+// specialActionItems is the CR 116.2 special-action rows on a card in
+// the viewer's own hand — "Foretell {2}", "Suspend 1—{R}" (#658,
+// #659, ADR 0062 Decision 4).
+//
+// A row fires the `special_action` verb DIRECTLY, with no targeting
+// or cost picker in between, because neither kind has a choice to
+// make: the whole payload is the card and the kind, and the server
+// finds the mana with auto_tap the way every other menu payment
+// does.
+//
+// `available` is the SERVER's per-kind timing answer, never
+// re-derived here. The rule the client would get wrong is split
+// second — foretell stays legal under it (CR 702.61b), suspend does
+// not (CR 702.62c) — and a row that disagreed with the engine would
+// be a rejection toast. An unavailable row is greyed rather than
+// dropped, so a player can still see the card has the keyword.
+function specialActionItems(card: CardView): MenuItem[] {
+  return (card.special_actions ?? []).map((sa) => ({
+    id: `special-${sa.kind}`,
+    label: sa.label || sa.kind,
+    hint: sa.available ? undefined : "not right now",
+    disabled: !sa.available,
+    action: {
+      type: "special_action" as ActionType,
+      params: { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
+      player: card.owner,
+    },
+  }));
+}
+
 // buildMenuSections is the whole menu for one card, in render order.
 // An empty result means "the viewer may not override this card" and
 // the component says so rather than showing a bare frame.
@@ -900,6 +930,17 @@ export function buildMenuSections(
     sections.push({ id: "damage", label: "damage", items: damageItems(card) });
     if (COMBAT_STEPS.has(view.turn?.step ?? "")) {
       sections.push({ id: "combat", label: "combat", items: combatItems(view, card) });
+    }
+  }
+
+  if (location.zone === "hand") {
+    // ADR 0062 Decision 4: the special-action rows sit in the hand
+    // card's menu, above "move to". They are only ever present on the
+    // viewer's own hand — the server strips `special_actions` from
+    // every other seat's, as it strips `hand_abilities`.
+    const special = specialActionItems(card);
+    if (special.length > 0) {
+      sections.push({ id: "special_actions", label: "special actions", items: special });
     }
   }
 

@@ -24,13 +24,17 @@ package game
 //   - EXILE. Impulse exile, airbend, warp and cascade grant
 //     permission to one INSTANCE rather than to every copy of the
 //     card, so they ride a granted CastPermission (cast_permission.go,
-//     ADR 0066). Madness, foretell and suspend, none of them built
-//     yet, are the same kind of permission (CR 702.35a, 702.143,
-//     702.62a). A card may additionally declare ZoneExile, but that
-//     is a CARD-level permission: it opens exile for every copy of
-//     the card, at any time, however the copy got there. It fits only
-//     a card whose printed text says exactly that, and no catalog
-//     card declares it today.
+//     ADR 0066). Foretell (CR 702.143) and suspend (CR 702.62a) are
+//     the same kind of permission and shipped as one on #658 / #659;
+//     madness (CR 702.35a) will be a third.
+//
+//     A card may NOT declare ZoneExile. S29 allowed it "for the shape
+//     suspend and foretell will use" and #659 retired it, because it
+//     is not that shape and could not be: a card-level declaration
+//     opens exile for every copy of the card, at any time, however
+//     the copy got there, so a Path to Exile'd Rift Bolt would be
+//     castable. No catalog card ever declared it, and
+//     CastableZonesFor refuses it now so none can.
 //
 //   - THE LIBRARY (S42, CR 401.5). Bolas's Citadel and the Future
 //     Sight family open the top card of a library, which is a
@@ -204,11 +208,13 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	case ZoneHand, ZoneCommand:
 		return nil
 	case ZoneExile:
-		// The permission is the usual way in and has already been
-		// checked. A card-level ZoneExile declaration is the other;
-		// it covers every copy in exile, so it is not the shape for
-		// suspend or foretell (see the file header).
-		if grant == nil && !CardCastableFromZone(key, ZoneExile) {
+		// A per-instance permission is the ONLY way in, and CastSpell
+		// has already checked it. #659 retired the card-level
+		// ZoneExile declaration that used to be a second door: it
+		// covers every copy in exile, at any time, however the copy
+		// got there, which is the wrong shape for suspend, for
+		// foretell and for every other exile cast this engine has.
+		if grant == nil {
 			return ErrNoPlayPermission
 		}
 	default:

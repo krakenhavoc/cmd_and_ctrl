@@ -557,6 +557,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		HoldPriority:  s.HoldPriority,
 		SplitSecond:   s.SplitSecond,
 		AltCost:       s.AltCost,
+		Foretold:      s.Foretold,
 		AltCostExiles: s.AltCostExiles,
 		CastFromZone:  s.CastFromZone,
 		IsCopy:        s.IsCopy,

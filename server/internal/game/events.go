@@ -89,6 +89,22 @@ const (
 	// triggered abilities: ADR 0062 Decision 7.
 	EventCycle EventKind = "cycle"
 
+	// EventSpecialAction — Actor took a CR 116.2 special action on
+	// CardID. Label is the action as the card prints it ("Foretell
+	// {2}", "Suspend 1—{R}").
+	//
+	// One event kind for every special action, the way the verb is
+	// one verb: the rules group them because their contract is
+	// identical, and a payoff that ever cares which one was taken
+	// reads Label. Nothing in the catalog watches it today; it is
+	// the public log's record that a card left a hand for exile
+	// without being cast or discarded, which no other event says.
+	//
+	// Emitted AFTER the action has been carried out, so the card is
+	// already in exile when a watcher sees it. ADR 0062 Decision 4,
+	// #658 / #659.
+	EventSpecialAction EventKind = "special_action"
+
 	// EventMill — Actor milled CardID from the top of their library.
 	// Fires per card.
 	EventMill EventKind = "mill"

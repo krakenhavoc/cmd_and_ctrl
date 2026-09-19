@@ -499,3 +499,55 @@ because their contract is identical.
    (#625) is an alternative cost on an activated ability. It needs an
    `Alternatives` slot on `AbilityCost` that ADR 0020 deliberately does
    not have, and it is out of scope here.
+
+## Amendment — 2026-09-18: Decision 4 is built
+
+Decision 4 designed the special-action verb and deliberately built
+none of it. [#658](https://github.com/krakenhavoc/cmd_and_ctrl/issues/658)
+(foretell, CR 702.143) and
+[#659](https://github.com/krakenhavoc/cmd_and_ctrl/issues/659)
+(suspend, CR 702.62) shipped it together on one PR, and it is what the
+ADR said it would be, item for item:
+
+- **One verb.** `actions.TypeSpecialAction` = `special_action`, params
+  `{card_id, kind}` plus the `{strict, auto_tap}` payment pair every
+  other announce carries. One engine entry,
+  `game.PerformSpecialAction` (`server/internal/game/special_action.go`).
+- **A per-kind timing table**, `Game.SpecialActionTimingOKLocked`, and
+  it is the ONLY place either window is written down: the engine, the
+  bot enumerator and the wire's `available` flag all read that one
+  function.
+- **The split-second warning was worth writing.**
+  `legal/special_actions.go` does not open with the
+  `if g.SplitSecondActive { return }` its two neighbours open with;
+  it asks the table per kind. Foretell under a Trickbind is legal
+  (CR 702.61b) and there is a test row for it.
+- **`Spec.SpecialActions []game.SpecialAction`**, `CardDef.SpecialActions`,
+  one line in `effects.buildDef`, and the verb's handler as the call
+  site — the AGENTS.md §7 "Adding a `Spec` slot" recipe, unchanged.
+  `effects.Register` refuses at boot a kind the engine cannot carry
+  out, an unparseable cost, and a suspend with no time counters.
+- **`specialActionMoves()`** on the `legal` enumerator, called where
+  `activatedMoves()` is, emitting `Move{Kind: KindSpecialAction}`; a
+  `payoffOf` case in `aiseat/heuristic`.
+- **The client row** is `CardView.special_actions`, stamped only on
+  the viewer's own hand and stripped by the same redaction that
+  strips `hand_abilities`, rendered in the hand card's menu above
+  "move to" and fired with no picker.
+
+Two things Decision 4 did not say, decided while building:
+
+- **`turn_face_up` (CR 116.2g) is reserved, not stubbed.** A kind with
+  no performer is refused BEFORE its cost is paid and is never
+  projected to a client, so the verb can grow a third kind without
+  ever having half of one.
+- **A special action's mana is spent with no `ManaSpendPurpose`.**
+  It is neither a cast nor an activation, so mana restricted to
+  either cannot pay for it. That is the strictly-weaker reading, which
+  is the direction #259 requires.
+
+Decision 7's open question 1 — the triggered-ability zone dimension —
+was answered by #925 before either keyword needed it, and suspend's
+upkeep countdown rides `TriggeredAbility.Zones = {ZoneExile}` exactly
+as that issue predicted. Open question 2 (per-instance activation
+grants, Greater Gargadon) is still open.

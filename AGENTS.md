@@ -3482,6 +3482,48 @@ declares a tap, sacrifice-this, crew or loyalty component: none of them
 has a permanent to pay with. That is the check to read if a new hand
 ability refuses to boot.
 
+### Special actions from the hand (#658, #659)
+
+A CR 116.2 special action is **not** an ability and **not** a cast: it
+uses no stack, there is no announce and nothing to respond to. There
+is ONE verb for all of them — `special_action {card_id, kind}` — and
+one engine entry, `game.PerformSpecialAction`, with a per-kind timing
+table beside the kinds. See
+[ADR 0062](docs/decisions/0062-abilities-and-special-actions-from-the-hand.md)
+Decision 4.
+
+| kind | window | split second |
+|---|---|---|
+| `foretell` (CR 702.143a) | any time you have priority during **your** turn | **legal** (CR 702.61b) |
+| `suspend` (CR 702.62a) | any time you could begin to **cast** the card — sorcery timing for a sorcery, instant timing for an instant | **illegal** (CR 702.62c imports it) |
+
+That asymmetry is the one thing here that is easy to get wrong and
+invisible when you do. `legal/special_actions.go` deliberately does
+NOT open with the `if g.SplitSecondActive { return }` that
+`legal/cast.go` and `legal/abilities.go` open with; it asks
+`SpecialActionTimingOKLocked` per kind, which is the same function the
+engine refuses with, so the enumerator and the engine cannot drift.
+
+Declare one on the card with the keyword constructors, never by hand:
+
+```go
+SpecialActions: []game.SpecialAction{Foretell("{1}{U}")},   // Foretell {2}, cast later for {1}{U}
+SpecialActions: []game.SpecialAction{Suspend(1, "{R}")},    // Suspend 1—{R}
+```
+
+`effects.Register` refuses a kind the engine cannot carry out, an
+unparseable cost, and a suspend with no time counters, at boot.
+
+Both keywords ride models that already exist and neither adds a
+second one: the later cast is a per-instance `game.CastPermission`
+(ADR 0066) scoped to that one card object, foretell's exile is
+`Card.FaceDownKind = foretold` (ADR 0069, viewers = the owner), and
+suspend's countdown is a triggered ability that declares
+`Zones: {ZoneExile}` (#925). A card-level `CastableZones: exile`
+declaration is the WRONG shape for either and was retired on #659: it
+opens exile for every copy of the card, at any time, however the copy
+got there — so a Path to Exile'd Rift Bolt would be castable.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

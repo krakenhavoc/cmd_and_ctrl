@@ -375,6 +375,11 @@ var stackItemFields = plan(
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
+	// CR 702.143c (#658). Carried: a restore that lost it would make
+	// "if this spell was foretold" false for a spell already on the
+	// stack, and the fact cannot be recomputed — the card turned face
+	// up as it was cast, so the object it was read from is gone.
+	"Foretold", carried, "",
 	// CR 702.34a / CR 400.7g (ADR 0066). Carried for the reason
 	// IsCopy is: a restore that lost it would route a flashed-back
 	// spell to a graveyard instead of exile, and a card Snapcaster

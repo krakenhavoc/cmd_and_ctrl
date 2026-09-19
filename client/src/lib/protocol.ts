@@ -114,6 +114,7 @@ export type ActionType =
   | "set_promise"
   | "set_undo_limit"
   | "shuffle_library"
+  | "special_action"
   | "start_vote"
   | "tap"
   | "undo"
@@ -348,7 +349,17 @@ export interface LegalMoveView {
   type: string;
   player: string;
   params?: Record<string, unknown>;
-  kind: "pass" | "land" | "cast" | "activate" | "mana" | "attack" | "block" | "choice" | "mulligan";
+  kind:
+    | "pass"
+    | "land"
+    | "cast"
+    | "activate"
+    | "mana"
+    | "attack"
+    | "block"
+    | "choice"
+    | "mulligan"
+    | "special_action";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -1089,6 +1100,20 @@ export interface TapCostView {
   demands_x?: boolean;
 }
 
+// SpecialActionView is one CR 116.2 special action offered on a card
+// in the viewer's own hand — foretell, suspend. A row and nothing
+// more: no targets, no modes, no cost picker, so the client sends
+// `special_action { card_id, kind, strict, auto_tap }` straight from
+// it. `available` is the server's own per-kind timing answer, so the
+// client greys the row rather than re-deriving a rule it would get
+// backwards (foretell is legal under split second; suspend is not).
+export interface SpecialActionView {
+  kind: string;
+  label: string;
+  cost?: string;
+  available?: boolean;
+}
+
 // ExilePlayView is the impulse-exile grant on a card in exile —
 // "exile the top card of that player's library, you may play it
 // this turn" (S21 sub-PR 6). Public information; the client offers
@@ -1542,6 +1567,13 @@ export interface CardView {
   // is the ability's index in the card's FULL list, so the same
   // activate_ability payload works for both.
   hand_abilities?: ActivatedAbilityView[];
+  // #658 / #659: CR 116.2 special actions this card offers while it
+  // is IN HAND — "Foretell {2}", "Suspend 1—{R}". Not abilities and
+  // not casts: they use no stack and there is nothing to respond to,
+  // so a row fires `special_action` directly with no picker in
+  // between. Hidden from every seat but the hand's owner, like
+  // `hand_abilities`.
+  special_actions?: SpecialActionView[];
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;

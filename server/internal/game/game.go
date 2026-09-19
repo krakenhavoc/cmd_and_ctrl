@@ -817,6 +817,12 @@ const DefaultUndoLimit = 1
 func (g *Game) End() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.State != StateEnded {
+		// CR 702.143f, #658. The same sweep endGameIfDecidedLocked
+		// runs, on the other door out of an active game — an admin
+		// ending the table, and every caller that ends it outright.
+		g.revealForetoldAtGameEndLocked()
+	}
 	g.State = StateEnded
 }
 
