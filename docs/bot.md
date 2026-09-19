@@ -309,6 +309,96 @@ one cannot be seated at a tier this server cannot honour.
 
 ---
 
+## Which colour a bot names (#780)
+
+Every `choose_color` prompt (CR 105.4) offers five legal answers and, on
+its own, says nothing about which one the card wants. So a bot with no
+other information named the colour its hand needed most — right for
+Coldsteel Heart, right by accident for Selective Obliteration, and a
+self-inflicted board wipe for Wash Out, where a mono-green bot named
+green and bounced its own permanents while leaving the opposition's
+alone.
+
+The prompt now carries the card's own declaration of what it will do
+with the answer (`color_purpose` on the wire, `game.ColorPurpose` in the
+catalog), and the policy is one function switching on it —
+`colorChoiceValue` in `aiseat/heuristic/choices.go`. There are no
+per-card branches anywhere in it.
+
+| Purpose | Cards | What the bot names |
+|---|---|---|
+| `mana` | Coldsteel Heart, the Thriving lands, the Gates, and the one-colour lands (Uncharted Haven, Crossroads Village, Mirage Mesa, Valgavoth's Lair) | the colour its **hand** asks for most — the pre-#780 rule, unchanged |
+| `benefit` | Heraldic Banner, Selective Obliteration | the same, with the colour it has most of on its **own board** breaking ties. Selective Obliteration's chosen colour is the one that *survives*, so "name what you want to keep" is the same question the anthem asks |
+| `harm` | Wash Out | the colour that costs the **opposition** most net of what it costs the bot, priced with the same `permanentValue` the board evaluation uses |
+| `filter` | Oona, Queen of the Fae | the colour most common among the opponents' **known** cards — their battlefield, their graveyards and the stack. Libraries and hands are counts on the wire and stay that way ([ADR 0033 §3](decisions/0033-ai-bot-seat.md)), so this is a proxy, and on a board that has shown nothing every colour ties and the enumerator's order decides |
+| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
+
+**An undeclared prompt keeps the old rule.** The purpose is a string,
+its zero value is "nothing was said", and the default arm is the
+hand-need scoring exactly as it was — so a card nobody has annotated
+plays no worse than it did yesterday. What stops one *staying*
+unannotated is a catalog guard rather than a runtime check:
+`cards/effects/color_purpose_guard_test.go` scans the catalog's source
+and fails the build for a `choose_color` prompt whose first argument is
+not one of the declared constants, in the style of #806's and #810's
+lints.
+
+## An attached permanent is priced once, by its role (#727)
+
+An Equipment's +2/+2 arrives on the wire as its host's `power` and
+`toughness` — the projection is post-layer — so a board evaluation that
+also charges `w.Permanent` for the Equipment has paid for the same
++2/+2 twice. [ADR 0036](decisions/0036-attachments.md) named that
+double count when attachments shipped and asked for "score it zero",
+and zero is too broad: a Pacifism scored at zero is a removal spell the
+bot can see no reason to cast.
+
+So an attached permanent is classified ONCE, by **what it is doing**,
+and priced by that role. The classification is
+`heuristic.AttachmentRole`, and it reads the HOST rather than the card:
+a policy may not hold a `*game.Game` ([ADR 0033
+§3](decisions/0033-ai-bot-seat.md)) and so cannot open a `CardDef` and
+inspect its `StaticAbility` list — but it does not need to, because
+every one of those statics has already run and left its mark on the
+host's projection. No card name appears anywhere in the split, which is
+what makes it work for the next Aura nobody has written yet.
+
+| Role | How it is recognised | What it is worth on its own line |
+|---|---|---|
+| **buff** — Equipment, `+N/+N` Aura | the default: attached to a permanent, no control change, no restriction | `AttachedEquipment` (0.60) for an Equipment or Fortification, which survives its host and can be moved; `AttachedAura` (0.10) for an Aura, which cannot. **The boost itself is on the host.** |
+| **restriction** — Pacifism, Arrest, Faith's Fetters | the host carries a neutralising `restrictions` token (`cant_attack`, `cant_block`, `cant_activate`, `cant_activate_mana`) and is controlled by somebody else | **the host's neutralised value** — exactly what `CreatureValue`'s restriction discount took off the host's controller, credited back to the seat that cast the Aura |
+| **control** — Control Magic, Mind Control | the host's `controller` is the attachment's controller while its `owner` is somebody else | **nothing.** Layer 2 has already moved the creature onto this seat's ledger; the ordinary creature pass counts it there |
+| **curse** — Curse of Opulence | `attached_to.kind` is `player` | its own permanent, unchanged — there is no host permanent for the value to ride |
+
+`cant_be_blocked` is deliberately not a neutralising restriction. It is
+carried on the attacker but restricts the DEFENDER, so a Whispersilk
+Cloak or an Aether Tunnel makes its host *better*, and discounting the
+host for it would have the sign backwards. The combat planner already
+reads it where it belongs — `couldBlock` in `combat.go` will not pair a
+blocker against it — so the attack and block plans see it even though
+the board evaluation charges nothing for it either way.
+
+**The restriction discount is the other half, and it is what makes
+removal Auras castable.** `CreatureValue` used to ignore
+`CardView.Restrictions` entirely, so a pacified 5/5 was worth exactly
+what it was worth the turn before and the only thing Pacifism changed
+about the bot's score was the 1.20 the Aura cost it as a permanent —
+casting removal made the bot's own evaluation go *down*. Each
+restriction is now a multiplier (`CantAttack` 0.45, `CantBlock` 0.70,
+`CantActivate` 0.80) and they compose, so Pacifism leaves about 31% of
+a creature and Arrest about 25%. The debit lands on the host's
+controller and the matching credit on the Aura's, so the ledger
+balances: a removal Aura is worth exactly the creature it is holding
+down, no more.
+
+The two soft edges are deliberate and both are cheap. A buff Aura on a
+creature this seat stole with something *else* reads as control and is
+priced at 0 rather than 0.10. A second restriction Aura on an
+already-pacified creature claims the same neutralised value as the
+first — a board where two seats have spent two cards answering one
+creature, and over-rating their answers is not a decision anyone is
+worried about.
+
 ## The four curated decks
 
 Curated, not generated, and **every card in them is covered by a

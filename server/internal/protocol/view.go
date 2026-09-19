@@ -225,6 +225,15 @@ type PendingChoiceView struct {
 	// missing from the map adds one; absent on every ordinary pick.
 	ColorAmounts map[string]int `json:"color_amounts,omitempty"`
 
+	// ColorPurpose populates the "choose_color" kind: what the card
+	// asking will DO with the answer — "mana", "benefit", "harm",
+	// "filter" or "protect" (game.ColorPurpose). Public information,
+	// because it is a reading of the card's own printed text, and
+	// carried because CR 105.4 makes all five colours legal so nothing
+	// else on the prompt says which one the effect wants. Absent on
+	// every other kind. Added by #780.
+	ColorPurpose string `json:"color_purpose,omitempty"`
+
 	// TypeOptions populates the S26 "choose_creature_type" kind: every
 	// creature type the engine knows (CR 205.3m), for the picker to
 	// filter. Materialised here from game.AllCreatureTypes rather than
@@ -2775,6 +2784,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// the client's colour buttons render both.
 		if c.Kind == game.PendingChoiceColor && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
+			v.ColorPurpose = string(c.ColorPurpose)
 		}
 		// PendingChoiceCreatureType — S26. The option set is the
 		// whole CR 205.3m vocabulary; the clone keeps the engine's

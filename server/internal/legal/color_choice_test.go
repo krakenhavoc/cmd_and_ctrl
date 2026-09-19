@@ -27,7 +27,7 @@ func TestChooseColorOffersEveryOptionBoardColoursFirst(t *testing.T) {
 	battlefieldCard(g, them, creature("Savannah Lions", "{W}", 2, 1))
 	battlefieldCard(g, them, creature("Savannah Lions", "{W}", 2, 1))
 	g.WithWriteLock(func() {
-		g.QueueColorChoiceForEffect(me.ID, uuid.New(), "Thriving Isle — choose a color other than blue", game.ColorsOtherThan("U"))
+		g.QueueColorChoiceForEffect(me.ID, uuid.New(), "Thriving Isle — choose a color other than blue", game.ColorsOtherThan("U"), game.ColorForMana)
 	})
 
 	moves := legal.EnumerateFor(g, me.ID)
@@ -69,7 +69,7 @@ func TestColorPayloadRoutesByKind(t *testing.T) {
 	src := battlefieldCard(g, me, game.Card{Name: "Coldsteel Heart", TypeLine: "Artifact"})
 	var colorChoice, manaChoice uuid.UUID
 	g.WithWriteLock(func() {
-		colorChoice = g.QueueColorChoiceForEffect(me.ID, src, "Coldsteel Heart", nil)
+		colorChoice = g.QueueColorChoiceForEffect(me.ID, src, "Coldsteel Heart", nil, game.ColorForMana)
 		manaChoice = g.QueueChoiceForEffect(game.PendingChoice{
 			Kind: game.PendingChoiceMana, Chooser: me.ID, FromPlayer: me.ID, Count: 1,
 			Reason: "Gilded Lotus", ColorOptions: []string{"W", "U", "B", "R", "G"},

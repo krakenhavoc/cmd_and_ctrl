@@ -668,6 +668,25 @@ not price restrictions, so zeroing them would value them at nothing. The fix bel
 scoping, for example to attachments on their controller's own
 creatures.)*
 
+*(Amendment 2026-09-18 — the hand-off is closed,
+[#727](https://github.com/krakenhavoc/cmd_and_ctrl/issues/727), S47.
+"An attached permanent should score zero on its own line" is now
+"an attached permanent is priced ONCE, by its ROLE", and the role is
+one classification — `heuristic.AttachmentRole` in
+`aiseat/heuristic/score.go` — with four answers: **buff** (Equipment
+and `+N/+N` Auras: the boost is already on the host's post-layer P/T,
+so the attachment keeps only a reattach residual), **restriction**
+(Pacifism, Arrest: worth the host's neutralised value, credited to the
+Aura's controller and debited from the host's through a new restriction
+discount in `CreatureValue`), **control** (Mind Control, Control Magic:
+nothing extra — layer 2 already moved the creature onto the thief's
+ledger) and **curse** (attached to a player: its own permanent, as
+before). The role is derived from what the attachment's statics have
+already DONE to its host — the host's controller, owner and
+`restrictions` on the wire — and never from a card name, because a
+policy may not hold a `*game.Game` to read a `CardDef` (ADR 0033 §3).
+Documented in [docs/bot.md](../bot.md#an-attached-permanent-is-priced-once-by-its-role-727).)*
+
 **Beyond bots.** ~30 cards per #76, the top-100 triage's fourth
 build-order item cleared, the `Enchantment — Aura` type made functional
 for the first time, and the last structural prerequisite for Mind

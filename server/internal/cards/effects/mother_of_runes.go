@@ -54,7 +54,11 @@ func init() {
 					// colour they cannot spend.
 					return nil
 				}
-				ChooseColorThen(g, item.Controller, item.SourceCardID,
+				// #780: the colour named here is the one the creature
+				// is being protected FROM, so the prompt says so and
+				// a bot names the biggest threat on the board rather
+				// than its own main colour.
+				ChooseColorThen(game.ColorForProtection, g, item.Controller, item.SourceCardID,
 					"Mother of Runes — choose a color",
 					func(g *game.Game, color string) error {
 						token := game.ProtectionFromColor(color)

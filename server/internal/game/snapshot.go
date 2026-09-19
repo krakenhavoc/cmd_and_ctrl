@@ -505,6 +505,7 @@ type pendingChoiceSnapshot struct {
 	CoinMaxUsefulWins    int                    `json:"coinMaxUsefulWins,omitempty"`
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
+	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
@@ -1129,6 +1130,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
@@ -1654,6 +1656,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),

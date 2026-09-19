@@ -22,7 +22,7 @@ func init() {
 		OracleID:     "3525e263-e29a-49bf-a29f-fb3ce43bbd33",
 		Name:         "Heraldic Banner",
 		Completeness: CompletenessFull,
-		AsEnters:     ChooseColorAsEnters("Heraldic Banner"),
+		AsEnters:     ChooseColorAsEnters(game.ColorForBenefit, "Heraldic Banner"),
 		Static:       []game.StaticAbility{ChosenColorAnthem(1, 0)},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},

@@ -12,8 +12,8 @@ import (
 // color_choice.go — the card-side vocabulary for "choose a color"
 // (CR 105.4, #742). The engine half is game/color_choice.go.
 //
-//	ChooseColorAsEnters(label)             "As this enters, choose a color."
-//	ChooseColorOtherThanAsEnters(label, c) "…choose a color other than blue."
+//	ChooseColorAsEnters(purpose, label)    "As this enters, choose a color."
+//	ChooseColorOtherThanAsEnters(p, l, c)  "…choose a color other than blue."
 //	ProducedChosenColor()                  "{T}: Add one mana of the chosen color."
 //	ProducedColorOrChosen(c)               "{T}: Add {U} or one mana of the chosen color."
 //	ChosenColorAnthem(p, t)                "Creatures you control of the chosen color get +p/+t."
@@ -22,16 +22,27 @@ import (
 //
 // Every reader of a stored colour treats "not chosen yet" as the
 // weaker outcome — no mana, no anthem — never as "every colour".
+//
+// EVERY PROMPT DECLARES A PURPOSE (#780). CR 105.4 makes all five
+// colours legal, so nothing about the prompt itself says which one the
+// card wants — a chooser with no other information names its own main
+// colour, which is right for Coldsteel Heart and bounces its own board
+// for Wash Out. `game.ColorPurpose` is the card's one-word answer to
+// "what happens to the colour I name", it is the first argument of
+// every builder here, and `color_purpose_guard_test.go` fails the
+// build for a prompt that does not pass one of the declared
+// constants.
 
 // ChooseColorAsEnters builds the `Spec.AsEnters` for "As this
-// permanent enters, choose a color." `label` is the prompt header,
+// permanent enters, choose a color." `purpose` is what the permanent
+// will do with the answer (#780) and `label` is the prompt header,
 // normally the card's name. The answer lands on the permanent's
 // Card.ChosenColor; see game/color_choice.go for why this is an ETB
 // hook rather than a paused CR 614 replacement (S26's creature-type
 // choice made the same call).
-func ChooseColorAsEnters(label string) func(*game.Card, *Context) error {
+func ChooseColorAsEnters(purpose game.ColorPurpose, label string) func(*game.Card, *Context) error {
 	return func(card *game.Card, ctx *Context) error {
-		ctx.Game.QueueColorChoiceForEffect(card.Controller, card.InstanceID, label+" — choose a color", nil)
+		ctx.Game.QueueColorChoiceForEffect(card.Controller, card.InstanceID, label+" — choose a color", nil, purpose)
 		return nil
 	}
 }
@@ -39,11 +50,11 @@ func ChooseColorAsEnters(label string) func(*game.Card, *Context) error {
 // ChooseColorOtherThanAsEnters is ChooseColorAsEnters for "choose a
 // color other than <color>" — the Thriving lands and the Gates. The
 // excluded colour is simply not offered.
-func ChooseColorOtherThanAsEnters(label, color string) func(*game.Card, *Context) error {
+func ChooseColorOtherThanAsEnters(purpose game.ColorPurpose, label, color string) func(*game.Card, *Context) error {
 	options := game.ColorsOtherThan(color)
 	return func(card *game.Card, ctx *Context) error {
 		ctx.Game.QueueColorChoiceForEffect(card.Controller, card.InstanceID,
-			label+" — choose a color other than "+game.ColorName(color), options)
+			label+" — choose a color other than "+game.ColorName(color), options, purpose)
 		return nil
 	}
 }
@@ -142,11 +153,17 @@ func OneColorOfAmount(n int) string {
 // `chooser` and runs `then` with the answer. Nothing is stored. `then`
 // runs with the game lock held, like every continuation — *ForEffect
 // helpers only.
-func ChooseColorThen(g *game.Game, chooser, source uuid.UUID, question string, then func(g *game.Game, color string) error) {
+//
+// `purpose` is #780's declaration: what the continuation is going to do
+// to the colour it is handed. It leads the argument list because it is
+// a property of the QUESTION, and a reviewer should see it before the
+// wording.
+func ChooseColorThen(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question string, then func(g *game.Game, color string) error) {
 	g.QueueColorChoiceThenForEffect(game.ColorPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
+		Purpose:  purpose,
 		Then:     then,
 	})
 }

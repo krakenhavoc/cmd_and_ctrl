@@ -50,6 +50,61 @@ const PendingChoiceColor PendingChoiceKind = "choose_color"
 // chosen for.
 const EventColorChosen EventKind = "color_chosen"
 
+// ColorPurpose is what the card will DO with the colour it is asking
+// for. It is declared by the card at the point it asks, it is public
+// information (anybody can read the card), and it exists because CR
+// 105.4 makes every one of the five colours a LEGAL answer — so the
+// only thing that separates a good answer from a terrible one is what
+// the effect does next.
+//
+// #780: without it every automated chooser answered "my main colour",
+// which is right for Coldsteel Heart and is a self-inflicted board
+// wipe for Wash Out. The engine does not read this field; it carries
+// it to the wire, where a policy (or a client hint) can.
+//
+// Keep the set SMALL. A purpose is a shape of question, not a card: the
+// bar for a new one is that no existing purpose gives a sane answer for
+// a whole family of cards.
+type ColorPurpose string
+
+const (
+	// ColorForMana — "add one mana of the chosen color" (Coldsteel
+	// Heart, the Thriving lands, the Gates). The colour is a mana
+	// source, so the right answer is whatever the chooser needs to
+	// cast things with.
+	ColorForMana ColorPurpose = "mana"
+
+	// ColorForBenefit — the chosen colour is the one that gets HELPED,
+	// or, on Selective Obliteration, the one that SURVIVES. Heraldic
+	// Banner's anthem and "exile each permanent unless it's only the
+	// color its controller chose" are the same question from the
+	// chooser's side: name the colour you want to keep.
+	ColorForBenefit ColorPurpose = "benefit"
+
+	// ColorForHarm — everything of the chosen colour is punished, the
+	// chooser's own permanents included (Wash Out). The right answer
+	// maximises what the opposition loses net of what the chooser
+	// does.
+	ColorForHarm ColorPurpose = "harm"
+
+	// ColorForFilter — the colour selects which of a set of unknown
+	// or opposing cards the effect acts on (Oona, Queen of the Fae).
+	// Nothing of the chooser's is at stake either way.
+	ColorForFilter ColorPurpose = "filter"
+
+	// ColorForProtection — the chosen colour is the one being
+	// defended AGAINST (Mother of Runes, Story Circle, the Circles of
+	// Protection). The right answer is the colour of whatever is
+	// about to hurt you.
+	ColorForProtection ColorPurpose = "protect"
+)
+
+// AllColorPurposes is every declared purpose, for the catalog guard
+// and for anything that has to validate one off the wire.
+var AllColorPurposes = []ColorPurpose{
+	ColorForMana, ColorForBenefit, ColorForHarm, ColorForFilter, ColorForProtection,
+}
+
 // AllColors is the CR 105.1 colour set in WUBRG order, the order every
 // colour picker renders.
 var AllColors = []string{"W", "U", "B", "R", "G"}
@@ -119,7 +174,7 @@ type chooseColorFrame struct {
 // `options` nil means any of the five colours. Returns the choice ID.
 //
 // Caller must hold g.mu (an AsEnters hook does).
-func (g *Game) QueueColorChoiceForEffect(chooser, source uuid.UUID, reason string, options []string) uuid.UUID {
+func (g *Game) QueueColorChoiceForEffect(chooser, source uuid.UUID, reason string, options []string, purpose ColorPurpose) uuid.UUID {
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:         PendingChoiceColor,
 		Chooser:      chooser,
@@ -128,6 +183,7 @@ func (g *Game) QueueColorChoiceForEffect(chooser, source uuid.UUID, reason strin
 		Source:       source,
 		Reason:       reason,
 		ColorOptions: normaliseColorOptions(options),
+		ColorPurpose: purpose,
 	})
 }
 
@@ -142,6 +198,10 @@ type ColorPrompt struct {
 	Question string
 	// Options are the legal colours; nil means all five.
 	Options []string
+	// Purpose is what the card does with the answer (#780). Required
+	// in practice: the catalog guard fails a prompt that leaves it
+	// empty, and an empty one falls back to the mana-fixing rule.
+	Purpose ColorPurpose
 	// Then receives the answer. Runs with g.mu held; may queue further
 	// choices.
 	Then func(g *Game, color string) error
@@ -160,6 +220,7 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		Source:            p.Source,
 		Reason:            p.Question,
 		ColorOptions:      normaliseColorOptions(p.Options),
+		ColorPurpose:      p.Purpose,
 		chooseColorResume: &chooseColorFrame{then: p.Then},
 	})
 }

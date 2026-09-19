@@ -53,7 +53,7 @@ func seedChosenColorLand(t *testing.T, g *game.Game, owner uuid.UUID, name, orac
 		Controller:   owner,
 	})
 	if color != "" {
-		g.WithWriteLock(func() { g.QueueColorChoiceForEffect(owner, id, name, nil) })
+		g.WithWriteLock(func() { g.QueueColorChoiceForEffect(owner, id, name, nil, game.ColorForMana) })
 		answerColor(t, g, owner, color)
 	}
 	return id
@@ -271,7 +271,7 @@ func TestProducibleReadsATokenLandsProducedFunc(t *testing.T) {
 			Label:        "Add one mana of the chosen color",
 		}},
 	})
-	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(me.ID, id, "Demo Chosen Land", nil) })
+	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(me.ID, id, "Demo Chosen Land", nil, game.ColorForMana) })
 	answerColor(t, g, me.ID, "R")
 
 	got := producible(g, id)

@@ -21,7 +21,7 @@ func init() {
 		Name:         "Coldsteel Heart",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-		AsEnters:     ChooseColorAsEnters("Coldsteel Heart"),
+		AsEnters:     ChooseColorAsEnters(game.ColorForMana, "Coldsteel Heart"),
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			ProducedFunc: ProducedChosenColor(),

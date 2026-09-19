@@ -50,6 +50,20 @@ type Weights struct {
 	// FrozenCreature further discounts a tapped creature that will miss
 	// its controller's next untap step.
 	FrozenCreature float64
+	// CantAttack, CantBlock and CantActivate are multipliers on a
+	// creature carrying the S24 restriction of that name (ADR 0045,
+	// `CardView.Restrictions`). They compose, so Pacifism applies the
+	// first two and Arrest all three, and they are what make a
+	// removal Aura worth casting: without them a pacified creature
+	// keeps its full value and the bot sees no gain (#727).
+	//
+	// "cant_be_blocked" is deliberately absent from the table. It is
+	// carried on the attacker but restricts the DEFENDER's options —
+	// a Whispersilk Cloak makes its host better, not worse — so
+	// discounting the host for it would have the sign backwards.
+	CantAttack   float64
+	CantBlock    float64
+	CantActivate float64
 
 	// Permanent is the flat value of a non-creature, non-land
 	// permanent. Planeswalker adds on top of it, and Loyalty values
@@ -57,6 +71,17 @@ type Weights struct {
 	Permanent    float64
 	Planeswalker float64
 	Loyalty      float64
+
+	// AttachedAura and AttachedEquipment are what an attached BUFF is
+	// worth on its OWN line, once its host already carries the boost
+	// (#727 — see AttachmentRole). An Aura is worth nearly nothing
+	// there: the value is the +2/+2 on the creature, and the Aura
+	// follows it to the graveyard. An Equipment keeps a real residual
+	// because it survives its host and can be moved to the next
+	// creature, which is the whole reason Equipment costs more than
+	// an Aura for the same stats.
+	AttachedAura      float64
+	AttachedEquipment float64
 
 	// ManaSource is per untapped mana source; TappedManaSource is
 	// what a tapped one is still worth (it untaps next turn).
@@ -112,10 +137,16 @@ func DefaultWeights() Weights {
 		TappedCreature: 0.85,
 		SickCreature:   0.90,
 		FrozenCreature: 0.65,
+		CantAttack:     0.45,
+		CantBlock:      0.70,
+		CantActivate:   0.80,
 
 		Permanent:    1.20,
 		Planeswalker: 3.00,
 		Loyalty:      0.40,
+
+		AttachedAura:      0.10,
+		AttachedEquipment: 0.60,
 
 		ManaSource:       1.00,
 		TappedManaSource: 0.55,
@@ -234,13 +265,30 @@ func isLand(c *protocol.CardView) bool     { return isType(c, "land") }
 // CreatureValue is what one creature on the battlefield is worth.
 // Exported because the combat planner trades creatures against each
 // other and must use the same scale as the board evaluation.
+//
+// #727: it applies the RESTRICTION discount. Before that, a creature
+// under a Pacifism was worth exactly what it was worth the turn
+// before, so the Aura's only effect on the evaluation was the 1.20 it
+// cost its own controller as a permanent — casting removal made the
+// bot's own score go DOWN. A creature that can neither attack nor
+// block is most of a blank card, and this is where the engine's own
+// answer to "can it?" (`CardView.Restrictions`, ADR 0045) gets priced.
 func (w Weights) CreatureValue(c *protocol.CardView) float64 {
+	return w.creatureValue(c, w.restrictionDiscount(c))
+}
+
+// creatureValue is CreatureValue with the restriction discount passed
+// in, so neutralisedValue can price one creature twice — as it is, and
+// as it would be with the restrictions lifted — without a second copy
+// of the body.
+func (w Weights) creatureValue(c *protocol.CardView, restricted float64) float64 {
 	v := w.Power*float64(c.Power) + w.Toughness*float64(c.Toughness) + w.Keyword*keywordBonus(c)
 	if v < 0.25 {
 		// Even a 0/1 wall is a body; never let a creature price at
 		// zero or the blocker logic stops caring whether it dies.
 		v = 0.25
 	}
+	v *= restricted
 	if c.Tapped {
 		v *= w.TappedCreature
 		if WontUntap(c) {
@@ -251,6 +299,58 @@ func (w Weights) CreatureValue(c *protocol.CardView) float64 {
 		v *= w.SickCreature
 	}
 	return v
+}
+
+// restrictionDiscount is the multiplier for everything the engine
+// says this permanent may no longer do (ADR 0045's vocabulary, as the
+// stable snake_case tokens on `CardView.Restrictions`). 1 for the
+// overwhelming majority of permanents, which are restricted by
+// nothing.
+//
+// The two activation bits collapse into one multiplier: Arrest stops
+// mana abilities as well as the rest and Faith's Fetters does not, but
+// "its abilities are off" is one loss to the creature's controller
+// however many bits the engine needed to say it.
+func (w Weights) restrictionDiscount(c *protocol.CardView) float64 {
+	if c == nil || len(c.Restrictions) == 0 {
+		return 1
+	}
+	d := 1.0
+	activation := false
+	for _, r := range c.Restrictions {
+		switch r {
+		case "cant_attack":
+			d *= w.CantAttack
+		case "cant_block":
+			d *= w.CantBlock
+		case "cant_activate", "cant_activate_mana":
+			activation = true
+		}
+	}
+	if activation {
+		d *= w.CantActivate
+	}
+	return d
+}
+
+// neutralisedValue is how much of a permanent its restrictions have
+// taken away: what it would be worth with them lifted, less what it is
+// worth now. This is the number a removal Aura is worth to the seat
+// that cast it — the debit CreatureValue took off the host's
+// controller, credited back on the other side of the ledger.
+//
+// Zero for a host that is not a creature: the restriction vocabulary's
+// other bits gate activations on permanents the evaluation already
+// prices flat, so there is nothing to give back.
+func (w Weights) neutralisedValue(host *protocol.CardView) float64 {
+	if host == nil || !isCreature(host) {
+		return 0
+	}
+	d := w.restrictionDiscount(host)
+	if d >= 1 {
+		return 0
+	}
+	return w.creatureValue(host, 1) - w.creatureValue(host, d)
 }
 
 // CombatValue is CreatureValue without the tapped and summoning-sick
@@ -339,6 +439,178 @@ func (w Weights) permanentValue(c *protocol.CardView) float64 {
 	}
 }
 
+// AttachRole is what an attached permanent is DOING to the board, and
+// it is the one classification #727 asked for: four answers, derived
+// from the effect the attachment's statics have ALREADY had on its
+// host, never from the card's name.
+//
+// Reading the host rather than the card is the whole trick. The
+// heuristic holds a protocol.GameView and may not hold a *game.Game
+// (ADR 0033 §3), so it cannot open a CardDef and walk its
+// StaticAbility list — but it does not have to. Every one of those
+// statics has already run: the layer pass has put the +2/+2 on the
+// host's Power and Toughness, the restriction bits on its
+// Restrictions, and the layer-2 control change on its Controller. So
+// what an attachment DOES is legible from what its host now IS, which
+// is also the only reading that stays correct when a card the catalog
+// has never heard of does the same thing.
+type AttachRole int
+
+const (
+	// AttachNone — not attached to anything the evaluation can see:
+	// an Equipment nobody has equipped, or one whose host has left and
+	// whose CR 704.5n unattach has not run yet. Priced as its own
+	// permanent, which is what it is.
+	AttachNone AttachRole = iota
+
+	// AttachBuff — an Equipment or a +N/+N Aura. The value RIDES THE
+	// HOST: the host's Power, Toughness and Abilities on the wire are
+	// post-layer, so the boost is already counted there, and pricing
+	// the attachment at w.Permanent as well was the double count
+	// ADR 0036's hand-off named. What is left on the attachment's own
+	// line is its reattach / utility value and nothing else.
+	AttachBuff
+
+	// AttachRestriction — a Pacifism or an Arrest on a permanent its
+	// controller does not control. The value is the HOST it
+	// neutralises: CreatureValue has already debited the host's
+	// controller for the restriction, and this is the matching credit
+	// to the seat that cast the Aura. Without it the bot can see the
+	// opponent get worse but not that IT did that, and its own removal
+	// reads as a permanent it paid 1.20 for.
+	AttachRestriction
+
+	// AttachControl — a Control Magic or a Mind Control. Nothing
+	// extra: the layer-2 effect has already moved the creature onto
+	// this seat's side of the ledger, where the ordinary creature pass
+	// counts it. Counting the Aura too would pay for the theft twice.
+	AttachControl
+
+	// AttachCurse — attached to a PLAYER (Curse of Opulence). There is
+	// no host permanent to carry anything, so it keeps its own line
+	// and is priced as its own permanent, exactly as it was.
+	AttachCurse
+)
+
+// neutralisingRestriction reports whether a restriction token makes
+// its permanent WORSE for the seat that controls it. The one that does
+// not is "cant_be_blocked", which is why the set is spelled out rather
+// than taken as "Restrictions is non-empty".
+func neutralisingRestriction(r string) bool {
+	switch r {
+	case "cant_attack", "cant_block", "cant_activate", "cant_activate_mana":
+		return true
+	}
+	return false
+}
+
+// isNeutralised reports whether anything has taken this permanent's
+// declaration- or activation-time options away.
+func isNeutralised(c *protocol.CardView) bool {
+	if c == nil {
+		return false
+	}
+	for _, r := range c.Restrictions {
+		if neutralisingRestriction(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// AttachmentRole classifies one attached permanent against its host.
+// `host` is the battlefield card `c.AttachedTo` names, or nil when the
+// attachment names a player or the host is not on the battlefield.
+//
+// The arms are in order of certainty:
+//
+//   - a player host is a curse, and nothing else can be;
+//   - a host whose CONTROLLER is the attachment's controller while its
+//     OWNER is somebody else has been stolen, and the layer-2 effect
+//     that stole it is the thing attached to it;
+//   - a host under a neutralising restriction whose controller is not
+//     the attachment's is being answered, not helped;
+//   - everything else is a buff.
+//
+// The two soft edges are both cheap. A buff Aura on a creature this
+// seat stole with something ELSE reads as control and is priced at 0
+// instead of AttachedAura — a tenth of a point. A second restriction
+// Aura on an already-pacified creature claims the same neutralised
+// value as the first; the board where that happens has two seats
+// spending two cards to answer one creature, and over-rating their
+// answers is not a decision anyone is worried about.
+func AttachmentRole(c, host *protocol.CardView) AttachRole {
+	if c == nil || c.AttachedTo == nil || c.AttachedTo.ID == "" {
+		return AttachNone
+	}
+	if c.AttachedTo.Kind == "player" {
+		return AttachCurse
+	}
+	if host == nil {
+		return AttachNone
+	}
+	if host.Controller == c.Controller && host.Owner != "" && host.Owner != c.Controller {
+		return AttachControl
+	}
+	if host.Controller != c.Controller && isNeutralised(host) {
+		return AttachRestriction
+	}
+	return AttachBuff
+}
+
+// isEquipment reports whether a permanent is one of the attachment
+// types that SURVIVES its host — Equipment (CR 301.5) and Fortification
+// (CR 301.6). Both unattach rather than die when the attachment becomes
+// illegal (CR 704.5n), which is exactly why they keep a bigger residual
+// than an Aura does.
+func isEquipment(c *protocol.CardView) bool {
+	return isType(c, "equipment") || isType(c, "fortification")
+}
+
+// attachIndex resolves the battlefield's attachment relation once per
+// evaluation: instance ID to card, so an attachment can find its host.
+// Built from the same slice the evaluation walks, so it costs one extra
+// pass over a board of a few dozen cards.
+type attachIndex map[string]*protocol.CardView
+
+func newAttachIndex(cards []protocol.CardView) attachIndex {
+	ix := make(attachIndex, len(cards))
+	for i := range cards {
+		ix[cards[i].InstanceID] = &cards[i]
+	}
+	return ix
+}
+
+// hostOf is the permanent `c` is attached to, or nil — for an
+// unattached permanent, a curse on a player, and a dangling attachment
+// whose host has already left.
+func (ix attachIndex) hostOf(c *protocol.CardView) *protocol.CardView {
+	if c == nil || c.AttachedTo == nil || c.AttachedTo.Kind != "card" || c.AttachedTo.ID == "" {
+		return nil
+	}
+	return ix[c.AttachedTo.ID]
+}
+
+// boardValue prices one permanent for the seat that controls it with
+// the attachment relation resolved: permanentValue for anything that is
+// not attached, and the role's price for anything that is. This is the
+// ONE place #727's split lives; every other caller asks it.
+func (w Weights) boardValue(c *protocol.CardView, ix attachIndex) float64 {
+	host := ix.hostOf(c)
+	switch AttachmentRole(c, host) {
+	case AttachControl:
+		return 0
+	case AttachRestriction:
+		return w.neutralisedValue(host)
+	case AttachBuff:
+		if isEquipment(c) {
+			return w.AttachedEquipment
+		}
+		return w.AttachedAura
+	}
+	return w.permanentValue(c)
+}
+
 // WontUntap reads the public projection for the controller's next untap
 // step. A marker naming another player doesn't freeze this resource for
 // its controller, and an untapped permanent is still available now.
@@ -369,8 +641,13 @@ func producesMana(c *protocol.CardView) bool {
 	return isLand(c)
 }
 
-// Evaluate breaks the view down per seat: one pass over the
-// battlefield, one pass over the seats.
+// Evaluate breaks the view down per seat: one index pass and one
+// scoring pass over the battlefield, one pass over the seats.
+//
+// The index pass is #727. An attachment is priced against its host, so
+// the host has to be findable before anything is added up — and the
+// host may appear after the attachment in the battlefield slice, so a
+// single pass cannot do it.
 func (w Weights) Evaluate(v protocol.GameView) map[string]*SeatEval {
 	out := make(map[string]*SeatEval, len(v.Seats))
 	for i := range v.Seats {
@@ -384,13 +661,14 @@ func (w Weights) Evaluate(v protocol.GameView) map[string]*SeatEval {
 			Eliminated: s.Eliminated,
 		}
 	}
+	ix := newAttachIndex(v.Battlefield.Cards)
 	for i := range v.Battlefield.Cards {
 		c := &v.Battlefield.Cards[i]
 		e := out[c.Controller]
 		if e == nil {
 			continue
 		}
-		e.Board += w.permanentValue(c)
+		e.Board += w.boardValue(c, ix)
 		if isCreature(c) {
 			e.Creatures += w.CreatureValue(c)
 			e.CreatureCount++

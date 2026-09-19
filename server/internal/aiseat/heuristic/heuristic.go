@@ -289,6 +289,10 @@ type state struct {
 	stack     map[string]*protocol.CardView
 	graveyard map[string]*protocol.CardView
 	choices   map[string]*protocol.PendingChoiceView
+	// attach resolves the battlefield's attachment relation, so that
+	// "what is this permanent worth" answers the same way here as it
+	// does inside Evaluate (#727).
+	attach attachIndex
 
 	seat         *protocol.PlayerView
 	myEval       *SeatEval
@@ -313,6 +317,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 		step:      v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
+	st.attach = newAttachIndex(v.Battlefield.Cards)
 	for i := range v.Battlefield.Cards {
 		c := &v.Battlefield.Cards[i]
 		st.bf[c.InstanceID] = c
@@ -361,6 +366,16 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 &&
 		(st.step == "precombat_main" || st.step == "postcombat_main")
 	return st
+}
+
+// permanentValue is boardValue against this decision's battlefield:
+// the one pricing of a permanent the whole policy uses, with an
+// attached permanent priced by its role rather than on its own line
+// (#727). A card that is not on the battlefield — one in hand, one in
+// a graveyard — is attached to nothing and prices exactly as it always
+// did.
+func (st *state) permanentValue(c *protocol.CardView) float64 {
+	return st.w.boardValue(c, st.attach)
 }
 
 // Decide is the aiseat.Policy entry point.

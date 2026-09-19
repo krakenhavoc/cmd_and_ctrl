@@ -21,7 +21,7 @@ func init() {
 		Name:         "Wash Out",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseColorThen(ctx.Game, item.Controller, item.SourceCardID, "Wash Out — choose a color",
+			ChooseColorThen(game.ColorForHarm, ctx.Game, item.Controller, item.SourceCardID, "Wash Out — choose a color",
 				func(g *game.Game, color string) error {
 					return BounceAllMatching{Match: OfColor(color)}.Apply(NewContext(g, item))
 				})
