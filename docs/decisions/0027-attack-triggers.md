@@ -181,3 +181,32 @@ rather than for deck coverage:
 - No client change. `EventKind` is not projected onto the wire yet,
   and the trigger surfaces through the existing stack overlay and
   prompt modals.
+
+## Amendment (2026-09-19, #373): all three deferred attack-trigger cards are unblocked
+
+The *Out of scope* list closed with three Aang-deck cards, each parked
+on a second blocker that had nothing to do with attack triggers. All
+three of those blockers have since been built, and the list has been
+a stale note for long enough that a player filed the card as a bug:
+[#373](https://github.com/krakenhavoc/cmd_and_ctrl/issues/373) reported
+The Mighty Thor, Jane Foster "not triggering", which is what an
+uncatalogued card does.
+
+| Card | Recorded blocker | Where it landed |
+|---|---|---|
+| *The Mighty Thor, Jane Foster* | flicker | [flicker.go](../../server/internal/cards/effects/flicker.go) and `ReturnFromExile{Tapped: true}` ([primitives.go](../../server/internal/cards/effects/primitives.go)) — the exact shape the card's second half asks for |
+| *Phelia, Exuberant Shepherd* | a delayed trigger plus a return-from-exile primitive | `game.DelayedTrigger` ([delayed.go](../../server/internal/game/delayed.go)) and the same `ReturnFromExile` |
+| *Katara, Waterbending Master* | "there is no player-scoped counter store" | `Player.Counters` with `CounterExperience` ([counter_types.go](../../server/internal/game/counter_types.go)) |
+
+None of the three is written; all three are now ordinary card work
+rather than blocked card work. This is the failure mode AGENTS.md §7
+warns about one level down, where a *caveat* goes stale the day
+someone else implements the mechanic: a deferral that was true the day
+it was written and is load-bearing and false a month later. The
+correction is recorded here rather than made by deleting the sentence,
+because the sentence is why nobody picked the cards up.
+
+Nothing about the decision itself changes: `EventAttack`,
+`attackDeclared` / `attackDeclaredByYou` and the CR 603.3d timing are
+as shipped, and the other deferrals in that section (batched attacks,
+attacking a planeswalker) still stand.
