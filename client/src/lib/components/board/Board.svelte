@@ -129,6 +129,12 @@
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
+    // #519: connectionBanner.ts's actionsDisabled(status), computed by
+    // Game.svelte and handed down rather than recomputed here — Board
+    // has no socket of its own to ask. Dims the table and turns every
+    // card affordance into a no-op instead of a click that silently
+    // goes nowhere while the connection is down.
+    disabled?: boolean;
     // Priority controls forwarded to the self-panel's PhaseDisplay.
     autopassEnabled?: boolean;
     // #628: the CR 726 loop-breaker banner line, empty when quiet.
@@ -156,6 +162,7 @@
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
+    disabled = false,
     autopassEnabled,
     loopNotice = "",
     onPassPriority,
@@ -163,6 +170,18 @@
     attention,
     beatsPrimeKey,
   }: Props = $props();
+
+  // #519: every action this component initiates funnels through here
+  // rather than through `sendAction` directly, so a card, an ability
+  // row or a context-menu entry stops being clickable the instant the
+  // socket goes down — instead of dispatching into a queue nothing is
+  // reading. `sendAction` itself still refuses offline sends on its
+  // own (see connectionBanner.ts's offlineSendMessage), so a call that
+  // slips past this guard is surfaced, not swallowed.
+  const guardedSendAction: ActionSender = (type, params, player) => {
+    if (disabled) return;
+    sendAction(type, params, player);
+  };
 
   // Spectators have no perspective — there's no "self" seat to anchor
   // the around-the-table rotation. Use a uniform grid for them with
@@ -231,7 +250,7 @@
   const initiativeID = $derived(view.initiative ?? null);
 
   function handleTapToggle(card: CardView): void {
-    sendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
+    guardedSendAction(card.tapped ? "untap" : "tap", { instance_id: card.instance_id });
   }
 
   // The cast flow is a chain of announce-time prompts, each handing
@@ -630,7 +649,7 @@
     if (beginTargetingForModes(card, modes, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     applyCastChoices(params, choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // continueCast is the post-cost half of the cast flow: pick modes
@@ -668,7 +687,7 @@
     }
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     applyCastChoices(params, choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
   }
 
   // completeTargetedCast fires cast_spell with the resolved target
@@ -716,7 +735,11 @@
       // S20 sub-PR 2: answering a triggered ability's pick_target
       // prompt. The store clears when the next snapshot no longer
       // carries the choice (see the effect below).
-      sendAction("resolve_choice", { choice_id: state.choiceID, targets }, viewerID ?? undefined);
+      guardedSendAction(
+        "resolve_choice",
+        { choice_id: state.choiceID, targets },
+        viewerID ?? undefined,
+      );
       targeting.set(null);
       return;
     }
@@ -741,7 +764,7 @@
       if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
       if (state.modes !== undefined) params.modes = state.modes;
       abilityDiscardIDs = [];
-      sendAction("activate_ability", params, viewerID ?? undefined);
+      guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
@@ -750,7 +773,7 @@
     // #764: a modal activated ability sends its modes beside its
     // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
-    sendAction("cast_spell", params, viewerID ?? undefined);
+    guardedSendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
   }
 
@@ -1001,7 +1024,7 @@
     counter: CounterPayment,
     sacrificeIDs?: string[],
   ): void {
-    sendAction(
+    guardedSendAction(
       "activate_mana_ability",
       {
         card_id: card.instance_id,
@@ -1027,7 +1050,7 @@
       return;
     }
     const params = { card_id: card.instance_id, ability_index: activate.index };
-    sendAction("activate_mana_ability", params, card.controller);
+    guardedSendAction("activate_mana_ability", params, card.controller);
   }
 
   function confirmSacrifice(instanceIDs: string[]): void {
@@ -1123,7 +1146,7 @@
     if (phyrexianLife) params.phyrexian_life = phyrexianLife;
     if (modes !== undefined) params.modes = modes;
     abilityDiscardIDs = [];
-    sendAction("activate_ability", params, viewerID ?? undefined);
+    guardedSendAction("activate_ability", params, viewerID ?? undefined);
   }
 
   // #916: the activation's Phyrexian stepper — the same modal the
@@ -1239,7 +1262,7 @@
 
   function handleDrawCard(): void {
     if (!viewerID) return;
-    sendAction("draw_card", undefined, viewerID);
+    guardedSendAction("draw_card", undefined, viewerID);
   }
 
   function handleTargetPlayer(targetPlayerID: string): void {
@@ -1328,6 +1351,8 @@
 <div
   class="board"
   class:spectator={isSpectator}
+  class:board-disabled={disabled}
+  aria-disabled={disabled}
   data-opp-count={opponentCount}
   data-seat-count={view.seats.length}
   bind:this={boardEl}
@@ -1348,7 +1373,7 @@
               hasPriority={seat.id === prioritySeatID}
               isMonarch={seat.id === monarchID}
               isInitiative={seat.id === initiativeID}
-              {sendAction}
+              sendAction={guardedSendAction}
               {combatMode}
               {selectedCombatCardID}
               {onDeclareAttack}
@@ -1383,7 +1408,7 @@
               hasPriority={seat.id === prioritySeatID}
               {viewerID}
               {isAdmin}
-              {sendAction}
+              sendAction={guardedSendAction}
               isMonarch={seat.id === monarchID}
               isInitiative={seat.id === initiativeID}
               {view}
@@ -1421,7 +1446,7 @@
           hasPriority={seat.id === prioritySeatID}
           {viewerID}
           {isAdmin}
-          {sendAction}
+          sendAction={guardedSendAction}
           isMonarch={seat.id === monarchID}
           isInitiative={seat.id === initiativeID}
           {view}
@@ -1461,14 +1486,14 @@
       splitSecondActive={view.split_second_active === true}
       onCounter={(item) => {
         const verb = item.kind === "spell" ? "counter_spell" : "counter_ability";
-        sendAction(verb, { instance_id: item.id });
+        guardedSendAction(verb, { instance_id: item.id });
       }}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
       onPass={onPassPriority}
     />
     {@render attention?.()}
   </div>
-  <VotingPanel {view} {viewerID} {sendAction} />
+  <VotingPanel {view} {viewerID} sendAction={guardedSendAction} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
     label={sacrificePrompt?.ability.sacrifice_label ?? "a permanent"}
@@ -1633,7 +1658,7 @@
       {viewerID}
       zoneKind={$zoneBrowser.zoneKind}
       ownerSeat={{ id: $zoneBrowser.ownerID, name: $zoneBrowser.ownerName }}
-      {sendAction}
+      sendAction={guardedSendAction}
       onClose={closeZoneBrowser}
       onTargetCard={handleTargetCard}
       onCastCard={handlePlayCard}
@@ -1645,7 +1670,7 @@
       {viewerID}
       {isAdmin}
       open={$cardMenu}
-      {sendAction}
+      sendAction={guardedSendAction}
       onActivate={handleMenuActivate}
       onClose={closeCardMenu}
     />
@@ -1682,6 +1707,20 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     mix-blend-mode: overlay;
     opacity: 0.5;
+  }
+  /* #519: the board stays rendered and stays the last-known state
+     (see ConnectionBanner.svelte's non-goals) — this only says so.
+     Dimming + grayscale is a look, not the guard; guardedSendAction
+     above is what actually stops a card action from going anywhere
+     while the socket is down. Cards, panels and the stack all dim
+     together rather than one at a time, so nothing looks selectively
+     broken. */
+  .board-disabled {
+    filter: grayscale(0.45) brightness(0.82);
+    cursor: not-allowed;
+  }
+  .board-disabled .slot {
+    pointer-events: none;
   }
   .slot {
     min-height: 0;
