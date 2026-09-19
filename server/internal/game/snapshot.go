@@ -401,6 +401,14 @@ type cardSnapshot struct {
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
 	ChosenColor string `json:"chosenColor,omitempty"`
+	// PaidOptionalCosts is CR 400.7d's kicked record (ADR 0073 §5).
+	// Carried for NamedTribe's reason and one more: it is a fact
+	// about a spell that has already left the stack, so a restore
+	// that dropped it would bring back a kicked Gatekeeper of Malakir
+	// whose next blink is unkicked, with nothing in the state to say
+	// what was lost. Old snapshots have no key and their nil reads
+	// correctly as "not kicked".
+	PaidOptionalCosts []int `json:"paidOptionalCosts,omitempty"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -949,6 +957,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		ChosenColor:              c.ChosenColor,
+		PaidOptionalCosts:        append([]int(nil), c.PaidOptionalCosts...),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
@@ -1467,6 +1476,7 @@ func restoreCard(c *cardSnapshot) Card {
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		ChosenColor:              c.ChosenColor,
+		PaidOptionalCosts:        append([]int(nil), c.PaidOptionalCosts...),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,

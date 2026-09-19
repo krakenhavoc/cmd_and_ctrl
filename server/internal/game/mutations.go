@@ -295,6 +295,23 @@ type CastSpellParams struct {
 	// cost. Added in S21 sub-PR 6.
 	SacrificeIDs []uuid.UUID
 
+	// OptionalCosts names the optional additional costs the caster is
+	// choosing to pay (CR 601.2b) — kicker, multikicker, buyback — as
+	// POSITIONS in the card's OptionalCosts slice. Paying one N times
+	// is naming its index N times, which is how multikicker announces
+	// its count (CR 702.33d) without a second field.
+	//
+	// Announced with the modes and before the targets, because a
+	// kicked spell may legally choose different targets from an
+	// unkicked one. The mana half joins the total at CR 601.2f; the
+	// card and permanent halves ride DiscardIDs and SacrificeIDs
+	// after the mandatory cost's own, in index order. The whole list
+	// lands on StackItem.Paid.OptionalCosts.
+	//
+	// Empty for every card that offers nothing — and non-empty for
+	// one is rejected, not ignored. Added in ADR 0073 (#664).
+	OptionalCosts []int
+
 	// TapIDs names the untapped permanents the caster is tapping to
 	// help pay for the spell — convoke's "your creatures can help
 	// cast this spell", waterbend's "you can tap your artifacts and
@@ -721,6 +738,29 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		)
 		return err
 	}
+	// ADR 0073, CR 601.2b: the optional additional costs the caster
+	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
+	// with the modes and before the targets, for two reasons that
+	// both matter: CR 601.2c comes after 601.2b and a kicked spell
+	// may legally choose different targets from an unkicked one, and
+	// every price this cast is about to be quoted (the tap budget,
+	// the auto-tap plan, the strict-mana gate) has to include the
+	// kicker or none of them agree.
+	//
+	// Only the CHOICE is checked here — in range, and no cost named
+	// more times than it may be paid. The card and permanent halves
+	// of the payment are validated with the mandatory additional
+	// cost below, against one plan, by one validator.
+	optionalCosts := OptionalCostsFor(CatalogKey(card))
+	if err := validateOptionalCostChoice(optionalCosts, params.OptionalCosts); err != nil {
+		slog.Warn("cast_spell rejected: bad optional additional cost choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"optional_costs_received", params.OptionalCosts,
+			"optional_costs_offered", len(optionalCosts),
+		)
+		return err
+	}
 	// S20: structured targeting. Cards with a TargetSpec — declared
 	// on the card, or on the chosen mode of a modal card — get their
 	// announce-time targets validated against it (CR 601.2c): zone,
@@ -764,6 +804,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return ErrInvalidParam
 		}
 	}
+	// #760, ADR 0073 §7, CR 101.2: the one announce-time cast gate,
+	// at the point ADR 0066 named. Every CR 601.2b choice is settled
+	// by here — the face, the source zone, the permission, the
+	// claimed alternative cost, X, the modes and the optional costs —
+	// and nothing has been PAID, so a refused cast leaves the card
+	// exactly where it was and costs nothing. That is also what lets
+	// CR 601.3a work: a choice made while proposing the spell can
+	// lift a ban, and every such choice is on `params` by now.
+	//
+	// Before the CR 601.2c target check rather than after it, because
+	// a banned cast should be refused for the ban rather than for
+	// whatever the targeting gate would have said about a spell that
+	// was never going to be cast.
+	//
+	// "Can't beats may" needs no rule of its own here. Cascade, a
+	// granted permission and an impulse grant all reach CastSpell, so
+	// a free cast passes through this gate like any other.
+	if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
+		slog.Warn("cast_spell rejected: an effect prevents this cast",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+			"err", err,
+		)
+		return err
+	}
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
 	// and type — not its caster's (#662).
@@ -781,13 +847,21 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// with the rest of the announce-time choices, and paid further
 	// down once the spell is on the stack — validate-all-then-pay,
 	// so a rejected cast never leaves a card in the graveyard.
+	//
+	// ADR 0073: the mandatory cost and the announced optional ones
+	// are ONE plan — mandatory first, then each chosen optional cost
+	// in index order, once per payment — so there is still exactly
+	// one validator and one payer, and the flat discard / sacrifice
+	// lists are walked in an order the client can reproduce.
 	addCost := AdditionalCostFor(CatalogKey(card))
-	if err := g.validateAdditionalCostLocked(playerID, cardID, addCost, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
+	costPlan := castCostPayments(addCost, optionalCosts, params.OptionalCosts)
+	if err := g.validateAdditionalCostLocked(playerID, cardID, costPlan, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"discards_received", len(params.DiscardIDs),
 			"sacrifices_received", len(params.SacrificeIDs),
+			"optional_costs", params.OptionalCosts,
 			"err", err,
 		)
 		return err
@@ -1056,7 +1130,15 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		// XValue is: by resolution the tokens are gone from the pool
 		// and the Treasure that made one may be in a graveyard, so
 		// nothing downstream could recompute it.
-		Paid: paid,
+		//
+		// #664: and which optional additional costs were paid, for
+		// exactly the same reason — by resolution the mana is spent,
+		// the sacrificed land is in a graveyard, and the catalog
+		// cannot say whether a choice was taken. Normalised to
+		// ascending order by castCostPayments' own walk, so two
+		// clients that announce the same multikicker in different
+		// orders produce the same record.
+		Paid: paidWithOptionalCosts(paid, costPlan),
 		Seq:  g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -1661,6 +1743,19 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 		tax := p.CommanderCasts[card.InstanceID]
 		cost.Generic += tax * 2
 	}
+	// ADR 0073 §3, CR 601.2f: the mana half of the optional additional
+	// costs the caster announced. Added AFTER the alternative-cost
+	// swap and the commander tax and BEFORE the cost modifiers, which
+	// is where CR 601.2f puts an additional cost — so Thalia taxes a
+	// kicked spell once and Trinisphere reads the kicked total.
+	//
+	// One helper, called from here and from the bot enumerator, so
+	// the price a bot is offered and the price the engine charges
+	// cannot drift (#544).
+	cost, err = AddOptionalCostMana(cost, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
+	if err != nil {
+		return ParsedCost{}, err
+	}
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
 	// the colored slots into the generic demand, which is exactly
@@ -1803,7 +1898,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// not happen — but if it does, route to graveyard so the
 		// stack doesn't wedge. No meta means no record of the cost
 		// that was paid, so no flashback replacement either.
-		return g.routeStackCardToGraveyardLocked(top, nil)
+		return g.routeStackCardToGraveyardLocked(top, nil, false)
 	}
 	// CR 608.1: spells and abilities share one LIFO stack. An ability
 	// item stamped with a higher Seq than the top spell was added
@@ -1852,8 +1947,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 		}
 		// S29: a flashed-back spell that fizzles is still exiled —
 		// CR 702.34a replaces every way out of the stack, not just
-		// the resolution.
-		return g.routeStackCardToGraveyardLocked(top, item)
+		// the resolution. A BOUGHT-BACK one is not returned to hand,
+		// for the mirror-image reason: CR 702.27b says "as it
+		// resolves", and a spell countered by game rules never
+		// resolves. Hence `false`.
+		return g.routeStackCardToGraveyardLocked(top, item, false)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventResolve,
@@ -1967,6 +2065,21 @@ func (g *Game) resolveTopOfStackLocked() error {
 				if out.EntersTapped {
 					g.Battlefield.Cards[i].Tapped = true
 				}
+				// CR 400.7d / ADR 0073 §5: the optional costs paid
+				// for the SPELL travel onto the permanent it becomes,
+				// because "when this enters, IF IT WAS KICKED" is a
+				// triggered ability whose AppliesTo sees only the
+				// game, the source and the event — and the item is
+				// already out of StackMeta. Stamped here, after the
+				// move and BEFORE the ZoneMove / ETB pair below, so
+				// the trigger harvester reads the right value at the
+				// moment it decides whether the trigger happened at
+				// all.
+				if len(item.Paid.OptionalCosts) > 0 {
+					g.Battlefield.Cards[i].PaidOptionalCosts =
+						append([]int(nil), item.Paid.OptionalCosts...)
+					moved.PaidOptionalCosts = g.Battlefield.Cards[i].PaidOptionalCosts
+				}
 				break
 			}
 		}
@@ -2018,8 +2131,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
-	// exile, when the flashback cost was paid (CR 702.34a).
-	return g.routeStackCardToGraveyardLocked(top, item)
+	// exile, when the flashback cost was paid (CR 702.34a), or to the
+	// owner's HAND, when the buyback cost was paid (CR 702.27b). This
+	// is the one call site that resolves, so it is the one that
+	// passes `true`.
+	return g.routeStackCardToGraveyardLocked(top, item, true)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -2151,13 +2267,29 @@ func (g *Game) resolveTopAbilityLocked() {
 // instants / sorceries and by the "countered by game rules" path
 // (sub-PR 3) when every target is illegal on resolve.
 //
-// `item` is the spell's stack item, because S29's flashback replaces
-// this destination: "exile this card instead of putting it anywhere
-// else any time it would leave the stack" (CR 702.34a). Pass nil for
-// the defensive no-StackMeta path, where there is no cost to read.
+// `item` is the spell's stack item, because two costs replace this
+// destination and both are facts about what was paid:
+//
+//   - FLASHBACK — "exile this card instead of putting it anywhere
+//     else any time it would leave the stack" (CR 702.34a). Every
+//     exit, which is why `resolved` does not gate it.
+//   - BUYBACK — "if the buyback cost was paid, put this card into its
+//     owner's hand as it resolves instead of putting it into that
+//     player's graveyard" (CR 702.27b, ADR 0073 §6). AS IT RESOLVES
+//     and no other exit, which is what `resolved` is for: a bought-back
+//     Capsize whose only target left in response is countered by game
+//     rules, does not resolve, and goes to the graveyard.
+//
+// Flashback wins when a card somehow has both, because 702.34a
+// replaces every exit and buyback replaces one of them. No printed
+// card has both; the order is written down so it is a decision rather
+// than an accident.
+//
+// Pass nil for the defensive no-StackMeta path, where there is no
+// cost to read, and `resolved` false with it.
 //
 // Caller must hold g.mu.
-func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem) error {
+func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved bool) error {
 	// S29 flashback. Checked before the owner lookup because it does
 	// not depend on one: the destination is the shared exile zone
 	// either way, which is also where a card whose owner has left
@@ -2170,8 +2302,15 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem) error {
 	// answers — priority cannot pass while a choice is outstanding,
 	// so nothing resolves on top of it in the meantime.
 	r := zoneRoute{CardID: c.InstanceID, Dst: ZoneGraveyard, DstOwner: c.Owner}
-	if altCostExilesFromStack(c, item) {
+	switch {
+	case altCostExilesFromStack(c, item):
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	case resolved && item != nil &&
+		OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0:
+		// CR 702.27b. Through the SAME exit primitive, so a
+		// bought-back commander still gets its CR 903.9 choice and a
+		// replacement watching the stack exit still sees one.
+		r.Dst = ZoneHand
 	}
 	_, err := g.routeCardToZoneLocked(r)
 	return err

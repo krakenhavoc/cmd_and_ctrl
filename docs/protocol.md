@@ -698,6 +698,66 @@ Three additive fields, none of them breaking (`v` unchanged):
 the per-player permission store rather than from a field on the card,
 which is invisible on the wire.
 
+## Optional additional costs and the cast gate (S42, ADR 0073)
+
+Two additive fields on `CardView` and one on `cast_spell`, both
+readable by every client that ignores them.
+
+- **`cast_spell.optional_costs`** (`[]int`, omitted when empty) is the
+  CR 601.2b announcement of which optional additional costs the caster
+  is paying — kicker, multikicker, buyback (#664). They are POSITIONS
+  in the card's `optional_costs`, not keys, because a position is what
+  the server's paid record holds. **Paying one N times is naming its
+  index N times**: a Wolfbriar Elemental kicked three times sends
+  `[0, 0, 0]`, which is how multikicker (CR 702.33d) announces its
+  count without a second field. The server normalises the list to
+  ascending order, so two clients that picked the same costs in
+  different orders produce the same announcement.
+
+  The MANA half of a claimed cost joins the total at CR 601.2f, after
+  the alternative-cost swap and the commander tax and before the cost
+  modifiers. The CARD half rides the existing flat `discard_ids` /
+  `sacrifice_ids` lists, walked against one ordered payment plan — the
+  mandatory additional cost first, then each claimed optional cost in
+  index order. A claim the card does not offer, or one naming a
+  once-only cost twice, is a rejected cast rather than an ignored
+  field.
+
+- **`CardView.optional_costs`** is the offer side: `index`, `key`
+  (`"kicker"`, `"multikicker"`, `"buyback"`), the printed `label`, the
+  `mana_cost`, `max_times` (1 for kicker and buyback, the multikicker
+  cap above that — which is what turns the client's checkbox into a
+  stepper), and the card-shaped halves `discard_cards` and
+  `sacrifice_options` in the same shape `additional_cost` gives them.
+  A present-and-empty `sacrifice_options` means the offer cannot be
+  taken right now (a Constant Mists with no land), exactly as it does
+  for a mandatory cost.
+
+  Unlike `alternative_costs` these COMPOSE with the radio list: an
+  alternative cost replaces the mana cost and an optional one adds to
+  whichever cost is being paid, so the client renders them as toggles
+  inside the same picker rather than as a prompt of their own.
+
+- **`CardView.cant_cast`** is the printed clause that stops the card
+  being cast from the zone it is in right now (#760) — "Each player
+  can't cast more than one spell each turn", "Cast this spell only if
+  you control a legendary creature or planeswalker". Absent, which is
+  nearly always, means nothing refuses the cast.
+
+  It is the STAMP of the one announce-time cast gate that `CastSpell`
+  and the bot enumerator both call, so a card carrying it is one the
+  server WILL refuse: grey it and show the clause rather than
+  dispatching `cast_spell` and surfacing a toast. `castable_here` is
+  cleared alongside it. PUBLIC, like `castable_here` — a Rule of Law
+  on the battlefield is visible to everyone — and cleared with the
+  rest of the cost surface on the non-knower redaction, because a
+  legendary-sorcery clause says more about a face-down card than its
+  mana cost does.
+
+  A cast that races the stamp (the board changed between the snapshot
+  and the click) comes back as `bad_request` with the clause in the
+  message.
+
 ## Schema evolution rules
 
 - **Breaking changes** bump `v` and require updating both server and client

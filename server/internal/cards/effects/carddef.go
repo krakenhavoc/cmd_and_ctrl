@@ -30,6 +30,7 @@ func buildDef(spec Spec) *game.CardDef {
 		Triggered:             spec.Triggered,
 		TriggerDoublers:       spec.TriggerDoublers,
 		AdditionalCost:        spec.AdditionalCost,
+		OptionalCosts:         spec.OptionalCosts,
 		AlternativeCosts:      spec.AlternativeCosts,
 		TapCost:               spec.TapCost,
 		CostModifiers:         spec.CostModifiers,
@@ -47,6 +48,9 @@ func buildDef(spec Spec) *game.CardDef {
 		XMatters:              spec.XMatters,
 		CastPermissions:       standingCastPermissions(spec.CastPermissions),
 		LibraryTopVisible:     spec.LibraryTopVisible,
+		CastCondition:         spec.CastCondition,
+		CastConditionLabel:    spec.CastConditionLabel,
+		CastRestrictions:      spec.CastRestrictions,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

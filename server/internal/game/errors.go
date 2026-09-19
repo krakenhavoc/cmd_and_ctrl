@@ -274,6 +274,24 @@ var (
 	// strictly better.
 	ErrInvalidFace = errors.New("game: invalid card face")
 
+	// ErrCantCast is the sentinel for a cast refused by the
+	// announce-time gate (CR 101.2, ADR 0073 §7): a "can't cast"
+	// static on a permanent (Rule of Law, Grafdigger's Cage, Rakdos)
+	// or the spell's own "cast only if" condition (CR 307.6's
+	// legendary sorcery).
+	//
+	// The error actually returned is a *CantCastError carrying the
+	// printed clause that refused the cast, so the client's toast
+	// names the card rather than the rule; callers doing
+	// errors.Is(err, ErrCantCast) still match. Same shape
+	// InsufficientManaError has, for the same reason.
+	//
+	// Distinct from ErrNoPlayPermission (no effect OPENED this zone)
+	// and ErrCastZoneNotAllowed (the card does not offer this zone):
+	// those two are "nobody said yes", and this one is "something
+	// said no", which CR 101.2 makes the stronger answer.
+	ErrCantCast = errors.New("game: an effect prevents casting this spell")
+
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
 	// tap-cost ability without haste (CR 302.6, 702.10). Added in

@@ -169,7 +169,7 @@ func TestCommanderFizzledOffersCommandZone(t *testing.T) {
 	card, _ := g.Stack.Top()
 
 	g.mu.Lock()
-	err := g.routeStackCardToGraveyardLocked(card, nil)
+	err := g.routeStackCardToGraveyardLocked(card, nil, true)
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("routeStackCardToGraveyardLocked: %v", err)

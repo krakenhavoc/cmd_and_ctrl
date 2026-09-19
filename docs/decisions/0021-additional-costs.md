@@ -219,3 +219,40 @@ what that design means for a spell.
 - **Still out:** variable counts ("sacrifice any number of creatures",
   "sacrifice X"), and kicker-style *optional* sacrifices. Both change
   what the caster announces, not only how many permanents they pick.
+
+## Amendment (2026-09-18): optional additional costs are in, and live in ADR 0073 (#664)
+
+**Status:** Superseded in part · 2026-09-18 · this section covers the
+deferral only.
+
+Three paragraphs of this ADR say kicker and the rest of the *optional*
+additional costs are out of scope — the Consequences bullet above
+("Kicker, escalate, and other optional additional costs are still out…"),
+the S21 sub-PR 6 amendment's "Still out, and still for the reason above",
+and the #747 addendum's "Still out" bullet. All three are now answered by
+[ADR 0073 — Optional additional costs and the announce-time cast
+gate](0073-optional-additional-costs-and-the-cast-gate.md).
+
+What changed, and what did not:
+
+- **The reasoning in those paragraphs stands.** A choice of whether to pay
+  does change what the spell does rather than only what it costs, which is
+  why ADR 0073 records the choice on the stack item
+  (`PaidCost.OptionalCosts`) and carries it onto an entering permanent
+  (`Card.PaidOptionalCosts`) instead of treating it as pricing.
+- **It is not a new kind of cost.** ADR 0073 §1 puts an `Optional` flag on
+  *this* `AdditionalCost` struct, so Constant Mists' "Buyback—Sacrifice a
+  land" is the `Sacrifice` component this ADR added in S21 sub-PR 6 with one
+  bool set. The validator and the payer this ADR describes are still the only
+  ones; they take an ordered payment plan (mandatory first, then the chosen
+  optional costs) rather than a single cost.
+- **`ManaCost` is new on the component**, because every additional cost this
+  ADR shipped is non-mana and kicker is mana. It is added to the total at
+  CR 601.2f, where this ADR always said additional costs go.
+- **The known-debt note above is discharged.** The client's announce-time
+  payments were bundled into one `CastChoices` object in #874; ADR 0073's
+  optional-cost choice rides that bundle rather than adding a fifth
+  parameter.
+- **Still out, and now for a narrower reason:** escalate and entwine. Their
+  cost is per extra *mode*, which is a mode-and-cost product that ADR 0073's
+  index-list announcement cannot express (ADR 0073, Consequences).

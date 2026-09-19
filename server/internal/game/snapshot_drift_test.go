@@ -259,6 +259,12 @@ var cardFields = plan(
 	// #742: the colour named as the permanent entered. A player's
 	// choice, so nothing can rebuild it.
 	"ChosenColor", carried, "",
+	// ADR 0073 (#664): CR 400.7d's kicked record, carried onto the
+	// permanent by the resolution path. A player's choice made on a
+	// spell that has already left the stack, so there is nothing left
+	// to rebuild it from — a restore that dropped it would bring back
+	// a kicked Gatekeeper of Malakir whose next entry is unkicked.
+	"PaidOptionalCosts", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",

@@ -259,6 +259,41 @@ func (c *Context) PaidAltCost(key string) bool {
 	return c.Item != nil && c.Item.AltCost == key && key != ""
 }
 
+// OptionalCostTimes is how many times the optional additional cost
+// keyed `key` was paid when this spell was announced (CR 601.2b,
+// ADR 0073). Zero when it was declined, when the card offers no such
+// cost, and for every ability item.
+//
+// Keyed rather than indexed so a card's resolution never has to know
+// its own declaration order, exactly as PaidAltCost is keyed.
+func (c *Context) OptionalCostTimes(key string) int {
+	if c.Item == nil || len(c.Item.Paid.OptionalCosts) == 0 {
+		return 0
+	}
+	card, ok := c.Game.LookupCardForEffect(c.Item.ID)
+	if !ok {
+		return 0
+	}
+	return game.OptionalCostTimesPaid(card, c.Item.Paid.OptionalCosts, key)
+}
+
+// WasKicked is CR 702.33's "if this spell was kicked" — the read a
+// kicked spell's own resolution branches on, the same shape
+// PaidAltCost gives an overloaded one:
+//
+//	if ctx.WasKicked() { … 4 damage … } else { … 2 damage … }
+//
+// True for kicker and multikicker alike: no rules text tells them
+// apart, and no card prints both.
+func (c *Context) WasKicked() bool { return c.KickedTimes() > 0 }
+
+// KickedTimes is CR 702.33d's "the number of times it was kicked" —
+// Wolfbriar Elemental's Wolf count. 1 for an ordinary kicked spell,
+// 0 for an unkicked one.
+func (c *Context) KickedTimes() int {
+	return c.OptionalCostTimes(game.KickerKey) + c.OptionalCostTimes(game.MultikickerKey)
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

@@ -232,6 +232,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		TargetCostNotes:     []string{"This spell costs {1} more to cast for each target beyond the first."},
 		PhyrexianSymbols:    1,
 		CastableHere:        true,
+		OptionalCosts:       []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		ExilePlay:           &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
 		ActivatedAbilities:  []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
 		HandAbilities:       []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
@@ -254,6 +255,10 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Layout:        "modal_dfc",
 		Faces:         []CardFaceView{{Name: "Hidden Name"}, {Name: "Hidden Back"}},
 		ActiveFace:    1,
+		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
+		// of the cost surface — a legendary-sorcery clause says more
+		// about a face-down card than its mana cost does.
+		CantCast: "Each player can't cast more than one spell each turn.",
 	}
 }
 

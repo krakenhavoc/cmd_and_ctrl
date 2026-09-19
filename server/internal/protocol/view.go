@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -465,6 +466,45 @@ type AdditionalCostView struct {
 	// Label is the clause as printed ("Discard a card"), shown
 	// above the picker.
 	Label string `json:"label,omitempty"`
+}
+
+// OptionalCostView is the wire shape of one optional additional cost
+// — kicker, multikicker, buyback (CR 601.2b, ADR 0073) — on a card
+// the viewer could cast.
+//
+// Like AlternativeCostView it is an OFFER rather than a demand, and
+// unlike it the offers COMPOSE: a cast may claim one alternative cost
+// and any number of these, which is why the client renders them as
+// toggles beside the alternative-cost radio list rather than as a
+// fourth modal in the chain. They are the same question asked at the
+// same moment.
+//
+// `index` is what rides back on cast_spell as an entry in
+// `optional_costs`, repeated once per payment for a repeatable one.
+// It is a POSITION and not a key, because that is what the engine's
+// paid record holds; `key` is here for the client's own labelling.
+type OptionalCostView struct {
+	// Index is the cost's position in the card's OptionalCosts slice
+	// — the value the announcement names.
+	Index int `json:"index"`
+	// Key is "kicker", "multikicker" or "buyback".
+	Key string `json:"key"`
+	// Label is the clause as printed ("Kicker {4}").
+	Label string `json:"label,omitempty"`
+	// ManaCost is the mana half, in brace notation. Empty for a
+	// purely non-mana cost (Constant Mists' "Buyback—Sacrifice a
+	// land").
+	ManaCost string `json:"mana_cost,omitempty"`
+	// MaxTimes is how many times this cost may be paid for one cast:
+	// 1 for kicker and buyback, the multikicker cap for multikicker.
+	// The client renders a checkbox at 1 and a stepper above it.
+	MaxTimes int `json:"max_times,omitempty"`
+	// DiscardCards and SacrificeOptions are the card-shaped halves,
+	// in the same shape and with the same meaning AdditionalCostView
+	// gives them — present-and-empty SacrificeOptions means this
+	// offer cannot be taken right now.
+	DiscardCards     int               `json:"discard_cards,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
 }
 
 // AlternativeCostView is the wire shape of one game.AlternativeCost
@@ -1220,6 +1260,12 @@ type CardView struct {
 	// zone and a flashback cost is printed on the card, so the bit
 	// is stamped on every viewer's copy rather than only the owner's.
 	CastableHere bool `json:"castable_here,omitempty"`
+	// OptionalCosts are the "you may pay an additional cost" offers
+	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
+	// buyback. Absent for nearly every card. Stamped alongside
+	// `alternative_costs`, because the client asks both questions in
+	// one modal.
+	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
 	// ExilePlay is the S21 sub-PR 6 impulse-exile grant. Present
 	// only while the card is in exile with a live permission;
 	// absent — which is nearly always — the card is inert exile.
@@ -1229,6 +1275,24 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
+	// CantCast is the printed clause that stops this card being cast
+	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
+	// "Each player can't cast more than one spell each turn", "Cast
+	// this spell only if you control a legendary creature or
+	// planeswalker". Absent, which is nearly always, means nothing
+	// refuses the cast.
+	//
+	// The STAMP of the one gate function CastSpell and the bot
+	// enumerator both call, so the client can grey the card and say
+	// why from server data rather than from a rule it reimplemented.
+	// A card carrying it is never castable: the client must not
+	// dispatch cast_spell for it, and the server would refuse.
+	//
+	// Public, like `castable_here`: a Rule of Law on the battlefield
+	// is visible to everyone, so the fact that it is stopping a cast
+	// is not hidden information. Cleared with the other announce
+	// hints on the non-knower redaction.
+	CantCast string `json:"cant_cast,omitempty"`
 	// HandAbilities are the CR 602 activated abilities this card
 	// offers while it is IN HAND — cycling and typecycling today
 	// (CR 702.29a/e), and whatever else declares
@@ -2146,6 +2210,11 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 						c.AdditionalCost.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
 					}
 				}
+				// ADR 0073: the optional costs this card OFFERS.
+				// Stamped next to the mandatory one and read by the
+				// same modal the alternative costs open, because CR
+				// 601.2b announces all of them together.
+				c.OptionalCosts = viewOfOptionalCosts(g, caster, c)
 				// S22: convoke / waterbend. Stamped before the target
 				// clause because the caster pays it first, and the
 				// count of a "X target creatures" clause depends on
@@ -2156,6 +2225,22 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// #746: the printed clauses of a per-target price, for
 				// the X picker's note.
 				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
+				// #760, ADR 0073 §7: the one cast gate's view stamp.
+				// The SAME function CastSpell and the bot enumerator
+				// call, so the client can never render a cast button
+				// the server would refuse.
+				//
+				// The zone the card sits in is the zone a cast would
+				// come out of, which is what makes Grafdigger's Cage
+				// answerable here at all.
+				if live, ok := liveCardForView(g, c); ok {
+					if err := g.CastGateLocked(caster, live, zone.kind, game.CastSpellParams{}); err != nil {
+						c.CantCast = cantCastReason(err)
+						// A card the gate refuses is not a cast
+						// surface, whatever opened the zone.
+						c.CastableHere = false
+					}
+				}
 				// #916: the ceiling on the cast's `phyrexian_life`.
 				// Read off the EFFECTIVE cost — the commander tax is
 				// generic and cost modifiers add generic, so the two
@@ -2357,6 +2442,44 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
 			v.PayOptions = opts
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfOptionalCosts projects a card's "you may pay an additional
+// cost" offers (CR 601.2b, ADR 0073) for one caster. Nil for nearly
+// every card.
+//
+// Next to viewOfAlternativeCosts because the client asks both
+// questions in one modal: an alternative cost REPLACES the mana cost
+// and an optional one ADDS to it, so the two compose and CR 601.2b
+// announces them together.
+//
+// The sacrifice pool goes through sacrificeCostOptions, the same
+// helper the mandatory cost uses, so a non-mana kicker's picker is
+// the picker every other sacrifice cost opens — filtered to the
+// caster's own permanents (CR 701.21a), in payment order. A
+// present-and-empty list is how the client knows the offer cannot be
+// taken right now, exactly as it is for the mandatory cost.
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, c *CardView) []OptionalCostView {
+	costs := game.OptionalCostsFor(c.oracleID)
+	if len(costs) == 0 {
+		return nil
+	}
+	out := make([]OptionalCostView, 0, len(costs))
+	for i, oc := range costs {
+		v := OptionalCostView{
+			Index:        i,
+			Key:          oc.Key,
+			Label:        oc.Label,
+			ManaCost:     oc.ManaCost,
+			MaxTimes:     oc.MaxPayments(),
+			DiscardCards: oc.DiscardCards,
+		}
+		if oc.Sacrifice != nil {
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
 		}
 		out = append(out, v)
 	}
@@ -3614,6 +3737,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// cost does — "Overload {6}{U}" on a face-down card would give
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
+	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
+	// cost does, and CR 708.2 leaves a face-down object with no text
+	// to offer it from.
+	out.OptionalCosts = nil
 	out.TapCost = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
@@ -3626,6 +3753,12 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	// ADR 0073 §7: "Cast this spell only if you control a legendary
+	// creature or planeswalker" says the card is a legendary sorcery,
+	// which is more than its mana cost gives away. CR 708.2 also
+	// leaves a face-down object with no text for such a clause to be
+	// printed in.
+	out.CantCast = ""
 	// Weak evidence of identity, but evidence: it partitions the
 	// card into "prints rules we don't run" or not. Cleared for the
 	// same reason as the cost fields above rather than because
@@ -4030,6 +4163,35 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
 			v.CastableHere = true
 		}
 	}
+}
+
+// liveCardForView resolves a CardView back to the engine's own Card,
+// which the cast gate needs because its predicates read a type line,
+// a controller and a zone rather than a projection.
+//
+// By instance ID through the game's own lookup rather than by index
+// into the live zone: a per-viewer projection may be redacted or
+// reordered relative to the zone it came from, and an off-by-one here
+// would grey the wrong card.
+func liveCardForView(g *game.Game, c *CardView) (game.Card, bool) {
+	id, err := uuid.Parse(c.InstanceID)
+	if err != nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(id)
+}
+
+// cantCastReason is the printed clause behind a refused cast, for the
+// client's grey-out tooltip. The generic fallback should be
+// unreachable — CastGateLocked only ever returns a *CantCastError and
+// Register refuses a restriction with no label — but a view that
+// rendered an empty tooltip would look like a bug in the client.
+func cantCastReason(err error) string {
+	var cant *game.CantCastError
+	if errors.As(err, &cant) && cant.Reason != "" {
+		return cant.Reason
+	}
+	return "An effect prevents casting this spell."
 }
 
 // grantedCastOffer returns the alternative cost a granted permission

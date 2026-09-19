@@ -78,6 +78,45 @@ type PaidCost struct {
 	// Phyrexian symbol was paid with (CR 107.4). Zero for a cost
 	// with neither.
 	LifePaid int
+
+	// OptionalCosts is which of the card's optional additional costs
+	// the caster chose to pay (CR 601.2b), as positions in the card's
+	// OptionalCosts slice, ascending. A cost paid N times appears N
+	// times, which is how multikicker records its count (CR 702.33d)
+	// without a second field. Nil for an unkicked cast — and for a
+	// card that offers nothing, which is nearly every card.
+	//
+	// "Was it kicked" is a fact about the PAYMENT, so it belongs in
+	// this record rather than beside AltCost: it is the same kind of
+	// thing as "which mana paid" and it is unrecomputable for the
+	// same reason — by resolution the mana is gone, the sacrificed
+	// creature is in a graveyard, and the catalog cannot say whether
+	// a choice was taken.
+	//
+	// A COPY of a kicked spell IS kicked (CR 707.10 copies the
+	// choices made when it was cast), which is the one place this
+	// field differs from Mana above: CopySpellForEffect carries it
+	// and clears the rest. Added in ADR 0073 (#664).
+	OptionalCosts []int `json:"optionalCosts,omitempty"`
+}
+
+// PaidOptionalCost reports whether the optional cost at `index` was
+// paid at least once.
+func (p PaidCost) PaidOptionalCost(index int) bool {
+	return p.OptionalCostTimes(index) > 0
+}
+
+// OptionalCostTimes is how many times the optional cost at `index`
+// was paid — 0 when it was declined, and the multikicker count when
+// it was taken more than once (CR 702.33d).
+func (p PaidCost) OptionalCostTimes(index int) int {
+	n := 0
+	for _, i := range p.OptionalCosts {
+		if i == index {
+			n++
+		}
+	}
+	return n
 }
 
 // ManaSpent is the tokens that paid, or nil. The accessor rather
@@ -171,7 +210,8 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 // paths to keep the common case sparse.
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper &&
-		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0
+		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
+		len(p.OptionalCosts) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -188,6 +228,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 				out.Mana[i].Restrictions = append([]string(nil), t.Restrictions...)
 			}
 		}
+	}
+	if len(p.OptionalCosts) > 0 {
+		out.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 	}
 	return out
 }

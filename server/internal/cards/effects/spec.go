@@ -259,6 +259,36 @@ type Spec struct {
 	// cards with no additional cost.
 	AdditionalCost *game.AdditionalCost
 
+	// OptionalCosts are the additional costs the caster may CHOOSE to
+	// pay while announcing the spell (CR 601.2b) — kicker
+	// (CR 702.33), multikicker (CR 702.33d), buyback (CR 702.27).
+	// ADR 0073.
+	//
+	//	OptionalCosts: []game.AdditionalCost{Kicker("{4}")},                       // Burst Lightning
+	//	OptionalCosts: []game.AdditionalCost{Multikicker("{G}")},                  // Wolfbriar Elemental
+	//	OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                      // Capsize
+	//	OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", MatchLand)}, // Constant Mists
+	//	OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())}, // Gatekeeper of Malakir
+	//
+	// A SEPARATE slot from AdditionalCost, not a widening of it,
+	// because an optional cost has an INDEX: the announcement names
+	// positions in this slice, and so does the record the engine
+	// keeps of what was paid. Register cross-checks the two slots, so
+	// an entry here without Optional set — or an Optional cost in the
+	// mandatory slot — fails at boot rather than silently.
+	//
+	// Build the entries with the keyword constructors in
+	// additional_cost.go, never by hand: each one carries the Key the
+	// engine reads (ctx.WasKicked, and buyback's return-to-hand
+	// route), and a hand-rolled game.AdditionalCost{Optional: true}
+	// compiles and does nothing.
+	//
+	// OnResolve reads the choice back with ctx.WasKicked() /
+	// ctx.KickedTimes(), or ctx.OptionalCostTimes(key) for a cost
+	// with another name. A permanent's own "when this enters, if it
+	// was kicked" trigger reads game.CardKickedTimes(*source).
+	OptionalCosts []game.AdditionalCost
+
 	// CantBeCountered is the S23 "This spell can't be countered"
 	// rider (Supreme Verdict). A spell that declares it is still a
 	// legal target for Counterspell — the counter resolves and does
@@ -286,6 +316,44 @@ type Spec struct {
 	// modal-cost cards). Nil for nearly every card. OnResolve reads
 	// the choice back with ctx.PaidAltCost("overload").
 	AlternativeCosts []game.AlternativeCost
+
+	// CastCondition is "you may cast this spell only if …" — CR
+	// 307.6's legendary sorcery ("only if you control a legendary
+	// creature or planeswalker"), and the "cast only if" family
+	// generally. Checked once, at announce, by the one cast gate
+	// (ADR 0073 §7), and never at resolution: a condition that
+	// stopped holding while the spell was on the stack does not
+	// counter it.
+	//
+	//	CastCondition:      LegendarySorcery(),                    // Urza's Ruinous Blast
+	//	CastConditionLabel: LegendarySorceryLabel,
+	//
+	// CastConditionLabel is the clause as printed and is REQUIRED
+	// with it: the refusal carries the label to the client, and a
+	// condition with no label produces a toast that says nothing.
+	// Register panics on either without the other.
+	//
+	// Contract, the same one an ability's Condition has: read-only,
+	// runs under g.mu (use *ForEffect accessors), and reads only
+	// public information, because the answer reaches every viewer as
+	// `cant_cast` on the card.
+	CastCondition      func(g *game.Game, controller uuid.UUID, card game.Card) bool
+	CastConditionLabel string
+
+	// CastRestrictions are the "can't cast" statics this PERMANENT
+	// imposes (CR 101.2) — Rule of Law's "each player can't cast more
+	// than one spell each turn", Grafdigger's Cage's "players can't
+	// cast spells from graveyards or libraries", Rakdos, Lord of
+	// Riots' "you can't cast creature spells unless an opponent lost
+	// life this turn".
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey, like a
+	// cost modifier and for the same reasons: a permanent that has
+	// lost its abilities stops restricting, one whose designation
+	// gate is unsatisfied is not there at all, and nothing is stored
+	// so the source leaving lifts the restriction on the next query.
+	// Build with the constructors in cast_restriction.go.
+	CastRestrictions []game.CastRestriction
 
 	// TapCost is the S22 "tap permanents you control to help pay"
 	// cost component — convoke (CR 702.51) and waterbend, which are

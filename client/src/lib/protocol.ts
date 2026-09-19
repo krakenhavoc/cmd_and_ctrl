@@ -1023,6 +1023,33 @@ export interface AdditionalCostView {
   label?: string;
 }
 
+// OptionalCostView is one "you may pay an additional cost as you
+// cast this spell" offer — kicker, multikicker, buyback (CR 601.2b,
+// ADR 0073). Like an alternative cost it is an OFFER; unlike one,
+// the offers COMPOSE: a cast may claim one alternative cost and any
+// number of these, which is why they render as toggles beside the
+// alternative-cost radio list rather than as a modal of their own.
+//
+// `index` is what rides back on cast_spell in `optional_costs`,
+// repeated once per payment for a repeatable cost. It is a POSITION
+// and not a key, because a position is what the server's paid record
+// holds; `key` is here for labelling only.
+export interface OptionalCostView {
+  index: number;
+  key: string;
+  label?: string;
+  mana_cost?: string;
+  // How many times this cost may be paid for one cast: 1 for kicker
+  // and buyback, the multikicker cap above that. 1 renders a
+  // checkbox, more renders a stepper.
+  max_times?: number;
+  // The card-shaped halves, in the same shape and with the same
+  // meaning AdditionalCostView gives them: a present-and-empty
+  // sacrifice_options means the offer cannot be taken right now.
+  discard_cards?: number;
+  sacrifice_options?: LegalTargetsView;
+}
+
 // AlternativeCostView is one "you may cast this spell for its
 // overload / evoke / cleave cost" offer on a card in the viewer's own
 // hand (S22). Unlike an additional cost this is optional: the picker
@@ -1524,6 +1551,21 @@ export interface CardView {
   // opens a picker before every other prompt, because the choice
   // changes what the rest of them ask. Absent for nearly every card.
   alternative_costs?: AlternativeCostView[];
+  // ADR 0073 (#664): the "you may pay an additional cost" offers this
+  // card makes — kicker, multikicker, buyback. Rendered inside the
+  // same picker the alternative costs open, because CR 601.2b
+  // announces them together. Absent for nearly every card.
+  optional_costs?: OptionalCostView[];
+  // #760 (ADR 0073 §7): the printed clause that stops this card being
+  // cast from the zone it is in right now — "Each player can't cast
+  // more than one spell each turn", "Cast this spell only if you
+  // control a legendary creature or planeswalker". Absent, which is
+  // nearly always, means nothing refuses the cast.
+  //
+  // The server's own cast gate answered this, so a card carrying it
+  // is one the server WILL refuse: grey it and show the clause rather
+  // than dispatching cast_spell and surfacing a toast.
+  cant_cast?: string;
   // S22: for a card in the viewer's own hand that lets you tap your
   // own permanents to help pay — convoke and waterbend. The cast
   // flow opens a picker after X and before targeting. Absent for

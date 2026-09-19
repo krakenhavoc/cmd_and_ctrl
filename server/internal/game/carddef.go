@@ -54,7 +54,12 @@ type CardDef struct {
 	Triggered       []TriggeredAbility
 	TriggerDoublers []TriggerDoubler
 
-	AdditionalCost   *AdditionalCost
+	AdditionalCost *AdditionalCost
+	// OptionalCosts are the additional costs the caster may CHOOSE to
+	// pay (ADR 0073) — kicker, multikicker, buyback. The slice order
+	// is the index space the announcement and PaidCost.OptionalCosts
+	// both name, so it is never re-sorted.
+	OptionalCosts    []AdditionalCost
 	AlternativeCosts []AlternativeCost
 	TapCost          *TapPermanentsCost
 	CostModifiers    []CostModifier
@@ -75,6 +80,20 @@ type CardDef struct {
 	UntapStepRestrictions []UntapStepRestriction
 	UntapCaps             []UntapCap
 	UntapOptOuts          []UntapOptOut
+
+	// CastCondition is the card's own "you may cast this only if …"
+	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// checked by CastGateLocked at announce and never at resolution.
+	// Nil for every card that prints no such clause. ADR 0073 §7.
+	CastCondition func(g *Game, controller uuid.UUID, card Card) bool
+	// CastConditionLabel is that clause as printed, returned to the
+	// client when the gate refuses the cast.
+	CastConditionLabel string
+	// CastRestrictions are the "can't cast" statics this PERMANENT
+	// imposes on other players' casts (Rule of Law, Grafdigger's
+	// Cage, Rakdos). Read from the battlefield through
+	// CatalogAbilityKey, never from a card's own zone.
+	CastRestrictions []CastRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
@@ -234,6 +253,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogOptionalCosts = func(key string) []AdditionalCost {
+		if d := catalogDef(key); d != nil {
+			return d.OptionalCosts
+		}
+		return nil
+	}
 	CatalogAlternativeCosts = func(key string) []AlternativeCost {
 		if d := catalogDef(key); d != nil {
 			return d.AlternativeCosts
@@ -261,6 +286,12 @@ func init() {
 	CatalogSpecialActions = func(key string) []SpecialAction {
 		if d := catalogDef(key); d != nil {
 			return d.SpecialActions
+		}
+		return nil
+	}
+	CatalogCastRestrictions = func(key string) []CastRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.CastRestrictions
 		}
 		return nil
 	}
