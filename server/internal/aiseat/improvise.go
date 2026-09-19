@@ -283,7 +283,7 @@ func (im Improvisation) RefusalAnnouncement() string {
 // expresses outside Decision, both go through the room, both are
 // logged.
 func (r *Runner) improvise(ctx context.Context, in Input, started time.Time) bool {
-	p, ok := r.policy.(Improviser)
+	p, ok := Capability[Improviser](r.policy)
 	if !ok {
 		return false
 	}

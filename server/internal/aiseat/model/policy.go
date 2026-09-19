@@ -316,12 +316,28 @@ func (p *Policy) Stats() Stats { return p.rec.snapshot() }
 // Records returns the retained per-decision records, oldest first.
 func (p *Policy) Records() []DecisionRecord { return p.rec.records() }
 
+// Unwrap is Layer B, the policy underneath the funnel.
+//
+// It is what keeps every OPTIONAL Policy extension alive through this
+// wrapper — #687's TargetOrderer, #1013's CostFuelPricer, and the one
+// written next year — without the funnel having to name any of them.
+// aiseat.Capability walks the chain and takes the outermost
+// implementer, so an extension the funnel DOES implement (Tracer,
+// Conceder, Improviser, Spender) is still the funnel's own. See
+// aiseat/capability.go, and #1060 for what the absence of this cost:
+// the `assisted` and `strong` seats ordered no targets and priced no
+// fuel for a month, on every table the lobby could build.
+func (p *Policy) Unwrap() aiseat.Policy { return p.cfg.Fallback }
+
+// Compile-time assertion: the funnel says what it wraps.
+var _ aiseat.Unwrapper = (*Policy)(nil)
+
 // ShouldConcede forwards to Layer B. Conceding is a judgement about
 // the position and the heuristic already makes it conservatively; a
 // model call to decide whether to scoop would be the most expensive
 // possible way to answer the question least often asked.
 func (p *Policy) ShouldConcede(in aiseat.Input) bool {
-	c, ok := p.cfg.Fallback.(aiseat.Conceder)
+	c, ok := aiseat.Capability[aiseat.Conceder](p.cfg.Fallback)
 	return ok && c.ShouldConcede(in)
 }
 
@@ -373,7 +389,7 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 
 	// --- Layer B ---------------------------------------------------
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	tr.Candidates = traceCandidates(cands)
@@ -523,7 +539,7 @@ func (p *Policy) BuildRequest(ctx context.Context, in aiseat.Input) (Request, []
 		return Request{}, nil, v
 	}
 	var cands []heuristic.Candidate
-	if r, ok := p.cfg.Fallback.(ranker); ok {
+	if r, ok := aiseat.Capability[ranker](p.cfg.Fallback); ok {
 		cands = r.Rank(ctx, in)
 	}
 	fallback := 0

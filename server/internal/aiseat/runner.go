@@ -585,7 +585,7 @@ func (r *Runner) decide(ctx context.Context, in Input) outcome {
 	// changes: DecideTraced returns what Decide would have, so this
 	// is the same decision with the prompt, the reply and the
 	// heuristic's ranking attached.
-	if t, ok := r.policy.(Tracer); ok && r.cfg.Observer != nil {
+	if t, ok := Capability[Tracer](r.policy); ok && r.cfg.Observer != nil {
 		d, tr, err = t.DecideTraced(dctx, in)
 		traced = true
 	} else {

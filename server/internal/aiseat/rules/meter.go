@@ -150,9 +150,27 @@ func (f *Filter) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	return f.Inner.Decide(ctx, in)
 }
 
+// Unwrap is the policy Layer A sits in front of.
+//
+// It is what keeps every OPTIONAL Policy extension alive through this
+// wrapper — #687's TargetOrderer, #1013's CostFuelPricer, and the one
+// written next year — without the filter having to name any of them.
+// aiseat.Capability walks the chain and takes the outermost
+// implementer, so an extension the filter DOES implement (Tracer,
+// Conceder) is still the filter's own. See aiseat/capability.go, and
+// #1060 for what the absence of this cost.
+func (f *Filter) Unwrap() aiseat.Policy { return f.Inner }
+
+// Compile-time assertion: the filter says what it wraps.
+var _ aiseat.Unwrapper = (*Filter)(nil)
+
 // ShouldConcede forwards to the inner policy when it is a Conceder.
+//
+// Through the whole chain, not just one layer down: a Filter over a
+// wrapper over the heuristic still concedes the way the heuristic
+// would.
 func (f *Filter) ShouldConcede(in aiseat.Input) bool {
-	c, ok := f.Inner.(aiseat.Conceder)
+	c, ok := aiseat.Capability[aiseat.Conceder](f.Inner)
 	return ok && c.ShouldConcede(in)
 }
 
@@ -178,7 +196,7 @@ func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 		return aiseat.Decision{Index: v.Index, Reason: v.Reason},
 			aiseat.Trace{Layer: "A", Rule: v.Rule, HeuristicIndex: aiseat.Decline}, nil
 	}
-	if t, ok := f.Inner.(aiseat.Tracer); ok {
+	if t, ok := aiseat.Capability[aiseat.Tracer](f.Inner); ok {
 		return t.DecideTraced(ctx, in)
 	}
 	// The inner policy cannot say how it decided, so neither can this.

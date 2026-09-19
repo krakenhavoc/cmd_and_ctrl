@@ -106,10 +106,24 @@ func TestTargetOrderScoresOffBoardCandidatesZero(t *testing.T) {
 // compile-time assertion lives in target_order.go; this is the
 // runtime half, because a type assertion that quietly answers false
 // restores exactly the defect #687 describes.
+//
+// And then the question that actually matters, which this test did
+// not ask for a month: is the policy the LOBBY builds a
+// TargetOrderer? A bare heuristic.New() is a policy no seat is ever
+// given — every shipped tier is this one inside a rules.Filter or a
+// model.Policy — and #1060 is what the gap cost: the assertion above
+// passed on every run while the ordering happened in no game at all.
 func TestHeuristicIsATargetOrderer(t *testing.T) {
 	var p aiseat.Policy = heuristic.New()
 	if _, ok := p.(aiseat.TargetOrderer); !ok {
 		t.Fatal("the heuristic is no longer an aiseat.TargetOrderer; " +
 			"the runner's assertion will silently stop ordering")
+	}
+	for _, tier := range seatedTiers() {
+		seat := factoryPolicy(t, tier)
+		if _, ok := aiseat.Capability[aiseat.TargetOrderer](seat); !ok {
+			t.Errorf("the %s seat the lobby builds (%T) is not an aiseat.TargetOrderer; "+
+				"legal.Options.OrderTargets goes unset on every table (#1060)", tier, seat)
+		}
 	}
 }
