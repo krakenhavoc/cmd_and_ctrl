@@ -73,7 +73,7 @@ func BlockerEligible(b *Card, seat uuid.UUID) bool {
 //
 // Menace is deliberately not folded in. CanBlockLocked is per-pair, while
 // menace is a block-COUNT rule the engine enforces when the
-// declaration is locked in (BlockerCountValid), so a defender holding exactly one
+// declaration is locked in (blockerBoundsLocked), so a defender holding exactly one
 // eligible creature against a lone menace attacker is reported as
 // owing a decision they cannot actually act on. That errs toward
 // stopping, which is the safe direction for this signal: a spurious
@@ -237,11 +237,11 @@ func (g *Game) commitBlockDeclarationLocked() {
 	if !g.blockDeclarationPendingLocked() {
 		return
 	}
-	// Pass 0: refuse an illegal declaration (CR 509.1b). Menace is a
-	// block-COUNT rule, so it can only be judged on the COMPLETE
-	// declaration, which is what the lock-in is (CR 509.1). This is
-	// the only place it is judged — the damage steps never ask again
-	// (#715).
+	// Pass 0: refuse an illegal declaration (CR 509.1b). A block COUNT
+	// — menace's minimum, and the maxima #750's block rules add — can
+	// only be judged on the COMPLETE declaration, which is what the
+	// lock-in is (CR 509.1). This is the only place it is judged — the
+	// damage steps never ask again (#715).
 	g.revertIllegalBlockCountsLocked()
 	// Pass 1: the per-pair blocks. "Whenever this creature blocks"
 	// (CR 509.3a) and "becomes blocked by a creature" read these, and
@@ -314,13 +314,25 @@ func (g *Game) clearBlockStateLocked() {
 }
 
 // revertIllegalBlockCountsLocked is the CR 509.1b close-out for the
-// block-COUNT rules — menace today (CR 702.111b), and whatever else
-// BlockerCountValid grows. An attacker blocked by too few creatures
-// has those blocks reverted (the blockers stop blocking; the attacker
-// is left unblocked), which is this engine's reading of "the
-// declaration is illegal": the sandbox declares blockers one pair at a
-// time, so the only moment the count can be judged is when the
-// declaration is complete.
+// block-COUNT rules: menace's minimum of 2 (CR 702.111b), and the
+// minima and maxima #750's block rules impose ("can't be blocked by
+// more than one creature") — blockerBoundsLocked is the one place
+// those bounds are derived. An attacker blocked by too few or too
+// many creatures has ALL of its blocks reverted (the blockers stop
+// blocking; the attacker is left unblocked), which is this engine's
+// reading of "the declaration is illegal": the sandbox declares
+// blockers one pair at a time, so the only moment the count can be
+// judged is when the declaration is complete.
+//
+// Reverting the whole set rather than the surplus is deliberate for a
+// maximum too. Which of three blockers to drop under a maximum of one
+// is the defender's choice, not the engine's, and CR 509.1 rewinds an
+// illegal declaration whole. ADR 0045's addendum (Decision 13) makes
+// this a REFUSAL at declaration instead, once block declarations are
+// sets (DeclareBlockers); until that verb exists, a per-pair
+// DeclareBlocker has no complete declaration to refuse, and this
+// close-out is the only moment a count can be judged at all. That is
+// also why no count BlockReason is minted yet — nothing can send one.
 //
 // Judged ONCE. An attacker already in blockedAttackers is skipped —
 // it was blocked by a legal declaration, and legality is never
@@ -345,15 +357,11 @@ func (g *Game) revertIllegalBlockCountsLocked() {
 		if atk == nil {
 			continue
 		}
-		blockers := make([]*Card, 0, len(idxs))
-		for _, i := range idxs {
-			blockers = append(blockers, &g.Battlefield.Cards[i])
-		}
-		if BlockerCountValid(atk, blockers) {
+		if g.blockerCountValidLocked(atk, len(idxs)) {
 			continue
 		}
-		for _, b := range blockers {
-			b.BlockingTarget = uuid.Nil
+		for _, i := range idxs {
+			g.Battlefield.Cards[i].BlockingTarget = uuid.Nil
 		}
 	}
 }
