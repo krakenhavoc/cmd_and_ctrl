@@ -149,6 +149,44 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 	return then(ctx)
 }
 
+// ChoosePlayerAsEnters builds the `Spec.AsEnters` for "As this
+// permanent enters, choose a player" (CR 614.12) — True-Name Nemesis.
+// `label` is the prompt header, normally the card's name.
+//
+// THE THIRD FORM OF THE QUESTION, and the one that lasts. ChoosePlayer
+// above is a choice made while an effect RESOLVES: its answer lives on
+// the stack item and is gone when the item is. This one is made as the
+// permanent enters and is stored on it (game.Card.ChosenPlayer), read
+// for the rest of that permanent's life by whatever printed clause
+// asked — on True-Name Nemesis, "protection from the chosen player".
+// It is the shape ChooseColorAsEnters already has for colours, down to
+// the declared simplification: the prompt is queued from the AsEnters
+// hook rather than by pausing the CR 614 pipeline, so the permanent is
+// briefly on the battlefield with nobody chosen. Nothing can act in
+// that window, and an unchosen player is nobody rather than everybody.
+//
+// `Among` is the pool the clause admits, zero value Players — "choose
+// a player" includes the controller, and on the Nemesis that is a legal
+// if pointless answer.
+func ChoosePlayerAsEnters(label string, among PlayerPool) func(*game.Card, *Context) error {
+	return func(card *game.Card, ctx *Context) error {
+		ctx.Game.QueueChoosePlayerAsEntersForEffect(
+			card.Controller,
+			card.InstanceID,
+			label+" — choose a player",
+			among.seats(ctx, card.Controller),
+		)
+		return nil
+	}
+}
+
+// ChosenPlayerOf is the player stored on the permanent `source` by an
+// as-enters choice, or uuid.Nil while none has been made. Read-only;
+// safe under either lock.
+func ChosenPlayerOf(g *game.Game, source uuid.UUID) uuid.UUID {
+	return g.ChosenPlayerOf(source)
+}
+
 // exceptPlayers drops `except` from `ids`, keeping order.
 func exceptPlayers(ids, except []uuid.UUID) []uuid.UUID {
 	if len(except) == 0 {
