@@ -978,9 +978,26 @@ func TestB06SpringbloomDruidSacrificesALandThenFetchesTwoBasicsTapped(t *testing
 	)
 	castAndResolveCreature(t, g, "Springbloom Druid", "Creature — Elf Druid", b06SpringbloomDruidOracle)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, forest)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Fatal("#1026: the land is no longer a trigger target, so nothing is picked on announce")
+	}
 	passPriorityAroundTable(t, g)
+
+	// The choice is made AT RESOLUTION now (#1026), and the search is
+	// the sacrifice run's continuation — so the order is printed: the
+	// land goes first, and the basics cannot be offered as the land to
+	// sacrifice.
+	sac := sacrificeChoiceFor(g, me.ID)
+	if sac == nil {
+		t.Fatal("the ability should ask which land to sacrifice at resolution")
+	}
+	if len(sac.SacrificeOptions) != 1 || sac.SacrificeOptions[0] != forest {
+		t.Errorf("sacrifice offered %v, want the one land %v", sac.SacrificeOptions, forest)
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("the search is printed AFTER the sacrifice and must not be queued beside it")
+	}
+	answerSacrifice(t, g, me.ID, forest)
 
 	if g.Battlefield.Contains(forest) || !me.Graveyard.Contains(forest) {
 		t.Fatal("the chosen land should be sacrificed")
@@ -1021,13 +1038,69 @@ func TestB06SpringbloomDruidDeclinedDoesNothing(t *testing.T) {
 	}
 }
 
-func TestB06SpringbloomDruidWithNoLandIsSilent(t *testing.T) {
+// TestB06SpringbloomDruidWithNoLandSearchesForNothing is #1026's "if
+// you do", and the corner the trigger-target shape could not express:
+// a controller with no land is asked the printed "you may" and
+// searches for nothing, rather than having the whole trigger removed
+// by CR 603.3d for want of a target the card does not print.
+//
+// The same path covers the response case the caveat was about — say
+// yes, then have your only land removed before the ability resolves:
+// the sacrifice prompt is never queued, the run's answer is empty, and
+// "if you do" is false.
+func TestB06SpringbloomDruidWithNoLandSearchesForNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
+	seedSearchLibrary(me, searchTestLand("Plains", "Basic Land — Plains"))
 	castAndResolveCreature(t, g, "Springbloom Druid", "Creature — Elf Druid", b06SpringbloomDruidOracle)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Fatal("the ability targets nothing, so nothing is picked on announce")
+	}
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil || latestPickTarget(g, me.ID) != nil {
-		t.Error("with no land to sacrifice the trigger is removed, not asked (CR 603.3d)")
+
+	if sacrificeChoiceFor(g, me.ID) != nil {
+		t.Error("a seat with no land is asked nothing (CR 701.17a's 'if you can')")
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Error("'if you do' — nothing was sacrificed, so there is no search")
+	}
+}
+
+// TestB06SpringbloomDruidSacrificesALandPlayedInResponse is the other
+// half of #1026, and the reason the choice moved: at trigger time the
+// pick was frozen when the ability went on the stack, so a land that
+// arrived in response was not a legal answer. At resolution it is.
+func TestB06SpringbloomDruidSacrificesALandPlayedInResponse(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	first := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	seedSearchLibrary(me,
+		searchTestLand("Plains", "Basic Land — Plains"),
+		searchTestLand("Island", "Basic Land — Island"),
+		searchTestLand("Swamp", "Basic Land — Swamp"),
+		searchTestLand("Wastes", "Basic Land — Wastes"))
+	castAndResolveCreature(t, g, "Springbloom Druid", "Creature — Elf Druid", b06SpringbloomDruidOracle)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+
+	// In response: a second land arrives. The old shape had already
+	// locked its target in.
+	late := seedLandOnBattlefield(g, me.ID, "Mountain", "Basic Land — Mountain")
+	passPriorityAroundTable(t, g)
+
+	sac := sacrificeChoiceFor(g, me.ID)
+	if sac == nil {
+		t.Fatal("the ability should ask which land to sacrifice at resolution")
+	}
+	if len(sac.SacrificeOptions) != 2 {
+		t.Fatalf("both lands are legal answers at resolution, got %v", sac.SacrificeOptions)
+	}
+	answerSacrifice(t, g, me.ID, late)
+	if !g.Battlefield.Contains(first) || !me.Graveyard.Contains(late) {
+		t.Error("the land chosen at resolution is the one sacrificed")
+	}
+	if searchChoiceFor(g, me.ID) == nil {
+		t.Error("'if you do' — the sacrifice happened, so the search follows")
 	}
 }
 
