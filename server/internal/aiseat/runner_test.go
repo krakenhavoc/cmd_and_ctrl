@@ -202,6 +202,28 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Fatalf("timed out waiting for %s after %s", what, waitForBudget)
 }
 
+// waitForRunner waits for a runner to exit, through the same backstop
+// as every other wait in this package.
+//
+// It exists so that "the bot stopped playing" is never a literal
+// budget. A `select` on `r.Done()` against a `time.After` reads like a
+// wait but asserts a deadline: it says the runner must be gone within
+// N seconds, which on a loaded machine is a statement about the
+// machine. Every one of those this package had was set to a number
+// small enough to be a real claim (3s, 5s) and each of them has been
+// a CI failure — #635 is the last of them.
+func waitForRunner(t *testing.T, what string, r *aiseat.Runner) {
+	t.Helper()
+	waitFor(t, what, func() bool {
+		select {
+		case <-r.Done():
+			return true
+		default:
+			return false
+		}
+	})
+}
+
 // botLandsLocked counts the lands a seat controls. Caller must hold
 // the game's read lock — the count is only worth anything when it is
 // read in the same snapshot as whatever else the assertion is about.
@@ -215,6 +237,83 @@ func botLandsLocked(g *game.Game, seat uuid.UUID) int {
 	return n
 }
 
+// turnKey names one player's turn: the round number plus whose turn it
+// is inside that round, because Turn.Number counts rounds and
+// Turn.ActiveSeat rotates within one.
+type turnKey struct{ number, activeSeat int }
+
+// landDrops is a DecisionObserver that tallies the land plays a runner
+// APPLIED, keyed by the turn it applied them in.
+//
+// It is the runner's own report of what it did, and that is the whole
+// point of it. Every earlier version of "one land per turn" proved the
+// rule by SAMPLING the battlefield whenever the test goroutine next got
+// scheduled, which makes the assertion a claim about the sampler. #848
+// moved the sample into the same snapshot as the handover it was about,
+// which fixed the two-reads-of-a-moving-board half; #634 is what that
+// left behind. Both of this test's waits were for states the table
+// merely PASSES THROUGH — "the bot controls exactly one land", and
+// "the active seat is 1" — and on this machine a full turn cycle is
+// about 95ms, so a test goroutine that loses the processor for one
+// cycle finds the first condition already false forever (a 30s timeout)
+// and reads the second one a cycle late, counting two turns' land drops
+// as one turn's ("bot played 2 lands in one turn").
+//
+// A tally over the decision log cannot miss either: the runner reports
+// every window whether or not anybody is looking, so the history is
+// complete however the test goroutine is scheduled, and every predicate
+// over it is monotone.
+type landDrops struct {
+	mu     sync.Mutex
+	byTurn map[turnKey]int
+	total  int
+}
+
+func (l *landDrops) Observe(ev aiseat.DecisionEvent) {
+	if !ev.Applied || ev.Index < 0 || ev.Index >= len(ev.Input.Moves) {
+		return
+	}
+	if ev.Input.Moves[ev.Index].Kind != legal.KindLand {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.byTurn == nil {
+		l.byTurn = map[turnKey]int{}
+	}
+	l.byTurn[turnKey{ev.Input.View.Turn.Number, ev.Input.View.Turn.ActiveSeat}]++
+	l.total++
+}
+
+// count is how many land drops the runner has applied, over the whole
+// game. Monotone, which is what makes it safe to wait on.
+func (l *landDrops) count() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.total
+}
+
+// busiest is the turn that took the most land drops, and how many.
+func (l *landDrops) busiest() (turnKey, int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var worst turnKey
+	n := 0
+	for k, v := range l.byTurn {
+		if v > n {
+			worst, n = k, v
+		}
+	}
+	return worst, n
+}
+
+// turns is how many distinct turns saw a land drop.
+func (l *landDrops) turns() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.byTurn)
+}
+
 // --- single-runner behaviour ----------------------------------------
 
 func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
@@ -226,8 +325,9 @@ func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
 	defer cancel()
 
 	bc := &recordingBroadcaster{}
+	drops := &landDrops{}
 	pol := &scripted{prefer: []string{"Keep hand", "Play Mountain"}}
-	r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{}, bc, testLogger())
+	r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{Observer: drops}, bc, testLogger())
 	// The "human" in seat 1 is a second runner that only ever keeps
 	// and passes, so priority actually comes back around.
 	h := aiseat.Start(ctx, room, human.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
@@ -237,29 +337,28 @@ func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
 	})
 	// Seat 0 is active: upkeep → draw → main. The bot passes through
 	// upkeep and draw (nothing castable there), then plays a Mountain
-	// in main and, having nothing else, passes.
-	waitFor(t, "a land on the battlefield", func() bool {
-		var n int
-		g.ReadSnapshot(func() { n = botLandsLocked(g, bot.ID) })
-		return n == 1
+	// in main and, having nothing else, passes. Its hand holds a dozen
+	// more Mountains, so the claim is that the SECOND one waits for the
+	// next turn.
+	//
+	// Every predicate a test polls has to be monotone, and that is
+	// #634. "The bot controls exactly one land" and "the active seat is
+	// 1" are both states this table passes through in well under one
+	// 95ms turn cycle; a test goroutine that loses the processor for a
+	// cycle — which is all a loaded CI runner has to do — finds the
+	// first false forever and reads the second one turn late. Waiting
+	// for the second land drop to have HAPPENED is monotone, cannot be
+	// missed, and is a stronger thing to wait for besides: it is the
+	// window in which a bot that ignored its land drop would already
+	// have taken two.
+	waitFor(t, "the bot to take its second land drop", func() bool {
+		return drops.count() >= 2
 	})
-	// One land per turn, even though the hand almost certainly holds
-	// more — and the count has to come out of the SAME snapshot as the
-	// handover it is about. Seat 1 only keeps and passes, so its whole
-	// turn is over in milliseconds and seat 0's second land drop is one
-	// scheduling hiccup away: a count read after the wait returns is a
-	// count of a board that has moved on (#848).
-	var lands int
-	waitFor(t, "the turn to pass to seat 1", func() bool {
-		handedOver := false
-		g.ReadSnapshot(func() {
-			handedOver = g.Turn.ActiveSeat == 1
-			lands = botLandsLocked(g, bot.ID)
-		})
-		return handedOver
-	})
-	if lands != 1 {
-		t.Errorf("bot played %d lands in one turn", lands)
+	if key, n := drops.busiest(); n > 1 {
+		t.Errorf("bot played %d lands in one turn (round %d, seat %d)", n, key.number, key.activeSeat)
+	}
+	if n := drops.turns(); n < 2 {
+		t.Errorf("the bot's %d land drops fell in %d turns; the second was not a fresh turn", drops.count(), n)
 	}
 	// Stop both seats and wait for the goroutines to be gone before
 	// reading the counters. Stats and the broadcast log are two reads
@@ -269,6 +368,15 @@ func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
 	cancel()
 	<-r.Done()
 	<-h.Done()
+	// The board is frozen now, so it can be compared with the decision
+	// log exactly. This is what keeps the tally above honest: a
+	// per-turn count that disagrees with the lands actually out is a
+	// count of something other than land drops.
+	var lands int
+	g.ReadSnapshot(func() { lands = botLandsLocked(g, bot.ID) })
+	if lands != drops.count() {
+		t.Errorf("%d of the bot's lands on the battlefield for %d land drops in its decision log", lands, drops.count())
+	}
 	st := r.Stats()
 	if st.Rejected != 0 {
 		t.Errorf("rejected moves: %d", st.Rejected)
@@ -318,11 +426,7 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := aiseat.Start(ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(1, 1)), aiseat.Config{}, nil, testLogger())
 	cancel()
-	select {
-	case <-r.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatal("runner did not exit on cancel")
-	}
+	waitForRunner(t, "the runner to exit on cancel", r)
 
 	// Game end: the other seat concedes → state ended → the runner
 	// wakes on the commit and exits.
@@ -332,10 +436,9 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	if _, _, err := room.ApplyExternal(func() error { return g.Concede(g.Seats[1].ID) }); err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case <-r2.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatalf("runner did not exit when the game ended (state %s)", g.CurrentState())
+	waitForRunner(t, "the runner to exit when the game ended", r2)
+	if st := g.CurrentState(); st == game.StateActive {
+		t.Fatalf("the runner exited with the game still %s", st)
 	}
 }
 

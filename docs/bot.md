@@ -92,6 +92,19 @@ its own the moment the game leaves the active state, so the end of a
 game needs no explicit stop. Deleting a game and shutting the server
 down both cancel the runners and wait for them.
 
+`Start` **subscribes the seat to the room before it returns**, on the
+caller's goroutine rather than on the runner's. That is what makes
+"the bot is seated" a fact you can order other things against: nobody
+schedules the runner goroutine, so a subscription taken inside it left
+a window — as wide as a loaded machine cares to make it — in which a
+commit reached every other seat at the table and not this one. The
+runner would still see the *effect* of that commit, because its first
+look is at the live game rather than at a payload; what it lost was the
+WAKE. A seat that wants nothing from a window parks until the next
+commit, so a commit that landed in the window is one it would never be
+woken for, and the last bot seated at a busy table could sit out the
+rest of the game (#938).
+
 **A bot survives a deploy.** `is_bot`, `bot_tier` and `bot_deck` ride
 both the engine snapshot and the persisted lobby metadata, and the
 lobby's restore path relaunches a runner for every bot seat in a game

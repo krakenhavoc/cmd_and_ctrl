@@ -2398,7 +2398,7 @@ S31's core has shipped. What remains is tracked outside this section:
 - [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687) — threat-ordered target expansion inside `MaxExpansionPerSource` (ADR 0033 §1)
 - [#688](https://github.com/krakenhavoc/cmd_and_ctrl/issues/688) — the BOT chip tooltip shows the archetype, not the deck ID
 - [#505](https://github.com/krakenhavoc/cmd_and_ctrl/issues/505) — per-decision latency percentiles and an admin readout
-- [#634](https://github.com/krakenhavoc/cmd_and_ctrl/issues/634), [#635](https://github.com/krakenhavoc/cmd_and_ctrl/issues/635) — flaky whole-game tests in PR CI
+- ~~[#634](https://github.com/krakenhavoc/cmd_and_ctrl/issues/634), [#635](https://github.com/krakenhavoc/cmd_and_ctrl/issues/635) — flaky bot-seat tests in PR CI~~ — **done** (2026-09-19), together with [#938](https://github.com/krakenhavoc/cmd_and_ctrl/issues/938). None of the three was a budget that needed raising: #938 was a real gap in `aiseat.Start` (the seat subscribed to the room on the runner's own goroutine, so a commit issued before that could cost it a wake it needed), #634 was two waits on states the table only passes through, and #635 was three literal budgets standing in for waits, over a fixture #1014 had already repaired. No bot-seat test is rerun-on-flake any more.
 - [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554) — more pre-built decks, Voltron included; combo stays out per ADR 0033 §7
 - [#628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/628) — loop breaking, which replaces the descoped loop guard
 - [#600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/600) — closes once the nightly on `main` is green after the #700 promotion

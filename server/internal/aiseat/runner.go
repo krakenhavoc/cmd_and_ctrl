@@ -182,7 +182,7 @@ type Runner struct {
 	done                                            chan struct{}
 
 	// idle is true while the loop is parked on its wake channel, and
-	// wake is that channel, installed by loop once it has subscribed.
+	// wake is that channel, installed by Start before it returns.
 	// Both guarded by idleMu because Idle is read from another
 	// goroutine. Parked is not the same as having nothing to do, which
 	// is why Idle reads the channel as well as the flag — see Idle.
@@ -194,6 +194,26 @@ type Runner struct {
 // Start launches a runner goroutine for seat in room. bc may be nil.
 // The runner acts immediately on the state as it stands (the seat
 // may already be owed a decision) and then on every room commit.
+//
+// The room subscription is taken HERE, on the caller's goroutine,
+// before Start returns — not on the runner's goroutine once it is
+// scheduled. That makes "Start returned" mean "this seat is listening
+// from now on", which is the only ordering a caller can establish at
+// all: the runner goroutine is not scheduled by whoever seated it, so
+// with the subscription inside the loop there was a window — unbounded
+// on a loaded machine — in which a commit reached every other seat and
+// not this one.
+//
+// The window cost a wake, not a decision: the first step reads the
+// live game, so it sees the effect of a commit it was not told about.
+// It is still a real defect and not only a test problem, because a
+// seat that declines a window PARKS until the next commit, and a commit
+// that landed in the window is one this seat will now never be woken
+// for. Seat the last bot at a table while another seat's move is in
+// flight and that bot can sit out the rest of the game waiting for a
+// wake that has already been and gone. #938 is that shape, seen from a
+// test: the observed seat declined, parked, and the only other writer
+// had already finished.
 func Start(ctx context.Context, room *ws.Room, seat uuid.UUID, policy Policy, cfg Config, bc Broadcaster, log *slog.Logger) *Runner {
 	if log == nil {
 		log = slog.Default()
@@ -207,7 +227,13 @@ func Start(ctx context.Context, room *ws.Room, seat uuid.UUID, policy Policy, cf
 		log:    log.With("bot_seat", seat.String(), "policy", policy.Name()),
 		done:   make(chan struct{}),
 	}
-	go r.loop(ctx)
+	wake, unsubscribe := room.Subscribe()
+	// Under idleMu because Idle reads r.wake from another goroutine,
+	// and a caller may hold the *Runner before the loop is scheduled.
+	r.idleMu.Lock()
+	r.wake = wake
+	r.idleMu.Unlock()
+	go r.loop(ctx, wake, unsubscribe)
 	return r
 }
 
@@ -249,8 +275,8 @@ func (r *Runner) Idle() bool {
 	}
 	r.idleMu.Lock()
 	defer r.idleMu.Unlock()
-	// len of a nil channel is 0, so a runner whose loop has not yet
-	// subscribed answers on idle alone — which is false until it parks.
+	// wake is installed by Start, so it is never nil here; idle is
+	// false until the loop parks for the first time.
 	return r.idle && len(r.wake) == 0
 }
 
@@ -302,13 +328,12 @@ func (r *Runner) recordRejection(mv legal.Move, err error) {
 	}
 }
 
-func (r *Runner) loop(ctx context.Context) {
+// loop takes the wake channel and its unsubscribe from Start, which
+// subscribed before it returned — see Start for why the subscription
+// may not happen here.
+func (r *Runner) loop(ctx context.Context, wake <-chan struct{}, unsubscribe func()) {
 	defer close(r.done)
-	wake, unsubscribe := r.room.Subscribe()
 	defer unsubscribe()
-	r.idleMu.Lock()
-	r.wake = wake
-	r.idleMu.Unlock()
 	if !r.step(ctx) {
 		return
 	}
