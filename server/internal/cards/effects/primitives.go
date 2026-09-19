@@ -192,10 +192,47 @@ func (r Regenerate) Apply(ctx *Context) error {
 // what aristocrats payoffs watch. Added in S21 sub-PR 1.
 type SacrificePermanent struct {
 	Target uuid.UUID
+
+	// Then is the "if you do" / "for each permanent sacrificed this
+	// way" clause for ONE permanent, and `sacrificed` is whether it
+	// really left the battlefield. Optional; leave it nil for a plain
+	// sacrifice with nothing hanging off it.
+	//
+	// #993, and the same shape as ExileTarget.Then (#870). A sacrifice
+	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
+	// an ordinary zone change, so a sacrificed commander opens the
+	// CR 903.9 window and the permanent is still on the battlefield
+	// while the question is open. A clause written on the next line
+	// therefore reads "still here, so it was not sacrificed" for a leg
+	// that is merely PAUSED and pays out nothing for a sacrifice that
+	// does land a beat later.
+	//
+	// `sacrificed` is sacrificedThisWayLocked's answer: true whenever
+	// the permanent left the battlefield, including a commander that
+	// took the command zone and a card an "exile it instead"
+	// replacement took — only where it went was replaced. Write the
+	// clause as something that acts on what it is told, not as the next
+	// line of the card.
+	Then func(ctx *Context, sacrificed bool) error
 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
-	return ctx.Game.SacrificePermanentForEffect(s.Target)
+	if s.Then == nil {
+		return ctx.Game.SacrificePermanentForEffect(s.Target)
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	//
+	// The source is uuid.Nil for the reason the fire-and-forget form
+	// passes none: SacrificePermanentForEffect stamps no source on
+	// EventSacrifice, and adding a Then must change the sequencing and
+	// nothing else.
+	item := ctx.Item
+	return ctx.Game.SacrificeThenForEffect(uuid.Nil, s.Target, func(g *game.Game, sacrificed bool) error {
+		return s.Then(NewContext(g, item), sacrificed)
+	})
 }
 
 // ExileTarget moves a card from whichever zone it's in to the
@@ -462,10 +499,41 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 // Unsummon-style effects.
 type BounceToHand struct {
 	Target uuid.UUID
+
+	// Then is the "then …" / "if you do" clause for ONE card, and
+	// `bounced` is whether the card actually reached a hand. Optional;
+	// leave it nil for a plain bounce with nothing hanging off it.
+	//
+	// #993, and the same shape as ExileTarget.Then (#870). A hand is a
+	// CR 903.9 destination, so every bounce can pause: a commander
+	// returned to its owner's hand stops to ask them about the command
+	// zone, and a clause written on the next line runs with the
+	// permanent still on the battlefield and the question still open.
+	// Chain of Vapor asked its controller to sacrifice a land while
+	// they were already being asked something else.
+	//
+	// `bounced` is CR 400.7's reading: false when the window cancelled
+	// the move, when a replacement sent the card somewhere else, and
+	// when a commander took the command zone — it left, but not to a
+	// hand. A clause that is NOT gated on the move (the common case for
+	// a bounce: "then that permanent's controller may …" is a sentence
+	// about a player) simply ignores the argument and gets the ordering
+	// for free.
+	Then func(ctx *Context, bounced bool) error
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
-	return ctx.Game.BounceToHandForEffect(b.Target)
+	if b.Then == nil {
+		return ctx.Game.BounceToHandForEffect(b.Target)
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.BounceToHandThenForEffect(b.Target, func(g *game.Game, bounced bool) error {
+		return b.Then(NewContext(g, item), bounced)
+	})
 }
 
 // TapTarget taps a battlefield card. No effect if the card is not

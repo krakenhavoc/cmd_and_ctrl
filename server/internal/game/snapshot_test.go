@@ -21,12 +21,25 @@ import (
 // into a fresh *Game, and snapshotted again, produces a snapshot
 // identical to the first. Phrasing it that way means a field added to
 // the snapshot is covered the moment it is added, with no test edit —
-// and a field DROPPED between capture and restore fails immediately,
-// because the second capture will not contain it.
+// and a field dropped in ONE DIRECTION fails immediately, because the
+// second capture will not contain it.
 //
-// What the property deliberately cannot see is a field that exists on
-// *Game but on neither side of the snapshot. That blind spot is what
-// snapshot_drift_test.go closes.
+// What the property cannot see is a field dropped from BOTH sides, and
+// #1005 is the report that it had been claiming otherwise. Two things
+// close that, and it takes both:
+//
+//   - snapshot_drift_test.go makes every field on every domain type say
+//     what happens to it — carried, rebuilt or dropped. That catches a
+//     field nobody thought about. It reads no values.
+//   - snapshot_carried_test.go writes a distinctive value into every
+//     field classified `carried`, runs the real capture → JSON →
+//     restore, and reads it back OFF THE RESTORED GAME. That catches a
+//     field that says it is carried and is not, in either direction.
+//
+// The other half of the old claim was the fixture: `enrich` below is
+// what this property measures, so a field it does not set is invisible
+// here even in the one-directional case. The enforcement test sets its
+// own values and does not depend on this fixture growing.
 
 // newRestorableGame returns a started 2-player game whose RNG key is
 // deterministic (read from a fixed PCG seed). Since ADR 0054 every

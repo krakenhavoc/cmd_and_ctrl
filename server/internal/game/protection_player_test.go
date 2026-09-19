@@ -340,6 +340,11 @@ func TestTheChosenPlayerIsNotACopiableValue(t *testing.T) {
 // All three CR 614.12-family answers, because none of them was covered
 // before #980 and they fail the same way — a player made the choice and
 // nothing in the catalog can re-derive it.
+//
+// #1005 generalised the shape: snapshot_carried_test.go now runs this
+// assertion for EVERY field the drift plan calls `carried`, so a fourth
+// stored answer is covered the moment its row lands. This one stays as
+// the named, readable case for the three the report was filed about.
 func TestTheStoredAnswersSurviveASnapshot(t *testing.T) {
 	g := newRestorableGame(t)
 	enrich(t, g)

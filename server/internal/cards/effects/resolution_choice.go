@@ -233,16 +233,20 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 		// prompt is asynchronous and a permanent can leave between
 		// the question and the answer.
 		Zone: game.ZoneBattlefield,
+		// #993: the picked permanent goes through the sacrifice's
+		// CONTINUATION, so `Then` really does run "once the permanent
+		// has gone" the way this type promises. The fire-and-forget
+		// call returns nil while a sacrificed commander's owner is
+		// still answering CR 903.9, and the clause behind it then ran
+		// with the permanent on the battlefield and the question open
+		// — Chain of Vapor offered its copy while the land's owner was
+		// mid-prompt. The answer is not read: the prompt was mandatory
+		// (Min 1), so a clause hanging off it is "then", not "if you
+		// do".
 		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.SacrificePermanentForEffect(id); err != nil {
-					return err
-				}
-			}
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item))
+			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, _ []uuid.UUID) error {
+				return resumeClause(g, item, then)
+			})
 		},
 	})
 	return nil

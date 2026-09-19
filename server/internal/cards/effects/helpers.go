@@ -18,6 +18,26 @@ func cardDied(ev game.Event, source *game.Card) bool {
 	return ev.CardID == source.InstanceID && ev.NewZone == game.ZoneGraveyard
 }
 
+// resumeClause runs a prompt's continuation against the game the
+// answer arrived in.
+//
+// The two lines every asynchronous clause in the catalog ends with: a
+// nil `then` is a prompt nobody was waiting on, and a non-nil one gets
+// a FRESH Context bound to the same stack item rather than one captured
+// when the prompt was queued. An undo restores the game's fields in
+// place, so the *Game a closure captured can be the wrong object by the
+// time the player answers (the contract massEffect.apply spells out).
+//
+// Named because it is one idea rather than two coincidences: the clone
+// gate found the body in ChoosePlayer and SacrificeChoice and the third
+// copy would have been written the same way.
+func resumeClause(g *game.Game, item *game.StackItem, then func(ctx *Context) error) error {
+	if then == nil {
+		return nil
+	}
+	return then(NewContext(g, item))
+}
+
 // IsBasicLand reports whether a card's type line contains the
 // "basic land" supertype (case-insensitive substring). Used by
 // tutor / fetch primitives that need to match Forest / Island /

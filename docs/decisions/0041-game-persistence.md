@@ -90,6 +90,65 @@ capture(restore(decode(encode(capture(g))))) == capture(g)
 
 New snapshot fields are covered the moment they are added.
 
+### Amendment, 2026-09-19: `carried` is a property, not a row in a table
+
+*Amendment, 2026-09-19, branch
+`chore/993-1005-exit-lint-and-carried-enforcement`. Closes
+[#1005](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1005), filed
+while landing #980.*
+
+The two sentences above — "an unclassified field fails CI" and "new
+snapshot fields are covered the moment they are added" — were both true
+and together they read as a guarantee neither of them makes.
+
+**What was actually covered.** The drift test walks field NAMES. It
+never reads a value, so a row saying `carried` was a promise: `dropped`
+was the only disposition this ADR held to anything, through the census
+check. And the round-trip property compares
+`capture → JSON → restore → capture`, which is structurally blind to a
+field missing from BOTH projections — absent equals absent, on both
+sides. Delete a field from `snapshotCard` **and** `restoreCard` and
+every snapshot test passed. That was live: `NamedTribe`, `ChosenColor`
+and `ChosenPlayer`, the CR 614.12-family stored answers, were provably
+uncovered until #980 added them to the round trip's fixture by hand —
+and adding them by hand is the part that does not scale, because the
+fixture is the other half of the blind spot.
+
+**Decision: for every field classified `carried`, write a distinctive
+value onto a fixture, run the real capture → JSON → restore, and read
+the value back off the RESTORED GAME.** `snapshot_carried_test.go`, 213
+fields across the seven probed types. It is reflection over the drift
+plan rather than a generated table, so a `carried` row added tomorrow is
+enforced the moment it lands with no test edit — the same property the
+round trip claims, made true for the direction it cannot see.
+
+Four things make it hold rather than merely run:
+
+- **the value generator is plan-aware.** Filling a `rebuilt` field —
+  `Card.ManaAbilities` is two closures the catalog re-supplies by oracle
+  ID — would make the test assert the opposite of what that row says.
+- **unexported fields are reached through `unsafe`.** Half of `Game`'s
+  carried rows are unexported (the RNG key, the event sequence, the
+  combat lock-ins) and they are exactly the fields no other test can
+  see. A test may do this; production code may not.
+- **the failure names the projection.** The value is looked for in the
+  CAPTURED json: in the file means `restoreX` dropped it, not in the
+  file means `snapshotX` did.
+- **both escape hatches are checked.** `carriedFixture` (a type the
+  generator cannot invent a plausible value for) and
+  `carriedNotRoundTrippable` (the two rows where capture → restore is
+  deliberately not an identity: `Game.layerVersion`, which restore
+  advances by one to force a layer recompute, and
+  `ScopedStatic.Duration`, which `Clone` carries and the snapshot does
+  not). An entry that no longer names a live field fails CI, so neither
+  list can outlive the code it describes.
+
+`driftPlans` is now one list walked by all three tests, and
+`TestEveryPlannedTypeHasACarriedProbe` fails when a domain TYPE is added
+to the plan with no probe — so this survives somebody adding a type, not
+just a field. The header comments in `snapshot_test.go` and
+`snapshot_drift_test.go` say what each test does and does not cover.
+
 ## Decision 3 — The RNG is owned, seeded from crypto/rand, and carried
 
 `Game.rng` is a `*math/rand/v2.Rand`, and **production always passed

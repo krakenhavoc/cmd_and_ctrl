@@ -131,13 +131,7 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 		Question: c.Question,
 		Item:     item,
 		Then: func(g *game.Game, _ uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			// A FRESH Context bound to the same item, for
-			// MayChoice's reason: after an undo the restored game is
-			// a different object.
-			return then(NewContext(g, item))
+			return resumeClause(g, item, then)
 		},
 	})
 	if queued != uuid.Nil || then == nil {
