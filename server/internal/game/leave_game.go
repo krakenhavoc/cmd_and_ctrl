@@ -508,7 +508,23 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceMana: {},
 
 	// --- their own material, already gone (CR 800.4a) ------------
-	PendingChoiceSacrifice:     {},
+	//
+	// sacrifice is never reassigned — nobody else picks which of a
+	// departed player's permanents dies, and CR 800.4a has taken them
+	// off the table anyway — but since #1019 the DROP is not always
+	// the end of the instruction. A prompt is one leg of a RUN (one
+	// printed "each player sacrifices a creature of their choice",
+	// however many seats it asked), and a run whose continuation never
+	// hears about a withdrawn leg is a card that stops halfway. The
+	// drop settles that leg with "sacrificed nothing", which is
+	// dropDefault's whole shape: it takes no branch on the departed
+	// chooser's behalf and touches none of their material.
+	//
+	// Gated like every other dropDefault (choiceObjectSurvivesLocked),
+	// so a run whose own source left with its controller is abandoned
+	// rather than paid out — which is the right answer, because the
+	// payout belonged to the seat that has gone.
+	PendingChoiceSacrifice:     {onDrop: dropDefault},
 	PendingChoiceLegendRule:    {},
 	PendingChoiceScry:          {},
 	PendingChoiceSurveil:       {},

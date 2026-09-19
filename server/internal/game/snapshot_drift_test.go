@@ -169,6 +169,7 @@ var gameFields = plan(
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
+	"sacrificeRuns", dropped, "non-empty between actions only for a printed sacrifice instruction paused on its prompts, and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.sacrificeRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
@@ -577,6 +578,7 @@ var pendingChoiceFields = plan(
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"sacrificeRun", dropped, "the id of the prompted-sacrifice run this prompt is one leg of (#1019); the run's continuation lives on Game.sacrificeRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
 )
 
 // driftPlans is every domain type the snapshot touches, paired with the

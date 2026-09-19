@@ -367,6 +367,11 @@ func (g *Game) cloneLocked() *Game {
 			out.replacementsAppliedThisEvent[evID] = cp
 		}
 	}
+	// #1019: the prompted-sacrifice runs in flight. Deep in the
+	// counter and the per-seat landed lists, shallow in the
+	// continuation closure — cloneSacrificeRuns says why, and it is
+	// the same split cloneReplacementResume makes.
+	out.sacrificeRuns = cloneSacrificeRuns(g.sacrificeRuns)
 	// S16 layer-engine version counters. Atomics can't be struct-
 	// copied; mirror via Load/Store so the clone's staleness state
 	// matches the original's at capture time.
@@ -843,6 +848,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
+	// #1019: a half-answered sacrifice run rewinds with the prompts
+	// still owing it — see cloneLocked.
+	g.sacrificeRuns = src.sacrificeRuns
 	g.enteringTokens = src.enteringTokens
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.

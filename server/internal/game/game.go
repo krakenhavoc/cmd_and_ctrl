@@ -570,6 +570,22 @@ type Game struct {
 	// sub-PR 2.
 	nextReplacementEventID atomic.Uint64
 
+	// sacrificeRuns holds the prompted-sacrifice runs in flight, keyed
+	// by the id each of the run's PendingChoiceSacrifice entries
+	// carries (#1019, sacrifice_run.go). One run is one printed
+	// "sacrifice" instruction; the entry lives from the moment its
+	// prompts are queued until the last of them has settled and its
+	// continuation has run.
+	//
+	// So between actions it holds an entry only for an instruction
+	// paused on a prompt, and that entry is part of the prompt's
+	// state: Clone deep-copies it and RestoreFrom puts it back, for
+	// exactly the reason replacementsAppliedThisEvent above does — an
+	// undo into the open prompt would otherwise replay the answer
+	// against a counter that had already been decremented and pay out
+	// a seat early.
+	sacrificeRuns map[uuid.UUID]*sacrificeRun
+
 	mu sync.RWMutex
 }
 
