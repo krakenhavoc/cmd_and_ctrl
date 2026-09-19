@@ -125,7 +125,7 @@ func TestCascadeAcceptGrantsFreeCastAndBottomsTheRest(t *testing.T) {
 		t.Fatalf("hit left exile")
 	}
 	perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID)
-	if !perm.Active(me.ID, g.Turn.Number) {
+	if !g.CastPermissionActiveForEffect(perm, me.ID) {
 		t.Errorf("no live play permission on the cascade hit: %+v", perm)
 	}
 	if perm.Cost != "{0}" {

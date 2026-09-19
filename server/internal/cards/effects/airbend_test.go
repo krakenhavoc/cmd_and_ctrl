@@ -47,7 +47,7 @@ func assertAirbent(t *testing.T, g *game.Game, id, owner uuid.UUID) {
 	if grant.Player != owner {
 		t.Errorf("grant holder = %v, want the card's owner %v", grant.Player, owner)
 	}
-	if !grant.WhileInZone {
+	if grant.Duration.Kind != game.WhileInZone {
 		t.Errorf("airbend grant expires; it should last while the card is exiled")
 	}
 	if grant.Cost != AirbendCost {
@@ -216,7 +216,7 @@ func TestAppaMakesAnAllyOnlyForCastsFromExile(t *testing.T) {
 		Owner: me.ID, Controller: me.ID,
 	})
 	g.GrantCastPermissionOverCardForEffect(fromExile, game.CastPermission{
-		Player: me.ID, CastOnly: true, WhileInZone: true, Cost: AirbendCost,
+		Player: me.ID, CastOnly: true, Duration: game.WhileInZoneDuration(), Cost: AirbendCost,
 	})
 	if err := g.CastSpell(me.ID, fromExile, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("cast from exile: %v", err)

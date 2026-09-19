@@ -119,7 +119,7 @@ func TestScopeStandingFollowsItsSource(t *testing.T) {
 			return nil
 		}
 		return []CastPermission{{
-			Zone: ZoneGraveyard, Scope: ScopeStanding, WhileInZone: true,
+			Zone: ZoneGraveyard, Scope: ScopeStanding, Duration: WhileInZoneDuration(),
 			Filter: PermissionFilter{NonLandOnly: true}, AltCostKey: "escape",
 		}}
 	})
@@ -229,7 +229,7 @@ func TestAPermissionNeverRemovesThePrintedPath(t *testing.T) {
 			return nil
 		}
 		return []CastPermission{{
-			Zone: ZoneGraveyard, Scope: ScopeStanding, WhileInZone: true,
+			Zone: ZoneGraveyard, Scope: ScopeStanding, Duration: WhileInZoneDuration(),
 			Filter: PermissionFilter{NonLandOnly: true}, AltCostKey: "escape",
 		}}
 	})
@@ -269,7 +269,7 @@ func TestLibraryTopPermissionNeedsTheTopAndTheLook(t *testing.T) {
 			return nil
 		}
 		return []CastPermission{{
-			Zone: ZoneLibrary, Scope: ScopeStanding, WhileInZone: true, TopOfLibraryOnly: true,
+			Zone: ZoneLibrary, Scope: ScopeStanding, Duration: WhileInZoneDuration(), TopOfLibraryOnly: true,
 		}}
 	})
 	source := permanentFor(g, me, "Test Citadel", "Artifact", "{3}")
@@ -376,7 +376,8 @@ func TestCastPermissionSurvivesCloneAndRestore(t *testing.T) {
 	id := seedGraveyard(me, "Granted Sorcery", "Sorcery", "{R}")
 	g.WithWriteLock(func() {
 		g.GrantCastPermissionOverCardForEffect(id, CastPermission{
-			Player: me.ID, Zone: ZoneGraveyard, AltCostKey: "flashback", UntilTurn: 7,
+			Player: me.ID, Zone: ZoneGraveyard, AltCostKey: "flashback",
+			Duration: g.UntilEndOfYourNextTurnDuration(me.ID),
 		})
 	})
 
@@ -398,7 +399,8 @@ func TestCastPermissionSurvivesCloneAndRestore(t *testing.T) {
 		t.Fatalf("Restore: %v", err)
 	}
 	perm := grantOn(restored, me.ID, id, ZoneGraveyard)
-	if !perm.Granted() || perm.UntilTurn != 7 || perm.AltCostKey != "flashback" {
+	if !perm.Granted() || perm.Duration.Kind != UntilEndOfTurn ||
+		perm.Duration.Player != me.ID || perm.AltCostKey != "flashback" {
 		t.Fatalf("the restored game lost the permission: %+v", perm)
 	}
 	// The epoch has to survive with it, or the restore would revive
@@ -421,9 +423,10 @@ func TestCleanupSweepsSpentPermissions(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.GrantCastPermissionOverCardForEffect(thisTurn, CastPermission{Player: me.ID, Zone: ZoneGraveyard})
 		g.GrantCastPermissionOverCardForEffect(nextTurn, CastPermission{
-			Player: me.ID, Zone: ZoneGraveyard, UntilTurn: g.Turn.Number + 1,
+			Player: me.ID, Zone: ZoneGraveyard,
+			Duration: g.UntilEndOfYourNextTurnDuration(me.ID),
 		})
-		g.clearExpiredCastPermissionsLocked()
+		g.sweepCastPermissionsLocked(true)
 	})
 	if len(me.CastPermissions) != 1 {
 		t.Fatalf("permissions after the sweep = %d, want 1", len(me.CastPermissions))

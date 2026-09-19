@@ -177,12 +177,12 @@ func (g *Game) grantFreeCastLocked(controller, cardID uuid.UUID) {
 			continue
 		}
 		g.GrantCastPermissionToCardsForEffect(CastPermission{
-			Player:    controller,
-			Zone:      ZoneExile,
-			UntilTurn: g.Turn.Number,
-			Cost:      "{0}",
-			CastOnly:  true,
-			Label:     "Cascade — cast it without paying its mana cost",
+			Player:   controller,
+			Zone:     ZoneExile,
+			Duration: g.UntilEndOfTurnDuration(),
+			Cost:     "{0}",
+			CastOnly: true,
+			Label:    "Cascade — cast it without paying its mana cost",
 		}, []Card{g.Exile.Cards[i]})
 		return
 	}

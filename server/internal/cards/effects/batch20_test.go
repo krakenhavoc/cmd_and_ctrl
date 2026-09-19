@@ -460,7 +460,7 @@ func TestB20HornOfGreedSeesALandPlayedFromExile(t *testing.T) {
 	me := g.Seats[0]
 	b12Push(g, me.ID, "Horn of Greed", "Artifact", b20HornOfGreedOracle, 0, 0)
 	advanceToMain(t, g)
-	grant := game.CastPermission{Player: me.ID, UntilTurn: g.Turn.Number + 5}
+	grant := game.CastPermission{Player: me.ID}
 	swamp := b20HandCard(me, "Swamp", "Basic Land — Swamp")
 	g.WithWriteLock(func() { _ = g.ExileCardWithPermissionForEffect(swamp, grant) })
 	hand := me.Hand.Size()
@@ -1029,23 +1029,22 @@ func TestB20ProsperExilesAtYourEndStepAndPaysTreasureForPlaysFromExile(t *testin
 		t.Fatal("the top card is exiled at your end step")
 	}
 	perm := exiledPermission(g, forest)
-	if perm.Player != me.ID || perm.CastOnly || !perm.Active(me.ID, g.Turn.Number) {
+	if perm.Player != me.ID || perm.CastOnly || !permissionLive(g, perm, me.ID) {
 		t.Fatalf("grant %+v: the controller may PLAY it", perm)
 	}
-	// Through the opponents' turns the grant survives; at your next
-	// upkeep the delayed trigger pins it to that turn.
+	// Through the opponents' turns the grant survives, and it reaches
+	// the END of the controller's next turn (#945: one duration, no
+	// upkeep re-stamp).
 	advanceToMainOf(t, g, 3)
-	if !exiledPermission(g, forest).Active(me.ID, g.Turn.Number) {
+	if !permissionLive(g, exiledPermission(g, forest), me.ID) {
 		t.Fatal("the grant survives every opponent's cleanup")
-	}
-	advanceToUpkeepOf(t, g, 0)
-	passPriorityAroundTable(t, g)
-	if p := exiledPermission(g, forest); p.UntilTurn != g.Turn.Number || !p.Active(me.ID, g.Turn.Number) {
-		t.Errorf("after your upkeep the grant is %+v, want live through this turn only", p)
 	}
 	// Playing the land from exile is "playing a card from exile":
 	// Pact Boon makes a Treasure.
 	advanceToMainOf(t, g, 0)
+	if p := exiledPermission(g, forest); !permissionLive(g, p, me.ID) {
+		t.Fatalf("on your next turn the grant is %+v, want live", p)
+	}
 	if err := g.CastSpell(me.ID, forest, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("playing the exiled land: %v", err)
 	}
@@ -1059,7 +1058,7 @@ func TestB20ProsperExilesAtYourEndStepAndPaysTreasureForPlaysFromExile(t *testin
 	// A spell cast from exile under any grant does too.
 	shock := b20HandCard(me, "Shock", "Instant")
 	g.WithWriteLock(func() {
-		_ = g.ExileCardWithPermissionForEffect(shock, game.CastPermission{Player: me.ID, UntilTurn: g.Turn.Number})
+		_ = g.ExileCardWithPermissionForEffect(shock, game.CastPermission{Player: me.ID})
 	})
 	if err := g.CastSpell(me.ID, shock, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("casting from exile: %v", err)

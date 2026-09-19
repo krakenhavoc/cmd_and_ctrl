@@ -233,13 +233,13 @@ func TestTheSuspendFreeCastIsEnumeratedOutsideAMainPhase(t *testing.T) {
 	g.Exile.PushTop(bolt)
 	g.WithWriteLock(func() {
 		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-			Player:    active.ID,
-			Zone:      game.ZoneExile,
-			Cost:      "{0}",
-			Timing:    game.TimingFlash,
-			CastOnly:  true,
-			UntilTurn: g.Turn.Number,
-			Label:     game.SuspendFreeCastLabel,
+			Player:   active.ID,
+			Zone:     game.ZoneExile,
+			Cost:     "{0}",
+			Timing:   game.TimingFlash,
+			CastOnly: true,
+			Duration: g.UntilEndOfTurnDuration(),
+			Label:    game.SuspendFreeCastLabel,
 		}, []game.Card{bolt})
 	})
 

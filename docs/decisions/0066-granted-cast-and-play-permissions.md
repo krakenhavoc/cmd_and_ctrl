@@ -97,7 +97,7 @@ duration free:
 
 | home | scope | lifetime |
 |---|---|---|
-| `Player.CastPermissions []CastPermission` | `ScopeCards` | `UntilTurn` (Snapcaster, Past in Flames, impulse exile) or `WhileInZone` (airbend, warp) |
+| `Player.CastPermissions []CastPermission` | `ScopeCards` | a `game.Duration` (ADR 0063): `UntilEndOfTurn` for Snapcaster, Past in Flames and impulse exile, `WhileInZone` for airbend and warp |
 | derived from the battlefield through `CardDef.CastPermissions` | `ScopeStanding` | for as long as the source permanent remains — nothing to expire |
 | — | — | — |
 
@@ -109,27 +109,11 @@ whole of "for as long as the source remains" — there is no expiry code to get
 wrong, and a Breach that is exiled in response to the cast stops granting
 before the cast is validated, which is what CR 702.138 says.
 
-**The duration model, and a follow-up this ADR owes.** #755/#756's
-`game.Duration` (`UntilEndOfTurn`, `UntilYourNextTurn`, `ForAsLongAs`,
-`Indefinite`, ADR 0063) is the project's one duration vocabulary. It landed
-on `develop` *while this work was in flight*, and the permission's window is
-still the `{UntilTurn, NotBeforeTurn, WhileInZone}` triple `ExilePlayPermission`
-carried. That is a second vocabulary, it is not meant to stay, and it is
-recorded here rather than left to be discovered.
-
-Two things make it a contained debt. The stored permissions need exactly two
-of `Duration`'s four kinds — "until end of turn" (Snapcaster, Past in Flames,
-impulse exile) and "while the card stays in the zone" (airbend, warp) — and
-the standing ones need none at all, because deriving them from the battlefield
-IS `ForAsLongAs`. And `CastPermission.Active` is the single function that reads
-the triple, so the swap is that function plus its call sites.
-
-It is not free, which is why it is a follow-up rather than a line in this PR:
-`Duration` expiry needs the game (`durationExpiredLocked`), so `Active(player,
-turn)` becomes a method on `*Game` and every caller — including
-`faceForCastLocked` and about a hundred test literals — moves with it. The
-follow-up is #945; `NotBeforeTurn` survives it either way, because warp's
-"on a later turn" is a FLOOR and `Duration` has no concept of one.
+**The duration model.** #755/#756's `game.Duration` (ADR 0063) is the
+project's one duration vocabulary, and since #945 a `CastPermission` carries
+it: `CastPermission.Duration`, swept through the same `durationExpiredLocked`
+every `ScopedStatic` is swept through. `NotBeforeTurn` sits beside it and is
+not a duration — see the amendment at the foot of this ADR.
 
 ### 2. CR 400.7 is an object-identity check, not a sweep
 
@@ -395,11 +379,6 @@ Mm'menon-style "not cast from hand" restrictions will read `library` and
 
 ### Tradeoffs
 
-- The permission's window is still its own three fields rather than
-  `game.Duration`, which is a second duration vocabulary for as long as the
-  follow-up is open. It is the one thing in this ADR that is not yet the
-  single model the rest of it argues for.
-
 - `CastPermission` is a wide struct — wider than `ExilePlayPermission` was —
   and most of it is zero on most permissions. That is the price of one model;
   the alternative was the two models #652 forbids.
@@ -413,3 +392,65 @@ Mm'menon-style "not cast from hand" restrictions will read `library` and
 - The opponent-library projection is no longer "always wholesale-hidden". It
   keeps exactly one card and only when the viewer is a knower of it, which is
   a narrower widening than the hand's, but it is a widening.
+
+
+## Amendment (2026-09-18, #945): the window is `game.Duration`, and the debt is paid
+
+The follow-up Decision 1 recorded has landed. `CastPermission.UntilTurn` and
+`CastPermission.WhileInZone` are **gone**; the permission carries one
+`Duration` (ADR 0063), and `NotBeforeTurn` stays.
+
+**What moved.**
+
+| before | after |
+|---|---|
+| `UntilTurn: g.Turn.Number` — Snapcaster, Past in Flames, the Locker, impulse exile, cascade, a Siege's face grant, Containment Construct, Neyali | `Duration: g.UntilEndOfTurnDuration()`, and the zero `Duration` is stamped to exactly that by `GrantCastPermissionForEffect` |
+| `UntilTurn: g.Turn.Number + 2` plus an upkeep delayed trigger — Reckless Impulse, Wrenn's Resolve, Prosper, Cori Mountain Monastery | `Duration: g.UntilEndOfYourNextTurnDuration(controller)` |
+| `WhileInZone: true` — airbend, warp, foretell (#987), Aerial Extortionist, every derived standing permission | `Duration: game.WhileInZoneDuration()` |
+| `UntilTurn: g.Turn.Number` on suspend's free cast (#987) | `Duration: g.UntilEndOfTurnDuration()`, stamped explicitly because the trigger fires in an UPKEEP and a reader should see which turn it names |
+| `NotBeforeTurn` — warp (CR 702.185a), foretell (CR 702.143a) | unchanged |
+
+**One liveness function**, `(*Game).CastPermissionActiveForEffect`, replaces
+the value method `CastPermission.Active(player, turn)`. It reads
+`durationExpiredLocked`, so a permission and a continuous effect with the same
+clause end at the same moment by construction. `GrantsFace` lost its window
+check with it: every caller reaches a permission through
+`CastPermissionForLocked`, which has already asked, so a second copy of the
+rule would only be a copy to drift. `faceForCastLocked` lost its `turn`
+argument for the same reason.
+
+**The sweep runs twice**, not once. `sweepCastPermissionsLocked(true)` at the
+cleanup step (CR 514.2) and `sweepCastPermissionsLocked(false)` as a turn
+begins (CR 500.1) — the two moments `sweepScopedStaticsLocked` runs at for the
+same reason. The statics' third moment, the top of every layer recompute, buys
+a permission nothing: only `ForAsLongAs` can go false between turns and a
+permission never carries one, because "for as long as the source remains" is
+already free for a standing permission that is derived from the battlefield on
+every query.
+
+**`NotBeforeTurn` is not a duration, and that is why it survived.** CR 611.2
+says when a continuous effect ENDS; it has no vocabulary for when one starts,
+because a continuous effect starts when it is created. A cast permission is
+the one thing in the engine that can be granted now and open later — warp's
+"you may cast it from exile on a later turn" (CR 702.185a) and foretell's
+identical clause (CR 702.143a) — so the floor is a field of the permission and
+applies whatever the `Duration` says. Foretell (#658, shipped in #987) uses exactly this
+pair — `Duration: WhileInZoneDuration()` plus `NotBeforeTurn` — and so does warp; neither
+needed a second field.
+
+**The card-level prize.** `EndCastPermissionAtTurnForEffect` and
+`b19EndImpulseGrantWithThisTurn` are deleted. "Until the end of your next
+turn" used to be stamped two rounds out as a backstop with a CR 603.7 delayed
+trigger in the holder's next upkeep pulling it back, because no single ROUND
+number means that clause for every seat. ADR 0063's seat-turn counter says it
+directly, so Reckless Impulse, Wrenn's Resolve, Prosper, Tome-Bound and Cori
+Mountain Monastery schedule nothing at all.
+
+**Snapshot schema 2 → 3.** A stored permission's JSON changed shape
+(`untilTurn` / `whileInZone` → `duration`). A v2 file would decode into the
+zero `Duration`, which reads as "until end of turn, unstamped" — so every
+airbend and warp grant in a restored pre-v3 game would lapse at the next
+cleanup. That is a semantic shift in an existing field, which is what
+`SnapshotSchemaVersion` is for. `Player.CastPermissions` stays classified
+`carried` in `snapshot_drift_test.go`: `Duration` is pure data, so the type is
+still embedded by value and still marshals.

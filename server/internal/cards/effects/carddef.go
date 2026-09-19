@@ -184,7 +184,7 @@ func standingCastPermissions(in []game.CastPermission) []game.CastPermission {
 	copy(out, in)
 	for i := range out {
 		out[i].Scope = game.ScopeStanding
-		out[i].WhileInZone = true
+		out[i].Duration = game.WhileInZoneDuration()
 	}
 	return out
 }

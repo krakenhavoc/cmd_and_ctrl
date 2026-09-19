@@ -104,28 +104,28 @@ func TestNoManaCostSpellCastsForAnAlternativeCost(t *testing.T) {
 // its own ("you may cast that card", impulse draw) still pays the
 // printed cost, so it is refused.
 func TestNoManaCostSpellAndExileGrants(t *testing.T) {
-	cast := func(t *testing.T, grant func(me uuid.UUID, turn int) CastPermission) error {
+	cast := func(t *testing.T, grant func(me uuid.UUID) CastPermission) error {
 		t.Helper()
 		g := newActiveGame(t)
 		me := g.Seats[0]
 		advanceTo(t, g, StepPrecombatMain)
 		c := noCostSorcery(me, "test-vision")
 		g.Exile.PushTop(c)
-		g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant(me.ID, g.Turn.Number))
+		g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant(me.ID))
 		return g.CastSpell(me.ID, c.InstanceID, CastSpellParams{Strict: true, FromZone: "exile"})
 	}
 
 	t.Run("free-cast grant", func(t *testing.T) {
-		err := cast(t, func(me uuid.UUID, turn int) CastPermission {
-			return CastPermission{Player: me, UntilTurn: turn, Cost: "{0}"}
+		err := cast(t, func(me uuid.UUID) CastPermission {
+			return CastPermission{Player: me, Cost: "{0}"}
 		})
 		if err != nil {
 			t.Fatalf("free-cast grant on a no-cost sorcery: %v", err)
 		}
 	})
 	t.Run("grant without a price", func(t *testing.T) {
-		err := cast(t, func(me uuid.UUID, turn int) CastPermission {
-			return CastPermission{Player: me, UntilTurn: turn}
+		err := cast(t, func(me uuid.UUID) CastPermission {
+			return CastPermission{Player: me}
 		})
 		if !errors.Is(err, ErrNoManaCost) {
 			t.Fatalf("unpriced grant on a no-cost sorcery: got %v, want ErrNoManaCost", err)

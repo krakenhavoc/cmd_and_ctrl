@@ -46,25 +46,57 @@ func toMainPhase(t *testing.T, g *Game) {
 	}
 }
 
+// beginALaterTurnFor makes it look as though `p` has begun another
+// turn since — Player.TurnsBegun is the seat-turn counter every
+// ADR 0063 duration is stamped against, and a real rotation bumps it
+// in noteTurnBegunLocked. Tests that only need "time has passed for
+// this seat" say so here rather than driving four turns of play.
+func beginALaterTurnFor(g *Game, p *Player) {
+	g.WithWriteLock(func() { p.TurnsBegun++ })
+}
+
+// TestCastPermissionActive pins the one liveness test (#945): the
+// permission names you, its CR 702.185a floor has been reached, and
+// its CR 611.2 duration has not run out.
 func TestCastPermissionActive(t *testing.T) {
-	me, you := uuid.New(), uuid.New()
+	g := newActiveGame(t)
+	me, you := g.Seats[0], g.Seats[1]
+	var thisTurn, myNextTurn Duration
+	g.WithWriteLock(func() {
+		thisTurn = g.UntilEndOfTurnDuration()
+		myNextTurn = g.UntilEndOfYourNextTurnDuration(me.ID)
+	})
 	cases := []struct {
-		name string
-		perm CastPermission
-		who  uuid.UUID
-		turn int
-		want bool
+		name  string
+		perm  CastPermission
+		who   uuid.UUID
+		later bool // a later turn has begun for the holder
+		want  bool
 	}{
-		{"zero value grants nothing", CastPermission{}, me, 1, false},
-		{"holder, in window", CastPermission{Player: me, UntilTurn: 3}, me, 3, true},
-		{"holder, earlier turn", CastPermission{Player: me, UntilTurn: 3}, me, 2, true},
-		{"holder, expired", CastPermission{Player: me, UntilTurn: 3}, me, 4, false},
-		{"somebody else", CastPermission{Player: me, UntilTurn: 3}, you, 3, false},
+		{"zero value grants nothing", CastPermission{}, me.ID, false, false},
+		{"holder, this turn", CastPermission{Player: me.ID, Duration: thisTurn}, me.ID, false, true},
+		{"holder, a turn later", CastPermission{Player: me.ID, Duration: thisTurn}, me.ID, true, false},
+		{"holder, until end of next turn", CastPermission{Player: me.ID, Duration: myNextTurn}, me.ID, true, true},
+		{"while in zone outlasts every turn", CastPermission{Player: me.ID, Duration: WhileInZoneDuration()}, me.ID, true, true},
+		{"somebody else", CastPermission{Player: me.ID, Duration: thisTurn}, you.ID, false, false},
+		{"the floor is not reached yet", CastPermission{
+			Player: me.ID, Duration: WhileInZoneDuration(), NotBeforeTurn: g.Turn.Number + 1,
+		}, me.ID, false, false},
 	}
 	for _, tc := range cases {
-		if got := tc.perm.Active(tc.who, tc.turn); got != tc.want {
-			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			probe := g
+			if tc.later {
+				probe = g.Clone()
+				beginALaterTurnFor(probe, probe.Seats[0])
+			}
+			perm := tc.perm
+			var got bool
+			probe.ReadSnapshot(func() { got = probe.CastPermissionActiveForEffect(&perm, tc.who) })
+			if got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -88,8 +120,9 @@ func TestExileTopWithPermissionMovesAndStamps(t *testing.T) {
 	if got.Player != me.ID {
 		t.Errorf("permission holder = %v, want the thief %v", got.Player, me.ID)
 	}
-	if got.UntilTurn != g.Turn.Number {
-		t.Errorf("UntilTurn = %d, want this turn %d", got.UntilTurn, g.Turn.Number)
+	if got.Duration.Kind != UntilEndOfTurn || got.Duration.Player != me.ID {
+		t.Errorf("duration = %v (player %v), want until end of this turn for %v",
+			got.Duration.Kind, got.Duration.Player, me.ID)
 	}
 	if !got.CastOnly {
 		t.Errorf("CastOnly should have ridden through")
@@ -149,9 +182,12 @@ func TestExilePermissionLapsesWithTheTurn(t *testing.T) {
 	// Put it back and roll the turn over.
 	g.WithWriteLock(func() {
 		_, _ = MoveCard(g.Stack, g.Exile, loot)
-		g.GrantCastPermissionOverCardForEffect(loot, CastPermission{Player: me.ID, UntilTurn: g.Turn.Number})
+		g.GrantCastPermissionOverCardForEffect(loot, CastPermission{Player: me.ID, Duration: g.UntilEndOfTurnDuration()})
 		delete(g.StackMeta, loot)
 		g.Turn.Number++
+		// #945: the window is a seat-turn, not a round, so this is
+		// what makes it a LATER turn for the grant's holder.
+		me.TurnsBegun++
 	})
 	if err := g.CastSpell(me.ID, loot, CastSpellParams{FromZone: "exile"}); err != ErrNoPlayPermission {
 		t.Errorf("next turn: %v, want ErrNoPlayPermission", err)
@@ -227,9 +263,11 @@ func TestCleanupClearsExpiredExilePermissions(t *testing.T) {
 	seedLibraryTop(opp, "This Turn", "Instant")
 	thisTurn := impulseExile(t, g, opp, me, CastPermission{})
 	seedLibraryTop(opp, "Next Turn", "Instant")
-	nextTurn := impulseExile(t, g, opp, me, CastPermission{UntilTurn: g.Turn.Number + 1})
+	var nextTurnWindow Duration
+	g.WithWriteLock(func() { nextTurnWindow = g.UntilEndOfYourNextTurnDuration(me.ID) })
+	nextTurn := impulseExile(t, g, opp, me, CastPermission{Duration: nextTurnWindow})
 
-	g.WithWriteLock(func() { g.clearExpiredCastPermissionsLocked() })
+	g.WithWriteLock(func() { g.sweepCastPermissionsLocked(true) })
 
 	if perm := g.CastPermissionOnCardByIDForEffect(thisTurn); perm.Granted() {
 		t.Errorf("a this-turn grant survived cleanup")

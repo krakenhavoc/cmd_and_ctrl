@@ -59,8 +59,9 @@ func (e GrantFlashbackToCard) Apply(ctx *Context) error {
 		Zone:              game.ZoneGraveyard,
 		AltCostKey:        "flashback",
 		ExileOnResolution: true,
-		// UntilTurn left zero: the one write path reads that as "until
-		// end of turn", which is what every card here prints.
+		// Duration left zero: the one write path reads that as "until
+		// end of turn" and stamps it against this turn, which is what
+		// every card here prints.
 		Source: ctx.Source(),
 		Label:  label,
 	})

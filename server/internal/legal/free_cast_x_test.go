@@ -64,7 +64,7 @@ func TestEnumeratorOffersNoIllegalXForAFreeCast(t *testing.T) {
 	stroke := game.Card{Name: "Test Stroke", TypeLine: "Sorcery", ManaCost: "{X}{U}", Layout: "normal"}
 	fromHand := handCard(seat, stroke)
 	free := exileCardWithGrant(g, seat, stroke, game.CastPermission{
-		Player: seat.ID, UntilTurn: g.Turn.Number, Cost: "{0}", CastOnly: true,
+		Player: seat.ID, Cost: "{0}", CastOnly: true,
 	})
 
 	moves := legal.EnumerateFor(g, seat.ID)

@@ -349,8 +349,8 @@ func b26ExileFirstLegalTargetOwnerMayCast(g *game.Game, item *game.StackItem) er
 		return nil
 	}
 	return g.ExileCardWithPermissionForEffect(id, game.CastPermission{
-		WhileInZone: true,
-		CastOnly:    true,
+		Duration: game.WhileInZoneDuration(),
+		CastOnly: true,
 	})
 }
 

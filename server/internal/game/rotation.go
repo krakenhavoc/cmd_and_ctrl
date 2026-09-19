@@ -102,7 +102,12 @@ func (g *Game) sweepTurnEndLocked() {
 	// turn they were granted for is over. The exiled card stays
 	// exiled; it just stops being playable. Hygiene rather than
 	// correctness: an expired permission is already refused.
-	g.clearExpiredCastPermissionsLocked()
+	//
+	// #945: through the same ADR 0063 Duration and the same
+	// durationExpiredLocked the statics above just ran, with the same
+	// `true` — this moment is a cleanup step, and that is the only
+	// thing the sweep has to tell it.
+	g.sweepCastPermissionsLocked(true)
 	// #663: an event-conditioned delayed trigger is "this turn" —
 	// "when you NEXT cast an instant or sorcery spell THIS TURN" —
 	// and CR 514.2 ends it here whether or not the cast it was
@@ -210,6 +215,14 @@ func (g *Game) onTurnBeganLocked() {
 	// action instead would order it against "doesn't untap" effects
 	// for no reason (ADR 0058).
 	g.ClearExpiredScopedStaticsLocked()
+	// #945: and the granted cast permissions, for the same reason and
+	// at the same boundary. "Until the end of your next turn" is the
+	// clause that needs it — Reckless Impulse's grant is stamped
+	// against a turn that has not happened yet, so the cleanup sweep
+	// of every turn before it leaves the grant alone and this is the
+	// backstop for a turn that ended without one (ADR 0059
+	// Decision 6).
+	g.sweepCastPermissionsLocked(false)
 	if g.LoyaltyActivatedThisTurn != nil {
 		g.LoyaltyActivatedThisTurn = nil
 	}

@@ -120,7 +120,7 @@ func TestFaceDownExileShipsNoIdentityToAnySeat(t *testing.T) {
 	foretold.OracleID = oracle
 	foretold.FaceDown = true
 	foretold.KnownBy = map[uuid.UUID]bool{me.ID: true}
-	foretoldGrant := game.CastPermission{Player: me.ID, WhileInZone: true, Cost: "{1}{G}"}
+	foretoldGrant := game.CastPermission{Player: me.ID, Duration: game.WhileInZoneDuration(), Cost: "{1}{G}"}
 
 	var exiled []uuid.UUID
 	g.WithWriteLock(func() {

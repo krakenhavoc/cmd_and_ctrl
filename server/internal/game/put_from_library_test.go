@@ -338,7 +338,7 @@ func TestPutOnBottomInRandomOrderFromExile(t *testing.T) {
 		c.TypeLine = "Instant"
 		c.AddKnowersAll([]uuid.UUID{g.Seats[0].ID, g.Seats[1].ID})
 		g.Exile.PushTop(c)
-		g.GrantCastPermissionOverCardForEffect(c.InstanceID, CastPermission{Player: me.ID, UntilTurn: 99})
+		g.GrantCastPermissionOverCardForEffect(c.InstanceID, CastPermission{Player: me.ID})
 		pile = append(pile, c.InstanceID)
 	}
 	before := len(g.Events)

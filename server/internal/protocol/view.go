@@ -4204,8 +4204,11 @@ func cantCastReason(err error) string {
 // client cannot be shown a cast the engine would refuse, and it
 // cannot be shown the wrong price for one it would allow.
 func grantedCastOffer(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) *game.AlternativeCost {
+	// No second liveness check: CastPermissionForLocked has already
+	// asked CastPermissionActiveForEffect, which is the one function
+	// that reads a permission's CR 611.2 duration (#945).
 	perm := g.CastPermissionForLocked(caster, card, kind)
-	if !perm.Active(caster, g.Turn.Number) {
+	if perm == nil {
 		return nil
 	}
 	return perm.AlternativeCostFor(card)

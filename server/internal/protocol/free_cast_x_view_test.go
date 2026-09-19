@@ -91,7 +91,6 @@ func TestExileGrantShipsXLockedAtZero(t *testing.T) {
 			c.KnownBy = map[uuid.UUID]bool{me.ID: true, g.Seats[1].ID: true}
 			grant := tc.grant
 			grant.Player = me.ID
-			grant.UntilTurn = g.Turn.Number
 			g.Exile.PushTop(c)
 			g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 

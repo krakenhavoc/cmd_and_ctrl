@@ -87,10 +87,20 @@ import (
 // makes it fire. The cost is that a pre-emblem binary refuses EVERY
 // post-emblem restore point, emblem or not.
 //
+// v3 is #945: a stored game.CastPermission carried its own window as
+// `untilTurn` / `whileInZone`, and now carries ADR 0063's
+// `duration` object instead. A v2 file decodes into the zero
+// Duration, which reads as "until end of turn, unstamped" — so every
+// granted permission in a restored pre-v3 game would lapse at the
+// next cleanup step, including the airbend and warp grants that
+// should have lasted for as long as the card stayed in exile. That is
+// a semantic shift in an existing field, which is exactly what this
+// constant is for.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 2
+const SnapshotSchemaVersion = 3
 
 // minRestorableSchema is the oldest schema Restore still understands.
 // Raise it only when carrying a migration forward stops being worth

@@ -2633,7 +2633,7 @@ GrantCastFromYourGraveyard{                            // Past in Flames
 }.Apply(ctx)
 ```
 
-Four rules worth knowing before you write one. **The key is shared with
+Five rules worth knowing before you write one. **The key is shared with
 the printed keyword** (`"flashback"`, `"escape"`), because CR 702.34a's
 "if the flashback cost was paid, exile it" and CR 702.138b's "escaped"
 read the key however the permission arrived — and a card that both
@@ -2647,6 +2647,30 @@ library permission needs its visibility half too** (`LibraryTopVisible`
 `LibraryTopRevealed` for "play with the top card revealed"): a card you
 cannot see is a card you cannot play, and every printed card in the
 family carries both clauses.
+
+**The window is a `game.Duration`** (#945,
+[ADR 0063](docs/decisions/0063-durations-and-control.md)) — the same
+vocabulary every continuous effect in the engine uses, swept through the
+same `durationExpiredLocked`, so there is exactly one answer to "is this
+still live" and one function that gives it
+(`g.CastPermissionActiveForEffect(perm, player)`). Write the clause, not
+a turn number:
+
+```go
+Duration: /* leave zero */                          // "until end of turn"
+Duration: g.UntilEndOfYourNextTurnDuration(who),    // "until the end of your next turn"
+Duration: game.WhileInZoneDuration(),               // "while it remains exiled"
+NotBeforeTurn: g.Turn.Number + 1,                   // warp / foretell's "on a LATER turn" — a floor, not a duration
+```
+
+The zero value is "until end of turn", stamped against the current turn
+by the one write path, so a card file that forgets gets the shortest
+window rather than an unbounded grant. A permanent's `Spec.CastPermissions`
+needs none at all: `standingCastPermissions` forces
+`WhileInZone` on it, because a derived permission's duration is the
+source's presence on the battlefield. And **never** schedule a delayed
+trigger to shorten a grant — "until the end of your next turn" used to
+need one and does not any more.
 
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost

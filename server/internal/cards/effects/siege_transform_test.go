@@ -189,8 +189,8 @@ func TestSiegeDefeatedGrantsItsBackFace(t *testing.T) {
 	if !grant.CastOnly {
 		t.Error("the grant should be cast-only")
 	}
-	if grant.UntilTurn != g.Turn.Number {
-		t.Errorf("grant UntilTurn = %d, want this turn %d", grant.UntilTurn, g.Turn.Number)
+	if grant.Duration.Kind != game.UntilEndOfTurn {
+		t.Errorf("grant duration = %v, want until end of turn", grant.Duration.Kind)
 	}
 }
 

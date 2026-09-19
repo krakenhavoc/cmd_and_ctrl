@@ -162,7 +162,7 @@ func b12ExiledPlayableBy(t *testing.T, g *game.Game, id, player uuid.UUID) bool 
 	}
 	c := b12Card(t, g, id)
 	perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID)
-	return perm.Active(player, g.Turn.Number)
+	return permissionLive(g, perm, player)
 }
 
 // --- registration --------------------------------------------------

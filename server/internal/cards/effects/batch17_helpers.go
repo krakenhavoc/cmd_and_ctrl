@@ -445,8 +445,8 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, player, cardID uuid.UUID) err
 		return nil
 	}
 	return g.ExileCardWithPermissionForEffect(cardID, game.CastPermission{
-		Player:    player,
-		UntilTurn: g.Turn.Number,
+		Player:   player,
+		Duration: g.UntilEndOfTurnDuration(),
 	})
 }
 

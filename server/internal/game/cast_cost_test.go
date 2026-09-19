@@ -39,8 +39,10 @@ func xSorcery(owner uuid.UUID, oracle string) Card {
 // freeCastGrant is the permission cascade stamps on its hit, and the
 // shape a Siege's "you may cast it without paying its mana cost"
 // reaches this engine as.
-func freeCastGrant(me uuid.UUID, turn int) CastPermission {
-	return CastPermission{Player: me, UntilTurn: turn, Cost: "{0}", CastOnly: true}
+// The window is left zero: the one write path reads that as "until
+// end of turn" and stamps it against the current turn (#945).
+func freeCastGrant(me uuid.UUID) CastPermission {
+	return CastPermission{Player: me, Cost: "{0}", CastOnly: true}
 }
 
 // exileWithGrant drops `c` into exile carrying `grant` and walks the
@@ -58,7 +60,7 @@ func exileWithGrant(t *testing.T, g *Game, c Card, grant CastPermission) uuid.UU
 func TestFreeCastFromExileLocksXAtZero(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	id := exileWithGrant(t, g, xSorcery(me.ID, "test-stroke"), freeCastGrant(me.ID, g.Turn.Number))
+	id := exileWithGrant(t, g, xSorcery(me.ID, "test-stroke"), freeCastGrant(me.ID))
 
 	err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile", XValue: 5})
 	if !errors.Is(err, ErrInvalidParam) {
@@ -268,7 +270,7 @@ func TestFreeCastLeavesAnXThatIsNotInTheManaCostAlone(t *testing.T) {
 	deluge.ManaCost = "{2}{B}"
 	deluge.Layout = "normal"
 	deluge.OracleID = oracle
-	id := exileWithGrant(t, g, deluge, freeCastGrant(me.ID, g.Turn.Number))
+	id := exileWithGrant(t, g, deluge, freeCastGrant(me.ID))
 
 	life := me.Life
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile", XValue: 3}); err != nil {
@@ -289,7 +291,7 @@ func TestUndoAcrossAFreeCastOfAnXSpellReplays(t *testing.T) {
 	// RestoreFrom swaps g.Seats wholesale, so the seat is re-read
 	// after the rewind rather than captured once.
 	seat := func() *Player { return g.Seats[0] }
-	id := exileWithGrant(t, g, xSorcery(seat().ID, "test-stroke"), freeCastGrant(seat().ID, g.Turn.Number))
+	id := exileWithGrant(t, g, xSorcery(seat().ID, "test-stroke"), freeCastGrant(seat().ID))
 
 	beforeCast := g.Clone()
 	if err := g.CastSpell(seat().ID, id, CastSpellParams{Strict: true, FromZone: "exile", XValue: 0}); err != nil {

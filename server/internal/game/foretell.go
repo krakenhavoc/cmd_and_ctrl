@@ -97,11 +97,12 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 			return nil
 		}
 		// CR 702.143a: "Cast it on a LATER turn for its foretell
-		// cost." NotBeforeTurn is a FLOOR and survives WhileInZone,
-		// which is exactly the pair warp already needs — the window
-		// opens next turn and stays open for as long as the card
-		// remains exiled, with CR 400.7 enforced by the object epoch
-		// rather than by a sweep.
+		// cost." NotBeforeTurn is a FLOOR and composes with the
+		// Duration rather than replacing it (#945), which is exactly
+		// the pair warp already needs — the window opens next turn
+		// and stays open for as long as the card remains exiled, with
+		// CR 400.7 enforced by the object epoch rather than by a
+		// sweep.
 		//
 		// CastOnly, because CR 702.143a says "cast it": a land with
 		// foretell would not become a land drop out of exile. No
@@ -113,7 +114,7 @@ func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) err
 			AltCostKey:    AltCostKeyForetell,
 			Cost:          sa.CastCost,
 			NotBeforeTurn: notBefore,
-			WhileInZone:   true,
+			Duration:      WhileInZoneDuration(),
 			CastOnly:      true,
 			Label:         "Foretell",
 		}, []Card{*exiled})

@@ -1075,7 +1075,7 @@ func TestB17ContainmentConstructExilesADiscardToPlayThisTurn(t *testing.T) {
 		t.Fatal("the discarded card is exiled from the graveyard")
 	}
 	perm := exiledPermission(g, land)
-	if perm.Player != me.ID || perm.CastOnly || perm.UntilTurn != g.Turn.Number {
+	if perm.Player != me.ID || perm.CastOnly || perm.Duration.Kind != game.UntilEndOfTurn {
 		t.Errorf("grant %+v: the controller may PLAY it this turn", perm)
 	}
 	if err := g.CastSpell(me.ID, land, game.CastSpellParams{FromZone: "exile"}); err != nil {

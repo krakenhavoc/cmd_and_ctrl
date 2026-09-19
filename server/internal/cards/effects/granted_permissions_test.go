@@ -95,11 +95,14 @@ func TestSnapcasterMageGrantsFlashbackForOneTurn(t *testing.T) {
 	if perm.Cost != "" {
 		t.Errorf("granted cost = %q, want empty — \"equal to its mana cost\"", perm.Cost)
 	}
-	// "Until end of turn": live now, dark on the next turn.
-	if !perm.Active(active.ID, g.Turn.Number) {
+	// "Until end of turn": live now, dark once that seat has begun
+	// another turn (ADR 0063's seat-turn counter, #945).
+	if !permissionLive(g, perm, active.ID) {
 		t.Errorf("the grant is not live on the turn it was made")
 	}
-	if perm.Active(active.ID, g.Turn.Number+1) {
+	later := g.Clone()
+	later.Seats[later.Turn.ActiveSeat].TurnsBegun++
+	if permissionLive(later, perm, active.ID) {
 		t.Errorf("the grant outlived the turn it was made on")
 	}
 }

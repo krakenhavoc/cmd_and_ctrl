@@ -17,8 +17,9 @@ import (
 // that (Player is a free field); nothing could produce it.
 //
 // The two halves of airbend that were missing from the permission
-// itself — no expiry, and a cost paid instead of the printed one —
-// live on game.CastPermission as WhileInZone and Cost.
+// itself — a window that is a zone rather than a turn, and a cost
+// paid instead of the printed one — live on game.CastPermission as
+// Duration.WhileInZone and Cost.
 // See server/internal/game/exile_play.go for both, including the
 // declared simplification on CostOverride.
 
@@ -69,13 +70,19 @@ type ExileWithPermission struct {
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
-	return ctx.Game.ExileCardWithPermissionForEffect(e.Target, game.CastPermission{
-		Player:      e.GrantTo,
-		CastOnly:    e.CastOnly,
-		AnyColor:    e.AnyColor,
-		WhileInZone: e.WhileExiled,
-		Cost:        e.CostOverride,
-	})
+	perm := game.CastPermission{
+		Player:   e.GrantTo,
+		CastOnly: e.CastOnly,
+		AnyColor: e.AnyColor,
+		Cost:     e.CostOverride,
+	}
+	if e.WhileExiled {
+		// CR 611.2b, "while it's exiled". Left zero the permission
+		// takes the engine's default of "until end of turn", which is
+		// the impulse-exile window.
+		perm.Duration = game.WhileInZoneDuration()
+	}
+	return ctx.Game.ExileCardWithPermissionForEffect(e.Target, perm)
 }
 
 // Airbend is the AVATAR keyword action: "Exile it. While it's

@@ -781,7 +781,7 @@ func TestB32NeyaliGivesAttackingTokensDoubleStrikeAndExilesTheTopCard(t *testing
 		t.Fatal("the top card is exiled")
 	}
 	perm := exiledPermission(g, top)
-	if perm.Player != me.ID || perm.CastOnly || !perm.Active(me.ID, g.Turn.Number) {
+	if perm.Player != me.ID || perm.CastOnly || !permissionLive(g, perm, me.ID) {
 		t.Errorf("%+v: the controller may PLAY it this turn", perm)
 	}
 	advanceTo(t, g, game.StepCombatDamage)
@@ -824,7 +824,7 @@ func TestB32NeyaliRegrantsEarlierExiledCardsOnALaterTokenAttack(t *testing.T) {
 	}
 	// The grant lapses with the turn.
 	advanceToMainOf(t, g, 1)
-	if exiledPermission(g, first).Active(me.ID, g.Turn.Number) {
+	if permissionLive(g, exiledPermission(g, first), me.ID) {
 		t.Fatal("the grant ends with the controller's turn")
 	}
 	// The next token attack exiles another card AND re-grants the
@@ -836,11 +836,11 @@ func TestB32NeyaliRegrantsEarlierExiledCardsOnALaterTokenAttack(t *testing.T) {
 		t.Fatal("the second attack exiles the next card")
 	}
 	for _, id := range []uuid.UUID{first, second} {
-		if !exiledPermission(g, id).Active(me.ID, g.Turn.Number) {
+		if !permissionLive(g, exiledPermission(g, id), me.ID) {
 			t.Errorf("a card Neyali exiled may be played on a turn a token attacked")
 		}
 	}
-	if exiledPermission(g, other).Active(me.ID, g.Turn.Number) {
+	if permissionLive(g, exiledPermission(g, other), me.ID) {
 		t.Error("a card something else exiled is not re-granted")
 	}
 }

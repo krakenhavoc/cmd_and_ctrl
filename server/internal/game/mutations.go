@@ -568,7 +568,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	// grantHasteForCastLocked for the layer-6 grant and its declared
 	// duration simplification.
 	grantsHaste := grant != nil && grant.GrantsHaste
-	face, ok := faceForCastLocked(card, params.Face, grant, playerID, g.Turn.Number)
+	face, ok := faceForCastLocked(card, params.Face, grant, playerID)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
 			"card_name", card.Name,
