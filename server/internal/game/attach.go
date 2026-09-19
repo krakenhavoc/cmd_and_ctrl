@@ -13,12 +13,14 @@ import (
 // stored on the ATTACHED object and pointing at the host. Everything
 // in this file is a read or a write of that one field:
 //
-//	Attach   — AttachForEffect      (equip resolution, aura ETB, "attach")
-//	Detach   — UnattachForEffect    (an effect that says "unattach")
-//	Enforce  — attachmentSBALocked  (CR 704.5m/n, from the SBA loop)
+//	Attach   — AttachForEffect       (aura ETB, "attach it to …")
+//	  …its source — AttachSourceForEffect  (equip / fortify / reconfigure)
+//	Detach   — UnattachForEffect     (an effect that says "unattach")
+//	Enforce  — attachmentSBALocked   (CR 704.5m/n, from the SBA loop)
 //	Query    — AttachmentsOf / IsAttachedTo / AttachedHostOf
 //
-// Two rules make the shape work and both are worth stating up front:
+// Three rules make the shape work and all three are worth stating up
+// front:
 //
 //  1. Nothing sweeps the REVERSE direction. When a host leaves the
 //     battlefield, the attachments pointing at it are left dangling
@@ -29,6 +31,12 @@ import (
 //  2. Legality is checked against EFFECTIVE characteristics, never
 //     printed ones — an Equipment attached to a creature that a
 //     layer-4 effect stopped animating must fall off.
+//  3. An attach that cannot happen DOES NOTHING (CR 701.3b) rather
+//     than failing. An ability resolves whether or not its source is
+//     still around (CR 608.2), and the equip whose Equipment was
+//     sacrificed in response is the case that makes the difference
+//     visible: it resolves, it attaches nothing, and it is not an
+//     error. #812.
 
 // IsAura reports whether the card is an Aura right now: an
 // enchantment whose effective subtypes include "Aura". Post-layer on
@@ -72,14 +80,31 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // second equip activation does (CR 702.6d): the old link is simply
 // overwritten, and the CR 613.7d timestamp is refreshed.
 //
-// Attaching to a host that is not there, or to a card that is not on
-// the battlefield, is refused rather than silently recorded — the
-// state-based action would tear it down on the next pass anyway, and
-// failing loudly at the primitive is easier to debug. CR 301.5c's
-// "creature only" rule for Equipment is NOT enforced here: an effect
-// that says "attach" to a non-creature is legal to perform, and the
-// SBA unattaches it immediately afterwards, which is precisely how
-// the rules sequence it.
+// # An attach that cannot happen does nothing (CR 701.3b)
+//
+// Three ways it cannot happen, and all three are a quiet no-op rather
+// than an error: the ATTACHMENT is not on the battlefield (only a
+// permanent can be attached to anything, CR 301.5c), the HOST is not
+// there, or the two are the same permanent. Each returns nil after
+// emitting EventAttachSkipped with the reason on Label.
+//
+// It used to return ErrCardNotFound for the first two, on the grounds
+// that the state-based action would tear the link down anyway and
+// failing loudly is easier to debug. That was wrong about the rule and
+// it was reachable in play (#812): an equip whose Equipment is
+// sacrificed in response still RESOLVES — its target may well still be
+// legal — and CR 701.3b says the attachment simply doesn't happen.
+// Reporting that as an error put an EventEffectError in the log, which
+// the catalog soak treats as a bug and fails on. The breadcrumb is the
+// event; nothing is silent.
+//
+// A TargetRef that names neither a card nor a player is still
+// ErrInvalidParam. That is a malformed call, not a game situation.
+//
+// CR 301.5c's "creature only" rule for Equipment is NOT enforced here:
+// an effect that says "attach" to a non-creature is legal to perform,
+// and the SBA unattaches it immediately afterwards, which is precisely
+// how the rules sequence it.
 //
 // Caller must hold g.mu (this is a *ForEffect surface — it runs
 // inside a resolution that already owns the write lock).
@@ -90,7 +115,8 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	switch host.Kind {
 	case TargetCard:
 		if findCardOnBattlefield(g, host.ID) < 0 {
-			return ErrCardNotFound
+			g.emitAttachSkippedLocked(attachmentID, host, "host is not on the battlefield")
+			return nil
 		}
 	case TargetPlayer:
 		if g.playerByIDLocked(host.ID) == nil {
@@ -101,12 +127,14 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	}
 	idx := findCardOnBattlefield(g, attachmentID)
 	if idx < 0 {
-		return ErrCardNotFound
+		g.emitAttachSkippedLocked(attachmentID, host, "attachment is not on the battlefield")
+		return nil
 	}
 	c := &g.Battlefield.Cards[idx]
 	if c.InstanceID == host.ID {
 		// A permanent cannot be attached to itself (CR 301.5c).
-		return ErrInvalidParam
+		g.emitAttachSkippedLocked(attachmentID, host, "a permanent cannot be attached to itself")
+		return nil
 	}
 	c.AttachedTo = host
 	c.AttachedAt = timeNowUnixNano()
@@ -118,6 +146,58 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		Target: host.ID,
 	})
 	return nil
+}
+
+// AttachSourceForEffect is "attach this permanent to <host>" as one of
+// its OWN abilities resolves: equip (CR 702.6a) is the printed case,
+// and fortify (CR 702.67a) and reconfigure (CR 702.151a) are the same
+// sentence for a Fortification and an Equipment creature — neither is
+// in the catalog yet, and both land on this when they arrive.
+//
+// It is AttachForEffect plus the one question the primitive cannot ask
+// for itself: is `item`'s source still the permanent whose ability
+// this is? CR 702.6a can only attach the Equipment, so an Equipment
+// that has left the battlefield attaches nothing — and neither does a
+// card with the same ID that has come back as a new object (CR 400.7).
+// Both read as gone through AbilitySourceGoneForEffect, both are a
+// quiet EventAttachSkipped, and in both the ability still resolved and
+// the target is simply untouched.
+//
+// The TARGET's own CR 608.2b re-check is the caller's, not this
+// function's: effects.AttachSourceToTarget iterates the targets that
+// are still legal, and an equip whose only target is gone has already
+// been countered by game rules before this is reached.
+//
+// Caller must hold g.mu.
+func (g *Game) AttachSourceForEffect(item *StackItem, host TargetRef) error {
+	if item == nil {
+		return ErrInvalidParam
+	}
+	if g.AbilitySourceGoneForEffect(item) {
+		g.emitAttachSkippedLocked(item.SourceCardID, host,
+			"the ability's source is no longer the permanent it was activated from")
+		return nil
+	}
+	return g.AttachForEffect(item.SourceCardID, host)
+}
+
+// emitAttachSkippedLocked is the one breadcrumb for CR 701.3b's "the
+// attachment doesn't happen". `why` is the reason, on Label, so a
+// stall dump or a soak trace can tell the three cases apart without
+// re-deriving them from the board.
+//
+// Actor is left unset: the would-be attachment may not be on the
+// battlefield at all, and Card.Controller is only meaningful there.
+//
+// Caller must hold g.mu.
+func (g *Game) emitAttachSkippedLocked(attachmentID uuid.UUID, host TargetRef, why string) {
+	g.EmitEvent(Event{
+		Kind:   EventAttachSkipped,
+		Source: attachmentID,
+		CardID: attachmentID,
+		Target: host.ID,
+		Label:  why,
+	})
 }
 
 // UnattachForEffect breaks the link, leaving the permanent on the

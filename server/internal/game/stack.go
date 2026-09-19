@@ -125,6 +125,29 @@ type StackItem struct {
 	// permanent that stays in place.
 	SourceCardID uuid.UUID
 
+	// SourceEpoch is Card.ObjectEpoch read off the source AS THE ITEM
+	// WAS PUT ON THE STACK — the announce-time identity of the OBJECT
+	// the ability came from, not of the card (CR 400.7).
+	//
+	// It exists for the one question SourceCardID cannot answer: is
+	// the permanent on the battlefield right now the same permanent
+	// whose ability this is? A Loxodon Warhammer bounced and replayed
+	// while its equip is on the stack keeps its instance ID and is a
+	// NEW OBJECT, and an ability that acts on its own source must
+	// refuse the impostor exactly as it refuses a source that simply
+	// left. AbilitySourceObjectGoneLocked is that read; equip
+	// (AttachSourceForEffect) is its first caller.
+	//
+	// Stamped by the two announce paths that put an ABILITY of a
+	// permanent on the stack — the catalog activation (activated.go)
+	// and the manual sandbox one (ActivateAbility) — which are also
+	// the only two places a StackItemActivated is built. Meaningless
+	// on any other kind, and AbilitySourceGoneForEffect reads the
+	// KIND rather than treating some value as a sentinel: zero is a
+	// real epoch, since a token created straight onto the
+	// battlefield has never changed zones.
+	SourceEpoch int
+
 	// Label is a free-text caller-provided string for ability items
 	// ("Goblin Bombardment damage", "Counterspell ETB"). Empty for
 	// spells (the card name is sufficient labeling).
