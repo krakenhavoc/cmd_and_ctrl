@@ -146,14 +146,18 @@ func (e *enumerator) choiceMoves() bool {
 			// list — at least one colour is always on offer, since the
 			// narrowest printed list ("other than blue") has four.
 			//
-			// Ordered by how much of each colour this seat already has
-			// on the battlefield, most first, then WUBRG — what a
-			// player choosing for Coldsteel Heart or Heraldic Banner
-			// does. Battlefield only, so the ranking reads nothing
-			// hidden. A policy that wants a different colour (Wash
-			// Out wants the opponents' colour, not yours) still sees
-			// every option.
-			for _, color := range e.colorAnswers(c.ColorOptions) {
+			// Ordered by the prompt's own ColorPurpose (#986):
+			// `harm` by what the OPPOSITION loses net of what this
+			// seat does, `filter` by what the opposition has shown,
+			// `protect` by the biggest threat pointed this way, and
+			// `mana` / `benefit` / undeclared by what this seat
+			// already has — which is what a player choosing for
+			// Coldsteel Heart or Heraldic Banner does. Battlefield
+			// counts only, so the ranking reads nothing hidden, and
+			// every option is still offered whatever the order: a
+			// policy that wants a different colour still sees all
+			// five. The same function orders the human's buttons.
+			for _, color := range e.colorAnswers(c) {
 				p := base()
 				p.Color = color
 				e.addAlwaysLegalChoice(c, reason+": "+game.ColorName(color), p)
@@ -1021,23 +1025,13 @@ func combinationsRefs(cands []game.TargetRef, lo, hi, limit int) [][]game.Target
 	return out
 }
 
-// colorAnswers orders a colour prompt's options by the number of
-// permanents this seat controls that are that colour, most first;
-// ties keep the option list's own (WUBRG) order.
-func (e *enumerator) colorAnswers(options []string) []string {
-	counts := map[string]int{}
-	for i := range e.g.Battlefield.Cards {
-		c := &e.g.Battlefield.Cards[i]
-		if c.Controller != e.seat {
-			continue
-		}
-		for _, col := range c.EffectiveColors() {
-			counts[col]++
-		}
-	}
-	out := append([]string(nil), options...)
-	sort.SliceStable(out, func(i, j int) bool { return counts[out[i]] > counts[out[j]] })
-	return out
+// colorAnswers orders a colour prompt's options by what the card said
+// it will DO with the answer (#986). One ordering function, shared with
+// the `choose_color` projection so a bot's move list and a human's
+// buttons are in the same order; see color_order.go for the arms and
+// for why this is a function rather than an Options hook.
+func (e *enumerator) colorAnswers(c *game.PendingChoice) []string {
+	return OrderColorOptionsLocked(e.g, e.seat, c.ColorOptions, c.ColorPurpose)
 }
 
 // creatureTypeAnswersCap bounds the creature types offered for one

@@ -74,6 +74,13 @@ const LOG_TONE: Record<LogKind, string> = {
   reveal: "tone-cast",
   roll: "tone-cast",
   flip: "tone-cast",
+  // #984: an answer given out loud (CR 105.4, CR 614.12). Quiet —
+  // it is a fact about one permanent, not a swing in the game — but
+  // present, because the card's later abilities read it back and the
+  // prompt that asked closed ten turns ago.
+  choose_color: "tone-quiet",
+  choose_type: "tone-quiet",
+  choose_player: "tone-quiet",
 };
 
 export function logTone(kind: LogKind): string {

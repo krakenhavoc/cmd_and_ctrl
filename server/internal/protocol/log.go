@@ -85,6 +85,11 @@ const NoSeat = -1
 // human would read, and the engine kinds that carry no table-visible
 // meaning (mana pool bookkeeping, becomes-target, effect errors)
 // produce no entry at all.
+//
+// Which engine kinds those are is not a matter of taste any more:
+// log_event_kind_gate_test.go reads every declared game.EventKind and
+// fails unless projectEvent has an arm for it OR it is listed as a
+// deliberate silence with a reason (#984).
 type LogKind string
 
 const (
@@ -132,7 +137,29 @@ const (
 	LogReveal LogKind = "reveal"
 	LogRoll   LogKind = "roll"
 	LogFlip   LogKind = "flip"
+	// LogChooseColor — a player answered a "choose a color" prompt
+	// (CR 105.4): Coldsteel Heart as it enters, Wash Out as it
+	// resolves. `Choice` is the colour LETTER and CardID the card the
+	// colour was chosen for.
+	LogChooseColor LogKind = "choose_color"
+	// LogChooseType — a player answered a "choose a creature type"
+	// prompt (CR 614.12): Cavern of Souls, Door of Destinies.
+	// `Choice` is the type as the engine canonicalised it ("Elf").
+	LogChooseType LogKind = "choose_type"
+	// LogChoosePlayer — a player answered an "as this enters, choose
+	// a player" prompt (CR 614.12): True-Name Nemesis. The answer is
+	// a SEAT, so it rides TargetSeat like every other player
+	// reference in this log and `Choice` is empty.
+	LogChoosePlayer LogKind = "choose_player"
 )
+
+// The three choose-a-value kinds are separate rather than one "chose
+// something" kind with a discriminator, because the discriminator
+// would BE the kind: a client tones, filters and (one day) icons a log
+// line by `kind`, and "Elf" and "Katara" are not the same row to a
+// reader. They share one field (`Choice`) and one sentence shape
+// ("<player> chose <value> for <card>"), which is the part worth
+// having in one place. #984.
 
 // logRevealNamesMax bounds how many revealed card names one LogReveal
 // entry's text spells out. Five is Fact or Fiction, the largest
@@ -213,6 +240,21 @@ type LogEvent struct {
 	Faces   []string `json:"faces,omitempty"`
 	Call    string   `json:"call,omitempty"`
 	Wins    int      `json:"wins,omitempty"`
+	// Choice is the VALUE a player named at a "choose a ..." prompt:
+	// the colour letter on a LogChooseColor entry ("G"), the
+	// canonical creature type on a LogChooseType one ("Elf"). A
+	// chosen PLAYER rides TargetSeat instead, for the reason every
+	// other player in this struct does — a seat index costs one byte
+	// and GameView.Seats already names it.
+	//
+	// Redacted with the card's name. CR 105.4 makes the answer public
+	// at the table, but the answer also IDENTIFIES the card that asked
+	// ("Elf" names Cavern of Souls as loudly as loyalty says
+	// "planeswalker"), which is why #781 strips CardView.ChosenColor /
+	// NamedTribe from a non-knower — so redactLogForViewer clears this
+	// alongside the name rather than leaving the same fact on the wire
+	// under a line that no longer says it.
+	Choice string `json:"choice,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -513,6 +555,35 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventRevealCards:
 		return revealEntry(base, ev, seatOf), true
 
+	case game.EventColorChosen:
+		// CR 105.4: the choice is made at the table and heard by
+		// everyone. #983 put it on the card; this puts it in the
+		// history, which is the only place that says WHEN it was made
+		// and by whom (#984).
+		base.Kind = LogChooseColor
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Choice = ev.Label
+		return base, true
+
+	case game.EventCreatureTypeChosen:
+		base.Kind = LogChooseType
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Choice = ev.Label
+		return base, true
+
+	case game.EventPlayerChosen:
+		base.Kind = LogChoosePlayer
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		// Deliberately NOT setTarget: the answer is always a seat, and
+		// setTarget's card fallback would put a raw player UUID on the
+		// wire as `target` for a seat the view no longer carries. An
+		// unseatable answer leaves the entry with no target at all,
+		// which renders as "a player".
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
@@ -710,6 +781,14 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 		e.cardKnowers, e.targetKnowers = nil, nil
 		if cardName != e.cardName || targetName != e.targetName {
 			e.cardName, e.targetName = cardName, targetName
+			// The chosen value goes with the name it identifies. The
+			// guard is on the DROP (the name was there and is not any
+			// more), not on "no name": a card the view can no longer
+			// account for was never redacted, and "P1 chose green for
+			// a card" is the honest line for it.
+			if cardName == "" {
+				e.Choice = ""
+			}
 			e.Text = renderLogText(e, cardName, targetName)
 		}
 		out[i] = e
@@ -784,6 +863,18 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s was eliminated", actor)
 	case LogReveal:
 		return renderRevealText(e, actor)
+	case LogChooseColor:
+		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
+	case LogChooseType:
+		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
+	case LogChoosePlayer:
+		// `target` is already the seat name here (or "a player"): a
+		// chosen player never rides Target, so the card branch above
+		// cannot have claimed it.
+		if e.TargetSeat == nil {
+			return fmt.Sprintf("%s chose a player for %s", actor, card)
+		}
+		return fmt.Sprintf("%s chose %s for %s", actor, target, card)
 	default:
 		return card
 	}

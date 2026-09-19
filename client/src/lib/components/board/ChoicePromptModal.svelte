@@ -29,7 +29,7 @@
     type ServerErrorLike,
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
-  import { colorButtons, colorPromptAnswerable } from "../../manaPick";
+  import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
 
   interface Props {
     snap: GameView;
@@ -242,6 +242,14 @@
   // `{choice_id, color}` answer as a mana pick; the server routes the
   // two by kind.
   const isColorChoice = $derived(active?.kind === "choose_color");
+  // #986: the card declares what it will DO with the colour
+  // (`color_purpose`), and the picker says it back. Five identical
+  // buttons cannot tell a player whether they are naming the colour
+  // their Coldsteel Heart will produce or the colour their Wash Out is
+  // about to bounce, and those are opposite answers. The button ORDER
+  // is the server's — it ranks the options by the same purpose — so
+  // nothing here sorts.
+  const colorCopy = $derived(colorPromptCopy(active?.color_purpose));
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
@@ -890,14 +898,15 @@
         </div>
       {:else if isColorChoice}
         <h2 id="choice-title">
-          {active.reason || "Choose a color"}
+          {active.reason || colorCopy.title}
           <span class="prompt-src" aria-hidden="true">choose a color · CR 105.4</span>
         </h2>
-        <!-- Neutral on purpose: the same prompt comes from a permanent
-             entering (the color is remembered) and from a spell or
-             ability resolving (it is used once), and the view does not
-             say which. -->
-        <p class="prompt-hint">Pick exactly one color. The card's text says how it is used.</p>
+        <!-- The hint is the card's declared purpose put into words
+             (#780 / #986). A prompt with no purpose falls back to the
+             neutral line, because without one the view genuinely does
+             not know whether the colour is remembered on a permanent
+             or used once as a spell resolves. -->
+        <p class="prompt-hint">{colorCopy.hint}</p>
         <div class="color-row">
           {#each buttons as b (b.color)}
             <button

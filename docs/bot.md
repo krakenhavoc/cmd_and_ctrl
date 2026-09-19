@@ -362,6 +362,41 @@ and fails the build for a `choose_color` prompt whose first argument is
 not one of the declared constants, in the style of #806's and #810's
 lints.
 
+**The ENUMERATOR orders by the purpose too (#986).** The table above is
+the policy's scoring; it is not the only reader. Until #986 the
+enumerator offered every colour prompt's answers in one order — "what
+this seat has most of on the battlefield" — whatever the prompt was
+for, which meant the `random` tier, a heuristic that scored two colours
+the same, and any future "take the first offered answer" all got the
+Coldsteel Heart answer for a Wash Out. `legal.OrderColorOptionsLocked`
+(`server/internal/legal/color_order.go`) now ranks them by the same
+purpose, in battlefield counts only:
+
+| Purpose | Ranked by |
+|---|---|
+| `mana`, `benefit`, undeclared | permanents the chooser controls of that colour — the pre-#986 rule, unchanged |
+| `harm` | permanents the OTHER seats control of that colour, minus the chooser's own |
+| `filter` | permanents the other seats control of that colour; the chooser's own board is not a term |
+| `protect` | the greatest POWER among creatures other seats control of that colour — one 8/8 outranks four 1/1s |
+
+It is an ORDERING and never a filter: every answer the engine accepts
+is still offered, so the policy still sees all five and still re-ranks
+them. It is not a second scorer either — it is battlefield counts, not
+`Weights`, and it is deliberately the crudest public proxy for each of
+the questions `colorChoiceValue` asks properly. What it fixes is the
+seats that have no policy: the `random` tier, a tie-broken heuristic,
+and the human, whose `color_options` buttons come off the same call so
+that the first button and the first enumerated move are always the same
+colour.
+
+This is a FUNCTION and not an `Options` hook, which is the difference
+from #687's `OrderTargets`. Ranking a board by what a spell is worth
+against it is a policy question and `legal` may not import `aiseat`, so
+the target ordering is injected by the seat. A colour prompt's order is
+a reading of the card's own printed text against public counts, it has
+to be identical for a bot and for a human because both read it off the
+same prompt, and `legal` is the layer both already go through.
+
 ## An attached permanent is priced once, by its role (#727)
 
 An Equipment's +2/+2 arrives on the wire as its host's `power` and
