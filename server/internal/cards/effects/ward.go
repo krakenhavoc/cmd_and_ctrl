@@ -121,9 +121,10 @@ func (c WardCost) validate() {
 // Two details in the AppliesTo that are the rule rather than
 // defensive coding:
 //
-//   - `ev.Actor != source.Controller` is "an OPPONENT controls".
-//     Your own Giant Growth on your own warded creature does not
-//     trigger it, which is the difference between ward and shroud.
+//   - "An OPPONENT controls" is `ev.Actor != <the warded
+//     permanent>.Controller`. Your own Giant Growth on your own
+//     warded creature does not trigger it, which is the difference
+//     between ward and shroud.
 //   - The trigger fires per target INSTANCE, because
 //     EventBecomesTarget is emitted per target slot (CR 115.7). A
 //     spell that targets the same warded creature twice triggers
@@ -135,15 +136,83 @@ func (c WardCost) validate() {
 // rather than its Source, because for an activated or triggered
 // ability those differ — Source is the permanent the ability came
 // from and would counter the wrong object (or nothing at all).
+//
+// It is WardGranted with the narrowest possible predicate — the
+// warded permanent is the source itself — so the printed ward and
+// every granted one share one trigger body and one payment path.
 func Ward(cost WardCost, label string) game.TriggeredAbility {
+	return WardGranted(cost, label, func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID
+	})
+}
+
+// WardGranted is "<these permanents> have ward <cost>": a ward one
+// object gives to OTHERS. Lavaspur Boots' "equipped creature has
+// ward {1}" is one shape of it; Teferi Akosa of Zhalfir's emblem,
+// "Knights you control get +1/+0 and have ward {1}", is the other.
+//
+// It is NOT a layer-6 keyword grant, and the reason is the file
+// comment's: CR 702.21a makes ward a TRIGGERED ability, and
+// `Characteristic.Abilities` is a []string with nowhere to put the
+// cost, which is exactly why "ward" is kept out of
+// `canonicalKeywords`. So the grant is the GRANTING object carrying
+// the trigger and watching for a permanent it grants ward to becoming
+// a target. Nothing is written onto the warded permanent; what reads
+// the ward is the harvester, walking the granting object's own zone
+// — the battlefield for an Equipment, the command zone for an emblem
+// (CR 114.3).
+//
+// `grants` is the ordinary `StaticAbility.AppliesTo` shape
+// (target, game, source), so ONE predicate value serves both halves
+// of "Knights you control get +1/+0 and have ward {1}" and the layer
+// half and the trigger half can never drift apart. `source` is the
+// granting object, so "you control" is the same
+// `target.Controller == source.Controller` an anthem uses.
+//
+// Three details that are the rule rather than defensive coding:
+//
+//   - The candidate must be a BATTLEFIELD permanent. Ward is a
+//     permanent's ability (CR 702.21a), and EventBecomesTarget is
+//     emitted for spells on the stack and cards in graveyards too, so
+//     without the zone test an emblem's "Knights you control" would
+//     answer a Raise Dead aimed at a Knight card in a graveyard.
+//   - "An opponent controls" is measured against the WARDED
+//     permanent's controller, not the granting object's. The two
+//     agree for every printed case and can diverge only behind a
+//     control change, and then the rule that matters is the
+//     permanent's.
+//   - The PAYER is always the spell's controller (ev.Actor), which is
+//     right in every case. What is approximated is the trigger's own
+//     CONTROLLER: NewTriggeredItem keys on the granting object, so
+//     the stack object belongs to the Equipment's or the emblem's
+//     controller rather than the warded permanent's. That shows up
+//     only in trigger ordering, behind a control change that
+//     separated the two, and it is noted rather than modelled.
+func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *game.Game, source *game.Card) bool) game.TriggeredAbility {
 	cost.validate()
 	if label == "" {
 		label = "Ward"
 	}
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventBecomesTarget},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return ev.CardID == source.InstanceID && ev.Actor != source.Controller
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			if grants == nil {
+				return false
+			}
+			// One zone lookup, not two: the battlefield test and the
+			// warded permanent both come out of the same walk.
+			z := g.FindCardZoneForEffect(ev.CardID)
+			if z == nil || z.Kind != game.ZoneBattlefield {
+				return false
+			}
+			for i := range z.Cards {
+				warded := &z.Cards[i]
+				if warded.InstanceID != ev.CardID {
+					continue
+				}
+				return grants(warded, g, source) && ev.Actor != warded.Controller
+			}
+			return false
 		},
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			// Capture the two UUIDs, never the *Card or the *Game —

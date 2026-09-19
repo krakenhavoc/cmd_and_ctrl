@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // attachments_batch3.go is the third batch of S24 catalog work on the
 // attachment relation (ADR 0036), and like attachments.go it holds
@@ -203,53 +199,20 @@ func otherEnchantmentsOnTheBattlefield(g *game.Game, source *game.Card) int {
 
 // WardAttached is "Equipped creature has ward {N}" — Lavaspur Boots.
 //
-// Ward is a TRIGGERED ability (CR 702.21a) and ward.go is where the
-// engine models it, so a granted ward cannot ride GrantToAttached:
-// there is no "ward" token in canonicalKeywords and deliberately so,
-// because a bare token has nowhere to put the cost. The grant is
-// instead the Equipment carrying the ward TRIGGER itself, watching
-// for its host becoming a target.
+// The narrow case of WardGranted (effects/ward.go), whose doc carries
+// the design: ward is a TRIGGERED ability (CR 702.21a) with a cost,
+// so a granted ward cannot ride GrantToAttached or any other layer-6
+// keyword grant — the grant is the Equipment carrying the ward
+// trigger and watching for its host becoming a target.
 //
-// Two details that differ from Ward()'s own-permanent form:
-//
-//   - The watched object is the HOST (source.IsAttachedTo(ev.CardID)),
-//     not the source.
-//   - "An opponent controls" is measured against the HOST's
-//     controller, because that is who the printed ability belongs to
-//     once granted. Equip requires "creature you control", so the two
-//     agree the moment the Equipment is attached; they can diverge
-//     afterwards if control of the creature changes, and then the
-//     rule that matters is the creature's.
-//
-// The PAYER is always the spell's controller (ev.Actor), so the
-// payment half is right in every case. What is approximated is the
-// trigger's own CONTROLLER: NewTriggeredItem keys on the source
-// permanent, so the stack object belongs to the Equipment's
-// controller rather than the host's. That only shows up in trigger
-// ordering, behind a control change that separated the two, and it is
-// noted rather than modelled.
+// The predicate is the only thing this shape adds: the warded
+// permanent is whichever one the source is attached to. Everything
+// else — the battlefield gate, "an opponent controls" measured
+// against the HOST's controller rather than the Equipment's, and the
+// payer being the spell's controller — is WardGranted's and is
+// documented there.
 func WardAttached(cost WardCost, label string) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventBecomesTarget},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			if !source.IsAttachedTo(ev.CardID) {
-				return false
-			}
-			host, ok := g.LookupCardForEffect(ev.CardID)
-			if !ok {
-				return false
-			}
-			return ev.Actor != host.Controller
-		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			itemID, payer := ev.StackItemID, ev.Actor
-			if itemID == uuid.Nil || payer == uuid.Nil {
-				return nil
-			}
-			return game.NewTriggeredItem(source, label,
-				func(g *game.Game, item *game.StackItem) error {
-					return wardPayOrCounter(g, item, itemID, payer, cost)
-				})
-		},
-	}
+	return WardGranted(cost, label, func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		return source.IsAttachedTo(target.InstanceID)
+	})
 }

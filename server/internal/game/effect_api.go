@@ -125,6 +125,21 @@ type DiscardPrompt struct {
 	// to two cards"), which is the difference between a floor of N
 	// and a floor of zero on the underlying pick.
 	UpTo bool
+	// Min is the floor on the pick for the one shape where the
+	// COUNT is not the whole rule: "discard two cards UNLESS you
+	// discard a creature card" (Teferi Akosa of Zhalfir) accepts a
+	// single card when that card is a creature, so its floor is one
+	// and Validate refuses the one-card sets that are not.
+	//
+	// Zero — the usual case — leaves the floor at N, or at zero with
+	// UpTo. A Min above N is clamped to N, because the hand may be
+	// smaller than the printed count (CR 701.8a). Min and UpTo do
+	// not compose; Min wins, and no printed clause wants both.
+	//
+	// It exists only alongside Validate. A floor below N with
+	// nothing judging the SET would simply be a weaker discard, and
+	// that is what UpTo is for.
+	Min int
 	// Question is the prompt's header. Empty composes one from the
 	// source card's name, so an ordinary "discard a card" caller
 	// stays a one-liner.
@@ -220,6 +235,9 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 	lo := n
 	if p.UpTo {
 		lo = 0
+	}
+	if p.Min > 0 {
+		lo = min(p.Min, n)
 	}
 	question := p.Question
 	if question == "" {
