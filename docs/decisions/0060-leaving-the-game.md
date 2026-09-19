@@ -649,4 +649,107 @@ not land on a silent wrong default.
 - **`pay_unless` is still the only kind with a drop action.** Every
   other CR 800.4f prompt the engine has is about the departed player's
   own material, so the honest row is the default; the column exists
-  because the next one may not be.
+  because the next one may not be. *(The next one arrived the day
+  after: `option_pick`, in the amendment below.)*
+
+## Amendment — 2026-09-19: a dropped `option_pick` runs the rest of the card (#1006)
+
+**Status:** Accepted · 2026-09-19 · S36 — Tables that wedge: the engine's
+dead ends
+**Issue:** [#1006](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1006)
+(noted while landing #994)
+**Related:** [#544](https://github.com/krakenhavoc/cmd_and_ctrl/issues/544)
+(a continuation that is silently never called is a card that stops
+halfway), [#961](https://github.com/krakenhavoc/cmd_and_ctrl/issues/961)
+(the column this fills in), [#994](https://github.com/krakenhavoc/cmd_and_ctrl/issues/994)
+(the second way into the same drop)
+
+The amendment above built the second column and said the next kind may
+need it. It does. A `PendingChoiceOptionPick` is asked from inside a
+resolution that is **paused waiting for it**, so its frame is the rest
+of the card — and the drop threw the frame away. Torment of Hailfire
+stopped at the victim who conceded and never asked the opponents after
+them; a pile split put neither pile anywhere; a "choose a player" never
+ran the sentence printed after the choice. `QueuePileSplitForEffect`
+and `QueueChoosePlayerForEffect` are careful about precisely this at
+QUEUE time, with a comment saying the rest of the card still has to
+resolve. Nothing was careful about it at drop time.
+
+### The third action: `dropDefault`
+
+| action | what the drop still does |
+|---|---|
+| `dropDiscard` | nothing — the question is forgotten (the default) |
+| `dropDecline` | CR 800.4f: the cost is not paid, so the "unless" branch runs |
+| `dropDefault` | the question ends and the **rest of the card** does not: the frame runs with the outcome the kind reserves for "nobody chose" |
+
+`option_pick` is `{reassign: true, onDrop: dropDefault}`. The outcome is
+`game.NoChoiceIndex` (-1), which is not new behaviour invented here:
+`effects.PickOption.Then` has always been documented to receive it when
+no question could be asked, and every continuation in the tree already
+handles it — a pile pick takes the first pile, Torment moves on to the
+next victim, a player choice records the absence. What is new is that
+the DROP path reaches it. It takes no branch on anybody's behalf, which
+is the difference between finishing a card and answering for a player
+who is not there.
+
+### One performer, two ways in
+
+`runChoiceDropActionLocked` (`pending_choice.go`) is the only place the
+column's actions are performed, and both ways a prompt can be dropped
+reach it:
+
+- **`dropChoiceLocked`** — the engine withdrawing a prompt nobody
+  answered. Every prune in the tree already goes through it, including
+  the seat prune that empties an option list when a player leaves
+  (CR 800.4a, #994), so the rule cannot be forgotten by the next prune
+  either. The slice surgery moved to `removeChoiceAtLocked` so that an
+  ANSWER (`dequeueChoiceLocked`) still runs no action — a dequeue that
+  also ran the drop action would run the card's continuation twice.
+- **the departure sweep**, behind CR 800.4f/g's gates, unchanged in
+  shape from the amendment above.
+
+### The gates differ per action, and that is the rule rather than an exception
+
+`dropDecline` passes gates 2 **and** 3 (`departedChoiceObjectLocked`).
+`dropDefault` passes gate 2 alone (`choiceObjectSurvivesLocked`, split
+out of it):
+
+- Gate 3 (`FromPlayer != Chooser`) is about **material**, and it exists
+  because `dropDecline` **acts** — cumulative upkeep's sacrifice, on a
+  permanent CR 800.4a has already taken, which is observable.
+- `dropDefault` acts on no material at all. What it needs is an
+  **object whose text is unfinished** — gate 2, the card still in the
+  game and somebody else's. A card that left with the chooser has no
+  rest to run.
+
+Torment of Hailfire is the case that makes the split load-bearing: the
+prompt is about the departing opponent's own permanents and hand, so
+gate 3 fails and nothing is reassigned — and what used to die with the
+drop was every LATER opponent's question, which is not their material
+at all.
+
+### Consequences
+
+**Good**
+
+- The kind that blocks the table hardest is also the kind whose drop
+  used to lose the most, and both are now settled at one choke point.
+- `QueueChoosePlayerForEffect` reads `NoChoiceIndex` as "nobody was
+  chosen": it records the absence on the item, exactly as it does when
+  it cannot queue the prompt at all, instead of returning
+  `ErrInvalidParam` into an event log.
+
+**Tradeoffs**
+
+- **A dropped option pick finishes the card with the question
+  unanswered**, which for a two-pile split means the chooser's pile is
+  the first one. That is the same answer the queue-time guards already
+  give, so the card has one behaviour rather than two, but it is a
+  default rather than a decision.
+- **`confirm` is still `dropDiscard`**, though its `OnNo` is the same
+  kind of printed branch. It is deliberately left: every confirm the
+  engine queues today is about the chooser's own material (gate 3 drops
+  it), and "no" is an ANSWER rather than the absence of one — running
+  it on a drop would be `dropDecline`'s claim, not this one's. The row
+  is worth revisiting with the first cross-table confirm.

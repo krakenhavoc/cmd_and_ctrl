@@ -20,7 +20,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // noncreature filter and a bigger tax, and the two prompts are the
 // same pay_unless kind asked of different players — which is exactly
 // why one of them blocks the table and the other does not (ADR 0018
-// §6, PayUnless.Blocking).
+// §6; the upkeep half goes through effects.UpkeepPayUnless and the
+// Rhystic half through PayUnless).
 //
 // Sandbox simplification, inherited from Rhystic Study: the
 // controller's "you may draw" is treated as "draw". DrawCards no-ops
