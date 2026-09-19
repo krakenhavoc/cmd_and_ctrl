@@ -41,7 +41,6 @@ b6ecd0768b6b83eb 8 3 aether_spellbomb.go,decoction_module.go,riptide_laboratory.
 bb6201482e1b5e56 6 3 batch04_helpers.go,bounce_lands.go,venser_shaper_savant.go
 bc67b2b6e7f5452c 6 13 bedevil.go,disenchant.go,doom_blade.go,drag_to_the_roots.go,fracture.go,go_for_the_throat.go,helpers.go,heros_downfall.go,krosan_grip.go,murder.go,naturalize.go,shoot_the_sheriff.go,vindicate.go
 beb594ee1f0f782c 10 2 reverberate.go,twincast.go
-c0745861f36d4785 10 2 attachments_batch3.go,ward.go
 c59cb2369bc6395c 9 2 cathars_crusade.go,gavony_township.go
 c676199c723c21c4 7 3 storm_kiln_artist.go,talrand_sky_summoner.go,young_pyromancer.go
 c73d36dc51818224 6 3 bristly_bill_spine_sower.go,duskshell_crawler.go,rosie_cotton_of_south_lane.go

@@ -365,6 +365,17 @@ func TestB42CompulsiveResearchDrawsThreeThenAsksForTwoOrALand(t *testing.T) {
 	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{nonland}); err == nil {
 		t.Error("one non-land card must be refused — the printed card wants two, or one land")
 	}
+	// #626: and neither is discarding NOTHING. This shipped with
+	// `UpTo: true`, whose floor is zero, and Validate is never asked
+	// about an empty pick — so "discard two cards unless you discard
+	// a land card" could be answered by pitching nothing at all. The
+	// floor is DiscardPrompt.Min now.
+	if prompt.ChooseMin != 1 {
+		t.Errorf("discard floor = %d, want 1 — you discard something", prompt.ChooseMin)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, nil); err == nil {
+		t.Error("discarding nothing satisfied the clause")
+	}
 }
 
 // --- modal ---------------------------------------------------------

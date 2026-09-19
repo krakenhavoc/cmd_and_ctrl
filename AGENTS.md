@@ -1253,7 +1253,18 @@ table**, for reasons [ADR 0038](docs/decisions/0038-protection-style-keywords.md
 §7 sets out. *Ward* is a triggered ability, not a targeting
 restriction, and it ships per-card via the `effects.Ward(WardMana(…))`
 helper (S30) — it stays out of the table because the COST is a
-parameter a bare token has nowhere to put. *Protection* tests its
+parameter a bare token has nowhere to put. **A GRANTED ward is the
+same thing, not a keyword grant** (#626): "equipped creature has
+ward {1}", "Knights you control … have ward {1}" are
+`effects.WardGranted(cost, label, grants)`, where `grants` is the
+ordinary `StaticAbility.AppliesTo` predicate and the GRANTING object
+carries the trigger — an Equipment from the battlefield, an emblem
+from the command zone (CR 114.3). Nothing is written onto the warded
+permanent, because there is nowhere on a `[]string` to put the cost.
+`Ward` and `WardAttached` are both narrow cases of it, so the printed
+and the granted ward share one trigger body and one payment path; when
+a card grants a ward alongside an anthem, pass the SAME predicate value
+to both halves so they cannot drift. *Protection* tests its
 quality against the SOURCE of a spell or ability (CR 702.16b), which
 the targeting choke point never receives; it is not implemented, and
 it is tracked in #662 (an ADR comes first). A card that prints
@@ -1677,6 +1688,20 @@ shows no button on it. Timing still applies on top — the grant says
 you *may* play the card, not *when*. See
 [ADR 0022](docs/decisions/0022-impulse-exile.md).
 
+**The client has ONE cast entry point** (#874), `handlePlayCard` in
+`Board.svelte`, and every surface that casts a card reaches it: the
+hand, the graveyard's flashback button, and the exile pile's impulse
+button, each passing the zone it came out of (and, for a grant that
+names a face, that face). The prompts a cast owes the player — the
+face picker, the alternative cost, the additional costs, X, the tap
+cost, the modes, the targets — all hang off that one chain, so a
+surface that dispatches `cast_spell` itself is not a shortcut, it is a
+cast with every one of those questions silently answered "none". That
+is exactly what the impulse button did until #874: a grant offering
+the PRINTED cost could only ever announce X = 0. When you add a new
+way to cast something, hand it to `handlePlayCard`; never build a
+payload.
+
 The same slot takes a **sacrifice** clause (S21):
 
 ```go
@@ -2075,6 +2100,30 @@ always keeps "choose nothing". With `Min` above zero, don't queue a
 prompt that no set can satisfy: nothing could answer it, and the
 enumerator logs it rather than inventing an answer.
 
+**A DISCARD says it through `DiscardPrompt`, not a raw pick** — the
+prompt has the same `Validate`, and going through it is what keeps the
+discard on the one discard path (CR 614 window, CR 903.9, madness,
+`EventDiscardCard`). Its floor is `Min`, and that is the field the
+"unless" clauses need (#626):
+
+```go
+g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+    Player: who, Source: src, N: 2, Min: 1,   // two cards, or ONE creature card
+    Question: "… discard two cards, unless you discard a creature card",
+    Validate: func(picked []game.Card) bool {
+        return len(picked) == 2 || (len(picked) == 1 && picked[0].IsCreature())
+    },
+})
+```
+
+Do NOT reach for `UpTo: true` to make room for the one-card answer.
+`UpTo` drops the floor to ZERO, and `Validate` is never asked about an
+empty pick — so the clause could be answered by discarding nothing.
+That was a live bug on Compulsive Research until #626. `Min` is
+clamped to the hand size, which is CR 701.8a's "as many as you can",
+and the number your `Validate` compares against must be that same
+clamped count, captured when you queue.
+
 **"Put [it / a card from among them] onto the battlefield" off a
 library (#745):** a reveal or a look followed by a put is not a search,
 so never reach for `SearchLibrary` with a predicate (it emits
@@ -2353,6 +2402,20 @@ apply the trigger only on the branch where the thing happened. The
 "you may" of "you MAY sacrifice a creature. When you do, …" belongs to
 the *parent* — set `Optional` only when the reflexive sentence itself
 says it.
+
+**"Tap any number of … . When you tap one or more this way, …"** is
+that shape with the choice in front of it, and it needs no new prompt
+kind (#626, Teferi Akosa of Zhalfir's −3). The first sentence is an
+ordinary `ChooseCardsPrompt` with `Min: 0` over the candidates and
+`Zone: ZoneBattlefield`; its `Then` re-reads every pick before tapping
+it (the board moves under an asynchronous prompt, and a creature that
+is no longer an untapped one you control was not "tapped this way"),
+counts what actually became tapped, and applies the `ReflexiveTrigger`
+only when that count is at least one. Build the trigger's `Targets`
+with the count in hand — "with mana value X or less" is a clause you
+could not write on the parent, because X is not known until the taps
+are in — and put the tapped creatures on `Cards` so the `Effect` can
+read them back with `ctx.PayloadCards()` instead of closing over them.
 
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
@@ -3148,7 +3211,10 @@ An emblem's abilities are written in **exactly** the vocabulary a
 permanent's are: `game.StaticAbility` with a layer and a sub-layer
 (the emblem object is the `source`, so "creatures you control" is the
 same `target.Controller == source.Controller` an anthem uses), and the
-ordinary trigger constructors (`Targeting(WheneverYouDraw(…), spec)`).
+ordinary trigger constructors (`Targeting(WheneverYouDraw(…), spec)`,
+`WardGranted(…)` for an emblem that grants ward — Teferi Akosa of
+Zhalfir's "Knights you control get +1/+0 and have ward {1}" is one
+`TribeFilter` feeding an anthem static and a ward trigger).
 There is no emblem dialect, because `effects.Register` files a second
 `game.CardDef` under `game.EmblemKey(OracleID)` and the emblem object
 reaches the layer pass and the harvester through the same

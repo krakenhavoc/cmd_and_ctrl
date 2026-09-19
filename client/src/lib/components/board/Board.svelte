@@ -524,17 +524,32 @@
     afterAltCost(card, choices);
   }
 
-  // handlePlayCard is the head of the chain. `fromZone` is undefined
-  // for the hand, which is every cast the board's own surfaces fire;
-  // S29's zone browser passes "graveyard" so a flashback cast walks
-  // the identical prompt chain and lands the zone on the payload via
-  // CastChoices.
+  // handlePlayCard is the head of the chain — the ONE entry point for
+  // casting a card, whichever surface the click came from. `fromZone`
+  // is undefined for the hand, which is every cast the board's own
+  // surfaces fire; S29's zone browser passes "graveyard" so a
+  // flashback cast walks the identical prompt chain, and #874 adds
+  // "exile", so an impulse cast does too.
+  //
+  // `face` is a face the CALLER already knows, which is only ever an
+  // exile grant naming one (a defeated Siege's back face). It is not a
+  // default for the picker: a grant that names a face offers no
+  // choice, so asking would be asking a question with one answer,
+  // and the server ignores the request and uses the grant's face
+  // anyway (game/face.go, faceForCastLocked). What passing it buys is
+  // that the REST of the chain — the X picker, the targets, the modes
+  // — reads the half being cast rather than the half sitting face-up
+  // in exile.
   //
   // The face picker's confirm re-enters at afterFace with its own
   // choices object, so the zone has to be seeded here rather than at
   // the end — otherwise a modal DFC cast out of the graveyard would
   // lose it.
-  function handlePlayCard(card: CardView, fromZone?: CastSourceZone): void {
+  function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
+    if (face !== undefined && face > 0) {
+      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+      return;
+    }
     if (needsFacePicker(card)) {
       facePromptZone = fromZone;
       facePromptCard = card;

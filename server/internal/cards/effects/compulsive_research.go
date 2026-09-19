@@ -20,6 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // bot enumerator, so an answer the client offers is an answer the
 // resolver accepts.
 //
+// The floor is DiscardPrompt.Min, not UpTo (#626). This shipped with
+// `UpTo: true`, which drops the floor to zero — and Validate is
+// deliberately never asked about an EMPTY pick, because a zero-floor
+// prompt has to keep "choose nothing" as an answer nothing can refuse
+// (ChooseCardsPrompt.Validate says so). So the target could discard
+// nothing at all and the Validate's own `default: return false` was
+// unreachable. Min 1 is the floor the card prints: you discard
+// something, and the set rule decides whether one is enough.
+//
 // Three shapes, because CR 701.8a says a player discards as many as
 // they can and no more:
 //
@@ -69,7 +78,7 @@ func init() {
 					Player:   who,
 					Source:   ctx.Source(),
 					N:        2,
-					UpTo:     true,
+					Min:      1,
 					Question: "Compulsive Research — discard two cards, or one land card",
 					Validate: func(picked []game.Card) bool {
 						switch len(picked) {
