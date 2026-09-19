@@ -2359,9 +2359,29 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 //
 // Sandbox: the player whose card has a triggered ability clicks
 // "trigger" on the card, optionally provides a label and target
-// list, and the engine queues an item. The drain happens in
-// drainPendingTriggersAPNAPLocked() — called from PassPriority and
-// every other priority-grant path.
+// list, and the engine queues an item and drains it —
+// drainPendingTriggersAPNAPLocked(), through runStateChecksLocked,
+// the same call PassPriority and every other priority-grant path
+// makes. The announcer holds priority and keeps it, so the announce
+// IS a CR 603.3b placement moment; anything else genuinely waiting
+// goes on the stack in the same APNAP batch.
+//
+// Two placements, not one, and that is #974: the trigger is placed,
+// THEN its targets are announced (CR 603.3d), then what THAT
+// triggered is placed — above it. A ward trigger harvested off the
+// announcement has to sit above the announced trigger or declining
+// the payment counters nothing, and one batch could not put it there:
+// APNAP orders a batch by SEAT, so a ward on the active player's
+// permanent would have gone under a non-active player's announced
+// trigger.
+//
+// What this costs is the batching of several MANUAL announces into
+// one APNAP placement: each click now places its own trigger, in
+// click order, rather than all of them in seat order at the next
+// pass. That batching only ever applied to triggers the players were
+// announcing by hand, it was already theirs to sequence, and the
+// alternative was a verb that left its trigger queued while the table
+// advanced the step past it.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
@@ -2397,9 +2417,34 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Source: sourceCardID,
 		Label:  params.Label,
 	})
-	// CR 603.3d: a manually-announced trigger chooses its targets as
-	// it goes on the stack, same as the harvested kind.
+	// CR 603.3b: the queued trigger is put on the stack the next time
+	// a player would receive priority, and clicking "trigger" IS that
+	// moment — the announcer has priority and keeps it. Draining here
+	// places this trigger (APNAP, alongside anything else genuinely
+	// waiting) instead of leaving it queued behind whatever the table
+	// does next: before #974 a pass round the table found an empty
+	// stack and ADVANCED THE STEP, and the announced trigger landed a
+	// step late.
+	g.runStateChecksLocked()
+	// CR 603.3d / 115.7: a manually-announced trigger chooses its
+	// targets as it goes on the stack, same as the harvested kind —
+	// and it has just gone on the stack, which is why this is after
+	// the drain rather than before it (#974). The catalog activation
+	// and the cast path announce from exactly here too: with the item
+	// already on the stack, so that what the announcement triggers can
+	// be placed ABOVE it.
 	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
+	// And the drain every other announce site runs (#968's
+	// ActivateAbility fix, #974's here). The announcer still holds
+	// priority, so CR 603.3b puts what the announcement triggered on
+	// the stack at this boundary: above the announced trigger, which
+	// is where a ward trigger has to be if declining the payment is to
+	// counter anything. Without it the ward trigger waited in
+	// PendingTriggers, and the pass that would have drained it
+	// resolved the announced trigger first (passPriorityLocked
+	// resolves the top of the stack and drains afterwards), so the
+	// counter came too late.
+	g.runStateChecksLocked()
 	return nil
 }
 

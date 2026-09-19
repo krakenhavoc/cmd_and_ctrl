@@ -164,12 +164,11 @@ func TestNonCatalogPermanentFallsBackToManualTrigger(t *testing.T) {
 		t.Fatalf("non-catalog card auto-fired a trigger")
 	}
 
-	// Manual announce still works and lands on the stack.
+	// Manual announce still works and lands on the stack — since #974
+	// as the announce returns, rather than at whatever boundary came
+	// next.
 	if err := g.AnnounceTrigger(me.ID, homebrewID, game.AbilityParams{Label: "Homebrew ETB — draw (manual)"}); err != nil {
 		t.Fatalf("AnnounceTrigger: %v", err)
-	}
-	if _, err := g.AdvanceStep(); err != nil {
-		t.Fatalf("AdvanceStep: %v", err)
 	}
 	item := triggerOnStack(g, homebrewID)
 	if item == nil {
