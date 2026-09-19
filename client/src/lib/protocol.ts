@@ -1599,6 +1599,19 @@ export interface CardView {
   // opens a picker before every other prompt, because the choice
   // changes what the rest of them ask. Absent for nearly every card.
   alternative_costs?: AlternativeCostView[];
+  // #1012: the PRINTED mana cost is not one of the prices this cast
+  // may claim out of the zone the card is in, so the caster must name
+  // one of `alternative_costs`. A Faithless Looting in the graveyard
+  // is castable at its flashback cost and at nothing else; a card a
+  // permission PRICES is the same shape.
+  //
+  // Absent — every hand cast, every command-zone cast, and a
+  // Gravecrawler whose graveyard permission carries no price — means
+  // the printed cost is on the menu as usual. `castable_here` is one
+  // bit and says only that a cast is possible from here; this is the
+  // other half of the sentence, and the client must not infer it from
+  // the shape of the offer list.
+  alternative_cost_required?: boolean;
   // ADR 0073 (#664): the "you may pay an additional cost" offers this
   // card makes — kicker, multikicker, buyback. Rendered inside the
   // same picker the alternative costs open, because CR 601.2b
@@ -1643,6 +1656,13 @@ export interface CardView {
   // command-zone cards: those surfaces are cast surfaces for
   // everything in them. The cost to pay rides `alternative_costs`,
   // already filtered to the offers claimable from this zone.
+  //
+  // #1015: the server derives it from that offer list and its own
+  // cast gate — "nothing refuses this cast, and at least one price is
+  // claimable". An escape card in a graveyard too small to pay for it
+  // is NOT castable here, and used to render a button with no offer
+  // behind it. Whether the printed cost is one of those prices is
+  // `alternative_cost_required`, not this bit.
   castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
   // this turn. Absent for ordinary exile, which is nearly all of it.

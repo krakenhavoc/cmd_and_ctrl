@@ -57,8 +57,8 @@ export function needsFacePicker(card: CardView): boolean {
  *
  * The announce-prompt fields are CLEARED rather than carried over,
  * and that is the important half. `modes`, `additional_cost`,
- * `alternative_costs`, `tap_cost`, `hand_abilities`, `legal_targets`
- * and `target_mode`
+ * `alternative_costs`, `alternative_cost_required`, `tap_cost`,
+ * `hand_abilities`, `legal_targets` and `target_mode`
  * are all computed server-side from the catalog spec of the face
  * that was active when the view was built — face 0. They describe
  * the FRONT half's rules and would be actively wrong attached to the
@@ -93,6 +93,10 @@ export function cardAsFace(card: CardView, i: number): CardView {
     modes: undefined,
     additional_cost: undefined,
     alternative_costs: undefined,
+    // #1012: it qualifies the offer list above, and a face swap that
+    // kept it would leave the picker saying "you must claim one of
+    // these" over an empty list.
+    alternative_cost_required: undefined,
     tap_cost: undefined,
     hand_abilities: undefined,
     legal_targets: undefined,
