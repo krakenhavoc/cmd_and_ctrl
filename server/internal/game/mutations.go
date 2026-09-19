@@ -3545,7 +3545,10 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 		// delta straight onto DamageMarked, no CR 120.3 split, no
 		// combat riders. It is the sandbox verb, and a negative delta
 		// (undo a mark) is a legitimate use of it.
-		damageTail: &damageTail{kind: damageTailManualMark},
+		damageTail: &damageTail{
+			kind:      damageTailManualMark,
+			sourceLKI: g.damageSourceLKILocked(source),
+		},
 	}
 	paused, err := g.damageThroughReplacementsLocked(ev)
 	if err != nil {
@@ -6025,6 +6028,9 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
+		// #662: CR 702.16e is read off the attacker as it was when it
+		// assigned, for the same reason lifelink and deathtouch are.
+		SourceLKI: SourceCharacteristics(atk),
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,

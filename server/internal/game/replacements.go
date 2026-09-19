@@ -473,6 +473,26 @@ type ReplacementEvent struct {
 	DamageAmount   int
 	IsCombatDamage bool
 
+	// SourceLKI is the damage source's characteristics AS THEY WERE
+	// when the event was created — last-known information, CR 608.2h.
+	// Nil when the source is unknown (a sandbox mark with no source,
+	// an effect that names none).
+	//
+	// DamageSource alone cannot answer CR 702.16e, and not only
+	// because of a pause. A SPELL source is never on the battlefield
+	// at all, so a Lightning Bolt's redness has no lookup; and a
+	// permanent that dealt damage and then died has DIFFERENT
+	// characteristics in the graveyard from the ones it dealt the
+	// damage with — a pumped, colour-shifted attacker is red on the
+	// battlefield and colourless in the yard. Reading the new zone
+	// would be the wrong object.
+	//
+	// Set from damageTail.sourceLKI by
+	// damageThroughReplacementsLocked, the one body all six damage
+	// entry points and the CR 616 resume go through, so there is
+	// exactly one place it is filled in. See ADR 0072 §3.
+	SourceLKI *Characteristic
+
 	// damageTail is the damage half's answer to zoneRoute: what the
 	// entry point still owes once the pipeline settles the amount —
 	// whether the target is a player or a permanent, and the snapshot
@@ -629,6 +649,26 @@ type ReplacementEffect struct {
 	// goes. Takes precedence over Optional and EntryLifeCost, which
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
+
+	// Preemptive declares a RULES-LEVEL shield that applies before
+	// any other applicable replacement, with no CR 616 ordering
+	// prompt. Exactly one effect sets it: protection's damage
+	// prevention (CR 702.16e, builtin_replacements.go).
+	//
+	// It exists because "which of these applies first?" has an
+	// observable answer even when the event ends the same way.
+	// Protection cancels the damage event outright, so in every
+	// ordering it is the last thing to happen to that event — but a
+	// CHARGED prevention shield ("prevent the next 4 damage",
+	// effects.PreventNextDamage) ordered first would spend a charge
+	// absorbing damage that was never going to be dealt. #420 is
+	// that bug; this flag is the fix.
+	//
+	// It is a DECLARED SIMPLIFICATION of CR 616.1, which gives the
+	// affected object's controller the ordering choice. See ADR 0072
+	// §4 for why the prompt is taken away and what it costs
+	// (Phytohydra).
+	Preemptive bool
 
 	// PureCancel declares that Replace does nothing but call
 	// ev.Cancel() — it rewrites no other field on the event and
@@ -857,6 +897,16 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) == 0 {
 			return ev, nil
 		}
+		// A PREEMPTIVE effect applies before anything else and
+		// without a prompt, however many others also apply — the
+		// whole point is that nothing else gets to charge itself
+		// first (ReplacementEffect.Preemptive; protection, CR
+		// 702.16e). Built-ins are gathered first, so scanning from
+		// the front finds it immediately on the ordinary board.
+		if i := firstPreemptive(applicable); i >= 0 {
+			g.applyFirstGatheredLocked(ev, applicable[i:i+1])
+			continue
+		}
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
@@ -979,6 +1029,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		ErrorMsg: ErrReplacementIterationExceeded.Error(),
 	})
 	return ev, ErrReplacementIterationExceeded
+}
+
+// firstPreemptive is the index of the first gathered replacement
+// that declared itself preemptive, or -1. See
+// ReplacementEffect.Preemptive.
+func firstPreemptive(applicable []activeReplacement) int {
+	for i, a := range applicable {
+		if a.effect.Preemptive {
+			return i
+		}
+	}
+	return -1
 }
 
 // allPureCancels reports whether every gathered replacement has

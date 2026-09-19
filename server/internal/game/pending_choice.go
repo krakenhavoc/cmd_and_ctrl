@@ -820,6 +820,14 @@ type DamageAssignmentFrame struct {
 	// battlefield).
 	SourceController uuid.UUID
 
+	// SourceLKI is the attacker's characteristics at prompt-queue
+	// time, for the same died-before-resume reason as SourceLifelink:
+	// CR 702.16e prevents damage from a source with the quality, and
+	// the quality has to be read off the attacker as it was when it
+	// assigned, not off a card in a graveyard. Rides onto the damage
+	// event through damageTailFromFrame. #662.
+	SourceLKI *Characteristic `json:",omitempty"`
+
 	// SourceIsCommander is the attacker's commander flag at
 	// prompt-queue time, cached for the same died-before-resume
 	// reason as SourceLifelink. The trample-to-player resume path

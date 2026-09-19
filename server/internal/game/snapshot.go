@@ -1167,6 +1167,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// slice is a complete copy.
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)
+		da.SourceLKI = copyCharacteristic(c.DamageAssignment.SourceLKI)
 		out.DamageAssignment = &da
 	}
 	// The continuation slots, one by one. Each is a paused effect.
@@ -1692,6 +1693,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)
+		da.SourceLKI = copyCharacteristic(c.DamageAssignment.SourceLKI)
 		out.DamageAssignment = &da
 	}
 	return out
@@ -1746,6 +1748,23 @@ func copyTargetRefs(in []TargetRef) []TargetRef {
 		return nil
 	}
 	return append([]TargetRef(nil), in...)
+}
+
+// copyCharacteristic deep-copies an optional characteristics snapshot
+// — the CR 702.16e last-known information a damage-assignment frame
+// carries (#662). Value copy plus its own slices, so a restored frame
+// shares nothing with the live one.
+func copyCharacteristic(in *Characteristic) *Characteristic {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.Types = copyStrings(in.Types)
+	out.Subtypes = copyStrings(in.Subtypes)
+	out.Supertypes = copyStrings(in.Supertypes)
+	out.Colors = copyStrings(in.Colors)
+	out.Abilities = copyStrings(in.Abilities)
+	return &out
 }
 
 func copyReplacementEffectIDs(in []ReplacementEffectID) []ReplacementEffectID {
