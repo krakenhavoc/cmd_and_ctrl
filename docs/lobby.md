@@ -378,6 +378,134 @@ settings forward rather than rolling them back.
 | 404 | game not found |
 | 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals |
 
+### `POST /games/{id}/spawn`
+
+Put cards or tokens onto a **live** table from nowhere
+([ADR 0075 §2.4](decisions/0075-table-settings-and-host-controls.md), which amends
+[ADR 0023](decisions/0023-develop-environment.md)). This is the production
+spawner and is **not** behind the dev-feature gate — the dev route
+`POST /games/{id}/dev/spawn` still exists, unchanged, with its own dev-only,
+anyone-at-the-table semantics.
+
+Two gates, both required:
+
+1. **`CanManageTable`** — the caller is the table host or the server admin.
+2. **`Settings.allow_spawn`** — the table has switched spawning on. It is
+   **off by default** and changed through the table-settings surface.
+
+A refusal says **which** gate fired, because they are different problems with
+different fixes: "you are not the host" sends the caller to ask the host, and
+"this table has spawning off" sends the host to the settings panel.
+
+Every spawn is **announced in the public game log** ("Luke (host) spawned
+2 × Treasure onto Ana's battlefield" — see `spawn` in
+[protocol.md](protocol.md)) and is **undoable** with the ordinary undo,
+attributed to the spawner and flagged free, so repairing a typo does not cost
+the host their per-turn take-back. A battlefield spawn emits `EventETB`, so
+enters-the-battlefield triggers fire and the spawn can put abilities on the
+stack; that is the point of the feature.
+
+**Request**
+
+```json
+{
+  "name": "Sol Ring",
+  "player_id": "<uuid of the seat that will own and control the cards>",
+  "zone": "battlefield",
+  "count": 2,
+  "commander": false
+}
+```
+
+Exactly one of three identifies what to make, checked in this order:
+
+| Field | What it names |
+|---|---|
+| `token` | a token template key, exactly as `GET /games/{id}/spawn/tokens` lists it (`"Treasure"`, `"1/1 white Soldier"`) |
+| `scryfall_id` | an indexed Scryfall printing — what the client pins after a `GET /games/{id}/spawn/cards` search |
+| `name` | a card name, resolved against the same index |
+
+`zone` is one of `battlefield`, `hand`, `graveyard`, `exile`, `library`,
+`command` (never `stack`). `count` defaults to 1 and is capped at 20.
+`commander` stamps the card as a commander and is ignored for a token.
+
+**Tokens may only be spawned onto the battlefield.** CR 704.5d removes a token
+from every other zone at the next state-based action check, so spawning one
+into a hand would appear to work and then silently undo itself. Tokens go
+through the same `CreateToken` primitive the card catalog uses, so a spawned
+Treasure taps and sacrifices for mana like a real one.
+
+**Response 200**
+
+```json
+{
+  "spawned": ["<instance uuid>", "..."],
+  "name": "Treasure",
+  "zone": "battlefield",
+  "count": 2,
+  "token": true
+}
+```
+
+`scryfall_id` echoes the printing that was resolved, and is absent for a token
+(a token has no Scryfall printing — that is why the dev spawner could never
+make one).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed `player_id`; unknown or missing `zone`; `count` outside 1..20; a token into a zone other than the battlefield; no card or token identifier |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 403 | the table has `allow_spawn` off (message: "spawning is switched off for this table") |
+| 403 | `player_id` is not a seat at this table |
+| 404 | game not found; no such card in the index; no such token template |
+| 409 | the game has not started (spawning into a lobby-state game would be erased by `Start` dealing opening hands) |
+| 503 | card index not loaded, or the server was built without token templates |
+
+### `GET /games/{id}/spawn/cards`
+
+Search the Scryfall index for the spawn picker: `?q=<text>&limit=<n>` (capped
+at 40), same response shape as the dev spawner's `GET /dev/cards`, so one
+client component serves both.
+
+It exists as its own route because `/dev/cards` is behind `requireDevFeature`
+and 404s in production, which would leave the production spawner with a name
+field and no way to find a name. Gated like the spawn itself, and scoped to a
+game for the same proxy-prefix reason as the token list below.
+
+**Response 200**
+
+```json
+{ "cards": [{ "id": "<scryfall uuid>", "name": "Sol Ring", "type_line": "Artifact", "mana_cost": "{1}", "set": "lea" }] }
+```
+
+**Errors**: 401 unauthenticated · 403 not the host or admin · 404 game not
+found · 503 card index not loaded.
+
+### `GET /games/{id}/spawn/tokens`
+
+The token template keys the `token` field of a spawn request accepts, sorted.
+Gated exactly like the spawn itself, so the picker is not offered to a seat
+that cannot use it.
+
+The answer is the same for every table; it is scoped to a game only so that it
+rides the `/games` prefix, which `deploy/Caddyfile`'s `@api` matcher, the Vite
+proxy and the service worker's `API_PATH` already carry. A new top-level prefix
+would have to be added to all three or it would 404 in production only.
+
+**Response 200**
+
+```json
+{ "tokens": ["0/1 colorless Eldrazi Spawn", "1/1 white Soldier", "Treasure", "..."] }
+```
+
+Two families share one list: the plain templates from
+`server/internal/cards/effects/tokens_table.go`, keyed the way a card prints
+them, and the behaviour tokens from `tokens.go` (Treasure, Gold, Food, Clue,
+Blood, Powerstone), keyed by name because that is how a card prints those.
+
 ### `GET /games`
 
 List the **active** games known to the lobby. Invite tokens are

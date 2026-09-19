@@ -77,6 +77,12 @@ type Config struct {
 	// scryfall-refresh.sh" error rather than a cryptic unknown-card
 	// list.
 	Cards *cards.Index
+	// Tokens is the catalog's token templates, for the table spawner
+	// (ADR 0075 §2.4). effects.Tokens() satisfies it; main wires it.
+	// Nil is supported: POST /games/{id}/spawn still spawns real
+	// cards and the token list comes back empty, which is what a
+	// deployment or a test that never wired the catalog should see.
+	Tokens TokenTemplates
 	// Evictor optionally closes any WS clients bound to a game when
 	// the game is deleted. When nil, DELETE still drops the game
 	// from the lobby + room manager but existing sockets linger
@@ -371,6 +377,19 @@ func Handler(c Config) http.Handler {
 	// (starting life is fixed once the game is active) are the
 	// engine's, not the route's.
 	mux.Handle("PATCH /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, updateTableSettings)))
+	// ADR 0075 §2.4: spawning on a LIVE table. Deliberately NOT
+	// behind requireDevFeature — this is the production spawner, and
+	// its two gates are its own: CanManageTable, and the table's
+	// AllowSpawn setting (off by default). Both are checked in the
+	// handler, and a refusal says which one fired. The dev route
+	// below keeps its dev-only, anyone-at-the-table semantics.
+	mux.Handle("POST /games/{id}/spawn", auth.Middleware(c.Auth)(handlerFunc(c, spawnCard)))
+	mux.Handle("GET /games/{id}/spawn/tokens", auth.Middleware(c.Auth)(handlerFunc(c, spawnTokens)))
+	// The card picker's search. GET /dev/cards is the same read, but
+	// it 404s in production, so the production spawner needs its own
+	// — scoped to a game so it rides the /games prefix every proxy
+	// already carries, and gated like the spawn it feeds.
+	mux.Handle("GET /games/{id}/spawn/cards", auth.Middleware(c.Auth)(handlerFunc(c, spawnCardSearch)))
 	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
 	// S15 sub-PR 4 — read-only auto-tap preview. The client polls
 	// this just before firing cast_spell with auto_tap=true; the

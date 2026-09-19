@@ -704,6 +704,21 @@ const (
 	// "set undos from 1 to 3 per turn". One event per field that
 	// actually changed. Public. Added in S35 (#1032).
 	EventSettingsChanged EventKind = "settings_changed"
+
+	// EventSpawned — somebody put cards or tokens onto the table from
+	// nowhere (ADR 0075 §2.4). Actor is who asked (uuid.Nil for the
+	// server admin), Target the seat the cards belong to, NewZone
+	// where they went, Label the card or token name and Amount how
+	// many. ONE event per spawn request; the per-card EventETB and
+	// EventTokenCreated events follow it.
+	//
+	// Public, and the reason the feature is allowed on a live table
+	// at all: a spawned Treasure is indistinguishable from a real one
+	// on the board, so the log is what tells the table where it came
+	// from. The public projection names the zone but NOT the card for
+	// a spawn into a hand or a library — see protocol.projectEvent.
+	// Added in S35 (#1032).
+	EventSpawned EventKind = "spawned"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
