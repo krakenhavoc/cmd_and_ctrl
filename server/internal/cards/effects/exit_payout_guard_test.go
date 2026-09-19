@@ -6,10 +6,13 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // exit_payout_guard_test.go is the #911 / #993 half of the lint
@@ -678,6 +681,72 @@ func rummage(ctx *Context, player uuid.UUID) error {
 			}
 		})
 	}
+}
+
+// TestEveryExitEntryPointStillExists is the other half of the drift
+// guard, and the one the header comment promised before this test
+// existed: the tables are STRINGS, so an entry point renamed in game/
+// or a primitive renamed in this package leaves a dead row that matches
+// nothing and guards nothing, and every test here keeps passing.
+//
+// The self-test's per-verb fixtures catch a verb that has lost ALL its
+// entry points. This catches the one row of eight that went stale,
+// which is the shape a rename actually takes.
+func TestEveryExitEntryPointStillExists(t *testing.T) {
+	gameType := reflect.TypeOf(&game.Game{})
+	for name, verb := range exitStartsTheClock {
+		if _, ok := gameType.MethodByName(name); !ok {
+			t.Errorf("exitStartsTheClock names (*game.Game).%s for the %q exit, and no such method "+
+				"exists. It was renamed or removed, so that row now matches nothing — point it at "+
+				"the new name, or delete it if the exit is gone.", name, verb.kind)
+		}
+	}
+
+	declared := declaredTypesInCatalog(t)
+	for name, verb := range exitPrimitives {
+		if !declared[name] {
+			t.Errorf("exitPrimitives names the catalog type %s for the %q exit, and no such type is "+
+				"declared in this package. It was renamed or removed, so that row now matches "+
+				"nothing — point it at the new name, or delete it if the primitive is gone.",
+				name, verb.kind)
+		}
+	}
+}
+
+// declaredTypesInCatalog is the set of type names this package declares.
+func declaredTypesInCatalog(t *testing.T) map[string]bool {
+	t.Helper()
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	fset := token.NewFileSet()
+	out := map[string]bool{}
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", name, err)
+		}
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok || gen.Tok != token.TYPE {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				if ts, ok := spec.(*ast.TypeSpec); ok {
+					out[ts.Name.Name] = true
+				}
+			}
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("found no type declarations in the catalog — the glob is wrong, and a check that " +
+			"reads nothing passes everything")
+	}
+	return out
 }
 
 // TestEveryExitVerbIsReachableFromTheTables is the widening's own
