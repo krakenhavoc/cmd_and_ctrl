@@ -56,9 +56,18 @@ func init() {
 			// "At the beginning of the upkeep of Stasis's
 			// controller" — the controller's upkeep only, unlike the
 			// skip-untap half, which hits every seat.
+			//
+			// UpkeepPayUnless, not PayUnless: the question is the
+			// active player's own, asked in their own upkeep, and the
+			// answer decides whether the permanent that is skipping
+			// everybody's untap step is still on the battlefield for
+			// the rest of the turn. So the table does not leave the
+			// upkeep until it is answered (#997, CR 500.4). It used
+			// PayUnless until then, and a table could take the whole
+			// turn with the {U} still unpaid.
 			AtYourUpkeep("Stasis — sacrifice unless you pay {U}", func(g *game.Game, item *game.StackItem) error {
 				sourceID := item.SourceCardID
-				return PayUnless{
+				return UpkeepPayUnless{
 					Chooser:  item.Controller,
 					Cost:     "{U}",
 					Question: "Stasis — pay {U} or sacrifice Stasis?",

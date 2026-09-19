@@ -66,10 +66,18 @@ func init() {
 // `cost` and `name` are copied strings, so the closure captures no
 // game state and survives Clone / undo, the same contract
 // manaDrainRefund follows.
+//
+// UpkeepPayUnless, not PayUnless: the debt is the active player's
+// own, owed in their own upkeep, and what hangs on the answer is the
+// largest consequence in the game. The table does not leave the
+// upkeep until it is answered (#997, CR 500.4). It used PayUnless
+// until then, and a table could take the turn — and the Pact's
+// controller could untap, draw and attack — with the {3}{U}{U} still
+// unpaid and the loss still pending.
 func pactPayment(cost, name string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		payer := item.Controller
-		return PayUnless{
+		return UpkeepPayUnless{
 			Chooser:  payer,
 			Cost:     cost,
 			Question: name + " — pay " + cost + " or lose the game",

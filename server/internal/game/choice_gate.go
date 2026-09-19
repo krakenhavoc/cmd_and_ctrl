@@ -90,19 +90,30 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // Game.ChoicePromptBlocksTable below, and neither able to loosen the
 // gate for anything:
 //
-//   - #567: a prompt may ask to block anyway
-//     (PendingChoice.ForceBlocks) — cumulative upkeep's "sacrifice
-//     this unless you pay", asked of the ACTIVE player during their
-//     own upkeep.
 //   - #951: a prompt whose decline counters an object still on the
 //     stack blocks while that object is there
 //     (PendingChoice.GuardsStackItem, counter_unless_paid.go). Ward
 //     borrows Rhystic Study's prompt and none of §6's reasoning
 //     survives the move: resolving the guarded spell ANSWERS the
-//     question by doing it, for free and against the payer. Derived
-//     by the engine from what the prompt is about rather than
-//     declared by each card, because six counter-unless-pays cards
-//     shipped before it and all six were wrong the same way.
+//     question by doing it, for free and against the payer.
+//   - #997: a prompt the payer owes before the step they are standing
+//     in can end blocks while the cursor is still there
+//     (PendingChoice.OwedInStep, upkeep_pay_unless.go). Stasis, Pact
+//     of Negation and every cumulative upkeep ask the ACTIVE player,
+//     during their OWN upkeep, about whether a permanent — or the
+//     player — is still in the game for the rest of the turn. CR
+//     117.3 does not pass priority on with a required action
+//     outstanding and CR 500.4 does not end the step until it is
+//     taken.
+//
+// Both are DERIVED by the engine from what the prompt is about rather
+// than declared by each card. #951 earned that: six
+// counter-unless-pays cards shipped before it and all six were wrong
+// the same way. #997 earned it twice over — #567 answered the upkeep
+// question with a per-card "please block" boolean, and the two cards
+// written after it with the same sentence printed on them (Stasis,
+// Pact of Negation) both missed the switch. A card says what its text
+// says; the engine works out what that means for the cursor.
 //
 // mana_pick is deliberately NOT one of them, though it looks like a
 // candidate. The engine does not treat it as a background decision:
@@ -125,10 +136,11 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // to drift from.
 var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// The ADR 0018 §6 allowlist, entire — and a statement about the
-	// KIND only. A pay_unless prompt still blocks when it asks to
-	// (ForceBlocks, #567) or when its decline counters an object on
-	// the stack (GuardsStackItem, #951); see the doc block above and
-	// counter_unless_paid.go.
+	// KIND only. A pay_unless prompt still blocks when its decline
+	// counters an object on the stack (GuardsStackItem, #951) or when
+	// the payer owes it before the current step can end (OwedInStep,
+	// #997); see the doc block above, counter_unless_paid.go and
+	// upkeep_pay_unless.go.
 	PendingChoicePayUnless: false,
 
 	// Everything else stops the table.
@@ -204,8 +216,8 @@ func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 }
 
 // ChoicePromptBlocksTable is ChoiceBlocksTable for one live prompt:
-// the kind's answer, unless the prompt has asked to block anyway
-// (#567) or is guarding an object still on the stack (#951).
+// the kind's answer, unless the prompt is guarding an object still on
+// the stack (#951) or is owed before the current step can end (#997).
 //
 // Everything that asks "does this stop the table" about an OUTSTANDING
 // choice goes through here (blockingChoiceLocked below, and
@@ -218,20 +230,23 @@ func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 // the deny-by-default direction is intact and a kind classified
 // `true` is unaffected by anything either of them says.
 //
-// A method on *Game since #951, because the second narrowing is a
-// question about the board — is the guarded object still on the
-// stack? — and the answer has to be re-read rather than frozen at the
-// moment the prompt was queued. Keeping it inside this one predicate
-// is the whole of #794's lesson: the engine gate and `internal/legal`
-// must not each work it out.
+// A method on *Game since #951, because both narrowings are questions
+// about the BOARD — is the guarded object still on the stack, is the
+// cursor still in the step that asked? — and the answers have to be
+// re-read rather than frozen at the moment the prompt was queued.
+// That is also what stops either of them wedging a table: a halt that
+// cannot outlive the thing it is about cannot outlive its answer
+// either. Keeping them inside this one predicate is the whole of
+// #794's lesson: the engine gate and `internal/legal` must not each
+// work it out.
 func (g *Game) ChoicePromptBlocksTable(c *PendingChoice) bool {
 	if c == nil {
 		return false
 	}
-	if c.ForceBlocks || ChoiceBlocksTable(c.Kind) {
+	if ChoiceBlocksTable(c.Kind) {
 		return true
 	}
-	return g.choiceGuardsALiveStackItem(c)
+	return g.choiceGuardsALiveStackItem(c) || g.choiceOwedBeforeTheStepEnds(c)
 }
 
 // ClassifiedChoiceKinds lists every kind the gate has an explicit

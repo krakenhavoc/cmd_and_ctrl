@@ -38,7 +38,7 @@ import (
 //     produces and what multiplying a number could not express.
 //   - "Unless you pay" is the CONTROLLER's decision, so declining
 //     sacrifices. The prompt therefore BLOCKS the table, unlike every
-//     other pay_unless — see PayUnless.Blocking and ADR 0018 §6.
+//     other pay_unless — see UpkeepPayUnless and ADR 0018 §6.
 //
 // Not a canonical keyword token. `canonicalKeywords`
 // (server/internal/game/keywords.go) is a CLOSED set of keywords the
@@ -80,11 +80,10 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 		if age <= 0 {
 			return nil
 		}
-		return PayUnless{
+		return UpkeepPayUnless{
 			Chooser:   ctx.Controller(),
 			Cost:      strings.Repeat(cost, age),
 			Question:  label,
-			Blocking:  true,
 			OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
 		}.Apply(ctx)
 	})

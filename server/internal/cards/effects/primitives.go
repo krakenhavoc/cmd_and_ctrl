@@ -647,30 +647,84 @@ type PayUnless struct {
 	Cost      string
 	Question  string
 	OnDecline func(ctx *Context) error
-	// Blocking stops the table until this prompt is answered, which
-	// the pay_unless KIND does not do by default (ADR 0018 §6, whose
-	// reasoning is Rhystic Study's: a question to a DIFFERENT player
-	// after the ability has left the stack). Set it when the question
-	// is the chooser's own and the rest of their turn depends on the
-	// answer — cumulative upkeep's "sacrifice this unless you pay"
-	// (#567). See Game.QueueBlockingPayUnlessForEffect.
-	Blocking bool
 }
 
+// USE UpkeepPayUnless FOR "AT THE BEGINNING OF YOUR UPKEEP, PAY OR
+// ELSE". It is the same CR 118.12 prompt, and the difference is the
+// whole of #997: a pay-unless the ACTIVE player owes during their OWN
+// upkeep must stop the table while it is unanswered, because the rest
+// of the turn is what hangs on the answer. A card that writes that
+// clause out of PayUnless gets the Rhystic Study latitude instead and
+// the table can take the turn with the question still open. Stasis
+// and Pact of Negation did exactly that.
+
 func (p PayUnless) Apply(ctx *Context) error {
-	item := ctx.Item
-	decline := p.OnDecline
-	queue := ctx.Game.QueuePayUnlessForEffect
-	if p.Blocking {
-		queue = ctx.Game.QueueBlockingPayUnlessForEffect
+	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
+		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
+}
+
+// declineAgainstTheSameItem adapts a card-side "or else" (a *Context
+// branch) to the engine-side one (a *game.Game branch) for the two
+// pay-unless primitives that take one.
+//
+// The Context is built FRESH when the branch runs, against whichever
+// *Game it is handed and bound to the same stack item: an undo
+// restores a clone, so the game the answer arrives at is not the one
+// that asked (StackItem.Effect's contract, which every resume frame
+// in the engine keeps). `item` is a detached pointer and the closure
+// captures nothing else.
+func declineAgainstTheSameItem(item *game.StackItem, decline func(ctx *Context) error) func(*game.Game) error {
+	return func(g *game.Game) error {
+		if decline == nil {
+			return nil
+		}
+		return decline(NewContext(g, item))
 	}
-	return queue(p.Chooser, ctx.Source(), p.Cost, p.Question,
-		func(g *game.Game) error {
-			if decline == nil {
-				return nil
-			}
-			return decline(NewContext(g, item))
-		})
+}
+
+// UpkeepPayUnless is "at the beginning of your upkeep, pay <Cost> or
+// <consequence>" — Stasis's "sacrifice Stasis unless you pay {U}",
+// Pact of Negation's "pay {3}{U}{U}. If you don't, you lose the
+// game", and every cumulative upkeep (CR 702.24).
+//
+// It is PayUnless with the halt the shape needs and cannot be trusted
+// to ask for. The prompt is addressed to the player whose upkeep it
+// is, about their own permanent or their own survival, so the table
+// must not leave the step while it is unanswered (CR 117.3, CR
+// 500.4). The engine derives that from the cursor rather than from a
+// flag on the card (Game.QueueUpkeepPayUnlessForEffect,
+// game/upkeep_pay_unless.go): #567 shipped the flag, and the two
+// cards written afterwards with the same sentence printed on them
+// both missed it.
+//
+// The step is read off the cursor when the prompt is queued, so the
+// same primitive is right for a beginning-of-end-step pay-or-else; it
+// is named for the family every printed card of it belongs to.
+type UpkeepPayUnless struct {
+	// Chooser is the player asked to pay — the permanent's
+	// controller, which is who the printed clause always means.
+	Chooser uuid.UUID
+
+	// Cost is the printed payment ("{U}", "{3}{U}{U}").
+	Cost string
+
+	// Question is the prompt header.
+	Question string
+
+	// OnDecline is the "or else": sacrifice the permanent, lose the
+	// game. It runs on "no" and on a "yes" the chooser cannot fund,
+	// exactly as PayUnless's does.
+	OnDecline func(ctx *Context) error
+}
+
+func (p UpkeepPayUnless) Apply(ctx *Context) error {
+	return ctx.Game.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
+		Chooser:   p.Chooser,
+		Source:    ctx.Source(),
+		Cost:      p.Cost,
+		Question:  p.Question,
+		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+	})
 }
 
 // CounterUnlessPaid is "counter <StackID> unless its controller pays

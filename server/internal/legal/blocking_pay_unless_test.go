@@ -7,14 +7,16 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// blocking_pay_unless_test.go — #567. A pay_unless prompt may ask to
-// block the table even though its KIND does not (cumulative upkeep's
-// "sacrifice this unless you pay", CR 702.24).
+// blocking_pay_unless_test.go — #567, rebuilt on #997's door. A
+// pay_unless prompt can stop the table even though its KIND does not:
+// the upkeep pay-or-else (cumulative upkeep's "sacrifice this unless
+// you pay", CR 702.24; Stasis; Pact of Negation) is owed before the
+// step it was asked in can end.
 //
 // #794's lesson is that the engine and the enumerator must answer
 // "does this stop the table" from ONE function. They now both read
 // game.ChoicePromptBlocksTable, and this pins that they agree about a
-// per-prompt override as well as about a kind. The prompt is queued to
+// per-prompt narrowing as well as about a kind. The prompt is queued to
 // a NON-active seat both times, so what is being measured is whether
 // the seat holding priority can still act.
 func TestPayUnlessBlocksTheTableOnlyWhenTheContractSaysSo(t *testing.T) {
@@ -22,19 +24,27 @@ func TestPayUnlessBlocksTheTableOnlyWhenTheContractSaysSo(t *testing.T) {
 		name     string
 		blocking bool
 	}{
-		{"cumulative upkeep blocks", true},
+		{"an upkeep pay-or-else blocks", true},
 		{"a Rhystic tax does not", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newTable(t)
 			active, payer := g.Seats[0], g.Seats[1]
 			g.WithWriteLock(func() {
-				queue := g.QueuePayUnlessForEffect
+				var err error
 				if tc.blocking {
-					queue = g.QueueBlockingPayUnlessForEffect
+					err = g.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
+						Chooser:   payer.ID,
+						Source:    payer.ID,
+						Cost:      "{1}",
+						Question:  "pay {1}?",
+						OnDecline: func(*game.Game) error { return nil },
+					})
+				} else {
+					err = g.QueuePayUnlessForEffect(payer.ID, payer.ID, "{1}", "pay {1}?",
+						func(*game.Game) error { return nil })
 				}
-				if err := queue(payer.ID, payer.ID, "{1}", "pay {1}?",
-					func(*game.Game) error { return nil }); err != nil {
+				if err != nil {
 					t.Fatalf("queue: %v", err)
 				}
 			})

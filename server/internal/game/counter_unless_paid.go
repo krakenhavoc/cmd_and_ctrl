@@ -24,14 +24,15 @@ import (
 // outstanding, and CR 608.2 makes the counter part of the resolution
 // that asked.
 //
-// WHY IT IS NOT A NEW FLAG. #567's amendment already moved the
-// latitude from the KIND to the PROMPT (PendingChoice.ForceBlocks),
-// and #794 established that "does this stop the table" has exactly
-// one answer, read by the engine gate and by `internal/legal`
-// through the same predicate. Adding a second card-level "please
-// block" switch would put the rule back in the hands of whoever
-// writes the next counter-unless-pays card — six of them shipped
-// before this file and all six were wrong in the same way.
+// WHY IT IS NOT A FLAG. #567's amendment had already moved the
+// latitude from the KIND to the PROMPT, and #794 established that
+// "does this stop the table" has exactly one answer, read by the
+// engine gate and by `internal/legal` through the same predicate.
+// What #567 left behind was a card-level "please block" switch, and
+// that put the rule back in the hands of whoever writes the next
+// card — six counter-unless-pays cards shipped before this file and
+// all six were wrong in the same way (and the switch itself was
+// missed twice more before #997 removed it).
 //
 // So the prompt records WHAT ITS DECLINE IS ABOUT
 // (PendingChoice.GuardsStackItem) and the gate works the rest out
@@ -112,7 +113,7 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	stackID := p.StackItem
 	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
 		func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) },
-		false, stackID)
+		TurnStep{}, stackID)
 }
 
 // counterIfStillOnStackLocked counters `stackID` unless it has

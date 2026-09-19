@@ -600,25 +600,26 @@ type PendingChoice struct {
 	confirmResume  *confirmFrame
 	coinFlipResume *coinFlipFrame
 
-	// ForceBlocks makes THIS prompt stop the table even though its
-	// KIND does not (choice_gate.go). One-way on purpose: it can
-	// tighten the gate's answer for one prompt and can never loosen
-	// it, so the deny-by-default direction is preserved and a kind
-	// classified `true` is unaffected by anything set here.
+	// OwedInStep is the step THIS prompt has to be answered in: the
+	// upkeep of "at the beginning of your upkeep, sacrifice this
+	// unless you pay" (Stasis, Pact of Negation, every cumulative
+	// upkeep). The zero value names no step, which is every other
+	// prompt in the engine.
 	//
-	// The one caller is cumulative upkeep (#567, CR 702.24). Its
-	// "sacrifice it unless you pay" question is a pay_unless, and
-	// pay_unless is the one kind ADR 0018 §6 allows the table to walk
-	// past — for a reason that is entirely about Rhystic Study: the
-	// ability has resolved, the question is addressed to a DIFFERENT
-	// player, and the answer spends from that player's pool or runs
-	// OnDecline, neither of which reads the step. None of that is
-	// true here. Cumulative upkeep asks the ACTIVE player, during
-	// their own upkeep, and what hangs on the answer is whether a
-	// permanent is still on the battlefield for the rest of the turn.
-	// So this prompt blocks and Rhystic Study's does not, which is a
-	// difference between two prompts rather than between two kinds.
-	ForceBlocks bool
+	// While the cursor is still standing in that step the prompt
+	// blocks the table, whatever its kind's classification says
+	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
+	// not let priority pass on with a required action outstanding and
+	// CR 500.4 does not let the step end until it has been taken. Set
+	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
+	// which is the one door into this shape.
+	//
+	// It replaced a per-card "please block" boolean in #997, for the
+	// reason #951 gives for deriving the other narrowing: the boolean
+	// shipped with cumulative upkeep in #567, Stasis and Pact of
+	// Negation were written afterwards with the same sentence printed
+	// on them, and neither author found the switch.
+	OwedInStep TurnStep
 
 	// GuardsStackItem is the object on the stack whose fate THIS prompt
 	// decides: the "that spell" of CR 118.12's "counter that spell
@@ -626,13 +627,14 @@ type PendingChoice struct {
 	//
 	// While that object is still on the stack the prompt blocks the
 	// table, whatever its kind's classification says
-	// (Game.ChoicePromptBlocksTable, choice_gate.go). It is not a
-	// second ForceBlocks: ForceBlocks is a fact about the prompt, fixed
-	// when it was queued, and this is a fact about the GAME, re-read
-	// every time the gate is asked. The difference is the whole point —
-	// once the guarded object has left the stack there is nothing left
-	// to counter, the question is background again, and the halt lifts
-	// itself rather than needing somebody to notice.
+	// (Game.ChoicePromptBlocksTable, choice_gate.go). It is the other
+	// half of OwedInStep's rule and the same kind of fact: both are
+	// facts about the GAME, re-read every time the gate is asked,
+	// rather than a halt declared once when the prompt was queued.
+	// That is the whole point — once the guarded object has left the
+	// stack there is nothing left to counter, the question is
+	// background again, and the halt lifts itself rather than needing
+	// somebody to notice.
 	//
 	// Set only by QueueCounterUnlessPaidForEffect
 	// (counter_unless_paid.go), which is the one door into this shape.
@@ -2707,43 +2709,24 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, false, uuid.Nil)
-}
-
-// QueueBlockingPayUnlessForEffect is QueuePayUnlessForEffect for a
-// pay-unless the table must NOT walk past — cumulative upkeep's
-// "sacrifice this unless you pay" (#567, CR 702.24).
-//
-// ADR 0018 §6 let the pay_unless KIND be walked past for reasons that
-// are entirely Rhystic Study's: the ability has resolved, the question
-// is addressed to a different player, and neither answer reads the
-// step. Cumulative upkeep asks the ACTIVE player during their own
-// upkeep, and the answer decides whether a permanent is still on the
-// battlefield for the rest of the turn. So the difference is between
-// two prompts, not between two kinds, and it rides
-// PendingChoice.ForceBlocks rather than a row in choiceGateDecisions.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueBlockingPayUnlessForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onDecline func(g *Game) error,
-) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, true, uuid.Nil)
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil)
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
-// `blocks` is the per-prompt ForceBlocks override (#567); `guards` is
-// the stack object whose fate the decline decides, or uuid.Nil for the
-// detached Rhystic shape (#951, counter_unless_paid.go). They are
-// separate because they answer different questions — one is a fact
-// about the prompt, the other a fact about the game — and no caller
-// sets both.
+//
+// `owed` is the step the prompt has to be answered in, or the zero
+// TurnStep for one the table may walk past (#997,
+// upkeep_pay_unless.go); `guards` is the stack object whose fate the
+// decline decides, or uuid.Nil for the detached Rhystic shape (#951,
+// counter_unless_paid.go). They are separate because they are facts
+// about different parts of the board — the cursor and the stack — and
+// no caller sets both. Both are read LIVE by the gate, so neither can
+// hold the table after the thing it is about has gone.
 func (g *Game) queuePayUnlessLocked(
 	chooser, source uuid.UUID,
 	cost, question string,
 	onDecline func(g *Game) error,
-	blocks bool,
+	owed TurnStep,
 	guards uuid.UUID,
 ) error {
 	parsed, err := ParseCost(cost)
@@ -2771,7 +2754,7 @@ func (g *Game) queuePayUnlessLocked(
 		Source:          source,
 		Reason:          question,
 		PayCost:         cost,
-		ForceBlocks:     blocks,
+		OwedInStep:      owed,
 		GuardsStackItem: guards,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,

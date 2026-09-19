@@ -115,7 +115,7 @@ func TestCumulativeUpkeepSacrificesOnDecline(t *testing.T) {
 
 // The prompt BLOCKS the table, unlike every other pay_unless: the
 // question is the active player's own and the rest of their turn
-// depends on the answer (ADR 0018 §6, PayUnless.Blocking).
+// depends on the answer (ADR 0018 §6, effects.UpkeepPayUnless).
 func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	g := newCatalogGame(t)
 	owner := g.Seats[1]
@@ -124,8 +124,12 @@ func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	advanceToUpkeepOf(t, g, 1)
 	passPriorityAroundTable(t, g)
 	choice := remoraUpkeepPrompt(t, g, owner.ID)
-	if !choice.ForceBlocks {
-		t.Fatal("the cumulative-upkeep prompt did not ask to block the table")
+	// Anchored to the upkeep it was asked in, and blocking because the
+	// cursor is still standing there (#997). Nothing on the card says
+	// "block": the engine reads the step.
+	if choice.OwedInStep.Step != game.StepUpkeep || choice.OwedInStep.Turn != g.Turn.Number {
+		t.Fatalf("the cumulative-upkeep prompt is anchored to %v, want turn %d's upkeep",
+			choice.OwedInStep, g.Turn.Number)
 	}
 	if !g.ChoicePromptBlocksTable(choice) {
 		t.Fatal("ChoicePromptBlocksTable says the cumulative-upkeep prompt does not block")
@@ -191,8 +195,9 @@ func TestMysticRemoraTaxesOpponentNoncreatureSpells(t *testing.T) {
 	if prompt.PayCost != "{4}" {
 		t.Errorf("Remora's tax = %q, want {4}", prompt.PayCost)
 	}
-	if prompt.ForceBlocks {
-		t.Error("the Rhystic half blocked the table — ADR 0018 §6 says it must not")
+	if prompt.OwedInStep.NamesAStep() {
+		t.Errorf("the Rhystic half anchored itself to %v and blocks the table — "+
+			"ADR 0018 §6 says it must not", prompt.OwedInStep)
 	}
 	if got := owner.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("owner hand delta %d, want 1", got)
