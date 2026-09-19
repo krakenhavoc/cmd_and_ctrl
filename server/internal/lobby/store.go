@@ -79,6 +79,12 @@ type GameRecord struct {
 	EndedAt    *time.Time
 	ArchivedAt *time.Time
 	WinnerSeat *int
+	// HostPlayerID is the table host's seat (ADR 0075 §2.1, migration
+	// 0004); uuid.Nil (NULL) when nobody hosts. Mutable.
+	HostPlayerID uuid.UUID
+	// HostDiscordID is a named host still waiting to claim a seat;
+	// "" (NULL) once bound, transferred, or never named. Mutable.
+	HostDiscordID string
 }
 
 // SeatRecord is one seats row.
@@ -132,7 +138,8 @@ type Store interface {
 	// CreateGame inserts a game and its invites atomically.
 	CreateGame(ctx context.Context, g GameRecord, invites []InviteRecord) error
 	// UpdateGame rewrites a game's mutable columns: name, state,
-	// started_at, ended_at, archived_at, winner_seat.
+	// started_at, ended_at, archived_at, winner_seat, host_player_id,
+	// host_discord_id.
 	UpdateGame(ctx context.Context, g GameRecord) error
 	// ReplaceSeats makes seats the game's complete seat list.
 	ReplaceSeats(ctx context.Context, gameID uuid.UUID, seats []SeatRecord) error

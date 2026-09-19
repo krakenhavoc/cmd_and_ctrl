@@ -193,8 +193,14 @@ Create a new game.
 **Request**
 
 ```json
-{ "name": "Friday Night Magic" }
+{ "name": "Friday Night Magic", "host_discord_id": "123456789012345678" }
 ```
+
+`host_discord_id` is optional. It names the table host by Discord user ID
+([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)). The
+Discord bot's `/cc-invite` sends the user who ran it. The ID is held on the
+table, unserved, until that Discord identity claims a seat through the OAuth
+join. That seat then becomes host. See [The table host](#the-table-host).
 
 **Response 201**
 
@@ -222,6 +228,67 @@ again (see `GET /games/{id}`).
 | 403 | session is not RoleAdmin |
 | 400 | empty name |
 
+### The table host
+
+Every table has at most one **host**: the seat that may manage the table
+(settings, and later spawning) alongside the server admin
+([ADR 0075 §2.1](decisions/0075-table-settings-and-host-controls.md)).
+
+- **A named host** (`host_discord_id` on `POST /games`) hosts as soon as that
+  Discord identity claims a seat.
+- **Otherwise the first human seat to join hosts.** When the named host has
+  not arrived yet, the first human hosts in the meantime and hands over when
+  they sit down.
+- **A bot seat never hosts.** A table with only bots has no host.
+- **Transfer**: `POST /games/{id}/host` (below).
+- **The host leaving passes it on.** When the host concedes or loses
+  ([ADR 0060](decisions/0060-leaving-the-game.md)), hosting passes to the
+  next human seat in turn order, skipping bots and departed seats and
+  wrapping around the table. If no human is left, nobody hosts and only the
+  admin can manage the table. The pass is permanent: an undo that brings the
+  old host back does not hand the table back.
+
+`GameMeta.host_player_id` is the host's player ID. When there is no host it
+is the zero UUID (`00000000-0000-0000-0000-000000000000`). Each seat in
+`players` carries `is_host: true` on the host's seat, and the game view's
+`PlayerView.is_host` matches it ([protocol.md](protocol.md)). Both the host
+and a pending named host are stored on the game's `games` row, in the
+`host_player_id` and `host_discord_id` columns added by migration 0004. They
+survive a restart, and a pass that happened while the server was up is
+written to the row as soon as the lobby sees it.
+
+"Host or admin" is one predicate, `lobby.CanManageTable(principal, meta)`.
+It is true for `RoleAdmin`, or for a `RolePlayer` session bound to this game
+whose `player_id` is `host_player_id`. It is false for spectators, unseated
+Discord sign-ins, other seats, and the host of a different table.
+
+### `POST /games/{id}/host`
+
+Transfer hosting to another seat. Host or admin only.
+
+**Request**
+
+```json
+{ "player_id": "<uuid of the new host>" }
+```
+
+**Response 200**: the updated `GameMeta`, with `host_player_id` and the
+`is_host` flags moved. Connected clients get a fresh snapshot with the new
+`is_host`.
+
+An explicit transfer also clears a pending named host, so a late `/cc-invite`
+claimant does not take the table back.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing or malformed `player_id` |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 422 | `player_id` is not a seat at this table, is a bot, or has left the game |
+
 ### `GET /games`
 
 List the **active** games known to the lobby. Invite tokens are
@@ -241,8 +308,9 @@ games pile up.
       "id": "<uuid>",
       "name": "FNM",
       "created_at": "2026-04-13T20:00:00Z",
-      "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0 }],
-      "state": "lobby"
+      "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "is_host": true }],
+      "state": "lobby",
+      "host_player_id": "<uuid>"
     }
   ]
 }

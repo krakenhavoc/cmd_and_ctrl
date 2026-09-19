@@ -230,7 +230,7 @@ func TestHandleInvite_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	c := NewServerClient(ts.URL, "admin")
-	meta, err := c.CreateGame(context.Background(), "friday")
+	meta, err := c.CreateGame(context.Background(), "friday", "")
 	if err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
@@ -255,4 +255,45 @@ func contains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func TestInviteNamesTheInvokerAsHost(t *testing.T) {
+	var got map[string]string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": "session"})
+	})
+	mux.HandleFunc("/games", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(lobby.GameMeta{ID: uuid.New(), Name: got["name"], InviteToken: "tok", State: "lobby"})
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	h := NewHandler(Config{GuildIDs: []string{"g1"}}, NewServerClient(ts.URL, "admin"), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	i := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		Type:    discordgo.InteractionApplicationCommand,
+		GuildID: "g1",
+		Member:  &discordgo.Member{User: &discordgo.User{ID: "424242"}},
+	}}
+	name, _, err := h.createInviteGame(context.Background(), i, discordgo.ApplicationCommandInteractionData{Name: CmdInvite})
+	if err != nil {
+		t.Fatalf("createInviteGame: %v", err)
+	}
+	if got["host_discord_id"] != "424242" {
+		t.Errorf("host_discord_id = %q, want the invoker 424242 (body %v)", got["host_discord_id"], got)
+	}
+	if got["name"] != name || name == "" {
+		t.Errorf("name = %q, sent %q", name, got["name"])
+	}
+
+	// A DM interaction carries the user on User, not Member.
+	dm := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{User: &discordgo.User{ID: "7"}}}
+	if id := invokerID(dm); id != "7" {
+		t.Errorf("DM invoker = %q, want 7", id)
+	}
+	if id := invokerID(&discordgo.InteractionCreate{Interaction: &discordgo.Interaction{}}); id != "" {
+		t.Errorf("no user: invoker = %q", id)
+	}
 }

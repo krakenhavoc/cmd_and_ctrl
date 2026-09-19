@@ -85,6 +85,20 @@ type GameMeta struct {
 	// it (RoomManager.Delete reaps the snapshot, the replay log and
 	// the restore point). See docs/lobby.md.
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
+
+	// HostPlayerID is the seat that hosts the table (ADR 0075 §2.1):
+	// it may manage the table alongside the server admin. The zero
+	// UUID means no host yet (nobody human has sat down) or none left.
+	// It is the room's effective host mirrored here — see host.go and
+	// ws/host.go for who hosts and how it passes on.
+	HostPlayerID uuid.UUID `json:"host_player_id,omitempty"`
+
+	// HostDiscordID is a named host still waiting to sit down: the
+	// Discord user POST /games was told should host (the /cc-invite
+	// invoker). Cleared once that identity claims a seat, or by an
+	// explicit transfer. Persisted with the meta but never served:
+	// copyMeta, which every outbound meta passes through, blanks it.
+	HostDiscordID string `json:"host_discord_id,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -128,6 +142,10 @@ type SeatInfo struct {
 	IsBot   bool   `json:"is_bot,omitempty"`
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
+
+	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
+	// seat. Mirrors GameMeta.HostPlayerID.
+	IsHost bool `json:"is_host,omitempty"`
 }
 
 // BotHost runs bot seats. Satisfied by *aiseat.Manager; an interface
@@ -313,7 +331,7 @@ func (l *Lobby) resolveInvite(want uuid.UUID, invite string) (InviteRecord, erro
 // Create records no creator (games.created_by NULL); it is CreateBy
 // with a zero user.
 func (l *Lobby) Create(name string) (GameMeta, error) {
-	return l.CreateBy(name, uuid.Nil)
+	return l.CreateWith(name, uuid.Nil, "")
 }
 
 // CreateBy is Create with the creating user recorded (ADR 0051
@@ -323,6 +341,15 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 // a users row: the column is a foreign key, and a user that does not
 // exist fails the create.
 func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
+	return l.CreateWith(name, createdBy, "")
+}
+
+// CreateWith is the full create: CreateBy plus an optional named host.
+// hostDiscordID, when non-empty, is the Discord user who should host
+// the table once they claim a seat (ADR 0075 §2.1); until they do,
+// the first human seat hosts. It is stored on the games row
+// (host_discord_id) and never served.
+func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID string) (GameMeta, error) {
 	name = trimToLimit(name, 80)
 	if name == "" {
 		return GameMeta{}, ErrEmptyName
@@ -350,6 +377,7 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 		SpectatorInvite: specInvite,
 		Players:         []SeatInfo{},
 		State:           string(g.State),
+		HostDiscordID:   trimToLimit(hostDiscordID, 32),
 	}
 
 	// The invites are minted here and nowhere else, and they are
@@ -362,11 +390,12 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 	}
 	ctx, cancel := storeCtx()
 	err = l.store.CreateGame(ctx, GameRecord{
-		ID:        g.ID,
-		Name:      name,
-		CreatedBy: creator,
-		State:     string(g.State),
-		CreatedAt: created,
+		ID:            g.ID,
+		Name:          name,
+		CreatedBy:     creator,
+		State:         string(g.State),
+		CreatedAt:     created,
+		HostDiscordID: meta.HostDiscordID,
 	}, []InviteRecord{
 		{Hash: playerHash, GameID: g.ID, Kind: InvitePlayer, CreatedBy: creator, CreatedAt: created},
 		{Hash: specHash, GameID: g.ID, Kind: InviteSpectator, CreatedBy: creator, CreatedAt: created},
@@ -549,12 +578,22 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	}
 	var p *game.Player
 	var err error
+	bindNamedHost := false
 	broadcast, err = l.applyLocked(id, entry, func() error {
 		added, addErr := entry.room.Game.AddPlayer(playerName, deck)
 		if addErr != nil {
 			return addErr
 		}
 		p = added
+		// ADR 0075 §2.1: the named host takes the table when they sit
+		// down; otherwise the first human to join hosts. Set inside
+		// the apply so this commit's capture already carries is_host.
+		if identity.Populated() && entry.meta.HostDiscordID != "" && identity.ID == entry.meta.HostDiscordID {
+			entry.room.SetHost(p.ID)
+			bindNamedHost = true
+		} else if entry.room.HostPlayerID() == uuid.Nil {
+			entry.room.SetHost(p.ID)
+		}
 		if identity.Populated() {
 			// Mirror the identity onto the game.Player so it flows
 			// through PlayerView to the client without the snapshot
@@ -598,6 +637,11 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
+	if bindNamedHost {
+		entry.meta.HostDiscordID = ""
+		l.persistGameLocked(entry)
+	}
+	l.syncHostLocked(entry)
 
 	// Return a copy so callers can't mutate internal state via the
 	// returned meta. (json.Marshal would copy anyway, but defense in
@@ -658,6 +702,7 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	if !ok {
 		return GameMeta{}, "", ErrGameNotFound
 	}
+	l.syncHostLocked(entry)
 	rec, err := l.resolveInvite(id, invite)
 	if err != nil {
 		return GameMeta{}, "", err
@@ -675,6 +720,7 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	m.State = string(entry.room.Game.CurrentState())
 	m.InviteToken = ""
 	m.SpectatorInvite = ""
+	m.HostPlayerID = uuid.Nil
 	for i := range m.Players {
 		m.Players[i].PlayerID = uuid.Nil
 		m.Players[i].DiscordID = ""
@@ -1052,6 +1098,7 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
+	l.syncHostLocked(entry)
 	// Live-state read — see the note in List.
 	l.syncStateLocked(entry)
 	return copyMeta(entry.meta), nil
@@ -1102,6 +1149,7 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		// affordances (replay download); a transition seen here is
 		// also written to the games row.
 		l.syncStateLocked(e)
+		l.syncHostLocked(e)
 		m := copyMeta(e.meta)
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
@@ -1240,6 +1288,9 @@ func copyMeta(m GameMeta) GameMeta {
 		at := *m.ArchivedAt
 		out.ArchivedAt = &at
 	}
+	// A pending named host is a Discord ID for somebody who may not
+	// be at the table yet; nobody reading the meta needs it.
+	out.HostDiscordID = ""
 	return out
 }
 

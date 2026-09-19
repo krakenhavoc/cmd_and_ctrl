@@ -993,6 +993,9 @@ export interface PlayerView {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // Table host (ADR 0075 §2.1), visible to every viewer. The host may
+  // change table settings alongside the server admin.
+  is_host?: boolean;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.

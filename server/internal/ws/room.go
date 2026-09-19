@@ -74,6 +74,13 @@ type Room struct {
 	// never bleed onto an unrelated commit. Nil for every ordinary
 	// action, which is all of them but bot improvisation.
 	pendingAnnotation *protocol.ReplayAnnotation
+
+	// host is the designated table host (ADR 0075 §2.1), set by the
+	// lobby through SetHost and moved on by resolveHost when that seat
+	// leaves the game. Guarded by hostMu, never by mu, so the lobby
+	// can set it from inside an ApplyExternal fn. See host.go.
+	hostMu sync.Mutex
+	host   uuid.UUID
 }
 
 // undoEntry is one slot on Room.undoStack — the pre-action game
@@ -461,6 +468,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 		nextSeq = r.seq + 1
 	}
 	view := protocol.ViewOfGame(r.Game)
+	r.stampHostLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

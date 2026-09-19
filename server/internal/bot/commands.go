@@ -164,12 +164,7 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 // handleInvite runs /cc-invite: read the optional name,
 // create a game, respond with a channel-visible invite link.
 func (h *Handler) handleInvite(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
-	name := stringOption(data.Options, "name")
-	if strings.TrimSpace(name) == "" {
-		name = defaultGameName(h.now())
-	}
-
-	meta, err := h.client.CreateGame(ctx, name)
+	name, meta, err := h.createInviteGame(ctx, i, data)
 	if err != nil {
 		h.log.Error("create game failed", "error", err.Error(), "name", name)
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(inviteErrorMessage(err)))
@@ -178,6 +173,34 @@ func (h *Handler) handleInvite(ctx context.Context, s *discordgo.Session, i *dis
 
 	url := buildInviteURL(h.cfg.ClientBaseURL, meta.ID, meta.InviteToken)
 	_ = s.InteractionRespond(i.Interaction, inviteSuccessResponse(meta, url))
+}
+
+// createInviteGame is /cc-invite's server call, split from the
+// Discord response so it can be tested without a live session. The
+// invoking Discord user is passed as host_discord_id: whoever runs
+// /cc-invite hosts the table (ADR 0075 §2.1).
+func (h *Handler) createInviteGame(ctx context.Context, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) (string, lobby.GameMeta, error) {
+	name := stringOption(data.Options, "name")
+	if strings.TrimSpace(name) == "" {
+		name = defaultGameName(h.now())
+	}
+	meta, err := h.client.CreateGame(ctx, name, invokerID(i))
+	return name, meta, err
+}
+
+// invokerID is the Discord user who ran the command: Member.User in a
+// guild, User in a DM. Empty when neither is present.
+func invokerID(i *discordgo.InteractionCreate) string {
+	if i == nil || i.Interaction == nil {
+		return ""
+	}
+	if i.Member != nil && i.Member.User != nil {
+		return i.Member.User.ID
+	}
+	if i.User != nil {
+		return i.User.ID
+	}
+	return ""
 }
 
 // handleGames runs /cc-games: fetch the list (invite tokens

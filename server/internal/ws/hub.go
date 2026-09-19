@@ -115,6 +115,11 @@ type Binding struct {
 	ReadOnly bool
 	UserID   uuid.UUID
 	IssuedAt time.Time
+	// Admin marks a connection authenticated as the server admin
+	// (auth.RoleAdmin). An admin may bind to a player's seat, so
+	// PlayerID alone cannot tell an admin from that player; the table
+	// host gates (ADR 0075, Room.CanManageTable) need the difference.
+	Admin bool
 }
 
 // UpgradeAuthorizer validates an incoming WebSocket upgrade and

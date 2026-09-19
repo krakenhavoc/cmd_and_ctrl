@@ -304,6 +304,9 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
+	// authorised inside the handler with CanManageTable.
+	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
 	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
 	// S15 sub-PR 4 — read-only auto-tap preview. The client polls
 	// this just before firing cast_spell with auto_tap=true; the
@@ -423,6 +426,14 @@ type sessionResponse struct {
 
 type createGameRequest struct {
 	Name string `json:"name"`
+	// HostDiscordID optionally names the table host by Discord user
+	// ID (ADR 0075 §2.1). /cc-invite sends the invoking user.
+	HostDiscordID string `json:"host_discord_id,omitempty"`
+}
+
+// transferHostRequest is the body of POST /games/{id}/host.
+type transferHostRequest struct {
+	PlayerID uuid.UUID `json:"player_id"`
 }
 
 // reclaimRequest is the body of POST /games/{id}/reclaim. Ticket is
@@ -488,11 +499,48 @@ func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	p, _ := auth.PrincipalFromContext(r.Context())
-	meta, err := c.Lobby.CreateBy(body.Name, p.UserID)
+	meta, err := c.Lobby.CreateWith(body.Name, p.UserID, body.HostDiscordID)
 	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusCreated, meta)
+}
+
+// transferHost handles POST /games/{id}/host: hand the table to
+// another seat (ADR 0075 §2.1). Host or admin only; the target must
+// be a human seat still in this game.
+func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	var body transferHostRequest
+	if err := decodeJSON(w, r, &body); err != nil {
+		return err
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if !CanManageTable(p, meta) {
+		return ErrNotTableManager
+	}
+	if body.PlayerID == uuid.Nil {
+		return httpError(http.StatusBadRequest, "player_id is required")
+	}
+	meta, err = c.Lobby.TransferHost(id, body.PlayerID)
+	if errors.Is(err, ErrPlayerNotInGame) {
+		// The CALLER is fine; the target is not a seat here.
+		return httpError(http.StatusUnprocessableEntity, "player_id is not a seat in this game")
+	}
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
 }
 
 // joinGame is the primary onboarding path: a player clicks an invite
@@ -756,6 +804,13 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
+	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+}
+
+// redactMetaFor strips what principal p may not read off a game's
+// meta: the invite tokens for anyone outside the table, and both
+// tokens for a spectator.
+func redactMetaFor(p auth.Principal, id uuid.UUID, meta GameMeta) GameMeta {
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
@@ -767,7 +822,7 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
-	return writeJSON(w, http.StatusOK, meta)
+	return meta
 }
 
 // deleteGame (admin-only) removes a game from the lobby and from the
@@ -2219,6 +2274,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
+	case errors.Is(err, ErrNotTableManager):
+		status = http.StatusForbidden
+	case errors.Is(err, ErrHostIneligible):
+		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
 	case errors.Is(err, ErrNotABot), errors.Is(err, ErrUnknownBotTier), errors.Is(err, ErrSeatIsBot):

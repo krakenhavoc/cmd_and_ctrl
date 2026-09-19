@@ -674,6 +674,9 @@
                     <div class="sname">
                       seat {p.seat + 1}: {seatName(p)}
                       {#if p.is_bot}<b class="botchip">bot</b>{/if}
+                      {#if p.is_host}<b title="Table host: may manage the table alongside the admin"
+                          >host</b
+                        >{/if}
                       {#if p.player_id === $session?.playerID}<b>you</b>{/if}
                     </div>
                     {#if p.is_bot}
