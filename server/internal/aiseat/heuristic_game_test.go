@@ -425,10 +425,18 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 	// Set the board up by hand, before any runner is watching.
 	g.Seats[0].Life = 1
 	g.Seats[0].Hand.Cards = nil
-	g.Battlefield.PushTop(game.Card{
+	// KnownBy the whole table, as a permanent on the battlefield
+	// always is. Without it (#95) the bot's FILTERED view showed a
+	// face-down card with no type line, `hopeless` counted the
+	// opponent's creatures as zero and the seat never conceded — the
+	// test passed only because the Killer went on to kill it, which is
+	// not what its name says it checks.
+	killer := game.Card{
 		InstanceID: uuid.New(), Name: "Killer", TypeLine: "Creature — Bear",
 		Power: 4, Toughness: 4, Owner: opp.ID, Controller: opp.ID,
-	})
+		KnownBy: map[uuid.UUID]bool{bot.ID: true, opp.ID: true},
+	}
+	g.Battlefield.PushTop(killer)
 
 	cfg := heuristic.DefaultConfig()
 	cfg.ConcedeTurns = 1
@@ -444,9 +452,17 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 		t.Fatalf("the bot played on from a hopeless position (life %d)", g.Snapshot().Seats[0].Life)
 	}
 	var eliminated bool
-	g.ReadSnapshot(func() { eliminated = g.Seats[0].Eliminated })
+	var life int
+	g.ReadSnapshot(func() { eliminated, life = g.Seats[0].Eliminated, g.Seats[0].Life })
 	if !eliminated {
 		t.Fatal("the bot did not concede")
+	}
+	// It CONCEDED rather than died. The distinction is the test: a
+	// seat eliminated at negative life was killed by the Killer, which
+	// this fixture would report as a pass while the concede heuristic
+	// never ran at all.
+	if life <= 0 {
+		t.Errorf("the seat is out at %d life — it was killed, not conceded", life)
 	}
 }
 

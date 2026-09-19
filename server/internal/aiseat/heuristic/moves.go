@@ -265,9 +265,12 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
-	card := st.mine[cp.InstanceID]
+	card := st.castSource(cp.InstanceID)
 	var v float64
 	reason := "cast"
+	if cp.AlternativeCost != "" {
+		reason = "cast (" + cp.AlternativeCost + ")"
+	}
 	if card != nil {
 		switch {
 		case isCreature(card) || isPermanentSpell(card):
@@ -298,8 +301,29 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			reason = "cast (unimplemented)"
 		}
 	}
-	// The card leaves hand: one fewer resource.
-	v -= st.w.Hand
+	// A card leaves HAND: one fewer resource. #673 — a cast out of the
+	// graveyard, exile or the top of the library costs no card in
+	// hand, and charging one there was what made every flashback,
+	// escape and impulse cast score below passing and never get taken.
+	// What such a cast really spends is the card in the graveyard,
+	// which the evaluation does not price at all (score.go reads the
+	// battlefield and the seats); that is a known gap rather than a
+	// free lunch, and it is written down in docs/bot.md.
+	if cp.FromZone == "" || cp.FromZone == "hand" || cp.FromZone == "command" {
+		v -= st.w.Hand
+	}
+	// CR 601.2b's card half of a claimed alternative cost: Force of
+	// Will's pitched blue card is a card out of hand exactly as a
+	// discard is, and Daze's Island is a permanent off the board.
+	// Escape's exiled graveyard is the unpriced case above.
+	for _, id := range cp.AltCostIDs {
+		switch {
+		case st.mine[id] != nil:
+			v -= st.w.Hand
+		case st.bf[id] != nil:
+			v -= st.permanentValue(st.bf[id])
+		}
+	}
 	// Additional costs are paid out of the same pool of resources.
 	v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	for _, id := range cp.SacrificeIDs {
@@ -315,6 +339,41 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v -= st.w.CommanderTax * 0.5
 	}
 	return v, reason
+}
+
+// castSource finds the card a cast move names, in any zone a cast can
+// come out of: the bot's hand or command zone, any graveyard, the
+// shared exile pile, and the top of the bot's own library (#673, CR
+// 401.5).
+//
+// Before the enumerator walked those zones this could only ever be a
+// hand card, so `st.mine` was the whole lookup. Leaving it that way
+// once the moves arrived would have priced every flashback, escape,
+// foretold and impulse cast as an unknown card — which is not a
+// neutral answer: it scores below passing, and a bot offered a
+// flashback would decline it forever.
+//
+// Nil when the card is in a zone this seat may not see, which is a
+// real answer rather than a bug: the move is still offered and still
+// priced, just without the body's value.
+func (st *state) castSource(id string) *protocol.CardView {
+	if c := st.mine[id]; c != nil {
+		return c
+	}
+	if c := st.graveyard[id]; c != nil {
+		return c
+	}
+	if c := st.exile[id]; c != nil {
+		return c
+	}
+	if st.seat != nil {
+		for i := range st.seat.Library.Cards {
+			if st.seat.Library.Cards[i].InstanceID == id {
+				return &st.seat.Library.Cards[i]
+			}
+		}
+	}
+	return nil
 }
 
 // isPermanentSpell reports whether a card in hand will become a

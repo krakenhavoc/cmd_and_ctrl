@@ -1,7 +1,7 @@
 # ADR 0033 — AI bot seat: legal-move enumeration, virtual seats, tiered policies
 
 **Status:** Accepted · 2026-09-16 (proposed 2026-09-11 in [#286](https://github.com/krakenhavoc/cmd_and_ctrl/pull/286)) · Sprint S31 · Issue [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)
-**Amended:** 2026-09-16 · S31 closeout: accepted as built. §1's threat ordering is not built (#687), §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end)
+**Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -115,6 +115,11 @@ threat heuristics, with the remainder reachable through an explicit
 > [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687). Until
 > it lands, which targets a bot is offered past the cap depends on
 > enumeration order.
+>
+> **Update, 2026-09-19 (#687).** Built, as an ordering hook
+> (`legal.Options.OrderTargets`) the policy supplies rather than a
+> scorer inside `legal`, and the "choose target" move is refused rather
+> than deferred. See the amendment at the end of this file.
 
 A corollary learned the hard way in #544, and applied since to every
 new cost component: **a variable in a cost must not become an arity of
@@ -668,6 +673,7 @@ Restoration's waterbend) is not enumerated at all, because the only
 announcement it could make is the one the engine refuses.
 
 **The bot's threat ordering (§1) is still not built** (#687). Unchanged.
+_(Built on 2026-09-19; see the last amendment in this file.)_
 
 ## Amendment (2026-09-18, #957): a pay-life X is priced like a mana X
 
@@ -704,3 +710,102 @@ smaller of the two ceilings — `announcedX` is written that way — though no
 such card is registered. Waterbender's Restoration's waterbend
 `TapPermanentsCost` is still unpriced and still not enumerated, for the
 reason rule 2 gives.
+
+## Amendment (2026-09-19, #673 / #687): the enumerator's zones, its prices, and §1's threat ordering
+
+Two of §1's promises come good at once, and they share a paragraph
+because they share a function: `legal.castMoves` and the cap it spends.
+
+### §1's threat ordering is BUILT, and it is a hook
+
+The 2026-09-16 update above recorded the ordering as not built and
+named #687. It is built now, as an **injected hook** rather than as a
+scorer inside `internal/legal`:
+
+```go
+// legal
+type TargetCandidate struct { ID uuid.UUID; Player bool }
+type TargetOrder func(c TargetCandidate) float64
+type Options struct { …; OrderTargets TargetOrder }
+
+// aiseat — an optional Policy extension
+type TargetOrderer interface { TargetOrder(in Input) legal.TargetOrder }
+```
+
+The issue offered two shapes: move a neutral scorer down into `legal`,
+or take an ordering through `Options`. The hook wins for a layering
+reason and a correctness one. **Layering:** `aiseat/heuristic` imports
+`legal`, so `legal` can never import it back; a scorer moved down would
+have to be a second one, and two scorers that are supposed to agree
+about a board eventually will not. **Correctness:** the heuristic's
+scoring reads `protocol.GameView`, the seat's own FILTERED projection,
+which is where the hidden-information guarantee (§3) lives. A scorer
+inside `legal` would read the authoritative game, and the first fact it
+wanted that the view redacts would be a leak.
+
+So `legal` states the rule and asks for an order; the policy supplies
+one built from the same `Weights` it prices every other decision with —
+`Threat` for a seat, `boardValue` for a permanent. `Options.OrderTargets`
+nil is the whole of the old behaviour, which is what every non-bot
+caller (the view's move stamp included) gets.
+
+**Ordering is by importance, not by desirability.** The hook does not
+know which spell is being cast, so the biggest objects on the table
+survive the cap whoever controls them, and choosing among the survivors
+stays the policy's job. That is the right split: the hook's only power
+is to stop a target being dropped, and dropping the board's biggest
+permanent is wrong for every spell.
+
+**The "choose target" move for the remainder is REFUSED, not deferred.**
+§1 offered it as the alternative to a documented guarantee. It cannot be
+built without breaking the package's contract: every `legal.Move` is a
+wire `ActionPayload` that `actions.Dispatch` accepts as-is, and "open a
+target picker" is not an action the dispatcher has — it is a client
+affordance. A move kind the dispatcher refuses would put a permanently
+rejected entry in every bot's move list, which is the #544 stall the
+contract exists to prevent. The guarantee instead: **the top
+`MaxExpansionPerSource` candidates by the seat's own ordering are
+enough**, because the ordering is the seat's own scorer and a target it
+ranks below twelve others is a target it would not have chosen.
+
+### Casting from a zone that is not the hand (#673)
+
+The enumerator walks all five cast surfaces (hand, command, graveyard,
+exile, the top of the library) and offers **one move per price the
+engine would accept**, through one new engine function:
+
+```go
+func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card,
+        zone ZoneKind, grant *CastPermission) []*AlternativeCost
+```
+
+A nil entry is the printed mana cost, present only when
+`validateCastPathLocked` allows a claim of nothing; the rest are the
+card's own zone-bound offers and the one a grant synthesises, in
+announce precedence, filtered by the same path gate the cast uses and by
+`AlternativeCostPayableLocked`, the #695 predicate the view's offer
+stamp and `CastSpell`'s validator also read: the offer's Condition, CR
+119.4's life, CR 601.2b's card component — mana deliberately not
+asked, because CR 601.2g lets the caster tap afterwards.
+
+The card component is the combination search the issue is about, and it
+is **capped at one payment** (`legal.maxEnumeratedCostPayments`). That is
+this section's own corollary applied to a new kind of variable: a
+variable in a COST must not become an arity of the target cross product.
+Escape-five over a twenty-card graveyard is 15,504 payments, all of them
+the same spell with the same targets, and the policy cannot tell them
+apart because it does not price a card in a graveyard at all. The policy
+is written down beside `maxEnumeratedRepeats` in `docs/bot.md`.
+
+The faces of the cast come from the same pair of engine functions:
+`Card.CastableFaces` (CR 715.3's adventure choice since #719, and a
+modal DFC's two halves), NARROWED by `CastPermission.Faces` when a
+grant names any — CR 715.4's "cast the creature from exile", a
+defeated Siege's back. That is `faceForCastLocked`'s own rule, so the
+enumerator cannot offer a half the announce path refuses, and madness
+(#657) needed no enumerator code at all: it is an exile grant with a
+key and `TimingFlash`, which this walk already reads.
+
+Deliberately still not enumerated, each for a stated reason: two
+different optional costs at once (no card offers it), and two
+card-shaped sacrifice clauses on one cast (same).

@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // cast_zones.go — S29: which zone a card may be cast FROM.
 //
 // Until this file, the answer was a hard-coded whitelist inside
@@ -165,6 +167,64 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 		return out
 	}
 	return zoneBoundAlternativeCosts(oracleID, zone)
+}
+
+// CastOffersForLocked lists every CR 118.9 cost choice `playerID` may
+// announce for `card` out of `zone` right now — the ONE answer to
+// "which prices is this cast available at", and the list the bot
+// enumerator walks (#673).
+//
+// A nil entry means the printed mana cost. It is present only when
+// the cast path allows a cast that claims nothing, which is what
+// keeps a Faithless Looting in the graveyard from being offered at
+// the {R} in its corner: a zone the card itself prices must be paid
+// for (rule 3 of validateCastPathLocked), and so must a zone a
+// permission prices (rule 4).
+//
+// The rest are offers, in announce precedence: the card's own first,
+// then the one a granted permission synthesises, and a granted key
+// the card also prints is dropped rather than listed twice — the
+// same order resolveAlternativeCostLocked judges a claim in, so a
+// Deep Analysis flashed back under Past in Flames is listed at its
+// printed price and not at the grant's.
+//
+// Every entry is filtered through the two gates the announce path
+// applies: validateCastPathLocked (is this offer claimable from this
+// zone at all) and AlternativeCostPayableLocked (#695 — can its
+// condition, CR 119.4's life and CR 601.2b's card component be paid
+// right now), which is the same predicate the view's offer stamp
+// reads. So a move built on any entry is a move CastSpell accepts,
+// which is the enumerator's whole contract — and an EMPTY result is a
+// real answer rather than a degenerate one: this card is not castable
+// from this zone.
+//
+// Each entry points at a freshly copied value, so a caller may hold
+// one past the call. Caller must hold g.mu.
+func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost {
+	var out []*AlternativeCost
+	if g.validateCastPathLocked(card, zone, nil, grant) == nil {
+		out = append(out, nil)
+	}
+	seen := make(map[string]bool, 2)
+	add := func(ac *AlternativeCost) {
+		if ac == nil || ac.Key == "" || seen[ac.Key] {
+			return
+		}
+		seen[ac.Key] = true
+		if g.validateCastPathLocked(card, zone, ac, grant) != nil {
+			return
+		}
+		if !g.AlternativeCostPayableLocked(playerID, card.InstanceID, ac) {
+			return
+		}
+		out = append(out, ac)
+	}
+	for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), zone) {
+		offer := ac
+		add(&offer)
+	}
+	add(grant.AlternativeCostFor(card))
+	return out
 }
 
 // validateCastPathLocked is the S29 gate, widened by ADR 0066: may

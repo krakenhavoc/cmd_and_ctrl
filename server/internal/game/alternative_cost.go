@@ -365,6 +365,20 @@ func (a *AlternativeCost) PaysCards() bool {
 	return spec != nil
 }
 
+// CardPaymentCount is how many cards the caster must name in
+// CastSpellParams.AltCostIDs to pay this offer's card component: one
+// for a pitch or a bounce, escape's N, zero for an offer whose only
+// components are mana and life.
+//
+// Exported because the payment is exactly `want` and not "at least"
+// (see validateAlternativeCostPaymentLocked), so a caller BUILDING an
+// announcement — the bot enumerator, a client picker — has to know
+// the number rather than discover it from a rejection. Nil-safe.
+func (a *AlternativeCost) CardPaymentCount() int {
+	_, _, n := a.cardComponent()
+	return n
+}
+
 // Available reports whether a player may claim this offer right now
 // — its Condition, and nothing else. The payment components are
 // checked separately, at announce, because "you control no Swamp" is
@@ -571,6 +585,56 @@ func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
 		return p.Graveyard
 	}
 	return g.Battlefield
+}
+
+// AltCostCandidatesLocked lists the cards `playerID` may name to the
+// CARD-shaped half of `alt` right now — Force of Will's blue card in
+// hand, Daze's Island, escape's other cards in the graveyard — in
+// zone order, with the spell being cast excluded.
+//
+// It is AlternativeCostPayableLocked's sibling: that one counts the
+// candidates and stops at `want`, this one names them, and both walk
+// `zoneForAltCostLocked` through the SAME per-card predicate
+// (altCostCardOKLocked) the announce validator judges the caster's
+// named IDs with. One rule, three readers, so a payment the bot
+// enumerates is a payment the engine accepts.
+//
+// A copy built out of specCandidatesLocked would be close and not
+// equal: that walk visits EVERY seat's graveyard and leans on the
+// spec's own "you own it" predicate, which is a second statement of
+// "your graveyard" rather than the same one.
+//
+// `castID` is the spell being cast, which is never a legal payment:
+// CR 601.2a has already moved it to the stack by the time the cost is
+// paid, and that is precisely what escape's printed "other" means.
+//
+// Nil for an offer whose only components are mana and life, and for
+// nil. Caller must hold g.mu.
+func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *AlternativeCost) []uuid.UUID {
+	spec, kind, _ := alt.cardComponent()
+	if spec == nil {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	z := g.zoneForAltCostLocked(p, kind)
+	if z == nil {
+		return nil
+	}
+	out := make([]uuid.UUID, 0, len(z.Cards))
+	for i := range z.Cards {
+		c := z.Cards[i]
+		if c.InstanceID == castID {
+			continue
+		}
+		if !g.altCostCardOKLocked(p, spec, kind, c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
 }
 
 // payAlternativeCostLocked pays the non-mana components of a claimed

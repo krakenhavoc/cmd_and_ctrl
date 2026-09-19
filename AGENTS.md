@@ -2885,6 +2885,22 @@ source's presence on the battlefield. And **never** schedule a delayed
 trigger to shorten a grant — "until the end of your next turn" used to
 need one and does not any more.
 
+**One list of the prices a cast may claim (CR 118.9, #673):** "which
+costs may this seat announce for this card out of this zone" has one
+answer, `game.CastOffersForLocked`
+([cast_zones.go](server/internal/game/cast_zones.go)). A nil entry is
+the printed mana cost — present only when the cast path allows a claim
+of nothing, which is what keeps a Faithless Looting in the graveyard
+off its printed `{R}` — and the rest are the card's own zone-bound
+offers plus the one a grant synthesises, in announce precedence and
+filtered through `AlternativeCostPayableLocked` — the same #695
+predicate the view's offer stamp and `CastSpell`'s own validator read
+(Condition, CR 119.4's life, CR 601.2b's card component; mana is
+deliberately NOT asked, because CR 601.2g lets the caster tap
+afterwards). The bot enumerator walks it; a card file adds an offer and
+every price surface follows. Do not re-derive "what can this be cast
+for" anywhere else.
+
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost
 that includes `X`, has exactly one legal `X` and it is `0` — cascade's

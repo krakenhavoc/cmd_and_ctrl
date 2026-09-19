@@ -295,14 +295,18 @@ type state struct {
 	// none left.
 	leader string
 
-	// bf, mine, stack, graveyard index the view by instance ID.
+	// bf, mine, stack, graveyard, exile index the view by instance ID.
 	// `mine` is the bot's own hand and command zone — the only
 	// hidden zone it is entitled to read.
 	bf        map[string]*protocol.CardView
 	mine      map[string]*protocol.CardView
 	stack     map[string]*protocol.CardView
 	graveyard map[string]*protocol.CardView
-	choices   map[string]*protocol.PendingChoiceView
+	// exile is the shared exile pile, which since #673 is a cast
+	// surface the bot is offered moves out of (an impulse grant, a
+	// foretold card, a warped creature coming back).
+	exile   map[string]*protocol.CardView
+	choices map[string]*protocol.PendingChoiceView
 	// attach resolves the battlefield's attachment relation, so that
 	// "what is this permanent worth" answers the same way here as it
 	// does inside Evaluate (#727).
@@ -339,6 +343,13 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	for i := range v.Stack.Cards {
 		c := &v.Stack.Cards[i]
 		st.stack[c.InstanceID] = c
+	}
+	for i := range v.Exile.Cards {
+		c := &v.Exile.Cards[i]
+		if st.exile == nil {
+			st.exile = make(map[string]*protocol.CardView, len(v.Exile.Cards))
+		}
+		st.exile[c.InstanceID] = c
 	}
 	for i := range v.Seats {
 		s := &v.Seats[i]
