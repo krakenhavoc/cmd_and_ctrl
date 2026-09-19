@@ -425,6 +425,12 @@ There are two kinds and they are not interchangeable:
   improvisation is a bot cheating, and a client that hides the
   announcement is what makes it one. The same commit writes a tagged
   line to the replay log (see `snapshot` below).
+  Since [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686)
+  the kind also carries the *negative*: a bundle the server refused,
+  naming the card and saying nothing was changed. It is the same
+  mandatory disclosure and renders the same way — a client must not
+  try to tell the two apart, and there is no replay annotation for a
+  refusal, because nothing was committed.
 - `"bot_reasoning"` — the bot narrating why it took an ordinary move.
   Debug output; the reference client hides it unless the viewer turns
   on **Settings → Gameplay → Show bot reasoning**, and the server

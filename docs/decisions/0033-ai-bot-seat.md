@@ -600,6 +600,10 @@ sections above:
   `aiseat.Improviser`, though, so no bot improvises yet. The owner
   decided to build one for the model tiers, tracked in
   [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
+  **Closed 2026-09-19:** `*model.Policy` implements the hook, so
+  `assisted` and `strong` improvise. See the #686 amendment at the
+  foot of this ADR for the windows, the prompt, the budget and the
+  failure posture.
 - **§5's per-game model spend is still unmeasured.** That update's
   last paragraph still stands. Absorption is measured at ~90%, but
   measuring spend needs a game against a hosted endpoint.

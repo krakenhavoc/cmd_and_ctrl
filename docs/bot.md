@@ -25,11 +25,14 @@ fields are in [docs/protocol.md](protocol.md).
 > [the model endpoint](#the-model-endpoint) for the one environment
 > variable that turns them on.
 >
-> **What is not live yet: improvisation.** The mechanism described
-> [below](#improvisation-and-why-an-undo-is-free) shipped and is
-> tested. No tier implements it yet, though, so no bot improvises in a
-> game today. [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686)
-> builds it for `assisted` and `strong`.
+> **Improvisation is live on the model tiers.** An `assisted` or
+> `strong` bot that casts a card the rules engine cannot run will
+> apply the card's text **by hand**, announce it in chat, and leave it
+> undoable by any player for free — see
+> [below](#improvisation-and-why-an-undo-is-free) for exactly when,
+> and for the one environment variable that turns it off. `random` and
+> `heuristic` never improvise: neither has a model, and reading a
+> card's oracle text is the whole job.
 
 ---
 
@@ -277,6 +280,7 @@ server picks the local one when both are set.
 | `CMDCTRL_BOT_MODEL` | The model id to ask for. **Required for a local endpoint** — it is the name your server serves, e.g. what you `ollama pull`ed. |
 | `CMDCTRL_BOT_FRONTIER_MODEL` | The model for escalated windows. Defaults to `CMDCTRL_BOT_MODEL`; one model in both slots is a supported configuration, and escalation then changes how a window is asked, not which model answers it (see [Known limitations](#known-limitations)). |
 | `CMDCTRL_BOT_MAX_THINK` | The model tiers' hard deadline, as a Go duration. Defaults to 20s with a local endpoint. |
+| `CMDCTRL_BOT_IMPROVISE` | `0` turns [improvisation](#improvisation-and-why-an-undo-is-free) off. On by default for the model tiers. |
 | `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
 
 **Thinking is turned off on the local transport, and that is a
@@ -506,25 +510,72 @@ how well the catalog supports it.
 
 ## Improvisation, and why an undo is free
 
-> **Not live yet.** Everything in this section is built into the
-> runner and covered by tests: the bundle, the validated announcement,
-> the replay tag and the free undo. But improvising is something a
-> policy has to opt into, through `aiseat.Improviser`, and none of the
-> four shipped tiers does. **No bot improvises in a game today.** A bot
-> picks only from its legal moves. The section describes how
-> improvisation will behave once
-> [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686) gives
-> `assisted` and `strong` an implementation.
+> **Which tiers.** `assisted` and `strong` only. `random` and
+> `heuristic` never improvise — neither has a model, and reading a
+> card's oracle text is the whole job — and a model tier with no
+> endpoint configured does not either. Turn it off everywhere with
+> `CMDCTRL_BOT_IMPROVISE=0`; a bot then casts an uncatalogued card,
+> the card does nothing, and it is yours to apply by hand, which is
+> what every tier did before
+> [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
 
 The catalog is a few hundred cards, and a bot's deck is drawn entirely
 from it — but a card can be registered without every clause of it
-being implemented. When the line a bot wants needs an effect the
-engine cannot execute, **the bot will be allowed to do it by hand**, with
-the same four sandbox verbs you have: `move_card`, `change_life`,
-`add_counter`, `mark_damage`.
+being implemented. When a bot casts a card the engine cannot run,
+**the bot applies the text by hand**, with the same four sandbox verbs
+you have: `move_card`, `change_life`, `add_counter`, `mark_damage`.
 
-Three things make that safe, and all three are enforced in code rather
-than left to the policy:
+### When it happens, exactly
+
+**After the spell resolves, never instead of casting it.** The bot
+casts the card through the ordinary move list, the engine charges the
+mana, the spell resolves and does nothing, and *then* the bot applies
+the text. That order is the point: the four sandbox verbs cannot tap a
+land, so a bot that moved the card out of its own hand and applied the
+effect would have cast it for free.
+
+It fires **once per card**, at the moment that card leaves the stack,
+and only when all of these hold:
+
+- the bot cast it itself,
+- it was a *spell* on the stack, not an ability,
+- the card is one the engine will not run (the same `manual` mark the
+  deck-upload summary and the stack overlay show you),
+- the bot's own decklist has the card's oracle text, and
+- the bot does not owe a prompt — a bot answering "pay {2} or
+  sacrifice" answers it, it does not wander off.
+
+Nothing else triggers it. In particular an **unimplemented permanent's
+triggered or activated abilities are never improvised**: there is no
+way to tell from the board that a trigger should have fired, and the
+condition would recur every turn. A bot also never improvises somebody
+*else's* card.
+
+**It is capped.** At most **8 improvisation model calls per bot seat
+per game**, and at most one per card. A bot that hits the cap says so
+in the server log and leaves the rest of its uncatalogued cards alone.
+Between the two limits, the worst case is a known number rather than
+"however many cards it draws".
+
+**It can decline, and often will.** The model is told that answering
+with nothing is a correct answer, and it is the right one whenever the
+card cannot be done faithfully with four verbs. "Search your library"
+is the common case: a bot cannot see any library's contents, so it
+cannot pick a card out of one, and the honest answer is to leave that
+clause out and say so.
+
+**If the attempt is refused, the table is told that too.** A bundle
+the server will not apply — a verb outside the four, a card that does
+not exist, anything that fails validation — is dropped whole, and a
+chat line names the card and says nothing was changed. That line is
+the useful half: the card is sitting in a graveyard having done
+nothing, and now you know to do it by hand yourself.
+
+### What makes it safe
+
+Three things, and all three are enforced in code rather than left to
+the policy — which matters more here than anywhere else in the bot,
+because the thing writing the bundle is a language model:
 
 **It is one bundle, all or nothing.** Every verb in an improvisation
 runs under a single hold of the room lock and commits as one `seq`,
@@ -579,6 +630,22 @@ has to, since improvised removal reaches an opponent's board and an
 improvised drain reaches their life total. Improvisation is the one
 path on which a bot acts with admin authority, which is exactly why
 the verb list is closed and the announcement is validated first.
+
+### What it cannot see, and the one case to watch
+
+The model writing the bundle is handed **the seat's own filtered view
+and nothing else** — the same bytes a human in that seat receives —
+plus the card's oracle text out of the bot's own decklist. It cannot
+see your hand, it cannot see any library, and it has no handle that
+could reach either.
+
+The case worth knowing about: **a countered spell also leaves the
+stack**, and from a filtered view that looks much like one that
+resolved. The model is shown the board and told to answer with nothing
+if the spell did not really resolve, which catches the obvious cases —
+but if a bot ever improvises a card you countered, that is the
+mechanism, and the recourse is the one every improvisation has: read
+the line, undo it, free.
 
 ---
 
@@ -1164,6 +1231,15 @@ never negotiate.
 **No learning across games, and no opponent modelling.** Bots are
 stateless between games. The one played you last night remembers
 nothing about it.
+
+**Improvisation does one clause at a time, and only a spell's.** It
+fires when a spell the bot cast resolves into silence, and never for
+an unimplemented permanent's triggers or activated abilities — so a
+bot running an enchantment the engine will not honour plays as if the
+enchantment were a blank piece of card for the rest of the game. That
+is deliberate: a trigger that should have fired leaves no trace on the
+board for anything to notice, and the alternative is a rate limit
+pretending to be a rule.
 
 **A card in a hidden or unordered zone has no value to the
 evaluation.** `score.go` prices the battlefield and the seats; a card
