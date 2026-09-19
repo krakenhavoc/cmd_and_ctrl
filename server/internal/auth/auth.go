@@ -70,9 +70,11 @@ const (
 type Principal struct {
 	Role Role `json:"role"`
 	// UserID is the users-table row this session belongs to (ADR 0051
-	// decision 3). Zero for admin and guest sessions, and zero for
-	// every session until the user store lands (#607); it is added
-	// now so the credential shape changes once, in #517.
+	// decision 3). Set on the RoleIdentified session the Discord
+	// callback mints, and carried onto every RolePlayer session minted
+	// from it (the callback's invite flow, and POST /join). Zero for
+	// admin, spectator and guest sessions, and zero for everyone on a
+	// deployment with no database (CMDCTRL_DATA_DIR empty).
 	UserID   uuid.UUID `json:"user_id,omitempty"`
 	AdminID  uuid.UUID `json:"admin_id,omitempty"`
 	GameID   uuid.UUID `json:"game_id,omitempty"`

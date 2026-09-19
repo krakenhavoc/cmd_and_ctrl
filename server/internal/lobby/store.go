@@ -69,8 +69,9 @@ func hashInvite(invite string) (InviteHash, bool) {
 type GameRecord struct {
 	ID   uuid.UUID
 	Name string
-	// CreatedBy is users(id) once sub-PR 2 lands. Always "" today:
-	// every game is created by an admin session.
+	// CreatedBy is users(id) of the creating user, a foreign key from
+	// migration 0003. "" (NULL) for an admin-created game — which, while
+	// POST /games stays admin-only, is every game.
 	CreatedBy  string
 	State      string // lobby | active | ended
 	CreatedAt  time.Time
@@ -84,7 +85,8 @@ type GameRecord struct {
 type SeatRecord struct {
 	Seat     int
 	PlayerID uuid.UUID
-	// UserID is users(id) once sub-PR 2 lands. Always "" today.
+	// UserID is users(id), a foreign key from migration 0003. Always
+	// "" until sub-PR 4 links seats to the people sitting in them.
 	UserID string
 	// GuestName is the seat label (SeatInfo.Name). Every seat carries
 	// one until a signed-in seat can take its name from users.

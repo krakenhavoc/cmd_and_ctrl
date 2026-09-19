@@ -586,7 +586,16 @@ jobs:
       # The key must be at least 32 bytes and must differ from
       # CMDCTRL_ADMIN_TOKEN; the server refuses to boot otherwise. 48
       # random bytes base64-encode to 64 characters.
-      - name: Ensure server env (session signing key)
+      #
+      # Identity key (S34 sub-PR 2, ADR 0051 decision 5): encrypts the
+      # Discord refresh tokens stored on identities rows. Same pattern and
+      # same reasons -- generated here once per host, never rewritten, never
+      # an Actions secret. It must also be at least 32 bytes and differ from
+      # the admin token and the session key (two independent draws from
+      # /dev/urandom do). Without it sign-in still works and refresh tokens
+      # are discarded; rotating it makes the stored ones unreadable but logs
+      # nobody out.
+      - name: Ensure server env (session signing and identity keys)
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
             set -eu
@@ -594,6 +603,11 @@ jobs:
               echo 'CMDCTRL_SESSION_KEY already set; leaving it (rotating it logs everyone out).'
             else
               head -c 48 /dev/urandom | base64 -w0 | sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_SESSION_KEY ${ENV_FILE}
+            fi
+            if sudo grep -qE '^CMDCTRL_IDENTITY_KEY=.{32,}' ${ENV_FILE}; then
+              echo 'CMDCTRL_IDENTITY_KEY already set; leaving it (rotating it makes stored refresh tokens unreadable).'
+            else
+              head -c 48 /dev/urandom | base64 -w0 | sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_IDENTITY_KEY ${ENV_FILE}
             fi
           "
 

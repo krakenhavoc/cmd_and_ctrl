@@ -29,6 +29,11 @@ var (
 // not "will see your email address").
 const discordScopes = "identify"
 
+// RequestedScopes is the scope string every authorize asks for. The
+// callback records it on the identity when Discord's token response
+// leaves `scope` out.
+const RequestedScopes = discordScopes
+
 // AuthorizeURL builds the URL the client should be redirected to.
 // state + codeChallenge come from StateStore.Start; the caller
 // handles the HTTP 302 themselves so they can attach cookies /
@@ -51,14 +56,18 @@ func (c Config) AuthorizeURL(state, codeChallenge string) string {
 }
 
 // TokenResponse is the subset of Discord's token-exchange response
-// we care about. Refresh tokens aren't used — we immediately
-// exchange the token for a user profile and then mint our own
-// session, so there's no need to keep a Discord credential around.
+// we care about. The access token is used once, to read /users/@me,
+// and then dropped; the server mints its own session. The refresh
+// token is kept (ADR 0051 decision 5, S34): the callback hands it to
+// the user store, which stores it encrypted under
+// CMDCTRL_IDENTITY_KEY, or discards it when that key is not set. It
+// is never logged and never sent to the client.
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-	Scope       string `json:"scope"`
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	Scope        string `json:"scope"`
 }
 
 // TokenErrorResponse mirrors Discord's RFC 6749 error body

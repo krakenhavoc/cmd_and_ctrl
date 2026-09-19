@@ -24,6 +24,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
@@ -91,6 +92,12 @@ type Config struct {
 	// token + /users/@me endpoints via httptest. Nil falls back to
 	// http.DefaultClient.
 	DiscordHTTPClient *http.Client
+	// Users records who signed in (ADR 0051 decision 2, S34 sub-PR 2).
+	// The OAuth callback upserts the Discord identity here and stamps
+	// the returned user id onto the session as Principal.UserID. Nil
+	// behaves as users.NoStore: sign-in works and the session carries
+	// a zero UserID, which is what a deployment with no database gets.
+	Users users.Store
 
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
@@ -420,12 +427,19 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 // createGame (admin-only) creates a new game in the lobby and
 // returns its metadata INCLUDING the invite token. The admin is
 // responsible for distributing the invite out-of-band.
+//
+// games.created_by is the caller's UserID (ADR 0051 decision 2). The
+// route is admin-only, and an admin session carries no UserID, so
+// today that is always NULL; it is read from the principal rather
+// than hard-coded so opening the route to signed-in users later is a
+// change to the middleware line and nothing here.
 func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	var body createGameRequest
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	meta, err := c.Lobby.Create(body.Name)
+	p, _ := auth.PrincipalFromContext(r.Context())
+	meta, err := c.Lobby.CreateBy(body.Name, p.UserID)
 	if err != nil {
 		return err
 	}
@@ -523,13 +537,19 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	// rather than 401-ing. An identity session that expired while
 	// the user was hunting for the code should feel like "type your
 	// name", not like being thrown out.
-	var identity DiscordIdentity
+	var (
+		identity DiscordIdentity
+		userID   uuid.UUID
+	)
 	if cred := auth.CredentialFromRequest(r); cred != "" {
 		p, verr := c.Auth.Validate(r.Context(), cred)
 		switch {
 		case verr != nil:
 			// Expired or bogus — treat the caller as anonymous.
 		case p.Role == auth.RoleIdentified:
+			// The seat session is minted from the identity session,
+			// so it belongs to the same person (ADR 0051 decision 3).
+			userID = p.UserID
 			identity = DiscordIdentity{
 				ID:         p.DiscordID,
 				Username:   p.DiscordUsername,
@@ -556,6 +576,7 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	p := auth.Principal{
 		Role:     auth.RolePlayer,
+		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     name,

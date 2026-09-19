@@ -127,7 +127,11 @@ comes from:
 
 **Response 200** — identical to `POST /games/{id}/join`, cookie
 included. On the Discord path the principal also carries `discord_id`,
-`discord_username`, `discord_global_name` and `discord_avatar_hash`.
+`discord_username`, `discord_global_name` and `discord_avatar_hash`,
+and `user_id` is the signed-in person's users row, copied from the
+identity session (S34, [ADR 0051](decisions/0051-user-database.md)
+decision 3). `user_id` is the nil uuid for a guest seat, for admin and
+spectator sessions, and for everyone on a deployment with no database.
 
 The identity session stays valid afterwards: it is how the same person
 joins a second table later without signing in to Discord again. On its
