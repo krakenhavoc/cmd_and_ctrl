@@ -1,5 +1,6 @@
 import { type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
+import { OFFLINE_ERROR_CODE, offlineSendMessage } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
 import { currentSession } from "./session";
@@ -420,6 +421,32 @@ export class GameClient {
     }
   }
 
+  // retryNow dials immediately instead of waiting out the rung of the
+  // backoff ladder currently being served — the connection banner's
+  // "Try now" button (#519).
+  //
+  // Deliberately NOT connect(). connect() calls resetSnapshotTracking,
+  // which blanks the board; the stale board staying rendered under the
+  // banner is the design (ADR 0044 / #519), and the fix for a dropped
+  // socket is admitting the board is stale, not erasing it. So this
+  // short-circuits the wait and changes nothing else.
+  //
+  // The attempt counter is left alone too: if this dial fails, the
+  // close handler schedules the next rung from where the ladder
+  // already was, so a player leaning on the button cannot reset the
+  // backoff into a tight dial loop against a server that is still down.
+  //
+  // A no-op while a socket exists — one is already open or dialling,
+  // and stacking a second on top of it is the bug the isCurrent()
+  // guard in open() exists to survive.
+  retryNow(): void {
+    if (this.socket) return;
+    this.cancelReconnect();
+    this.status.set("reconnecting");
+    this.append("info", "manual reconnect requested");
+    this.open();
+  }
+
   // resetSnapshotTracking clears the seq watermark and the rendered
   // snapshot — used on deliberate retarget (setURL) / connect so a
   // new game's frames are never compared against an old game's seqs.
@@ -446,9 +473,44 @@ export class GameClient {
     socket?.close();
   }
 
+  // failSend is what every send path does when the socket is not open.
+  //
+  // It used to be one `append("error", "not connected")` per method,
+  // and the `log` store that line lands in is read by exactly one
+  // thing in the whole app: the bug-report modal. So an action
+  // attempted during a deploy produced a line nobody would ever see
+  // and a silent no-op — indistinguishable from the board freezing,
+  // and duly reported as one (#519). Routing it through lastError as
+  // well puts it in the same toast every server rejection already
+  // uses. The log line stays: it is what triage reads afterwards.
+  private failSend(what: string): void {
+    this.append("error", `not connected: ${what} not sent`);
+    this.raiseError(OFFLINE_ERROR_CODE, offlineSendMessage(what));
+  }
+
+  // raiseError publishes to the toast store and (re)starts the
+  // auto-clear timer. Shared by the server `error` frame handler and
+  // the client-side offline path above so both age out identically —
+  // a fresh error always gets its full TTL, replacing whatever was
+  // still on screen.
+  private raiseError(
+    code: string,
+    message: string,
+    extra: { missing?: string[]; cardID?: string } = {},
+  ): void {
+    this.lastError.set({ code, message, at: new Date(), ...extra });
+    if (this.errorClearTimer !== null) {
+      clearTimeout(this.errorClearTimer);
+    }
+    this.errorClearTimer = setTimeout(() => {
+      this.lastError.set(null);
+      this.errorClearTimer = null;
+    }, ERROR_TOAST_TTL_MS);
+  }
+
   sendPing(msg: string): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      this.append("error", "not connected");
+      this.failSend("ping");
       return;
     }
     const frame: Frame<PingPayload> = {
@@ -473,7 +535,7 @@ export class GameClient {
       return null;
     }
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      this.append("error", "not connected");
+      this.failSend("chat message");
       return null;
     }
     const id = uuid();
@@ -498,7 +560,10 @@ export class GameClient {
   // action names typo-proof against the server registry.
   sendAction(type: ActionType, player?: string, params?: unknown): string | null {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      this.append("error", "not connected");
+      // Every card click, every priority pass, every mana tap funnels
+      // through here. This branch is the one a player meets during a
+      // deploy, so it is the one that has to speak (#519).
+      this.failSend(`action "${type}"`);
       return null;
     }
     const id = uuid();
@@ -620,22 +685,10 @@ export class GameClient {
         const message = p?.message ?? "?";
         this.append("error", `server error code=${code} message=${message}`);
         // Surface visibly so the user sees why an action was
-        // rejected. Reset the auto-clear timer so a fresh error
-        // gets its full TTL even if a previous one is still showing.
-        this.lastError.set({
-          code,
-          message,
-          at: new Date(),
-          missing: p?.missing,
-          cardID: p?.card_id,
-        });
-        if (this.errorClearTimer !== null) {
-          clearTimeout(this.errorClearTimer);
-        }
-        this.errorClearTimer = setTimeout(() => {
-          this.lastError.set(null);
-          this.errorClearTimer = null;
-        }, ERROR_TOAST_TTL_MS);
+        // rejected. raiseError resets the auto-clear timer so a fresh
+        // error gets its full TTL even if a previous one is still
+        // showing.
+        this.raiseError(code, message, { missing: p?.missing, cardID: p?.card_id });
         break;
       }
       default:
