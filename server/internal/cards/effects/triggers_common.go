@@ -265,6 +265,13 @@ func AnotherCreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ 
 	return ok && c.IsCreature()
 }
 
+// ArtifactEnteredUnderYourControl — "whenever an artifact you control
+// enters", the source itself included (Quicksmith Genius).
+func ArtifactEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := enteredUnderYourControl(ev, source, g, false)
+	return ok && c.IsArtifact()
+}
+
 // ACreatureYouControlDied — a creature you controlled went to the
 // graveyard, the source included (Zulaport Cutthroat).
 func ACreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
