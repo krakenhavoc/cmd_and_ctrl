@@ -4,6 +4,7 @@
 **Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
 **Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
 **Amended:** 2026-09-19 · #1013: a bot chooses WHICH cards an alternative cost eats — the payments are priced through a second injected hook and the cap rises to three (see the amendment at the end)
+**Amended:** 2026-09-19 · #1060 / #735: an optional Policy extension survives being wrapped — a wrapper declares what it wraps and the lookup walks the chain — and a game's model spend is one record, split into deciding and improvising (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -321,6 +322,13 @@ reaching for a cheaper model.
 > every failure — and the funnel's shape is what the numbers above
 > describe. Exit criterion 4's "per-game model spend is measured and
 > recorded, not estimated" remains open until a key exists.
+>
+> **Update, 2026-09-19 (#735).** There is now somewhere for that
+> number to appear. A game reports ONE spend record when its bots are
+> done — per seat, split into deciding and improvising — on the
+> runner's `Stats`, as the game's admin log line, and in the decision
+> log. The MEASUREMENT still waits on a keyed endpoint; the path no
+> longer does. See the #1060 / #735 amendment at the foot of this ADR.
 
 ### 6. Tiers are the difficulty slider
 
@@ -606,7 +614,11 @@ sections above:
   failure posture.
 - **§5's per-game model spend is still unmeasured.** That update's
   last paragraph still stands. Absorption is measured at ~90%, but
-  measuring spend needs a game against a hosted endpoint.
+  measuring spend needs a game against a hosted endpoint. Split out
+  as [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735).
+  **Half-closed 2026-09-19:** the measurement is built and reported
+  once per game; the number still needs a key. See the #1060 / #735
+  amendment at the foot of this ADR.
 - **Rejected alternative "Local model on the homelab".** #514 made a
   self-hosted OpenAI-compatible endpoint an operator option beside the
   hosted one. The transport is a deployment setting, and nothing in
@@ -1145,3 +1157,116 @@ decision, and the only production implementation makes a network call.
 §10 says the table never waits on a bot, and a hook with no deadline
 cannot honour that. No production type implemented the old signature,
 so nothing but one test fixture moved.
+
+## Amendment (2026-09-19, #1060, #735): optional hooks survive a wrapper, and a game's spend is one record
+
+*Amends §1's two ordering hooks, §5's cost argument, and §6's tier
+table. Nothing here changes what a tier IS; it changes what a tier
+built by the factory can be asked for, and what a finished game
+reports about itself.*
+
+### An optional Policy extension has to survive being wrapped (#1060)
+
+§1's threat ordering (#687) and its fuel pricing (#1013) were both
+built, both tested, and **dead on every seat the lobby could create**,
+for a month. So was nothing else, but only by luck: the same hole was
+one wrapper away from swallowing `Conceder` and `Improviser` too.
+
+The mechanism of the defect is worth recording, because it is a
+property of the design rather than a typo. A `Policy` is two required
+methods and a growing set of OPTIONAL interfaces — `Conceder`,
+`Tracer`, `TargetOrderer`, `CostFuelPricer`, `Improviser`, and now
+`Spender` — which the runner and the enumerator find by type
+assertion. A type assertion that answers false is indistinguishable
+from a policy with no opinion: no error, no log line, no failing test,
+and the feature silently does not happen. Every shipped tier is a
+policy inside a WRAPPER (§6: `heuristic` is a `rules.Filter` around
+the heuristic, `assisted` and `strong` are a `model.Policy` over it),
+and a wrapper forwards whichever optional interfaces its author
+remembered. The pin tests asserted against a bare `heuristic.New()` —
+a policy no seat is ever given — so they passed throughout.
+
+**Decision: a wrapper declares what it WRAPS, once, and the lookup
+walks the chain.**
+
+```go
+func (f *Filter) Unwrap() aiseat.Policy { return f.Inner }
+```
+
+`aiseat.Capability[T]` walks that chain outward-in and returns the
+outermost implementer, and every assertion site in the runner, the
+enumeration path and the position suite goes through it. Outward-in is
+the whole of the semantics and is right in both directions: a wrapper
+that implements an extension itself means to OVERRIDE it (`rules.Filter`
+is a `Tracer`, and Layer A's own verdict is the one that must reach the
+decision log, or §5's absorption rate comes out of the file wrong), and
+a wrapper that does not implement it means to be transparent.
+
+**The alternative was a capability struct the factory fills in once**,
+and it was rejected for one reason: it has to be edited every time an
+optional interface is added, which is precisely the omission being
+fixed. A chain covers the interface written next year with no edit to
+any wrapper.
+
+The assembly point still carries the guarantee, because that is where
+a new layer gets added: `tiers/tiers.go` holds a compile-time
+assertion that every wrapper it assembles is an `aiseat.Unwrapper`, so
+adding one that hides its inner policy is a build failure. The runtime
+half is a table test over `tiers.All()` that builds each tier THROUGH
+THE FACTORY and asks it everything the runner will ask it — the test
+whose absence was the actual bug.
+
+`DecisionObserver` was checked and is not affected: it is a `Config`
+field the Manager sets, never an assertion on a policy.
+
+### A game's model spend is one record, read when the bots are done (#735)
+
+§5's cost argument is an estimate — "~30–50 real decisions per bot per
+game, ~20% escalating, cents per game" — and its escalation half has
+already been measured wrong by a factor of three. S31's exit criterion
+4 asks for the other half to be measured rather than estimated, and it
+never was.
+
+The numbers existed and were unreachable: `model.Policy` has counted
+its own tokens since sub-PR 7 and its improvisation tokens since #686,
+but those counters live inside one policy object that only the seat's
+own runner holds, the improvisation half never crosses a decision
+window (the improvise path is deliberately unobserved — §8), and
+nothing anywhere added four seats together.
+
+**Decision: one `GameSpend` per game, built when every runner has
+exited, on three surfaces.** `aiseat.Runner.Stats().Spend` for one
+seat while it plays; one INFO line — the game's admin summary — when
+the table's bots are done; and one `kind:"spend"` record written into
+the decision log just before it closes, for a tool. All three are the
+same projection, so there is one definition of what a game cost.
+
+Three things this decides that do not follow from §5 on their own:
+
+- **Deciding and improvising are counted apart and never averaged.**
+  §8's amendment bounds improvisation separately on purpose
+  (`MaxImprovCalls`, 8 per seat per game) so that it can be reasoned
+  about on its own; a decision call is an integer against a cached
+  prefix and an improvisation call is a paragraph with an order of
+  magnitude more `MaxTokens`. `Spend.Total()` adds them for the one
+  question — the bill — that wants them added.
+- **An attempted call is spend, however it ended.** Timeouts,
+  malformed replies and out-of-range answers are all counted, because
+  they were all billed. A measurement that counted only the useful
+  calls would flatter exactly the deployment that most needs the
+  warning: a self-hosted model missing its deadline on every window.
+- **A table that spent nothing still gets its line.** A record that
+  appeared only when there was a bill could not be told from one that
+  failed to be written, and "the free tiers are free" is the other
+  half of §5's argument.
+
+**The number is still pending a keyed run.** Every deployment so far
+runs a local model, which has no bill, and CI has no key, so the
+figure that replaces §5's estimate cannot be taken here. What is
+settled is the path: measured against `model.FakeClient` over whole
+four-seat games, every call attributed to one seat and one purpose and
+counted exactly once. `docs/bot.md` § "Per-game model spend" says how
+to take the measurement and what to record with it. Exit criterion 4
+stays open on
+[#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735) until
+somebody runs it against a key.
