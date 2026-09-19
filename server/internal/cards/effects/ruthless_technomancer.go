@@ -20,6 +20,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (counters and anthems included) just before the sacrifice, and
 // that many Treasures follow.
 //
+// "If you do" is the sacrifice's own answer (#993). It used to be a
+// live board read on the line after the sacrifice — "is the creature
+// still on the battlefield?" — which is sacrificedThisWayLocked's rule
+// written out by hand, and right for every outcome but the one that
+// matters. A sacrificed COMMANDER is still on the battlefield while its
+// owner answers CR 903.9, so the read said "not sacrificed" and the
+// Treasures never came, for a sacrifice that landed a beat later. The
+// clause hangs off SacrificePermanent.Then now, so the engine answers
+// it after the move has settled: a commander that takes the command
+// zone was still sacrificed (CR 701.17a — the keyword action is the
+// move OFF the battlefield; only where it went was replaced), and a
+// sacrifice the window cancelled outright pays nothing.
+//
 // Two sandbox simplifications, declared, both weaker than printed:
 //
 //   - The creature is chosen when the trigger goes on the stack, not
@@ -69,16 +82,16 @@ func init() {
 							return nil
 						}
 						power := victim.CurrentPower()
-						if err := (SacrificePermanent{Target: target}).Apply(ctx); err != nil {
-							return err
-						}
-						if z := g.FindCardZoneForEffect(target); z != nil && z.Kind == game.ZoneBattlefield {
-							return nil // not sacrificed: no Treasures
-						}
-						if power <= 0 {
-							return nil
-						}
-						return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: power}.Apply(ctx)
+						controller := item.Controller
+						return SacrificePermanent{
+							Target: target,
+							Then: func(ctx *Context, sacrificed bool) error {
+								if !sacrificed || power <= 0 {
+									return nil
+								}
+								return CreateToken{Controller: controller, Template: TreasureToken(), N: power}.Apply(ctx)
+							},
+						}.Apply(ctx)
 					})
 			},
 		}},

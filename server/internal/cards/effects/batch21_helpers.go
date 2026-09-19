@@ -231,6 +231,17 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // Nobody loses for the mill (CR 701.17b); the loss comes at the
 // player's next draw (CR 704.5b), unless the combo wins first. That
 // case reveals the whole library, as printed.
+//
+// #993: the land reaches hand from the MILL's continuation, not on the
+// line after it. A milled commander stops to ask its owner about the
+// command zone (CR 903.9), and the rest of the mill waits for the
+// answer — so a bounce written on the next line put the basic land in
+// its owner's hand with cards above it still sitting in the library and
+// a question open about one of them. "Put that card into your hand and
+// all other cards revealed this way into your graveyard" is one
+// instruction about a settled run. The mill's answer is ignored: which
+// of the cards above reached a graveyard has no bearing on the land,
+// which was never one of them.
 func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {
@@ -254,15 +265,19 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	if above > 0 {
-		if err := (MillCards{Player: player, N: above}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	if land == uuid.Nil {
-		return nil
-	}
-	return BounceToHand{Target: land}.Apply(ctx)
+	// N: 0 with no Until is a mill of nothing, and MillToZone still
+	// runs the continuation for it — the basic land on top of the
+	// library is the whole of that case.
+	return MillToZone{
+		Player: player,
+		N:      above,
+		Then: func(ctx *Context, _ []uuid.UUID) error {
+			if land == uuid.Nil {
+				return nil
+			}
+			return BounceToHand{Target: land}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // b21ExileTopFourThenTakeTheirLands is Oblivion Sower's cast-trigger

@@ -274,8 +274,9 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 // b14EachOpponentMillsUntilLand is Consuming Aberration's rider:
 // every opponent reveals cards from the top of their library until
 // they reveal a land card, then puts all of those cards into their
-// graveyard. Milled one card at a time so the type of each is read
-// from the top of the library before it moves; an opponent whose
+// graveyard. The run is chosen up front against the pre-move copies
+// (b14MillUntilLand), so one opponent's paused leg neither shortens
+// their run nor re-mills the card it is waiting on; an opponent whose
 // library holds no land mills the whole thing, as printed (and takes
 // the empty-library loss only if they then have to draw).
 func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
@@ -302,11 +303,19 @@ func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 // graveyard motion with no cause attached to it.
 //
 // The run is measured first, read-only, so the whole thing is one
-// announcement rather than one per card. The mill loop underneath is
-// unchanged and still reads the top of the library on every pass, so
-// anything that changes the library mid-mill is handled the way it
-// always was; the reveal names what was on top when the trigger
-// resolved, which is what the card reveals.
+// announcement rather than one per card.
+//
+// #993: the mill underneath is the primitive's own `Until` run, not a
+// hand-rolled loop. The loop read the top of the library, milled one
+// card, and asked whether the card it had read was a land — which is
+// the #911 shape with a mill in the middle of it, and it did not merely
+// mispay a clause, it SPUN. A milled commander's CR 903.9 prompt leaves
+// the card exactly where it was (`millPlanLocked`), so the next pass
+// read the same top card, milled it again, and went round until the
+// 1000-iteration fuse blew or the player answered. MillToZone chooses
+// the whole run up front against the pre-move copies — the same cards
+// the reveal above named — so one paused leg no longer re-reads
+// anything, and the run ends where the card says it ends.
 func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	if p := ctx.PlayerByID(player); p != nil && p.Library != nil {
 		run := make([]uuid.UUID, 0, 8)
@@ -324,20 +333,13 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 			return err
 		}
 	}
-	for i := 0; i < 1000; i++ {
-		p := ctx.PlayerByID(player)
-		if p == nil || p.Library == nil || p.Library.Size() == 0 {
-			return nil
-		}
-		top := p.Library.Cards[len(p.Library.Cards)-1]
-		if err := (MillCards{Player: player, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		if top.IsLand() {
-			return nil
-		}
-	}
-	return nil
+	// N: 0 with an Until is "no limit but the library", which is the
+	// whole of "until they reveal a land card" — the card that ends the
+	// run is milled too.
+	return MillToZone{
+		Player: player,
+		Until:  func(c game.Card) bool { return c.IsLand() },
+	}.Apply(ctx)
 }
 
 // b14PlayerSacrificesAllButN is Archfiend of Depravity's body: the

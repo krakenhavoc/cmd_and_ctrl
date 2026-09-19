@@ -24,7 +24,14 @@ import (
 //
 //   - The questions go to the BOUNCED permanent's controller, not to
 //     the caster — read off the permanent before it moves, since a
-//     card in a hand has no controller to ask.
+//     card in a hand has no controller to ask. They are asked from the
+//     return's CONTINUATION (#993): a hand is a CR 903.9 destination,
+//     so a bounced commander's owner is already answering a question,
+//     and "then that permanent's controller may sacrifice a land"
+//     cannot be put to them on top of it (ADR 0013 §5m item 2). The
+//     answer to the return is ignored — the second sentence is about a
+//     PLAYER and is not introduced by an "if you do", so it happens
+//     whichever way the command-zone question goes.
 //   - The copy is theirs (CR 707.10b): the effect says THEY may copy
 //     it, so the copy is created under their control and they choose
 //     its new target. Chaining a Chain of Vapor around the table is
@@ -64,9 +71,17 @@ func chainOfVaporBounce(ctx *Context) error {
 	if c, found := ctx.Game.LookupCardForEffect(t.ID); found {
 		controller = c.Controller
 	}
-	if err := (BounceToHand{Target: t.ID}).Apply(ctx); err != nil {
-		return err
-	}
+	return BounceToHand{
+		Target: t.ID,
+		Then: func(ctx *Context, _ bool) error {
+			return chainOfVaporAsk(ctx, controller)
+		},
+	}.Apply(ctx)
+}
+
+// chainOfVaporAsk is the chain's first question, put to the bounced
+// permanent's controller once the return has settled.
+func chainOfVaporAsk(ctx *Context, controller uuid.UUID) error {
 	if controller == uuid.Nil {
 		return nil
 	}
