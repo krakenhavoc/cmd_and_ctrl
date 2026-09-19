@@ -45,17 +45,33 @@
     return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx) };
   });
 
-  // Subscribe to the card's metadata store. Re-derived per hover so a
-  // new card swaps in a fresh subscription. The inner $-prefixed deref
-  // happens inside $derived.by so Svelte tracks reactivity correctly.
-  const metaStore = $derived(card?.scryfall_id ? metaFor(card.scryfall_id) : null);
+  // Subscribe to the card's metadata store. Re-subscribed per hovered
+  // PRINTING, not per hovered card: two copies of one card share a
+  // scryfall_id and so share a store, and re-subscribing to the store
+  // we are already on would only make the panel flicker.
+  //
+  // #740 — the derived holds the ID, and `metaFor` is called from the
+  // EFFECT. It used to be the other way round (`$derived(… metaFor(id)
+  // …)`), and that is what froze a board: `metaFor` wrote to the store
+  // it was about to return, the write ran this subscriber, the
+  // subscriber assigned to `meta` below, and a `$state` write inside a
+  // running `$derived` is `state_unsafe_mutation`. Before the #720
+  // store guards that throw escaped into svelte/store's shared
+  // subscriber queue and stalled every store in the app — the board
+  // stuck on one frame while the socket kept delivering.
+  //
+  // `metaFor` is pure again (see cardMetaCache.ts), so this is belt
+  // and braces. It is also where the call belongs: it kicks a fetch,
+  // and a derived may be evaluated, discarded and re-evaluated at the
+  // renderer's convenience.
+  const metaID = $derived(card?.scryfall_id ?? null);
   let meta = $state<CardMeta | null>(null);
   $effect(() => {
-    if (!metaStore) {
+    if (!metaID) {
       meta = null;
       return;
     }
-    const unsub = metaStore.subscribe((v) => {
+    const unsub = metaFor(metaID).subscribe((v) => {
       meta = v;
     });
     return unsub;
