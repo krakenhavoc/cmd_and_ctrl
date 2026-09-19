@@ -30,10 +30,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counters on a permanent" payoff does not see them, because the card
 // was not a permanent yet — weaker, never stronger.
 //
-// One engine-side gap, not the card's: cast for X=0 or X=1 the Krasis
-// is a printed 0/0 with no counters, which the toughness state check
-// deliberately skips (the placeholder convention on Card.Power), so
-// it stays on the battlefield instead of dying at once.
+// Cast for X=0 the Krasis enters as the printed 0/0 it is and the
+// next state-based check puts it into its owner's graveyard (CR
+// 704.5f), as in paper. CR 601.2b allows the announcement; it simply
+// does not survive it. That was an engine gap until #691 — the
+// toughness check read every printed 0/0 as the importer's stand-in —
+// and what closed it is the printing behind the object
+// (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
 		OracleID:        "6bd872b2-5c40-4e11-9a7f-0136a51b0642",

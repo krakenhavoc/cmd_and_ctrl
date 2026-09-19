@@ -47,11 +47,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // you put counters on a permanent" payoff does not see them — weaker,
 // never stronger.
 //
-// The same engine-side gap those cards declare applies here: cast for
-// X=0 the Walker is a printed 0/0 that never had a counter, which the
-// toughness state check deliberately skips as a placeholder, so it
-// survives and can be grown with {4}. That is the one way this card
-// plays stronger than printed, and it is declared to players.
+// Cast for X=0 the Walker enters as the printed 0/0 it is and the
+// next state-based check puts it into its owner's graveyard (CR
+// 704.5f) before {4} can grow it, as in paper. CR 601.2b allows the
+// announcement; it simply does not survive it. It used to survive
+// here and was declared to players as the one way the card played
+// STRONGER than printed; #691 took both the gap and the caveat away.
 func init() {
 	Register(Spec{
 		OracleID:     "0405e0a9-6d02-4691-bdb8-59c72b824dab",
@@ -60,7 +61,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The X +1/+1 counters are put on it as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them.",
-			"Cast for X=0, it stays on the battlefield as a 0/0 instead of dying at once, and can still be grown with {4}.",
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: ctx.X()}.Apply(ctx)

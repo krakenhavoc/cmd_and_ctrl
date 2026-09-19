@@ -25,13 +25,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // never stronger — Multani is recast from the command zone or
 // reanimated like any other creature.
 //
-// Two engine gaps it shares with its neighbours, not the card's:
-// cast with no land anywhere Multani is a printed 0/0 with no
-// counters, which the toughness state check deliberately skips
-// (the Goldvein Hydra note); and the layer cache is invalidated by
-// battlefield motion, counters, taps and turn changes, not by a
-// land reaching a graveyard from a hand or a library, so a milled
-// land shows on Multani's size at the next recompute.
+// With no land on the battlefield and none in the graveyard Multani
+// is the printed 0/0 he prints, and the next state-based check puts
+// him into the graveyard (CR 704.5f), as in paper — the modify adds
+// nothing to a body that is already zero. That was an engine gap
+// until #691, when the toughness check stopped reading every printed
+// 0/0 as the importer's stand-in (game.Card.ToughnessIsKnown).
+//
+// One engine gap left, shared with its neighbours and not the card's:
+// the layer cache is invalidated by battlefield motion, counters,
+// taps and turn changes, not by a land reaching a graveyard from a
+// hand or a library, so a milled land shows on Multani's size at the
+// next recompute.
 func init() {
 	Register(Spec{
 		OracleID:        "4b8bf64b-4800-45ff-81c6-2857f34999b5",

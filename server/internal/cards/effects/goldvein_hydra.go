@@ -33,12 +33,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // move), so the +1/+1 and -1/-1 totals are read back off the event
 // log — b13LastKnownPower. Tapped Treasures, as printed.
 //
-// One engine-side gap, not the card's: cast for X=0 the Hydra is a
-// printed 0/0 with no counters, which the toughness state check
-// deliberately skips (the placeholder convention on Card.Power), so
-// it stays on the battlefield instead of dying at once. It makes no
-// Treasures when it does die. The batch 13 test pins the behaviour so
-// it flips when the convention goes.
+// Cast for X=0 the Hydra enters as the printed 0/0 it is and the
+// next state-based check puts it into its owner's graveyard (CR
+// 704.5f), making no Treasures, exactly as in paper. CR 601.2b allows
+// the announcement; it simply does not survive it. That was an engine
+// gap until #691 — the toughness check read every printed 0/0 as the
+// importer's stand-in — and what closed it is the printing behind the
+// object (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
 		OracleID:        "2b62543f-a475-457a-a96b-b5d070383d3c",

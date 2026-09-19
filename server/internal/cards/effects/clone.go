@@ -12,15 +12,12 @@ import (
 // the player declines — or there is no creature to copy — Clone
 // enters as its printed 0/0.
 //
-// Declared deviation, pre-existing and engine-wide: that 0/0 then
-// survives. The CR 704.5f state-based action skips creatures with
-// printed toughness 0 and no counters on purpose, because the same
-// shape is the engine's placeholder convention for cards whose stats
-// would not parse (see stateBasedActionsLocked). A player who
-// declines a Clone keeps a 0/0 Shapeshifter that should have died.
-// Not fixed here: the convention protects every fixture and demo
-// card in the project, and "you declined a Clone" is the rarest
-// possible way to notice it.
+// And then it dies (CR 704.5f), as the printed card does. It used to
+// survive, and said so in a caveat: the toughness state-based action
+// skipped every creature with printed toughness 0 and no counters,
+// because the same shape is what the importer writes for stats it
+// cannot parse. #691 narrowed the skip to objects with no printing
+// behind them (game.Card.ToughnessIsKnown), and a Clone has one.
 //
 // "Any creature on the battlefield" is not targeting: a copy choice
 // is made as the permanent enters, so hexproof, shroud and
@@ -30,8 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "42226b87-0746-4ebf-9fd0-108d508462af",
 		Name:         "Clone",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If you decline the copy, the 0/0 Clone stays on the battlefield instead of dying."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Clone",

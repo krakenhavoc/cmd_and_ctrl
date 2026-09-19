@@ -29,11 +29,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // difference is that a "whenever you put counters on a permanent"
 // payoff does not see them — weaker, never stronger.
 //
-// One engine-side gap, not the card's: cast for X=0 the Hydra is a
-// printed 0/0 with no counters, which the toughness state check
-// deliberately skips (the placeholder convention on Card.Power), so
-// it stays on the battlefield instead of dying at once. Its upkeep
-// doubles zero, so it never grows.
+// Cast for X=0 the Hydra enters as the printed 0/0 it is and the next
+// state-based check puts it into its owner's graveyard (CR 704.5f),
+// before any upkeep can double zero. CR 601.2b allows the
+// announcement; it simply does not survive it. That was an engine gap
+// until #691 — the toughness check read every printed 0/0 as the
+// importer's stand-in — and what closed it is the printing behind the
+// object (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
 		OracleID:     "1c36ed3a-c806-47e5-83f9-e44999c67fe5",
