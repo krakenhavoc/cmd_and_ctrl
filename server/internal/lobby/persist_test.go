@@ -13,9 +13,8 @@ import (
 // persist_test.go covers the lobby half of a restart: the game came
 // back, but can anyone get INTO it?
 //
-// Sessions do not survive a restart (auth.MemoryAuthenticator says so
-// in its own doc comment), so every player re-authenticates through
-// the invite link. If the invite token were not persisted, a restored
+// A player whose session did not survive (no CMDCTRL_SESSION_KEY, or
+// a lost or expired token) re-authenticates through the invite link. If the invite token were not persisted, a restored
 // game would be a table nobody can open — which is indistinguishable,
 // from the player's seat, from having lost the game.
 

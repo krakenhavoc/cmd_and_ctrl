@@ -39,12 +39,13 @@ package lobby
 //     GameMeta. The store itself only ever holds its SHA-256.
 //
 // Deploy survival is explicitly out of scope. The store is in
-// memory, so a restart invalidates every outstanding ticket, and the
+// memory, so a restart invalidates every outstanding ticket. The
 // session a redemption issues lives in whatever Authenticator is
-// wired up — today auth.MemoryAuthenticator, which does not survive
-// a restart either. A link that outlives a deploy needs #517's
-// durable HMAC sessions; a 15-minute credential dying with the
-// process it was minted in is a reasonable place to stop until then.
+// wired up: with CMDCTRL_SESSION_KEY set that is
+// auth.HMACAuthenticator (#517) and the SESSION survives a deploy,
+// but the unredeemed TICKET still does not. A 15-minute credential
+// dying with the process it was minted in is a reasonable place to
+// stop.
 
 import (
 	"crypto/sha256"

@@ -1911,17 +1911,23 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meta)
 }
 
-// logout revokes the caller's credential server-side and clears the
-// session cookie. Unauthenticated — we want a client with an already-
-// expired token to be able to reach this endpoint to flush its cookie
-// without hitting a 401 first. Always returns 204 so the client can
-// safely treat the response as idempotent.
+// logout asks the authenticator to revoke the caller's credential and
+// clears the session cookie. Unauthenticated — we want a client with
+// an already-expired token to be able to reach this endpoint to flush
+// its cookie without hitting a 401 first. Always returns 204 so the
+// client can safely treat the response as idempotent.
+//
+// The revoke is only as strong as the authenticator. In production
+// that is auth.HMACAuthenticator, whose Revoke is advisory (ADR 0044
+// decision 3): the token stays valid until it expires, and logout
+// ends the session by clearing the cookie here and the client's
+// stored copy. TestLogoutWithStatelessSessions pins that.
 func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 	if cred := auth.CredentialFromRequest(r); cred != "" {
-		// Ignore Revoke errors: a stateless HMAC-style authenticator
-		// may always return nil, a stateful one may return "unknown
-		// token" which we treat as already-revoked. Either way the
-		// client just wants its cookie cleared.
+		// Ignore Revoke errors: the stateless authenticator always
+		// returns nil, a stateful one may return "unknown token"
+		// which we treat as already-revoked. Either way the client
+		// just wants its cookie cleared.
 		_ = c.Auth.Revoke(r.Context(), cred)
 	}
 	clearSessionCookie(c, w)

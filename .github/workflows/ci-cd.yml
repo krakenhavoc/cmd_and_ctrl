@@ -563,6 +563,32 @@ jobs:
             echo "set ${KEY}=1"
           done
 
+      # Session signing key (#517, ADR 0044 decision 3). Without it the
+      # server holds sessions in memory and every deploy logs every player
+      # out; with it, a token minted before the restart validates after.
+      #
+      # Generated ON THE HOST, once, and then left alone. Not an Actions
+      # secret: nothing but this server ever needs it, so it never has to
+      # leave the VM, and each host gets its own (a preview token must not
+      # validate on production). Rewriting it on every deploy would be the
+      # exact bug it exists to fix -- a new key invalidates every session.
+      # To rotate (logs everyone out): delete the line from ${ENV_FILE} and
+      # redeploy.
+      #
+      # The key must be at least 32 bytes and must differ from
+      # CMDCTRL_ADMIN_TOKEN; the server refuses to boot otherwise. 48
+      # random bytes base64-encode to 64 characters.
+      - name: Ensure server env (session signing key)
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
+            set -eu
+            if sudo grep -qE '^CMDCTRL_SESSION_KEY=.{32,}' ${ENV_FILE}; then
+              echo 'CMDCTRL_SESSION_KEY already set; leaving it (rotating it logs everyone out).'
+            else
+              head -c 48 /dev/urandom | base64 -w0 | sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_SESSION_KEY ${ENV_FILE}
+            fi
+          "
+
       # Discord OAuth sign-in. All three are required -- discord.Config.Enabled()
       # is false if any is blank, /auth/discord/start returns 503 and the client
       # hides the sign-in button via /auth/discord/config -- so they are set
