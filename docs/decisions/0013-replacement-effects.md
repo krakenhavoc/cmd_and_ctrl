@@ -2162,8 +2162,10 @@ clause is ABOUT**:
   clause runs whichever way the question is answered — and it still has
   to WAIT for the answer, because the order is observable.
 
-So the six sites split three ways, and only one of them changed an
-outcome.
+So the six sites split three ways — seven, in fact: widened, the scan
+also finds Chain of Vapor, which #993 did not list and which is
+Boomerang Basics with a different second sentence. Only one of the seven
+changed an outcome.
 
 **3. The one that was wrong: Ruthless Technomancer.** "You may sacrifice
 another creature you control. **If you do**, create a number of Treasure

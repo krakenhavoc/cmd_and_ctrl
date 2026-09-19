@@ -35,14 +35,22 @@ import (
 //
 // #993 WIDENED IT FROM EXILE TO EVERY EXIT. §5t scoped the original
 // scan to exile because that was the verb #911 settled, and named the
-// six sites a wider table would find. Every one of them is answered in
-// ADR 0013 §5v: three were migrated onto the continuation (Boomerang
-// Basics, Chain of Vapor, Ruthless Technomancer), two were mills whose
-// hand-rolled loop is now the primitive's own run (Consuming Aberration,
-// Hermit Druid), one was a false positive that stopped being one when
-// SacrificeChoice grew a real continuation, and one is allowlisted
-// below. The verbs are the ones with a pausable exit: destroy,
-// sacrifice, bounce, tuck, mill, exile, and a graveyard arrival.
+// six sites a wider table would find; widened, it finds a SEVENTH —
+// Chain of Vapor, which is Boomerang Basics with a different second
+// sentence. All seven are answered in ADR 0013 §5v: two moved onto a
+// bounce continuation for the ORDER alone (Boomerang Basics, Chain of
+// Vapor), one onto a sacrifice continuation for the ANSWER (Ruthless
+// Technomancer, the only changed outcome), two were mills whose
+// hand-rolled loop is now the primitive's own run (Consuming
+// Aberration, Hermit Druid), one was a false positive that stopped
+// being one when SacrificeChoice grew a real continuation, and one is
+// allowlisted below beside §5t's.
+//
+// The verbs are the ones with a pausable exit: exile, destroy,
+// sacrifice, bounce, tuck, mill, a discard (§5g) and a graveyard
+// arrival (§5q). The last two find nothing in the catalog today and are
+// in the tables anyway — a guard rail is for the site that has not been
+// written yet.
 //
 // WHAT IS NOT FLAGGED, on purpose:
 //
