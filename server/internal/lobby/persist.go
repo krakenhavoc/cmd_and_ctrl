@@ -5,11 +5,12 @@ package lobby
 //
 // The engine snapshot (internal/game/snapshot.go) rebuilds the table.
 // It does not rebuild the INVITE — and without the invite token, a
-// restored game is a room nobody can open. Sessions do not survive a
-// restart either (auth.MemoryAuthenticator is explicit about that), so
-// after a deploy every player re-authenticates through the invite
-// link. That link has to still work, which means the token has to be
-// on disk.
+// restored game is a room nobody can open. Signed sessions survive a
+// restart (auth.HMACAuthenticator, #517), but a player whose token is
+// gone — cleared storage, a new device, an expired TTL, or a server
+// running without CMDCTRL_SESSION_KEY — re-authenticates through the
+// invite link. That link has to still work, which means the token has
+// to be on disk.
 //
 // What is written: GameMeta — display name, created-at, the two invite
 // tokens, and the seat list. Note that this file contains SECRETS (the

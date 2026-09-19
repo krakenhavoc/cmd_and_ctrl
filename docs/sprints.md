@@ -2500,12 +2500,12 @@ Meanwhile the restore point is staler than the ADR implies. The census fires on 
 
 `auth.MemoryAuthenticator`'s own doc comment has said since S04 that "session is lost on server restart", and ADR 0041 named the swap as a one-line change because `Authenticator` is the only seam the rest of the server sees. It is still one line.
 
-**Blocked on [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)** (owner decision 2026-09-16): in-app bug reports published session tokens in issue bodies. Harmless while tokens die on restart; a durable token pasted in an issue stays live. Redaction lands first (ADR 0017 §9).
+**Blocked on [#721](https://github.com/krakenhavoc/cmd_and_ctrl/issues/721)** (owner decision 2026-09-16): in-app bug reports published session tokens in issue bodies. Harmless while tokens die on restart; a durable token pasted in an issue stays live. Redaction lands first (ADR 0017 §9). #721 shipped in #739; this sub-PR ships to production with or after the promotion that carries it.
 
-- [ ] `auth.HMACAuthenticator` — Principal signed into the credential, constant-time verify, expiry honoured, no server-side store
-- [ ] Key from env; **absent key falls back to `MemoryAuthenticator` with a loud warning** rather than booting with a default
-- [ ] `Revoke` semantics under a stateless backend, documented on the type rather than left as a silent `return nil`
-- [ ] Wired in `main.go` — rebase against S31's bot wiring ([#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514))
+- [x] `auth.HMACAuthenticator` — Principal signed into the credential, constant-time verify, expiry honoured, no server-side store. The credential also carries `Principal.UserID` (zero until #607) and a millisecond `IssuedAt`, for [ADR 0051](decisions/0051-user-database.md) decisions 3 and 6
+- [x] Key from env (`CMDCTRL_SESSION_KEY`, generated on each host by CD); **absent key falls back to `MemoryAuthenticator` with a loud warning** rather than booting with a default. A short key, or one equal to the admin token, fails the boot
+- [x] `Revoke` semantics under a stateless backend, documented on the type rather than left as a silent `return nil`: advisory. `POST /logout` clears the cookie; a copied token lives to its expiry
+- [x] Wired in `main.go` — rebase against S31's bot wiring ([#514](https://github.com/krakenhavoc/cmd_and_ctrl/pull/514))
 
 ### Sub-PR 2 — reconnect when the server restarts ([#518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/518))
 

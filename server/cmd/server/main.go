@@ -20,6 +20,12 @@
 //	                        create games and list the whole lobby.
 //	CMDCTRL_SESSION_TTL   — session lifetime, Go duration string (e.g. 12h).
 //	                        Default 12h.
+//	CMDCTRL_SESSION_KEY   — HMAC-SHA256 key that signs session tokens, at
+//	                        least 32 bytes, distinct from the admin token.
+//	                        Set: sessions survive a restart. Unset: sessions
+//	                        are in memory and die with the process, with a
+//	                        warning on every boot. Too short: boot fails.
+//	                        Rotating it logs everyone out.
 //	CMDCTRL_SEED_DEMO     — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -156,7 +162,12 @@ func main() {
 
 	// Auth + room manager are global singletons for the lifetime of
 	// the process. They outlive individual games.
-	authenticator := auth.NewMemoryAuthenticator()
+	//
+	// Sessions are HMAC-signed when CMDCTRL_SESSION_KEY is set, so a
+	// token survives a deploy (ADR 0044 decision 3, #517). Unset falls
+	// back to the in-memory store with a loud warning; a key that is
+	// set but too short fails the boot. There is no default key.
+	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
 	l := lobby.NewLobby(mgr)
 
@@ -237,8 +248,9 @@ func main() {
 	// have got from any restart before this feature existed. Nothing
 	// here is fatal: a bad restore point must never stop a boot.
 	//
-	// NOTE: auth sessions do NOT survive a restart
-	// (auth.MemoryAuthenticator is explicit about it), so players
+	// NOTE: auth sessions survive a restart only when
+	// CMDCTRL_SESSION_KEY is set (auth.HMACAuthenticator). Without it
+	// they are in memory and die with the process, and players
 	// re-authenticate through their invite link. That link is why
 	// lobby metadata is persisted alongside the engine snapshot.
 	//
@@ -560,6 +572,29 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	return c
+}
+
+// newAuthenticator picks the session store (see auth.NewFromEnv) and
+// exits on a misconfigured key rather than booting on a weaker one.
+//
+// The session key must not be the admin token. The admin token is
+// copied into the Discord bot's env file on every deploy (ADR 0004
+// §6), so a shared value would let anything that can read that file
+// forge a session for any seat.
+func newAuthenticator(log *slog.Logger, cfg config) auth.Authenticator {
+	if strings.TrimSpace(os.Getenv(auth.SessionKeyEnv)) == cfg.AdminToken {
+		log.Error(auth.SessionKeyEnv + " must not equal CMDCTRL_ADMIN_TOKEN; generate a separate random key")
+		os.Exit(1)
+	}
+	a, err := auth.NewFromEnv(os.Getenv, log)
+	if err != nil {
+		log.Error("session key invalid", "var", auth.SessionKeyEnv, "err", err)
+		os.Exit(1)
+	}
+	if _, ok := a.(*auth.HMACAuthenticator); ok {
+		log.Info("sessions are HMAC-signed and survive a restart", "var", auth.SessionKeyEnv)
+	}
+	return a
 }
 
 func envOr(key, dflt string) string {

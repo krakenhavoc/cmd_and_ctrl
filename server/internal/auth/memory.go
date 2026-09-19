@@ -15,15 +15,16 @@ import (
 // Properties at S04:
 //   - Survives concurrent reads/writes via an internal mutex.
 //   - Session is lost on server restart — users re-auth on reconnect.
-//     Acceptable for local-friends-only use per PLAN.md §4.
+//     Production runs HMACAuthenticator instead (S33, #517); this is
+//     what NewFromEnv falls back to, loudly, when CMDCTRL_SESSION_KEY
+//     is unset, and what the handler tests use.
 //   - No rate limiting on Validate / Issue. A future HTTP middleware
 //     can bolt this on if threat model warrants.
 //   - Expired tokens are lazily dropped on Validate; there is no
 //     background sweeper. For ≤a few dozen sessions this is fine.
 //
-// For stateless deployments, swap this out for an HMAC implementation.
-// The Authenticator interface is the only seam the rest of the server
-// sees, so the swap is a one-line change in main.go.
+// Revoke is real here: a revoked token fails Validate immediately. That
+// is NOT true of HMACAuthenticator, so no caller may rely on it.
 type MemoryAuthenticator struct {
 	mu     sync.Mutex
 	tokens map[string]Principal

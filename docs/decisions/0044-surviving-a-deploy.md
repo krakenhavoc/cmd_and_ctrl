@@ -143,6 +143,12 @@ production cannot quietly boot with a fixed or absent key. Failing
 open on a signing key is how you get an authenticator that authorises
 everyone.
 
+*Implemented in #517:* `auth.HMACAuthenticator`, keyed by
+`CMDCTRL_SESSION_KEY` (at least 32 bytes, not equal to the admin
+token, generated on each host by CD). `Revoke` is advisory. The
+credential also carries `UserID` and a millisecond `IssuedAt`, for
+[ADR 0051](0051-user-database.md) decisions 3 and 6.
+
 ## Decision 4 — Seat reclaim is the backstop, not the mechanism
 
 With decision 3 the common case is that the stored token still
