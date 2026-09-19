@@ -239,3 +239,120 @@ func TestAStandingGraveyardGrantStopsAtItsHoldersOwnYard(t *testing.T) {
 		}
 	}
 }
+
+// --- #1037: a card two seats may both cast ---------------------------
+//
+// A CardView is one struct, and until #1037 the announce-time stamps
+// were one seat's answer written into it: `foreignCastHolder` took the
+// first seat in seat order for a graveyard and
+// CastPermissionOnCardForEffect the first live permission for exile.
+// The second holder got the public zone, the public `exile_play` and
+// no stamps — no picker and no button, for a cast the engine would
+// accept. The stamps are filed per holder now and FilterViewFor hands
+// out exactly one; the wire shape is unchanged, because the frame was
+// always built per viewer.
+
+// A card its OWNER may cast out of their own graveyard (printed
+// flashback) while an opponent holds a Wrexial-style grant over the
+// same card. The owner's answer is the public one; the other holder's
+// is theirs alone.
+func TestTwoHoldersEachSeeTheirOwnGraveyardCastStamps(t *testing.T) {
+	g := busyTable(t, 0)
+	owner, holder, bystander := g.Seats[0], g.Seats[1], g.Seats[2]
+	const oracle = "test-view-two-holders-yard"
+	withCastableZones(t, map[string][]game.ZoneKind{oracle: {game.ZoneGraveyard}})
+	withAltCostsByOracle(t, map[string][]game.AlternativeCost{
+		oracle: {{
+			Key: "flashback", Label: "Flashback {2}{R}", ManaCost: "{2}{R}",
+			FromZone: game.ZoneGraveyard,
+		}},
+	})
+	owner.Graveyard.Cards = nil
+	id := graveyardCard(owner, "Twice-Claimed Spell", oracle)
+	knownToEveryone(g, owner.Graveyard, id)
+	// The SECOND permission, held by another seat, with its own key so
+	// the two answers are told apart by what they offer.
+	grantOverCard(t, g, holder.ID, id, game.CastPermission{
+		Zone: game.ZoneGraveyard, Scope: game.ScopeCards, AltCostKey: "escape",
+	})
+
+	// The owner: their own printed flashback, and no sight of the
+	// other seat's escape.
+	own := cardInSeatZone(t, ViewOfGameFor(g, owner.ID.String()).Seats[0].Graveyard, id)
+	if !own.CastableHere {
+		t.Errorf("the graveyard's owner lost their own printed cast surface")
+	}
+	if got := keysOf(own.AlternativeCosts); !sameStrings(got, []string{"flashback"}) {
+		t.Errorf("owner offers = %v, want [flashback]", got)
+	}
+
+	// The second holder: their own grant's price, and the printed
+	// flashback beside it — CastOffersForLocked answers for THEM out
+	// of the same zone, and a card's printed offers are not the
+	// owner's private property.
+	theirs := cardInSeatZone(t, ViewOfGameFor(g, holder.ID.String()).Seats[0].Graveyard, id)
+	if !theirs.CastableHere {
+		t.Errorf("the second holder is not told the card is a cast surface")
+	}
+	if got := keysOf(theirs.AlternativeCosts); !sameStrings(got, []string{"escape", "flashback"}) {
+		t.Errorf("second holder offers = %v, want [escape flashback]", got)
+	}
+
+	// And a bystander gets the public answer — the owner's — and no
+	// trace of the private one.
+	other := cardInSeatZone(t, ViewOfGameFor(g, bystander.ID.String()).Seats[0].Graveyard, id)
+	if got := keysOf(other.AlternativeCosts); !sameStrings(got, []string{"flashback"}) {
+		t.Errorf("bystander offers = %v, want the public [flashback]", got)
+	}
+}
+
+// Two impulse grants over one exiled card, from two different effects.
+// Exile has no owner, so NOTHING about the announce surface is public:
+// each holder gets their own, and each gets their own `exile_play`,
+// which is the field their client's impulse button reads.
+func TestTwoHoldersEachSeeTheirOwnExileCastStamps(t *testing.T) {
+	g := busyTable(t, 0)
+	first, second, bystander := g.Seats[0], g.Seats[1], g.Seats[2]
+	const oracle = "test-view-two-holders-exile"
+	withAltCostsByOracle(t, map[string][]game.AlternativeCost{oracle: nil})
+
+	spell := game.NewCard("Twice-Granted Spell", first.ID)
+	spell.TypeLine = "Instant"
+	spell.ManaCost = "{1}{R}"
+	spell.OracleID = oracle
+	id := exileWithGrant(t, g, spell, game.CastPermission{
+		Player: first.ID, Zone: game.ZoneExile, Scope: game.ScopeCards,
+	})
+	grantOverCard(t, g, second.ID, id, game.CastPermission{
+		Zone: game.ZoneExile, Scope: game.ScopeCards, AltCostKey: "escape",
+	})
+
+	one := cardInSeatZone(t, ViewOfGameFor(g, first.ID.String()).Exile, id)
+	if one.ExilePlay == nil || one.ExilePlay.Player != first.ID.String() {
+		t.Errorf("first holder's exile_play = %+v, want their own grant", one.ExilePlay)
+	}
+	if got := keysOf(one.AlternativeCosts); len(got) != 0 {
+		t.Errorf("first holder offers = %v, want none — their grant prices nothing", got)
+	}
+
+	two := cardInSeatZone(t, ViewOfGameFor(g, second.ID.String()).Exile, id)
+	if two.ExilePlay == nil || two.ExilePlay.Player != second.ID.String() {
+		t.Errorf("second holder's exile_play = %+v, want their OWN grant, not the first one found",
+			two.ExilePlay)
+	}
+	if got := keysOf(two.AlternativeCosts); !sameStrings(got, []string{"escape"}) {
+		t.Errorf("second holder offers = %v, want [escape]", got)
+	}
+
+	// The bystander keeps the public grant — it is public information,
+	// the trigger that made it resolved in the open — and gets no
+	// seat's announce surface.
+	none := cardInSeatZone(t, ViewOfGameFor(g, bystander.ID.String()).Exile, id)
+	if none.ExilePlay == nil {
+		t.Errorf("a bystander lost the public exile_play")
+	}
+	if len(none.AlternativeCosts) != 0 || none.LegalTargets != nil {
+		t.Errorf("a bystander got a holder's announce surface: offers=%v targets=%+v",
+			keysOf(none.AlternativeCosts), none.LegalTargets)
+	}
+}
