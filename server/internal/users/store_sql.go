@@ -152,6 +152,22 @@ func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (User, error) {
 	return getUser(ctx, s.db, id.String())
 }
 
+// DiscordSubject implements Store: one indexed read of the identities
+// row for this user's Discord login.
+func (s *SQLStore) DiscordSubject(ctx context.Context, id uuid.UUID) (string, error) {
+	var subject string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT subject FROM identities WHERE provider = ? AND user_id = ?`,
+		ProviderDiscord, id.String()).Scan(&subject)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("users: discord subject for %s: %w", id, err)
+	}
+	return subject, nil
+}
+
 // RefreshToken opens the stored refresh token for a Discord identity.
 // ok is false when none is stored (no key at the time, or never
 // returned). An error means a token is stored but cannot be opened —

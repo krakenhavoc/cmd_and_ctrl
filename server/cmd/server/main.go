@@ -416,6 +416,21 @@ func main() {
 		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
 	}
 
+	// The bot token the server itself uses for direct-message invites
+	// (ADR 0051 decision 5, S34 sub-PR 6). Separate from the gateway
+	// bot's own copy in /etc/cmd_and_ctrl/bot.env: this one is read
+	// from the SERVER's env file, and nothing else on the server reads
+	// it. Unset is a supported state and must never fall open — the
+	// route answers 503 naming the variable, every other route is
+	// unchanged — so it is said once here, at boot, either way.
+	discordBot := discord.BotFromEnv(os.Getenv)
+	if discordBot.Enabled() {
+		log.Info("discord DM invites enabled", "env", discord.BotTokenEnv)
+	} else {
+		log.Info("discord DM invites disabled — POST /games/{id}/invites/dm returns 503; set "+
+			discord.BotTokenEnv+" to enable", "env", discord.BotTokenEnv)
+	}
+
 	// Avatar cache lives under the same data dir as the scryfall
 	// index and replay dumps. Empty DataDir disables the cache —
 	// the /avatars endpoint will then 503 and the client falls
@@ -458,6 +473,13 @@ func main() {
 	if publicBase == "" {
 		publicBase = os.Getenv("CMDCTRL_CLIENT_BASE_URL")
 	}
+	// The same origin is what a DM invite's link is built against. A
+	// bot token with nowhere to point it still cannot send: the route
+	// 503s naming this variable rather than DMing a broken link.
+	if discordBot.Enabled() && publicBase == "" {
+		log.Warn("discord DM invites cannot send — set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) " +
+			"so the invite link has an origin; POST /games/{id}/invites/dm returns 503 until then")
+	}
 	bugStore := bugstore.New(bugDir, publicBase)
 	if bugStore.Enabled() {
 		if bugStore.AttachmentsEnabled() {
@@ -478,16 +500,21 @@ func main() {
 	}
 
 	mux.Handle("/", lobby.Handler(lobby.Config{
-		Lobby:             l,
-		Auth:              authenticator,
-		AdminToken:        cfg.AdminToken,
-		SessionTTL:        cfg.SessionTTL,
-		IdentityTTL:       cfg.IdentityTTL,
-		Env:               cfg.Env,
-		Features:          cfg.Features,
-		Cards:             cardIdx,
-		Evictor:           hub,
-		Discord:           discordCfg,
+		Lobby:       l,
+		Auth:        authenticator,
+		AdminToken:  cfg.AdminToken,
+		SessionTTL:  cfg.SessionTTL,
+		IdentityTTL: cfg.IdentityTTL,
+		Env:         cfg.Env,
+		Features:    cfg.Features,
+		Cards:       cardIdx,
+		Evictor:     hub,
+		Discord:     discordCfg,
+		DiscordBot:  discordBot,
+		// The DM invite's link is built against the same public origin
+		// bug-report attachments use, and for the same reason there is
+		// no default: a wrong origin produces a DM full of dead links.
+		InviteBaseURL:     publicBase,
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
 		Users:             userStore,

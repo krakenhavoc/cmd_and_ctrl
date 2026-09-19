@@ -103,8 +103,25 @@ type Config struct {
 	DiscordStateStore *discord.StateStore
 	// DiscordHTTPClient is injected for tests that stub Discord's
 	// token + /users/@me endpoints via httptest. Nil falls back to
-	// http.DefaultClient.
+	// http.DefaultClient. The DM-invite route shares it; nil there
+	// means a client with a short timeout.
 	DiscordHTTPClient *http.Client
+	// DiscordBot is the server's bot-token credential, for ADR 0051
+	// decision 5's direct-message invites (S34 sub-PR 6). The zero
+	// value means CMDCTRL_DISCORD_BOT_TOKEN is unset, which is a
+	// supported state: POST /games/{id}/invites/dm answers 503 naming
+	// the variable and EVERY OTHER ROUTE IS UNCHANGED. It never falls
+	// open — an unset token cannot send a DM by another path — and
+	// main.go says so once at boot.
+	DiscordBot discord.Bot
+	// InviteBaseURL is the origin an invite link is built against
+	// (CMDCTRL_PUBLIC_BASE_URL, falling back to
+	// CMDCTRL_CLIENT_BASE_URL — the same pair bug-report attachments
+	// use). "" means the DM route has no link to send and answers
+	// 503, for the same reason the bug store has no default: a wrong
+	// origin produces a DM full of dead links, which is worse than a
+	// deployment where the button simply is not offered.
+	InviteBaseURL string
 	// Users records who signed in (ADR 0051 decision 2, S34 sub-PR 2).
 	// The OAuth callback upserts the Discord identity here and stamps
 	// the returned user id onto the session as Principal.UserID. Nil
@@ -201,10 +218,12 @@ type GameEvictor interface {
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
+//	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	POST /games/{id}/decks/{deck_id} — authenticated: seat a library deck without re-pasting
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	GET  /me/decks          — authenticated: the caller's deck library
+//	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -320,6 +339,23 @@ func Handler(c Config) http.Handler {
 	// though the admin gate already keeps a stranger out.
 	mux.Handle("POST /games/{id}/invites/rotate",
 		limit.Middleware(auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, rotateInvite))))
+	// Direct-message invites (ADR 0051 decision 5, S34 sub-PR 6): the
+	// server DMs a tablemate the game's ORDINARY player invite through
+	// Discord's REST API. Session-gated, then authorised in the
+	// handler (seated at the table, the game's creator, or admin).
+	//
+	// Two buckets, both of which have to allow the request. The IP
+	// bucket is the one every other invite-adjacent route rides. The
+	// per-CALLER bucket is what decision 5 actually asks for: every
+	// accepted call costs two outbound Discord writes and lands an
+	// unsolicited DM in somebody's inbox, and an IP bucket is shared
+	// by everyone behind one reverse proxy — it would let one tab
+	// spend the whole table's allowance. ~1 DM / 10 s with a burst of
+	// 3 is generous for inviting three friends at once and useless
+	// for anything else.
+	dmLimit := newLimiter(1.0/10, 3)
+	mux.Handle("POST /games/{id}/invites/dm",
+		limit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(dmLimit, handlerFunc(c, inviteDM)))))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -384,6 +420,10 @@ func Handler(c Config) http.Handler {
 	// /me/* is in deploy/Caddyfile's @api matcher; /me in the Vite
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
+	// The invite picker's list (ADR 0051 decision 8, S34 sub-PR 6):
+	// the people the caller has shared a table with. Same caller rule
+	// as the rest of /me/*.
+	mux.Handle("GET /me/tablemates", auth.Middleware(c.Auth)(handlerFunc(c, myTablemates)))
 	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
 	// The caller's deck library (ADR 0051 decision 7, S34 sub-PR 5).
 	// Any authenticated role reaches the handler; it 401s itself for a
@@ -452,6 +492,52 @@ func Handler(c Config) http.Handler {
 // http.Handler, centralising error-to-JSON translation so every
 // endpoint doesn't repeat the same switch statement.
 type lobbyHandler func(c Config, w http.ResponseWriter, r *http.Request) error
+
+// perCallerLimit throttles by WHO is calling rather than by where
+// from: the caller's user, or their session's seat when they have no
+// user, or their admin role. It must sit INSIDE auth.Middleware,
+// which is what puts the principal in the request context.
+//
+// ratelimit.Limiter.Middleware keys on the client IP, which is the
+// right key for a credential being brute-forced and the wrong one for
+// a route whose cost is per person: without CMDCTRL_TRUST_FORWARDED
+// every caller behind a reverse proxy shares one bucket, so an IP
+// bucket would let one tab spend the whole table's allowance. The two
+// compose — a request has to satisfy both.
+func perCallerLimit(l *ratelimit.Limiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !l.Allow(callerKey(r)) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "10")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":"too many requests"}`))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// callerKey identifies the principal for perCallerLimit. Every branch
+// is prefixed so a user id can never collide with a player id.
+func callerKey(r *http.Request) string {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return "anon"
+	}
+	switch {
+	case p.UserID != uuid.Nil:
+		return "user:" + p.UserID.String()
+	case p.Role == auth.RoleAdmin:
+		// One bucket for the admin credential, shared by the bot and
+		// any operator holding it. That is the point: it is one
+		// credential.
+		return "admin"
+	case p.PlayerID != uuid.Nil:
+		return "seat:" + p.PlayerID.String()
+	default:
+		return "anon"
+	}
+}
 
 func handlerFunc(c Config, h lobbyHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

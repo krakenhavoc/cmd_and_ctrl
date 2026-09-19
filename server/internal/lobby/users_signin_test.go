@@ -40,6 +40,14 @@ type userStack struct {
 
 func newUserStack(t *testing.T, sealer *users.Sealer) userStack {
 	t.Helper()
+	return newUserStackWith(t, sealer, nil)
+}
+
+// newUserStackWith is newUserStack with a hook that can adjust the
+// Config after the database-backed pieces are wired — what S34 sub-PR
+// 6's DM-invite tests need to add a bot token and an invite origin.
+func newUserStackWith(t *testing.T, sealer *users.Sealer, configure func(*Config)) userStack {
+	t.Helper()
 	dir := t.TempDir()
 	d := openTestDB(t, dir)
 	us := users.NewSQLStore(d, sealer)
@@ -51,6 +59,9 @@ func newUserStack(t *testing.T, sealer *users.Sealer) userStack {
 		c.Lobby = NewLobbyWithStore(ws.NewRoomManager(quietLogger(), ""), NewSQLStore(d))
 		c.Auth = a
 		c.Users = us
+		if configure != nil {
+			configure(c)
+		}
 	})
 	stub.tokenBody = `{"access_token":"tok-stub","token_type":"Bearer","expires_in":3600,"refresh_token":"rt-stub-secret","scope":"identify"}`
 	return userStack{srv: srv, lobby: l, stub: stub, state: state, users: us, auth: a, db: d}

@@ -16,6 +16,7 @@ import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
 import type { MyDecksResponse } from "./myDecks";
+import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
 
 // Re-export the violation shape so consumers of api.ts don't also
@@ -614,6 +615,38 @@ export async function rejoinMyGame(path: string): Promise<Session> {
   };
   setSession(s);
   return s;
+}
+
+// fetchTablemates reads the people the signed-in caller has shared a
+// table with (ADR 0051 decision 8, S34 sub-PR 6, GET /me/tablemates),
+// most recently shared table first. 401s for anyone without a user_id,
+// exactly as GET /me/decks does; callers should gate on
+// tablemates.canInviteTablemates first rather than rely on the 401,
+// since a picker that flashes and disappears reads as broken.
+export async function fetchTablemates(): Promise<Tablemate[]> {
+  const res = await authFetch("/me/tablemates");
+  const body = (await res.json()) as { tablemates?: Tablemate[] };
+  return body.tablemates ?? [];
+}
+
+// sendInviteDM asks the server to DM one person the game's EXISTING
+// player invite link (POST /games/{id}/invites/dm, ADR 0051 decision
+// 5). Nothing new is minted, so a link already shared in a channel
+// keeps working. The target is named by OUR user id — the one
+// fetchTablemates returns — and the server resolves the Discord
+// account; the client never handles a snowflake.
+//
+// The failures worth showing the player, all as LobbyApiError.message:
+// 403 (not seated at this table), 422 (the target shares no Discord
+// server with the bot, or has DMs closed), 429 (too many invites, from
+// us or from Discord), 503 (this deployment has no bot token) and 409
+// (this server no longer holds the table's link — rotate it first).
+export async function sendInviteDM(gameID: string, userID: string): Promise<InviteDMResponse> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/invites/dm`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userID }),
+  });
+  return (await res.json()) as InviteDMResponse;
 }
 
 // BugReportConfig mirrors the JSON from GET /bugreport/config.

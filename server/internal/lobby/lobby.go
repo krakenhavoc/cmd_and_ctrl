@@ -1177,6 +1177,25 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	return copyMeta(entry.meta), nil
 }
 
+// CreatedBy returns games.created_by for a live game: the users(id)
+// of the person who created it, or "" for an admin-created game (an
+// admin session is a server credential, not a person — decision 2).
+// ErrGameNotFound when the table is not live in this process.
+//
+// It exists for the DM-invite route's "seated in, or the creator of,
+// the game" rule (ADR 0051 decision 5). GameMeta deliberately does
+// not carry the creator: it is the lobby's own bookkeeping and has
+// never been on the wire.
+func (l *Lobby) CreatedBy(id uuid.UUID) (string, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	if !ok {
+		return "", ErrGameNotFound
+	}
+	return entry.createdBy, nil
+}
+
 // LookupGame returns the live *game.Game pointer for id, or
 // ErrGameNotFound. Distinct from Get (which returns a copy of the
 // metadata) — the read-only HTTP endpoints that need to consult

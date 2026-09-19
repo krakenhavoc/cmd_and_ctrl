@@ -26,7 +26,9 @@
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
+  import { canInviteTablemates } from "../lib/tablemates";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
 
   // Lobby is the admin + player landing page. Admins see a create-
@@ -930,6 +932,15 @@
             <div class="bot-error">{botError}</div>
           {/if}
 
+          {#if g.state === "lobby" && canInviteTablemates($session, $session?.gameID, g.id)}
+            <details class="invite-picker">
+              <summary>
+                <span class="panel-h">invite a tablemate</span>
+              </summary>
+              <TablematePicker gameID={g.id} />
+            </details>
+          {/if}
+
           {#if seat && g.state === "lobby" && $session?.playerID}
             <details class="deck-upload" open={!seat.deck_uploaded}>
               <summary>
@@ -1648,10 +1659,15 @@
     flex: 1 0 100%;
   }
 
-  .deck-upload {
+  /* The invite picker wears the deck panel's disclosure exactly, so
+     a game card reads as one stack of panels rather than two
+     unrelated controls (ADR 0051 decision 8, S34 sub-PR 6). */
+  .deck-upload,
+  .invite-picker {
     border-top: 1px solid var(--border);
     padding-top: 12px;
   }
+  .invite-picker summary,
   .deck-upload summary {
     cursor: pointer;
     list-style: none;
@@ -1659,9 +1675,11 @@
     align-items: center;
     gap: 12px;
   }
+  .invite-picker summary::-webkit-details-marker,
   .deck-upload summary::-webkit-details-marker {
     display: none;
   }
+  .invite-picker summary::before,
   .deck-upload summary::before {
     content: "";
     width: 6px;
@@ -1671,9 +1689,11 @@
     transform: rotate(-45deg);
     transition: transform 120ms var(--ease);
   }
+  .invite-picker[open] summary::before,
   .deck-upload[open] summary::before {
     transform: rotate(45deg);
   }
+  .invite-picker summary:hover .panel-h,
   .deck-upload summary:hover .panel-h {
     color: var(--fg);
   }

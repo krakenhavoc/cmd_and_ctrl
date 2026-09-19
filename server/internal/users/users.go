@@ -67,6 +67,17 @@ type Store interface {
 	UpsertFromDiscord(ctx context.Context, profile discord.User, refreshToken, scopes string) (User, error)
 	// Get reads one user. ErrNotFound if there is none.
 	Get(ctx context.Context, id uuid.UUID) (User, error)
+	// DiscordSubject is the Discord snowflake of a user's Discord
+	// identity — identities.subject for provider = "discord" (ADR 0051
+	// decision 2). It is what the DM-invite route needs to address a
+	// person on Discord, and the only place our user id is turned back
+	// into a snowflake. ErrNotFound when there is no such user, or
+	// when the user has no Discord identity (which cannot happen while
+	// Discord is the only provider, but will once there is a second).
+	//
+	// It is never part of a response body: a tablemate is offered by
+	// OUR id, and the snowflake is resolved server-side.
+	DiscordSubject(ctx context.Context, id uuid.UUID) (string, error)
 }
 
 // NoStore is the Store for a deployment with no database. Every
@@ -82,6 +93,12 @@ func (NoStore) UpsertFromDiscord(context.Context, discord.User, string, string) 
 // Get always reports ErrNotFound: there are no users without a store.
 func (NoStore) Get(context.Context, uuid.UUID) (User, error) {
 	return User{}, ErrNotFound
+}
+
+// DiscordSubject always reports ErrNotFound, for the same reason Get
+// does: with no database there are no users to resolve.
+func (NoStore) DiscordSubject(context.Context, uuid.UUID) (string, error) {
+	return "", ErrNotFound
 }
 
 // AvatarPath is the same-origin path the client loads a Discord

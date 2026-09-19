@@ -188,6 +188,12 @@ type Store interface {
 	// (ADR 0051 decision 4, "My games"). Ended and archived games are
 	// included.
 	SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRecord, error)
+	// Tablemates lists the people userID has shared a table with —
+	// ADR 0051 decision 8's self-join of seats — most recently shared
+	// table first. The caller is excluded, and so is every seat with
+	// no user (a guest, a bot, a Discord seat still pending). See
+	// tablemates.go.
+	Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error)
 }
 
 // UserSeatRecord is one row of "My games": a seat a user holds, the
