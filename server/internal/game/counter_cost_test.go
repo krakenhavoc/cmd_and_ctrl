@@ -339,7 +339,7 @@ func TestCounterCostIgnoresShroud(t *testing.T) {
 	}
 	g.mu.RLock()
 	c := findBattlefieldCard(g, walker)
-	targetable := c != nil && CanBeTargetedBy(c, ZoneBattlefield, me.ID)
+	targetable := c != nil && CanBeTargetedBy(c, ZoneBattlefield, SourceChooser(me.ID))
 	g.mu.RUnlock()
 	if targetable {
 		t.Fatal("test setup: the walker should be untargetable, or this test proves nothing")

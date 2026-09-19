@@ -402,6 +402,7 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
@@ -473,6 +474,7 @@
       abilities={card.abilities}
       chosenColor={card.chosen_color}
       namedTribe={card.named_tribe}
+      protection={card.protection}
     />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">

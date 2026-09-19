@@ -50,7 +50,7 @@ type modePickFrame struct {
 // Caller must hold g.mu.
 func (g *Game) queueModePickLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) bool {
 	ms := t.Modes
-	options := g.choosableModeOptionsLocked(source.Controller, ms)
+	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source), ms)
 	if !EnoughChoosableModes(len(options), ms) {
 		return false
 	}

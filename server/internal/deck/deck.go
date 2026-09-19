@@ -19,6 +19,7 @@ package deck
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -326,12 +327,22 @@ func printedKeywords(c cards.Card) []string {
 		front = keywordLines(c.CardFaces[0].OracleText)
 	}
 	var confirm map[string]bool
+	wantProtection := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
-		kw, ok := game.CanonicalKeyword(raw)
+		kws, ok := game.CanonicalKeywords(raw)
 		if !ok {
+			// PROTECTION lands here, always: Scryfall's array carries
+			// the bare family name and the quality lives only in the
+			// oracle text, so the tokens come from the line scan
+			// below instead (#662). Everything else Scryfall names
+			// that the engine does not enforce is simply dropped.
+			if strings.EqualFold(strings.TrimSpace(raw), "protection") {
+				wantProtection = true
+			}
 			continue
 		}
+		kw := kws[0]
 		if front != nil && !front[kw] {
 			continue
 		}
@@ -360,10 +371,52 @@ func printedKeywords(c cards.Card) []string {
 		}
 		out = append(out, kw)
 	}
+	// Protection (CR 702.16) is PARAMETERISED, so it cannot come off
+	// the array the way every other keyword does: Scryfall says only
+	// "Protection" and the quality is in the oracle text. The tokens
+	// are read from the keyword-ability LINES instead, through the
+	// same scan the narrow-variant confirmation uses — which also
+	// gives the multi-face narrowing for free, because a keyword the
+	// front face does not print is not in `front`.
+	//
+	// A quality protection.go's closed grammar cannot parse mints
+	// nothing, so the card carries no protection at all and stays
+	// flagged by the ADR 0037 coverage signal. Errs weaker, exactly
+	// as ADR 0038 §6 chose for "Hexproof from".
+	if wantProtection {
+		lines := front
+		if lines == nil {
+			lines = keywordLinesOf(c)
+		}
+		var protections []string
+		for kw := range lines {
+			if _, ok := game.ParseProtectionQuality(kw); ok && !containsString(out, kw) {
+				protections = append(protections, kw)
+			}
+		}
+		// Map iteration order is random and Card.Keywords is what the
+		// client's badge row renders, so the tokens are sorted — the
+		// printed order is not recoverable from a set, and a stable
+		// order is what stops a card's badges shuffling between
+		// imports.
+		sort.Strings(protections)
+		out = append(out, protections...)
+	}
 	if len(out) == 0 {
 		return nil
 	}
 	return out
+}
+
+// containsString is a plain membership test for the small token
+// slices in this file.
+func containsString(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // narrowVariantKeywords lists the canonical tokens whose Scryfall
@@ -402,7 +455,14 @@ func keywordLines(text string) map[string]bool {
 			line = line[:i]
 		}
 		for _, part := range strings.Split(line, ",") {
-			if kw, ok := game.CanonicalKeyword(part); ok {
+			// CanonicalKeywords, not the singular form: "protection
+			// from Demons and from Dragons" is one comma-separated
+			// part and two abilities (CR 702.16m, #662).
+			kws, ok := game.CanonicalKeywords(part)
+			if !ok {
+				continue
+			}
+			for _, kw := range kws {
 				out[kw] = true
 			}
 		}

@@ -104,6 +104,11 @@ func (e *enumerator) activatedMoves() {
 func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, speed bool) {
 	g, p := e.g, e.p
 	abilities := game.ActivatedAbilitiesForCard(*source)
+	// #662: an activated ability's source is the permanent — or, since
+	// #660, the HAND CARD — that has it, which is what CR 702.16b tests
+	// protection against. Never the seat: a red player's colourless
+	// artifact ability may still point at a pro-red creature.
+	abilitySrc := game.SourceObject(e.seat, source)
 	for idx, ab := range abilities {
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
@@ -275,7 +280,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// same product a modal cast does.
 		modeSets := [][]int{nil}
 		if ab.Modes != nil {
-			modeSets = e.legalModeSets(ab.Modes)
+			modeSets = e.legalModeSets(abilitySrc, ab.Modes)
 			if len(modeSets) == 0 {
 				continue
 			}
@@ -287,7 +292,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		var announcements []announcement
 		for _, modes := range modeSets {
 			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
-			sets := e.legalStepSets(steps, budget)
+			sets := e.legalStepSets(abilitySrc, steps, budget)
 			for _, ts := range sets {
 				announcements = append(announcements, announcement{modes: modes, targets: ts})
 			}

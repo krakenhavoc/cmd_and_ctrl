@@ -501,12 +501,16 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// #764: every REQUIRED clause of the statement, not just the
 	// first, and for a modal ability the question is instead whether
 	// Min options remain choosable (choosableModeOptionsLocked).
+	// #662: `source` is the value copy of the permanent whose ability
+	// this is, which is the object CR 702.16b tests the quality
+	// against — not its controller.
+	src := SourceObject(source.Controller, &source)
 	if t.Modes == nil && t.Targets != nil &&
-		g.anyClauseUnfillableLocked(source.Controller, AnnouncedClauses(t.Targets, nil, nil)) {
+		g.anyClauseUnfillableLocked(src, AnnouncedClauses(t.Targets, nil, nil)) {
 		return
 	}
 	if t.Modes != nil &&
-		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(source.Controller, t.Modes)), t.Modes) {
+		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(src, t.Modes)), t.Modes) {
 		return
 	}
 	if t.OptionalPrompt != nil {

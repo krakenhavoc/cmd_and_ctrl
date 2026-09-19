@@ -259,7 +259,7 @@ func TestAlternativeCostSwapsTheTargetClause(t *testing.T) {
 	}
 	// The printed clause is otherwise unchanged by the offer's
 	// existence — the white knight is still fair game for {R}.
-	lt := g.LegalTargetsForEffect(me.ID, nonBlackCreatureSpec())
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), nonBlackCreatureSpec())
 	found := false
 	for _, c := range lt.Cards {
 		if c == white {

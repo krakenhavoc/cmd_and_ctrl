@@ -751,7 +751,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+	// CR 702.16b: the source of a SPELL is the spell itself, so the
+	// quality protection is tested against is the card's own colour
+	// and type — not its caster's (#662).
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, &card), steps, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

@@ -265,10 +265,10 @@ func TestLightningGreavesGrantsHasteAndShroud(t *testing.T) {
 			if c.InstanceID != bear {
 				continue
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, me.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(me.ID)) {
 				t.Error("shroud should stop even the controller targeting it")
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, opp.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(opp.ID)) {
 				t.Error("shroud should stop an opponent targeting it")
 			}
 		}
@@ -303,10 +303,10 @@ func TestSwiftfootBootsGrantHexproofAndHaste(t *testing.T) {
 			if c.InstanceID != bear {
 				continue
 			}
-			if !game.CanBeTargetedBy(c, game.ZoneBattlefield, me.ID) {
+			if !game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(me.ID)) {
 				t.Error("hexproof must not stop the controller targeting it")
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, opp.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(opp.ID)) {
 				t.Error("hexproof should stop an opponent targeting it")
 			}
 		}

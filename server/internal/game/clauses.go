@@ -252,7 +252,7 @@ func stepTargetCount(step AnnouncedClause, targets []TargetRef) int {
 // Self / None placeholders are skipped, as they always were.
 //
 // Caller must hold g.mu.
-func (g *Game) validateAnnouncedTargetsLocked(caster uuid.UUID, steps []AnnouncedClause, targets []TargetRef) error {
+func (g *Game) validateAnnouncedTargetsLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef) error {
 	if len(steps) == 0 {
 		// No structured clause list: the S13.1 free-form path, which
 		// accepts whatever the client sent.
@@ -303,7 +303,7 @@ func (g *Game) validateAnnouncedTargetsLocked(caster uuid.UUID, steps []Announce
 		}
 		perStep[idx][t.ID] = true
 		counts[idx]++
-		if !g.targetLegalLocked(caster, clause, t) {
+		if !g.targetLegalLocked(src, clause, t) {
 			return ErrIllegalTarget
 		}
 	}
@@ -325,13 +325,13 @@ func (g *Game) validateAnnouncedTargetsLocked(caster uuid.UUID, steps []Announce
 // announcement is legal with nothing chosen for it.
 //
 // Caller must hold g.mu.
-func (g *Game) anyClauseUnfillableLocked(caster uuid.UUID, steps []AnnouncedClause) bool {
+func (g *Game) anyClauseUnfillableLocked(src TargetSource, steps []AnnouncedClause) bool {
 	for i := range steps {
 		c := &steps[i].Clause
 		if c.Min <= 0 {
 			continue
 		}
-		lt := g.legalTargetsLocked(caster, c)
+		lt := g.legalTargetsLocked(src, c)
 		if len(lt.Players)+len(lt.Cards) < c.Min {
 			return true
 		}

@@ -136,7 +136,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 	myHexproof := pushProtectedCreature(g, me, "My Hexproof Bear", "hexproof")
 	myShroud := pushProtectedCreature(g, me, "My Shrouded Bear", "shroud")
 
-	lt := g.LegalTargetsForEffect(me.ID, anyCreatureSpec())
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), anyCreatureSpec())
 	has := func(id uuid.UUID) bool {
 		for _, c := range lt.Cards {
 			if c == id {
@@ -159,7 +159,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 	}
 
 	// The same board from the opponent's side: the asymmetry flips.
-	lt = g.LegalTargetsForEffect(opp.ID, anyCreatureSpec())
+	lt = g.LegalTargetsForEffect(SourceChooser(opp.ID), anyCreatureSpec())
 	hasOpp := func(id uuid.UUID) bool {
 		for _, c := range lt.Cards {
 			if c == id {
@@ -265,10 +265,10 @@ func TestPayingACostIgnoresProtectionKeywords(t *testing.T) {
 	g.ReadSnapshot(func() {
 		for _, id := range []uuid.UUID{shrouded, hexproof} {
 			ref := TargetRef{Kind: TargetCard, ID: id}
-			if !g.specMatchLocked(me.ID, spec, ref, false) {
+			if !g.specMatchLocked(SourceChooser(me.ID), spec, ref, false) {
 				t.Errorf("cost validator rejected a protected permanent %s", id)
 			}
-			if id == shrouded && g.specMatchLocked(me.ID, spec, ref, true) {
+			if id == shrouded && g.specMatchLocked(SourceChooser(me.ID), spec, ref, true) {
 				t.Errorf("targeting validator accepted a shrouded permanent")
 			}
 		}
@@ -297,7 +297,7 @@ func TestProtectionKeywordsAreBattlefieldOnly(t *testing.T) {
 		},
 		Min: 1, Max: 1,
 	}
-	lt := g.LegalTargetsForEffect(me.ID, spec)
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), spec)
 	if len(lt.Cards) != 1 || lt.Cards[0] != dead.InstanceID {
 		t.Errorf("graveyard card with printed hexproof was filtered out: %v", lt.Cards)
 	}
@@ -307,17 +307,17 @@ func TestProtectionKeywordsAreBattlefieldOnly(t *testing.T) {
 // caller can hand it anything the zone walk produced.
 func TestCanBeTargetedByIsTotal(t *testing.T) {
 	me := uuid.New()
-	if !CanBeTargetedBy(nil, ZoneBattlefield, me) {
+	if !CanBeTargetedBy(nil, ZoneBattlefield, SourceChooser(me)) {
 		t.Error("nil card is an existence problem, not a targeting one")
 	}
 	c := Card{Controller: uuid.New(), Keywords: []string{"hexproof"}}
-	if CanBeTargetedBy(&c, ZoneBattlefield, me) {
+	if CanBeTargetedBy(&c, ZoneBattlefield, SourceChooser(me)) {
 		t.Error("opponent's hexproof permanent should be refused")
 	}
-	if !CanBeTargetedBy(&c, ZoneStack, me) {
+	if !CanBeTargetedBy(&c, ZoneStack, SourceChooser(me)) {
 		t.Error("the gate is battlefield-only")
 	}
-	if !CanBeTargetedBy(&c, ZoneBattlefield, c.Controller) {
+	if !CanBeTargetedBy(&c, ZoneBattlefield, SourceChooser(c.Controller)) {
 		t.Error("hexproof does not stop its own controller")
 	}
 }

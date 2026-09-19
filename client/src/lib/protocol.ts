@@ -1603,6 +1603,12 @@ export interface CardView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // #662 — this permanent's CR 702.16 protections, already PARSED by
+  // the server. The raw "protection from red" tokens are in
+  // `abilities` like every other keyword; this is the same list with
+  // the quality pulled out, so the badge row renders "Protection from
+  // Demons" without the client owning a copy of the grammar.
+  protection?: ProtectionView[];
   // S24 — the restriction set the server computed for this
   // permanent: "cant_attack", "cant_block", "cant_be_blocked",
   // "cant_activate", "cant_activate_mana". Absent for the permanent
@@ -1634,6 +1640,27 @@ export interface CardView {
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
+// ProtectionView is one "protection from <quality>" on a permanent
+// (CR 702.16), parsed by the server. #662.
+//
+// The client never parses a protection token. Protection is the only
+// keyword whose ability carries a parameter, and the engine keeps
+// exactly one closed grammar for it (server/internal/game/
+// protection.go); a second copy here would be free to disagree about
+// what "protection from Demons" means.
+export interface ProtectionView {
+  // The quality as the CARD prints it — "red", "Demons",
+  // "artifacts", "everything". Badge tooltip text.
+  printed: string;
+  // Which characteristic of a source the quality is compared
+  // against: "color", "card_type", "subtype" or "everything".
+  kind: string;
+  // What the rules compare — the wire colour ("R"), the lowercase
+  // card type ("artifact"), the canonical singular subtype
+  // ("Demon"). Absent for "everything".
+  value?: string;
+}
+
 // one entry per activated mana ability on a battlefield permanent.
 // The client renders these as buttons in a right-click / long-press
 // menu anchored to the card. Added in S15 sub-PR 2.

@@ -234,10 +234,10 @@ func TestWhispersilkCloakGrantsShroudToBothSides(t *testing.T) {
 			if c.InstanceID != bear {
 				continue
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, me.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(me.ID)) {
 				t.Error("shroud stops the controller too (CR 702.18a)")
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, opp.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(opp.ID)) {
 				t.Error("shroud stops an opponent")
 			}
 		}

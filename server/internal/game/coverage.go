@@ -142,6 +142,13 @@ func UnimplementedNames(cards []Card) []string {
 // it in the same change that teaches the engine to honour it
 // (keywords.go), so a keyword outside the table is by construction a
 // keyword nothing acts on.
+//
+// #662: the same holds one level down for PROTECTION, whose quality
+// is a parameter. "Protection from red" is a keyword line the engine
+// honours; "protection from monocolored" is a rule it does not, and
+// the closed grammar in protection.go is what tells them apart. Both
+// answers come from CanonicalKeywords, so the coverage badge and the
+// deck importer can never disagree about which is which.
 func printsUnhandledRules(text string) bool {
 	for _, line := range strings.Split(stripReminderText(text), "\n") {
 		if strings.TrimSpace(line) == "" {
@@ -166,7 +173,10 @@ func keywordOnlyLine(line string) bool {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
-		if _, ok := CanonicalKeyword(part); !ok {
+		// CanonicalKeywords, not the singular form: one printed
+		// clause can be two abilities ("protection from Demons and
+		// from Dragons", CR 702.16m).
+		if _, ok := CanonicalKeywords(part); !ok {
 			return false
 		}
 		found = true

@@ -163,9 +163,21 @@ var keywordTable = map[string]float64{
 	"cumulative upkeep": -0.60,
 }
 
-// keywordBonus sums the table over a card's effective ability list.
-// "protection from …" and "ward {2}" arrive as prefixed strings, so
-// the match is a prefix match for those two.
+// keywordBonus sums the table over a card's effective ability list,
+// plus its parsed protections.
+//
+// Protection is counted off CardView.Protection — what the ENGINE's
+// one closed-grammar reader made of the tokens (#662) — rather than
+// by prefix-matching the ability string. A token the grammar refuses
+// is not a protection the engine enforces, and scoring it would price
+// a creature above what it actually does. Every quality is worth the
+// same here on purpose: how much a protection is worth depends on the
+// board, and the threat model this table feeds is deliberately
+// board-blind.
+//
+// Ward still arrives as a prefixed string ("ward {2}") with its cost
+// in the parameter and no reader of its own, so it keeps its prefix
+// match.
 func keywordBonus(c *protocol.CardView) float64 {
 	var sum float64
 	for _, a := range c.Abilities {
@@ -174,13 +186,11 @@ func keywordBonus(c *protocol.CardView) float64 {
 			sum += v
 			continue
 		}
-		switch {
-		case strings.HasPrefix(k, "protection"):
-			sum += keywordTable["protection"]
-		case strings.HasPrefix(k, "ward"):
+		if strings.HasPrefix(k, "ward") {
 			sum += keywordTable["ward"]
 		}
 	}
+	sum += float64(len(c.Protection)) * keywordTable["protection"]
 	return sum
 }
 
