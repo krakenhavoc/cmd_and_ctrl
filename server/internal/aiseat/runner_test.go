@@ -202,6 +202,28 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Fatalf("timed out waiting for %s after %s", what, waitForBudget)
 }
 
+// waitForRunner waits for a runner to exit, through the same backstop
+// as every other wait in this package.
+//
+// It exists so that "the bot stopped playing" is never a literal
+// budget. A `select` on `r.Done()` against a `time.After` reads like a
+// wait but asserts a deadline: it says the runner must be gone within
+// N seconds, which on a loaded machine is a statement about the
+// machine. Every one of those this package had was set to a number
+// small enough to be a real claim (3s, 5s) and each of them has been
+// a CI failure — #635 is the last of them.
+func waitForRunner(t *testing.T, what string, r *aiseat.Runner) {
+	t.Helper()
+	waitFor(t, what, func() bool {
+		select {
+		case <-r.Done():
+			return true
+		default:
+			return false
+		}
+	})
+}
+
 // botLandsLocked counts the lands a seat controls. Caller must hold
 // the game's read lock — the count is only worth anything when it is
 // read in the same snapshot as whatever else the assertion is about.
