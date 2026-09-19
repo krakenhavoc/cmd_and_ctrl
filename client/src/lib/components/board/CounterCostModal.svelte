@@ -1,5 +1,5 @@
 <script lang="ts">
-  // CounterCostModal — #625, then #789: choose what pays a counter
+  // CounterCostModal — #625, #789, #943: choose what pays a counter
   // activation cost.
   //
   // Two layouts, because the printed cards ask two different
@@ -15,6 +15,14 @@
   //              number of storage counters" — the player says how
   //              many come off each permanent, with a running total
   //              against the printed number or the floor.
+  //
+  // #943's any-kind among cost (Tekuthal's "three counters from among
+  // other artifacts, creatures, and planeswalkers you control") needs
+  // no third layout and no kind dropdown: a row has always been a
+  // (permanent, KIND) pair, so a creature with a +1/+1 and a shield
+  // counter simply offers two rows and the stepper on each IS the
+  // kind choice. What changes is only the label — with no printed
+  // kind, each row says which kind it spends.
   //
   // One modal for both, and for both ability kinds: since #789 a MANA
   // ability carries the identical counter fields, so Vivid Creek's
@@ -105,7 +113,8 @@
     }
     const what = n === 1 ? `a ${kind}counter` : `${n} ${kind}counters`;
     if (ability.counter_cost_among) {
-      return `Remove ${what} from among ${from} to pay for this ability. Split them however you like.`;
+      const mix = ability.counter_cost_kind ? "" : " Any kinds.";
+      return `Remove ${what} from among ${from} to pay for this ability. Split them however you like.${mix}`;
     }
     return `Remove ${what} from ${from} to pay for this ability.`;
   });
@@ -116,6 +125,13 @@
 
   function nameOf(id: string): string {
     return board.find((c) => c.instance_id === id)?.name ?? "a permanent";
+  }
+
+  // rowOf names one row for a screen reader. With no printed kind a
+  // permanent can hold two rows, so the kind is part of the name or
+  // the two buttons read identically (#943).
+  function rowOf(c: CounterChoice): string {
+    return anyKind ? `${nameOf(c.cardID)} (${c.kind})` : nameOf(c.cardID);
   }
 
   function ceilingFor(c: CounterChoice): number {
@@ -177,7 +193,7 @@
                   <button
                     type="button"
                     class="step"
-                    aria-label="Remove one fewer from {nameOf(c.cardID)}"
+                    aria-label="Remove one fewer from {rowOf(c)}"
                     disabled={(counts[counterChoiceKey(c)] ?? 0) === 0}
                     onclick={() => bump(c, -1)}>−</button
                   >
@@ -185,7 +201,7 @@
                   <button
                     type="button"
                     class="step"
-                    aria-label="Remove one more from {nameOf(c.cardID)}"
+                    aria-label="Remove one more from {rowOf(c)}"
                     disabled={(counts[counterChoiceKey(c)] ?? 0) >= ceilingFor(c)}
                     onclick={() => bump(c, 1)}>+</button
                   >

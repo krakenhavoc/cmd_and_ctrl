@@ -1205,7 +1205,8 @@ export interface ActivatedAbilityView {
   // The choice rides activate_ability (or activate_mana_ability) as
   // `counter_source_ids` (not for the self form), `counter_counts`
   // (only for the among and variable forms) and `counter_kind` (only
-  // for the any-kind form).
+  // for the any-kind form) — or, when an any-kind AMONG payment mixes
+  // kinds, `counter_kinds`, one per permanent (#943, Tekuthal).
   counter_cost_n?: number;
   counter_cost_kind?: string;
   counter_cost_self?: boolean;

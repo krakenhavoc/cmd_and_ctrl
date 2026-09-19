@@ -936,9 +936,16 @@ func Dispatch(g *game.Game, a Action) error {
 			// count the activator announces ("Remove X storage
 			// counters"). Omitted for a fixed one-permanent cost,
 			// which is the shape every earlier client sends.
+			// counter_kinds is #943's per-permanent kind, parallel to
+			// counter_source_ids, for the one printed cost whose
+			// parts may differ in kind (Tekuthal's "three counters
+			// from among other artifacts, creatures, and
+			// planeswalkers you control"). Omitted whenever the
+			// payment is of one kind, which counter_kind still says.
 			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -1002,6 +1009,7 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterSourceIDs: counterIDs,
 				CounterCounts:    p.CounterCounts,
 				CounterKind:      p.CounterKind,
+				CounterKinds:     p.CounterKinds,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.
@@ -1452,10 +1460,11 @@ func Dispatch(g *game.Game, a Action) error {
 			// shape, whichever ability kind carries it: Vivid Creek
 			// sends nothing at all (the self form with a printed
 			// kind and count), Mage-Ring Network sends
-			// counter_counts.
+			// counter_counts, and #943's counter_kinds.
 			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1485,6 +1494,7 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterSourceIDs: manaCounterIDs,
 			CounterCounts:    p.CounterCounts,
 			CounterKind:      p.CounterKind,
+			CounterKinds:     p.CounterKinds,
 		})
 
 	case TypeSetMaxHandSize:

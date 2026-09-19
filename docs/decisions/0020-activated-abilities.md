@@ -994,6 +994,7 @@ so `CounterRemovalCost` gains two flags rather than growing two siblings:
 | any kind | "Remove a counter from a creature you control" | `Counter == ""` |
 | **variable** | "Remove any number of storage counters from this land" | `RemoveCountersXFromThis("storage", 0)` — `Variable` |
 | **among** | "Remove two +1/+1 counters from among artifacts you control" | `RemoveCountersAmong("+1/+1", 2, …)` — `Among` |
+| **any-kind among** (#943) | "Remove three counters from among other artifacts, creatures, and planeswalkers you control" | `RemoveCountersAmong("", 3, …)` — `Counter == "" && Among` |
 
 One type means one validator (`validateCounterRemovalLocked`), one candidate
 walk (`CounterCostOptionsForEffect`), one enumerator arm, one protocol view
@@ -1087,6 +1088,38 @@ any kind                      + counter_kind
 A fixed single-permanent payment still sends exactly what a #625 client
 sends, so nothing that already speaks this payload has to change.
 
+**#943 adds the sixth line, and one field.** An among cost whose kind is
+EMPTY (Tekuthal, Inquiry Dominus' "Remove three counters from among other
+artifacts, creatures, and planeswalkers you control") is paid in whatever
+kinds the permanents hold, so the kind question is asked once per part:
+
+```
+any-kind among                counter_source_ids + counter_counts
+                              + counter_kinds, one per permanent
+```
+
+`counter_kinds` is an EXTENSION of the triple, not a rival encoding of it:
+it is sent only when the parts actually differ in kind, and a payment of
+one kind still says so in `counter_kind` — byte-for-byte what a #625 client
+sends. A `counter_picks: [{id, kind, count}]` list was the alternative and
+was rejected for that reason: it is a second shape for every payment, which
+means every existing client, every existing server test and the enumerator
+all have to learn it to buy nothing for the five shapes that were already
+right.
+
+The set's identity becomes **(permanent, KIND)** rather than the permanent:
+one creature carrying a +1/+1 and a shield counter may pay with both, which
+is two parts of one payment. For a printed kind the two keys are the same
+thing, so a fixed-kind among payment that names one permanent twice is
+refused exactly as before.
+
+Nothing new is projected for it. A `counter_cost_options` row has always
+been a (permanent, kind) pair, so the option list already answers "which
+kinds, off which permanent", and the client's many-pick modal — a stepper
+per row — is already the kind selector. The enumerator's one-payment rule
+is unchanged too: drain the fullest first, now across kinds as well as
+permanents.
+
 The among payment is validated as a SET, the crew shape: every permanent
 distinct, controlled by the activator, matched by the clause without the
 targeting gate (CR 601.2h), holding at least the count named against it, and
@@ -1126,13 +1159,13 @@ is already wired end to end.
 
 ### Still out of scope
 
-- **An any-kind removal spread across permanents.** Tekuthal, Inquiry
-  Dominus' "Remove three counters from among other artifacts, creatures,
-  and planeswalkers you control" needs a KIND per permanent as well as a
-  count. Tracked on #943. `effects.Register` refuses the combination rather than letting a
-  card file half-declare one, and the seam row says so. (Tekuthal is
-  blocked on two other things as well — proliferate doubling and
-  indestructible counters — so nothing is waiting only on this.)
+- ~~**An any-kind removal spread across permanents.**~~ **Closed by #943**
+  (§22 above): `Counter == "" && Among` is a shape, the kind is named per
+  permanent on `counter_kinds`, and `effects.Register`'s refusal is gone.
+  Tekuthal, Inquiry Dominus ships with it — with one caveat that is not
+  this seam: "if you would proliferate, proliferate twice instead", a
+  replacement of a keyword action (CR 701.34) the engine has no seam for.
+  Its `{U/P}` symbols are payable either way since #971.
 - **A counter cost as an ADDITIONAL cost to cast a spell.** The component
   lives on `AbilityCost`; `AdditionalCost` has its own shape.
 - **A prohibition to refuse against.** §23.

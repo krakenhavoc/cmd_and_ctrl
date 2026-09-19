@@ -210,10 +210,13 @@ func RemoveCountersXFromThis(kind string, min int) game.AbilityCost {
 // and "you control" is the engine's rule rather than a predicate the
 // card file has to remember.
 //
-// The kind must be printed: "remove three counters from among …" of
-// ANY kind (Tekuthal, Inquiry Dominus) would need a kind per part
-// and has no shape yet — Register refuses it rather than letting a
-// card file half-declare one.
+// An empty kind is the ANY-KIND among form (#943): Tekuthal, Inquiry
+// Dominus' "Remove three counters from among other artifacts,
+// creatures, and planeswalkers you control" takes three counters of
+// whatever kinds are there, so the activator names a kind per
+// permanent as well as a count. It is the same constructor and the
+// same component — the kind question is simply asked once per part
+// instead of once per payment.
 func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicate) game.AbilityCost {
 	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
 		Counter: kind,

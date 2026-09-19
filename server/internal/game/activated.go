@@ -153,6 +153,12 @@ type AbilityCost struct {
 	// counters") and a removal split across several permanents
 	// (Among — "Remove two +1/+1 counters from among artifacts you
 	// control"). Both ride ActivateAbilityParams.CounterCounts.
+	//
+	// #943 added the last one: an any-kind removal split across
+	// permanents (Counter == "" with Among — Tekuthal, Inquiry
+	// Dominus), which asks the kind question once per permanent
+	// instead of once per payment and rides
+	// ActivateAbilityParams.CounterKinds.
 	RemoveCounters *CounterRemovalCost
 
 	// AddCounter is a cost that PUTS a counter on the source —
@@ -389,8 +395,23 @@ type ActivateAbilityParams struct {
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
-	// it must repeat that kind.
+	// it must repeat that kind. One kind for the whole payment.
 	CounterKind string
+
+	// CounterKinds is the per-permanent kind, parallel to
+	// CounterSourceIDs (#943): what an any-kind AMONG cost removes
+	// from each permanent, when the parts do not share a kind.
+	// Tekuthal, Inquiry Dominus' "Remove three counters from among
+	// other artifacts, creatures, and planeswalkers you control" is
+	// the only printed cost that needs it — a loyalty counter off a
+	// planeswalker and two +1/+1 counters off a creature is one legal
+	// payment, and no single CounterKind can say so.
+	//
+	// Empty is the ordinary case, including an any-kind payment whose
+	// parts happen to share a kind: CounterKind says it, and every
+	// client that predates this field keeps working. When both are
+	// sent they must agree.
+	CounterKinds []string
 
 	// Targets are the ability's targets, validated against the
 	// ability's clause list — or, for a modal ability, against the
@@ -600,6 +621,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
 		Kind:      params.CounterKind,
+		Kinds:     params.CounterKinds,
 	})
 	if err != nil {
 		return err

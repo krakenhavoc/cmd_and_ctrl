@@ -4166,6 +4166,7 @@ type ManaAbilityParams struct {
 	CounterSourceIDs []uuid.UUID
 	CounterCounts    []int
 	CounterKind      string
+	CounterKinds     []string
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -4270,6 +4271,7 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
 		Kind:      params.CounterKind,
+		Kinds:     params.CounterKinds,
 	})
 	if err != nil {
 		return err
