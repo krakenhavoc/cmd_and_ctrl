@@ -350,7 +350,11 @@ func b16LandsYouControlEnterUntapped() game.ReplacementEffect {
 				return false
 			}
 			if ev.OldZone == game.ZoneLibrary || ev.OldZone == game.ZoneGraveyard {
-				if spec, ok := Lookup(game.CatalogKey(entering)); ok && len(spec.Replacements) > 0 {
+				// BaseCatalogKey: Lookup reads the Spec REGISTRY,
+				// which is keyed by card; a land carrying CR 707.9a
+				// granted abilities has a composite catalog key that
+				// no Spec is filed under.
+				if spec, ok := Lookup(game.BaseCatalogKey(game.CatalogKey(entering))); ok && len(spec.Replacements) > 0 {
 					return false
 				}
 			}

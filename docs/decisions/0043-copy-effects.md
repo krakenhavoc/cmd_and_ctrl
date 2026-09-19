@@ -300,3 +300,212 @@ caveat: the two cards discarded are random, which is `DiscardCards`
 everywhere in the catalog and not this card's doing). Both give the
 copy to the player who chose to make it, per CR 707.10b, which is what
 lets the chain walk around the table.
+
+## Amendment 2026-09-18 — an "except" clause may grant an ability and add a subtype (CR 707.9a, CR 707.9b) · Accepted · S45
+
+The Consequences above declare "an 'except' clause that GRANTS an
+ability rather than editing printed values" out of scope. That
+deferral is spent. [#665](https://github.com/krakenhavoc/cmd_and_ctrl/issues/665)
+lifts it; the paragraph is left as written, as the record of why the
+original PR stopped where it did.
+
+### What was actually missing
+
+Not a grant mechanism — a place for the grant to LIVE. CR 707.9a's
+second sentence is the hard half: an ability a copy effect grants is
+part of the copiable values, so a later copy copies it. A closure
+hanging off the replacement that made the copy cannot be copied again
+and cannot be snapshotted. And every ability the engine reads is
+found through `CatalogKey`, which after a copy is the COPIED card's
+key, so a granted ability had nowhere to key on.
+
+### Decision 6. The grant rides in `PrintedValues`, as a NAME
+
+`PrintedValues.GrantedAbilities []string` holds catalog keys, not
+closures, and `Card.GrantedAbilities` is the flat printed field it
+materialises onto — the same pairing `Keywords` and `TypeLine`
+already have. Everything else follows for free: `CopiableValuesOf`
+copies it, so a Clone of a Phantasmal Image inherits the grant
+(CR 707.9a); the snapshot carries it and `clone.go` deep-copies it,
+because names serialise; `restorePrintedSelf` clears it on the way
+out, because CR 400.7 makes the card in the graveyard the card again.
+
+The abilities themselves are static catalog data, declared by the
+card that grants them (`effects.Spec.Grants`, a list of
+`AbilityGrant{Key, Triggered, Static, Activated}`) and filed in the
+same `defs` map cards use, under `game.GrantKey(Key)`. That is the
+shape [ADR 0064](0064-emblems.md) / #623 already uses for an emblem,
+for the same reason: an object needs abilities the catalog can find,
+and it is not a card. `Register` panics on an empty key, a duplicate
+key, or a bundle with no abilities; the census still counts cards,
+because a grant is not one.
+
+### Decision 7. ONE lookup seam: the catalog KEY carries the grants
+
+`CatalogKey(c)` is already the single place a `Card` becomes a
+catalog answer — #940 put CR 708.2a's face-down silence there as an
+empty return. A card carrying grants now returns a composite:
+
+	no grants  →  "<oracle_id>"                       (unchanged)
+	grants     →  "<oracle_id>|grant:<name>|grant:…"
+
+and `catalogDef` answers a composite key by MERGING the card's
+definition with each grant's (`game/copy_grants.go`). Nothing else in
+the engine changed: the trigger harvester, the layer pass's static
+gather, `ActivateCatalogAbility`, the replacement gather, the cost
+modifiers and the view's auto bit all already went through those two
+functions, so all of them see a granted ability without a reader of
+their own. There is no second path to keep in sync, which is the
+whole point of doing it at the key rather than beside it.
+
+Three consequences worth stating:
+
+- **Ability removal still wins.** `CatalogAbilityKey` returns `""`
+  for a permanent under a CR 613.1f effect, before any of this is
+  consulted, so "loses all abilities" takes the granted one too.
+- **Face-down still wins.** `CatalogKey` returns `""` for a face-down
+  permanent first (CR 708.2a): no text means no granted text.
+- **A grant on a card with no catalog entry is the normal case.**
+  Phantasmal Image copying an imported vanilla bear has exactly one
+  ability, and it is the granted one, so `mergedCatalogDef` returns a
+  definition even when the base lookup is nil.
+
+Two sites read a catalog key as an IDENTITY rather than as a lookup
+and now strip the suffix with `game.BaseCatalogKey`: `EmblemKey`
+derivation (`game/emblem.go`) and the catalog's own `effects.Lookup`
+of the Spec registry (`batch16_helpers.go`).
+
+### Decision 8. `AddSubtype` / `RemoveSubtype` join the except-clause helpers
+
+CR 707.9b's "it's an Illusion in addition to its other types" is an
+ADD, not a SET: the copied Bear stays a Bear. The set form ("except
+it's a 4/4 black Zombie") already lives in the token-copy template
+(`retypedTypeLine`) and deliberately stays there.
+
+### Cards
+
+**Phantasmal Image** (new; caveat: the declined 0/0 survives, the
+engine-wide printed-zero-toughness convention Clone also declares)
+and **Sakashima the Impostor**, which drops its caveat and is now
+Full.
+
+### Still not covered
+
+A copy effect with a DURATION (Mirage Mirror, Cytoshape) is
+unchanged and still open — including the question this amendment
+raises for it: when a timed copy effect ends, the grant ends with it,
+because the grant is part of the copiable values the effect
+installed. Granted MANA abilities have no slot (`AbilityGrant` names
+three kinds), because no printed copy effect grants one and the
+engine reads mana abilities off the card object as well as the
+catalog, which would be a second seam. A granted ability's TEXT is
+not projected onto the wire, so the client shows the copy's abilities
+without it.
+
+## Amendment 2026-09-18 — a copy of a permanent spell becomes a token as it resolves (CR 608.3f, CR 111.13) · Accepted · S45
+
+A spell-copy rule (CR 707.10, `game/spell_copy.go`) rather than an
+entry-copy one, but what it settles is a copiable-values question, so
+it lands here with the rest of CR 707.
+`resolveTopOfStackLocked` used to meet a resolving copy of a
+permanent spell with an `EventEffectError` and cease it to exist:
+"copying a permanent spell is not implemented". No catalog card
+reached the guard, because every copy card in the S30 batch targets
+an instant or sorcery. Double Major does.
+[#666](https://github.com/krakenhavoc/cmd_and_ctrl/issues/666)
+replaces the refusal with the rule.
+
+### Decision 9. The copy becomes a created TOKEN, through the one creation path
+
+CR 608.3f: a resolving copy of a permanent spell does not put a
+permanent card onto the battlefield — a token that is a copy of the
+spell enters instead, and the copy ceases to exist (CR 111.13). The
+old guard's reasoning was sound as far as it went: a second
+card-shaped object carrying the original's oracle ID on the
+battlefield is worse than nothing, because a bounce spell turns it
+into a card in somebody's hand. A token is what makes it neither.
+
+`resolvePermanentSpellCopyLocked` (`game/spell_copy.go`) takes the
+copy off the stack FIRST — the creation can pause on a CR 616
+ordering prompt, and a copy left on the stack whose `StackMeta` the
+resolver has already deleted is an object nothing can resolve — and
+then calls `CreateTokensThenForEffect`, [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+/ #923's ONE token-creation path. Everything that makes a token a
+token follows from that and from nothing this change wrote:
+
+- the CR 701.7b creation window opens, so **Doubling Season doubles
+  it** and Academy Manufactor could rewrite it;
+- the token then takes the ordinary battlefield entry
+  (`enterBattlefieldThroughPipelineLocked`), so enters-tapped,
+  enters-with-counters, `EventETB` and `fireETBHookLocked` all reach
+  it and the entry can pause and resume;
+- `Card.IsToken` is true because the template carries the Token
+  supertype (`PrintedValues.MakeToken`), so CR 704.5d removes it from
+  any zone but the battlefield and a bounce cannot make it a card.
+
+The template is the spell's copiable values with the face settled the
+way the ordinary permanent branch settles it, so CR 707.10g falls out:
+a copy of a double-faced permanent spell is double-faced.
+
+### Decision 10. The spell copy carries an "except" clause too, and it is the same one
+
+`CopySpellForEffect` gains an `except func(*PrintedValues)`, and
+`effects.CopySpell` an `Except` field — the SAME `PrintedValues` an
+entering permanent's except clause edits (Decision 3). Double Major's
+"except it isn't legendary if the spell is legendary" is
+`v.RemoveSupertype("Legendary")` with no condition of its own,
+because removing an absent supertype is a no-op.
+
+It is applied where the copy is CREATED, before anything is queued,
+rather than carried into the CR 707.10c re-target prompt: that
+continuation crosses a snapshot and a closure cannot, so what the
+frame carries is the already-edited card. The modification is
+therefore on the copy from the moment it exists, is what the copy's
+own copiable values say, and is still there on the token it becomes.
+
+### Decision 11. What travels with the token, and what does not (CR 707.2)
+
+The token is built from the copiable values and the Token supertype,
+so three things that arrived alongside this work stay out of
+`PrintedValues` on purpose:
+
+- **`StackItem.Foretold`** (#987) — how the spell was CAST.
+  `createSpellCopyLocked` builds the copy's meta field by field and
+  does not carry it, which is right: a copy is created, not cast, so
+  it was never cast from a foretold card.
+- **`Card.FaceDownKind`** (#987) — an exile status, not a permanent's.
+  It is not a `PrintedValues` field, so no copy and no token can be
+  born face down. CR 707.2's face-down clause is the PERMANENT case,
+  already handled by `printedCharacteristic`'s
+  [ADR 0069](0069-face-down-objects.md) early return, and
+  `FaceDownIsPermanent` is false for the exile kinds.
+- **`PaidCost.OptionalCosts`** (#988) — what was PAID. Not a
+  characteristic, and not on `PrintedValues`. But it does reach the
+  token, because CR 707.10b copies the choices made when casting and
+  CR 400.7d carries them onto the permanent: #988 puts them on the
+  copy's stack item, and `resolvePermanentSpellCopyLocked` stamps
+  `Card.PaidOptionalCosts` onto the template the way the ordinary
+  permanent branch stamps it onto the entering card. A Double Major on
+  a Wolfbriar Elemental kicked twice therefore makes a token that
+  creates its own two Wolves. Without the stamp the copy silently
+  makes none, which is the failure this decision exists to prevent.
+
+`spell_copy_token_test.go` pins all three, and
+`TestDoubleMajorsTokenCountsTheKicksTheCopyInherited` pins the third
+end to end.
+
+### Cards
+
+**Double Major**, Full. It is the first card in the catalog to copy a
+permanent spell at all.
+
+### Still not covered
+
+Copying an ABILITY (Lithoform Engine's other halves, Strionic
+Resonator) is a different shape and still open. A token copy of an
+AURA spell would enter attached to nothing and be put into the
+graveyard by CR 704.5m — correct by accident rather than by design,
+and no printed card in the catalog reaches it. X is not re-derived
+for the token: the copy's `XValue` reaches its `OnResolve`, but a
+creature whose printed P/T is defined by X has no characteristic-
+defining ability in this engine to read it back.

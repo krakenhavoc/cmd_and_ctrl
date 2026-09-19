@@ -150,7 +150,7 @@ func TestResolvingSlotDoesNotWidenAnyOtherLookup(t *testing.T) {
 		if _, _, ok := g.stackSpellLocked(other); ok {
 			t.Error("a spell that is not on the stack and is not resolving was found")
 		}
-		if err := g.CopySpellForEffect(other, me.ID, false); err != ErrCardNotFound {
+		if err := g.CopySpellForEffect(other, me.ID, false, nil); err != ErrCardNotFound {
 			t.Errorf("CopySpellForEffect on a missing spell = %v, want ErrCardNotFound", err)
 		}
 		return nil

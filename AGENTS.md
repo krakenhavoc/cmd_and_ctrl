@@ -1183,7 +1183,49 @@ Replacements: []game.ReplacementEffect{
 | "except it isn't legendary" | `v.RemoveSupertype("Legendary")` |
 | "except it enters with an additional +1/+1 counter" | `ev.AddCounterAtETB("+1/+1", 1)` |
 | "except it enters with an additional loyalty counter" | `v.StartingLoyalty++` — NOT `AddCounterAtETB`; the CR 306.5b stamp refuses to run on a walker that already has loyalty counters |
-| branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` |
+| "except it's an Illusion in addition to its other types" | `v.AddSubtype("Illusion")` (CR 707.9b). An ADD: the copied Bear stays a Bear. The SET form ("except it's a 4/4 black Zombie") is `retypedTypeLine` in `token_copy.go`, not this |
+| "except it has '\<ability\>'" | `v.GrantAbility("<card>/<what>")` (CR 707.9a), naming a bundle the card declared in `Spec.Grants` — see below |
+| branch on what was copied | `v.HasCardType("Creature")` / `"Planeswalker"` / `v.HasSubtype("Illusion")` |
+
+**Granting an ability (CR 707.9a, #665).** A granted ability is part
+of the COPIABLE VALUES — a Clone copying a Phantasmal Image gets the
+Image's sacrifice trigger — so it cannot be a closure on the
+replacement. Declare it as catalog data on the card that grants it
+and name it from the except clause:
+
+```go
+const phantasmalImageIllusionGrant = "phantasmal-image/illusion"
+
+Grants: []AbilityGrant{{
+    Key:       phantasmalImageIllusionGrant,
+    Triggered: []game.TriggeredAbility{ /* …, or Static / Activated */ },
+}},
+Replacements: []game.ReplacementEffect{
+    EntersAsCopyOf("Phantasmal Image", anyCreatureOnBattlefield,
+        func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
+            v.AddSubtype("Illusion")
+            v.GrantAbility(phantasmalImageIllusionGrant)
+        }),
+},
+```
+
+The copy stores only the bundle's KEY, in `PrintedValues`, which is
+what makes the grant copiable again and snapshot-safe. `Register`
+files the bundle's own `game.CardDef` under `game.GrantKey(Key)` —
+the same `defs` map cards use, the shape emblems already take — and
+panics at boot on an empty key, a catalog-wide duplicate, or a bundle
+with no abilities. Namespace the key with the granting card; it is as
+permanent as an oracle ID, because a snapshot carries it.
+
+Nothing else needs changing to make the grant WORK: `CatalogKey`
+returns a composite `"<oracle_id>|grant:<name>"` and `catalogDef`
+merges, so the harvester, the layer pass, the activation path and the
+view all find it through the lookup they already used. Read a catalog
+key as an identity rather than a lookup (deriving `EmblemKey`, or
+`effects.Lookup` into the Spec registry) and you want
+`game.BaseCatalogKey` first. Mana abilities have no grant slot. See
+`server/internal/game/copy_grants.go` and the
+[ADR 0043 amendment](docs/decisions/0043-copy-effects.md).
 
 **What a copy brings, and what it does not.** `PrintedValues` is the
 CR 707.2 copiable-value set: printed name, type line, mana cost,
@@ -1202,12 +1244,13 @@ resolution-time effect that mints a new object, not a replacement of
 something's own entry.
 
 **Copying a SPELL is `CopySpell{StackID, Controller, Count,
-ChooseNewTargets}`** ([spell_copy.go](server/internal/cards/effects/spell_copy.go)),
-CR 707.10 — and `StackID` may be **this spell**, `ctx.Item.ID`. "That
-player may copy this spell and may choose a new target for that copy"
-(the Chain cycle) is a spell copying itself from inside its own
-resolution, which works because the engine keeps the resolving item's
-metadata reachable for the whole occurrence
+ChooseNewTargets, Except}`** ([spell_copy.go](server/internal/cards/effects/spell_copy.go)),
+CR 707.10 — Reverberate, Twincast, the Chain cycle, Double Major — and
+`StackID` may be **this spell**, `ctx.Item.ID`. "That player may copy
+this spell and may choose a new target for that copy" (the Chain
+cycle) is a spell copying itself from inside its own resolution, which
+works because the engine keeps the resolving item's metadata reachable
+for the whole occurrence
 ([resolving_item.go](server/internal/game/resolving_item.go), #920) —
 the item's `StackMeta` entry is deleted before `OnResolve` runs, and by
 the time the copy question is answered the spell is already in a
@@ -1215,6 +1258,25 @@ graveyard, so the copy is built from last-known information. Set
 `Controller` to the player the card says makes the copy (CR 707.10b);
 it is **not** the copied spell's controller, and on the Chain cycle
 that asymmetry is the card.
+
+`Except` is the copy's "except …" clause (CR 707.10a) and takes the
+same `*game.PrintedValues` an entering permanent's except clause does:
+Double Major's "except it isn't legendary if the spell is legendary"
+is `v.RemoveSupertype("Legendary")`, with no condition, because
+removing an absent supertype does nothing. It is applied where the
+copy is created, so the copy's characteristics are already edited when
+protection and the CR 707.10c re-target prompt read them.
+
+**A copy of a PERMANENT spell becomes a token as it resolves**
+(CR 608.3f, CR 111.13), through #923's one token-creation path, so a
+doubler doubles it, the creature's own enters abilities fire, and a
+bounce cannot turn it into a card. Nothing on the card declares that —
+a card that copies a creature spell needs no more than the target
+clause. What is NOT copiable, and must stay off `PrintedValues`: the
+costs paid (`PaidCost.OptionalCosts` — kicker rides the STACK ITEM
+under CR 707.10b, not the characteristics), and whether the spell was
+foretold (`StackItem.Foretold`, `Card.FaceDownKind`) — a copy was
+never cast. A copy of an ABILITY is still unbuilt.
 
 **Tests** — see
 [copy_effects_test.go](server/internal/cards/effects/copy_effects_test.go).

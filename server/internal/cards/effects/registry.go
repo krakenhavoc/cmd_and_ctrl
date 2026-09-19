@@ -346,6 +346,7 @@ func Register(spec Spec) {
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
+	checkGrants(spec.Name, spec.Grants)
 	registry[spec.OracleID] = spec
 	def := buildDef(spec)
 	defs[spec.OracleID] = def
@@ -363,6 +364,15 @@ func Register(spec Spec) {
 	// (CR 114.4). See emblem.go and ADR 0064.
 	if spec.Emblem != nil {
 		defs[game.EmblemKey(spec.OracleID)] = buildEmblemDef(*spec.Emblem)
+	}
+	// #665 / CR 707.9a: a card whose copy effect GRANTS an ability
+	// files that ability's own def, under "grant:<key>". Same map,
+	// same reason as the emblem: the copy carries the key in its
+	// copiable values and the engine finds the abilities through the
+	// ordinary CatalogLookup, while the census keeps counting cards —
+	// a granted ability is not one.
+	for _, gr := range spec.Grants {
+		defs[game.GrantKey(gr.Key)] = buildGrantDef(gr)
 	}
 }
 

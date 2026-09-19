@@ -38,7 +38,7 @@ func TestManaValueForEffectCountsXOnlyOnTheStack(t *testing.T) {
 	ballista := cast("Walking Ballista", "Artifact Creature — Construct", "{X}{X}", 4)
 	blaze := cast("Blaze", "Instant", "{X}{R}", 3)
 	g.WithWriteLock(func() {
-		if err := g.CopySpellForEffect(blaze, p.ID, false); err != nil {
+		if err := g.CopySpellForEffect(blaze, p.ID, false, nil); err != nil {
 			t.Fatalf("CopySpellForEffect: %v", err)
 		}
 	})

@@ -18,6 +18,32 @@ var defs = map[string]*game.CardDef{}
 // lookupDef is the game.CatalogLookup implementation.
 func lookupDef(key string) *game.CardDef { return defs[key] }
 
+// activatedShapes projects declared activated abilities into the
+// engine's shapes. Shared by buildDef and by buildGrantDef, because
+// a CR 707.9a granted activated ability is declared exactly as a
+// card's own is (ability_grant.go). Nil in, nil out.
+func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.ActivatedAbilityShape, len(in))
+	for i, a := range in {
+		out[i] = game.ActivatedAbilityShape{
+			Label:        a.Label,
+			Cost:         a.Cost,
+			Targets:      a.Targets,
+			Modes:        a.Modes,
+			SorcerySpeed: a.SorcerySpeed,
+			Zones:        a.Zones,
+			Cycling:      a.Cycling,
+			Condition:    a.Condition,
+			ActiveWhen:   a.ActiveWhen,
+			Effect:       a.Effect,
+		}
+	}
+	return out
+}
+
 // buildDef projects one Spec into the shape the engine reads.
 func buildDef(spec Spec) *game.CardDef {
 	d := &game.CardDef{
@@ -93,23 +119,7 @@ func buildDef(spec Spec) *game.CardDef {
 			return nil
 		}
 	}
-	if len(spec.Activated) > 0 {
-		d.Activated = make([]game.ActivatedAbilityShape, len(spec.Activated))
-		for i, a := range spec.Activated {
-			d.Activated[i] = game.ActivatedAbilityShape{
-				Label:        a.Label,
-				Cost:         a.Cost,
-				Targets:      a.Targets,
-				Modes:        a.Modes,
-				SorcerySpeed: a.SorcerySpeed,
-				Zones:        a.Zones,
-				Cycling:      a.Cycling,
-				Condition:    a.Condition,
-				ActiveWhen:   a.ActiveWhen,
-				Effect:       a.Effect,
-			}
-		}
-	}
+	d.Activated = activatedShapes(spec.Activated)
 	if len(spec.ManaAbilities) > 0 {
 		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
 		for i, a := range spec.ManaAbilities {

@@ -144,6 +144,26 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
+	// GrantedAbilities are the catalog keys of ability bundles a
+	// CR 707.9a copy effect granted to this object — Phantasmal
+	// Image's "and it has 'when this creature becomes the target of a
+	// spell or ability, sacrifice it'", Sakashima's "{2}{U}{U}:
+	// return it".
+	//
+	// It sits here, in the flat printed fields, for the same reason
+	// Keywords and TypeLine do: a granted ability is part of the
+	// COPIABLE VALUES (CR 707.9a's second sentence), and
+	// PrintedValues is the portable snapshot of exactly these
+	// fields. CopiableValuesOf reads it, applyCopy writes it, and a
+	// copy of a copy therefore inherits the grant with no code of its
+	// own. CatalogKey folds it into the composite catalog key that
+	// makes the abilities findable (copy_grants.go).
+	//
+	// Names, never closures, so the snapshot carries it and an undo
+	// deep-copies it. Nil for every card that was never granted
+	// anything, which is all of them but a handful.
+	GrantedAbilities []string
+
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,

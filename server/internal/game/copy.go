@@ -97,6 +97,19 @@ type PrintedValues struct {
 	ProducedMana  []string
 	Keywords      []string
 
+	// GrantedAbilities are the catalog keys of ability bundles a copy
+	// effect's "except" clause GRANTED to this object (CR 707.9a).
+	// Names, not closures: the abilities themselves are static
+	// catalog data, registered by the card that grants them and
+	// looked up through the composite catalog key (copy_grants.go).
+	//
+	// It sits in the copiable values rather than on the replacement
+	// that made the copy because CR 707.9a's second sentence makes a
+	// granted ability copiable in its own right: a Clone copying a
+	// Phantasmal Image gets the Image's sacrifice trigger, and it
+	// gets it by copying this slice like any other printed value.
+	GrantedAbilities []string
+
 	Power           int
 	Toughness       int
 	StartingLoyalty int
@@ -139,6 +152,7 @@ func CopiableValuesOf(src Card) PrintedValues {
 		ColorIdentity:     copyStringSlice(src.ColorIdentity),
 		ProducedMana:      copyStringSlice(src.ProducedMana),
 		Keywords:          copyStringSlice(src.Keywords),
+		GrantedAbilities:  copyStringSlice(src.GrantedAbilities),
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
@@ -159,6 +173,7 @@ func (v PrintedValues) Clone() PrintedValues {
 	out.ColorIdentity = copyStringSlice(v.ColorIdentity)
 	out.ProducedMana = copyStringSlice(v.ProducedMana)
 	out.Keywords = copyStringSlice(v.Keywords)
+	out.GrantedAbilities = copyStringSlice(v.GrantedAbilities)
 	out.Faces = copyFaceSlice(v.Faces)
 	return out
 }
@@ -255,6 +270,108 @@ func (v *PrintedValues) RemoveSupertype(s string) {
 	v.setTypeLine(kept, types, subs)
 }
 
+// AddSubtype adds a subtype the copy has "in addition to its other
+// types" — Phantasmal Image's "it's an Illusion in addition to its
+// other types" (CR 707.9b). Idempotent, and appended rather than
+// inserted: subtypes have no printed order within their class the
+// way card types do (CR 205.3), and the added one is the exception
+// the card names, so it reads last where a player expects it.
+//
+// The ADD is deliberately not a SET. "Except it's a 4/4 black
+// Zombie" REPLACES the creature types, which is a different clause
+// and belongs in the token-copy template rather than here — see
+// retypedTypeLine in the catalog's token_copy.go.
+func (v *PrintedValues) AddSubtype(s string) {
+	supers, types, subs := ParseTypeLine(v.TypeLine)
+	for _, existing := range subs {
+		if existing == s {
+			return
+		}
+	}
+	subs = append(subs, s)
+	v.setTypeLine(supers, types, subs)
+}
+
+// RemoveSubtype drops a subtype the copy explicitly does not have.
+// The mirror of RemoveSupertype, and a no-op when absent.
+func (v *PrintedValues) RemoveSubtype(s string) {
+	supers, types, subs := ParseTypeLine(v.TypeLine)
+	kept := make([]string, 0, len(subs))
+	for _, existing := range subs {
+		if existing != s {
+			kept = append(kept, existing)
+		}
+	}
+	if len(kept) == len(subs) {
+		return
+	}
+	v.setTypeLine(supers, types, kept)
+}
+
+// HasSubtype reports whether the copied values carry subtype `s`
+// (case-sensitive, Scryfall capitalisation). The subtype twin of
+// HasCardType, for an except clause that branches on what was
+// copied.
+func (v PrintedValues) HasSubtype(s string) bool {
+	_, _, subs := ParseTypeLine(v.TypeLine)
+	for _, existing := range subs {
+		if existing == s {
+			return true
+		}
+	}
+	return false
+}
+
+// GrantAbility is "except it has '<ability>'" (CR 707.9a) — the
+// clause that gives the copy a triggered, static or activated
+// ability the copied card never had.
+//
+// `name` names an ability bundle the catalog registered
+// (`effects.Spec.Grants`); only the NAME is stored, which is what
+// lets the grant be copied again and survive a snapshot. See
+// copy_grants.go for how the name becomes abilities.
+//
+// Idempotent, and order-preserving: granting the same bundle twice
+// is one grant, and two different bundles keep the order the clause
+// applied them in, which is the order their abilities are read in.
+func (v *PrintedValues) GrantAbility(name string) {
+	key := GrantKey(name)
+	if key == "" {
+		return
+	}
+	for _, existing := range v.GrantedAbilities {
+		if existing == key {
+			return
+		}
+	}
+	v.GrantedAbilities = append(v.GrantedAbilities, key)
+}
+
+// MakeToken stamps the "Token" supertype on the copiable values —
+// what CR 111.13 and CR 608.3f ask for when a copy of a permanent
+// spell becomes a token as it resolves.
+//
+// "Token" is a supertype in this engine's parser (`isSupertype`) and
+// `Card.IsToken` is the printed type line, so this one edit is what
+// makes the object a token to the CR 704.5d existence check, the
+// bounce path and the client. It is PREPENDED rather than appended,
+// because that is how a token's type line is printed and how the
+// catalog's own `tokenTypeLine` builds one: "Token Legendary
+// Creature — Human Advisor". Idempotent, so a copy of a token stays
+// one Token, and it goes through setTypeLine so the multi-face
+// invariant survives (CR 707.10g — a copy of a double-faced
+// permanent spell is double-faced too).
+func (v *PrintedValues) MakeToken() {
+	supers, types, subs := ParseTypeLine(v.TypeLine)
+	for _, existing := range supers {
+		if existing == "Token" {
+			return
+		}
+	}
+	supers = append([]string{"Token"}, supers...)
+	v.setTypeLine(supers, types, subs)
+}
+
 // HasCardType reports whether the copied values carry card type `t`
 // (case-sensitive, Scryfall capitalisation). Card files branch on
 // it for the "if it's a creature / if it's a planeswalker" halves of
@@ -342,6 +459,19 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 		own := CopiableValuesOf(*c)
 		c.PrintedSelf = &own
 	}
+	c.setPrintedValues(v)
+	c.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
+	c.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
+}
+
+// setPrintedValues writes `v` into the flat printed fields and
+// nothing else — no PrintedSelf stash, no card-carried ability
+// slices. applyCopy is this plus the two things a PERMANENT copy
+// needs; the spell-copy path (spell_copy.go) uses it bare, because a
+// copy of a spell has no printed self to revert to (it is not a card
+// and never leaves the stack for a zone), and so does the token a
+// resolving copy of a permanent spell becomes (CR 608.3f).
+func (c *Card) setPrintedValues(v PrintedValues) {
 	v = v.Clone()
 	c.OracleID = v.OracleID
 	c.ScryfallID = v.ScryfallID
@@ -352,6 +482,7 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 	c.ColorIdentity = v.ColorIdentity
 	c.ProducedMana = v.ProducedMana
 	c.Keywords = v.Keywords
+	c.GrantedAbilities = v.GrantedAbilities
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
@@ -359,8 +490,6 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
-	c.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
-	c.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
 	// The printed baseline just changed underneath the layer
 	// engine's cache. Callers are on a battlefield-entry path that
 	// bumps layerVersion via the zone-move listener, but clearing
@@ -391,6 +520,11 @@ func (c *Card) restorePrintedSelf() {
 	c.ColorIdentity = v.ColorIdentity
 	c.ProducedMana = v.ProducedMana
 	c.Keywords = v.Keywords
+	// CR 400.7 again: the grant applied to the PERMANENT, so the card
+	// that goes to the graveyard is not an Illusion and has no
+	// sacrifice trigger. PrintedSelf carries the card's own (almost
+	// always empty) grant list, so this restores rather than clears.
+	c.GrantedAbilities = v.GrantedAbilities
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
