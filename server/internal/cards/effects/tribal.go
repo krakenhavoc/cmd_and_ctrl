@@ -297,6 +297,64 @@ func ChosenTypeManaRestrictions() func(*game.Game, uuid.UUID, uuid.UUID) []strin
 	}
 }
 
+// IsAlsoTheChosenType is "this permanent is the chosen type in
+// addition to its other types" — Adaptive Automaton's second line and
+// Roaming Throne's third, word for word.
+//
+// One layer-4 static on the source itself, reading the type the CR
+// 614.12 entry prompt named. It is an APPEND with a membership check
+// rather than an unconditional one: a permanent that already has the
+// type (an Automaton naming Construct, or a changeling under a
+// Maskwood Nexus) must not end up with it twice, because the wire
+// type line is rebuilt from this slice and would print "Construct
+// Construct".
+//
+// With no type named yet the static does not apply at all, which is
+// the rule every chosen-type reader follows.
+func IsAlsoTheChosenType() game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer4Type,
+		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			return target.InstanceID == source.InstanceID && source.NamedTribe != ""
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			for _, t := range c.Subtypes {
+				if t == source.NamedTribe {
+					return
+				}
+			}
+			c.Subtypes = append(c.Subtypes, source.NamedTribe)
+		},
+	}
+}
+
+// ChosenTypeCastOrActivateManaRestrictions is Secluded Courtyard's
+// wider clause: "Spend this mana only to cast a creature spell of the
+// chosen type OR activate an ability of a creature source of the
+// chosen type."
+//
+// The difference from ChosenTypeManaRestrictions is one tag. Cavern
+// of Souls names a PURPOSE (ManaRestrictCast) and so is casts only;
+// this one names none, and a restriction list with no purpose tag is
+// satisfied by either purpose as long as the object being paid for —
+// the spell, or the ability's source permanent (CR 106.6a) — is a
+// creature of the named type. That is exactly the printed sentence,
+// and it is why the disjunction needs no "or" the tag grammar does
+// not have.
+//
+// With no type named yet the subtype tag carries an empty value,
+// which matchesRestriction refuses: the mana is unspendable until the
+// controller answers, which is the weaker direction and matches
+// Cavern.
+func ChosenTypeCastOrActivateManaRestrictions() func(*game.Game, uuid.UUID, uuid.UUID) []string {
+	return func(g *game.Game, _ uuid.UUID, source uuid.UUID) []string {
+		return []string{
+			game.ManaRestrictType("Creature"),
+			game.ManaRestrictSubtype(g.NamedTribeOf(source)),
+		}
+	}
+}
+
 // MatchCreatureSubtype is the creature-type filter for a scaled mana
 // ability — Elvish Archdruid's "{T}: Add {G} for each Elf you
 // control". Sibling of MatchLandSubtype in mana_derivation.go, and

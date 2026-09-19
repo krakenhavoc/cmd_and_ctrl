@@ -948,3 +948,845 @@ func TestTokenEnteringUnderAnAnthemIsPumpedImmediately(t *testing.T) {
 		t.Error("a token must get a battlefield-entry timestamp (CR 613 ordering)")
 	}
 }
+
+// --- the 2026-09 slice: the cards the September seams unblocked ----
+//
+// Twenty-four more of #294's hundred, written against the primitives
+// that landed after the first pass: conditional alternative costs,
+// until-end-of-turn grants, protection as a quality, modal triggers,
+// trigger doubling, abilities from the hand, the one-shot land-drop
+// grant, layer-4 dependency ordering, and the produced-mana grammar's
+// per-colour amounts.
+
+const (
+	optOracle                    = "713332c1-5bd8-400f-bfff-c1ca0697a043"
+	brainstormOracle             = "36cd2364-d113-47d1-b2c4-b088d9eb88dd"
+	growthSpiralOracle           = "34bcc217-dd91-45a0-90d7-a94d02f1f317"
+	exploreOracle                = "b8f566ea-8283-4afa-9ac8-737e26419283"
+	cropRotationOracle           = "28b46183-c62f-47b1-9fee-3ba148202cab"
+	ashBarrensOracle             = "58257464-278e-45fa-8e0b-bcd9a7500bc1"
+	flawlessManeuverOracle       = "4e183439-17d2-47ff-9d99-5e22821d91e3"
+	akromasWillOracle            = "fd949f82-fc10-4e37-8aa9-6c7569fe3c55"
+	jeskasWillOracle             = "0fd114c4-092b-4e28-b0dc-ef529f3bc73e"
+	mysticSanctuaryOracle        = "17b60106-a4c7-410a-8ac3-ec8e74e29a7c"
+	secludedCourtyardOracle      = "79ba18fd-f184-43c1-86df-56ee18ce806c"
+	nykthosOracle                = "84dc18f0-8225-4b40-a165-b10321e41769"
+	threeTreeCityOracle          = "da3b17a2-e1e1-44e9-b9b1-ae54a92037db"
+	patchworkBannerOracle        = "4fb00dbe-1f82-4ba6-b18c-97e816d10d3a"
+	yavimayaOracle               = "8dd5f5af-d2d8-4356-8617-8381081b930c"
+	scuteSwarmOracle             = "aa854d50-444c-49d9-bfb1-5476b33c1c0b"
+	blackMarketConnectionsOracle = "d2664f28-49e1-46f8-a863-b217e961a57c"
+	heraldsHornOracle            = "c02c5547-b9c9-4b2d-9d12-e87bfba8f2d2"
+	roamingThroneOracle          = "3640c29b-1534-4952-b297-619ade948431"
+	theGreatHengeOracle          = "78427103-9543-41fb-b6d4-72963fe87275"
+	boseijuWhoEnduresOracle      = "bf1341dd-41a3-49f6-87ec-63170dde4324"
+	otawaraSoaringCityOracle     = "e9b6a394-691c-425a-9307-76d8edc7375e"
+	commandBeaconOracle          = "7e8c2a18-e404-40ff-a9e0-ec3eeb6d576e"
+	gemstoneCavernsOracle        = "c0adbddc-b070-4c5f-afe0-0474c72a9251"
+)
+
+// Every card the slice registered, pinned by oracle ID → name, the
+// way TestBatch01CardsAreRegistered pins the first pass's.
+func TestBatch01SeptemberSliceCardsAreRegistered(t *testing.T) {
+	want := map[string]string{
+		optOracle:                    "Opt",
+		brainstormOracle:             "Brainstorm",
+		growthSpiralOracle:           "Growth Spiral",
+		exploreOracle:                "Explore",
+		cropRotationOracle:           "Crop Rotation",
+		ashBarrensOracle:             "Ash Barrens",
+		flawlessManeuverOracle:       "Flawless Maneuver",
+		akromasWillOracle:            "Akroma's Will",
+		jeskasWillOracle:             "Jeska's Will",
+		mysticSanctuaryOracle:        "Mystic Sanctuary",
+		secludedCourtyardOracle:      "Secluded Courtyard",
+		nykthosOracle:                "Nykthos, Shrine to Nyx",
+		threeTreeCityOracle:          "Three Tree City",
+		patchworkBannerOracle:        "Patchwork Banner",
+		yavimayaOracle:               "Yavimaya, Cradle of Growth",
+		scuteSwarmOracle:             "Scute Swarm",
+		blackMarketConnectionsOracle: "Black Market Connections",
+		heraldsHornOracle:            "Herald's Horn",
+		roamingThroneOracle:          "Roaming Throne",
+		theGreatHengeOracle:          "The Great Henge",
+		boseijuWhoEnduresOracle:      "Boseiju, Who Endures",
+		otawaraSoaringCityOracle:     "Otawara, Soaring City",
+		commandBeaconOracle:          "Command Beacon",
+		gemstoneCavernsOracle:        "Gemstone Caverns",
+	}
+	if len(want) != 24 {
+		t.Fatalf("the slice is 24 cards, the table lists %d", len(want))
+	}
+	for oracle, name := range want {
+		spec, ok := Lookup(oracle)
+		if !ok {
+			t.Errorf("%s (%s) is not registered", name, oracle)
+			continue
+		}
+		if spec.Name != name {
+			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
+		}
+	}
+}
+
+// --- the cantrips --------------------------------------------------
+
+// Opt scries before it draws, which is the whole card: the draw is in
+// Scry.Then, so the hand does not grow until the scry is answered.
+func TestOptScriesThenDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	before := me.Hand.Size()
+	castCatalogSpell(t, g, "Opt", "Instant", optOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	scry := latestChoiceOfKind(g, game.PendingChoiceScry)
+	if scry == nil {
+		t.Fatal("Opt queued no scry prompt")
+	}
+	if got := me.Hand.Size(); got != before {
+		t.Errorf("hand %d before the scry is answered, want %d — the draw must wait", got, before)
+	}
+	if err := g.ResolveScry(scry.ID, me.ID, nil, scry.ScryCards); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
+	}
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand after Opt = %d, want %d", got, before+1)
+	}
+}
+
+// Brainstorm draws three and puts two back, first pick on top.
+func TestBrainstormDrawsThreeAndPutsTwoBackFirstPickOnTop(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	before := me.Hand.Size()
+	castCatalogSpell(t, g, "Brainstorm", "Instant", brainstormOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if got := me.Hand.Size(); got != before+3 {
+		t.Fatalf("hand after the draw = %d, want %d", got, before+3)
+	}
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("Brainstorm queued no put-back prompt")
+	}
+	if pick.ChooseMin != 2 || pick.ChooseMax != 2 {
+		t.Errorf("put-back bounds = %d..%d, want exactly two", pick.ChooseMin, pick.ChooseMax)
+	}
+	first, second := me.Hand.Cards[0].InstanceID, me.Hand.Cards[1].InstanceID
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{first, second}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand after putting two back = %d, want %d", got, before+1)
+	}
+	top := me.Library.Cards[len(me.Library.Cards)-1].InstanceID
+	if top != first {
+		t.Error("the first pick must end on top of the library")
+	}
+}
+
+// Growth Spiral draws, then offers the land — and the land is PUT,
+// so it does not spend the turn's land drop.
+func TestGrowthSpiralDrawsThenPutsALandFromHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest",
+		Owner: me.ID, Controller: me.ID,
+	})
+	castCatalogSpell(t, g, "Growth Spiral", "Instant", growthSpiralOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("Growth Spiral queued no land prompt")
+	}
+	if pick.ChooseMin != 0 {
+		t.Errorf("the prompt floor is %d, want 0 — \"you MAY put\"", pick.ChooseMin)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{land}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("the picked land did not reach the battlefield")
+	}
+}
+
+// Explore banks a land play for the turn and draws.
+func TestExploreGrantsALandPlayAndDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	before := me.Hand.Size()
+	castCatalogSpell(t, g, "Explore", "Sorcery", exploreOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if got := g.ExtraLandDropsThisTurn[me.ID]; got != 1 {
+		t.Errorf("extra land plays = %d, want 1", got)
+	}
+	// Explore was seeded into the hand, cast out of it, and drew one:
+	// net one card up on the count taken before the seeding.
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand after Explore = %d, want %d", got, before+1)
+	}
+}
+
+// --- the search-and-sacrifice spells -------------------------------
+
+// Crop Rotation eats a land at announce and fetches any land.
+func TestCropRotationSacrificesALandAndFetchesOne(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	victim := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	want := pushLibraryCardForTest(me, game.Card{
+		Name: "Gaea's Cradle", TypeLine: "Legendary Land",
+	})
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	spell := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: spell, Name: "Crop Rotation", TypeLine: "Instant",
+		OracleID: cropRotationOracle, Owner: me.ID, Controller: me.ID,
+	})
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{SacrificeIDs: []uuid.UUID{victim}}); err != nil {
+		t.Fatalf("CastSpell Crop Rotation: %v", err)
+	}
+	if g.Battlefield.Contains(victim) {
+		t.Error("the additional cost must sacrifice the land at announce (CR 601.2f)")
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(want) {
+		t.Error("the fetched land did not reach the battlefield")
+	}
+}
+
+// Ash Barrens' basic landcycling is an ability that functions from
+// the hand, with a discard-this cost.
+func TestAshBarrensBasicLandcyclesFromHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	ids := seedSearchLibrary(me, searchTestLand("Island", "Basic Land — Island"))
+	basic := ids[0]
+
+	id, _ := cycleFromHand(t, g, "Ash Barrens", "Land", ashBarrensOracle, "{C}")
+	if !me.Graveyard.Contains(id) {
+		t.Fatal("the discard-this cost must put Ash Barrens in the graveyard")
+	}
+	passPriorityAroundTable(t, g)
+
+	// One basic in the library is fewer matches than the limit, so the
+	// search chooser takes it without asking; a prompt appears only
+	// when there is a real choice to make.
+	if c := searchChoiceFor(g, me.ID); c != nil {
+		if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{basic}); err != nil {
+			t.Fatalf("ResolveSearchLibrary: %v", err)
+		}
+	}
+	if !me.Hand.Contains(basic) {
+		t.Error("basic landcycling did not put the basic into hand")
+	}
+}
+
+// --- the free spell and the two modal instants ---------------------
+
+// Flawless Maneuver is free while you control a commander, and it
+// only touches creatures.
+func TestFlawlessManeuverGrantsIndestructibleToCreaturesOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Sol Ring", TypeLine: "Artifact",
+		Owner: me.ID, Controller: me.ID,
+	})
+	castCatalogSpell(t, g, "Flawless Maneuver", "Instant", flawlessManeuverOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	if !hasAbility(effectiveAbilities(t, g, bear), "indestructible") {
+		t.Error("the creature did not gain indestructible")
+	}
+	if hasAbility(effectiveAbilities(t, g, rock), "indestructible") {
+		t.Error("\"creatures you control\" must not reach an artifact")
+	}
+	if cost := game.AlternativeCostByKey(flawlessManeuverOracle, "free"); cost == nil {
+		t.Error("the commander free-cast offer is not declared")
+	}
+}
+
+// Akroma's Will's second bullet grants protection from each colour —
+// five separate qualities, not one.
+func TestAkromasWillSecondBulletGrantsProtectionFromEachColor(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	castCatalogSpellWithModes(t, g, "Akroma's Will", "Instant", akromasWillOracle, []int{1})
+	passPriorityAroundTable(t, g)
+
+	abilities := effectiveAbilities(t, g, bear)
+	for _, want := range []string{"lifelink", "indestructible"} {
+		if !hasAbility(abilities, want) {
+			t.Errorf("the creature did not gain %s", want)
+		}
+	}
+	for _, c := range game.AllColors {
+		if !hasAbility(abilities, game.ProtectionFromColor(c)) {
+			t.Errorf("the creature did not gain %s", game.ProtectionFromColor(c))
+		}
+	}
+}
+
+// Akroma's Will asks for ONE bullet: the commander clause that would
+// let a player take both is the declared simplification, so a
+// two-mode announcement is refused rather than quietly allowed.
+func TestAkromasWillRefusesBothModes(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Akroma's Will", TypeLine: "Instant",
+		OracleID: akromasWillOracle, Owner: me.ID, Controller: me.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Modes: []int{0, 1}}); err == nil {
+		t.Error("choosing both bullets must be refused while the commander clause is unimplemented")
+	}
+}
+
+// Jeska's Will's ritual counts the target opponent's hand as it
+// resolves.
+func TestJeskasWillRitualCountsTheOpponentsHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[1]
+	for i := 0; i < 2; i++ {
+		opp.Hand.PushTop(game.Card{
+			InstanceID: uuid.New(), Name: "Filler", TypeLine: "Instant",
+			Owner: opp.ID, Controller: opp.ID,
+		})
+	}
+	want := opp.Hand.Size()
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Jeska's Will", TypeLine: "Sorcery",
+		OracleID: jeskasWillOracle, Owner: me.ID, Controller: me.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
+		Modes:   []int{0},
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	}); err != nil {
+		t.Fatalf("CastSpell Jeska's Will: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	red := 0
+	for _, tok := range me.ManaPool {
+		if tok.Color == "R" {
+			red++
+		}
+	}
+	if red != want {
+		t.Errorf("red mana added = %d, want %d (one per card in the opponent's hand)", red, want)
+	}
+}
+
+// The second bullet exiles three and makes them playable this turn.
+func TestJeskasWillImpulseExilesThree(t *testing.T) {
+	g := newCatalogGame(t)
+	before := g.Exile.Size()
+	castCatalogSpellWithModes(t, g, "Jeska's Will", "Sorcery", jeskasWillOracle, []int{1})
+	passPriorityAroundTable(t, g)
+	if got := g.Exile.Size() - before; got != 3 {
+		t.Errorf("exiled %d cards, want 3", got)
+	}
+}
+
+// --- the lands -----------------------------------------------------
+
+// Mystic Sanctuary enters untapped on the fourth Island and its
+// trigger puts an instant back on top.
+func TestMysticSanctuaryEntersUntappedAndRebuysAnInstant(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 3; i++ {
+		seedLandOnBattlefield(g, me.ID, "Island", "Basic Land — Island")
+	}
+	bolt := batch01GraveyardCard(me, "Counterspell", "Instant")
+
+	id := playLandFromHand(t, g, "Mystic Sanctuary", mysticSanctuaryOracle)
+	card, ok := battlefieldCard(g, id)
+	if !ok || card.Tapped {
+		t.Fatal("Mystic Sanctuary must enter untapped with three other Islands")
+	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	if prompt := latestPickTarget(g, me.ID); prompt == nil {
+		t.Fatal("no pick_target prompt after the \"you may\"")
+	}
+	pickCard(t, g, me.ID, bolt)
+	passPriorityAroundTable(t, g)
+	if me.Graveyard.Contains(bolt) {
+		t.Error("the instant is still in the graveyard")
+	}
+	if top := me.Library.Cards[len(me.Library.Cards)-1].InstanceID; top != bolt {
+		t.Error("the instant did not go on top of the library")
+	}
+}
+
+// With only two other Islands it enters tapped and asks nothing.
+func TestMysticSanctuaryEntersTappedBelowThreeIslands(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 2; i++ {
+		seedLandOnBattlefield(g, me.ID, "Island", "Basic Land — Island")
+	}
+	id := playLandFromHand(t, g, "Mystic Sanctuary", mysticSanctuaryOracle)
+	card, ok := battlefieldCard(g, id)
+	if !ok || !card.Tapped {
+		t.Error("Mystic Sanctuary must enter tapped below three other Islands")
+	}
+}
+
+// Secluded Courtyard's coloured mana is spendable on a creature
+// SPELL of the named type and on an ABILITY of one — the "or" Cavern
+// of Souls does not have.
+func TestSecludedCourtyardManaWorksForCastsAndActivations(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := pushNamedTribePermanent(t, g, me.ID, "Secluded Courtyard", "Land", secludedCourtyardOracle, "Elf")
+
+	spec, ok := Lookup(secludedCourtyardOracle)
+	if !ok || len(spec.ManaAbilities) != 2 {
+		t.Fatal("Secluded Courtyard must declare two mana abilities")
+	}
+	tags := spec.ManaAbilities[1].RestrictionsFunc(g, me.ID, id)
+	for _, want := range []string{game.ManaRestrictType("Creature"), game.ManaRestrictSubtype("Elf")} {
+		if !containsString(tags, want) {
+			t.Errorf("restriction tags %v are missing %q", tags, want)
+		}
+	}
+	if containsString(tags, game.ManaRestrictCast) {
+		t.Error("a purpose tag would make the mana casts-only; the card also allows activations")
+	}
+}
+
+// Nykthos reads devotion per colour into the produced-mana grammar.
+func TestNykthosProducesPerColourDevotion(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := seedPermanentWithOracle(g, me.ID, "Nykthos, Shrine to Nyx", "Legendary Land", nykthosOracle)
+	for i := 0; i < 2; i++ {
+		pushBattlefieldCardWithTimestamp(g, game.Card{
+			InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid",
+			ManaCost: "{G}", Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+		})
+	}
+	spec, ok := Lookup(nykthosOracle)
+	if !ok || len(spec.ManaAbilities) != 2 {
+		t.Fatal("Nykthos must declare two mana abilities")
+	}
+	if spec.ManaAbilities[1].Cost.Mana != "{2}" {
+		t.Errorf("the devotion ability costs %q, want {2}", spec.ManaAbilities[1].Cost.Mana)
+	}
+	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != "{G2}" {
+		t.Errorf("produced = %q, want {G2} (devotion to green is two)", got)
+	}
+}
+
+// Three Tree City mints N of ONE colour, N being the creatures of the
+// named type.
+func TestThreeTreeCityScalesWithTheNamedTribe(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := pushNamedTribePermanent(t, g, me.ID, "Three Tree City", "Legendary Land", threeTreeCityOracle, "Elf")
+	for i := 0; i < 3; i++ {
+		pushBattlefieldCardWithTimestamp(g, game.Card{
+			InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid",
+			Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+		})
+	}
+	spec, _ := Lookup(threeTreeCityOracle)
+	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != OneColorOfAmount(3) {
+		t.Errorf("produced = %q, want %q", got, OneColorOfAmount(3))
+	}
+}
+
+// Patchwork Banner pumps the named type and nothing else.
+func TestPatchworkBannerPumpsTheNamedType(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushNamedTribePermanent(t, g, me.ID, "Patchwork Banner", "Artifact", patchworkBannerOracle, "Elf")
+	elf := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+	})
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	if got := effectivePower(t, g, elf); got != 2 {
+		t.Errorf("the Elf is %d power, want 2", got)
+	}
+	if got := effectivePower(t, g, bear); got != 2 {
+		t.Errorf("the Bear is %d power, want 2 — it is not the named type", got)
+	}
+}
+
+// Yavimaya makes every land a Forest, its controller's and everyone
+// else's, and the Forest really taps for {G}.
+func TestYavimayaMakesEveryLandAForest(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := seedLand(g, me.ID, "Island", "Basic Land — Island", "")
+	theirs := seedLand(g, opp.ID, "Swamp", "Basic Land — Swamp", "")
+	yav := seedLand(g, me.ID, "Yavimaya, Cradle of Growth", "Legendary Land", yavimayaOracle)
+
+	for _, tc := range []struct {
+		name string
+		id   uuid.UUID
+	}{{"your Island", mine}, {"an opponent's Swamp", theirs}, {"Yavimaya itself", yav}} {
+		if !containsString(effectiveSubtypes(t, g, tc.id), "Forest") {
+			t.Errorf("%s is not a Forest", tc.name)
+		}
+	}
+	// "In addition to": the Island keeps its own type.
+	if !containsString(effectiveSubtypes(t, g, mine), "Island") {
+		t.Error("the Island lost its own land type — this is an add, not a set")
+	}
+}
+
+// --- the creatures and permanents ----------------------------------
+
+// Scute Swarm makes an Insect below six lands and a copy of itself at
+// six.
+func TestScuteSwarmCopiesItselfAtSixLands(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		lands     int
+		wantSwarm int
+	}{
+		{"five lands", 4, 1},
+		{"six lands", 5, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			seedPermanentWithOracle(g, me.ID, "Scute Swarm", "Creature — Insect", scuteSwarmOracle)
+			for i := 0; i < tc.lands; i++ {
+				seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+			}
+			playLandFromHand(t, g, "Forest", "")
+			passPriorityAroundTable(t, g)
+
+			swarms, insects := 0, 0
+			for _, c := range g.Battlefield.Cards {
+				switch c.Name {
+				case "Scute Swarm":
+					swarms++
+				case "Insect":
+					insects++
+				}
+			}
+			if swarms != tc.wantSwarm {
+				t.Errorf("Scute Swarms = %d, want %d", swarms, tc.wantSwarm)
+			}
+			if want := 1 - (tc.wantSwarm - 1); insects != want {
+				t.Errorf("plain Insects = %d, want %d", insects, want)
+			}
+		})
+	}
+}
+
+// Black Market Connections asks at the first main phase and runs
+// every bullet the controller takes.
+func TestBlackMarketConnectionsRunsTheChosenBullets(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedPermanentWithOracle(g, me.ID, "Black Market Connections", "Enchantment", blackMarketConnectionsOracle)
+	life, hand := me.Life, me.Hand.Size()
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	mode := latestChoiceOfKind(g, game.PendingChoiceModePick)
+	if mode == nil {
+		t.Fatal("no mode prompt at the first main phase")
+	}
+	if err := g.ResolveModePick(mode.ID, me.ID, []int{0, 1}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got := me.Life; got != life-3 {
+		t.Errorf("life %d → %d, want %d (1 + 2)", life, got, life-3)
+	}
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Errorf("hand = %d, want %d", got, hand+1)
+	}
+	if findBattlefieldByName(g, "Treasure") == uuid.Nil {
+		t.Error("no Treasure token")
+	}
+}
+
+// Herald's Horn discounts creature spells of the named type only, and
+// its upkeep offers the top card when it matches.
+func TestHeraldsHornDiscountsAndFiltersTheTopCard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	horn := pushNamedTribePermanent(t, g, me.ID, "Herald's Horn", "Artifact", heraldsHornOracle, "Elf")
+
+	mods := game.CostModifiersForCard(game.Card{OracleID: heraldsHornOracle})
+	if len(mods) != 1 {
+		t.Fatalf("%d cost modifiers, want 1", len(mods))
+	}
+	hornCard, _ := battlefieldCard(g, horn)
+	elf := game.Card{Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid"}
+	bear := game.Card{Name: "Bear", TypeLine: "Creature — Bear"}
+	if !mods[0].AppliesTo(game.CostQuery{Game: g, Card: elf, Controller: me.ID, Source: hornCard}) {
+		t.Error("the discount must apply to a creature spell of the named type")
+	}
+	if mods[0].AppliesTo(game.CostQuery{Game: g, Card: bear, Controller: me.ID, Source: hornCard}) {
+		t.Error("the discount must not apply to a creature of another type")
+	}
+}
+
+// The Great Henge's mana ability gains two life alongside its {G}{G},
+// and its entry trigger grows the creature and draws.
+func TestTheGreatHengeRiderAndEntryTrigger(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	henge := seedPermanentWithOracle(g, me.ID, "The Great Henge", "Legendary Artifact", theGreatHengeOracle)
+	life, hand := me.Life, me.Hand.Size()
+
+	if err := g.ActivateManaAbility(me.ID, henge, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if got := me.Life; got != life+2 {
+		t.Errorf("life %d → %d, want %d — the rider gains two", life, got, life+2)
+	}
+	if len(me.ManaPool) != 2 {
+		t.Errorf("mana pool holds %d tokens, want 2", len(me.ManaPool))
+	}
+
+	bear := pushCatalogHandCard(me, "Bear", "Creature — Bear", "")
+	g.WithWriteLock(func() {
+		_, _ = g.PutFromHandOntoBattlefieldForEffect(bear, game.HandEntryOptions{Controller: me.ID})
+	})
+	passPriorityAroundTable(t, g)
+	card, ok := battlefieldCard(g, bear)
+	if !ok || card.Counters["+1/+1"] != 1 {
+		t.Error("the entering creature did not get a +1/+1 counter")
+	}
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Errorf("hand = %d, want %d — the trigger draws", got, hand+1)
+	}
+}
+
+// The Henge's own cost reduction reads the GREATEST power, not the
+// total.
+func TestTheGreatHengeReducesByTheGreatestPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for _, p := range []int{2, 5, 3} {
+		pushBattlefieldCardWithTimestamp(g, game.Card{
+			InstanceID: uuid.New(), Name: "Beater", TypeLine: "Creature — Beast",
+			Power: p, Toughness: p, Owner: me.ID, Controller: me.ID,
+		})
+	}
+	spec, _ := Lookup(theGreatHengeOracle)
+	if len(spec.SelfCostModifiers) != 1 {
+		t.Fatalf("%d self cost modifiers, want 1", len(spec.SelfCostModifiers))
+	}
+	if got := spec.SelfCostModifiers[0].Amount(game.CostQuery{Game: g, Controller: me.ID}); got != 5 {
+		t.Errorf("reduction = %d, want 5 (the greatest power, not 2+5+3)", got)
+	}
+}
+
+// Roaming Throne is the type it named, and doubles another creature
+// of that type rather than its own abilities.
+func TestRoamingThroneIsTheNamedTypeAndDoublesOthers(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	throne := pushNamedTribePermanent(t, g, me.ID, "Roaming Throne", "Artifact Creature — Golem", roamingThroneOracle, "Elf")
+	if !containsString(effectiveSubtypes(t, g, throne), "Elf") {
+		t.Error("the Throne is not the type it named")
+	}
+	if !containsString(effectiveSubtypes(t, g, throne), "Golem") {
+		t.Error("\"in addition to its other types\" must keep Golem")
+	}
+
+	doublers := game.CatalogTriggerDoublers(roamingThroneOracle)
+	if len(doublers) != 1 {
+		t.Fatalf("%d trigger doublers, want 1", len(doublers))
+	}
+	throneCard, _ := battlefieldCard(g, throne)
+	elf := game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid", Controller: me.ID}
+	elfLKI := game.Characteristic{Controller: me.ID, Types: []string{"Creature"}, Subtypes: []string{"Elf"}}
+	ability := &game.TriggeredAbility{}
+	if !doublers[0].Applies(g, game.TriggerDoublingQuery{
+		Doubler: throneCard, DoublerLKI: game.Characteristic{Controller: me.ID},
+		Source: elf, SourceLKI: elfLKI, Ability: ability,
+	}) {
+		t.Error("another Elf you control must be doubled")
+	}
+	if doublers[0].Applies(g, game.TriggerDoublingQuery{
+		Doubler: throneCard, DoublerLKI: game.Characteristic{Controller: me.ID},
+		Source: throneCard, SourceLKI: game.Characteristic{Controller: me.ID}, Ability: ability,
+	}) {
+		t.Error("\"another\" must exclude the Throne itself")
+	}
+}
+
+// --- the channel lands and the utility lands -----------------------
+
+// Boseiju's channel is a hand ability that destroys and compensates.
+func TestBoseijuChannelDestroysAndOffersABasic(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	victim := seedLandOnBattlefield(g, opp.ID, "Gaea's Cradle", "Legendary Land")
+	pushLibraryCardForTest(opp, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	id := pushCatalogHandCard(me, "Boseiju, Who Endures", "Legendary Land", boseijuWhoEnduresOracle)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{G}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}},
+	}); err != nil {
+		t.Fatalf("channel: %v", err)
+	}
+	if !me.Graveyard.Contains(id) {
+		t.Error("the discard-this cost must bin Boseiju at announce")
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(victim) {
+		t.Error("the nonbasic land was not destroyed")
+	}
+}
+
+// Otawara's channel bounces anything, including your own permanent.
+func TestOtawaraChannelBouncesItsTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	id := pushCatalogHandCard(me, "Otawara, Soaring City", "Legendary Land", otawaraSoaringCityOracle)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{U}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}},
+	}); err != nil {
+		t.Fatalf("channel: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(bear) {
+		t.Error("the creature was not returned to hand")
+	}
+	if !me.Hand.Contains(bear) {
+		t.Error("the creature did not arrive in its owner's hand")
+	}
+}
+
+// Command Beacon trades itself for the commander in the command zone.
+func TestCommandBeaconPutsTheCommanderInHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	beacon := seedPermanentWithOracle(g, me.ID, "Command Beacon", "Land", commandBeaconOracle)
+	cmdr := uuid.New()
+	me.Command.PushTop(game.Card{
+		InstanceID: cmdr, Name: "Kenrith, the Returned King", TypeLine: "Legendary Creature — Human Noble",
+		Owner: me.ID, Controller: me.ID, IsCommander: true,
+	})
+	if err := g.ActivateCatalogAbility(me.ID, beacon, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	// A commander headed for a hand gets the CR 903.9 offer, from the
+	// command zone like anywhere else. Declining is what the card is
+	// for.
+	if offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement); offer != nil {
+		if err := g.ResolveOptionalReplacement(offer.ID, me.ID, false); err != nil {
+			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		}
+	}
+	if g.Battlefield.Contains(beacon) {
+		t.Error("the sacrifice cost did not eat the land")
+	}
+	if me.Command.Contains(cmdr) {
+		t.Error("the commander is still in the command zone")
+	}
+	if !me.Hand.Contains(cmdr) {
+		t.Error("the commander did not reach the hand")
+	}
+}
+
+// Gemstone Caverns makes {C} bare and any colour with a luck counter.
+func TestGemstoneCavernsNeedsALuckCounterForColour(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := seedPermanentWithOracle(g, me.ID, "Gemstone Caverns", "Legendary Land", gemstoneCavernsOracle)
+	spec, _ := Lookup(gemstoneCavernsOracle)
+	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{C}" {
+		t.Errorf("produced without a luck counter = %q, want {C}", got)
+	}
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(id, "luck", 1) })
+	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{W|U|B|R|G}" {
+		t.Errorf("produced with a luck counter = %q, want the five-colour pick", got)
+	}
+}
+
+// --- slice helpers ---------------------------------------------------
+
+// castCatalogSpellWithModes is castCatalogSpell for a modal card: the
+// modes are announced with the cast (CR 601.2b).
+func castCatalogSpellWithModes(t *testing.T, g *game.Game, name, typeLine, oracleID string, modes []int) uuid.UUID {
+	t.Helper()
+	active := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracleID,
+		Owner: active.ID, Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Modes: modes}); err != nil {
+		t.Fatalf("CastSpell %s: %v", name, err)
+	}
+	return id
+}

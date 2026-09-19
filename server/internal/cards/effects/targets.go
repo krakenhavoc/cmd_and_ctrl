@@ -68,6 +68,17 @@ func Creature() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() }
 }
 
+// NonbasicLand — "nonbasic land" (CR 205.4c): a land without the
+// basic SUPERTYPE. The land TYPE is not the test — a Sacred Foundry
+// is a Mountain and still nonbasic, and a Snow-Covered Swamp is
+// basic. Boseiju, Who Endures and the Wasteland family target with
+// it.
+func NonbasicLand() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsLand() && !c.HasSupertype("basic")
+	}
+}
+
 func Artifact() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsArtifact() }
 }

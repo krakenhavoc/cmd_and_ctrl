@@ -16,31 +16,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Construct correctly does NOT pump itself ("other") while a second
 // Automaton naming Construct does pump the first.
 //
-// The type-add is written as an append with a membership check rather
-// than an unconditional one: a permanent that already has the type
-// (naming Construct, or a changeling under a Maskwood Nexus) must not
-// end up with it twice, because the wire type line is rebuilt from
-// this slice and would print "Construct Construct".
+// The type-add is `IsAlsoTheChosenType` (tribal.go), shared with
+// Roaming Throne, which prints the same sentence. It is an append
+// with a membership check rather than an unconditional one: a
+// permanent that already has the type (naming Construct, or a
+// changeling under a Maskwood Nexus) must not end up with it twice,
+// because the wire type line is rebuilt from this slice and would
+// print "Construct Construct".
 func init() {
 	Register(Spec{
 		OracleID: "53c730c6-2f8c-4af8-b400-b9d573a71e60",
 		Name:     "Adaptive Automaton",
 		AsEnters: ChooseCreatureTypeAsEnters("Adaptive Automaton"),
 		Static: []game.StaticAbility{
-			{
-				Layer: game.Layer4Type,
-				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-					return target.InstanceID == source.InstanceID && source.NamedTribe != ""
-				},
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-					for _, t := range c.Subtypes {
-						if t == source.NamedTribe {
-							return
-						}
-					}
-					c.Subtypes = append(c.Subtypes, source.NamedTribe)
-				},
-			},
+			IsAlsoTheChosenType(),
 			TribalAnthem(TribeFilter{Chosen: true, Others: true, YoursOnly: true}, 1, 1),
 		},
 	})
