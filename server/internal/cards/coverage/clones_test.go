@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -30,6 +31,24 @@ const (
 	cloneMinLines = 6
 )
 
+// groupIsFresh reports whether g is not accounted for by the
+// baseline: a hash the baseline has never recorded, or one it has
+// recorded with fewer members than g now has. A group that shrank, or
+// held steady, is not fresh — #895's -update rewrites a smaller
+// baseline for that, it does not fail the gate.
+//
+// #786: the baseline's member count used to be written but never
+// read back, so a third, fourth or tenth copy of an already-known
+// body passed silently. known maps a baseline hash to that recorded
+// count.
+func groupIsFresh(known map[string]int, g CloneGroup) bool {
+	n, ok := known[g.Hash]
+	if !ok {
+		return true
+	}
+	return len(g.Members) > n
+}
+
 func TestNoNewExactClonesInTheCatalog(t *testing.T) {
 	groups, err := ExactClones(catalogDir, cloneMinLines)
 	if err != nil {
@@ -45,7 +64,7 @@ func TestNoNewExactClonesInTheCatalog(t *testing.T) {
 		t.Logf("baseline rewritten: %d groups", len(groups))
 		return
 	}
-	known := map[string]bool{}
+	known := map[string]int{}
 	if f, err := os.Open(cloneBaseline); err == nil {
 		sc := bufio.NewScanner(f)
 		for sc.Scan() {
@@ -53,7 +72,15 @@ func TestNoNewExactClonesInTheCatalog(t *testing.T) {
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			known[strings.Fields(line)[0]] = true
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
+				continue
+			}
+			n, err := strconv.Atoi(fields[2])
+			if err != nil {
+				continue
+			}
+			known[fields[0]] = n
 		}
 		_ = f.Close()
 	} else {
@@ -61,7 +88,7 @@ func TestNoNewExactClonesInTheCatalog(t *testing.T) {
 	}
 	var fresh []CloneGroup
 	for _, g := range groups {
-		if !known[g.Hash] {
+		if groupIsFresh(known, g) {
 			fresh = append(fresh, g)
 		}
 	}
@@ -86,6 +113,45 @@ places. If the duplicate is genuinely deliberate, regenerate the
 baseline with -update and say why in the PR.
 `)
 	t.Error(sb.String())
+}
+
+// #786: a baseline group that already knows a hash must still catch a
+// grown group — a third, fourth or tenth copy of a body the baseline
+// already lists. Before this, the gate kept only the hash and never
+// looked at the recorded member count, so growth passed silently.
+func TestGroupIsFreshComparesMemberCounts(t *testing.T) {
+	known := map[string]int{"h": 3}
+	tests := []struct {
+		name    string
+		members int
+		want    bool
+	}{
+		{"grown from 3 to 4 members fails", 4, true},
+		{"steady at 3 members passes", 3, false},
+		{"shrunk to 2 members passes", 2, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			members := make([]string, tt.members)
+			for i := range members {
+				members[i] = fmt.Sprintf("m%d.go:func F", i)
+			}
+			g := CloneGroup{Hash: "h", Lines: 6, Members: members}
+			if got := groupIsFresh(known, g); got != tt.want {
+				t.Errorf("groupIsFresh(%d members against baseline %d) = %v, want %v",
+					tt.members, known["h"], got, tt.want)
+			}
+		})
+	}
+}
+
+// A hash the baseline has never seen is fresh, same as before #786.
+func TestGroupIsFreshNewHashFails(t *testing.T) {
+	known := map[string]int{}
+	g := CloneGroup{Hash: "new", Lines: 6, Members: []string{"a.go:func F", "b.go:func G"}}
+	if !groupIsFresh(known, g) {
+		t.Error("a hash absent from the baseline should be fresh")
+	}
 }
 
 // #895: the baseline does not move when a listed body does.
