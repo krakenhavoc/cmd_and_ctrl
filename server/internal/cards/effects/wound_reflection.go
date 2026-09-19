@@ -10,10 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The six-mana damage doubler. "Each end step" is EventBeginEndStep
 // on every player's turn, with no controller check; "the life they
-// lost this turn" is read off the event log the way Bloodchief
+// lost this turn" is read off the per-turn tally the way Bloodchief
 // Ascension reads it — a negative EventChangeLife and an
-// EventDealDamage to the player both count, summed back to the
-// current turn's upkeep (b18LifeLostThisTurn). Every opponent's
+// EventDealDamage to the player both fold into one LifeLost cell
+// (b18LifeLostThisTurn). Every opponent's
 // amount is computed before any is applied, so one opponent's loss
 // to this trigger never inflates another's. Two Wound Reflections
 // compound, as printed: the second sees the first's loss.

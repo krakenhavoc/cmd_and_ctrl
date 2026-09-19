@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Food-into-lands Halfling. The entry Food is the real token,
 // with its own gain-3 ability. The end-step trigger carries an
 // intervening-if — a Food sacrificed by the controller this turn,
-// read off the event log back to the turn's upkeep — checked when
+// read off the per-turn sacrifice tally — checked when
 // the end step begins and again as the trigger resolves (CR 603.4);
 // the "you may" is the ordinary trigger prompt, and the search prompt
 // is where the controller picks the basic, which enters tapped

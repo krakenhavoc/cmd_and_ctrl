@@ -221,8 +221,8 @@ func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool 
 
 // b16CreatedATokenThisTurn reports whether `player` created a token
 // this turn — Bennie Bracks's intervening if. EventTokenCreated
-// carries the creator in Actor; the walk stops at the turn's upkeep
-// (b06EnteredThisTurn's posture).
+// carries the creator in Actor, and the per-turn tally counts it
+// there.
 func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
 	return g.TurnTallyFor(player).TokensCreated > 0
 }

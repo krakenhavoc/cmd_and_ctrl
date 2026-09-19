@@ -62,36 +62,23 @@ func b18ControlsNamed(name string) func(g *game.Game, controller, source uuid.UU
 	}
 }
 
-// --- per-turn reads off the event log ----------------------------
+// --- per-turn reads off the tally --------------------------------
 
 // b18AttackedThisTurn reports whether `player` declared at least one
 // attacker this turn — Chart a Course's "unless you attacked this
-// turn". The engine keeps no such flag, so this is the
-// b06EnteredThisTurn walk: an EventAttack whose Actor is the player,
-// more recent than the current turn's upkeep. Every turn passes
-// through its upkeep before its combat, so "since the last upkeep
-// began" is "this turn".
+// turn". PlayerTurnTally.AttacksDeclared counts every EventAttack the
+// player announced, so this is one cell (#1009: it used to walk the
+// log back to the turn's upkeep).
 func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		switch ev.Kind {
-		case game.EventBeginUpkeep:
-			return false
-		case game.EventAttack:
-			if ev.Actor == player {
-				return true
-			}
-		}
-	}
-	return false
+	return g.TurnTallyFor(player).AttacksDeclared > 0
 }
 
 // b18LifeLostThisTurn is the total life `player` lost this turn —
 // Wound Reflection's amount. The same two event kinds
 // b04OpponentLostLife reads: a negative EventChangeLife and an
 // EventDealDamage to the player, which writes the life total
-// directly and emits no EventChangeLife of its own. Summed back to
-// the current turn's upkeep.
+// directly and emits no EventChangeLife of its own. Both are folded
+// into PlayerTurnTally.LifeLost as they happen.
 func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
 	return g.TurnTallyFor(player).LifeLost
 }

@@ -126,10 +126,10 @@ func b12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) 
 // b12InstantsAndSorceriesCastBeforeThisTurn counts the instant and
 // sorcery spells `controller` cast this turn BEFORE the spell
 // `spell` — Thousand-Year Storm's copy count. The engine's per-turn
-// cast tally keeps only Total and Noncreature, so this is the
-// b06EnteredThisTurn walk over the event log: every EventCast by the
-// controller since the current turn's upkeep began, kept when the
-// card — looked up where it sits now, a graveyard for a resolved one
+// cast tally keeps only Total and Noncreature, so this is a filtered
+// scan over g.EventsThisTurn(), the bounded slice: every EventCast by
+// the controller this turn, kept when the card — looked up where it
+// sits now, a graveyard for a resolved one
 // — is an instant or sorcery. Spell copies are not cast and emit no
 // EventCast, so a Storm chain counts only the real casts, as
 // printed.
