@@ -39,7 +39,7 @@ func (g *Game) cloneLocked() *Game {
 		MulligansOpen:     g.MulligansOpen,
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
-		UndoLimit:         g.UndoLimit,
+		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		// #628: both halves of the CR 726 breaker. The threshold is
@@ -791,7 +791,10 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.MulligansOpen = src.MulligansOpen
 	g.Monarch = src.Monarch
 	g.Initiative = src.Initiative
-	g.UndoLimit = src.UndoLimit
+	// Settings are NOT restored (ADR 0075 §2.3): the live value is
+	// carried forward, so an undo cannot roll back a settings change —
+	// least of all the undo limit it is spending against. A snapshot
+	// restore is a different path (restoreGame) and does restore them.
 	g.StartingSeat = src.StartingSeat
 	g.SplitSecondActive = src.SplitSecondActive
 	g.StackMeta = src.StackMeta

@@ -385,7 +385,7 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	// bot should not cost a player their own take-back.
 	spendBudget := caller != uuid.Nil && !top.freeUndo
 	if spendBudget {
-		if peekUndoBudget(r.Game, caller) <= 0 {
+		if !r.Game.HasUndoBudget(caller) {
 			return protocol.GameView{}, 0, game.ErrNoUndosRemaining
 		}
 	}
@@ -407,18 +407,6 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 		}
 	}
 	return r.captureLocked(true)
-}
-
-// peekUndoBudget returns the named player's current UndosRemaining
-// without mutating state. Used by Room.Undo to validate budget
-// before doing the more expensive state restore. Calls PlayerByID
-// directly (which takes its own read lock) — no nested locking.
-func peekUndoBudget(g *game.Game, playerID uuid.UUID) int {
-	p := g.PlayerByID(playerID)
-	if p == nil {
-		return 0
-	}
-	return p.UndosRemaining
 }
 
 // IsErrNothingToUndo reports whether err is one of the expected

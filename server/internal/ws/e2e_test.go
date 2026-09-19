@@ -80,6 +80,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		State:         v.State,
 		Turn:          v.Turn,
 		MulligansOpen: v.MulligansOpen,
+		UndoLimit:     v.UndoLimit,
+		Settings:      v.Settings,
 	}
 	out.Seats = make([]protocol.PlayerView, len(v.Seats))
 	// First pass: assign placeholders to every player's ID so that
@@ -506,7 +508,7 @@ func undosRemaining(g *game.Game, seat int) int {
 
 func undoLimit(g *game.Game) int {
 	var n int
-	g.ReadSnapshot(func() { n = g.UndoLimit })
+	g.ReadSnapshot(func() { n = g.Settings.UndoLimit })
 	return n
 }
 
@@ -636,6 +638,38 @@ func TestUndoBudgetRefreshesOnTurnRollover(t *testing.T) {
 	sendActionAndWait(t, connA, protocol.ActionPayload{Type: "pass_turn"})
 	if n := undosRemaining(g, 1); n != game.DefaultUndoLimit {
 		t.Errorf("B budget after pass_turn: got %d, want %d", n, game.DefaultUndoLimit)
+	}
+}
+
+// TestUnlimitedUndoBudgetNeverRefuses covers ADR 0075's UndoUnlimited
+// through the room: the pre-restore budget check asks the game rather
+// than reading UndosRemaining, so an unlimited table undoes as often
+// as it has entries, and a settings change made between an action and
+// its undo is not rolled back by that undo.
+func TestUnlimitedUndoBudgetNeverRefuses(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	playerA := g.Seats[0].ID
+	connA := dialAs(t, wsURL, playerA)
+	defer connA.Close()
+	readNextFrame(t, connA) // initial
+
+	for i := 0; i < 3; i++ {
+		sendActionAndWait(t, connA, protocol.ActionPayload{Type: "draw_card", Player: playerA.String()})
+	}
+	limit := game.UndoUnlimited
+	if err := g.UpdateSettings(uuid.Nil, game.SettingsPatch{UndoLimit: &limit}); err != nil {
+		t.Fatalf("UpdateSettings: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		sendActionAndWait(t, connA, protocol.ActionPayload{Type: "undo"})
+	}
+	if n := handSize(g, 0); n != 7 {
+		t.Errorf("after three undos: A.hand=%d, want 7", n)
+	}
+	if n := undoLimit(g); n != game.UndoUnlimited {
+		t.Errorf("undo rolled the settings back: UndoLimit=%d, want %d", n, game.UndoUnlimited)
 	}
 }
 

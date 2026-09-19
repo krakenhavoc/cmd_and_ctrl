@@ -85,7 +85,7 @@ var gameFields = plan(
 	"MulligansOpen", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
-	"UndoLimit", carried, "",
+	"Settings", carried, "",
 	"StartingSeat", carried, "",
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",

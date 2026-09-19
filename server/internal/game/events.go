@@ -695,6 +695,15 @@ const (
 	// emitted per die/coin; BatchSeq identifies the instruction that made them.
 	EventRollDie  EventKind = "roll_die"
 	EventFlipCoin EventKind = "flip_coin"
+
+	// EventSettingsChanged — one table setting changed (ADR 0075
+	// §2.3). Actor is the player who changed it (uuid.Nil for the
+	// server admin), Label is the setting's key (SettingUndoLimit,
+	// SettingAllowSpawn, …) and SettingOld / SettingNew are its
+	// values before and after, as text, so the log can narrate
+	// "set undos from 1 to 3 per turn". One event per field that
+	// actually changed. Public. Added in S35 (#1032).
+	EventSettingsChanged EventKind = "settings_changed"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -886,6 +895,14 @@ type Event struct {
 	// was created in, not the one current when it lands. Added for
 	// #187 (ADR 0053 Decision 1).
 	CombatStep string `json:"combat_step,omitempty"`
+
+	// SettingOld / SettingNew are a table setting's value before and
+	// after an EventSettingsChanged, formatted as text: an int as
+	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an
+	// enum as its string value. Empty on every other kind. Added in
+	// S35 (#1032, ADR 0075).
+	SettingOld string `json:"setting_old,omitempty"`
+	SettingNew string `json:"setting_new,omitempty"`
 }
 
 // The two values of Event.CombatStep (and DamageAssignmentFrame's

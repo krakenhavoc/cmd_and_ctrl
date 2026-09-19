@@ -1,6 +1,6 @@
 # ADR 0075 — Table settings and host controls: who runs a table, what they can change, and spawning on a live game
 
-**Status:** Proposed · 2026-09-19 · S35 — Playtest stabilisation, round 2
+**Status:** Accepted · 2026-09-19 · S35 — Playtest stabilisation, round 2
 **Issues:** [#1032](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1032) (tracker); relates to
 [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614) (`/cc-end`, whose
 open "host or admin" design point this settles) and

@@ -891,8 +891,10 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		// Sandbox — any seated player or admin may raise/lower the
-		// limit. The table self-polices abuse.
-		return g.SetUndoLimit(p.Limit)
+		// limit. The table self-polices abuse. (ADR 0075 sub-PR 3
+		// narrows this to host-or-admin.) A negative limit clamps to
+		// 0; this legacy action cannot select UndoUnlimited.
+		return g.SetUndoLimit(a.Caller, p.Limit)
 
 	case TypeCounterSpell:
 		if err := requirePriorityHolder(g, a.Caller); err != nil {

@@ -6,11 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// StartingLife is the Commander format's starting life total.
+// StartingLife is the Commander format's starting life total, and the
+// default for TableSettings.StartingLife — the value a game actually
+// uses is g.Settings.StartingLife (ADR 0075).
 const StartingLife = 40
 
 // CommanderDamageLethal is the single-commander damage total that wins
-// the game via the commander damage rule (CR 903.10a).
+// the game via the commander damage rule (CR 903.10a). It is the
+// default for TableSettings.CommanderDamage; the SBA check reads
+// g.Settings.CommanderDamage (ADR 0075).
 const CommanderDamageLethal = 21
 
 // MaxLifeHistoryEntries caps the per-player life-change log so a long
@@ -183,7 +187,7 @@ type Player struct {
 	DeckImported bool
 
 	// UndosRemaining is how many undos this player can still spend in
-	// the current turn. Refreshed to Game.UndoLimit on entering this
+	// the current turn. Refreshed to Game.Settings.UndoLimit on entering this
 	// player's untap step. Decremented per successful undo. Added in
 	// S11 alongside the per-caller undo gate.
 	UndosRemaining int
@@ -369,12 +373,13 @@ func (p *Player) RecordCommanderDamage(fromCommander uuid.UUID, amount int) int 
 }
 
 // IsDeadByCommanderDamage reports whether any SINGLE commander has
-// dealt 21 or more damage to this player (CR 903.14a). Totals are
+// dealt `lethal` or more damage to this player (CR 903.14a; 21 by
+// default, the table's Settings.CommanderDamage in a game). Totals are
 // never summed across commanders — two partners at 15 apiece is 30
 // damage and not a loss.
-func (p *Player) IsDeadByCommanderDamage() bool {
+func (p *Player) IsDeadByCommanderDamage(lethal int) bool {
 	for _, d := range p.CommanderDamage {
-		if d >= CommanderDamageLethal {
+		if d >= lethal {
 			return true
 		}
 	}
