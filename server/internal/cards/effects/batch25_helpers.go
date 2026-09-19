@@ -72,13 +72,12 @@ func b25CastIsMulticolored(ev game.Event, g *game.Game) bool {
 // condition: a player cast a multicolored spell, and no earlier cast
 // by that player this turn was multicolored. The engine's per-turn
 // cast tally counts creature and noncreature casts only, so the
-// answer is walked off the event log back to the start of the turn.
-// The boundary is the most recent upkeep-began event (the walk
-// b20LandPlayed makes): every player's turn emits one, and nothing
-// can be cast in the untap step before it. Turn.Number is NOT a
-// per-turn boundary — it counts rounds of the table, so a walk
-// bounded on it would reach back through every other player's turn
-// in the round. The cast being asked about is itself excluded.
+// answer is scanned off g.EventsThisTurn(), the bounded slice that
+// starts at the real turn boundary (the shape b20LandPlayed uses).
+// Turn.Number is NOT a per-turn boundary — it counts rounds of the
+// table, so a scan bounded on it would reach back through every
+// other player's turn in the round. The cast being asked about is
+// itself excluded.
 func b25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || !b25CastIsMulticolored(ev, g) {
 		return false

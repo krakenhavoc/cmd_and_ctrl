@@ -9,9 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A card a turn in any game where creatures trade, on anyone's turn.
 // The trigger is the any-player end-step condition (b15EndStepBegan)
-// with the morbid clause as its intervening if: the log walk
+// with the morbid clause as its intervening if: the tally read
 // b11CreaturesDiedThisTurn (every creature that went to a graveyard
-// from the battlefield since this turn's upkeep, tokens included) is
+// from the battlefield since this turn began, tokens included) is
 // checked when the trigger would fire AND again on resolution (CR
 // 603.4), and the draw is the trigger's optional prompt.
 //

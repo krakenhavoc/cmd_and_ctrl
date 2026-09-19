@@ -91,11 +91,17 @@ func b35CountersOnArtifactsAndCreaturesYouControl(g *game.Game, controller uuid.
 // card means it was declared this combat, while reaching a step
 // boundary that is not one of the steps an attacker stays in combat
 // through (declare attackers, declare blockers, combat damage, end
-// of combat — CR 511.3 removes attackers as that last step ENDS) —
-// or the turn's upkeep — means either no attack was declared or the
-// combat it attacked in has ended. A creature that attacked and left
-// combat by leaving the battlefield came back as a new object with
-// no attack of its own, so it reads as not attacking, as printed.
+// of combat — CR 511.3 removes attackers as that last step ENDS)
+// means either no attack was declared or the combat it attacked in
+// has ended. A creature that attacked and left combat by leaving the
+// battlefield came back as a new object with no attack of its own, so
+// it reads as not attacking, as printed.
+//
+// The walk is bounded by g.EventsThisTurn() — combat does not span
+// turns, and the slice starts at the real turn boundary (#1009). The
+// separate EventBeginUpkeep case it used to carry was redundant once
+// bounded: EventStepBegan announces the upkeep too, and "upkeep" is
+// not one of the steps above.
 func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool {
 	inCombat := map[string]bool{
 		string(game.StepDeclareAttackers):  true,
@@ -104,8 +110,9 @@ func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool 
 		string(game.StepCombatDamage):      true,
 		string(game.StepEndCombat):         true,
 	}
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
+	turn := g.EventsThisTurn()
+	for i := len(turn) - 1; i >= 0; i-- {
+		ev := turn[i]
 		if ev.Seq > seq {
 			continue
 		}
@@ -114,8 +121,6 @@ func b35WasAttackingWhenItLeft(g *game.Game, cardID uuid.UUID, seq uint64) bool 
 			if ev.CardID == cardID {
 				return true
 			}
-		case game.EventBeginUpkeep:
-			return false
 		case game.EventStepBegan:
 			if !inCombat[ev.Label] {
 				return false

@@ -88,9 +88,9 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 }
 
 // b33ResolutionsThisTurn counts how many times an ability of `source`
-// labelled `label` has resolved this turn — walked off the event log
-// back to the turn's upkeep (b06EnteredThisTurn's boundary, since
-// Turn.Number counts rounds). Dalkovan Encampment's "whenever you
+// labelled `label` has resolved this turn — the per-turn tally's
+// per-object resolution count (Turn.Number is no use here: it counts
+// rounds). Dalkovan Encampment's "whenever you
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.
 func b33ResolutionsThisTurn(g *game.Game, source uuid.UUID, label string) int {
@@ -130,37 +130,23 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 
 // b33PlayersDealtCombatDamageThisTurnByYourFaeries is the set of
 // players a Faerie under `controller`'s control dealt combat damage
-// to this turn, walked off the event log back to the turn's upkeep —
-// b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed with a
-// subtype where that reads a name. Alela's goad clause narrows
+// to this turn — b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed
+// with a subtype where that reads a name. Alela's goad clause narrows
 // "target creature THAT PLAYER controls" through it, because a target
-// predicate is not handed the trigger's event. The dealing creature
-// is read wherever it now is, and one that can no longer be found
-// does not count, which errs weaker.
+// predicate is not handed the trigger's event.
 //
-// #596 widened that gap: a Faerie TOKEN that traded in combat used to
-// persist in the graveyard with its type line intact, and CR 704.5d
-// now removes it at the next state-based check, so the player it hit
-// drops out of this set. Alela's goad simply reaches fewer players
-// than printed in that case. Closing it properly wants the sacrifice
-// tally's treatment — record the subtype at the damage, not at the
-// read — which is a bigger change than the bug it fixes.
+// The per-turn tally's damage-source cell (#1009), and this is the
+// reader #596 was about: the event-log scan looked the dealing Faerie
+// up wherever it had since landed, and a Faerie TOKEN that traded in
+// combat is nowhere — CR 704.5d takes it out of the graveyard at the
+// next state-based check, one check after the damage that killed it.
+// The player it hit dropped silently out of the set, which is the
+// commonest case Alela is printed for, since she makes the Faeries
+// herself. The tally records the subtype AT THE DAMAGE, while the
+// Faerie is still on the battlefield, so a traded token counts and a
+// changeling counts.
 func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
-	out := map[uuid.UUID]bool{}
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
-			continue
-		}
-		if p := g.PlayerByIDForEffect(ev.Target); p == nil {
-			continue
-		}
-		src, ok := g.LookupCardForEffect(ev.Source)
-		if !ok || !src.HasSubtype("Faerie") {
-			continue
-		}
-		out[ev.Target] = true
-	}
-	return out
+	return g.PlayersDealtCombatDamageThisTurnBySubtype(controller, "Faerie")
 }
 
 // b33CreatureOfPlayerHitByYourFaeries is Alela's target predicate: a

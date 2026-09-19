@@ -15,9 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // can un-gain life, so the second check is a formality; it is there
 // because the printed clause says so.
 //
-// The engine keeps no life-gained tally, so the count is read off
-// the event log — every positive life change for the controller
-// since the current turn's upkeep began (b15LifeGainedThisTurn). A
+// The count is the per-turn tally's LifeGained cell — every positive
+// life change for the controller this turn (b15LifeGainedThisTurn). A
 // lifelink hit, a Soul Warden trigger and a drain's gain half all
 // count; a life LOSS does not offset a gain, as printed.
 //

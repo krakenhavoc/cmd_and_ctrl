@@ -2241,6 +2241,73 @@ undo contract. `cards/effects/exit_payout_cards_test.go` pins all five
 cards on a real board, and each fix was backed out and its test confirmed
 to fail without it.
 
+### 5w. Amendment, 2026-09-19: the settled entry counters drain in a canonical order
+
+*Amendment, 2026-09-19, branch
+`fix/1009-1010-turn-boundary-and-entry-counter-order`. Closes
+[#1010](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1010).*
+
+`ReplacementEvent.EntersWithCounters` is a `map[string]int`, and the
+map that the CR 614 entry window leaves behind was drained with a bare
+`range` at four sites — `entry_choice.go`, `battlefield_put.go` and
+`mutations.go` twice. Go randomises map iteration. Each kind is placed
+through `AddCounterForEffect`, which opens **its own `RepEventCounter`
+window**, so with two counter KINDS on one entry the drain order
+decided:
+
+- which window opened first, and therefore the order a CR 616 ordering
+  prompt inside them was asked in;
+- the order the `EventCounterPlaced` events landed in the log.
+
+Both differed on every run and on every replay of the same game. The
+engine is otherwise deterministic from its event log — `Clone`,
+`RestoreFrom`, the persisted snapshot, the bot harness and the replay
+tooling all rest on that — and this was the one place an entry could
+come out differently for no reason a player could point at.
+
+**The decision.** One drain, `(*Game).applyEntryCountersLocked`
+(`server/internal/game/entry_counters.go`), called from all four sites;
+nothing else ranges the map, and the field's doc comment says so, so a
+fifth entry site cannot spell it differently. The order is **the
+counter name, ascending** — the canonical order `sortedCounterKinds`
+already gives proliferate (`proliferate.go`), for the same stated
+reason: an event log that reorders between runs makes replay diffs
+unreadable.
+
+**Why it is not a CR 616 question.** CR 616.1 gives the affected player
+the choice of order when two or more replacement **effects** would
+apply to one event. Two kinds on one entry are not two effects. They
+are one settled event with two components — the CR 616 window that
+produced the map has already closed — and no kind's window can change
+what another kind's window does, so the board is identical whichever
+goes first. The only thing a choice would decide is which of two log
+lines comes first, and §5a's principle applies: CR 616.1 does not
+require asking a question whose answers are indistinguishable.
+
+**Seeding order was the alternative, and was rejected.** #1010 offered
+"an ordered slice of `{name, n}` pairs that records seeding order,
+which is the more honest shape". It is honest about one thing and wrong
+about another: a permanent can be seeded from the card's printed clause
+(`applyCastEntryCountersLocked`, CR 614.1c) and from an alternative
+cost's clause (`applyAltCostEntryCountersLocked`, CR 702.138c) one line
+apart, and a replacement in the window can add a third key later. The
+canonical order gives the same log whichever path ran first, which is
+what a replay needs; the seeding order gives a different one, and no
+rule prefers either. It would also change the field's type across the
+catalog for a distinction nothing observes.
+
+**Not covered, deliberately.** A negative or zero cell is drained
+exactly as the bare ranges drained it (`AddCounterForEffect` no-ops on
+zero), which is why the helper sorts the keys itself rather than
+calling `sortedCounterKinds` — that one drops non-positive cells.
+
+**Latent, and pinned anyway.** No catalogued card declares two kinds on
+one entry today, which is why this was a latent ordering bug rather
+than a live one. `game/entry_counter_order_test.go` runs the same
+two-kind entry 60 times and asserts one order, asserts the order does
+not depend on which clause seeded first, and pins Doubling Season
+doubling both kinds through their separate windows.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

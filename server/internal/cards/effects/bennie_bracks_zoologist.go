@@ -13,9 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The token deck's card-a-turn. Convoke is the real S22 tap cost;
 // the draw is "at the beginning of EACH end step" — any player's,
-// b15EndStepBegan — with the intervening if read off the event log
-// (b16CreatedATokenThisTurn: an EventTokenCreated by the controller
-// since the turn's upkeep began). A token created in response to the
+// b15EndStepBegan — with the intervening if read off the per-turn
+// tally (b16CreatedATokenThisTurn: an EventTokenCreated by the
+// controller this turn). A token created in response to the
 // trigger is too late, as printed: the condition is checked when the
 // trigger would go on the stack, and a trigger whose condition
 // fails is not put on the stack at all.

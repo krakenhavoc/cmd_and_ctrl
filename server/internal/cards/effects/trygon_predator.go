@@ -16,9 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "That player controls" is the interesting clause: a target
 // predicate is not handed the trigger's event, so it cannot be told
-// who was hit. It reads the event log instead — the players a Trygon
-// Predator under the caster's control dealt combat damage to this
-// turn (b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator) —
+// who was hit. It reads the per-turn tally instead — the players a
+// Trygon Predator under the caster's control dealt combat damage to
+// this turn, recorded at the damage while the Predator is still on
+// the battlefield to be named
+// (b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator) —
 // and the trigger's body re-checks the pick against the specific
 // player its own event named. With one Predator the picker offers
 // exactly the victim's artifacts and enchantments, as printed; with

@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player's, so the trigger does not read the event's actor; the
 // intervening if (CR 603.4) is checked when the trigger would fire
 // and again as it resolves — b15LifeGainedThisTurn, the sum of the
-// controller's positive life changes since this turn's upkeep began,
+// controller's positive life changes since this turn began,
 // so a lifelink hit on an opponent's turn counts on that turn's end
 // step, as printed. The Angel is Sigil of the Empty Throne's 4/4
 // flier.

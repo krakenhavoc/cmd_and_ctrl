@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Orzhov lifegain-and-loss payoff. Two separate end-step
 // triggers, each with an intervening-if (CR 603.4) checked when the
 // end step begins AND again as the trigger resolves, read off the
-// event log back to this turn's upkeep: a positive life change is a
+// per-turn tally: a positive life change is a
 // gain, a negative one — or damage to the player — a loss. Paying
 // the draw ability's 2 life is losing life (CR 119.4), so the card
 // enables its own Bat, as printed. When both fire the controller

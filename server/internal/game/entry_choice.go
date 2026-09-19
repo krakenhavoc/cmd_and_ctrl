@@ -391,9 +391,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	if copied, ok := g.applyEntersAsCopyLocked(ev, entered); ok {
 		moved = copied
 	}
-	for name, n := range ev.EntersWithCounters {
-		_ = g.AddCounterForEffect(entered, name, n)
-	}
+	g.applyEntryCountersLocked(entered, ev.EntersWithCounters)
 	// Per-turn land-drop tally. The land branch in CastSpell bumps
 	// this on the path where nothing pauses; this branch is the same
 	// land play finishing after a prompt, and it was never bumping

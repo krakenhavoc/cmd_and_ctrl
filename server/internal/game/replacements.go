@@ -317,6 +317,14 @@ type ReplacementEvent struct {
 	// BEFORE EventETB fires (Hangarback Walker "enters with X +1/+1
 	// counters", etc.). Applied by the battlefield-entry path under
 	// the same lock before the ETB event.
+	//
+	// Write it through AddCounterAtETB and DRAIN IT THROUGH
+	// (*Game).applyEntryCountersLocked — never with a bare range
+	// (#1010). Each kind opens its own RepEventCounter window, so the
+	// drain order is observable: map order made two kinds on one entry
+	// open their windows, ask their CR 616 prompts and write their log
+	// lines differently on every run. The drain's doc comment carries
+	// the canonical order and why it is not a player's choice.
 	EntersWithCounters map[string]int
 
 	// entryResumable is an unexported breadcrumb meaning "if this
