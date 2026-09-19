@@ -27,10 +27,20 @@
     GameView,
     LegalTargetsView,
     ManaAbilityView,
+    PlayerView,
     ZoneView,
   } from "../../protocol";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import PlayerPanel from "./PlayerPanel.svelte";
+  import SeatSummary from "./SeatSummary.svelte";
+  import {
+    decideSeatRendering,
+    legalDefenderIDs,
+    nextPinnedSeat,
+    seatControlsLegalTarget,
+    seatHasAttackersOn,
+    type SeatDecision,
+  } from "../../expansion";
   import { settings } from "../../settings";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
   // CommanderDamageTooltip was folded into HoverZoomOverlay — the
@@ -1257,6 +1267,52 @@
     return true;
   }
 
+  // ---- Opponent summaries (ADR 0077) --------------------------------
+  //
+  // Which opponents render as SeatSummary read-outs and which as full
+  // PlayerPanels. The decision itself lives in lib/expansion.ts and is
+  // unit-tested; Board's job is only to gather the per-seat facts and
+  // to own the one piece of state the decision cannot derive — the pin.
+  //
+  // The pin lives HERE rather than in a store because it is per-table
+  // view state with no reason to outlive the component: a summary
+  // pinned open in one game should not still be pinned when the next
+  // game mounts.
+  let pinnedSeatID = $state<string | null>(null);
+
+  // Seats the viewer may declare an attack against. Computed once per
+  // snapshot rather than per seat, because it reads the whole turn.
+  const defenderIDs = $derived(legalDefenderIDs(view, viewerID));
+
+  // A pin naming a seat that is no longer at the table (conceded,
+  // eliminated and removed, or a different game entirely) would hold a
+  // panel open for a player who is not there — and, worse, would be
+  // unclearable, because the control that clears it lives on the
+  // panel. Dropping it here keeps the invariant "a pin always has a
+  // seat" without needing an effect to watch for departures.
+  const pinned = $derived(
+    pinnedSeatID && view.seats.some((s) => s.id === pinnedSeatID) ? pinnedSeatID : null,
+  );
+
+  function renderingFor(seat: PlayerView, pos: SeatPosition | null): SeatDecision {
+    const controlled = cardsByController.get(seat.id) ?? [];
+    return decideSeatRendering(
+      {
+        isSelf: pos === "self",
+        isPinned: pinned === seat.id,
+        isActiveSeat: seat.id === activeSeatID,
+        controlsLegalTarget: seatControlsLegalTarget($targeting, seat.id, controlled),
+        hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
+        isLegalDefender: defenderIDs.has(seat.id),
+      },
+      { spectator: isSpectator, combatMode },
+      {
+        opponentDetail: $settings.display.opponentDetail,
+        expandActivePlayer: $settings.display.expandActivePlayer,
+      },
+    );
+  }
+
   // The four quadrant positions. Iteration order doesn't matter for
   // CSS Grid (each panel sets its own grid-area), but kept stable
   // here so Svelte's keyed each-block reuses DOM across snapshots.
@@ -1280,40 +1336,77 @@
     {#each positions as pos (pos)}
       {@const seat = placements[pos]}
       {#if seat}
+        {@const decision = renderingFor(seat, pos)}
         <div class="slot" data-pos={pos} style:grid-area={pos}>
-          <PlayerPanel
-            {seat}
-            isSelf={pos === "self"}
-            flipped={$settings.display.tableLayout === "row" || opponentCount === 2
-              ? pos !== "self"
-              : pos === "across" || pos === "across_next"}
-            isActive={seat.id === activeSeatID}
-            hasPriority={seat.id === prioritySeatID}
-            {viewerID}
-            {isAdmin}
-            {sendAction}
-            isMonarch={seat.id === monarchID}
-            isInitiative={seat.id === initiativeID}
-            {view}
-            controlledCards={cardsByController.get(seat.id) ?? []}
-            exile={exileForOwner(seat.id)}
-            {combatMode}
-            {selectedCombatCardID}
-            {onSelectCombatCard}
-            {onDeclareAttack}
-            {onDeclareBlock}
-            onTapToggle={handleTapToggle}
-            onPlayCard={handlePlayCard}
-            onDrawCard={handleDrawCard}
-            onTargetPlayer={handleTargetPlayer}
-            onTargetCard={handleTargetCard}
-            {autopassEnabled}
-            {loopNotice}
-            {onPassPriority}
-            {onToggleAutopass}
-            onActivateAbility={handleActivateAbility}
-            onManaAbilityCost={handleManaAbilityCost}
-          />
+          {#if decision.rendering === "summary"}
+            <SeatSummary
+              {seat}
+              {view}
+              {viewerID}
+              controlledCards={cardsByController.get(seat.id) ?? []}
+              isActive={seat.id === activeSeatID}
+              hasPriority={seat.id === prioritySeatID}
+              isMonarch={seat.id === monarchID}
+              isInitiative={seat.id === initiativeID}
+              {sendAction}
+              {combatMode}
+              {selectedCombatCardID}
+              {onDeclareAttack}
+              {onDeclareBlock}
+              onTargetPlayer={handleTargetPlayer}
+              onTargetCard={handleTargetCard}
+              onExpand={() => (pinnedSeatID = nextPinnedSeat(pinned, seat.id))}
+            />
+          {:else}
+            {#if decision.reason === "pinned"}
+              <!-- The only way back. A pin is the one expansion the
+                   viewer has to undo by hand — every other reason
+                   clears itself when the prompt closes or the turn
+                   moves on — and PlayerPanel has nowhere to put the
+                   control, so it lives on the slot instead. -->
+              <button
+                class="unpin"
+                type="button"
+                aria-label={`Collapse ${seat.name}'s board back to a summary`}
+                onclick={() => (pinnedSeatID = null)}
+              >
+                ⤡
+              </button>
+            {/if}
+            <PlayerPanel
+              {seat}
+              isSelf={pos === "self"}
+              flipped={$settings.display.tableLayout === "row" || opponentCount === 2
+                ? pos !== "self"
+                : pos === "across" || pos === "across_next"}
+              isActive={seat.id === activeSeatID}
+              hasPriority={seat.id === prioritySeatID}
+              {viewerID}
+              {isAdmin}
+              {sendAction}
+              isMonarch={seat.id === monarchID}
+              isInitiative={seat.id === initiativeID}
+              {view}
+              controlledCards={cardsByController.get(seat.id) ?? []}
+              exile={exileForOwner(seat.id)}
+              {combatMode}
+              {selectedCombatCardID}
+              {onSelectCombatCard}
+              {onDeclareAttack}
+              {onDeclareBlock}
+              onTapToggle={handleTapToggle}
+              onPlayCard={handlePlayCard}
+              onDrawCard={handleDrawCard}
+              onTargetPlayer={handleTargetPlayer}
+              onTargetCard={handleTargetCard}
+              {autopassEnabled}
+              {loopNotice}
+              {onPassPriority}
+              {onToggleAutopass}
+              onActivateAbility={handleActivateAbility}
+              onManaAbilityCost={handleManaAbilityCost}
+            />
+          {/if}
         </div>
       {/if}
     {/each}
@@ -1593,6 +1686,32 @@
   .slot {
     min-height: 0;
     min-width: 0;
+    /* Anchors .unpin. Nothing else in a slot is positioned, so this
+       costs nothing until a seat is pinned. */
+    position: relative;
+  }
+
+  /* The collapse control on a pinned panel. Sits above the panel's own
+     chrome (PlayerPanel's rail is z-index 3) but under the attention
+     strip (40) and the hover zoom, because a prompt covering this
+     button is strictly better than this button covering a prompt. */
+  .unpin {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 10;
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg-dim);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .unpin:hover {
+    color: var(--fg);
+    border-color: var(--border-strong);
   }
 
   /* The attention strip. Fixed-width column, grows downward, capped
