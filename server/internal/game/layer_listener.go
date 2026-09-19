@@ -102,6 +102,18 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
+	case EventClassLevel, EventCaseSolved:
+		// ADR 0071: a designation switches printed statics on and off,
+		// so a level-up or a solve changes which continuous effects
+		// are in play. Charge-counter thresholds need no arm of their
+		// own — EventCounterPlaced above is emitted for removals too,
+		// which is exactly the pair a live "{N+}" gate needs.
+		//
+		// Without this the level-3 anthem would appear only when some
+		// unrelated permanent happened to move, which is the same
+		// staleness the chosen-creature-type bump fixes in
+		// creature_type_choice.go.
+		g.layerVersion.Add(1)
 	case EventAttach, EventUnattach:
 		// S24: attachment is an AppliesTo input for every
 		// "equipped creature" / "enchanted creature" static, and
@@ -161,7 +173,7 @@ func handSizeStaticIsLiveLocked(g *Game) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		for _, ab := range CatalogStaticAbilities(CatalogKey(g.Battlefield.Cards[i])) {
+		for _, ab := range StaticAbilitiesForCard(g.Battlefield.Cards[i]) {
 			if ab.DependsOnHandSize {
 				return true
 			}

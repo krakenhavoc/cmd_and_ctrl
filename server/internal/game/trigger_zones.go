@@ -225,16 +225,33 @@ func (g *Game) harvestFromDeclaredZone(pass *harvestPass, z *Zone, kind ZoneKind
 		return
 	}
 	for i := range z.Cards {
-		oracle := CatalogKey(z.Cards[i])
-		if !triggerZones.declares(oracle) {
-			continue
-		}
-		triggers := CatalogTriggers(oracle)
-		if len(triggers) == 0 {
+		// The oracle key is the INDEX pre-filter's question — "does
+		// any card with this key declare a zone at all" — and it is
+		// answered before anything else because it is one map read
+		// and it skips the whole of every ordinary card.
+		if !triggerZones.declares(CatalogKey(z.Cards[i])) {
 			continue
 		}
 		source := z.Cards[i]
 		source.Controller = source.Owner
+		// TriggersForCard, not CatalogTriggers: this is the fifth
+		// place an OBJECT becomes triggered abilities, and it goes
+		// through the same accessor the other four do (ADR 0071), so
+		// a designation gate is evaluated here too. Off the
+		// battlefield CR 400.7 has already cleared every designation,
+		// so a Case's "Solved — …" is correctly not an ability it has
+		// in a graveyard — which is exactly the answer a second,
+		// parallel read here would have got wrong the first time a
+		// card printed the combination.
+		//
+		// Behaviour-preserving for every card this walk exists for:
+		// TriggersForCard reads CatalogAbilityKey, which degrades to
+		// CatalogKey off the battlefield, and no declared zone is the
+		// battlefield.
+		triggers := TriggersForCard(source)
+		if len(triggers) == 0 {
+			continue
+		}
 		lki := source.Effective()
 		for _, t := range triggers {
 			if !TriggerWatchesFromZone(t, kind) {

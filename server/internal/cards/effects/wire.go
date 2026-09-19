@@ -46,3 +46,20 @@ func keywordSliceContains(xs []string, s string) bool {
 	}
 	return false
 }
+
+// appendKeywordsTo is the layer-6 Apply body every self-only keyword
+// grant shares: append each keyword the object does not already have.
+//
+// Two callers, which is why it is named — the printed-keyword static
+// buildDef synthesises for every card with a PrintedKeywords list, and
+// ThresholdKeywords, a station card's "{N+} | Flying" line. The
+// membership check is the load-bearing half: a permanent that already
+// has the keyword must not end up with it twice, because the wire
+// renders the badge list verbatim.
+func appendKeywordsTo(c *game.Characteristic, keywords []string) {
+	for _, kw := range keywords {
+		if !keywordSliceContains(c.Abilities, kw) {
+			c.Abilities = append(c.Abilities, kw)
+		}
+	}
+}

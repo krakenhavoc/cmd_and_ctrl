@@ -84,6 +84,7 @@ func buildDef(spec Spec) *game.CardDef {
 				Modes:        a.Modes,
 				SorcerySpeed: a.SorcerySpeed,
 				Condition:    a.Condition,
+				ActiveWhen:   a.ActiveWhen,
 				Effect:       a.Effect,
 			}
 		}
@@ -122,11 +123,7 @@ func buildDef(spec Spec) *game.CardDef {
 			Layer:     game.Layer6Ability,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, kw := range kws {
-					if !keywordSliceContains(c.Abilities, kw) {
-						c.Abilities = append(c.Abilities, kw)
-					}
-				}
+				appendKeywordsTo(c, kws)
 			},
 		}
 		d.Static = append(append([]game.StaticAbility(nil), spec.Static...), synth)

@@ -86,7 +86,14 @@ func lotusField() cards.Card {
 
 // fortuneTellersTalent — #333. The reporter called it a saga; it is
 // a Class, Scryfall layout "class", single-faced in all (one) of its
-// printings. Levels are the gap either way.
+// printings.
+//
+// Registered since S46 (#757, ADR 0071): levels are a designation
+// with one gate on printed abilities. It stays in this table because
+// NeedsEffect is the SCRYFALL half of the predicate — "this text
+// needs a Spec" — and that is as true after the Spec exists as
+// before. The catalog join is game.Unimplemented's job, and it now
+// answers false for this card.
 func fortuneTellersTalent() cards.Card {
 	return cards.Card{
 		ID:       uuid.New(),
@@ -129,11 +136,16 @@ func clone() cards.Card {
 	}
 }
 
-// theSeriema — #337. Four printed lines and only the first is cheap:
-// SearchLibrary takes an arbitrary predicate, so "a legendary
-// creature card" is three lines of Go. Station, the 7+ threshold,
-// the type change it implies and the indestructible grant are all
-// absent from the engine.
+// theSeriema — #337. Four printed lines. Since S46 (#759, ADR 0071)
+// three of them work: the ETB tutor (SearchLibrary takes an arbitrary
+// predicate), the 7+ threshold and the artifact-creature type change
+// it implies (a charge-counter gate over layers 4, 6 and 7b), and the
+// indestructible grant. Station itself is still a caveat — its cost
+// taps another creature, which is #758.
+//
+// It stays in this table for fortuneTellersTalent's reason: this
+// fixture pins the Scryfall half of the predicate, which does not
+// change when a Spec is written.
 func theSeriema() cards.Card {
 	return cards.Card{
 		ID:        uuid.New(),

@@ -243,6 +243,22 @@ type CostModifier struct {
 	// meant (§16). effects.Register refuses the same shapes at boot;
 	// both read UnitProblem.
 	Unit *ParsedCost
+
+	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
+	// this modifier applies only while its source permanent has the
+	// designation named. Fortune Teller's Talent's "Spells you cast
+	// from anywhere other than your hand cost {2} less" is
+	// ClassLevel(3). The zero value is "no gate".
+	//
+	// Evaluated in CostModifiersForCard and nowhere else, so a
+	// gated-off modifier never reaches the CR 601.2f pass — which
+	// means the engine and the legal-move enumerator price the cast
+	// identically, because both read the same accessor.
+	//
+	// Meaningless in SelfCostModifiers: that slot is read while the
+	// card is a spell being cast, where it has no designations. See
+	// designations.go and ADR 0071.
+	ActiveWhen Designation
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -370,10 +386,13 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	if g.Battlefield != nil && CatalogCostModifiers != nil {
 		for i := range g.Battlefield.Cards {
 			src := g.Battlefield.Cards[i]
-			// CatalogAbilityKey: a cost modifier is a static ability,
-			// so a permanent under a CR 613.1f ability-removing effect
-			// stops taxing and stops discounting.
-			mods := CatalogCostModifiers(CatalogAbilityKey(src))
+			// CostModifiersForCard: a cost modifier is a static
+			// ability, so a permanent under a CR 613.1f
+			// ability-removing effect stops taxing and stops
+			// discounting (CatalogAbilityKey), and one whose
+			// designation gate is unsatisfied — Fortune Teller's
+			// Talent below level 3 — is not there at all (ADR 0071).
+			mods := CostModifiersForCard(src)
 			for _, m := range mods {
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}

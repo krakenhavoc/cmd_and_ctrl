@@ -189,6 +189,31 @@ that must **not** ship: registering either would clear the card's
 `unimplemented` flag and make this signal assert something false
 about the rest of the card.
 
+**Update 2026-09-18 (S46, #757 / #759, [ADR 0071](0071-designations-that-switch-abilities-on.md)).**
+Two rows of that table are superseded and the cards are registered:
+
+- **Fortune Teller's Talent (#333).** "Levels are, and no level
+  machinery exists" is no longer true — Class levels are a
+  designation with one gate on printed abilities. It registers with
+  `CompletenessCaveats`: both level-up abilities and the level-3 cost
+  reduction work, and the two library-top clauses on levels 1 and 2
+  are declared caveats naming the `library-top-cast` seam
+  ([#765](https://github.com/krakenhavoc/cmd_and_ctrl/issues/765)).
+- **The Seriema (#337).** "Station appears nowhere in the repo" and
+  "'artifact creature at 7+' is the same wire-only layer-4 gap" are
+  both gone: ADR 0039 made layer 4 authoritative, and ADR 0071's
+  charge-counter gate turns the 7+ lines on. It registers with one
+  caveat — the station ABILITY, whose cost ("tap another untapped
+  creature you control") waits on
+  [#758](https://github.com/krakenhavoc/cmd_and_ctrl/issues/758).
+
+Neither is a §5 violation. §5 forbids shipping a cheap half while the
+rest of the card silently does nothing; both of these ship the
+MAJORITY of the card with the remainder named in a caveat a player
+reads on the catalog page, which is what `CompletenessCaveats` is for.
+The §5 line that still holds is The Seriema's ETB tutor ALONE, which
+is what the original row refused.
+
 Three things worth carrying forward:
 
 - **Clone's two reported symptoms are one cause.** "Enters as a 0/0"

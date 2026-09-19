@@ -499,6 +499,34 @@ type Card struct {
 	// permanent. It is battlefield state, not a copiable value.
 	NextUntapSkips []UntapSkip
 
+	// ClassLevel is the CR 716.2 level designation on a Class
+	// permanent — the marker that switches its printed "Level N"
+	// abilities on (ADR 0071).
+	//
+	// ZERO READS AS LEVEL 1. CR 716.2b: a Class permanent with no
+	// level designation is level 1, so the zero value is the correct
+	// reading for a Class nobody has levelled and for every card that
+	// is not a Class at all. Always go through ClassLevelOf, never
+	// the field.
+	//
+	// A DESIGNATION, not a counter, and that is the whole reason it
+	// is a field rather than an entry in Counters: nothing
+	// proliferates it, nothing doubles it, and no counter-removal
+	// cost can spend it (CR 716.4 keeps level counters — the CR
+	// 702.87 leveler mechanic — a separate thing).
+	//
+	// Not copiable (CR 716.2c): a copy of a level-3 Class is level 1.
+	// That falls out of where it lives — CopiableValuesOf projects
+	// printed characteristics and never looks here.
+	//
+	// Cleared when the permanent leaves the battlefield (CR 400.7),
+	// alongside NamedTribe and ChosenColor. Carried by the snapshot.
+	// Written by SetClassLevelForEffect and by nothing else. Added in
+	// S46 (#757).
+	ClassLevel int
+
+	// Solved lives in the bool block at the end of Card, for alignment.
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since
@@ -621,6 +649,22 @@ type Card struct {
 	// copy). A card cast for X=0 never had counters, so it is not
 	// flagged — that separate gap is noted on the X cards.
 	LostLastCounter bool
+
+	// Solved is the CR 719.3 designation on a Case permanent — the
+	// marker that switches its printed "Solved — [ability]" clauses
+	// on (ADR 0071).
+	//
+	// Set by SolveCaseForEffect, from the "To solve" trigger's
+	// resolution, and by nothing else. Once set it STAYS set for as
+	// long as the permanent is on the battlefield (CR 719.3b): no
+	// card unsolves a Case, and the condition that solved it going
+	// false again changes nothing.
+	//
+	// Not copiable, and cleared when the permanent leaves the
+	// battlefield (CR 400.7) — the same two sentences as ClassLevel,
+	// up with the other non-bool fields, and for the same reasons.
+	// Carried by the snapshot. Added in S46 (#757).
+	Solved bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

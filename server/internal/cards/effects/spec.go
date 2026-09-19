@@ -613,7 +613,17 @@ type ActivatedAbility struct {
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition
 	// and activation_conditions.go. Nil means no condition.
 	Condition func(g *game.Game, controller, source uuid.UUID) bool
-	Effect    func(g *game.Game, item *game.StackItem) error
+	// ActiveWhen is the CR 716 / 719 / 721 designation gate (ADR
+	// 0071): this ability exists only while the permanent is at that
+	// level, is solved, or has that many charge counters. Build it
+	// with Level / Solved / AtChargeCounters in designations.go. The
+	// zero value is "no gate", which is every ability in the catalog
+	// but a handful.
+	//
+	// Distinct from Condition: a Condition greys an ability the
+	// permanent HAS, a gate means it is not there at all.
+	ActiveWhen game.Designation
+	Effect     func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

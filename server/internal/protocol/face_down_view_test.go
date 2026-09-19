@@ -234,6 +234,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ActivatedAbilities:  []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
 		SummoningSick:       true,
 		LoyaltyActivated:    true,
+		ClassLevel:          3,
+		Solved:              true,
 		ManaCost:            "{2}{U}",
 		ManaAbilities:       []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		Abilities:           []string{"flying"},

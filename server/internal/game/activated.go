@@ -312,6 +312,28 @@ type ActivatedAbilityShape struct {
 	// errors.
 	Condition func(g *Game, controller, source uuid.UUID) bool
 
+	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
+	// this ability exists only while the permanent has the
+	// designation named — a Case's "Solved — {1}{B}, Sacrifice this:
+	// …" is CaseSolved(). The zero value is "no gate".
+	//
+	// It is NOT Condition. Condition is CR 602.1b, an activation
+	// instruction on an ability the permanent HAS ("activate only if
+	// an opponent controls four or more lands"), and the view renders
+	// it greyed with condition_unmet. A designation gate says the
+	// ability is not there at all, so it is absent from
+	// ActivatedAbilitiesForCard — and therefore from the activation
+	// path, the legal-move enumerator and the wire — rather than
+	// offered and refused.
+	//
+	// The level-up ability itself takes a Condition, not this: "{3}{U}:
+	// Level 2" is printed on the Class from the moment it enters, and
+	// CR 716.2e's "activate only if this Class is level 1" is an
+	// activation instruction word for word.
+	//
+	// See designations.go and ADR 0071.
+	ActiveWhen Designation
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -353,7 +375,23 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 	if CatalogActivatedAbilities == nil || c.OracleID == "" {
 		return nil
 	}
-	return CatalogActivatedAbilities(CatalogAbilityKey(c))
+	key := CatalogAbilityKey(c)
+	if key == "" {
+		return nil
+	}
+	// ADR 0071: an ability gated on a designation the permanent does
+	// not have is not on the permanent. Because every consumer reads
+	// through this one accessor, a Case's "Solved — {1}{B}, Sacrifice
+	// this Case: …" is absent from the activation path, the legal-move
+	// enumerator, the lobby lookup and the wire together — greying it
+	// in one of them and offering it in another is not representable.
+	//
+	// The intrinsic list above is deliberately NOT gated: a token
+	// carries its own abilities and has no catalog entry to print a
+	// designation on.
+	return activeOnly(c, CatalogActivatedAbilities(key), func(a ActivatedAbilityShape) Designation {
+		return a.ActiveWhen
+	})
 }
 
 // ActivateAbilityParams carries the announce-time choices for a

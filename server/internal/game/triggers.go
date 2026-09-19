@@ -275,6 +275,19 @@ type TriggeredAbility struct {
 	//
 	// Added in S27.
 	Chapter int
+
+	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
+	// this trigger exists only while its source permanent has the
+	// designation named. A Case's "Solved — whenever …" is
+	// CaseSolved(); a Class's level-3 trigger is ClassLevel(3). The
+	// zero value is "no gate".
+	//
+	// Evaluated in TriggersForCard / TriggersForKey and nowhere else,
+	// so a gated-off trigger is never matched, never prompted and
+	// never queued. Distinct from Chapter, which is declarative data
+	// about a Saga rather than a condition. See designations.go and
+	// ADR 0071.
+	ActiveWhen Designation
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
@@ -383,14 +396,13 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 				source = &batch
 			}
 		}
-		// CatalogAbilityKey: a permanent under a CR 613.1f
+		// TriggersForCard: a permanent under a CR 613.1f
 		// ability-removing effect has no triggered abilities to
-		// harvest. Off the battlefield this is CatalogKey exactly.
-		oracle := CatalogAbilityKey(*source)
-		if oracle == "" {
-			continue
-		}
-		triggers := CatalogTriggers(oracle)
+		// harvest, and neither has one whose designation gate is
+		// unsatisfied — an unsolved Case's "Solved — whenever …" is
+		// not a trigger that exists (ADR 0071). Off the battlefield
+		// the key degrades to CatalogKey exactly.
+		triggers := TriggersForCard(*source)
 		if len(triggers) == 0 {
 			continue
 		}
@@ -431,12 +443,8 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 		if card.InstanceID != ev.CardID {
 			continue
 		}
-		oracle := CatalogAbilityKey(*card)
-		if oracle == "" {
-			return
-		}
 		lki := card.Effective()
-		for _, t := range CatalogTriggers(oracle) {
+		for _, t := range TriggersForCard(*card) {
 			if !t.FromStack || !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
@@ -567,7 +575,13 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if oracle == "" {
 		return
 	}
-	triggers := CatalogTriggers(oracle)
+	// TriggersForKey, not TriggersForCard: this path has already
+	// chosen its key (CatalogKey plus the AbilitiesRemoved read off
+	// the LKI snapshot below), and the designation gate is evaluated
+	// against the SNAPSHOT for the same CR 603.10 reason — a Case
+	// that was solved when it died has its solved dies-trigger, one
+	// that was not does not. ADR 0071.
+	triggers := TriggersForKey(oracle, source)
 	if len(triggers) == 0 {
 		return
 	}

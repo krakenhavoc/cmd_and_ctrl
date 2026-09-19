@@ -146,6 +146,17 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares an empty caveat", spec.Name))
 		}
 	}
+	// ADR 0071 decision 3: the Room door gate is RESERVED, not built.
+	// game.Card has no unlocked state, so Designation.Active answers
+	// false for it — a card that declared one would ship with that
+	// ability silently switched off forever, which is exactly the
+	// half-a-card failure ADR 0037 §5 forbids. #886 lifts this in the
+	// same change that adds the state.
+	for _, d := range specDesignations(spec) {
+		if d.Kind == game.DesignationDoorUnlocked {
+			panic(fmt.Sprintf("effects.Register: %q gates an ability on an unlocked Room door, which is designed but not built (ADR 0071 decision 3, #886)", spec.Name))
+		}
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both
