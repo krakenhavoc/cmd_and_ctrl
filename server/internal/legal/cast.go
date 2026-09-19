@@ -193,12 +193,19 @@ func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
 				})
 				continue
 			}
-			if offer != nil && offer.Life > 0 && p.Life <= offer.Life {
-				// CR 119.4 / CR 118.4: life is a cost, so a player who
-				// cannot pay it cannot claim the offer. Strictly below,
-				// not at — paying down to exactly zero is legal but
-				// loses the game to the next state-based check, and a
-				// bot offered that line would take it.
+			// #695: the RULE — every component of the offer is payable
+			// right now (its condition, CR 119.4's life, CR 601.2b's
+			// card component). The same predicate the view's offer
+			// stamp and CastSpell's validator read, so a bot is never
+			// offered a price the engine will refuse.
+			if offer != nil && !g.AlternativeCostPayableLocked(e.seat, c.InstanceID, offer) {
+				continue
+			}
+			// And the bot POLICY on top of the rule: paying life down
+			// to exactly zero is legal, loses the game to the next
+			// state-based check, and a bot offered that line would
+			// take it.
+			if offer != nil && offer.Life > 0 && p.Life == offer.Life {
 				continue
 			}
 			e.castMovesForCard(card, zone.from, speed, perm)
@@ -376,49 +383,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	// guaranteed to fail. Enumerating it free — what this used to
 	// do, mirroring the engine's old silent downgrade — is worse:
 	// it advertises a free spell that isn't one.
-	// ADR 0066: the permission's price, when it has one, IS the cost
-	// this cast pays (CR 118.9). Read through the same CastCostFor the
-	// engine prices with.
-	offer := perm.AlternativeCostFor(card)
-	cost, err := game.ParseCost(game.CastCostFor(card, offer, perm).Paid)
-	if err != nil {
-		return
-	}
-	// CR 118.6: a spell with no mana cost (Ancestral Vision, Living
-	// End) can't be cast by paying it, and ParseCost reads that empty
-	// string as a free {0}. Every move this function builds pays the
-	// printed cost, so none of them is legal; the engine refuses the
-	// cast with ErrNoManaCost.
-	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
-		return
-	}
-	if from == "command" {
-		cost.Generic += p.CommanderCasts[card.InstanceID] * 2
-	}
-	// ADR 0073 §3: the mana half of the optional costs this move is
-	// announcing, added where CR 601.2f puts it — after the
-	// alternative-cost swap and the commander tax, before the cost
-	// modifiers below. The SAME helper the engine prices with, so a
-	// kicked move is never offered at the unkicked price (#544).
-	optional := game.OptionalCostsFor(game.CatalogKey(card))
-	cost, err = game.AddOptionalCostMana(cost, optional, chosen)
-	if err != nil {
-		return
-	}
-	// S28: the board's cost modifiers (CR 601.2f). Same reasoning as
-	// the parse gate above — a move enumerated at the printed price
-	// while a Sphere of Resistance sits on the table is a move the
-	// engine will reject for insufficient mana, and a bot that keeps
-	// picking rejected moves stalls. A modifier the engine refuses to
-	// price (ErrCostModifier) makes the cast unenumerable for the
-	// same reason an unparseable cost does.
 	//
-	// Priced at X=0 even though affordableX is about to search for a
-	// bigger X. The only modifier kind X can change the answer for is
-	// a CostFloor (Trinisphere), and X=0 is the branch where the
-	// floor applies — so the search starts from the most expensive
-	// reading and can only narrow the X it offers. Conservative in
-	// the direction that never advertises an unaffordable move.
+	// #696: THE engine's pricer, called with the announcement this
+	// move will actually send. It settles the CR 118.9 swap (the
+	// permission's price, when it has one, IS the cost this cast pays
+	// — ADR 0066), the commander tax, the mana half of the announced
+	// optional costs (ADR 0073 §3) and the "spend mana as though any
+	// colour" fold, in that order, so a bot is never offered a cast at
+	// a price the engine will not charge. A copy of the first three
+	// used to live here.
+	offer := perm.AlternativeCostFor(card)
 	fromZone := game.ZoneHand
 	switch from {
 	case "command":
@@ -430,6 +404,55 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	case "library":
 		fromZone = game.ZoneLibrary
 	}
+	// The announcement, built once and reused for every repricing
+	// below — the target-set loop reprices against it and changes
+	// nothing but Targets.
+	announce := game.CastSpellParams{
+		FromZone:        from,
+		AlternativeCost: offerKey(offer),
+		OptionalCosts:   chosen,
+		// ADR 0034: `card` has already had SetFace applied by the
+		// caller, so this is the face the move announces.
+		Face: card.ActiveFace,
+	}
+	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
+	if err != nil {
+		return
+	}
+	// CastPrice.Base, not .Total: the convoke / waterbend subtraction
+	// is a PAYMENT (CR 601.2h) and this package enumerates no tap
+	// payments, so the cost it searches an X against must still carry
+	// its {X} slot. Reading Total would settle X into generic and
+	// Chord of Calling would only ever be offered at X=0.
+	cost := price.Base
+	// CR 118.6: a spell with no mana cost (Ancestral Vision, Living
+	// End) can't be cast by paying it, and ParseCost reads that empty
+	// string as a free {0}. Every move this function builds pays the
+	// printed cost, so none of them is legal; the engine refuses the
+	// cast with ErrNoManaCost.
+	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
+		return
+	}
+	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	// S28: the board's cost modifiers (CR 601.2f). Same reasoning as
+	// the parse gate above — a move enumerated at the printed price
+	// while a Sphere of Resistance sits on the table is a move the
+	// engine will reject for insufficient mana, and a bot that keeps
+	// picking rejected moves stalls. A modifier the engine refuses to
+	// price (ErrCostModifier) makes the cast unenumerable for the
+	// same reason an unparseable cost does.
+	//
+	// Applied below rather than read off price.Total because this
+	// package prices the SAME cast once per candidate target set (a
+	// per-target surcharge, ADR 0048 addendum §14), and they all apply
+	// to the one pre-modifier total above.
+	//
+	// Priced at X=0 even though affordableX is about to search for a
+	// bigger X. The only modifier kind X can change the answer for is
+	// a CostFloor (Trinisphere), and X=0 is the branch where the
+	// floor applies — so the search starts from the most expensive
+	// reading and can only narrow the X it offers. Conservative in
+	// the direction that never advertises an unaffordable move.
 	// #760, ADR 0073 §7: the one announce-time cast gate, the twin of
 	// the split-second check at the top of castMoves and beside it
 	// for the same reason — a bot offered a move the engine will
@@ -440,7 +463,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	// the announcement: CR 601.3a lets a choice made while proposing
 	// the spell lift a ban, and this is the choice that has been made
 	// by now.
-	if err := g.CastGateLocked(e.seat, card, fromZone, game.CastSpellParams{OptionalCosts: chosen}); err != nil {
+	if err := g.CastGateLocked(e.seat, card, fromZone, announce); err != nil {
 		return
 	}
 	// ADR 0048 addendum §14: when something on the board or the card

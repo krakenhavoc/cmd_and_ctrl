@@ -563,3 +563,121 @@ and a choice is the honest thing to do with one if anything ever does.
 The behaviour of a single-face grant is unchanged in every respect,
 including the deliberate departure ADR 0034's S32 addendum records: the
 named face is the ANSWER and the caller's requested face is ignored.
+
+## Amendment (2026-09-19, #696 / #695): one pricer, one payability predicate
+
+This ADR's "one type, one query and one price function" claim was true of
+the *engine*. It was not true of everything that has to agree with the
+engine, and two consumers had quietly kept partial copies.
+
+### One pricer (#696)
+
+`GET /games/{id}/auto-tap-preview` parsed `card.ManaCost`, found the
+commander tax by scanning the caller's command zone, and applied the cost
+modifiers itself. That copy knew nothing about the four things this ADR and
+ADR 0073 added to the price:
+
+- the alternative cost claimed at announce (`resolveAlternativeCostLocked`),
+- a granted permission's flat override (`CastPermission.Cost` — airbend's
+  `{2}`, cascade's `{0}`),
+- the "spend mana as though any colour" fold (`CastPermission.AnyColor`),
+- the mana half of the announced optional additional costs (ADR 0073 §3),
+
+nor about the face being cast (ADR 0034) or the source zone reaching the
+cost modifiers. The reported failure is the clean one: an exiled
+`{5}{R}{R}` under a `{0}` grant previewed as
+`{"ok":false,"missing":["{R}","{R}","{1}","{1}","{1}","{1}","{1}"]}` while
+`CastSpell` charged nothing. The reverse — a flashback cost higher than the
+printed one previewing as affordable — handed the player a cast that failed.
+
+The rule now: **nothing outside `internal/game` re-derives a cast's price.**
+
+```go
+func (g *Game) PriceCast(playerID uuid.UUID, card Card, params CastSpellParams) (CastPrice, error)
+func (g *Game) PriceCastForEffect(playerID uuid.UUID, card Card, params CastSpellParams) (CastPrice, error)
+```
+
+`params` is the **announcement** — the same `CastSpellParams` the caller
+would send to `CastSpell` — and `CastPrice` carries what every consumer
+needs out of one walk: `Printed` / `Paid` (the CR 118.9 pair of strings),
+`Card` (the face-materialised copy every other announce gate reads), `Base`
+and `Total`.
+
+The face is settled by `faceForCastLocked` in the shape the amendment above
+leaves it — the permission is read off the UNFACED card, because a grant
+belongs to the instance and not to a face, and its `Faces` then narrow the
+caller's request. So the pricer and `CastSpell` agree about which half of an
+adventure or a modal DFC is being priced without either of them re-deriving
+it.
+
+`Base` and `Total` are the two levels this file already had and did not
+name. `printedCostLocked` is the chosen cost string plus the commander tax
+plus the optional-cost mana plus the any-colour fold; `effectiveCostLocked`
+is that with the cost modifiers applied and the convoke / waterbend
+subtraction taken off. The split is not new and is not cosmetic: the
+announce-time tap budget is measured against the first, and so is the bot
+enumerator's {X} search, because convoke settles the `{X}` slot into generic
+as part of *paying* (CR 601.2h) and an enumerator reading `Total` would
+never offer Chord of Calling at an X above zero.
+
+Four readers, one walk: `applyCastCostLocked` (the payment),
+`applyAutoTapLocked` (the tapper), `lobby.autoTapPreview` (the endpoint) and
+`legal.castMovesForCard` (the bot). Add a component in `printedCostLocked`
+or `costAfterModifiersLocked` and all four get it.
+
+The endpoint takes the announcement off its query string — `from_zone`,
+`alternative_cost`, `optional_costs`, `tap_ids`, `face` — and the client
+builds those from the cast payload it is about to send. A malformed one is
+a 400 rather than a silent default: a preview that quietly priced a
+different cast from the one the button will send is worse than no preview.
+
+### One payability predicate (#695)
+
+The S28 comment in `viewOfAlternativeCosts` already stated the rule — "a
+greyed-out button the server would reject is worse than no button" — and
+implemented one third of it. `AlternativeCost.Available` asks the offer's
+`Condition` and nothing else, so Force of Will at 0 life and Snuff Out at 3
+were listed, selectable, and refused with `ErrInvalidParam` the moment they
+were chosen.
+
+```go
+func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *AlternativeCost) bool
+```
+
+Three questions, in the order announce asks them: the `Condition`; CR
+119.4's life (**exactly N is payable** — paying down to zero is legal and
+the state-based action that follows is CR 704.5a's business, not the
+view's); and CR 601.2b's card component, counted against the caster's own
+hand, graveyard or battlefield with the spell itself excluded (CR 601.2a has
+already moved it to the stack, which is what escape's printed "other"
+means).
+
+**Mana is deliberately not asked.** CR 601.2g lets the caster activate mana
+abilities after the cost is chosen, so "you cannot afford it yet" is not a
+reason to withhold the offer — that is what the auto-tapper and the strict
+gate are for. Every other component is settled by the board at the moment
+the offer is read.
+
+Three readers: `protocol.viewOfAlternativeCosts`, `legal.grantedCastMoves`
+and `validateAlternativeCostPaymentLocked`, which shares the life predicate
+(`AlternativeCost.LifePayableBy`) and the per-card predicate
+(`altCostCardOKLocked`) with it rather than keeping its own. The bot's extra
+conservatism — never pay life down to *exactly* zero, because the line loses
+the game — stays in `legal`, on top of the rule, labelled as the policy it
+is.
+
+### Consequences
+
+- `pay_options` is never present-and-empty on the wire again: an offer with
+  nothing to pay it is not offered.
+- A card whose only cast path out of a zone is an unpayable offer still
+  stamps `castable_here` — an escape card in a graveyard too small to pay
+  for it, say. Left for a follow-up rather than argued away: the #978
+  amendment above already clears `castable_here` when `cant_cast` is set,
+  so the stamp is plainly willing to carry a refusal, and "the bit would
+  mean two things" is no longer a reason. The reason it is not done here is
+  narrower and is a scope one — the refusal is per-OFFER rather than
+  per-card, so the answer is "no payable offer remains AND this zone
+  requires one", which needs `zoneBoundAlternativeCosts` at the view and is
+  a third thing #695 was not asked for. Filed as #1015; the predicate it
+  would call already exists.

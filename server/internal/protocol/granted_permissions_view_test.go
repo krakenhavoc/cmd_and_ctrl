@@ -86,6 +86,16 @@ func TestCastableHereStampedOnAGrantedGraveyardCard(t *testing.T) {
 	spell.ManaCost = "{1}{U}"
 	spell.KnownBy = seen
 	me.Graveyard.PushTop(spell)
+	// #695: the offer is shown only when every component of it is
+	// payable, and escape's is "exile three OTHER cards from your
+	// graveyard". Three fuel cards is the board the cast path would
+	// accept; the sibling test below holds the case with two.
+	for _, name := range []string{"Fuel A", "Fuel B", "Fuel C"} {
+		fuel := game.NewCard(name, me.ID)
+		fuel.TypeLine = "Instant"
+		fuel.KnownBy = seen
+		me.Graveyard.PushTop(fuel)
+	}
 
 	v := ViewOfGameFor(g, me.ID.String())
 	got := cardInZone(v.Seats[0].Graveyard, spell.InstanceID)

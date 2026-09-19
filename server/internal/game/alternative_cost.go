@@ -95,10 +95,13 @@ type AlternativeCost struct {
 	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
 	// A COST, not a drawback: it is validated before anything is
-	// paid, so a player below N life cannot claim the offer at all.
-	// (CR 118.4 lets a player pay life down to exactly zero, and the
-	// state-based action kills them afterwards — that is a legal, if
-	// unwise, Force of Will.)
+	// paid, so a player below N life cannot claim the offer at all —
+	// and #695 made that true of the OFFER as well as the payment.
+	// AlternativeCostPayableLocked is the predicate; LifePayableBy is
+	// the line. (CR 119.4 lets a player pay life down to exactly
+	// zero, and the state-based action kills them afterwards — that
+	// is a legal, if unwise, Force of Will. The stale 118.4 citation
+	// here was the #693 renumbering tail.)
 	Life int
 
 	// ExileFromHand is "exile a blue card from your hand" (Force of
@@ -376,6 +379,109 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 	return a.Condition == nil || a.Condition(g, controller)
 }
 
+// LifePayableBy is CR 119.4: a player may pay life only if their life
+// total is greater than or equal to the payment. Exactly equal is
+// payable — paying down to zero is legal, and the state-based action
+// that follows is a separate rule (CR 704.5a).
+//
+// One line, and it is a FUNCTION rather than a comparison spelled out
+// at each reader because it had been spelled out at only one of them
+// (#695): announce refused the cast, the view showed the offer anyway,
+// and a Force of Will at 0 life was a button that could only fail.
+//
+// Nil-safe on both sides. An offer with no life component is payable
+// by anybody.
+func (a *AlternativeCost) LifePayableBy(p *Player) bool {
+	if a == nil {
+		return false
+	}
+	if a.Life <= 0 {
+		return true
+	}
+	return p != nil && p.Life >= a.Life
+}
+
+// AlternativeCostPayableLocked reports whether a player could pay
+// EVERY component of this offer if they claimed it right now — the
+// one predicate behind "is this offer on the table" (#695).
+//
+// Three questions, in the order announce asks them:
+//
+//  1. the offer's own Condition (Available) — "if you control a
+//     Swamp", "if you control a commander";
+//  2. the life component (CR 119.4), which is why this function
+//     exists: the view used to ask only (1) and show Snuff Out's
+//     "pay 4 life" to a player at 3;
+//  3. the card component (CR 601.2b) — whether the caster's hand,
+//     graveyard or battlefield holds as many cards matching the
+//     clause as the cost demands. Force of Will with no other blue
+//     card in hand, an escape cost with two cards left in the
+//     graveyard.
+//
+// MANA IS DELIBERATELY NOT ASKED. CR 601.2g lets the caster activate
+// mana abilities after the cost is settled, so "you cannot afford it
+// yet" is not a reason to withhold the offer — it is what the
+// auto-tapper and the strict-mana gate are for. Every other component
+// is settled by the board at the moment the offer is read.
+//
+// `castID` is the spell being cast, which is never a legal payment:
+// CR 601.2a has already moved it to the stack by the time the cost is
+// paid, and it is what the printed "other" in escape's clause means.
+//
+// The three readers are the view's offer stamp, the bot enumerator
+// and CastSpell's own validator, so a shown offer, an enumerated move
+// and an accepted cast cannot disagree. Caller must hold g.mu.
+func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *AlternativeCost) bool {
+	if alt == nil {
+		return false
+	}
+	if !alt.Available(g, playerID) {
+		return false
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return false
+	}
+	if !alt.LifePayableBy(p) {
+		return false
+	}
+	spec, zone, want := alt.cardComponent()
+	if spec == nil {
+		return true
+	}
+	have := 0
+	for _, c := range g.zoneForAltCostLocked(p, zone).Cards {
+		if c.InstanceID == castID {
+			continue
+		}
+		if g.altCostCardOKLocked(p, spec, zone, c) {
+			have++
+			if have >= want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// altCostCardOKLocked is the per-card half of an alternative cost's
+// card component: may THIS card pay it?
+//
+// The one predicate, shared by the payability check above and by
+// validateAlternativeCostPaymentLocked's walk of the named IDs, so
+// the offer the client is shown and the payment the engine accepts
+// are decided by the same three lines.
+//
+// Not a target — a cost is not targeted (CR 601.2h), so hexproof and
+// shroud do not apply and the spec is matched directly against the
+// card rather than through the targeting gate. Caller must hold g.mu.
+func (g *Game) altCostCardOKLocked(p *Player, spec *TargetSpec, zone ZoneKind, c Card) bool {
+	if zone == ZoneBattlefield && c.Controller != p.ID {
+		return false
+	}
+	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
+}
+
 // validateAlternativeCostPaymentLocked checks the non-mana half of a
 // claimed alternative cost without paying any of it — the same
 // validate-all-then-pay discipline the additional cost follows, so a
@@ -405,7 +511,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if alt.Life > 0 && p.Life < alt.Life {
+	// CR 119.4, through the same one-line predicate the view's offer
+	// stamp and the bot enumerator read (#695), so an offer the client
+	// can see is one this validator will accept.
+	if !alt.LifePayableBy(p) {
 		return ErrInvalidParam
 	}
 	spec, zone, want := alt.cardComponent()
@@ -431,18 +540,14 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 			return ErrInvalidParam
 		}
 		seen[id] = true
-		// Not a target — a cost is not targeted (CR 601.2h), so
-		// hexproof and shroud do not apply and the spec is matched
-		// directly against the card rather than through the
-		// targeting gate.
 		c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
 		if !ok {
 			return ErrCardNotFound
 		}
-		if zone == ZoneBattlefield && c.Controller != playerID {
-			return ErrInvalidParam
-		}
-		if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
+		// The same per-card predicate AlternativeCostPayableLocked
+		// counts candidates with, so "the client was offered this"
+		// and "the engine accepts this" are one rule (#695).
+		if !g.altCostCardOKLocked(p, spec, zone, c) {
 			return ErrInvalidParam
 		}
 	}

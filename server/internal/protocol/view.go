@@ -2441,6 +2441,13 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // is a trap rather than an affordance.
 func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
 	self := card.InstanceID
+	// The spell being cast, as the engine names it. CR 601.2a has
+	// moved it to the stack before any cost is paid, so it is never a
+	// legal payment for one — which is what escape's printed "other"
+	// means and what the payability check below has to know. An
+	// unparseable ID (no card in the tree has one) excludes nothing,
+	// which is the same answer the pre-#695 view gave.
+	selfID, _ := uuid.Parse(self)
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
 		ac := alts[i]
@@ -2449,7 +2456,15 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// paying its mana cost" is not an offer when you control no
 		// commander, and a greyed-out button the server would reject
 		// is worse than no button.
-		if !ac.Available(g, caster) {
+		//
+		// #695: that rule is now the whole of CR 601.2b rather than
+		// the Condition alone, through the one predicate CastSpell's
+		// validator and the bot enumerator also read. The life half
+		// had been left out, so Force of Will at 0 life and Snuff Out
+		// at 3 were shown, picked, and refused. Mana is deliberately
+		// not part of it — CR 601.2g lets the caster tap for it after
+		// the cost is chosen, which is what the auto-tapper is for.
+		if !g.AlternativeCostPayableLocked(caster, selfID, &ac) {
 			continue
 		}
 		v := AlternativeCostView{

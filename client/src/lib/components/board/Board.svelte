@@ -79,6 +79,7 @@
     type TargetRef,
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { castPreviewParams } from "../../castPreview";
   import { orderSacrificeOptions, sacrificeCount } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
@@ -238,7 +239,11 @@
   // S20 sub-PR 3: an {X} spell asks for X. The modal's confirm
   // continues into targeting / cast with the chosen value.
   let xPromptCard = $state<CardView | null>(null);
-  let xPromptChoices: CastChoices = {};
+  // $state because the X picker's cost preview reads it: the
+  // announcement so far (source zone, alternative cost, optional
+  // costs, face) is what the preview prices against (#696), so the
+  // template has to see it change when the prompt opens.
+  let xPromptChoices = $state<CastChoices>({});
   function confirmX(x: number): void {
     const card = xPromptCard;
     const choices = xPromptChoices;
@@ -1456,6 +1461,7 @@
     gameID={view.id}
     card={xPromptCard}
     suggestedMax={suggestedX}
+    castParams={castPreviewParams(xPromptChoices)}
     onConfirm={confirmX}
     onCancel={() => {
       xPromptCard = null;
@@ -1484,6 +1490,7 @@
     symbols={phyrexianPrompt?.symbols ?? 0}
     life={viewerLife}
     xValue={phyrexianPrompt?.choices.xValue}
+    castParams={castPreviewParams(phyrexianPrompt?.choices)}
     onConfirm={confirmPhyrexianLife}
     onCancel={() => (phyrexianPrompt = null)}
   />

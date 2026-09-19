@@ -21,6 +21,7 @@
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import type { AutoTapCastParams } from "../../castPreview";
   import { xPickerCostNotes } from "../../costNotes";
   import type { CardView } from "../../protocol";
   import ModalLayer from "../ModalLayer.svelte";
@@ -39,6 +40,13 @@
     abilityIndex?: number;
     costLabel?: string;
     minX?: number;
+    // #696: the rest of the announcement the preview prices against —
+    // source zone, alternative cost, optional costs, face. All of them
+    // are chosen before X, so the affordable / missing readout can be
+    // about the cast the player is actually making: an overloaded
+    // Cyclonic Rift, a flashed-back Deep Analysis. Ignored on the
+    // ability branch, which prices the ability's own cost.
+    castParams?: AutoTapCastParams;
     confirmVerb?: string;
     onConfirm: (x: number) => void;
     onCancel: () => void;
@@ -51,6 +59,7 @@
     abilityIndex = undefined,
     costLabel = undefined,
     minX = 0,
+    castParams = {},
     confirmVerb = "Cast",
     onConfirm,
     onCancel,
@@ -85,9 +94,10 @@
     const id = card?.instance_id;
     const value = x;
     const ability = abilityIndex;
+    const cast = castParams;
     if (!id) return;
     loading = true;
-    fetchAutoTapPreview(gameID, id, { xValue: value, abilityIndex: ability })
+    fetchAutoTapPreview(gameID, id, { xValue: value, abilityIndex: ability, cast })
       .then((p) => {
         if (reqID === fetchSeq) preview = p;
       })

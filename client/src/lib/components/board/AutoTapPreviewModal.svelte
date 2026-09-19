@@ -17,6 +17,7 @@
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import type { AutoTapCastParams } from "../../castPreview";
   import type { CardView, GameView } from "../../protocol";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -24,11 +25,19 @@
     gameID: string;
     snap: GameView;
     cardID: string | null;
+    // #696: the announce-time choices of the cast being retried —
+    // source zone, alternative cost, optional costs, convoke taps,
+    // face. The confirm button replays the original cast payload, so
+    // the preview has to price THAT cast: without these it priced the
+    // card's printed cost from the hand and disabled the button on
+    // every flashback, escape, overload and granted exile cast whose
+    // real price was affordable.
+    castParams?: AutoTapCastParams;
     onConfirm: (lockedSources: string[]) => void;
     onCancel: () => void;
   }
 
-  const { gameID, snap, cardID, onConfirm, onCancel }: Props = $props();
+  const { gameID, snap, cardID, castParams = {}, onConfirm, onCancel }: Props = $props();
 
   let preview = $state<AutoTapPreview | null>(null);
   let loading = $state(false);
@@ -67,9 +76,10 @@
     if (!cardID) return;
     const card = cardID;
     const locked = lockedSources.slice();
+    const cast = castParams;
     loading = true;
     fetchError = null;
-    fetchAutoTapPreview(gameID, card, { excluded: locked })
+    fetchAutoTapPreview(gameID, card, { excluded: locked, cast })
       .then((p) => {
         if (reqID === fetchSeq) {
           preview = p;

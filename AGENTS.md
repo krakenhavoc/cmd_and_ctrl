@@ -2826,6 +2826,44 @@ same answer. One predicate says so, `game.CastCost.LocksXAtZero`
 once at CR 601.2b in `CastSpell`; a cost *reduction* never triggers it,
 and a card file needs no flag for it.
 
+**What a cast costs: one pricer, one entry point (#696).** Nothing
+outside `internal/game` may re-derive a cast's price. `g.PriceCast`
+(`g.PriceCastForEffect` under `g.mu`) takes the **announcement** — the
+same `game.CastSpellParams` the cast would send — and answers a
+`game.CastPrice`:
+
+```go
+price, err := g.PriceCast(playerID, card, game.CastSpellParams{
+    FromZone: "graveyard", AlternativeCost: "flashback",
+})
+price.Paid   // the cost STRING this cast pays: "{2}{R}"
+price.Base   // the total before convoke/waterbend spends against it
+price.Total  // what the payment charges — what applyCastCostLocked demands
+price.Card   // the card with the announced face materialised (ADR 0034)
+```
+
+It is the same walk `CastSpell` charges with, so it settles the CR
+118.9 swap, a granted permission's flat override, the "spend mana as
+though any colour" fold, the commander tax, the mana half of the
+announced optional costs, the cost modifiers and the convoke
+subtraction — in that order, once. The auto-tap preview endpoint
+(`GET /games/{id}/auto-tap-preview`) and the bot enumerator both call
+it; each of them used to keep a partial copy, and each copy disagreed
+with the engine on every non-hand and alternative-cost cast. Add a
+component to the price in `printedCostLocked` or
+`costAfterModifiersLocked` and all four readers get it.
+
+**An offer is offered only when it is payable (#695).**
+`g.AlternativeCostPayableLocked(caster, castID, offer)` is the one
+predicate behind "is this alternative cost on the table": its
+`Condition`, CR 119.4's life (exactly N is payable — paying down to
+zero is legal), and CR 601.2b's card component (enough matching cards
+in the right zone, never the spell itself). The view's offer stamp,
+the bot enumerator and `CastSpell`'s own validator all read it, so a
+shown offer, an enumerated move and an accepted cast cannot disagree.
+**Mana is deliberately not part of it**: CR 601.2g lets the caster tap
+for it after the cost is chosen, which is what the auto-tapper is for.
+
 **A delayed trigger (S22):** "at the beginning of the next end step,
 <do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs
 now:
