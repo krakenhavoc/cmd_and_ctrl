@@ -244,14 +244,21 @@ func b39DamageToFirstTargetPlayer(amount int) func(*game.Game, *game.StackItem) 
 // count actually pitched, "discard up to N cards, then draw that
 // many" — Cathartic Pyre's second mode.
 //
-// The engine's discard prompt reports nothing back, so the count is
-// measured the only way that is reliable: the hand size is snapshotted
-// before the prompt is queued and read again in the prompt's Then,
-// which runs after the chosen cards are in the graveyard and before
-// anything else can touch the hand. `draw` turns that count into the
-// number of cards to draw, so a card with a fixed reward ("draw three")
-// ignores it and a card with a matching reward ("draw that many")
-// returns it.
+// The count is the RUN's (#1027): "you may discard N cards" is one
+// printed instruction, and its continuation is told what was really
+// discarded once the chosen cards have finished moving. `draw` turns
+// that count into the number of cards to draw, so a card with a fixed
+// reward ("draw three") ignores it and a card with a matching reward
+// ("draw that many") returns it.
+//
+// It used to be measured by snapshotting the hand size before the
+// prompt and reading it again in the prompt's own Then, because the
+// discard prompt reported nothing back. That was right about the
+// ordinary case and wrong about two: a hand that a discard TRIGGER
+// refilled between the pitch and the measurement counted short, and
+// a card the CR 614 window left in hand counted as pitched only
+// because the subtraction could not see it. The run counts the cards,
+// not the hand.
 //
 // UpTo is the printed ceiling. With `exact` set, Validate refuses any
 // answer between 1 and N-1: "you may discard TWO cards" is a yes-or-no
@@ -260,37 +267,24 @@ func b39DamageToFirstTargetPlayer(amount int) func(*game.Game, *game.StackItem) 
 func b39MayDiscardThenDraw(n int, exact bool, question string, draw func(discarded int) int) func(*Context) error {
 	return func(ctx *Context) error {
 		player := ctx.Controller()
-		before := b39HandSize(ctx.Game, player)
 		prompt := game.DiscardPrompt{
 			Player:   player,
 			Source:   ctx.Source(),
 			N:        n,
 			UpTo:     true,
 			Question: question,
-			Then: func(g *game.Game) error {
-				discarded := before - b39HandSize(g, player)
-				if k := draw(discarded); k > 0 {
-					return g.DrawNForEffect(player, k)
-				}
-				return nil
-			},
 		}
 		if exact {
 			prompt.Validate = func(picked []game.Card) bool {
 				return len(picked) == 0 || len(picked) == n
 			}
 		}
-		ctx.Game.QueueDiscardChoiceForEffect(prompt)
-		return nil
+		return ctx.Game.PlayerDiscardsThenForEffect(prompt,
+			func(g *game.Game, discarded game.PromptedDiscards) error {
+				if k := draw(discarded.Count()); k > 0 {
+					return g.DrawNForEffect(player, k)
+				}
+				return nil
+			})
 	}
-}
-
-// b39HandSize is len(hand), nil-safe — the before/after measurement
-// b39MayDiscardThenDraw counts with.
-func b39HandSize(g *game.Game, player uuid.UUID) int {
-	p := g.PlayerByIDForEffect(player)
-	if p == nil || p.Hand == nil {
-		return 0
-	}
-	return len(p.Hand.Cards)
 }

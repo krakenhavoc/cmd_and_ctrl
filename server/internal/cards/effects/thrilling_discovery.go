@@ -29,9 +29,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // deal at all and draws nothing, which is CR 701.8a applied to an
 // "if you do" clause: you cannot pay half a cost and collect.
 //
-// The count is measured off the hand, before the prompt and again in
-// its continuation — see b39MayDiscardThenDraw for why that is the
-// reliable read.
+// The count is the prompted-discard RUN's — see
+// b39MayDiscardThenDraw (#1027).
 //
 // No simplification.
 func init() {

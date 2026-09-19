@@ -32,8 +32,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // what makes the mode good: the cards you pitch are chosen from a
 // hand that has not yet been refilled, and a discard payoff (a
 // Marauding Mako, an Archfiend of Ifnir) triggers before the new
-// cards arrive. The count is measured off the hand — see
-// b39MayDiscardThenDraw for why that is the reliable read.
+// cards arrive. The count is the prompted-discard RUN's — see
+// b39MayDiscardThenDraw (#1027).
 //
 // A first mode whose target became illegal in response is countered
 // by the rules (CR 608.2b) and deals nothing.

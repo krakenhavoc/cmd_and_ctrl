@@ -6,6 +6,7 @@
 **Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
+**Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
 
 ## Context
 
@@ -2439,6 +2440,205 @@ here because moving the choice from trigger time to resolution time
 changes WHICH land can be sacrificed, not the ordering the comment was
 about, and that is a card decision rather than this mechanic's. Filed
 as [#1026](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1026).
+
+### 5y. Amendment, 2026-09-19: a prompted discard is the same RUN, and both verbs share one body
+
+*Amendment, 2026-09-19, branch
+`feat/1027-1026-discard-continuation-and-springbloom`.
+Closes [#1027](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1027)
+and [#1026](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1026).
+§5x deliberately left Archon of Cruelty alone and named the reason:
+"the discard prompt has no continuation of its own — the `discardVerb`
+row of the lint says so". This is that continuation, and the
+`discardVerb` family now names a fix.*
+
+**1. What was wrong.** `g.QueueDiscardChoiceForEffect` discards
+nothing. It queues a `PendingChoiceChooseCards` over the player's own
+hand and returns the PROMPT'S ID; the cards leave the hand when that
+player answers, which is one or more actions later — and they can
+leave later still than that, because §5g made a discard a real exit
+and a discarded commander's CR 903.9 prompt pauses the batch mid-way.
+
+Archon of Cruelty is the card the hole was filed on. Printed: *"target
+opponent sacrifices a creature or planeswalker of their choice,
+discards a card, and loses 3 life. You draw a card and gain 3 life."*
+Four clauses; the body queued the sacrifice prompt, queued the discard
+prompt beside it, and ran the last three on the next line. Nothing was
+WRONG about any of the three — each is a clause about a PLAYER and
+happens whichever way the prompts are answered (§5v item 2) — except
+the ORDER, and the order is observable: the opponent chose what to
+pitch already three life down, and a Blood Artist drain off the
+sacrifice arrived after the caster had drawn.
+
+**2. The form is §5x's, unchanged.** One run is ONE PRINTED
+INSTRUCTION, however many prompts it takes: "target player discards
+two cards" is one prompt over the hand, "each opponent discards a
+card" is one per opponent. Its continuation runs ONCE, after the last
+prompt has settled AND the cards it named have finished moving, and is
+handed `game.PromptedDiscards` — one entry per seat that was ASKED, in
+ask order, carrying the cards that really left that hand.
+
+| entry point | the instruction |
+| --- | --- |
+| `PlayerDiscardsThenForEffect` | one seat, Archon of Cruelty |
+| `PlayersDiscardThenForEffect` | a named set of seats |
+| `EachPlayerDiscardsThenForEffect` | the APNAP fan-out, Syphon Mind |
+| `EachPlayerDiscardsForEffect` | the same fan-out with nothing waiting on it |
+
+**3. ONE BODY FOR BOTH VERBS, and that is the load-bearing half of
+this amendment.** Everything about a run except which prompt it queues
+and what its answer is CALLED is identical between a sacrifice and a
+discard: the outstanding counter, the ask order, the per-seat landed
+lists, the settle-once rule, the deep copy an undo needs. Writing it
+twice would have been a second body for one mechanic, which is the
+shape the catalog's clone gate exists to refuse.
+
+So §5x's machinery moved from `sacrifice_run.go` to `prompt_run.go`
+and the two verbs are thin:
+
+- `promptRun` and `runPromptsLocked(asks, then, queue)` — the queue
+  loop with the per-verb prompt builder injected.
+- `settleRunLegLocked(runID, seat, landed)` — THE one place a leg
+  settles, for either verb.
+- `clonePromptRuns` — one deep copy.
+- `SeatCards` is the shared entry; `PromptedSacrifices` and
+  `PromptedDiscards` are two defined types over `[]SeatCards`, each
+  spelling its own verb (`.Sacrificed(seat)` / `.Discarded(seat)`) over
+  shared one-line bodies.
+
+Three renames fell out and are worth naming because they are in the
+undo contract: `Game.sacrificeRuns` → `Game.promptRuns` (ONE registry,
+because the keys are freshly minted uuids and "which prompt is a leg
+of which run" is one question), `PendingChoice.sacrificeRun` →
+`PendingChoice.promptRun`, and `defaultDroppedChoiceLocked` now
+branches on the run LINK rather than on the prompt KIND. That last one
+is not tidiness: a discard prompt is a `PendingChoiceChooseCards`, the
+same kind Thoughtseize's revealed-hand pick uses, and that pick is no
+run's leg — so "is this prompt part of a run" is a question about the
+prompt, not about its kind. A fourth verb needs no fourth case.
+
+**4. "Discarded this way" is CR 701.8a's move OUT of the hand.**
+`discardedThisWayLocked(player, card)` is `sacrificedThisWayLocked`
+with the hand in place of the battlefield, and the two rules have the
+same form because CR 701.8a and CR 701.17a do — both name the keyword
+action as a move out of a zone, and a replacement rewrites only where
+the card then goes. §5g already decided this for the EVENT
+(`zoneRoute.Discard` is honoured wherever the card lands); this is the
+same decision for the COUNT.
+
+| the card ends up | discarded this way |
+| --- | --- |
+| its owner's graveyard (printed) | yes |
+| exile — madness (CR 702.35a, #657), Rest in Peace | yes |
+| the top of its library — Library of Leng | yes |
+| the command zone — CR 903.9 | yes |
+| still in the hand — the CR 614 window cancelled it, or the prompt was abandoned (§5j) | no |
+
+Destroy remains the odd one out (§5i): CR 701.7a defines a destruction
+by the graveyard it arrives in.
+
+The landed list is accumulated by `discardBatchLocked`, carried
+forward by value alongside the shrinking `cards` slice for the reason
+§5g gives — an undo across the open CR 903.9 prompt has nothing
+half-written to put back. `discardOptions.then` therefore takes it,
+which is what lets a leg settle honestly from inside the batch rather
+than from a hand re-read on the far side of it.
+
+**5. A withdrawn prompt settles its leg**, #1016's `dropDefault` at a
+third kind. `PendingChoiceChooseCards` declares `onDrop: dropDefault`
+in the departure table; the gate is unchanged
+(`choiceObjectSurvivesLocked`), so a run whose own source left the
+game with its controller is abandoned rather than paid out. A
+Thoughtseize pick is untouched, because the action reads the run link
+and a pick that is no run's leg has none.
+
+**6. Two continuations, and they are not interchangeable.**
+`DiscardPrompt.Then` stays, and it is now `func(g, seat, discarded)`:
+it is ONE LEG's own sentence — Vicious Rumors' "each opponent discards
+a card, THEN mills a card" — it runs per seat, and it still fires for
+an empty hand, which is the #797 contract ("discard your hand, then
+draw three"). It takes the seat because a fan-out copies ONE template
+per seat, so a closure over a loop variable would mill the wrong
+player. The RUN's continuation is the rest of the instruction and runs
+once. A payoff written on the leg pays out per answer, which is
+exactly what Syphon Mind did.
+
+**7. Four catalog callers migrated; the rest were already right.**
+`git grep` finds twenty-seven call sites of the two discard entry
+points; twenty-three have nothing hanging off the answer and are
+untouched.
+
+- **The ORDER.** Archon of Cruelty (`batch09_helpers.go`) is one
+  nested chain now — the sacrifice run's continuation is the discard
+  run, and the discard run's continuation is the last three clauses,
+  both answers deliberately ignored. Vicious Rumors
+  (`vicious_rumors.go`) moved its "You gain 1 life", printed last, off
+  the line after the fan-out and onto the run, keeping its per-opponent
+  mill on the leg.
+- **The COUNT.** Syphon Mind's "you draw a card for each card
+  discarded this way" was one card per ANSWER, off each prompt's own
+  `Then`, with a hand-rolled empty-hand skip; it is `discarded.Count()`
+  once, after the table has pitched, and the skip is the engine's rule.
+  `b39MayDiscardThenDraw` (Thrilling Discovery, Cathartic Pyre)
+  measured the count by subtracting hand sizes across the prompt. That
+  agrees with the run on every board reachable today — a madness card
+  and a CR 903.9 commander both leave the hand, and a cancelled leg
+  both stays in it and is not counted — so this one changes no outcome.
+  It is migrated because it was a SECOND reading of "what was
+  discarded", and the engine already answers that question; two
+  readings of one rule are the pair that drifts.
+
+**8. Springbloom Druid (#1026), on §5x's machinery rather than this
+one.** §5x item 8 left it open: the land was chosen as a TRIGGER
+TARGET because a sacrifice prompt had no continuation, so the search
+would have had to be queued beside it and — with a small library, where
+the search resolves synchronously — the basics would have entered
+BEFORE the sacrifice and been offered as the land to sacrifice. The
+`Targets` clause is gone, the `OptionalPrompt` stays, and the body is
+one `PlayerSacrificesThenForEffect(…, 1, then)` whose continuation is
+the search, gated on `sacrificed.Sacrificed(controller)` — the card's
+own "if you do".
+
+Two things that changes, both towards printed, and both card decisions
+rather than mechanic ones, which is why #1019 filed it separately:
+WHICH land can be sacrificed (the choice is made at resolution over
+the board as it then is, so a land played in response is a legal answer
+and nothing is announced for an opponent to respond to), and what
+happens with no land (asked nothing, searches for nothing — "you may
+sacrifice a land. If you do" — rather than the whole trigger being
+removed by CR 603.3d for want of a target the card does not print).
+Its caveat is deleted and it is `CompletenessFull`.
+
+**9. The lint's tables.** `discardPromptVerb` names the run and carries
+`returnIsAQuestion`, so `questionGatesIn` — §5x item 7's second scan,
+renamed from `questionCountGatesIn` because a prompt ID is a question
+as much as a count is — flags `if g.QueueDiscardChoiceForEffect(…) ==
+uuid.Nil` as well as the two sacrifice spellings.
+`QueueDiscardChoiceForEffect`, `DiscardChoiceForEffect` and
+`EachPlayerDiscardsForEffect` are in `exitStartsTheClock` under it.
+`discardVerb` is the RANDOM discard beside them and names
+`g.DiscardRandomThenForEffect`, added here so that no row in the table
+says "there is no continuation form yet" while one exists.
+`graveyardVerb` still does, and it is now the only one.
+
+One allowlist entry came with the widening, and it is a scanner
+artifact rather than a card: `kolaghans_command.go:70`. `exitPayoutsIn`
+walks a func literal both on its own and as part of the declaration it
+sits in, so on the enclosing pass every mode of a modal spell looks
+like one function — the damage mode's `ok` is read after the discard
+mode's prompt, three closures earlier, and the two never share a scope.
+The per-closure pass reports nothing, which is the right answer.
+
+**10. Still open, and named.** `graveyardVerb` has no continuation form
+(`g.PutIntoGraveyardForEffect`), and no catalog caller reads one back
+today. A discard prompt whose candidates ALL leave the hand before it
+is answered has no prune — there is no `pruneDiscardChoicesLocked`
+beside `pruneSacrificeChoicesLocked` — so the prompt becomes
+unanswerable rather than being withdrawn and settling its leg. It is
+reachable only by an effect emptying a hand under an open prompt, which
+no catalog card does, and it predates this change; filed as
+[#1045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1045) rather
+than fixed here.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

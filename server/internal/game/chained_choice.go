@@ -271,6 +271,12 @@ type ChooseCardsPrompt struct {
 	// Then receives the picks. Runs with g.mu held; may queue further
 	// choices, which is how a chain continues.
 	Then func(g *Game, picked []uuid.UUID) error
+
+	// promptRun links the queued prompt to the RUN it is one leg of
+	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
+	// is engine plumbing: one caller sets it, the discard prompt
+	// (#1027), and the catalog never builds a run by hand.
+	promptRun uuid.UUID
 }
 
 // QueueChooseCardsForEffect queues a card-set pick and returns its ID.
@@ -309,6 +315,7 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 		ChooseCards: append([]uuid.UUID(nil), p.Cards...),
 		ChooseMin:   lo,
 		ChooseMax:   hi,
+		promptRun:   p.promptRun,
 		chooseCardsResume: &chooseCardsFrame{
 			zone:     p.Zone,
 			validate: p.Validate,

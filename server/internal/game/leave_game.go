@@ -461,7 +461,20 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// choose_cards / discard_from_hand: Thoughtseize-shaped — the
 	// chooser picks out of FromPlayer's pool, and when that is not
 	// their own the question survives them.
-	PendingChoiceChooseCards:     {reassign: true},
+	//
+	// choose_cards declares dropDefault since #1027, for the reason
+	// sacrifice does below: a DISCARD prompt is a choose_cards over
+	// the discarding player's own hand, so it is never reassigned
+	// (FromPlayer is the chooser), and since #1027 it can be one leg
+	// of a RUN — "each opponent discards a card, then you draw a card
+	// for each card discarded this way" — whose continuation has to
+	// hear that the leg settled with nothing. This is the one kind
+	// where the action is NOT a statement about the kind: a
+	// choose_cards that is no run's leg has no run to settle, and
+	// defaultDroppedChoiceLocked branches on PendingChoice.promptRun
+	// rather than on the kind so that a Thoughtseize pick keeps doing
+	// exactly what it did before.
+	PendingChoiceChooseCards:     {reassign: true, onDrop: dropDefault},
 	PendingChoiceDiscardFromHand: {reassign: true},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"

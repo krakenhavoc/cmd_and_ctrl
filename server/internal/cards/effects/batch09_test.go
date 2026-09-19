@@ -838,11 +838,48 @@ func TestB09DisenchantDestroysAnEnchantmentAndRefusesACreature(t *testing.T) {
 
 // --- Archon of Cruelty --------------------------------------------
 
-// b09AssertArchonResolved checks everything one Archon trigger does
-// to `victim` and for `me`, given the life totals and hand size
-// before the trigger resolved.
+// b09AssertArchonResolved walks one Archon trigger through its
+// PRINTED order (#1027):
+//
+//	"target opponent sacrifices a creature or planeswalker of their
+//	 choice, discards a card, and loses 3 life. You draw a card and
+//	 gain 3 life."
+//
+// Four clauses, and three of them are on the far side of two prompts.
+// Before #1027 the discard prompt had no continuation, so the body
+// queued both questions and ran the last three clauses on the next
+// line: the victim was already three life down and the caster already
+// had their card while nobody had chosen anything. Every step below
+// asserts what has NOT happened yet as well as what has, because
+// "eventually all four happen" was true of the broken card too.
 func b09AssertArchonResolved(t *testing.T, g *game.Game, me, victim *game.Player, meLife, victimLife, meHand int, theirBear uuid.UUID) {
 	t.Helper()
+
+	// 1. The sacrifice, and nothing else.
+	c := sacrificeChoiceFor(g, victim.ID)
+	if c == nil {
+		t.Fatal("the victim should be choosing a creature or planeswalker to sacrifice")
+	}
+	if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != theirBear {
+		t.Errorf("sacrifice offered %v, want just the victim's own creature %v", c.SacrificeOptions, theirBear)
+	}
+	if discardOwed(g, victim.ID) != 0 {
+		t.Error("the discard is printed AFTER the sacrifice and must not be asked beside it")
+	}
+	b09AssertArchonPayoutPending(t, me, victim, meLife, victimLife, meHand, "with the sacrifice prompt open")
+
+	// 2. The discard, once the sacrifice has been made.
+	answerSacrifice(t, g, victim.ID, theirBear)
+	if g.Battlefield.Contains(theirBear) {
+		t.Error("the chosen creature was not sacrificed")
+	}
+	if got := discardOwed(g, victim.ID); got != 1 {
+		t.Fatalf("the victim owes %d discards after sacrificing, want 1", got)
+	}
+	b09AssertArchonPayoutPending(t, me, victim, meLife, victimLife, meHand, "with the discard prompt open")
+
+	// 3. The last three clauses, once the card has been pitched.
+	discardFromHand(t, g, victim.ID)
 	if victim.Life != victimLife-3 {
 		t.Errorf("victim life %d → %d, want -3", victimLife, victim.Life)
 	}
@@ -852,15 +889,20 @@ func b09AssertArchonResolved(t *testing.T, g *game.Game, me, victim *game.Player
 	if got := me.Hand.Size(); got != meHand+1 {
 		t.Errorf("my hand %d → %d, want +1", meHand, got)
 	}
-	c := sacrificeChoiceFor(g, victim.ID)
-	if c == nil {
-		t.Fatal("the victim should be choosing a creature or planeswalker to sacrifice")
+}
+
+// b09AssertArchonPayoutPending asserts none of Archon's last three
+// clauses has happened yet.
+func b09AssertArchonPayoutPending(t *testing.T, me, victim *game.Player, meLife, victimLife, meHand int, when string) {
+	t.Helper()
+	if victim.Life != victimLife {
+		t.Errorf("the victim lost life %s: %d → %d", when, victimLife, victim.Life)
 	}
-	if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != theirBear {
-		t.Errorf("sacrifice offered %v, want just the victim's own creature %v", c.SacrificeOptions, theirBear)
+	if me.Life != meLife {
+		t.Errorf("I gained life %s: %d → %d", when, meLife, me.Life)
 	}
-	if got := discardOwed(g, victim.ID); got != 1 {
-		t.Errorf("the victim owes %d discards, want 1", got)
+	if got := me.Hand.Size(); got != meHand {
+		t.Errorf("I drew %s: hand %d → %d", when, meHand, got)
 	}
 }
 
@@ -889,13 +931,12 @@ func TestB09ArchonOfCrueltyEntersAgainstATargetOpponent(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	b09AssertArchonResolved(t, g, me, victim, meLife, victimLife, meHand, theirBear)
 	if bystander.Life != bystanderLife || sacrificeChoiceFor(g, bystander.ID) != nil {
 		t.Error("the untargeted opponent was touched")
 	}
-	answerSacrifice(t, g, victim.ID, theirBear)
-	if g.Battlefield.Contains(theirBear) {
-		t.Error("the chosen creature was not sacrificed")
+	b09AssertArchonResolved(t, g, me, victim, meLife, victimLife, meHand, theirBear)
+	if bystander.Life != bystanderLife || discardOwed(g, bystander.ID) != 0 {
+		t.Error("the untargeted opponent was touched by the rest of the chain")
 	}
 }
 

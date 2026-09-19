@@ -426,7 +426,7 @@ func TestAFireAndForgetSacrificePromptStillSacrifices(t *testing.T) {
 	if !hasEvent(g, EventSacrifice, bear) {
 		t.Error("the announcement still fires (CR 701.17a)")
 	}
-	if g.sacrificeRuns != nil {
-		t.Errorf("a prompt nobody is waiting on left %d runs behind", len(g.sacrificeRuns))
+	if g.promptRuns != nil {
+		t.Errorf("a prompt nobody is waiting on left %d runs behind", len(g.promptRuns))
 	}
 }

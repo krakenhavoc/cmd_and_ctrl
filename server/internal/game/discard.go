@@ -86,8 +86,62 @@ type discardOptions struct {
 
 	// then is the rest of whatever asked for the discard, run once the
 	// WHOLE batch has landed: the prompt's own "then draw two"
-	// (#797), the cleanup step's hand-size bookkeeping. Optional.
-	then func(g *Game) error
+	// (#797), the cleanup step's hand-size bookkeeping, a prompted
+	// discard run's leg settle (#1027). Optional.
+	//
+	// `landed` is the cards of this batch that were really discarded
+	// — discardedThisWayLocked's answer, in batch order. #1027 gave it
+	// the argument, because "you draw a card for each card discarded
+	// this way" (Syphon Mind) cannot be read back off the hand on the
+	// next line: the batch may have paused on a CR 903.9 prompt, a
+	// madness card went to exile rather than to a graveyard, and the
+	// CR 614 window may have cancelled a leg outright.
+	then func(g *Game, landed []uuid.UUID) error
+}
+
+// discardedThisWayLocked reports whether a settled discard of cardID
+// counts as a DISCARD — the question "for each card discarded this
+// way" (Syphon Mind's draw) is asking.
+//
+// CR 701.8a: "To discard a card, move it from its owner's hand to
+// that player's graveyard." The discard is that MOVE OUT of the hand,
+// and nothing replaces the discard itself — a replacement rewrites
+// where the card goes. So the answer is "is it still in the hand":
+//
+//   - anywhere else. Discarded. A graveyard is the printed
+//     destination; EXILE is madness (CR 702.35a, #657 — "that player
+//     discards it, BUT exiles it instead", so the discard happened and
+//     only the destination was rewritten) or a Rest in Peace; the top
+//     of a library is Library of Leng; the command zone is CR 903.9
+//     taking the offer. All of them replaced the destination of a
+//     discard that had already happened, which is the reading ADR 0013
+//     §5g gave `zoneRoute.Discard` — honoured wherever the card lands,
+//     because CR 701.8a defines a discard by its SOURCE.
+//   - still in the hand. NOT discarded — the CR 614 window cancelled
+//     the move outright, or its prompt was abandoned (ADR 0013 §5j),
+//     and nothing ever left.
+//
+// This is sacrificedThisWayLocked's shape with the hand in place of
+// the battlefield, and the two rules have the same form because
+// CR 701.8a and CR 701.17a do: both name the keyword action as a move
+// OUT of a zone. Destroy is the odd one out (CR 701.7a defines it by
+// the graveyard it arrives in — destroyedThisWayLocked).
+//
+// Read off the live hand rather than off the settled event, for the
+// reason destroyedThisWayLocked gives: it is the reading that is still
+// true after an undo rewinds into an open prompt.
+//
+// A player who has LEFT the game reads as "not discarded". CR 800.4a
+// took their hand out of the game, so nothing they were asked about
+// moved for any reason the asking card can pay out on.
+//
+// Caller must hold g.mu.
+func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Eliminated || p.Hand == nil {
+		return false
+	}
+	return !p.Hand.Contains(cardID)
 }
 
 // discardCardsLocked discards `cards` from playerID's hand (CR 701.8a),
@@ -118,9 +172,10 @@ type discardOptions struct {
 // Two consequences worth stating, because they are what a caller sees:
 //
 //   - opts.then runs when the WHOLE batch has landed, not when this
-//     function returns. A Mind Rot on a commander returns nil with one
-//     card discarded, one prompt open and "then draw a card" still
-//     owed.
+//     function returns, and is handed the cards that were really
+//     discarded (discardedThisWayLocked). A Mind Rot on a commander
+//     returns nil with one card discarded, one prompt open and "then
+//     draw a card" still owed.
 //   - The discards of one batch are sequential in the log even though
 //     CR 701.8a makes them simultaneous. They already were; what is
 //     new is that a paused one puts the rest on the far side of a
@@ -145,6 +200,18 @@ type discardOptions struct {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
+	return g.discardBatchLocked(playerID, cards, nil, opts)
+}
+
+// discardBatchLocked is discardCardsLocked with the LANDED list it has
+// accumulated so far — the value the batch carries forward alongside
+// the shrinking `cards` slice, and for the same reason: a fresh slice
+// per leg rather than a shared accumulator, so an undo across the
+// CR 903.9 prompt has nothing half-written to put back and a replayed
+// answer builds the same list a clean run would. #1027.
+//
+// Caller must hold g.mu.
+func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID, opts discardOptions) error {
 	p := g.playerByIDLocked(playerID)
 	for len(cards) > 0 {
 		next, rest := cards[0], cards[1:]
@@ -169,7 +236,16 @@ func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts di
 			Source:        opts.source,
 			MustSettleNow: opts.cause == DiscardCauseCost,
 			then: func(g *Game) error {
-				return g.discardCardsLocked(playerID, rest, opts)
+				// Asked once this leg has reached a TERMINAL outcome,
+				// which is the only moment the answer is stable: the
+				// card has landed wherever the window sent it, or the
+				// window cancelled the move and it is still in hand.
+				grown := landed
+				if g.discardedThisWayLocked(playerID, next) {
+					grown = make([]uuid.UUID, 0, len(landed)+1)
+					grown = append(append(grown, landed...), next)
+				}
+				return g.discardBatchLocked(playerID, rest, grown, opts)
 			},
 		})
 		return err
@@ -177,5 +253,5 @@ func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts di
 	if opts.then == nil {
 		return nil
 	}
-	return opts.then(g)
+	return opts.then(g, landed)
 }

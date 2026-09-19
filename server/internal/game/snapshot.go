@@ -1243,13 +1243,14 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"chooseColorResume": c.chooseColorResume != nil,
 		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
-		// #1019's prompted-sacrifice run. Not a frame ON the choice —
-		// the continuation lives on the Game, keyed by this id,
-		// because the prompts of one run share it — but it is a
-		// continuation the snapshot cannot carry all the same, and a
-		// restore point taken mid-fan-out would drop the rest of the
-		// card. Counted here so the census says so.
-		"sacrificeRun": c.sacrificeRun != uuid.Nil,
+		// #1019's / #1027's prompted run — a sacrifice's or a
+		// discard's. Not a frame ON the choice — the continuation
+		// lives on the Game, keyed by this id, because the prompts of
+		// one run share it — but it is a continuation the snapshot
+		// cannot carry all the same, and a restore point taken
+		// mid-fan-out would drop the rest of the card. Counted here so
+		// the census says so.
+		"promptRun": c.promptRun != uuid.Nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)

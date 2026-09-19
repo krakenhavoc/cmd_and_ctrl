@@ -117,7 +117,7 @@ func TestEffectDiscardOfACommanderOffersTheCommandZone(t *testing.T) {
 			if id := queueEffectDiscard(g, DiscardPrompt{
 				Player: p.ID,
 				N:      1,
-				Then:   func(*Game) error { thenRuns++; return nil },
+				Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
 			}); id == uuid.Nil {
 				t.Fatal("a one-card discard against a one-card hand must queue a prompt")
 			}
@@ -183,7 +183,7 @@ func TestTwoDiscardedCommandersAskTwiceAndRunThenOnce(t *testing.T) {
 	queueEffectDiscard(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game) error { thenRuns++; return nil },
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
 	})
 	c := discardPromptFor(g, p.ID)
 	if c == nil {
@@ -413,7 +413,7 @@ func TestUndoAcrossADiscardPauseReplaysTheSameWay(t *testing.T) {
 		queueEffectDiscard(g, DiscardPrompt{
 			Player: p.ID,
 			N:      2,
-			Then:   func(*Game) error { thenRuns++; return nil },
+			Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
 		})
 		c := discardPromptFor(g, p.ID)
 		if c == nil {
@@ -498,7 +498,7 @@ func TestOrdinaryDiscardStillEmitsOneEventPerCardAndNeverPauses(t *testing.T) {
 	queueEffectDiscard(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game) error { thenRuns++; return nil },
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
 	})
 	c := discardPromptFor(g, p.ID)
 	if c == nil {

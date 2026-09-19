@@ -168,7 +168,9 @@ func tormentOfHailfireAnswered(victim uuid.UUID, branches []string, rest []uuid.
 				Source:   ctx.Source(),
 				N:        1,
 				Question: "Torment of Hailfire — discard a card",
-				Then:     func(g *game.Game) error { return tormentOfHailfireStep(NewContext(g, ctx.Item), rest) },
+				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
+					return tormentOfHailfireStep(NewContext(g, ctx.Item), rest)
+				},
 			})
 			return nil
 		default:

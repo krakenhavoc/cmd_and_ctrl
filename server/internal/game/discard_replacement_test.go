@@ -248,7 +248,7 @@ func TestUndoAcrossAnOptionalDiscardReplacementReplaysTheSameWay(t *testing.T) {
 	g.WithWriteLock(func() {
 		if err := g.discardCardsLocked(p.ID, []uuid.UUID{card, spare}, discardOptions{
 			cause: DiscardCauseEffect,
-			then:  func(*Game) error { thenRuns++; return nil },
+			then:  func(*Game, []uuid.UUID) error { thenRuns++; return nil },
 		}); err != nil {
 			t.Fatalf("discardCardsLocked: %v", err)
 		}

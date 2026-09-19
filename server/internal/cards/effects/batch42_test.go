@@ -260,15 +260,29 @@ func TestB42ViciousRumorsPingsDiscardsMillsAndGains(t *testing.T) {
 			t.Errorf("each opponent takes 1: %s %d → %d", p.Name, oppLife[p.ID], p.Life)
 		}
 	}
-	if me.Life != lifeBefore+1 {
-		t.Errorf("you gain 1: %d → %d", lifeBefore, me.Life)
+	// "You gain 1 life" is the LAST printed sentence, and since #1027
+	// it waits for the run: the caster must not be a life up while the
+	// table is still choosing what to pitch.
+	if me.Life != lifeBefore {
+		t.Errorf("you gained life before the table discarded: %d → %d", lifeBefore, me.Life)
 	}
-	for _, p := range g.Seats[1:] {
+	for i, p := range g.Seats[1:] {
 		graveBefore := len(p.Graveyard.Cards)
 		discardFromHand(t, g, p.ID)
-		// The discard lands, then its Then clause mills — two cards.
+		// The discard lands, then this seat's own "then" mills — two
+		// cards, on this opponent's own leg.
 		if got := len(p.Graveyard.Cards); got != graveBefore+2 {
 			t.Errorf("%s discards then mills: graveyard %d → %d, want +2", p.Name, graveBefore, got)
+		}
+		last := i == len(g.Seats[1:])-1
+		want := lifeBefore
+		if last {
+			want = lifeBefore + 1
+		}
+		if me.Life != want {
+			t.Errorf("after %s answered, your life is %d, want %d (the gain is the whole "+
+				"instruction's continuation, so it lands once, on the last leg)",
+				p.Name, me.Life, want)
 		}
 	}
 }

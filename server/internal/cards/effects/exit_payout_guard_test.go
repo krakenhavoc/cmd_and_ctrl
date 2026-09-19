@@ -50,9 +50,10 @@ import (
 // allowlisted below beside §5t's.
 //
 // The verbs are the ones with a pausable exit: exile, destroy,
-// sacrifice, bounce, tuck, mill, a discard (§5g) and a graveyard
-// arrival (§5q). The last two find nothing in the catalog today and are
-// in the tables anyway — a guard rail is for the site that has not been
+// sacrifice (fire-and-forget and PROMPTED), bounce, tuck, mill, a
+// discard (§5g — random and PROMPTED) and a graveyard arrival (§5q).
+// Several of them find nothing in the catalog today and are in the
+// tables anyway — a guard rail is for the site that has not been
 // written yet.
 //
 // WHAT IS NOT FLAGGED, on purpose:
@@ -65,17 +66,26 @@ import (
 //     it, and `err` is excluded by name as well.
 //   - an exit with a `Then`. That is the answer, not the problem.
 //
-// #1019 CLOSED THE ONE HOLE §5v DECLARED. The two PROMPT-driven
-// sacrifices, `g.PlayerSacrificesForEffect` and
-// `g.EachPlayerSacrificesForEffect`, were left out of the tables
-// because they queue a QUESTION and return how many seats were asked:
-// nothing has left the battlefield when they return, and no
-// continuation form existed to point a card at. One does now — a RUN,
-// whose continuation fires once every asked seat has answered and the
-// permanents they named have finished moving — so both entry points
-// are in the tables above with `sacrificePromptVerb` naming it, and
-// the return value they hand back is a count of QUESTIONS that no
-// clause may gate on.
+// #1019 AND #1027 CLOSED THE HOLES §5v DECLARED. The PROMPT-driven
+// exits were left out of the tables because they queue a QUESTION and
+// return the question rather than an outcome — the two sacrifices
+// (`g.PlayerSacrificesForEffect`, `g.EachPlayerSacrificesForEffect`)
+// return how many seats were asked, the discard prompt
+// (`g.QueueDiscardChoiceForEffect`, `g.DiscardChoiceForEffect`)
+// returns the prompt's ID. Nothing has left its zone when they return,
+// and no continuation form existed to point a card at; a lint whose
+// message names a fix that does not exist is worse than no lint.
+//
+// Both have one now — a RUN, whose continuation fires once every asked
+// seat has answered and the cards they named have finished moving
+// (prompt_run.go) — so all of them are in the tables above with
+// `sacrificePromptVerb` and `discardPromptVerb` naming the fix, and
+// what they hand back is a QUESTION that no clause may gate on.
+//
+// `discardVerb` covers the RANDOM discard beside them, and it names
+// `g.DiscardRandomThenForEffect` (#1027): a random discard is not a
+// prompt, but it is still an exit, so a discarded commander's CR 903.9
+// prompt holds the batch and the fire-and-forget form returns first.
 //
 // FALSE POSITIVES ARE EXPECTED AND CHEAP, exactly as they are in the
 // life guard: add the "<file>:<line>" to the allowlist with the reason
@@ -102,6 +112,14 @@ var exitPayoutAllowlist = map[string]string{
 		"avoid asking the engine for a life change of nothing. The mana value is read before the " +
 		"move because that is the last moment the card is guaranteed findable (CR 608.2h), which " +
 		"is the ungated half of the line ADR 0013 §5t draws.",
+	"kolaghans_command.go:70": "a cross-closure artifact of the enclosing-declaration walk, not a " +
+		"payout (#1027). The `ok` at kolaghans_command.go:70 is the DAMAGE mode's own " +
+		"`t, ok := ModeTarget(ctx, occ)`, declared at line 69 inside that mode's closure; the " +
+		"discard at line 55 is the DISCARD mode's, three closures earlier, and the two locals " +
+		"never share a scope. exitPayoutsIn walks a func literal both on its own and as part of " +
+		"the init() it sits in (the header says so), and on the enclosing pass every mode's " +
+		"locals look like one function's. The per-closure pass sees the damage mode with no exit " +
+		"in it and reports nothing, which is the right answer.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card
@@ -111,12 +129,14 @@ type exitVerb struct {
 	kind string
 	fix  string
 
-	// returnIsAQuestion marks the verbs whose entry points return a
-	// count of QUESTIONS ASKED rather than of permanents that moved —
-	// the two prompt-driven sacrifices (#1019). Nothing has left the
-	// battlefield when they return, so a condition reading the count
-	// is the payout shape in a different spelling, and
-	// questionCountGatesIn is the half of the scan that sees it.
+	// returnIsAQuestion marks the verbs whose entry points return the
+	// QUESTION rather than the outcome — the two prompt-driven
+	// sacrifices, which hand back how many seats were asked (#1019),
+	// and the two prompt-driven discards, which hand back the prompt's
+	// own ID (#1027). Nothing has left its zone when any of them
+	// returns, so a condition reading what they returned is the payout
+	// shape in a different spelling, and questionGatesIn is the half
+	// of the scan that sees it.
 	returnIsAQuestion bool
 }
 
@@ -142,9 +162,21 @@ var (
 		"and gate the clause on `tucked`"}
 	millVerb = exitVerb{kind: "mill", fix: "MillToZone.Then or g.MillToZoneThenForEffect, and gate the clause " +
 		"on the `milled` list"}
-	discardVerb = exitVerb{kind: "discard", fix: "there is no continuation form for a discard yet — a discard is " +
-		"an exit (ADR 0013 §5g) and DiscardRandomForEffect returns before a paused leg lands, so " +
-		"write the wrapper beside g.ExileCardThenForEffect rather than reading back on the next line"}
+	discardVerb = exitVerb{kind: "random discard", fix: "g.DiscardRandomThenForEffect (#1027, ADR 0013 §5y), " +
+		"and gate the clause on the `discarded` list — a discard is an exit (ADR 0013 §5g), so a " +
+		"discarded commander's CR 903.9 prompt holds the batch and the fire-and-forget form " +
+		"returns before it lands"}
+	discardPromptVerb = exitVerb{
+		kind: "prompted discard",
+		fix: "g.PlayerDiscardsThenForEffect, g.PlayersDiscardThenForEffect or " +
+			"g.EachPlayerDiscardsThenForEffect (#1027, ADR 0013 §5y), and gate the clause on the " +
+			"run's answer — `discarded.Count()` for \"a card for each card discarded this way\", " +
+			"`discarded.Discarded(seat)` for \"if you discard a card this way\". A clause merely " +
+			"printed AFTER the discard goes in the same continuation with the answer ignored: " +
+			"that is the ORDER, and the order is observable. For a fan-out with nothing waiting " +
+			"on it, g.EachPlayerDiscardsForEffect",
+		returnIsAQuestion: true,
+	}
 	graveyardVerb = exitVerb{kind: "graveyard arrival", fix: "there is no continuation form for a graveyard " +
 		"arrival yet — g.PutIntoGraveyardForEffect rides routeCardToZoneLocked and returns before a " +
 		"paused leg lands, so write the wrapper beside g.ExileCardThenForEffect " +
@@ -178,6 +210,15 @@ var exitStartsTheClock = map[string]exitVerb{
 	// does now, and it is what the verb above names.
 	"PlayerSacrificesForEffect":     sacrificePromptVerb,
 	"EachPlayerSacrificesForEffect": sacrificePromptVerb,
+	// #1027: the two PROMPT-driven discards, out for exactly the same
+	// reason and in for exactly the same one. They queue a question
+	// over the player's own hand and hand back the prompt's ID;
+	// nothing has left the hand, and a discarded commander's CR 903.9
+	// prompt can hold the batch for an action after the answer. The
+	// run is the fix (discard_run.go).
+	"QueueDiscardChoiceForEffect": discardPromptVerb,
+	"DiscardChoiceForEffect":      discardPromptVerb,
+	"EachPlayerDiscardsForEffect": discardPromptVerb,
 }
 
 // exitPrimitives are the catalog structs whose `.Apply(ctx)` reaches
@@ -343,7 +384,7 @@ func exitPayoutsInBody(fset *token.FileSet, name string, body *ast.BlockStmt, al
 		}
 		return true
 	})
-	out := questionCountGatesIn(fset, name, body, exits, allow)
+	out := questionGatesIn(fset, name, body, exits, allow)
 	if len(pre) == 0 {
 		return out
 	}
@@ -388,28 +429,30 @@ func exitPayoutsInBody(fset *token.FileSet, name string, body *ast.BlockStmt, al
 	return out
 }
 
-// questionCountGatesIn is the #1019 half of the scan: a condition that
-// reads the COUNT one of the prompt-driven sacrifices returned.
+// questionGatesIn is the #1019 / #1027 half of the scan: a condition
+// that reads what one of the PROMPT-driven exits returned.
 //
 // The other verbs return an outcome — an incomplete one, which is what
-// the rest of this file is about, but a count of permanents that
-// really left. `g.PlayerSacrificesForEffect` and
-// `g.EachPlayerSacrificesForEffect` return a count of QUESTIONS, and
-// nothing has left the battlefield when they hand it back. So the
-// shape to flag is not "a gate on a local read before the call" — Rise
-// of the Witch-king had no such local, which is why the scan above
-// never saw it — but "a gate on what the call returned", in either
-// spelling:
+// the rest of this file is about, but a count of cards that really
+// moved. A prompt-driven exit returns the QUESTION: the two
+// sacrifices hand back how many seats were asked, the two discards
+// hand back the prompt's own ID, and nothing has left its zone when
+// any of them returns. So the shape to flag is not "a gate on a local
+// read before the call" — Rise of the Witch-king had no such local,
+// which is why the scan above never saw it — but "a gate on what the
+// call returned", in either spelling:
 //
 //	if g.PlayerSacrificesForEffect(...) == 0 { return nil }
 //	asked := g.EachPlayerSacrificesForEffect(...)
 //	if asked == 0 { ... }
+//	id := g.QueueDiscardChoiceForEffect(...)
+//	if id != uuid.Nil { ... }
 //
 // The stop rule a fire-and-forget caller used to need the count for —
 // "ask N times, stop when the seat has nothing" — is
 // g.PlayerSacrificesNForEffect's job now, so no legitimate caller
 // reads it any more.
-func questionCountGatesIn(
+func questionGatesIn(
 	fset *token.FileSet,
 	name string,
 	body *ast.BlockStmt,
@@ -484,7 +527,7 @@ func questionCountGatesIn(
 			case *ast.CallExpr:
 				for i := range exits {
 					if exits[i].call == v && exits[i].verb.returnIsAQuestion {
-						found, read = &exits[i], "the count it returned"
+						found, read = &exits[i], "what it returned"
 						break
 					}
 				}
@@ -498,9 +541,9 @@ func questionCountGatesIn(
 		if _, ok := allow[where]; ok {
 			return true
 		}
-		out = append(out, where+" gates on `"+read+"`, which is how many seats the "+
+		out = append(out, where+" gates on `"+read+"`, which is the QUESTION the "+
 			found.verb.kind+" at "+name+":"+strconv.Itoa(fset.Position(found.call.Pos()).Line)+
-			" ASKED rather than what they sacrificed — use "+found.verb.fix)
+			" asked rather than what it moved — use "+found.verb.fix)
 		return true
 	})
 	return out
@@ -815,6 +858,55 @@ func rummage(ctx *Context, player uuid.UUID) error {
 	return nil
 }
 `
+	const discardAnswer = `package effects
+
+func rummage(ctx *Context, player uuid.UUID) error {
+	return ctx.Game.DiscardRandomThenForEffect(player, 1, func(g *game.Game, discarded []uuid.UUID) error {
+		if len(discarded) == 0 {
+			return nil
+		}
+		return DrawCards{N: 1}.Apply(ctx)
+	})
+}
+`
+	const discardPromptOffender = `package effects
+
+func syphonMind(ctx *Context, source uuid.UUID) error {
+	drew := 0
+	for _, opp := range ctx.Opponents() {
+		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: opp, Source: source, N: 1})
+		drew++
+	}
+	if drew > 0 {
+		return DrawCards{N: drew}.Apply(ctx)
+	}
+	return nil
+}
+`
+	const discardPromptCountOffender = `package effects
+
+func mindRot(ctx *Context, victim, source uuid.UUID) error {
+	id := ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: victim, Source: source, N: 2})
+	if id == uuid.Nil {
+		return nil
+	}
+	return DrawCards{N: 1}.Apply(ctx)
+}
+`
+	const discardPromptAnswer = `package effects
+
+func syphonMind(ctx *Context, item *game.StackItem, source uuid.UUID) error {
+	caster := item.Controller
+	return ctx.Game.EachPlayerDiscardsThenForEffect(caster,
+		game.DiscardPrompt{Source: source, N: 1},
+		func(g *game.Game, discarded game.PromptedDiscards) error {
+			if n := discarded.Count(); n > 0 {
+				return g.DrawNForEffect(caster, n)
+			}
+			return nil
+		})
+}
+`
 	for _, tc := range []struct {
 		name string
 		src  string
@@ -839,6 +931,10 @@ func rummage(ctx *Context, player uuid.UUID) error {
 		{"a prompted sacrifice: EachPlayerSacrificesThenForEffect", sacrificePromptAnswer, 0},
 		{"a graveyard arrival: a gate on a pre-move local", graveyardOffender, 1},
 		{"a discard: a gate on a pre-discard local", discardOffender, 1},
+		{"a discard: DiscardRandomThenForEffect", discardAnswer, 0},
+		{"a prompted discard: a gate on a count of QUESTIONS", discardPromptOffender, 1},
+		{"a prompted discard: a gate on the prompt ID", discardPromptCountOffender, 1},
+		{"a prompted discard: EachPlayerDiscardsThenForEffect", discardPromptAnswer, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fset := token.NewFileSet()
@@ -929,7 +1025,7 @@ func TestEveryExitVerbIsReachableFromTheTables(t *testing.T) {
 	declared := map[string]bool{}
 	for _, v := range []exitVerb{
 		exileVerb, destroyVerb, sacrificeVerb, sacrificePromptVerb, bounceVerb,
-		tuckVerb, millVerb, discardVerb, graveyardVerb,
+		tuckVerb, millVerb, discardVerb, discardPromptVerb, graveyardVerb,
 	} {
 		if strings.TrimSpace(v.fix) == "" {
 			t.Errorf("the %q verb names no fix — a lint that fires without naming the continuation "+
