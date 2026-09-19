@@ -426,11 +426,7 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := aiseat.Start(ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(1, 1)), aiseat.Config{}, nil, testLogger())
 	cancel()
-	select {
-	case <-r.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatal("runner did not exit on cancel")
-	}
+	waitForRunner(t, "the runner to exit on cancel", r)
 
 	// Game end: the other seat concedes → state ended → the runner
 	// wakes on the commit and exits.
@@ -440,10 +436,9 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	if _, _, err := room.ApplyExternal(func() error { return g.Concede(g.Seats[1].ID) }); err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case <-r2.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatalf("runner did not exit when the game ended (state %s)", g.CurrentState())
+	waitForRunner(t, "the runner to exit when the game ended", r2)
+	if st := g.CurrentState(); st == game.StateActive {
+		t.Fatalf("the runner exited with the game still %s", st)
 	}
 }
 
