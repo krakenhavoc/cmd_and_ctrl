@@ -63,20 +63,25 @@ func TestStringOption(t *testing.T) {
 
 func TestCommandDefinitions(t *testing.T) {
 	defs := commandDefinitions()
-	if len(defs) != 2 {
-		t.Fatalf("want 2 definitions, got %d", len(defs))
+	if len(defs) != 3 {
+		t.Fatalf("want 3 definitions, got %d", len(defs))
 	}
-	names := []string{defs[0].Name, defs[1].Name}
-	if !contains(names, CmdInvite) || !contains(names, CmdGames) {
+	names := make([]string, len(defs))
+	for i, d := range defs {
+		names[i] = d.Name
+	}
+	if !contains(names, CmdInvite) || !contains(names, CmdGames) || !contains(names, CmdEnd) {
 		t.Errorf("missing expected command names: %v", names)
 	}
 	// /cc-invite must have an optional string "name" option so
 	// users can type /cc-invite friday-commander.
-	var invite *discordgo.ApplicationCommand
+	var invite, end *discordgo.ApplicationCommand
 	for _, d := range defs {
-		if d.Name == CmdInvite {
+		switch d.Name {
+		case CmdInvite:
 			invite = d
-			break
+		case CmdEnd:
+			end = d
 		}
 	}
 	if invite == nil {
@@ -84,6 +89,13 @@ func TestCommandDefinitions(t *testing.T) {
 	}
 	if len(invite.Options) != 1 || invite.Options[0].Required {
 		t.Errorf("invite should have one optional option, got %+v", invite.Options)
+	}
+	// /cc-end must have a required, autocompleting "game" option.
+	if end == nil {
+		t.Fatal("missing end command")
+	}
+	if len(end.Options) != 1 || !end.Options[0].Required || !end.Options[0].Autocomplete {
+		t.Errorf("end should have one required, autocompleting option, got %+v", end.Options)
 	}
 }
 

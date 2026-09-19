@@ -47,6 +47,14 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    | `CMDCTRL_DISCORD_GUILD_IDS` | Actions **variable** of the same name, comma-separated guild IDs |
    | `CMDCTRL_ADMIN_TOKEN` | copied on the host from `/etc/cmd_and_ctrl/env` every deploy, so it cannot drift from the server's |
 
+   Two more keys are written the same way, but only when set —
+   `CMDCTRL_DISCORD_ADMIN_USER_IDS` and `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`
+   (Actions **variables**, comma-separated snowflakes): who may run
+   `/cc-end` (#614). Unlike the four keys above, an unset admin variable
+   is not a misconfiguration — `/cc-end` refuses every caller with its
+   own ephemeral message rather than failing open, so this step neither
+   warns nor writes anything for the one left unset.
+
    `CMDCTRL_SERVER_BASE_URL` and `CMDCTRL_CLIENT_BASE_URL` are left to
    their defaults, which are production's values. The step skips while
    the secret is unset, or while the `cmdctrl-bot` group does not exist.
