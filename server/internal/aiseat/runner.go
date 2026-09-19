@@ -344,18 +344,17 @@ func (r *Runner) step(ctx context.Context) bool {
 		if r.room.Game.CurrentState() != game.StateActive {
 			return false
 		}
-		// #687: the policy may order the enumerator's target expansion,
-		// and its ordering is a read of the seat's own view — so for a
-		// TargetOrderer the view is built first and reused for the
-		// decision below. A policy without an opinion pays for
-		// nothing: targetOrder answers nil without touching the
+		// #687 / #1013: the policy may order the enumerator's target
+		// expansion and price the cards a cost would eat, and both are
+		// reads of the seat's own view — so for a policy with either
+		// opinion the view is built first and reused for the decision
+		// below. A policy with neither pays for nothing:
+		// enumerationOrder answers a zero Options without touching the
 		// projection, and the enumeration is byte-identical to what it
 		// was.
 		started := time.Now()
-		order, ordering := r.targetOrder()
-		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, legal.Options{
-			OrderTargets: order,
-		})
+		opts, ordering := r.enumerationOrder()
+		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
 		if len(moves) == 0 {
 			return true
 		}

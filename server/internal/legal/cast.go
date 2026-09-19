@@ -279,23 +279,34 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 // with. Not a rule; a policy, documented in docs/bot.md beside
 // maxEnumeratedRepeats.
 //
-// ONE, and the reason is ADR 0033 §1's corollary rather than
-// squeamishness about combinatorics: a variable in a COST must not
-// become an arity of the target/mode cross product. Escape-five over
-// a twenty-card graveyard is 15,504 payments, every one of which
-// would have to be priced and every one of which is the same spell
-// with the same targets — so a cap of twelve would spend the entire
-// per-source budget on twelve indistinguishable Uros and never offer
-// the second target of anything.
+// THREE since #1013, and it was ONE before, for ADR 0033 §1's
+// corollary rather than squeamishness about combinatorics: a variable
+// in a COST must not become an arity of the target/mode cross product.
+// Escape-five over a twenty-card graveyard is 15,504 payments, every
+// one of them the same spell with the same targets, so a cap of twelve
+// spent on payments would never offer the second target of anything.
 //
-// "Indistinguishable" is the load-bearing word, and it is a statement
-// about the POLICY rather than about Magic. The heuristic prices the
-// battlefield and the seats; a card in a graveyard or a hand has no
-// value in its evaluation at all (aiseat/heuristic/score.go), so it
-// cannot tell two escape payments apart and would pick between them
-// by index. When a policy learns to price the cards a cost eats, this
-// constant is where the search is widened.
-const maxEnumeratedCostPayments = 1
+// Two things changed and the corollary still holds.
+//
+// The payments are no longer INDISTINGUISHABLE. That was a statement
+// about the POLICY rather than about Magic — the heuristic priced the
+// battlefield and the seats and a card in a graveyard was worth
+// nothing to it, so it could only pick between payments by index, and
+// an Uro over a graveyard holding a second Uro, a Snapcaster target
+// and three lands ate whichever three were oldest. A policy that
+// implements aiseat.CostFuelPricer now prices a card as FUEL, and
+// cheapestFuelFirst sorts the pool by it, so payment number one is the
+// best one the policy can name.
+//
+// And the extra payments spend NO TARGET BUDGET. They are offered in a
+// second pass, out of whatever MaxExpansionPerSource the target walk
+// did not use, against the FIRST announcement it made — the same spell
+// with the same targets at a different price, which is what they all
+// are. An Uro with no targets has eleven unspent and gets its
+// alternatives; a removal spell with an escape cost over a wide board
+// spends its budget on targets and gets none, which is the corollary
+// enforced rather than restated.
+const maxEnumeratedCostPayments = 3
 
 // maxEnumeratedRepeats caps how many times the enumerator will offer
 // to pay one REPEATABLE optional cost (multikicker) in a single
@@ -635,7 +646,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	// maxEnumeratedCostPayments.
 	altCostSets := [][]uuid.UUID{nil}
 	if want := offer.CardPaymentCount(); want > 0 {
-		pool := g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)
+		// #1013: the candidates come back in ZONE order, which is an
+		// arbitrary answer to "which three cards does this Uro eat".
+		// cheapestFuelFirst asks the seat's own policy what each one is
+		// worth to KEEP and sorts the cheapest to the front, so the
+		// first combination below is the best payment the policy can
+		// name and the next few are that payment with its last card
+		// swapped for the next-cheapest.
+		pool := e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer))
 		altCostSets = combinations(pool, want, want, maxEnumeratedCostPayments)
 		if len(altCostSets) == 0 {
 			// Unreachable through CastOffersForLocked, which already
@@ -678,6 +696,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	}
 
 	budget := e.opts.MaxExpansionPerSource
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen)
+	// #1013: the first announcement the expansion makes, kept so the
+	// ALTERNATIVE cost payments can be offered against it below.
+	var first *announcedCast
 	for _, modes := range modeSets {
 		// The budget is spent MODES-outermost: every mode selection
 		// gets at least one target set before any gets a second, so a
@@ -757,71 +779,162 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 				}
 				setX = k
 			}
-			for _, altPaid := range altCostSets {
-				for _, discards := range discardSets {
-					for _, sacs := range sacrificeSets {
-						if budget <= 0 {
-							return
-						}
-						budget--
-						label := "Cast " + card.Name
-						switch from {
-						case "command":
-							label += " from the command zone"
-						case "graveyard", "exile", "library":
-							label += " from " + from
-						}
-						if setX > 0 {
-							label += fmt.Sprintf(" for X=%d", setX)
-						}
-						// #673: the price. A flashed-back Faithless
-						// Looting, an escaped Uro and a hard-cast one
-						// are otherwise the same line in the move log,
-						// and a bot eval that cannot tell them apart
-						// cannot explain why the bot escaped.
-						label += altCostLabel(g, offer, altPaid)
-						// ADR 0073: the kicked and unkicked casts are
-						// otherwise the same line in the move log, and a
-						// bot eval that cannot tell them apart cannot
-						// explain why the bot kicked.
-						label += optionalCostLabel(optional, chosen)
-						label += targetLabel(g, targets)
-						e.add(Move{
-							Type:   TypeCastSpell,
-							Player: e.seat,
-							Kind:   KindCast,
-							Label:  label,
-							Source: card.InstanceID,
-							// CR 119.4: the life half of the offer is a
-							// price Params cannot name, so a policy
-							// reading only the payload would price
-							// Force of Will's pitch as free. See
-							// MoveCost.
-							Cost: moveCost(offerLife(offer), 0),
-							Params: mustJSON(castParams{
-								InstanceID:      card.InstanceID.String(),
-								FromZone:        from,
-								AlternativeCost: offerKey(offer),
-								AltCostIDs:      idStrings(altPaid),
-								Targets:         wireTargets(targets),
-								Modes:           modes,
-								XValue:          setX,
-								DiscardIDs:      idStrings(discards),
-								SacrificeIDs:    idStrings(sacs),
-								OptionalCosts:   chosen,
-								Strict:          true,
-								AutoTap:         true,
-								// ADR 0034: `card` has already had
-								// SetFace applied by the caller, so
-								// ActiveFace IS the face this move casts.
-								Face: card.ActiveFace,
-							}),
-						})
+			for _, discards := range discardSets {
+				for _, sacs := range sacrificeSets {
+					if budget <= 0 {
+						return
 					}
+					budget--
+					if first == nil {
+						first = &announcedCast{
+							modes:    modes,
+							targets:  targets,
+							x:        setX,
+							discards: discards,
+							sacs:     sacs,
+						}
+					}
+					emit(altCostSets[0], modes, targets, setX, discards, sacs)
 				}
 			}
 		}
 	}
+	// #1013: the ALTERNATIVE payments, out of whatever expansion budget
+	// the target walk did not use — never out of ITS budget. ADR 0033
+	// §1's corollary is that a variable in a COST must not become an
+	// arity of the target cross product, and a payment that displaced
+	// a target would be exactly that. An Uro with no targets has
+	// eleven unspent and gets its alternatives; a removal spell with an
+	// escape cost over a wide board spends its budget on targets and
+	// gets none.
+	//
+	// They repeat the FIRST announcement, because that is what they
+	// are: the same spell with the same targets at a different price.
+	if first == nil {
+		return
+	}
+	for _, altPaid := range altCostSets[1:] {
+		if budget <= 0 {
+			return
+		}
+		budget--
+		emit(altPaid, first.modes, first.targets, first.x, first.discards, first.sacs)
+	}
+}
+
+// announcedCast is one announcement the expansion has already emitted:
+// what an alternative-cost payment is offered AGAINST (#1013).
+type announcedCast struct {
+	modes    []int
+	targets  []game.TargetRef
+	x        int
+	discards []uuid.UUID
+	sacs     []uuid.UUID
+}
+
+// castEmitter writes one concrete cast move.
+//
+// Lifted out of the expansion loop by #1013 so the alternative-payment
+// pass reuses it verbatim rather than growing a second copy of the
+// label and the params — the #815 / #866 lesson at the move layer: two
+// writers of one move shape drift, and the one that drifts is the one
+// nobody reads.
+type castEmitter func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID)
+
+// castMoveEmitter builds that writer for one (card, zone, offer,
+// optional-cost) announcement. Everything it closes over is fixed for
+// the whole expansion; everything that varies is an argument.
+func (e *enumerator) castMoveEmitter(
+	g *game.Game,
+	card game.Card,
+	from string,
+	offer *game.AlternativeCost,
+	optional []game.AdditionalCost,
+	chosen []int,
+) castEmitter {
+	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX int, discards, sacs []uuid.UUID) {
+		label := "Cast " + card.Name
+		switch from {
+		case "command":
+			label += " from the command zone"
+		case "graveyard", "exile", "library":
+			label += " from " + from
+		}
+		if setX > 0 {
+			label += fmt.Sprintf(" for X=%d", setX)
+		}
+		// #673: the price. A flashed-back Faithless Looting, an escaped
+		// Uro and a hard-cast one are otherwise the same line in the
+		// move log, and a bot eval that cannot tell them apart cannot
+		// explain why the bot escaped.
+		label += altCostLabel(g, offer, altPaid)
+		// ADR 0073: the kicked and unkicked casts are otherwise the
+		// same line in the move log, and a bot eval that cannot tell
+		// them apart cannot explain why the bot kicked.
+		label += optionalCostLabel(optional, chosen)
+		label += targetLabel(g, targets)
+		e.add(Move{
+			Type:   TypeCastSpell,
+			Player: e.seat,
+			Kind:   KindCast,
+			Label:  label,
+			Source: card.InstanceID,
+			// CR 119.4: the life half of the offer is a price Params
+			// cannot name, so a policy reading only the payload would
+			// price Force of Will's pitch as free. See MoveCost.
+			Cost: moveCost(offerLife(offer), 0),
+			Params: mustJSON(castParams{
+				InstanceID:      card.InstanceID.String(),
+				FromZone:        from,
+				AlternativeCost: offerKey(offer),
+				AltCostIDs:      idStrings(altPaid),
+				Targets:         wireTargets(targets),
+				Modes:           modes,
+				XValue:          setX,
+				DiscardIDs:      idStrings(discards),
+				SacrificeIDs:    idStrings(sacs),
+				OptionalCosts:   chosen,
+				Strict:          true,
+				AutoTap:         true,
+				// ADR 0034: `card` has already had SetFace applied by
+				// the caller, so ActiveFace IS the face this move casts.
+				Face: card.ActiveFace,
+			}),
+		})
+	}
+}
+
+// cheapestFuelFirst orders the candidates for a cost's CARD-shaped half
+// so the payment the enumerator builds first is the one the seat would
+// miss least (#1013).
+//
+// The pool arrives in ZONE order — the oldest cards in the graveyard,
+// the left of the hand — which is an arbitrary answer to "which three
+// cards does this Uro eat", and arbitrary is what the cap of one made
+// permanent: an escape over a graveyard holding a second Uro, a
+// Snapcaster target and three lands ate whichever three were oldest.
+//
+// A HOOK rather than a scorer here, for the reason Options.OrderTargets
+// is one (ADR 0033 §1): what a card in a graveyard is worth to a seat
+// is a POLICY question, and `legal` may not import `aiseat`. A seat
+// with no opinion gets zone order, which is byte-identical to what it
+// got before this existed.
+//
+// The sort is STABLE and ASCENDING in "worth keeping", so equal prices
+// keep zone order and two enumerations of one board produce the same
+// move list. The returned slice is fresh: the pool comes from the
+// engine and must not be reordered under it.
+func (e *enumerator) cheapestFuelFirst(pool []uuid.UUID) []uuid.UUID {
+	if e.opts.OrderCostFuel == nil || len(pool) < 2 {
+		return pool
+	}
+	out := append([]uuid.UUID(nil), pool...)
+	price := make(map[uuid.UUID]float64, len(out))
+	for _, id := range out {
+		price[id] = e.opts.OrderCostFuel(TargetCandidate{ID: id})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return price[out[i]] < price[out[j]] })
+	return out
 }
 
 // affordableXFrom reports whether the seat can pay cost right now —

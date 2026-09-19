@@ -27,9 +27,11 @@ import (
 // — it has targets, so it is not a mana ability (CR 605.1a) and the
 // mana arrives on resolution — and draws. The target players'
 // sacrifice prompts are queued in APNAP order (CR 101.4: the active
-// player chooses first, then the others in turn order) and answered
-// after the draw, which changes nothing a player can see: no choice
-// depends on the card drawn.
+// player chooses first, then the others in turn order) and the mana
+// and the draw are the run's continuation (#1019), so they land after
+// the last opponent has answered, which is the printed order. They
+// used to land first; nothing a player can see depended on it, but
+// the sequence is observable and now it is right.
 //
 // Declared simplification, weaker than printed: "two OTHER creatures"
 // is enforced by name (b03NotNamed, Warren Soultrader's posture),
@@ -75,10 +77,18 @@ func priestOfForgottenGodsEffect(g *game.Game, item *game.StackItem) error {
 		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, p, -2); err != nil {
 			return err
 		}
-		g.PlayerSacrificesForEffect(item.SourceCardID, p, sacrificeSpec("a creature", Creature()), "Sacrifice a creature")
 	}
-	if err := g.AddManaForEffect(item.Controller, item.SourceCardID, "{B}{B}"); err != nil {
-		return err
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+	// One run over every target, so the controller's half waits for
+	// the last of them. The answer is deliberately ignored: "you add
+	// {B}{B} and draw a card" is not gated on anybody sacrificing
+	// anything (ADR 0013 §5m item 5), and a table where nobody had a
+	// creature still pays.
+	return g.PlayersSacrificeThenForEffect(item.SourceCardID, players,
+		sacrificeSpec("a creature", Creature()), "Sacrifice a creature",
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			if err := g.AddManaForEffect(item.Controller, item.SourceCardID, "{B}{B}"); err != nil {
+				return err
+			}
+			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+		})
 }

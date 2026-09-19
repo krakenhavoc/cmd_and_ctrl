@@ -202,15 +202,24 @@ func TestPriestOfForgottenGodsEdictsDrainsAddsManaAndDraws(t *testing.T) {
 	if opp.Life != life-2 {
 		t.Errorf("target lost %d life, want 2", life-opp.Life)
 	}
+	// #1019: "you add {B}{B} and draw a card" is the run's
+	// continuation, so it lands after the last target has answered —
+	// the printed order.
+	if got := me.Hand.Size() - hand; got != 0 {
+		t.Errorf("drew %d before the sacrifice was answered, want 0", got)
+	}
+	if got := poolColors(me); len(got) != 0 {
+		t.Errorf("pool %v before the sacrifice was answered, want empty", got)
+	}
+	answerSacrifice(t, g, opp.ID, victim)
+	if g.Battlefield.Contains(victim) {
+		t.Error("the target player sacrifices a creature")
+	}
 	if got := me.Hand.Size() - hand; got != 1 {
 		t.Errorf("drew %d, want 1", got)
 	}
 	if got := poolColors(me); len(got) != 2 || got[0] != "B" || got[1] != "B" {
 		t.Errorf("pool %v, want B B", got)
-	}
-	answerSacrifice(t, g, opp.ID, victim)
-	if g.Battlefield.Contains(victim) {
-		t.Error("the target player sacrifices a creature")
 	}
 	if !b16Tapped(t, g, priest) {
 		t.Error("the Priest taps")

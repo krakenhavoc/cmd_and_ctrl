@@ -2476,6 +2476,32 @@ permanent WAS sacrificed. `EventSacrifice` still fires before the move,
 so a "whenever you sacrifice" payoff is unaffected either way. See
 [ADR 0013 §5r](docs/decisions/0013-replacement-effects.md).
 
+**A PROMPTED sacrifice returns a count of QUESTIONS, and nothing may
+be gated on it (#1019).** `g.PlayerSacrificesForEffect` and
+`g.EachPlayerSacrificesForEffect` do not sacrifice anything — they
+QUEUE a prompt per seat and return how many seats were asked. The
+permanent leaves when a player answers, which is one or more actions
+later, so a clause written on the next line pays out before anybody
+has chosen. Use a RUN whenever ANYTHING follows the prompt, the
+ordering included: `g.EachPlayerSacrificesThenForEffect(source,
+except, spec, reason, then)` for the APNAP fan-out,
+`g.PlayersSacrificeThenForEffect(source, players, …)` for a named set
+of seats, `g.PlayerSacrificesThenForEffect(source, player, spec,
+reason, count, then)` for one seat asked N times, and
+`effects.EachPlayerSacrifices.Then` card-side. One run is ONE printed
+instruction however many prompts it takes, and `then` runs once —
+after the last seat has answered AND the permanents they named have
+finished moving, so a sacrificed commander’s CR 903.9 prompt holds it
+too. It is handed `game.PromptedSacrifices`: `.Sacrificed(seat)` is
+"if you sacrificed a creature this way", `.Count()` is "that many",
+`.By(seat)` and `.Cards()` are the permanents themselves. A seat that
+was asked and sacrificed nothing is IN the answer with an empty list;
+a seat with nothing to sacrifice was never asked and is absent, and
+the two read the same on purpose. For a plain "ask N times" with
+nothing waiting, `g.PlayerSacrificesNForEffect` — never a hand-written
+loop reading the count, which the payout lint now flags. See
+[ADR 0013 §5x](docs/decisions/0013-replacement-effects.md).
+
 **"If it WAS a creature card" is a clause about the exiled card, so it
 waits and it is gated (#911).** Cling to Dust, Scavenging Ooze and
 Deluge of the Dead. Two facts at two moments: the card's TYPE is read

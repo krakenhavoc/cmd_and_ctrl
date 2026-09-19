@@ -51,6 +51,10 @@ type castWatcher struct {
 	bySource map[uuid.UUID]int
 	// paid counts the alternative-cost keys the bot claimed.
 	paid map[string]int
+	// altPaid records, per source card, the CARD payments the bot made
+	// to an alternative cost — which five cards each escape ate
+	// (#1013).
+	altPaid map[uuid.UUID][][]string
 }
 
 func newCastWatcher(inner aiseat.Policy) *castWatcher {
@@ -59,7 +63,16 @@ func newCastWatcher(inner aiseat.Policy) *castWatcher {
 		fromZone: map[string]int{},
 		bySource: map[uuid.UUID]int{},
 		paid:     map[string]int{},
+		altPaid:  map[uuid.UUID][][]string{},
 	}
+}
+
+// altCostsPaidFor is every card payment the bot made to an alternative
+// cost of one source card, in the order it made them.
+func (p *castWatcher) altCostsPaidFor(src uuid.UUID) [][]string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([][]string(nil), p.altPaid[src]...)
 }
 
 // offeredFor is how many graveyard casts of one card reached the
@@ -84,6 +97,20 @@ func (p *castWatcher) TargetOrder(in aiseat.Input) legal.TargetOrder {
 	return o.TargetOrder(in)
 }
 
+// CostFuelPrice forwards #1013's fuel-pricing hook, so the wrapped
+// policy is still the CostFuelPricer the runner looks for. The reason
+// is TargetOrder's, one hook later: a wrapper that swallowed it would
+// quietly turn the ordering off for every test that uses one, and the
+// symptom — an escape eating the oldest cards in the graveyard — is
+// exactly the bug the hook exists to fix.
+func (p *castWatcher) CostFuelPrice(in aiseat.Input) legal.CostFuelOrder {
+	o, ok := p.inner.(aiseat.CostFuelPricer)
+	if !ok {
+		return nil
+	}
+	return o.CostFuelPrice(in)
+}
+
 func (p *castWatcher) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, error) {
 	graveyardOffers := 0
 	perSource := map[uuid.UUID]int{}
@@ -104,6 +131,10 @@ func (p *castWatcher) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decis
 		if z := zoneOfCast(in.Moves[d.Index]); z != "" {
 			p.fromZone[z]++
 			p.paid[altCostOfCast(in.Moves[d.Index])]++
+			if ids := altCostIDsOfCast(in.Moves[d.Index]); len(ids) > 0 {
+				src := in.Moves[d.Index].Source
+				p.altPaid[src] = append(p.altPaid[src], ids)
+			}
 		}
 	}
 	return d, err

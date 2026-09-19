@@ -118,6 +118,13 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // Returns the number of prompts queued, so a caller can tell "nobody
 // had a creature" from "everyone was asked".
 //
+// THE FIRE-AND-FORGET FORM, and the count is not an outcome: nothing
+// has left the battlefield when it returns, and a clause written on
+// the next line pays out for a sacrifice nobody has chosen yet. A
+// card with anything hanging off the answer uses
+// EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
+// is this queue loop with the rest of the card attached.
+//
 // The choices are queued in APNAP order and answered in whatever
 // order the players click. Strictly, CR 701.21a makes the sacrifices
 // simultaneous after all choices are made; sequential resolution is
@@ -157,28 +164,18 @@ func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID,
 // than prompted with an empty list — a mandatory sacrifice with
 // nothing to sacrifice does nothing (CR 701.21a).
 //
-// Returns 1 when a prompt was queued and 0 when it was skipped, so a
-// caller with a "if you do" rider can tell the two apart.
+// Returns 1 when a prompt was queued and 0 when it was skipped.
+//
+// THE FIRE-AND-FORGET FORM. The 1 says a QUESTION went up, not that
+// anything was sacrificed — a caller with an "if you do" rider is
+// asking the wrong thing and wants
+// PlayerSacrificesThenForEffect (#1019, sacrifice_run.go).
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {
-	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Eliminated {
+	if !g.queueSacrificePromptLocked(source, playerID, spec, reason, uuid.Nil) {
 		return 0
 	}
-	options := g.sacrificeCandidatesLocked(playerID, spec)
-	if len(options) == 0 {
-		return 0
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:             PendingChoiceSacrifice,
-		Chooser:          playerID,
-		FromPlayer:       playerID,
-		Count:            1,
-		Source:           source,
-		Reason:           reason,
-		SacrificeOptions: options,
-	})
 	return 1
 }
 

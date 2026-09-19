@@ -64,15 +64,18 @@ import (
 //   - `if err != nil`. The error is assigned by the exit, not before
 //     it, and `err` is excluded by name as well.
 //   - an exit with a `Then`. That is the answer, not the problem.
-//   - the PROMPT-driven sacrifices, `g.PlayerSacrificesForEffect` and
-//     `g.EachPlayerSacrificesForEffect`. They queue a question and
-//     return how many seats were asked; nothing has left the
-//     battlefield when they return, and no continuation form exists to
-//     point a card at — the sacrifice happens when the player answers,
-//     on a prompt that carries no tail. That is a different seam with a
-//     different answer (Rise of the Witch-king declares it as a caveat,
-//     and #1019 tracks it), and a lint whose message names a fix that
-//     does not exist is worse than no lint.
+//
+// #1019 CLOSED THE ONE HOLE §5v DECLARED. The two PROMPT-driven
+// sacrifices, `g.PlayerSacrificesForEffect` and
+// `g.EachPlayerSacrificesForEffect`, were left out of the tables
+// because they queue a QUESTION and return how many seats were asked:
+// nothing has left the battlefield when they return, and no
+// continuation form existed to point a card at. One does now — a RUN,
+// whose continuation fires once every asked seat has answered and the
+// permanents they named have finished moving — so both entry points
+// are in the tables above with `sacrificePromptVerb` naming it, and
+// the return value they hand back is a count of QUESTIONS that no
+// clause may gate on.
 //
 // FALSE POSITIVES ARE EXPECTED AND CHEAP, exactly as they are in the
 // life guard: add the "<file>:<line>" to the allowlist with the reason
@@ -107,25 +110,42 @@ var exitPayoutAllowlist = map[string]string{
 type exitVerb struct {
 	kind string
 	fix  string
+
+	// returnIsAQuestion marks the verbs whose entry points return a
+	// count of QUESTIONS ASKED rather than of permanents that moved —
+	// the two prompt-driven sacrifices (#1019). Nothing has left the
+	// battlefield when they return, so a condition reading the count
+	// is the payout shape in a different spelling, and
+	// questionCountGatesIn is the half of the scan that sees it.
+	returnIsAQuestion bool
 }
 
 var (
-	exileVerb = exitVerb{"exile", "ExileTarget.Then, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
+	exileVerb = exitVerb{kind: "exile", fix: "ExileTarget.Then, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
 		"or g.ExileCardThenForEffect / g.ExileCardsThenForEffect, and gate the clause on `exiled`"}
-	destroyVerb = exitVerb{"destroy", "DestroyAllMatching.Then or g.DestroyPermanentsThenForEffect " +
+	destroyVerb = exitVerb{kind: "destroy", fix: "DestroyAllMatching.Then or g.DestroyPermanentsThenForEffect " +
 		"(a set of one is fine), and gate the clause on the `destroyed` list"}
-	sacrificeVerb = exitVerb{"sacrifice", "SacrificePermanent.Then or g.SacrificeThenForEffect / " +
+	sacrificeVerb = exitVerb{kind: "sacrifice", fix: "SacrificePermanent.Then or g.SacrificeThenForEffect / " +
 		"g.SacrificeAllThenForEffect, and gate the clause on `sacrificed`"}
-	bounceVerb = exitVerb{"bounce", "BounceToHand.Then, ReturnAllToHand.Then or " +
+	sacrificePromptVerb = exitVerb{
+		kind: "prompted sacrifice",
+		fix: "g.PlayerSacrificesThenForEffect, g.EachPlayerSacrificesThenForEffect or " +
+			"g.PlayersSacrificeThenForEffect (#1019, ADR 0013 §5x), and gate the clause on the " +
+			"run's answer — `sacrificed.Sacrificed(seat)` for \"if you sacrificed a creature " +
+			"this way\", `sacrificed.Count()` for \"that many\". For a plain \"ask N times\" " +
+			"loop with nothing waiting on it, g.PlayerSacrificesNForEffect",
+		returnIsAQuestion: true,
+	}
+	bounceVerb = exitVerb{kind: "bounce", fix: "BounceToHand.Then, ReturnAllToHand.Then or " +
 		"g.BounceToHandThenForEffect / g.BounceCardsToHandThenForEffect, and gate the clause on `bounced`"}
-	tuckVerb = exitVerb{"tuck", "g.TuckToLibraryThenForEffect / g.TuckCardsToLibraryThenForEffect, " +
+	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckToLibraryThenForEffect / g.TuckCardsToLibraryThenForEffect, " +
 		"and gate the clause on `tucked`"}
-	millVerb = exitVerb{"mill", "MillToZone.Then or g.MillToZoneThenForEffect, and gate the clause " +
+	millVerb = exitVerb{kind: "mill", fix: "MillToZone.Then or g.MillToZoneThenForEffect, and gate the clause " +
 		"on the `milled` list"}
-	discardVerb = exitVerb{"discard", "there is no continuation form for a discard yet — a discard is " +
+	discardVerb = exitVerb{kind: "discard", fix: "there is no continuation form for a discard yet — a discard is " +
 		"an exit (ADR 0013 §5g) and DiscardRandomForEffect returns before a paused leg lands, so " +
 		"write the wrapper beside g.ExileCardThenForEffect rather than reading back on the next line"}
-	graveyardVerb = exitVerb{"graveyard arrival", "there is no continuation form for a graveyard " +
+	graveyardVerb = exitVerb{kind: "graveyard arrival", fix: "there is no continuation form for a graveyard " +
 		"arrival yet — g.PutIntoGraveyardForEffect rides routeCardToZoneLocked and returns before a " +
 		"paused leg lands, so write the wrapper beside g.ExileCardThenForEffect " +
 		"(routeAllThenLocked(zoneRoute{Dst: ZoneGraveyard}, …) is the body) rather than reading back " +
@@ -152,6 +172,12 @@ var exitStartsTheClock = map[string]exitVerb{
 	"MillToZoneForEffect":              millVerb,
 	"DiscardRandomForEffect":           discardVerb,
 	"PutIntoGraveyardForEffect":        graveyardVerb,
+	// #1019: the two PROMPT-driven sacrifices. §5v left them out
+	// because they queue a QUESTION and return how many seats were
+	// asked, and no continuation form existed to point a card at. One
+	// does now, and it is what the verb above names.
+	"PlayerSacrificesForEffect":     sacrificePromptVerb,
+	"EachPlayerSacrificesForEffect": sacrificePromptVerb,
 }
 
 // exitPrimitives are the catalog structs whose `.Apply(ctx)` reaches
@@ -171,6 +197,7 @@ var exitPrimitives = map[string]exitVerb{
 	"MillCards":              millVerb,
 	"MillToZone":             millVerb,
 	"DiscardCards":           discardVerb,
+	"EachPlayerSacrifices":   sacrificePromptVerb,
 }
 
 func TestNoExitPayoutWithoutAContinuation(t *testing.T) {
@@ -316,11 +343,11 @@ func exitPayoutsInBody(fset *token.FileSet, name string, body *ast.BlockStmt, al
 		}
 		return true
 	})
+	out := questionCountGatesIn(fset, name, body, exits, allow)
 	if len(pre) == 0 {
-		return nil
+		return out
 	}
 
-	var out []string
 	ast.Inspect(body, func(n ast.Node) bool {
 		var cond ast.Expr
 		switch s := n.(type) {
@@ -356,6 +383,124 @@ func exitPayoutsInBody(fset *token.FileSet, name string, body *ast.BlockStmt, al
 				name+":"+strconv.Itoa(fset.Position(e.call.Pos()).Line)+" — use "+e.verb.fix)
 			return true
 		}
+		return true
+	})
+	return out
+}
+
+// questionCountGatesIn is the #1019 half of the scan: a condition that
+// reads the COUNT one of the prompt-driven sacrifices returned.
+//
+// The other verbs return an outcome — an incomplete one, which is what
+// the rest of this file is about, but a count of permanents that
+// really left. `g.PlayerSacrificesForEffect` and
+// `g.EachPlayerSacrificesForEffect` return a count of QUESTIONS, and
+// nothing has left the battlefield when they hand it back. So the
+// shape to flag is not "a gate on a local read before the call" — Rise
+// of the Witch-king had no such local, which is why the scan above
+// never saw it — but "a gate on what the call returned", in either
+// spelling:
+//
+//	if g.PlayerSacrificesForEffect(...) == 0 { return nil }
+//	asked := g.EachPlayerSacrificesForEffect(...)
+//	if asked == 0 { ... }
+//
+// The stop rule a fire-and-forget caller used to need the count for —
+// "ask N times, stop when the seat has nothing" — is
+// g.PlayerSacrificesNForEffect's job now, so no legitimate caller
+// reads it any more.
+func questionCountGatesIn(
+	fset *token.FileSet,
+	name string,
+	body *ast.BlockStmt,
+	exits []exitCall,
+	allow map[string]string,
+) []string {
+	// The locals a question-counting exit assigned, and which call
+	// assigned them.
+	counted := map[string]exitCall{}
+	for i := range exits {
+		e := exits[i]
+		if !e.verb.returnIsAQuestion {
+			continue
+		}
+		ast.Inspect(body, func(n ast.Node) bool {
+			as, ok := n.(*ast.AssignStmt)
+			if !ok {
+				return true
+			}
+			holds := false
+			for _, rhs := range as.Rhs {
+				ast.Inspect(rhs, func(k ast.Node) bool {
+					if call, ok := k.(*ast.CallExpr); ok && call == e.call {
+						holds = true
+					}
+					return true
+				})
+			}
+			if !holds {
+				return true
+			}
+			for _, lhs := range as.Lhs {
+				// `err` is excluded by name for the reason the scan
+				// above excludes it: `if err := X{}.Apply(ctx); err !=
+				// nil` is error handling, not a payout, and the
+				// primitive's Apply returns an error rather than a
+				// count anyway.
+				if id, ok := lhs.(*ast.Ident); ok && id.Name != "_" && id.Name != "err" {
+					counted[id.Name] = e
+				}
+			}
+			return true
+		})
+	}
+
+	var out []string
+	ast.Inspect(body, func(n ast.Node) bool {
+		var cond ast.Expr
+		switch st := n.(type) {
+		case *ast.IfStmt:
+			cond = st.Cond
+		case *ast.SwitchStmt:
+			cond = st.Tag
+		default:
+			return true
+		}
+		if cond == nil {
+			return true
+		}
+		var found *exitCall
+		read := ""
+		ast.Inspect(cond, func(k ast.Node) bool {
+			if found != nil {
+				return false
+			}
+			switch v := k.(type) {
+			case *ast.Ident:
+				if e, ok := counted[v.Name]; ok {
+					e := e
+					found, read = &e, v.Name
+				}
+			case *ast.CallExpr:
+				for i := range exits {
+					if exits[i].call == v && exits[i].verb.returnIsAQuestion {
+						found, read = &exits[i], "the count it returned"
+						break
+					}
+				}
+			}
+			return true
+		})
+		if found == nil {
+			return true
+		}
+		where := name + ":" + strconv.Itoa(fset.Position(n.Pos()).Line)
+		if _, ok := allow[where]; ok {
+			return true
+		}
+		out = append(out, where+" gates on `"+read+"`, which is how many seats the "+
+			found.verb.kind+" at "+name+":"+strconv.Itoa(fset.Position(found.call.Pos()).Line)+
+			" ASKED rather than what they sacrificed — use "+found.verb.fix)
 		return true
 	})
 	return out
@@ -617,6 +762,31 @@ func untilALand(ctx *Context, player uuid.UUID) error {
 	}.Apply(ctx)
 }
 `
+	const sacrificePromptOffender = `package effects
+
+func riseOfTheWitchKing(ctx *Context, controller uuid.UUID) error {
+	spec := sacrificeSpec("a creature", Creature())
+	asked := ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), controller, spec, "sacrifice")
+	if asked == 0 {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: ctx.Target(), Dest: game.ZoneBattlefield}.Apply(ctx)
+}
+`
+	const sacrificePromptAnswer = `package effects
+
+func riseOfTheWitchKing(ctx *Context, item *game.StackItem, controller uuid.UUID) error {
+	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), uuid.Nil,
+		sacrificeSpec("a creature", Creature()), "sacrifice",
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			if !sacrificed.Sacrificed(controller) {
+				return nil
+			}
+			ctx := NewContext(g, item)
+			return ReturnFromGraveyard{Target: ctx.Target(), Dest: game.ZoneBattlefield}.Apply(ctx)
+		})
+}
+`
 	const graveyardOffender = `package effects
 
 func genesisWave(ctx *Context, id uuid.UUID) error {
@@ -665,6 +835,8 @@ func rummage(ctx *Context, player uuid.UUID) error {
 		{"tuck: TuckToLibraryThenForEffect", tuckAnswer, 0},
 		{"mill: a gate on a pre-mill local", millOffender, 1},
 		{"mill: MillToZone.Then", millAnswer, 0},
+		{"a prompted sacrifice: a gate on the count of QUESTIONS", sacrificePromptOffender, 1},
+		{"a prompted sacrifice: EachPlayerSacrificesThenForEffect", sacrificePromptAnswer, 0},
 		{"a graveyard arrival: a gate on a pre-move local", graveyardOffender, 1},
 		{"a discard: a gate on a pre-discard local", discardOffender, 1},
 	} {
@@ -756,7 +928,7 @@ func declaredTypesInCatalog(t *testing.T) map[string]bool {
 func TestEveryExitVerbIsReachableFromTheTables(t *testing.T) {
 	declared := map[string]bool{}
 	for _, v := range []exitVerb{
-		exileVerb, destroyVerb, sacrificeVerb, bounceVerb,
+		exileVerb, destroyVerb, sacrificeVerb, sacrificePromptVerb, bounceVerb,
 		tuckVerb, millVerb, discardVerb, graveyardVerb,
 	} {
 		if strings.TrimSpace(v.fix) == "" {

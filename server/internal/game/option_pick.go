@@ -249,11 +249,30 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 // Caller must hold g.mu, and must already have taken the prompt out of
 // the queue: the continuation may queue the next link of the chain and
 // must not land behind the question it is replacing.
+// #1019 adds the SECOND kind to declare dropDefault, and it is the
+// same idea in a different currency: a withdrawn sacrifice prompt is
+// a seat that sacrificed nothing, and the run waiting on it has to be
+// told so — a run whose last leg was dropped silently is a card that
+// stops halfway exactly as a dropped option pick was. The two are one
+// function rather than two drop paths because the departure table has
+// one second column, and a kind settled in two places is a kind
+// settled two ways.
+//
+// Caller must hold g.mu, and must already have taken the prompt out of
+// the queue: the continuation may queue the next link of the chain and
+// must not land behind the question it is replacing.
 func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 	if c == nil {
 		return
 	}
-	if err := c.optionPickResume.runWithNoChoice(g); err != nil {
+	var err error
+	switch c.Kind {
+	case PendingChoiceSacrifice:
+		err = g.settleSacrificeRunLegLocked(c.sacrificeRun, c.Chooser, nil)
+	default:
+		err = c.optionPickResume.runWithNoChoice(g)
+	}
+	if err != nil {
 		g.emitChoiceEffectErrorLocked(c.Chooser, c.Source, err)
 	}
 }

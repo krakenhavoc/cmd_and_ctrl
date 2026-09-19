@@ -222,6 +222,24 @@ type Options struct {
 	// same Weights it scores every other decision with, rather than a
 	// second scorer that could disagree with the first.
 	OrderTargets TargetOrder
+
+	// OrderCostFuel prices the cards a CARD-SHAPED COST would eat —
+	// the blue card Force of Will pitches, the five cards an Uro
+	// escapes with — so the payment the enumerator offers first is the
+	// one the seat would miss least (#1013, ADR 0033 §1's amendment).
+	//
+	// Nil — the default, and what every non-bot caller passes — leaves
+	// the candidates in AltCostCandidatesLocked's ZONE order, which is
+	// what the enumerator did before this field existed.
+	//
+	// A HOOK for exactly OrderTargets' reason, and it is a second field
+	// rather than a second meaning for that one because the two ask
+	// OPPOSITE questions about different objects. OrderTargets ranks
+	// the board by importance and the enumerator keeps the top of it;
+	// this ranks a seat's own cards by what it would lose, and the
+	// enumerator spends the BOTTOM of it. A policy that answered one
+	// with the other would pitch its best card every time.
+	OrderCostFuel CostFuelOrder
 }
 
 // TargetCandidate is one object a target clause could be pointed at,
@@ -248,6 +266,22 @@ type TargetCandidate struct {
 // It is an ordering rather than a filter: nothing it returns can add
 // or remove a legal target, only decide which ones reach the cap.
 type TargetOrder func(c TargetCandidate) float64
+
+// CostFuelOrder prices one card a CARD-SHAPED COST could eat, for the
+// seat that would spend it: HIGHER is more valuable to KEEP.
+//
+// The enumerator spends the CHEAPEST first, which is the opposite end
+// from TargetOrder's, and the reason the two are different types
+// despite the same signature — a policy that returned one where the
+// other was wanted would pitch its best card and target its worst, and
+// neither mistake would fail to compile. The candidate is always a
+// card (TargetCandidate.Player is never set).
+//
+// It is an ordering rather than a filter: nothing it returns can make
+// a payment legal or illegal, only decide which payment is offered
+// first. The sort is STABLE, so equal prices keep the engine's own
+// zone order and two enumerations of one board agree.
+type CostFuelOrder func(c TargetCandidate) float64
 
 const (
 	defaultMaxExpansionPerSource = 12

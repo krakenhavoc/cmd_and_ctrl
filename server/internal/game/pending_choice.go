@@ -470,6 +470,23 @@ type PendingChoice struct {
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
 
+	// sacrificeRun links a PendingChoiceSacrifice to the RUN it is one
+	// prompt of — the printed instruction whose continuation waits for
+	// every seat it asked (#1019, sacrifice_run.go). uuid.Nil on a
+	// prompt nothing is waiting on, which is every sacrifice the
+	// fire-and-forget entry points queue.
+	//
+	// A plain id rather than a pointer to the frame, and that is the
+	// undo contract rather than a style choice: the prompts of one run
+	// SHARE mutable state, and cloneLocked copies each PendingChoice by
+	// value — a shared pointer would be duplicated per prompt and an
+	// undo snapshot would hold as many half-finished runs as the run
+	// had prompts. The runs themselves live on the Game
+	// (Game.sacrificeRuns) and are deep-copied once, so the counter and
+	// the queue rewind together. Not serialised, like every other
+	// continuation link.
+	sacrificeRun uuid.UUID
+
 	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
 	// may be copied from — "any creature on the battlefield" for
 	// Clone, "a creature or planeswalker you control" for Spark
@@ -3297,8 +3314,32 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	if c.Controller != chooserID {
 		return ErrCardCallerMismatch
 	}
+	// The run this prompt is one leg of, read BEFORE the dequeue: the
+	// entry is about to leave the queue and the continuation below
+	// closes over the id rather than over the entry.
+	run, seat := choice.sacrificeRun, choice.Chooser
 	g.dequeueChoiceLocked(idx)
-	if err := g.sacrificePermanentLocked(cardID); err != nil {
+	// #1019: the picked permanent goes through the sacrifice's own
+	// CONTINUATION rather than the fire-and-forget call, for the two
+	// reasons ADR 0013 §5x gives. It is what lets a run wait for a leg
+	// the CR 903.9 window has merely PAUSED — a sacrificed commander
+	// is still on the battlefield while its owner answers, and a run
+	// that settled on this line would pay out with the permanent still
+	// in play — and what lands in the run is
+	// sacrificedThisWayLocked's answer rather than a re-read of the
+	// board on the next line.
+	//
+	// The source stays uuid.Nil because the fire-and-forget form
+	// passed none (sacrificePermanentLocked): EventSacrifice carries
+	// no source for a prompted sacrifice today, and giving the leg a
+	// continuation must change the sequencing and nothing else.
+	if err := g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
+		var landed []uuid.UUID
+		if sacrificed {
+			landed = []uuid.UUID{cardID}
+		}
+		return g.settleSacrificeRunLegLocked(run, seat, landed)
+	}); err != nil {
 		return err
 	}
 	g.runStateChecksLocked()
