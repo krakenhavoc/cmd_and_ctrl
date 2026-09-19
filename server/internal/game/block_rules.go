@@ -38,6 +38,8 @@ package game
 // which needs a field on Game. See docs/decisions/0045-combat-restrictions.md,
 // addendum Decisions 11 and 12.
 
+import "github.com/google/uuid"
+
 // BlockRule is one printed block restriction with a parameter, as the
 // engine reads it. Exactly one of Pair and Count is set; a rule with
 // neither is inert.
@@ -168,14 +170,26 @@ func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 // blockerCountValidLocked refuses every non-empty set for it, and
 // "no blockers" stays legal, as it always is.
 //
+// `src` has no reader yet, and that is deliberate rather than an
+// oversight: it is the third result ADR 0045's addendum Decision 12
+// specifies, and the two things that read it are the count refusal's
+// BlockRefusal.Source (the addendum's PR 2, which needs the set-based
+// DeclareBlockers verb) and the client's blockers_min / blockers_max
+// stamps (PR 5). Deriving it here is free — the loop already knows
+// which rule bound the count — and the alternative is a second walk of
+// the battlefield in the PR that wants it.
+//
 // nil attacker has no bounds. Caller must hold g.mu with fresh
 // layers — HasKeyword reads the effective characteristic.
-func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
+//
+//nolint:unparam // src is Decision 12's third result; its readers land with the count refusal (see above).
+func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID) {
 	if attacker == nil {
-		return 0, 0
+		return 0, 0, uuid.Nil
 	}
+	var minSrc, maxSrc uuid.UUID
 	if HasKeyword(attacker, "menace") {
-		min = 2
+		min, minSrc = 2, attacker.InstanceID
 	}
 	g.forEachBlockRuleLocked(func(r BlockRule, source *Card) bool {
 		if r.Count == nil {
@@ -183,14 +197,17 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
 		}
 		lo, hi := r.Count(g, attacker, source)
 		if lo > min {
-			min = lo
+			min, minSrc = lo, source.InstanceID
 		}
 		if hi > 0 && (max == 0 || hi < max) {
-			max = hi
+			max, maxSrc = hi, source.InstanceID
 		}
 		return true
 	})
-	return min, max
+	if minSrc != uuid.Nil {
+		return min, max, minSrc
+	}
+	return min, max, maxSrc
 }
 
 // blockerCountValidLocked reports whether `n` creatures blocking
@@ -207,7 +224,7 @@ func (g *Game) blockerCountValidLocked(attacker *Card, n int) bool {
 	if attacker == nil || n <= 0 {
 		return true
 	}
-	min, max := g.blockerBoundsLocked(attacker)
+	min, max, _ := g.blockerBoundsLocked(attacker)
 	if min > 0 && n < min {
 		return false
 	}
