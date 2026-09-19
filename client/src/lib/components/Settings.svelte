@@ -494,11 +494,11 @@
             </label>
             <p class="help">
               Summary draws each opponent as a read-out — life, the mana they could still tap by
-              colour, one pip per creature with its power and toughness — and expands that player
-              to a full board when you need to click a card there: targeting a spell, declaring
+              colour, one pip per creature with its power and toughness — and expands that player to
+              a full board when you need to click a card there: targeting a spell, declaring
               blockers, or clicking their avatar to pin them open. Full boards draws every opponent
-              as cards all the time, which is how the table used to work; at four players that
-              means 90px cards, which is where this started.
+              as cards all the time, which is how the table used to work; at four players that means
+              90px cards, which is where this started.
             </p>
 
             <label>
@@ -511,10 +511,10 @@
               {#if isFresh("display.expandActivePlayer")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Only does anything while opponent boards are summaries. Off means a board expands
-              only from something you did — a targeting prompt, block or attack mode, or pinning a
-              seat. It changes on a turn boundary either way, so it can't move the table under a
-              click you have already started.
+              Only does anything while opponent boards are summaries. Off means a board expands only
+              from something you did — a targeting prompt, block or attack mode, or pinning a seat.
+              It changes on a turn boundary either way, so it can't move the table under a click you
+              have already started.
             </p>
 
             <label class="slider-row">
