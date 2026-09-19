@@ -625,3 +625,53 @@ turn" (CR 702.185a, CR 702.143a). CR 611.2 says when an effect ends; a
 continuous effect starts when it is created, so there is no start bound to
 model, and adding one here for the single type that needs it would widen
 `Duration` for every caller. See ADR 0066's amendment.
+
+## Amendment (2026-09-19, #990): a third `ForAsLongAs` condition, for an effect created before its object exists
+
+Decision 4 gave `ForAsLongAs` a closed vocabulary of conditions —
+`WhileSourceOnBattlefield` and `WhileYouControlSource` — and said a new
+one is "a new case in that switch and nothing else". Suspend's haste
+(CR 702.62e, "it gains haste until you lose control of it") is the
+first clause that needs one, and the reason is a timing the two
+existing conditions cannot express.
+
+**The object does not exist yet.** `CastSpell` registers the haste
+grant at ANNOUNCE, because that is where the `CastPermission` that
+says "this cast grants haste" is consumed — by resolution the
+permission is gone. At that moment the card is a spell on the STACK,
+so both existing conditions are false, and the sweep at the top of the
+next layer recompute would drop the grant a priority round before the
+creature it exists for ever arrived.
+
+So `WhileYouControlSourceOnceItLands` holds in two states rather than
+one: while the source sits on the stack (CR 608.3 — a permanent spell
+becomes a permanent as it resolves, so there is nothing to apply to
+yet), and thereafter for as long as `Duration.Player` controls it on
+the battlefield.
+
+**It carries no entry stamp**, which is the one place it differs from
+its two siblings rather than merely adding to them. There is no
+`EnteredBattlefieldAt` to read at registration. CR 400.7 is answered
+by the sweep instead, and answered strictly: a permanent that leaves
+the battlefield is neither on the stack nor controlled by anyone, so
+the condition is false at the next recompute and the effect is dropped
+for good — a creature that dies and is reanimated the same turn comes
+back without haste, for the same reason a flickered Sower of
+Temptation gives its creature back.
+
+Use it only for an effect created at announce about the permanent a
+spell will become. An effect created while its object is already on
+the battlefield wants `WhileYouControlSource`, which is strictly
+tighter.
+
+**One more moment joined the invalidation list**, and the condition
+needed it: the layer listener now bumps `layerVersion` on
+`EventControlChanged`. The pass that MOVES control writes
+`Card.Controller` in `materialiseControlLocked` AFTER the layer walk
+has read it (the 2026-09-18 #930 amendment above is where that event
+comes from), so without the bump a stale "you control" resolution —
+this duration's, and every anthem's — survived the theft until some
+unrelated event invalidated the cache. The deltas are emitted after
+`lastResolvedVersion` is stored, so the bump schedules the next pass
+rather than re-entering the current one, and that pass produces no
+further delta.
