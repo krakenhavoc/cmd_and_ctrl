@@ -130,7 +130,7 @@ func TestRiteOfReplicationKickedMakesFiveCopies(t *testing.T) {
 
 // TestWolfbriarElementalMultikickerCount is the multikicker assertion
 // AND the "the ETB reads the right value after entry" one: the count
-// is read by a trigger on the permanent, off Card.PaidOptionalCosts,
+// is read by a trigger on the permanent, off Card.Provenance,
 // long after the stack item is gone.
 func TestWolfbriarElementalMultikickerCount(t *testing.T) {
 	for _, tc := range []struct {

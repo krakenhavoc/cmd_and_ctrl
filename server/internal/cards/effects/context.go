@@ -294,6 +294,39 @@ func (c *Context) KickedTimes() int {
 	return c.OptionalCostTimes(game.KickerKey) + c.OptionalCostTimes(game.MultikickerKey)
 }
 
+// CastProvenance is what the permanent this effect is running for
+// remembers about the SPELL it came from — CR 400.7d, "an ability of
+// a permanent can reference information about the spell that became
+// that permanent as it resolved, including what costs were paid".
+//
+// The SOURCE's record, not the item's. PaidAltCost above answers "what
+// paid for the spell I am resolving", which is the right question for
+// an overloaded Cyclonic Rift and the wrong one for Phlage: by the
+// time "sacrifice it unless it escaped" resolves, the item on the
+// stack is the TRIGGER, and the spell that paid escape finished
+// resolving two steps ago. The fact lives on the permanent from #653.
+//
+// The zero record for an ability whose source is not on the
+// battlefield, which is also the honest answer: CR 400.7d is written
+// about a permanent.
+func (c *Context) CastProvenance() game.CastProvenance {
+	if c.Game == nil || c.Item == nil {
+		return game.CastProvenance{}
+	}
+	return c.Game.CastProvenanceForEffect(c.Item.SourceCardID)
+}
+
+// Escaped is CR 702.138b for the permanent this effect is running for:
+// it was cast for its escape cost and is still the permanent that
+// spell became. The whole of "sacrifice it unless it escaped".
+//
+// False for a reanimated, hard-cast, blinked or put-onto-the-
+// battlefield copy of the same card, and false is the
+// weaker-than-printed answer in every one of those cases.
+func (c *Context) Escaped() bool {
+	return c.CastProvenance().Escaped()
+}
+
 // Targets returns the announce-time target slots. Callers that
 // assume a specific cardinality should bounds-check — effects run
 // in sandbox-adjacent territory where the UI might send too few

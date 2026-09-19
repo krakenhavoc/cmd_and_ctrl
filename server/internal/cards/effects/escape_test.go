@@ -50,6 +50,11 @@ var escapeCatalogCards = []struct {
 	{"Glimpse of Freedom", "02d78e76-8151-4851-bb4e-e0a1fa98756f", "{2}{U}", 5, 0},
 	{"Sweet Oblivion", "c023538d-2feb-4af5-a44e-b355a190f081", "{3}{U}", 4, 0},
 	{"Cling to Dust", "9c44e556-4c7a-48bf-a108-c584f69c2cfa", "{3}{B}", 5, 0},
+	// #653: the three cards that needed the permanent to remember it
+	// escaped (CR 400.7d).
+	{"Phlage, Titan of Fire's Fury", "3407eb6e-b74d-4159-a801-d7163937953c", "{R}{R}{W}{W}", 5, 0},
+	{"Uro, Titan of Nature's Wrath", "ee302659-59ed-4eef-babe-451b9ccf7f14", "{G}{G}{U}{U}", 5, 0},
+	{"Pharika's Spawn", "a44955e7-f1ad-41b9-b93d-0a980ac341d8", "{5}{B}", 3, 2},
 }
 
 // The declaration test. Catches a card file that named the cost but

@@ -298,17 +298,21 @@ func TestKickedCastSurvivesUndo(t *testing.T) {
 // TestPaidOptionalCostsSurviveTheSnapshot is the deploy half: the
 // permanent's carried record is a fact about a spell that has already
 // left the stack, so nothing could rebuild it.
+//
+// The record moved under Card.Provenance in #719 — one per-entry "how
+// was this spell cast" record rather than two fields with the same
+// lifecycle. What it has to survive is unchanged.
 func TestPaidOptionalCostsSurviveTheSnapshot(t *testing.T) {
 	g := newRestorableGame(t)
 	owner := g.Seats[0]
 	id := uuid.New()
 	g.Battlefield.PushTop(Card{
-		InstanceID:        id,
-		Name:              "Kicked Permanent",
-		TypeLine:          "Creature — Elemental",
-		Owner:             owner.ID,
-		Controller:        owner.ID,
-		PaidOptionalCosts: []int{0, 0, 0},
+		InstanceID: id,
+		Name:       "Kicked Permanent",
+		TypeLine:   "Creature — Elemental",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+		Provenance: CastProvenance{OptionalCosts: []int{0, 0, 0}},
 	})
 
 	snap := g.CaptureSnapshot()
@@ -328,11 +332,11 @@ func TestPaidOptionalCostsSurviveTheSnapshot(t *testing.T) {
 	var got []int
 	for _, c := range restored.Battlefield.Cards {
 		if c.InstanceID == id {
-			got = c.PaidOptionalCosts
+			got = c.Provenance.OptionalCosts
 		}
 	}
 	if len(got) != 3 {
-		t.Fatalf("PaidOptionalCosts after a round trip = %v, want three entries", got)
+		t.Fatalf("Provenance.OptionalCosts after a round trip = %v, want three entries", got)
 	}
 }
 
@@ -343,12 +347,12 @@ func TestPaidOptionalCostsClearOnTheWayOut(t *testing.T) {
 	owner := g.Seats[0]
 	id := uuid.New()
 	g.Battlefield.PushTop(Card{
-		InstanceID:        id,
-		Name:              "Kicked Permanent",
-		TypeLine:          "Creature — Elemental",
-		Owner:             owner.ID,
-		Controller:        owner.ID,
-		PaidOptionalCosts: []int{0},
+		InstanceID: id,
+		Name:       "Kicked Permanent",
+		TypeLine:   "Creature — Elemental",
+		Owner:      owner.ID,
+		Controller: owner.ID,
+		Provenance: CastProvenance{OptionalCosts: []int{0}},
 	})
 
 	g.WithWriteLock(func() {
@@ -357,8 +361,8 @@ func TestPaidOptionalCostsClearOnTheWayOut(t *testing.T) {
 		}
 	})
 	for _, c := range owner.Hand.Cards {
-		if c.InstanceID == id && len(c.PaidOptionalCosts) != 0 {
-			t.Errorf("the kicked record survived the permanent leaving: %v", c.PaidOptionalCosts)
+		if c.InstanceID == id && len(c.Provenance.OptionalCosts) != 0 {
+			t.Errorf("the kicked record survived the permanent leaving: %v", c.Provenance.OptionalCosts)
 		}
 	}
 }

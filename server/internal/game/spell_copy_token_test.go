@@ -102,18 +102,18 @@ func TestACopysExceptClauseDoesNotReachTheOriginal(t *testing.T) {
 // no face-down status, no foretell, no cost record.
 func TestTheTokenACopyBecomesCarriesNoCastState(t *testing.T) {
 	src := Card{
-		Name:              "Grizzly Bears",
-		OracleID:          "oracle-bears",
-		TypeLine:          "Legendary Creature — Bear",
-		ManaCost:          "{1}{G}",
-		Power:             2,
-		Toughness:         2,
-		FaceDown:          true,
-		FaceDownKind:      FaceDownForetold,
-		PaidOptionalCosts: []int{0, 0},
-		Tapped:            true,
-		DamageMarked:      3,
-		Counters:          map[string]int{"+1/+1": 2},
+		Name:         "Grizzly Bears",
+		OracleID:     "oracle-bears",
+		TypeLine:     "Legendary Creature — Bear",
+		ManaCost:     "{1}{G}",
+		Power:        2,
+		Toughness:    2,
+		FaceDown:     true,
+		FaceDownKind: FaceDownForetold,
+		Provenance:   CastProvenance{OptionalCosts: []int{0, 0}},
+		Tapped:       true,
+		DamageMarked: 3,
+		Counters:     map[string]int{"+1/+1": 2},
 	}
 
 	tok := tokenCopyOfSpell(src)
@@ -128,9 +128,9 @@ func TestTheTokenACopyBecomesCarriesNoCastState(t *testing.T) {
 		t.Errorf("the token is face down (%v / %q) — face-down status is not carried by CopiableValuesOf",
 			tok.FaceDown, tok.FaceDownKind)
 	}
-	if len(tok.PaidOptionalCosts) != 0 {
-		t.Errorf("the token template carries cost state %v — CR 707.2, that is not a characteristic",
-			tok.PaidOptionalCosts)
+	if tok.Provenance.Any() {
+		t.Errorf("the token template carries cast provenance %+v — CR 707.2, that is not a characteristic",
+			tok.Provenance)
 	}
 	if tok.Tapped || tok.DamageMarked != 0 || len(tok.Counters) != 0 {
 		t.Error("status, damage or counters came across; none of them is a copiable value")

@@ -2141,73 +2141,21 @@ func (g *Game) resolveTopOfStackLocked() error {
 		if out == nil || out.Canceled {
 			return nil
 		}
-
-		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
-		if err != nil {
-			return err
-		}
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
-				g.Battlefield.Cards[i].Controller = item.Controller
-				if out.EntersTapped {
-					g.Battlefield.Cards[i].Tapped = true
-				}
-				// CR 400.7d / ADR 0073 §5: the optional costs paid
-				// for the SPELL travel onto the permanent it becomes,
-				// because "when this enters, IF IT WAS KICKED" is a
-				// triggered ability whose AppliesTo sees only the
-				// game, the source and the event — and the item is
-				// already out of StackMeta. Stamped here, after the
-				// move and BEFORE the ZoneMove / ETB pair below, so
-				// the trigger harvester reads the right value at the
-				// moment it decides whether the trigger happened at
-				// all.
-				if len(item.Paid.OptionalCosts) > 0 {
-					g.Battlefield.Cards[i].PaidOptionalCosts =
-						append([]int(nil), item.Paid.OptionalCosts...)
-					moved.PaidOptionalCosts = g.Battlefield.Cards[i].PaidOptionalCosts
-				}
-				break
-			}
-		}
-		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		// CR 707.2: a permanent entering as a copy is that copy from
-		// the moment it enters, so the values land before the counters
-		// (Spark Double's extra +1/+1 goes on the copy) and before any
-		// event fires. `moved` is re-taken because it is a pre-copy
-		// snapshot and CatalogKey(moved) below would otherwise fire
-		// the Clone's own ETB hook rather than the copied card's.
-		if copied, ok := g.applyEntersAsCopyLocked(out, moved.InstanceID); ok {
-			moved = copied
-		}
-		for name, n := range out.EntersWithCounters {
-			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-		}
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   item.Controller,
-			CardID:  moved.InstanceID,
-			OldZone: ZoneStack,
-			NewZone: ZoneBattlefield,
-		})
-		// S24 / ADR 0036 decision 5: an Aura was cast targeting
-		// (CR 303.4a) and enters ATTACHED to what it targeted. This
-		// is the only place in the resolution path holding both the
-		// landed permanent and the StackItem whose target it was.
-		// Between the ZoneMove and the ETB so an ETB trigger already
-		// sees the attachment.
-		g.attachResolvedAuraLocked(moved.InstanceID, item)
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  item.Controller,
-			CardID: moved.InstanceID,
-		})
-		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-		// S22: evoke's "it's sacrificed when it enters" (CR 702.74a).
-		// Queued here because this is the last moment the StackItem —
-		// and so the cost that was actually paid — is still reachable.
-		g.queueAltCostEntryTriggerLocked(moved, item)
-		return nil
+		// #653: THE push, rather than a second copy of it. This branch
+		// used to reproduce executeEntryToBattlefieldLocked inline —
+		// the move, the controller, the copy, the counters, the zone
+		// move, the Aura attach, the ETB and evoke's trigger — while
+		// the RESUME of the very same event went through the finisher.
+		// Two copies of "a spell becomes a permanent" is one too many
+		// for a fact that has to be written exactly once, and the two
+		// had already drifted twice: #478's land-drop tally, and then
+		// ADR 0073 §5's kicked stamp, which had to be written into
+		// both. The finisher does everything this did, off the same
+		// event: ev.Actor is item.Controller and ev.stackItem is item,
+		// which is what carries the Aura's target and the costs that
+		// were paid across a pause.
+		_, err = g.executeEntryToBattlefieldLocked(out)
+		return err
 	}
 	// CR 707.10 — a COPY is not a card, so it has no graveyard to go
 	// to and no flashback exile to be caught by either. It ceases to

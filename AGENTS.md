@@ -2614,6 +2614,30 @@ is a *price* rather than a permission:
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
 
+**"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
+permanent remembers how the spell that became it was cast:
+`Card.Provenance` is a `CastProvenance{AltCost, FromZone}` written at
+the one place a spell becomes a permanent and cleared by `MoveCard`
+when it leaves the battlefield (`game/cast_provenance.go`). Card code
+reads `ctx.Escaped()` (CR 702.138b) or `ctx.CastProvenance()`, and
+`SacrificeThisUnlessItEscaped("Phlage")` is the Titan cycle's whole
+entry clause in one constructor.
+
+**Which object you are asking matters, and this is the trap.**
+`ctx.PaidAltCost("overload")` asks about the ITEM BEING RESOLVED —
+right for an overloaded Cyclonic Rift, wrong for anything a PERMANENT
+asks, because by then the item on the stack is the trigger and the
+spell that paid escape finished resolving two steps ago.
+`ctx.Escaped()` asks the source permanent. Get them the wrong way
+round and the card compiles, casts, and answers "no" forever.
+
+The record is per-ENTRY, exactly like `NamedTribe` and `ChosenColor`:
+a Phlage that escaped, died and was reanimated is a new object that
+did NOT escape (CR 400.7), which is the difference between the card
+and an infinite loop. It grows a field when a card needs a fact the
+permanent cannot re-derive — #664's "if it was kicked" is the next
+one — and never a second record.
+
 **Warp (S29)** is the other half of the same idea and the reason the
 zone and the price are separate fields. `Warp("{R}")` is paid from
 **hand**, so it needs no `CastableZones` at all — the discount is now,

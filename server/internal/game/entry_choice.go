@@ -370,23 +370,24 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		if ev.EntersTapped {
 			g.Battlefield.Cards[i].Tapped = true
 		}
-		// CR 400.7d / ADR 0073 §5, the twin of the stamp in
-		// resolveTopOfStackLocked: a kicked permanent spell whose
-		// entry PAUSED on a prompt is still a kicked permanent when
-		// it lands, and its "if it was kicked" trigger is harvested
-		// off the EventETB emitted below. Stamped after the CR 400.7
-		// reset above, which would otherwise wipe it.
-		if ev.stackItem != nil && len(ev.stackItem.Paid.OptionalCosts) > 0 {
-			g.Battlefield.Cards[i].PaidOptionalCosts =
-				append([]int(nil), ev.stackItem.Paid.OptionalCosts...)
-			moved.PaidOptionalCosts = g.Battlefield.Cards[i].PaidOptionalCosts
-		}
 		break
 	}
 	g.markCardKnownInZoneLocked(g.Battlefield, entered)
-	// CR 707.2 — see the twin call in resolveTopOfStackLocked. The
-	// copy lands before the counters and before any event, so an ETB
-	// trigger never sees the permanent as its own printed self.
+	// CR 400.7d (#653, #664): what the spell that became this
+	// permanent was cast for — the alternative cost AND the optional
+	// additional costs, one record. Before the copy and the counters,
+	// so nothing can land between the permanent arriving and the
+	// record being true of it, and well before EventETB, because both
+	// "sacrifice it unless it escaped" and "if it was kicked" are
+	// triggers harvested off that event and have to find the answer
+	// already there. After the CR 400.7 reset above, which would
+	// otherwise wipe it. A nil stackItem is every entry that was not a
+	// resolving spell, and writes nothing. See cast_provenance.go.
+	g.stampCastProvenanceLocked(entered, ev.stackItem)
+	moved.Provenance = g.CastProvenanceForEffect(entered)
+	// CR 707.2 — the copy lands before the counters and before any
+	// event, so an ETB trigger never sees the permanent as its own
+	// printed self.
 	if copied, ok := g.applyEntersAsCopyLocked(ev, entered); ok {
 		moved = copied
 	}

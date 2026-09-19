@@ -441,14 +441,10 @@ func cloneCard(c Card) Card {
 	} else {
 		out.NextUntapSkips = nil
 	}
-	// ADR 0073: the kicked record the resolution path carried onto
-	// this permanent. A value copy would alias the live slice into
-	// every undo snapshot.
-	if len(c.PaidOptionalCosts) > 0 {
-		out.PaidOptionalCosts = append([]int(nil), c.PaidOptionalCosts...)
-	} else {
-		out.PaidOptionalCosts = nil
-	}
+	// CR 400.7d (#653 / ADR 0073): what the spell that became this
+	// permanent was cast for. Its one slice would alias the live
+	// record into every undo snapshot under a value copy.
+	out.Provenance = c.Provenance.Clone()
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
