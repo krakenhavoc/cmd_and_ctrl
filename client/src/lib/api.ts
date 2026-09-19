@@ -369,6 +369,32 @@ export async function redeemSeatReclaim(gameID: string, ticket: string): Promise
   return s;
 }
 
+// RotateInviteResponse mirrors lobby.rotateInviteResponse. `token` is
+// the new plaintext, handed back once — the same rule `createGame`
+// and `mintSeatReclaim` follow. There is no way to see the OLD token
+// again; it stops working the moment this call returns.
+export interface RotateInviteResponse {
+  kind: "player" | "spectator";
+  token: string;
+}
+
+// rotateInvite (admin-only, for now — see #1044) revokes a game's
+// current invite of one kind and mints its replacement. Use when the
+// link that was already shared is lost — most often because the
+// process that could still show it in plaintext has restarted (ADR
+// 0051 decision 4) — or when it should simply stop working. The old
+// link of that kind is dead as soon as this resolves.
+export async function rotateInvite(
+  gameID: string,
+  kind: "player" | "spectator",
+): Promise<RotateInviteResponse> {
+  const res = await authFetch(`/games/${gameID}/invites/rotate`, {
+    method: "POST",
+    body: JSON.stringify({ kind }),
+  });
+  return (await res.json()) as RotateInviteResponse;
+}
+
 export async function startGame(id: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${id}/start`, { method: "POST" });
   return (await res.json()) as GameMeta;

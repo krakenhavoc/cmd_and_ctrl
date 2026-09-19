@@ -11,6 +11,7 @@
     mintSeatReclaim,
     removeBotSeat,
     replayURL,
+    rotateInvite,
     startGame,
     unarchiveGame,
     type BotOptions,
@@ -278,7 +279,11 @@
   async function copyInvite(id: string): Promise<void> {
     const token = recentInvites.get(id);
     if (!token) {
-      error = "no invite token cached for this game — re-open as admin to recover";
+      // Can't happen from the UI — the button that calls this only
+      // renders once a token is cached — but a stale token dropping
+      // out from under a click is not a wall we need to hit. "New
+      // link" (onRotateInvite below) is the actual way back in.
+      error = "no invite token cached for this game — use “new link” to mint one";
       return;
     }
     await copyToClipboard(inviteURL(id, token), `${id}:invite`);
@@ -287,10 +292,62 @@
   async function copySpectatorInvite(id: string): Promise<void> {
     const token = recentSpectatorInvites.get(id);
     if (!token) {
-      error = "no spectator invite cached for this game — re-open as admin to recover";
+      error = "no spectator invite cached for this game — use “new link” to mint one";
       return;
     }
     await copyToClipboard(spectatorInviteURL(id, token), `${id}:spectator`);
+  }
+
+  // --- admin: rotating a lost or compromised invite ----------------
+  //
+  // Only the process that minted a game can show its invite
+  // plaintext (ADR 0051 decision 4) — after a restart there is no way
+  // to recover a lost link for a table that's still running, and
+  // "re-open as admin" (the old hint) never actually worked. Rotating
+  // is the real fix: it revokes the current invite of one kind and
+  // mints a replacement, which works whether or not this process ever
+  // held the old plaintext. The trade the UI has to be honest about:
+  // the OLD link of that kind stops working the instant this
+  // succeeds, so it asks first.
+  type InviteKind = "player" | "spectator";
+  let confirmRotate = $state<{ gameID: string; kind: InviteKind } | null>(null);
+  let rotateBusy = $state<string | null>(null); // `${gameID}:${kind}`
+  let rotateError = $state<{ gameID: string; message: string } | null>(null);
+  // The freshly-minted link, shown once so the admin can copy or send
+  // it — mirrors the seat-reclaim panel below.
+  let rotated = $state<{ gameID: string; kind: InviteKind; url: string } | null>(null);
+
+  function inviteKindLabel(kind: InviteKind): string {
+    return kind === "player" ? "player invite" : "spectator link";
+  }
+
+  async function onRotateInvite(gameID: string, kind: InviteKind): Promise<void> {
+    const key = `${gameID}:${kind}`;
+    rotateBusy = key;
+    rotateError = null;
+    try {
+      const res = await rotateInvite(gameID, kind);
+      const url =
+        kind === "player" ? inviteURL(gameID, res.token) : spectatorInviteURL(gameID, res.token);
+      if (kind === "player") recentInvites.set(gameID, res.token);
+      else recentSpectatorInvites.set(gameID, res.token);
+      rotated = { gameID, kind, url };
+      confirmRotate = null;
+      // Forces the "copy invite" / "spectator link" buttons (which
+      // key off recentInvites/recentSpectatorInvites, not reactive
+      // state) to notice the map changed — same trick onCreate uses.
+      await refresh();
+    } catch (err) {
+      rotateError = {
+        gameID,
+        message:
+          err instanceof LobbyApiError
+            ? err.message
+            : `could not mint a new ${inviteKindLabel(kind)}`,
+      };
+    } finally {
+      rotateBusy = null;
+    }
   }
 
   function openGame(id: string): void {
@@ -490,6 +547,32 @@
                     {/if}
                   </button>
                 {/if}
+                {#if isAdmin}
+                  <!-- Replaces the old "re-open as admin to recover"
+                       hint, which never actually worked (the invite
+                       plaintext only ever lived in the memory of the
+                       process that minted it — see docs/lobby.md).
+                       This mints a real replacement, admin-only until
+                       #1044 lets a game's own creator do it too. -->
+                  <button
+                    class="ghost"
+                    title="mint a new player invite — the current one stops working immediately"
+                    disabled={rotateBusy !== null}
+                    onclick={() => (confirmRotate = { gameID: g.id, kind: "player" })}
+                  >
+                    <Icon name="undo" size={13} />
+                    {rotateBusy === `${g.id}:player` ? "…" : "new invite link"}
+                  </button>
+                  <button
+                    class="ghost"
+                    title="mint a new spectator link — the current one stops working immediately"
+                    disabled={rotateBusy !== null}
+                    onclick={() => (confirmRotate = { gameID: g.id, kind: "spectator" })}
+                  >
+                    <Icon name="undo" size={13} />
+                    {rotateBusy === `${g.id}:spectator` ? "…" : "new spectator link"}
+                  </button>
+                {/if}
                 <!-- Mirror the server's downloadReplay gate: admins may
                      pull the replay any time after the lobby phase, but
                      players get 403 until the game has ended (the JSONL
@@ -662,6 +745,71 @@
                 </button>
               </div>
             </div>
+          {/if}
+
+          {#if confirmRotate?.gameID === g.id}
+            <div class="confirm" role="alert">
+              <p>
+                <strong>Mint a new {inviteKindLabel(confirmRotate.kind)}?</strong>
+                The current {inviteKindLabel(confirmRotate.kind)} link stops working the moment this happens
+                — anyone still holding it will need the new one.
+              </p>
+              <div class="confirm-actions">
+                <button
+                  class="primary"
+                  disabled={rotateBusy !== null}
+                  onclick={() => onRotateInvite(g.id, confirmRotate!.kind)}
+                >
+                  {rotateBusy === `${g.id}:${confirmRotate.kind}` ? "minting…" : "mint new link"}
+                </button>
+                <button
+                  class="ghost"
+                  disabled={rotateBusy !== null}
+                  onclick={() => (confirmRotate = null)}
+                >
+                  cancel
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          {#if rotated?.gameID === g.id}
+            <div class="reclaim">
+              <div class="rhead">
+                <span class="panel-h">new {inviteKindLabel(rotated.kind)}</span>
+                <button
+                  class="ghost"
+                  aria-label="dismiss the new link"
+                  onclick={() => (rotated = null)}><Icon name="x" size={12} /></button
+                >
+              </div>
+              <input
+                class="rurl"
+                type="text"
+                readonly
+                value={rotated.url}
+                aria-label={`new ${inviteKindLabel(rotated.kind)}`}
+                onfocus={(e) => e.currentTarget.select()}
+              />
+              <div class="ractions">
+                <button
+                  class:on={copied === `${g.id}:rotated`}
+                  onclick={() => copyToClipboard(rotated!.url, `${g.id}:rotated`)}
+                >
+                  {#if copied === `${g.id}:rotated`}
+                    <Icon name="check" size={13} /> Link copied
+                  {:else}
+                    <Icon name="link" size={13} /> copy new link
+                  {/if}
+                </button>
+              </div>
+              <p class="hint warn">
+                The old {inviteKindLabel(rotated.kind)} link no longer works. Send this one out instead.
+              </p>
+            </div>
+          {/if}
+          {#if rotateError?.gameID === g.id}
+            <div class="bot-error">{rotateError.message}</div>
           {/if}
 
           {#if reclaim?.gameID === g.id}

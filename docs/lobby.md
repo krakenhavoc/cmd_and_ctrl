@@ -733,6 +733,71 @@ The client turns `ticket` into `#/games/{id}/reclaim?t=<ticket>`.
 | 422 | that seat is a bot, not a disconnected player |
 | 429 | too many outstanding tickets |
 
+### `POST /games/{id}/invites/rotate` *(admin only)*
+
+Revoke a game's current invite of one **kind** and mint its
+replacement, atomically. This is the fix for the gap `GET
+/games/{id}` documents above: only the process that minted a game can
+show its invite plaintext, so a link lost after a restart could not
+be recovered before this route existed — the table just sat there
+with an invite nobody could read or reissue (#1038, [ADR
+0051](decisions/0051-user-database.md) decision 4).
+
+Rotating needs nothing from the OLD token. `Store.RotateInvite`
+revokes every still-live invite of the requested kind for the game by
+`(game_id, kind)`, not by hash, and inserts the new one in the same
+transaction — which is exactly what makes this work when the old
+plaintext is gone from every process's memory, restart or not.
+
+**Admin-only for now.** The issue that will let a game's own creator
+rotate their invites (not just an admin) is
+[#1044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1044),
+which populates `games.created_by`; there is a `TODO(#1044)` on the
+route registration in `server/internal/lobby/http.go`.
+
+**Request**
+
+```json
+{ "kind": "player" }
+```
+
+`kind` is `"player"` or `"spectator"`. Only the invite of that kind is
+touched — rotating the player invite leaves the spectator invite (and
+vice versa) working exactly as it did before.
+
+**The old link of that kind stops working the instant this returns.**
+Anyone still holding it gets the same 401 an unknown or expired token
+gets from `/join` or `/spectate`. Send the new one to whoever needs
+it; there is no way to see the old one again.
+
+**Response 200**
+
+```json
+{ "kind": "player", "token": "<16-byte base64url>" }
+```
+
+`token` is the new plaintext, returned **once** — the same rule
+`POST /games` and the seat-reclaim ticket follow. The lobby UI turns
+it into a link the same way it does for `POST /games`'s
+`invite_token` / `spectator_invite`. Also updates `GameMeta` in this
+process's memory, so a subsequent `GET /games/{id}` keeps showing a
+usable link — until the next restart, same as any other invite.
+
+Rate-limited in the same bucket as `/join`, `/spectate` and
+`/games/{id}/preview`: it mints and revokes the exact credential
+those routes brute-force, even though the admin gate already keeps a
+stranger from calling it at all.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `kind` is neither `"player"` nor `"spectator"` |
+| 401 | unauthenticated |
+| 403 | caller is not an admin |
+| 404 | game not found |
+| 429 | rate-limited |
+
 ### `GET /me`
 
 Echo the principal attached to the request. Used by the client for

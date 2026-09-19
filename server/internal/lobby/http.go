@@ -156,6 +156,7 @@ type GameEvictor interface {
 //	DELETE /games/{id}/archive — admin: put it back
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
+//	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
 //	GET  /me                — authenticated: principal echo (for client bootstrap)
 //	POST /logout            — revoke the caller's session server-side
@@ -252,6 +253,18 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/{id}/seats/{player}/reclaim",
 		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, mintSeatReclaim)))
 	mux.Handle("POST /games/{id}/reclaim", limit.Middleware(handlerFunc(c, redeemSeatReclaim)))
+	// Invite rotation (#1038, ADR 0051 decision 4): revoke a game's
+	// current invite of one kind and mint its replacement, so a link
+	// lost to a restart (only its hash survives one — see
+	// resolveInvite) can be replaced without deleting and recreating
+	// the table. Admin-only for now, same as minting a seat-reclaim
+	// ticket — TODO(#1044): once games.created_by is populated, let
+	// the game's creator rotate their own game's invites too.
+	// Rate-limited in the join/spectate/preview bucket: it mints and
+	// revokes the exact credential those routes brute-force, even
+	// though the admin gate already keeps a stranger out.
+	mux.Handle("POST /games/{id}/invites/rotate",
+		limit.Middleware(auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, rotateInvite))))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -859,6 +872,45 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 		Game:      &meta,
 		PlayerID:  seat.PlayerID,
 	})
+}
+
+// rotateInviteRequest is the body of POST /games/{id}/invites/rotate.
+type rotateInviteRequest struct {
+	Kind string `json:"kind"` // "player" | "spectator"
+}
+
+// rotateInviteResponse hands back the freshly-minted plaintext once —
+// the same "shown here and nowhere else" rule Create and
+// mintSeatReclaim follow. `kind` echoes the request so the client
+// doesn't have to remember which button it pressed.
+type rotateInviteResponse struct {
+	Kind  string `json:"kind"`
+	Token string `json:"token"`
+}
+
+// rotateInvite (admin-only, for now — see the TODO on the route
+// registration) revokes a game's current invite of one kind and
+// mints its replacement in one move: Lobby.RotateInvite. It exists
+// because only the process that minted a game can show its invite
+// plaintext (ADR 0051 decision 4), so a link lost to a restart could
+// never be recovered before this route — the table just sat there
+// with an invite nobody could read or reissue. The OLD link of that
+// kind stops working the instant this returns; the other kind is
+// untouched.
+func rotateInvite(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	var body rotateInviteRequest
+	if err := decodeJSON(w, r, &body); err != nil {
+		return err
+	}
+	newToken, _, err := c.Lobby.RotateInvite(id, InviteKind(body.Kind))
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, rotateInviteResponse{Kind: body.Kind, Token: newToken})
 }
 
 // autoTapPreview is the S15 sub-PR 4 read-only auto-tap endpoint.
@@ -2116,7 +2168,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrTooManyReclaims):
 		status = http.StatusTooManyRequests
-	case errors.Is(err, ErrEmptyName):
+	case errors.Is(err, ErrEmptyName), errors.Is(err, ErrInvalidInviteKind):
 		status = http.StatusBadRequest
 	case errors.Is(err, auth.ErrInvalidCredential),
 		errors.Is(err, auth.ErrExpiredCredential),
