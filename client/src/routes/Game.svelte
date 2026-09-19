@@ -14,6 +14,8 @@
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
+  import ConnectionBanner from "../lib/components/ConnectionBanner.svelte";
+  import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
@@ -83,7 +85,7 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat } = client;
+  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt } = client;
 
   $effect(() => {
     client.disconnect();
@@ -1155,6 +1157,12 @@
     <GameLogPanel {view} {viewerID} onClose={() => (showGameLog = false)} />
   {/if}
 
+  <ConnectionBanner
+    status={$status}
+    attempt={$reconnectAttempt}
+    onRetry={() => client.retryNow()}
+  />
+
   <div class="play-area">
     {#if view}
       <!-- #720 / #266: Svelte 5's error boundary around the table.
@@ -1173,6 +1181,7 @@
           {viewerID}
           {isAdmin}
           {sendAction}
+          disabled={actionsDisabled($status)}
           {combatMode}
           {selectedCombatCardID}
           onSelectCombatCard={handleSelectCombatCard}
