@@ -164,10 +164,15 @@ var carriedFixture = map[string]any{
 	// A game's lifecycle state is a closed set (game.go); an invented
 	// string would restore a game in a state no code handles.
 	"Game.State": StateActive,
-	// The zone's own kind. Closed set, and restoreZone falls back to the
-	// caller's expectation when it is empty — so the value has to be a
-	// real kind for the assertion to mean anything.
-	"Zone.Kind": ZoneGraveyard,
+	// The zone's own kind, and the one fixture here that is deliberately
+	// WRONG for the slot it sits in. restoreZone falls back to the
+	// caller's expectation for an empty kind, and every caller's
+	// expectation is the slot's real kind — so a graveyard probed with
+	// `ZoneGraveyard` would come back right even if both projections
+	// dropped the field, and the row would pass forever without
+	// checking anything. A graveyard carrying `exile` can only come back
+	// as `exile` if something actually carried it.
+	"Zone.Kind": ZoneExile,
 	// An item's kind decides how the resolution frame routes it.
 	"StackItem.Kind": StackItemActivated,
 	// The step a delayed trigger waits for.
