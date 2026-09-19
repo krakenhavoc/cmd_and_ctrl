@@ -2521,6 +2521,43 @@ nothing waiting, `g.PlayerSacrificesNForEffect` — never a hand-written
 loop reading the count, which the payout lint now flags. See
 [ADR 0013 §5x](docs/decisions/0013-replacement-effects.md).
 
+**A PROMPTED discard is the same RUN, and the same rule (#1027).**
+`g.QueueDiscardChoiceForEffect` discards nothing either — it queues a
+question over the player's own hand and hands back the prompt's ID —
+and a discard can pause for an extra action after the answer, because
+a discarded commander is offered CR 903.9. So anything printed after a
+discard goes in a run's continuation:
+`g.PlayerDiscardsThenForEffect(prompt, then)` for one seat,
+`g.PlayersDiscardThenForEffect(players, prompt, then)` for a named
+set, `g.EachPlayerDiscardsThenForEffect(except, prompt, then)` for the
+APNAP fan-out, and `g.EachPlayerDiscardsForEffect(except, prompt)` for
+a fan-out with nothing waiting. The prompt you pass is the TEMPLATE —
+its `Player` is ignored by the two multi-seat forms and stamped per
+seat. `then` is handed `game.PromptedDiscards`, which reads exactly
+like `PromptedSacrifices`: `.Count()` is "a card for each card
+discarded this way", `.Discarded(seat)` is "if you discard a card this
+way", `.By(seat)` and `.Cards()` are the cards.
+
+What counts as discarded is CR 701.8a's move OUT of the hand, so a
+madness card exiled instead of binned counts, a Library of Leng card
+put on top of the library counts, and a leg the CR 614 window
+cancelled does not. Do NOT measure it by reading the hand size back
+across the prompt — that was `b39MayDiscardThenDraw` before #1027, and
+while it happens to agree on every board today it is a SECOND reading
+of a rule the engine already answers, which is the kind that drifts the
+first time a replacement does something new.
+
+`DiscardPrompt.Then` is the OTHER continuation and they are not
+interchangeable: it is one LEG's own sentence ("each opponent discards
+a card, THEN mills a card" — Vicious Rumors), it runs per seat, it is
+handed `(g, seat, discarded)` because a fan-out copies one template,
+and it still fires for an empty hand ("discard your hand, then draw
+three"). The run's continuation is the rest of the INSTRUCTION and
+runs once. A payoff written on the leg pays out per answer, which is
+what Syphon Mind did. For the RANDOM discard (CR 701.8b) the
+continuation is `g.DiscardRandomThenForEffect`. See
+[ADR 0013 §5y](docs/decisions/0013-replacement-effects.md).
+
 **"If it WAS a creature card" is a clause about the exiled card, so it
 waits and it is gated (#911).** Cling to Dust, Scavenging Ooze and
 Deluge of the Dead. Two facts at two moments: the card's TYPE is read
@@ -2679,8 +2716,8 @@ enumerator logs it rather than inventing an answer.
 **A DISCARD says it through `DiscardPrompt`, not a raw pick** — the
 prompt has the same `Validate`, and going through it is what keeps the
 discard on the one discard path (CR 614 window, CR 903.9, madness,
-`EventDiscardCard`). Its floor is `Min`, and that is the field the
-"unless" clauses need (#626):
+`EventDiscardCard`) and on the RUN (#1027, above). Its floor is `Min`,
+and that is the field the "unless" clauses need (#626):
 
 ```go
 g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
