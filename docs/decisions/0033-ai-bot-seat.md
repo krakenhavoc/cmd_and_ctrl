@@ -600,6 +600,10 @@ sections above:
   `aiseat.Improviser`, though, so no bot improvises yet. The owner
   decided to build one for the model tiers, tracked in
   [#686](https://github.com/krakenhavoc/cmd_and_ctrl/issues/686).
+  **Closed 2026-09-19:** `*model.Policy` implements the hook, so
+  `assisted` and `strong` improvise. See the #686 amendment at the
+  foot of this ADR for the windows, the prompt, the budget and the
+  failure posture.
 - **§5's per-game model spend is still unmeasured.** That update's
   last paragraph still stands. Absorption is measured at ~90%, but
   measuring spend needs a game against a hosted endpoint.
@@ -978,3 +982,166 @@ No change to the notification model, the channel, or `Room`. The
 edge-trigger, the non-blocking send and the "re-read, trust no payload"
 rule are all exactly as decided. The only thing that moved is which
 goroutine registers.
+
+## Amendment (2026-09-19, #686): §8's improviser is built, for the model tiers
+
+§8 specified improvisation and S31 sub-PR 8 built the path — the
+bundle, the validated announcement, the replay tag, the free undo.
+What it did not build was anybody to walk it: no shipped tier
+implemented `aiseat.Improviser`, so §8 described a feature no game
+ever reached. #686 supplies the missing half. Here is what it decides,
+because none of it follows from §8 on its own.
+
+### The window: a spell of this seat's own that the engine did not run
+
+**Improvisation fires once per card instance, at the moment that
+instance leaves the stack**, and only when all of the following hold:
+
+1. the seat itself cast it (`StackItemView.Controller` is this seat),
+2. the card was on the stack as a CARD — it is in
+   `GameView.Stack.Cards` — which is what confines this to spells and
+   excludes an ability whose source sits on the battlefield,
+3. its `CardView.Unimplemented` bit is set: the card prints rules the
+   engine will not carry out (`game.Unimplemented`, i.e.
+   `NeedsEffect && !IsAutoCard`, the same signal the deck-upload
+   summary and the stack's `manual` chip are built on),
+4. the seat's own deck profile has oracle text for it, and
+5. the seat owes no pending choice.
+
+That is the shape the issue calls "a castable card with no catalog
+spec". It is deliberately expressed **after** the cast rather than
+instead of it, and that is the load-bearing decision in this
+amendment:
+
+> **The bot pays for the card through the engine, exactly like a
+> human.** The four sandbox verbs cannot tap a land. An improvisation
+> that moved the card from hand to graveyard itself and then applied
+> the effect would be a free spell — the one thing worse at this table
+> than a bot that quietly skips a card. So the ordinary funnel casts
+> the card through the ordinary move list, the engine charges the
+> mana, the spell resolves into silence, and the improviser then
+> supplies the text the engine could not run. This is the sequence a
+> human on this server already performs by hand, and improvisation is
+> defined as doing what a human does.
+
+**Windows that deliberately do NOT trigger it**, each for its own
+reason:
+
+- **An unimplemented permanent's ongoing, triggered or activated
+  abilities.** There is no wire signal for "this trigger should have
+  fired", the timing is unknowable from a filtered view, and the
+  condition recurs — so the cap on this would be a rate limit rather
+  than a rule. One improvisation per card instance, at resolution, is
+  a bound the table can check against the card.
+- **Any card an opponent controls.** A bot improvises its OWN spell's
+  text. An improvisation reaching an opponent's board is a consequence
+  of the bot's card (that is why §8 grants the nil caller); it is
+  never the bot correcting somebody else's.
+- **A window in which the seat owes a pending choice** (#1000's
+  `OwedInStep`, #1016's `GuardsStackItem`, and every other
+  `PendingChoices` entry addressed to this seat). Those prompts halt
+  the table and are answered through the move list. Improvisation is
+  never a way out of a prompt.
+- **`random` and `heuristic`.** Neither has a model, and a rule-based
+  policy cannot read oracle text. They keep §8's old behaviour, which
+  is that nothing improvises.
+- **A seat with no model transport.** `assisted` and `strong` are
+  already reported unavailable without one (`Factory.TierStatus`); a
+  seat that loses its transport mid-game falls back exactly as Layer C
+  does — no improvisation, no announcement.
+
+### The prompt: the card's oracle text and the seat's own filtered view
+
+The static, cache-marked half is a primer naming the four verbs with
+their exact wire params, the twelve-step cap, and the answer shape.
+The per-call half is:
+
+- the card — name, mana cost, type line, **oracle text** — read from
+  the seat's `DeckProfile`, which is configuration the seat was
+  constructed with, not something read off the board;
+- where the card is now (its owner's graveyard, or the battlefield);
+- the board as `aiseat.Input.View` renders it, **annotated with the
+  instance IDs and player IDs the bundle is allowed to name**.
+
+It is the same hidden-information guarantee as Layer C and for the
+same structural reason: `aiseat/model` may not import `internal/game`,
+and every byte of this prompt comes from the seat's own filtered
+`protocol.GameView` plus its own decklist. Nothing in this package can
+reach an opponent's hand, so nothing it sends to a model can leak one.
+The IDs are new in a prompt and are not new information: every one of
+them is already on the wire to this seat.
+
+### The verb list stays closed, and stays enforced in one place
+
+The model is told `move_card`, `change_life`, `add_counter`,
+`mark_damage` and nothing else, and a bundle naming anything else is
+**not filtered out in the model package**. It is handed up and refused
+by `Improvisation.Validate` — the rail §8 already built and the tests
+already pin. One enforcement point, on the path every improviser must
+cross, is worth more than a second copy of the allow-list in the one
+policy that happens to exist today.
+
+What the model package does check before handing a bundle up is only
+what it can check better than the rail: that the reply was JSON, that
+it had a step list, and that the step list was not empty. An **empty
+step list is a first-class answer** — it is how the model says "this
+spell did not actually resolve" (it was countered, its target is gone)
+— and it produces no bundle, no announcement and no change.
+
+### Model, budget, and a hard cap per game
+
+- **Model.** The tier's FRONTIER profile, not the routine one. Writing
+  a bundle from oracle text is the hardest thing a seat is ever asked
+  to do and the rarest; spending the cheap model on it to save a
+  fraction of a cent on a handful of calls per game is a false
+  economy. `strong` raises its effort exactly as it raises the
+  frontier model's.
+- **Budget.** The same arithmetic as a decision, because it is the
+  same table waiting: the runner now imposes `Config.MaxThink` on the
+  `Improvise` call (it previously imposed nothing, because nothing
+  implemented the interface), and the funnel's `Reserve` /
+  `MinBudget` / `MaxCall` clamp inside it. A call that overruns is a
+  dropped improvisation, never a late one. `MaxTokens` is larger than
+  a decision's — a bundle is a paragraph, an index is a number.
+- **A hard per-game cap.** `MaxImprovCalls`, default 8, counted per
+  seat for the life of the seat, on CALLS rather than on applied
+  bundles: the cap exists to bound spend, and a call that failed cost
+  the same as one that worked. Together with one-shot-per-instance it
+  is a closed bound on what improvisation can cost a game, which is
+  what [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735)
+  needs to measure against. `Improvise: false`
+  (`CMDCTRL_BOT_IMPROVISE=0`) turns the whole thing off.
+
+### Failure posture: dropped, and the table is told it was dropped
+
+A bundle that fails `Improvisation.Validate` is dropped — nothing
+dispatched, nothing committed — and **the table gets a
+`bot_improvisation` chat line saying so**, naming the card and saying
+that nothing was changed. That is new. §8's refusal was silent, and
+silence is the failure this whole section exists to avoid: the table
+cannot tell a bot that chose not to act from a bot that could not, and
+"could not, and here is the card it was about" is exactly the
+information a player needs to apply the card by hand themselves.
+
+Two refusals stay silent, and both are deliberate:
+
+- **A bundle that cannot name its card.** There is no truthful line to
+  post. `TestUnannouncedImprovisationIsRefused` pins it.
+- **A bundle that `Room.ApplyBundle` rolled back.** It passed
+  validation and the engine refused a step, so the board is exactly as
+  the policy found it and the announcement would be about a bundle
+  that never existed. `TestImprovisationBundleIsAtomic` pins it.
+
+Everything upstream of a bundle — a model outage, a timeout, a reply
+that is not JSON, an empty step list — is likewise silent, because
+nothing was attempted against the board. It is counted
+(`Stats.ByImprov`) and logged.
+
+### One interface change
+
+`Improviser.Improvise` now takes a `context.Context`. It could not
+stay without one: it is called on the runner's goroutine, before the
+decision, and the only production implementation makes a network call.
+§10 says the table never waits on a bot, and a hook with no deadline
+cannot honour that. No production type implemented the old signature,
+so nothing but one test fixture moved.

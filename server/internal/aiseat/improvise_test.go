@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -41,7 +42,7 @@ func (p *improviser) Decide(context.Context, aiseat.Input) (aiseat.Decision, err
 	return aiseat.Decision{Index: aiseat.Decline, Reason: "holding"}, nil
 }
 
-func (p *improviser) Improvise(aiseat.Input) (aiseat.Improvisation, bool) {
+func (p *improviser) Improvise(context.Context, aiseat.Input) (aiseat.Improvisation, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.asked++
@@ -476,6 +477,152 @@ func TestUnannouncedImprovisationIsRefused(t *testing.T) {
 	if n := bc.count(); n != 0 {
 		t.Errorf("a refused improvisation produced %d chat lines", n)
 	}
+}
+
+// TestRefusedImprovisationTellsTheTable is #686's failure posture:
+// a bundle the rail would not apply is dropped AND disclosed, naming
+// the card, because a bot that silently gives up on a card it cannot
+// run leaves the table unable to tell that from a bot that chose not
+// to cast — which is the exact ambiguity ADR 0033 §8 exists to
+// remove. The card is now somewhere having done nothing, and a human
+// reading the line can still apply it by hand.
+func TestRefusedImprovisationTellsTheTable(t *testing.T) {
+	room, dumpDir := newRoomWithDump(t, 2, 21)
+	g := room.Game
+	bot, human := g.Seats[0].ID, g.Seats[1].ID
+	card := handCardOf(t, g, bot)
+
+	im := grimTutor(t, bot, human, card)
+	// A verb outside the closed list. Everything else about the
+	// bundle is well-formed, so the allow-list is the only thing
+	// refusing it.
+	im.Steps = append(im.Steps, aiseat.ImprovStep{
+		Type:   "discard_selection",
+		Player: human,
+		Params: mustJSON(t, map[string]any{"instance_ids": []string{card.String()}}),
+	})
+
+	botLife, humanLife := lifeOf(g, bot), lifeOf(g, human)
+	handBefore, graveBefore := zoneSizes(g, bot)
+	seqBefore := room.Seq()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	bc := &chatBroadcaster{}
+	r := aiseat.Start(ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
+	waitFor(t, "the improvisation to be refused", func() bool {
+		return r.Stats().ImprovRefused == 1
+	})
+	waitFor(t, "the refusal to be announced", func() bool {
+		return len(bc.lines(protocol.ChatKindBotImprovisation)) == 1
+	})
+	cancel()
+	<-r.Done()
+
+	// Nothing happened to the board, including the two verbs that
+	// were perfectly good.
+	if lifeOf(g, bot) != botLife || lifeOf(g, human) != humanLife {
+		t.Errorf("a refused bundle moved a life total")
+	}
+	if hand, grave := zoneSizes(g, bot); hand != handBefore || grave != graveBefore {
+		t.Errorf("a refused bundle moved a card")
+	}
+	if got := room.Seq(); got != seqBefore {
+		t.Errorf("seq advanced from %d to %d for a bundle that was never dispatched", seqBefore, got)
+	}
+	if r.Stats().Improvisations != 0 {
+		t.Errorf("a refused bundle counted as an improvisation")
+	}
+	if n := len(replayAnnotations(t, dumpDir, g.ID)); n != 0 {
+		t.Errorf("tagged %d replay lines for a bundle that was never applied", n)
+	}
+
+	line := bc.lines(protocol.ChatKindBotImprovisation)[0]
+	if !strings.Contains(line.Text, "Grim Tutor") {
+		t.Errorf("the refusal line does not name the card: %q", line.Text)
+	}
+	for _, want := range []string{"refused", "nothing was changed"} {
+		if !strings.Contains(line.Text, want) {
+			t.Errorf("the refusal line %q is missing %q", line.Text, want)
+		}
+	}
+	// It must not read as a disclosure of something that happened.
+	if strings.Contains(line.Text, "any player can undo it") {
+		t.Errorf("the refusal line offers an undo for a bundle that never committed: %q", line.Text)
+	}
+	if line.AuthorID != bot.String() {
+		t.Errorf("chat author = %q, want the bot seat %q", line.AuthorID, bot)
+	}
+}
+
+// TestImproviserGetsTheRunnersDeadline: the hook is called on the
+// runner's own goroutine and the production implementation dials a
+// model inside it, so ADR 0033 §10's "the table never waits on a bot"
+// has to hold here as well as on Decide. An improviser that blocks
+// gets cancelled at MaxThink and the seat plays on.
+func TestImproviserGetsTheRunnersDeadline(t *testing.T) {
+	room := newRoom(t, 2, 22)
+	g := room.Game
+	bot := g.Seats[0].ID
+
+	pol := &blockingImproviser{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{MaxThink: 150 * time.Millisecond}, nil, testLogger())
+	waitFor(t, "the improviser to be cancelled", func() bool { return pol.cancelled() })
+	cancel()
+	<-r.Done()
+
+	d, ok := pol.deadline()
+	if !ok {
+		t.Fatal("the improviser was called with no deadline at all")
+	}
+	if d > time.Second {
+		t.Errorf("the improviser's budget was %v, want something near MaxThink", d)
+	}
+	if s := r.Stats(); s.Improvisations != 0 || s.ImprovRefused != 0 {
+		t.Errorf("a cancelled improviser must neither apply nor refuse a bundle: %+v", s)
+	}
+}
+
+// blockingImproviser never answers. It records the budget it was
+// given and waits for the cancellation.
+type blockingImproviser struct {
+	mu      sync.Mutex
+	budget  time.Duration
+	hadDDL  bool
+	stopped bool
+}
+
+func (p *blockingImproviser) Name() string { return "blocking-improviser" }
+
+func (p *blockingImproviser) Decide(context.Context, aiseat.Input) (aiseat.Decision, error) {
+	return aiseat.Decision{Index: aiseat.Decline, Reason: "holding"}, nil
+}
+
+func (p *blockingImproviser) Improvise(ctx context.Context, _ aiseat.Input) (aiseat.Improvisation, bool) {
+	p.mu.Lock()
+	if d, ok := ctx.Deadline(); ok {
+		p.hadDDL, p.budget = true, time.Until(d)
+	}
+	p.mu.Unlock()
+	<-ctx.Done()
+	p.mu.Lock()
+	p.stopped = true
+	p.mu.Unlock()
+	return aiseat.Improvisation{}, false
+}
+
+func (p *blockingImproviser) cancelled() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.stopped
+}
+
+func (p *blockingImproviser) deadline() (time.Duration, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.budget, p.hadDDL
 }
 
 // TestBotReasoningIsNarratedOnlyWhenAsked covers the setting's server

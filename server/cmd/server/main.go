@@ -92,6 +92,13 @@
 //	                             hosted model, 20s when a local endpoint is
 //	                             configured, because a model that overruns
 //	                             the deadline plays the heuristic's move.
+//	CMDCTRL_BOT_IMPROVISE      — "0" / "off" / "false" turns ADR 0033 §8
+//	                             improvisation OFF for the model tiers, which
+//	                             have it on by default. With it off, a bot
+//	                             that casts a card the engine cannot run
+//	                             leaves it having done nothing, for a human
+//	                             to apply by hand — which is what every tier
+//	                             did before #686.
 //	CMDCTRL_BOT_DECISION_LOG   — directory for the per-game bot decision log
 //	                             (prompt, reply, ranking, fallback per
 //	                             window). Empty (the default) is OFF. The
@@ -564,6 +571,11 @@ type config struct {
 	// needs at least BotModel, and the two may name the same model.
 	BotModel         string
 	BotFrontierModel string
+	// BotNoImprovise turns ADR 0033 §8 improvisation off for the
+	// model tiers (CMDCTRL_BOT_IMPROVISE=0). Spelled as a negative
+	// because the default is on: the zero config is the shipped
+	// behaviour.
+	BotNoImprovise bool
 	// BotDecisionLog is the directory the per-game bot decision log
 	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
 	// is the default: the file holds every bot seat's view of one
@@ -605,6 +617,7 @@ func loadConfig(log *slog.Logger) config {
 		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		BotNoImprovise:   isOff(os.Getenv("CMDCTRL_BOT_IMPROVISE")),
 		DBBackupInterval: db.DefaultBackupInterval,
 		Env:              env,
 		Features:         appenv.LoadFeatures(env),
@@ -796,6 +809,20 @@ func envOr(key, dflt string) string {
 	return dflt
 }
 
+// isOff reads a falsey environment value for a setting that is ON by
+// default, so an empty variable keeps the default. The vocabulary is
+// the one model.NewOpenAIClient already uses for
+// CMDCTRL_OPENAI_SEND_THINK; anything else — including "1", "true" and
+// a typo — leaves the setting on, which is the safe direction for a
+// switch whose off position removes a feature.
+func isOff(raw string) bool {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "0", "false", "no", "off":
+		return true
+	}
+	return false
+}
+
 // botModelDefaults are the pacing decisions that depend on WHICH
 // model transport a deployment configured.
 const (
@@ -868,10 +895,21 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 			"model", models.Routine)
 	}
 
+	// ADR 0033 §8, amended for #686. Worth a boot line either way: on
+	// is a bot that will occasionally change the board with a model's
+	// judgement rather than the engine's, and off is a table that
+	// will see uncatalogued cards do nothing at all.
+	if cfg.BotNoImprovise {
+		log.Info("bot improvisation is OFF (CMDCTRL_BOT_IMPROVISE); a bot that casts a card the engine cannot run will leave it having done nothing, for a human to apply by hand")
+	} else if client != nil {
+		log.Info("bot improvisation is on for the model tiers: an uncatalogued spell a bot casts is applied by hand, announced in chat, and undoable by any player for free. Set CMDCTRL_BOT_IMPROVISE=0 to turn it off.")
+	}
+
 	f := tiers.NewFactory(tiers.FactoryOptions{
-		Client:   client,
-		Models:   models,
-		MaxThink: maxThink,
+		Client:      client,
+		Models:      models,
+		MaxThink:    maxThink,
+		NoImprovise: cfg.BotNoImprovise,
 		DeckProfile: func(deckID string) (model.DeckProfile, bool) {
 			return deckprofile.Build(idx, deckID)
 		},
