@@ -13,6 +13,11 @@ import "github.com/google/uuid"
 // Sower of Temptation ("for as long as this creature remains on the
 // battlefield") or Mass Diminish ("until your next turn").
 //
+// S42 / #945 added the fifth kind and a second client: a granted
+// cast permission (ADR 0066) carries a `Duration` too, swept through
+// the same `durationExpiredLocked`, so the engine has ONE duration
+// vocabulary rather than the permission's own three fields.
+//
 // `Duration` is the replacement, and it is DATA — no closures, no
 // pointers into game state. That matters three times over:
 //
@@ -34,8 +39,9 @@ import "github.com/google/uuid"
 // "for as long as" condition can have gone false). Adding a duration
 // kind is a new case in that switch and nothing else.
 
-// DurationKind names the four shapes CR 611.2 gives a continuous
-// effect created by a resolved spell or ability.
+// DurationKind names the five shapes CR 611.2 gives a continuous
+// effect — or, since #945, a granted cast permission — created by a
+// resolved spell or ability.
 type DurationKind int
 
 const (
@@ -61,6 +67,32 @@ const (
 	// stated duration lasts until the game ends. Agent of Treachery.
 	// It can still be dropped by the pin (see Duration.Pinned).
 	Indefinite
+
+	// WhileInZone is "for as long as this card remains in the zone it
+	// is in" — airbend's "WHILE IT'S EXILED, its owner may cast it
+	// for {2}", warp's "for as long as it remains exiled", and every
+	// permission derived from a permanent on the battlefield.
+	//
+	// The fifth kind, added by #945 when granted cast permissions
+	// (ADR 0066) moved onto this model. It is a real CR 611.2b
+	// duration and not a synonym for Indefinite: the effect DOES
+	// state when it ends, the statement is just about a zone rather
+	// than about a turn.
+	//
+	// Nothing in the switch below ends it, and that is the whole
+	// point. What ends it is CR 400.7 — the permission names
+	// {instance, epoch}, so the moment the card leaves the zone it is
+	// a new object and the grant no longer names it
+	// (anyNamedObjectStillThereLocked sweeps the husk). A duration
+	// that has to be re-checked against a zone every query would be a
+	// second copy of that rule, and the two would drift.
+	//
+	// A ScopedStatic must not carry it: a continuous effect is about
+	// objects on the battlefield and has no zone-bound husk to be
+	// swept by. `durationExpiredLocked` therefore treats it exactly as
+	// Indefinite, which is the safe half of that mistake — the layer
+	// pass keeps such an effect rather than dropping it silently.
+	WhileInZone
 )
 
 // DurationCondition is the re-evaluated half of a ForAsLongAs
@@ -171,6 +203,35 @@ func (g *Game) UntilYourNextTurnDuration(player uuid.UUID) Duration {
 	}
 }
 
+// UntilEndOfYourNextTurnDuration is "until the end of your next turn"
+// (CR 611.2b) — Reckless Impulse, Wrenn's Resolve, Prosper's Mystic
+// Arcanum. Caller must hold g.mu.
+//
+// NOT a fifth kind, and the reason is the point of the counter: "the
+// end of your next turn" is the same boundary "until end of turn"
+// names, one seat-turn later. So it is an UntilEndOfTurn stamped
+// against a turn that has not happened yet — `TurnsBegun + 1` for the
+// named player — and `durationExpiredLocked` reads the same case for
+// both. A kind of its own would be a second copy of one rule.
+//
+// It is a strictly LONGER window than UntilYourNextTurn, and the two
+// are easy to confuse: "until your next turn" ends as that turn
+// BEGINS (CR 500.1), "until the end of your next turn" ends at that
+// turn's cleanup step (CR 514.2). Reckless Impulse prints the second.
+func (g *Game) UntilEndOfYourNextTurnDuration(player uuid.UUID) Duration {
+	return Duration{
+		Kind:                   UntilEndOfTurn,
+		Player:                 player,
+		ExpiresAfterTurnsBegun: g.turnsBegunForLocked(player) + 1,
+	}
+}
+
+// WhileInZoneDuration is "for as long as this card remains in the
+// zone" (CR 611.2b) — see the WhileInZone kind. Needs no game state,
+// because the zone half is enforced by the CR 400.7 object identity
+// the permission already names, so it is a plain function.
+func WhileInZoneDuration() Duration { return Duration{Kind: WhileInZone} }
+
 // ForAsLongAsOnBattlefieldDuration is "for as long as ~ remains on the
 // battlefield" (CR 611.2b). Returns the duration and false when the
 // source is not on the battlefield at all: CR 611.2b says an effect
@@ -242,16 +303,28 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 	}
 	switch d.Kind {
 	case UntilEndOfTurn:
-		// The cleanup step of the turn it was made in ends it
-		// (CR 514.2) — and so does the beginning of any later turn,
-		// which is the backstop for a turn that ended early without
-		// a real cleanup step (ADR 0059 Decision 6).
-		return endOfTurn || g.turnsBegunForLocked(d.Player) > d.ExpiresAfterTurnsBegun
+		// The cleanup step of the turn the effect NAMES ends it
+		// (CR 514.2) — and so does the beginning of any turn after
+		// that one, which is the backstop for a turn that ended early
+		// without a real cleanup step (ADR 0059 Decision 6).
+		//
+		// The turn it names is the one whose ExpiresAfterTurnsBegun
+		// the stamp carries: the creating player's CURRENT turn for
+		// UntilEndOfTurnDuration, their NEXT turn for
+		// UntilEndOfYourNextTurnDuration (#945). For every effect
+		// stamped by the first constructor the seat-turn test is
+		// already true when the sweep runs, so this reads exactly as
+		// the pre-#945 `endOfTurn ||` did.
+		turns := g.turnsBegunForLocked(d.Player)
+		return (endOfTurn && turns >= d.ExpiresAfterTurnsBegun) || turns > d.ExpiresAfterTurnsBegun
 	case UntilYourNextTurn:
 		return g.turnsBegunForLocked(d.Player) >= d.ExpiresAtTurnsBegun
 	case ForAsLongAs:
 		return !g.durationConditionHoldsLocked(d)
-	case Indefinite:
+	case Indefinite, WhileInZone:
+		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
+		// change, which CR 400.7 answers on the permission itself —
+		// see the kind's comment.
 		return false
 	}
 	return false
@@ -307,6 +380,8 @@ func (k DurationKind) String() string {
 		return "for as long as"
 	case Indefinite:
 		return "no stated duration"
+	case WhileInZone:
+		return "while it remains in the zone"
 	}
 	return "unknown duration"
 }

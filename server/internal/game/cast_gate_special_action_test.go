@@ -93,7 +93,7 @@ func TestSuspendedFreeCastObeysTheCastGate(t *testing.T) {
 			Timing:      TimingFlash,
 			CastOnly:    true,
 			GrantsHaste: true,
-			UntilTurn:   g.Turn.Number,
+			Duration:    g.UntilEndOfTurnDuration(),
 			Label:       SuspendFreeCastLabel,
 		}, []Card{g.Exile.Cards[len(g.Exile.Cards)-1]})
 	})
@@ -125,7 +125,7 @@ func TestSuspendedFreeCastObeysTheCastGate(t *testing.T) {
 			Timing:      TimingFlash,
 			CastOnly:    true,
 			GrantsHaste: true,
-			UntilTurn:   g2.Turn.Number,
+			Duration:    g2.UntilEndOfTurnDuration(),
 			Label:       SuspendFreeCastLabel,
 		}, []Card{g2.Exile.Cards[len(g2.Exile.Cards)-1]})
 	})

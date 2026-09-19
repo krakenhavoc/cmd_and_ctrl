@@ -112,7 +112,7 @@ func TestCastFromExileTurnsTheCardFaceUp(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("route: %v", err)
 		}
-		g.GrantCastPermissionOverCardForEffect(id, CastPermission{Player: me.ID, WhileInZone: true})
+		g.GrantCastPermissionOverCardForEffect(id, CastPermission{Player: me.ID, Duration: WhileInZoneDuration()})
 	})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: string(ZoneExile)}); err != nil {
 		t.Fatalf("cast from exile: %v", err)

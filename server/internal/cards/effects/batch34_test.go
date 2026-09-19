@@ -1196,22 +1196,21 @@ func TestB34CoriMountainMonasteryChecksAndImpulses(t *testing.T) {
 		t.Fatal("the top card is exiled")
 	}
 	perm := exiledPermission(g, ids[0])
-	if perm.Player != me.ID || perm.CastOnly || !perm.Active(me.ID, g.Turn.Number) {
+	if perm.Player != me.ID || perm.CastOnly || !permissionLive(g, perm, me.ID) {
 		t.Errorf("%+v: the controller may PLAY it, a land included", perm)
 	}
 	// Through the opponents' turns and the controller's next turn the
 	// grant holds; it lapses after that turn.
 	advanceToMainOf(t, g, 2)
-	if !exiledPermission(g, ids[0]).Active(me.ID, g.Turn.Number) {
+	if !permissionLive(g, exiledPermission(g, ids[0]), me.ID) {
 		t.Error("the grant survives the opponents' turns")
 	}
-	advanceToUpkeepOf(t, g, 0)
-	passPriorityAroundTable(t, g)
-	if p := exiledPermission(g, ids[0]); p.UntilTurn != g.Turn.Number || !p.Active(me.ID, g.Turn.Number) {
-		t.Errorf("after your upkeep the grant is %+v, want live through this turn only", p)
+	advanceToMainOf(t, g, 0)
+	if p := exiledPermission(g, ids[0]); !permissionLive(g, p, me.ID) {
+		t.Errorf("on your next turn the grant is %+v, want live", p)
 	}
 	advanceToMainOf(t, g, 1)
-	if exiledPermission(g, ids[0]).Active(me.ID, g.Turn.Number) {
+	if permissionLive(g, exiledPermission(g, ids[0]), me.ID) {
 		t.Error("the grant ends with your next turn")
 	}
 }

@@ -157,12 +157,15 @@ func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
 			cards = cards[len(cards)-1:]
 		}
 		for _, c := range cards {
+			// CastPermissionForLocked answers nil unless the window
+			// is open for this seat, so there is no second liveness
+			// test here — one function reads the duration (#945).
 			perm := g.CastPermissionForLocked(e.seat, c, zone.z.Kind)
-			if !perm.Active(e.seat, g.Turn.Number) {
+			if perm == nil {
 				continue
 			}
 			card := c
-			if face, ok := perm.GrantsFace(e.seat, g.Turn.Number); ok {
+			if face, ok := perm.GrantsFace(e.seat); ok {
 				card.SetFace(face)
 			}
 			offer := perm.AlternativeCostFor(card)

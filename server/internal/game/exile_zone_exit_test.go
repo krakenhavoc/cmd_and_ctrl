@@ -22,7 +22,7 @@ func TestAirbendGrantDoesNotSurviveLeavingExile(t *testing.T) {
 			t.Fatalf("ExileCardWithPermissionForEffect: %v", err)
 		}
 	})
-	if !exilePlayOf(g, id).WhileInZone {
+	if exilePlayOf(g, id).Duration.Kind != WhileInZone {
 		t.Fatalf("setup: airbend grant missing on the exiled card")
 	}
 

@@ -252,42 +252,64 @@ type CastPermission struct {
 	AnyColor bool `json:"anyColor,omitempty"`
 
 	// --- the window ------------------------------------------------
+
+	// Duration is when the permission ENDS (CR 611.2), in the one
+	// vocabulary ADR 0063 gives every continuous effect in the engine
+	// — duration.go, swept through the same durationExpiredLocked.
+	// #945 replaced the {UntilTurn, WhileInZone} pair ADR 0066
+	// inherited from ExilePlayPermission with this field; the ADR
+	// recorded the debt at the time and this is it paid.
 	//
-	// FOLLOW-UP (#945, ADR 0066): these three fields predate ADR 0063's
-	// game.Duration, which landed on develop while this work was in
-	// flight, and they are a second duration vocabulary until they are
-	// swapped for one. Active below is the single function that reads
-	// them, which is what keeps the swap contained; it is not free
-	// because Duration expiry needs the game, so Active becomes a
-	// method on *Game and every caller moves with it. NotBeforeTurn
-	// survives either way — warp's "on a later turn" is a FLOOR, and
-	// Duration has no concept of one.
+	// Four of the five kinds are used here:
+	//
+	//	UntilEndOfTurn          Snapcaster, Past in Flames, the
+	//	                        Locker, impulse exile, cascade, a
+	//	                        Siege's face grant — and, stamped one
+	//	                        seat-turn out by
+	//	                        UntilEndOfYourNextTurnDuration,
+	//	                        Reckless Impulse's "until the end of
+	//	                        your next turn"
+	//	WhileInZone             airbend, warp, and every permission
+	//	                        derived from a permanent
+	//	UntilYourNextTurn       nothing prints it on a cast permission
+	//	                        yet; it costs nothing to accept
+	//	Indefinite              likewise
+	//
+	// ForAsLongAs is the one a permission must not carry: its
+	// condition watches a battlefield object, and a permission's
+	// "for as long as the source remains" is already free, because
+	// standing permissions are derived from the battlefield on every
+	// query rather than stored (see standingCastPermissionsLocked).
+	//
+	// THE ZERO VALUE IS "UNTIL END OF TURN", UNSTAMPED, and
+	// GrantCastPermissionForEffect stamps it against the current turn
+	// on the way in. That is the safe default in both directions: a
+	// caller who forgets gets the shortest window rather than an
+	// unbounded grant, which is the trap the old `UntilTurn int`
+	// sprang (0 was both the zero value and a turn number).
+	Duration Duration `json:"duration,omitzero"`
 
-	// UntilTurn is the last turn number the permission is live on.
-	// "Until end of turn" grants the turn it was created in. A turn
-	// NUMBER rather than a cleanup sweep because of extra turns, and
-	// because a card re-granted later must not inherit a stale
-	// window. Ignored when WhileInZone is set.
-	UntilTurn int `json:"untilTurn,omitempty"`
-
-	// NotBeforeTurn is the earliest turn the permission is live on —
-	// warp's "you may cast it from exile ON A LATER TURN"
-	// (CR 702.185a). Zero means "from now", and the floor survives
-	// WhileInZone: "for as long as it remains exiled" does not
-	// weaken "on a later turn".
+	// NotBeforeTurn is the earliest turn NUMBER the permission is
+	// live on — warp's "you may cast it from exile ON A LATER TURN"
+	// (CR 702.185a), and the same clause foretell prints
+	// (CR 702.143a). Zero means "from now".
+	//
+	// IT SURVIVED THE #945 SWAP DELIBERATELY, and this is the whole
+	// reason the window is a Duration PLUS one int rather than a
+	// Duration alone. Duration models when an effect ENDS; CR 611.2
+	// has no vocabulary for when one STARTS, because a continuous
+	// effect starts as it is created. A cast permission is the one
+	// thing in the engine that can be granted now and open later, so
+	// the floor is a field of the permission rather than a kind, and
+	// it applies whatever the Duration says: "for as long as it
+	// remains exiled" does not weaken "on a later turn".
+	//
+	// Turn.Number is a ROUND counter, so this reads as "not before
+	// round N" rather than "not on the turn it was granted". Every
+	// printed warp card is cast at sorcery speed on its controller's
+	// own turn, where the two agree; see #945's PR for the case where
+	// they do not.
 	NotBeforeTurn int `json:"notBeforeTurn,omitempty"`
-
-	// WhileInZone makes the window unbounded in turns — airbend's
-	// "WHILE IT'S EXILED, its owner may cast it for {2}". The
-	// duration is the card's continued presence in the zone, which
-	// ObjectEpoch enforces for free: the moment the card moves it is
-	// a new object and the ref no longer matches.
-	//
-	// A named boolean rather than a sentinel UntilTurn, for the
-	// reason ExilePlayPermission.WhileExiled gave: a caller who
-	// simply forgets to set UntilTurn must not get an unbounded grant
-	// by accident, since 0 is both the zero value and a turn number.
-	WhileInZone bool `json:"whileInZone,omitempty"`
 
 	// --- what, and when --------------------------------------------
 
@@ -338,18 +360,33 @@ func (p *CastPermission) Granted() bool {
 	return p != nil && p.Player != uuid.Nil
 }
 
-// Active reports whether playerID may use this permission on `turn`.
+// CastPermissionActiveForEffect reports whether playerID may use this
+// permission right now: it names them, its CR 702.185a floor has been
+// reached, and its CR 611.2 duration has not run out.
+//
+// THE one liveness test, and a method on *Game because ADR 0063's
+// durationExpiredLocked needs the game — the seat-turn counts, the
+// battlefield and the pin. Before #945 this was a value method
+// reading the permission's own three fields, which is exactly the
+// second duration vocabulary ADR 0066 recorded as debt.
+//
 // Nil-safe, so the cast path can ask without a guard.
-func (p *CastPermission) Active(playerID uuid.UUID, turn int) bool {
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UUID) bool {
 	if p == nil || p.Player == uuid.Nil || p.Player != playerID {
 		return false
 	}
-	// The floor is checked first because it applies to unbounded
-	// permissions too (see NotBeforeTurn).
-	if p.NotBeforeTurn > 0 && turn < p.NotBeforeTurn {
+	// The floor is checked first because it applies to an unbounded
+	// window too (see NotBeforeTurn).
+	if p.NotBeforeTurn > 0 && g.Turn.Number < p.NotBeforeTurn {
 		return false
 	}
-	return p.WhileInZone || turn <= p.UntilTurn
+	// `false`: this is a query, not the cleanup sweep. An
+	// UntilEndOfTurn permission is live for the whole of the turn it
+	// names and is dropped by sweepCastPermissionsLocked at that
+	// turn's cleanup step — the same split ScopedStatic lives under.
+	return !g.durationExpiredLocked(p.Duration, false)
 }
 
 // NamesCard reports whether a ScopeCards permission names this exact
@@ -380,14 +417,19 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 }
 
 // GrantsFace returns the single face this permission opens, when it
-// names one and its window is open for playerID on `turn`.
+// names one and it is playerID's permission.
 //
-// The turn check is folded in on purpose: an expired permission must
-// not keep narrowing the card's own face set after it has stopped
-// granting anything, or a Siege back face left uncast would make the
-// exiled battle uncastable as anything rather than merely uncast.
-func (p *CastPermission) GrantsFace(playerID uuid.UUID, turn int) (int, bool) {
-	if p == nil || p.Face == 0 || !p.Active(playerID, turn) {
+// NO WINDOW CHECK, since #945, and that is a tightening rather than a
+// loosening: every caller reaches a permission through
+// CastPermissionForLocked, which has already asked
+// CastPermissionActiveForEffect. Folding a second liveness test in
+// here would be a second copy of the rule — and the copy would need
+// the game, which is the one thing this pure-data type does not have.
+// A permission that is not live never reaches this function, so a
+// Siege back face left uncast still cannot narrow anything after its
+// window shuts.
+func (p *CastPermission) GrantsFace(playerID uuid.UUID) (int, bool) {
+	if p == nil || p.Face == 0 || p.Player == uuid.Nil || p.Player != playerID {
 		return 0, false
 	}
 	return p.Face, true
@@ -461,8 +503,12 @@ func (g *Game) GrantCastPermissionForEffect(perm CastPermission) {
 	if perm.Scope != ScopeStanding && len(perm.Cards) == 0 {
 		return
 	}
-	if !perm.WhileInZone && perm.UntilTurn == 0 {
-		perm.UntilTurn = g.Turn.Number
+	if perm.Duration == (Duration{}) {
+		// The zero Duration is "until end of turn", unstamped. Stamp
+		// it against the turn the grant is being made in, so the
+		// window is a fact about this turn rather than about whichever
+		// cleanup step happens to run next (ADR 0063 Decision 2).
+		perm.Duration = g.UntilEndOfTurnDuration()
 	}
 	p := g.playerByIDLocked(perm.Player)
 	if p == nil {
@@ -547,41 +593,6 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 	g.GrantCastPermissionForEffect(perm)
 }
 
-// EndCastPermissionAtTurnForEffect narrows the window of every stored
-// permission `playerID` holds over `cardID` so it lapses at the end of
-// `untilTurn`. Reports whether anything was narrowed.
-//
-// It exists for the "until the end of your next turn" impulse cards
-// (batch 19 / 20): no single turn NUMBER means that for every seat, so
-// the grant is stamped two rounds out as a backstop and a delayed
-// trigger in the holder's next upkeep pulls it back to that turn. This
-// only ever SHORTENS a window — an unbounded permission and one that
-// already ends sooner are both left alone — so a card cannot use it to
-// extend a grant it did not make.
-//
-// Caller must hold g.mu (write).
-func (g *Game) EndCastPermissionAtTurnForEffect(playerID, cardID uuid.UUID, untilTurn int) bool {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return false
-	}
-	changed := false
-	for i := range p.CastPermissions {
-		perm := &p.CastPermissions[i]
-		if perm.WhileInZone || perm.UntilTurn <= untilTurn {
-			continue
-		}
-		for _, ref := range perm.Cards {
-			if ref.ID == cardID {
-				perm.UntilTurn = untilTurn
-				changed = true
-				break
-			}
-		}
-	}
-	return changed
-}
-
 // CastPermissionForLocked is THE query: does an effect let playerID
 // cast or play this card out of this zone right now?
 //
@@ -618,7 +629,7 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 	// one that can carry a face or a per-instance price.
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
-		if !perm.Active(playerID, g.Turn.Number) || !perm.CoversCard(card, zone) {
+		if !g.CastPermissionActiveForEffect(perm, playerID) || !perm.CoversCard(card, zone) {
 			continue
 		}
 		if !g.permissionPositionOKLocked(p, perm, card) {
@@ -695,8 +706,10 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 			// A permission unbounded in turns, because its duration is
 			// the source's presence and this slice is rebuilt from the
-			// battlefield on every query.
-			perm.WhileInZone = true
+			// battlefield on every query. CR 611.2b's "for as long
+			// as", spelled the way a derived permission can afford to
+			// spell it: nothing stored, so nothing to expire.
+			perm.Duration = WhileInZoneDuration()
 			if perm.Filter.FromChosenType {
 				// Realmwalker: "the chosen type". A permanent whose
 				// entry choice has not been answered yet names no
@@ -712,31 +725,49 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 	return out
 }
 
-// clearExpiredCastPermissionsLocked drops permissions whose window
-// has closed, and ScopeCards permissions whose every named object has
-// moved on. Called from the cleanup-step sweep alongside the damage
-// wipe and the turn-scoped statics clear.
+// sweepCastPermissionsLocked drops permissions whose CR 611.2
+// duration has run out, and ScopeCards permissions whose every named
+// object has moved on. `endOfTurn` is true only in the CR 514.2
+// cleanup sweep and is handed straight to durationExpiredLocked,
+// exactly as sweepScopedStaticsLocked hands it — one function decides
+// what a duration means, for statics and permissions alike (#945).
 //
-// This is HYGIENE, not correctness: Active and NamesCard already
-// refuse an expired or stale permission, and standing permissions are
-// never stored at all. Without it the slice would grow for the length
-// of the game.
+// TWO MOMENTS, the same two a "until your next turn" static needs:
+// the cleanup step (sweepTurnEndLocked) and the beginning of a turn
+// (onTurnBeganLocked). The statics' third moment — the top of every
+// layer recompute — buys a permission nothing, because the only kind
+// that can go false between turns is ForAsLongAs and a permission
+// never carries one (see CastPermission.Duration).
+//
+// This is HYGIENE, not correctness: CastPermissionActiveForEffect and
+// NamesCard already refuse an expired or stale permission on every
+// query, and standing permissions are never stored at all. Without it
+// the slice would grow for the length of the game.
+//
+// Allocates a fresh slice rather than filtering in place with
+// `s[:0]`: the backing array is shared with every undo snapshot Clone
+// has taken, so an in-place compaction would rewrite history. That is
+// the trap cloneCard exists to avoid on the card side, and the one
+// sweepScopedStaticsLocked calls out on the static side.
 //
 // Caller must hold g.mu (write).
-func (g *Game) clearExpiredCastPermissionsLocked() {
+func (g *Game) sweepCastPermissionsLocked(endOfTurn bool) {
 	for _, p := range g.Seats {
 		if p == nil || len(p.CastPermissions) == 0 {
 			continue
 		}
-		kept := p.CastPermissions[:0]
+		kept := make([]CastPermission, 0, len(p.CastPermissions))
 		for _, perm := range p.CastPermissions {
-			if !perm.WhileInZone && perm.UntilTurn <= g.Turn.Number {
+			if g.durationExpiredLocked(perm.Duration, endOfTurn) {
 				continue
 			}
 			if perm.Scope != ScopeStanding && !g.anyNamedObjectStillThereLocked(perm) {
 				continue
 			}
 			kept = append(kept, perm)
+		}
+		if len(kept) == 0 {
+			kept = nil
 		}
 		p.CastPermissions = kept
 	}
@@ -830,7 +861,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			if !perm.CoversCard(card, zone) {
 				continue
 			}
-			if perm.Active(p.ID, g.Turn.Number) {
+			if g.CastPermissionActiveForEffect(perm, p.ID) {
 				out := *perm
 				return &out
 			}

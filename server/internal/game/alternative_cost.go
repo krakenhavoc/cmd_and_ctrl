@@ -195,9 +195,9 @@ type AlternativeCost struct {
 	// clause uses the ordinary machinery rather than a bespoke one.
 	// Evoke queues a triggered ability; warp schedules a CR 603.7
 	// delayed trigger, and the grant it leaves behind is the same
-	// CastPermission airbend uses — unbounded (the window is "for as
-	// long as it remains exiled") with a NotBeforeTurn floor for the
-	// "on a later turn" clause.
+	// CastPermission airbend uses — CR 611.2b's "for as long as it
+	// remains exiled" (Duration.WhileInZone) with a NotBeforeTurn
+	// floor for the "on a later turn" clause.
 	//
 	// A warped creature is therefore a two-for-one paid in tempo:
 	// the cheap body now, the real body later. Nothing about the
@@ -676,7 +676,7 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 					// Zero Player means "the card's owner", which is
 					// what warp says: YOU cast it later, and the
 					// warping player owns the card.
-					WhileInZone:   true,
+					Duration:      WhileInZoneDuration(),
 					NotBeforeTurn: notBefore,
 					Label:         "Warp — cast it from exile",
 				}); err != nil {

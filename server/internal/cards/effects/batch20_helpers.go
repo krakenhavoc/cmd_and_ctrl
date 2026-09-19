@@ -18,10 +18,9 @@ import (
 // b04CreaturesControlled, "sacrifice an artifact" is
 // b10SacrificeAnArtifact, the Zombie lord is TribalAnthem, the
 // looter is lootOne, "target creature card in a graveyard" is
-// targetCreatureInAnyGraveyard, the "until the end of your next
-// turn" re-stamp is b19EndImpulseGrantWithThisTurn, the DMU dual and
-// the Guildgate are rows in their cycle tables, and the 3/3 Beast /
-// 2/2 Zombie / Treasure templates live in tokens.go.
+// targetCreatureInAnyGraveyard, the DMU dual and the Guildgate are
+// rows in their cycle tables, and the 3/3 Beast / 2/2 Zombie /
+// Treasure templates live in tokens.go.
 
 // --- token templates ---------------------------------------------
 
@@ -209,31 +208,16 @@ func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.Trigger
 // b20ExileTopUntilEndOfNextTurn is Prosper's Mystic Arcanum: "exile
 // the top card of your library. Until the end of your next turn, you
 // may play that card." — b19ExileTopTwoUntilEndOfNextTurn (Reckless
-// Impulse) generalised to N cards, with the same two-part duration:
-// the grant is stamped two rounds out as a backstop and a CR 603.7
-// delayed trigger at the beginning of the controller's next upkeep
-// re-stamps it to end with that turn (b19EndImpulseGrantWithThisTurn,
-// which touches only cards still in exile under this grant). See the
-// b19 helper for why no single UntilTurn value means "the end of
-// your next turn" for every seat.
-func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem, n int, label string) error {
+// Impulse) generalised to N cards, and the same one-line duration
+// since #945: ADR 0063's `UntilEndOfYourNextTurnDuration` is the
+// printed clause, keyed on the controller's seat-turn count rather
+// than on the shared round number.
+func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem, n int) error {
 	controller := item.Controller
-	exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
-		UntilTurn: g.Turn.Number + 2,
+	_, err := g.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
+		Duration: g.UntilEndOfYourNextTurnDuration(controller),
 	})
-	if err != nil {
-		return err
-	}
-	if len(exiled) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		At:                 game.StepUpkeep,
-		ControllerTurnOnly: true,
-		Label:              label,
-		Cards:              exiled,
-		Effect:             b19EndImpulseGrantWithThisTurn,
-	}.Apply(NewContext(g, item))
+	return err
 }
 
 // b20EachPlayerDrawsAndGainsOne is Kwain's activation: each player

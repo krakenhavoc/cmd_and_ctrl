@@ -114,7 +114,7 @@ func enrich(t *testing.T, g *Game) {
 		// ADR 0066: the permission is the PLAYER's, pinned to the
 		// card's CR 400.7 object epoch, so it has to be granted
 		// through the one write path rather than stamped on the card.
-		g.GrantCastPermissionOverCardForEffect(exiledID, CastPermission{Player: p0.ID, UntilTurn: 3})
+		g.GrantCastPermissionOverCardForEffect(exiledID, CastPermission{Player: p0.ID})
 
 		// --- exile, face down and known to its owner (ADR 0069) ---
 		// Foretell's shape. Here so the exact round-trip covers

@@ -441,7 +441,7 @@ func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	for _, id := range b32CardsInExileLastExiledDuring(g, item.Controller, b32NeyaliLabel) {
-		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{Player: item.Controller, UntilTurn: g.Turn.Number}); err != nil {
+		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{Player: item.Controller, Duration: g.UntilEndOfTurnDuration()}); err != nil {
 			return err
 		}
 	}

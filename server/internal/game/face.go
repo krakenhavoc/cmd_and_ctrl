@@ -237,6 +237,11 @@ func faceCastable(c Card, i int) bool {
 // the card (S32; ADR 0066 made the permission the one model).
 // Returns the face and whether the cast is allowed at all.
 //
+// `grant` is whatever CastPermissionForLocked answered, so it is
+// already this player's and already live — which is why #945 could
+// take the turn out of the signature rather than re-deriving the
+// window here.
+//
 // Two rules, and the split between them is the whole seam:
 //
 //  1. NO grant names a face — every cast before S32, and every cast
@@ -259,8 +264,8 @@ func faceCastable(c Card, i int) bool {
 // browser, a future enumerator entry — had to re-derive the one
 // possible answer and spell it back, and each of them forgetting is a
 // cast that fails for no reason a player can see.
-func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID, turn int) (int, bool) {
-	if face, ok := grant.GrantsFace(playerID, turn); ok {
+func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID) (int, bool) {
+	if face, ok := grant.GrantsFace(playerID); ok {
 		// A grant for a face the card does not have is REFUSED, not
 		// clamped. SetFace clamps, by design, so a card is never left
 		// incoherent — but here the clamp would land on face 0, and

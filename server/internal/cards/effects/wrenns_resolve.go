@@ -17,7 +17,7 @@ func init() {
 		Name:         "Wrenn's Resolve",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return b19ExileTopTwoUntilEndOfNextTurn("Wrenn's Resolve")(ctx.Game, item)
+			return b19ExileTopTwoUntilEndOfNextTurn(ctx.Game, item)
 		},
 	})
 }

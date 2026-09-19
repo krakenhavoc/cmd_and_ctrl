@@ -15,8 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // types (a Hallowed Fountain turns it on); the activated ability is
 // Prosper's Mystic Arcanum — the top card exiled with permission to
 // PLAY it, land included, lasting until the end of the controller's
-// next turn (b20ExileTopUntilEndOfNextTurn: stamped two rounds out,
-// then trimmed to that turn by a delayed trigger at its upkeep).
+// next turn (b20ExileTopUntilEndOfNextTurn, ADR 0063's seat-turn
+// duration).
 //
 // No simplification.
 func init() {
@@ -34,8 +34,7 @@ func init() {
 			Label: "{3}{R}, {T}: Exile the top card of your library. Until the end of your next turn, you may play that card.",
 			Cost:  Plus(ManaCost("{3}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b20ExileTopUntilEndOfNextTurn(g, item, 1,
-					"Cori Mountain Monastery — the exiled card may be played until end of turn")
+				return b20ExileTopUntilEndOfNextTurn(g, item, 1)
 			},
 		}},
 	})

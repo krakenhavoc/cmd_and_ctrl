@@ -66,7 +66,7 @@ func TestCastableHereStampedOnAGrantedGraveyardCard(t *testing.T) {
 	withStandingPermission(t, oracle, game.CastPermission{
 		Zone:                    game.ZoneGraveyard,
 		Scope:                   game.ScopeStanding,
-		WhileInZone:             true,
+		Duration:                game.WhileInZoneDuration(),
 		Filter:                  game.PermissionFilter{NonLandOnly: true},
 		AltCostKey:              "escape",
 		ExileOtherFromGraveyard: 3,

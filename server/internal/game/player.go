@@ -287,9 +287,11 @@ type Player struct {
 	// compose and one leaving cannot revoke the other's grant — the
 	// same argument land_drops.go makes about Exploration.
 	//
-	// Swept at cleanup for hygiene only (clearExpiredCastPermissionsLocked):
-	// a permission that has expired or whose named objects have moved
-	// on is already refused by Active and NamesCard.
+	// Swept at the cleanup step and at the beginning of a turn, for
+	// hygiene only (sweepCastPermissionsLocked): a permission whose
+	// CR 611.2 duration has run out, or whose named objects have
+	// moved on, is already refused by CastPermissionActiveForEffect
+	// and NamesCard.
 	CastPermissions []CastPermission
 }
 

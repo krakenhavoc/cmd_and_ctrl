@@ -37,6 +37,15 @@ func exiledPermission(g *game.Game, id uuid.UUID) *game.CastPermission {
 	return &game.CastPermission{}
 }
 
+// permissionLive asks the engine's ONE liveness predicate (#945): the
+// permission names this player, its CR 702.185a floor has been
+// reached, and its CR 611.2 duration has not run out. Card tests ask
+// it rather than reading a window field, so they cannot disagree with
+// the cast path about what "live" means.
+func permissionLive(g *game.Game, perm *game.CastPermission, player uuid.UUID) bool {
+	return g.CastPermissionActiveForEffect(perm, player)
+}
+
 func TestRagavanStealsTheTopCardAndMakesATreasure(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victim := g.Seats[0], g.Seats[1]

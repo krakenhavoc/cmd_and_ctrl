@@ -13,7 +13,7 @@ import (
 
 // airbendGrant is the permission every airbend card hands out.
 func airbendGrant() CastPermission {
-	return CastPermission{CastOnly: true, WhileInZone: true, Cost: "{2}"}
+	return CastPermission{CastOnly: true, Duration: WhileInZoneDuration(), Cost: "{2}"}
 }
 
 // permanentFor puts a card on the battlefield under owner's control
@@ -37,25 +37,28 @@ func exilePlayOf(g *Game, id uuid.UUID) *CastPermission {
 	return &CastPermission{}
 }
 
-// An unbounded grant ignores the turn number entirely — that is the
-// whole of piece 2.
+// A zone-bound grant ignores the turn entirely — that is the whole
+// of piece 2, and since #945 it is Duration.WhileInZone saying so.
 func TestUnboundedExilePermissionIgnoresTheTurn(t *testing.T) {
-	me := uuid.New()
-	perm := CastPermission{Player: me, WhileInZone: true}
-	for _, turn := range []int{1, 2, 50, 9999} {
-		if !perm.Active(me, turn) {
-			t.Errorf("turn %d: unbounded grant reported inactive", turn)
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	perm := CastPermission{Player: me.ID, Duration: WhileInZoneDuration()}
+	for _, turns := range []int{0, 1, 5, 40} {
+		probe := g.Clone()
+		probe.Seats[0].TurnsBegun += turns
+		probe.Turn.Number += turns
+		var live bool
+		probe.ReadSnapshot(func() { live = probe.CastPermissionActiveForEffect(&perm, me.ID) })
+		if !live {
+			t.Errorf("%d turns later: zone-bound grant reported inactive", turns)
 		}
 	}
 	// It is still a grant to ONE player. Unbounded is a duration,
 	// not a licence.
-	if perm.Active(uuid.New(), 1) {
-		t.Errorf("unbounded grant admitted somebody it doesn't name")
-	}
-	// UntilTurn is not consulted, even when it is in the past.
-	stale := CastPermission{Player: me, WhileInZone: true, UntilTurn: 1}
-	if !stale.Active(me, 40) {
-		t.Errorf("UntilTurn overrode WhileInZone")
+	var admitted bool
+	g.ReadSnapshot(func() { admitted = g.CastPermissionActiveForEffect(&perm, g.Seats[1].ID) })
+	if admitted {
+		t.Errorf("zone-bound grant admitted somebody it doesn't name")
 	}
 }
 
@@ -76,18 +79,21 @@ func TestCleanupSpareUnboundedExilePermissions(t *testing.T) {
 		}
 	})
 
-	g.WithWriteLock(func() { g.clearExpiredCastPermissionsLocked() })
+	g.WithWriteLock(func() { g.sweepCastPermissionsLocked(true) })
 
 	if reaped := exilePlayOf(g, thisTurn); reaped.Granted() {
 		t.Errorf("the turn-bounded grant survived cleanup")
 	}
-	if got := exilePlayOf(g, forever); !got.Granted() || !got.WhileInZone {
+	if got := exilePlayOf(g, forever); !got.Granted() || got.Duration.Kind != WhileInZone {
 		t.Errorf("cleanup reaped an unbounded grant: %+v", got)
 	}
 	// Still there several turns later.
 	g.WithWriteLock(func() {
 		g.Turn.Number += 5
-		g.clearExpiredCastPermissionsLocked()
+		for _, p := range g.Seats {
+			p.TurnsBegun += 5
+		}
+		g.sweepCastPermissionsLocked(true)
 	})
 	if later := exilePlayOf(g, forever); !later.Granted() {
 		t.Errorf("an unbounded grant lapsed on a later cleanup")
@@ -125,8 +131,8 @@ func TestExileCardWithPermissionGrantsToTheOwner(t *testing.T) {
 	if got.Player != opp.ID {
 		t.Errorf("grant holder = %v, want the OWNER %v (not the exiler %v)", got.Player, opp.ID, me.ID)
 	}
-	if !got.WhileInZone || !got.CastOnly || got.Cost != "{2}" {
-		t.Errorf("grant shape = %+v, want cast-only, unbounded, {2}", got)
+	if got.Duration.Kind != WhileInZone || !got.CastOnly || got.Cost != "{2}" {
+		t.Errorf("grant shape = %+v, want cast-only, zone-bound, {2}", got)
 	}
 	// An explicit holder still wins — the primitive is not
 	// airbend-only.
@@ -137,10 +143,11 @@ func TestExileCardWithPermissionGrantsToTheOwner(t *testing.T) {
 	if h := exilePlayOf(g, other).Player; h != me.ID {
 		t.Errorf("explicit holder = %v, want %v", h, me.ID)
 	}
-	// …and a turn-bounded grant with no UntilTurn defaults to this
-	// turn, matching the impulse primitive.
-	if got := exilePlayOf(g, other); got.UntilTurn != g.Turn.Number {
-		t.Errorf("UntilTurn = %d, want this turn %d", got.UntilTurn, g.Turn.Number)
+	// …and a grant with no Duration defaults to "until end of turn",
+	// stamped against this turn, matching the impulse primitive.
+	got = exilePlayOf(g, other)
+	if got.Duration.Kind != UntilEndOfTurn || got.Duration.Player != g.Seats[g.Turn.ActiveSeat].ID {
+		t.Errorf("duration = %+v, want until end of this turn", got.Duration)
 	}
 }
 

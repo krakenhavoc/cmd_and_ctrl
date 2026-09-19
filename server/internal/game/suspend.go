@@ -225,8 +225,13 @@ func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
 		Timing:      TimingFlash,
 		CastOnly:    true,
 		GrantsHaste: true,
-		UntilTurn:   g.Turn.Number,
-		Label:       SuspendFreeCastLabel,
+		// CR 702.62b: the cast happens as the trigger resolves, so
+		// the window is this turn and no longer (#945). Stamped
+		// explicitly rather than left zero because the trigger fires
+		// in an UPKEEP, and a reader should be able to see which turn
+		// the grant names without tracing the write path.
+		Duration: g.UntilEndOfTurnDuration(),
+		Label:    SuspendFreeCastLabel,
 	}, []Card{*c})
 }
 

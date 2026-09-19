@@ -566,3 +566,62 @@ opponent-gains-control shape, and its clause reads "a permanent **from
 you**" rather than "a permanent you own" — a sibling predicate on the
 same event, one line away, not written until a card is being
 converted.
+
+
+## Amendment (2026-09-18, #945): a fifth kind, a second client, and "until the end of your next turn"
+
+Granted cast permissions (ADR 0066) moved onto this model. Three things
+changed here to let them.
+
+**`WhileInZone` is a fifth `DurationKind`.** "While it's exiled, its owner may
+cast it for {2}" (airbend), "for as long as it remains exiled" (warp), and
+every permission derived from a permanent on the battlefield state a duration
+— it is just about a zone rather than about a turn, which CR 611.2b allows and
+the other four kinds could not express. It is NOT a synonym for `Indefinite`:
+the effect does say when it ends.
+
+Nothing in `durationExpiredLocked` ends it, and that is deliberate. What ends
+it is CR 400.7 — a permission names `{instance, epoch}`, so the moment the
+card leaves the zone it is a new object the grant no longer names, and
+`anyNamedObjectStillThereLocked` sweeps the husk. A duration that re-checked a
+zone on every query would be a second copy of that rule with two chances to
+drift. A `ScopedStatic` must not carry the kind; if one does, the switch
+treats it as `Indefinite`, which is the safe half of that mistake.
+
+**"Until the end of your next turn" is a STAMP, not a kind.** Reckless
+Impulse, Wrenn's Resolve, Prosper's Mystic Arcanum and Cori Mountain Monastery
+print it. It is the same boundary `UntilEndOfTurn` names — a cleanup step —
+one seat-turn later, so `UntilEndOfYourNextTurnDuration(player)` is an
+`UntilEndOfTurn` whose `ExpiresAfterTurnsBegun` is `TurnsBegun + 1`. A kind of
+its own would have been a second copy of one rule.
+
+Decision 2's switch therefore reads the `UntilEndOfTurn` case as "the cleanup
+step of the turn this NAMES":
+
+```go
+turns := g.turnsBegunForLocked(d.Player)
+return (endOfTurn && turns >= d.ExpiresAfterTurnsBegun) || turns > d.ExpiresAfterTurnsBegun
+```
+
+For every effect stamped by `UntilEndOfTurnDuration` the seat-turn test is
+already true when the sweep runs, so this is the pre-#945 `endOfTurn ||`
+verbatim for everything that existed before it.
+
+Do not confuse it with `UntilYourNextTurn`, which is a turn SHORTER:
+"until your next turn" ends as that turn begins (CR 500.1), "until the end of
+your next turn" ends at that turn's cleanup (CR 514.2).
+
+**Cast permissions are the second client of the model.** They are swept by
+`sweepCastPermissionsLocked` through the same `durationExpiredLocked`, at two
+of Decision 2's three moments — the cleanup step and the beginning of a turn.
+The third, the top of every layer recompute, is for `ForAsLongAs` conditions,
+and a permission never carries one: "for as long as the source remains" is
+free for a standing permission, because it is derived from the battlefield on
+every query rather than stored.
+
+One thing a permission carries that `Duration` deliberately does not model: a
+FLOOR. `CastPermission.NotBeforeTurn` is warp's and foretell's "on a later
+turn" (CR 702.185a, CR 702.143a). CR 611.2 says when an effect ends; a
+continuous effect starts when it is created, so there is no start bound to
+model, and adding one here for the single type that needs it would widen
+`Duration` for every caller. See ADR 0066's amendment.

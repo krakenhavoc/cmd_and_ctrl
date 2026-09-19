@@ -641,7 +641,7 @@ func TestB26AerialExtortionistExilesWithABuybackAndDrawsOnTheBuyback(t *testing.
 		t.Fatal("the Signet is exiled")
 	}
 	perm := exiledPermission(g, rock)
-	if perm.Player != opp.ID || !perm.WhileInZone || !perm.CastOnly {
+	if perm.Player != opp.ID || perm.Duration.Kind != game.WhileInZone || !perm.CastOnly {
 		t.Fatalf("its OWNER may cast it for as long as it stays exiled: %+v", perm)
 	}
 	// The owner buys it back on their turn — a cast from exile, which

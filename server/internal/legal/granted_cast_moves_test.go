@@ -76,7 +76,7 @@ func TestEnumeratorOffersALibraryTopPlay(t *testing.T) {
 			return nil
 		}
 		return []game.CastPermission{{
-			Zone: game.ZoneLibrary, Scope: game.ScopeStanding, WhileInZone: true,
+			Zone: game.ZoneLibrary, Scope: game.ScopeStanding, Duration: game.WhileInZoneDuration(),
 			TopOfLibraryOnly: true, Filter: game.PermissionFilter{LandsOnly: true},
 		}}
 	}
