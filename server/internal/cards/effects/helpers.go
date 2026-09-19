@@ -333,6 +333,28 @@ func IsBasicLandExcept(subtype string) func(game.Card) bool {
 	}
 }
 
+// IsLandWithAnySubtype is "a <A>, <B>, or <C> card" — any land
+// carrying ANY of the named land subtypes, basic or not. Composes
+// IsLandWithSubtype rather than re-scanning the type line, so it
+// admits Hallowed Fountain and Indatha Triome (Plains Swamp Forest)
+// exactly the way a fetchland's two-name landWithEitherSubtype does;
+// this is that same shape generalised past two names.
+//
+// Farseek's "a Plains, Island, Swamp, or Mountain card" is this
+// predicate over those four names — a land TYPE test, not a "basic"
+// test, so it also excludes Wastes, which prints none of the four.
+func IsLandWithAnySubtype(subtypes ...string) func(game.Card) bool {
+	want := append([]string(nil), subtypes...)
+	return func(c game.Card) bool {
+		for _, s := range want {
+			if IsLandWithSubtype(s)(c) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // controllerOfTarget resolves the controller of a targeted card, for
 // the "its controller …" clause on Beast Within / Generous Gift /
 // Nature's Claim. Returns ok=false when the target has left the

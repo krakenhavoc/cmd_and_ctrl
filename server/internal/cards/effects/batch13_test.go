@@ -604,6 +604,86 @@ func TestB13BeledrosMakesAPestOnEveryUpkeep(t *testing.T) {
 	}
 }
 
+// The activated ability has no {T} in its cost, so CR 302.6
+// summoning sickness never gates it — SummonedThisTurn is left true
+// to prove that. One land is genuinely tapped for mana (through its
+// own mana ability, not by hand-setting Tapped) and the other is
+// tapped some other way; both must come back up.
+func TestB13BeledrosUntapsAllLandsForTenLife(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	beledros := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: beledros, Name: "Beledros Witherbloom", TypeLine: "Legendary Creature — Elder Dragon",
+		OracleID: b13BeledrosWitherbloomOracle, Power: 4, Toughness: 4,
+		Owner: me.ID, Controller: me.ID, SummonedThisTurn: true,
+	})
+	me.Life = 10
+
+	forest := seedPermanentFor(g, me.ID, "Forest", "Basic Land — Forest")
+	swamp := seedPermanentFor(g, me.ID, "Swamp", "Basic Land — Swamp")
+	if err := g.ActivateManaAbility(me.ID, forest, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("tap Forest for mana: %v", err)
+	}
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == swamp {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+
+	if err := g.ActivateCatalogAbility(me.ID, beledros, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility (a no-tap ability must not be gated by summoning sickness): %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if me.Life != 0 {
+		t.Errorf("life = %d, want 0 after paying 10", me.Life)
+	}
+	f, _ := battlefieldCard(g, forest)
+	if f.Tapped {
+		t.Error("the land tapped for mana this turn should be untapped")
+	}
+	s, _ := battlefieldCard(g, swamp)
+	if s.Tapped {
+		t.Error("every land you control should untap")
+	}
+}
+
+func TestB13BeledrosCannotUntapBelowTenLife(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	beledros := b12Push(g, me.ID, "Beledros Witherbloom", "Legendary Creature — Elder Dragon", b13BeledrosWitherbloomOracle, 4, 4)
+	me.Life = 9
+
+	if err := g.ActivateCatalogAbility(me.ID, beledros, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Fatal("activating for 10 life while at 9 life should be refused")
+	}
+}
+
+// "Activate only once each turn" — a second attempt this turn must be
+// refused outright, not merely a no-op after paying again.
+func TestB13BeledrosOnlyOncePerTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	beledros := b12Push(g, me.ID, "Beledros Witherbloom", "Legendary Creature — Elder Dragon", b13BeledrosWitherbloomOracle, 4, 4)
+	me.Life = 100
+
+	if err := g.ActivateCatalogAbility(me.ID, beledros, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("first activation: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	lifeAfterFirst := me.Life
+
+	if err := g.ActivateCatalogAbility(me.ID, beledros, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Fatal("a second activation this turn should be refused (Activate only once each turn)")
+	}
+	if me.Life != lifeAfterFirst {
+		t.Error("a refused activation must not pay any life")
+	}
+}
+
 // --- Vibrant Cityscape ---------------------------------------------
 
 func TestB13VibrantCityscapeFetchesABasicTapped(t *testing.T) {
