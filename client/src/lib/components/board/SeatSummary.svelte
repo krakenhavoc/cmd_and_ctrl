@@ -259,7 +259,17 @@
           >
             <span class="pt">{c.power ?? 0}/{c.toughness ?? 0}</span>
             {#each pipKeywords(c) as k (k)}
-              <span class="kw" aria-hidden="true">{@html KEYWORD_ICONS[k] ?? ""}</span>
+              {@const icon = KEYWORD_ICONS[k]}
+              {#if icon}
+                <!-- Same table and the same suppression as KeywordBadgeRow:
+                     KEYWORD_ICONS is literal SVG written in this repo, never
+                     anything that came off the wire. The `{#if}` replaces the
+                     old `?? ""` fallback, so an unmapped keyword renders
+                     nothing at all rather than an empty span the pip still
+                     pays gap for. -->
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                <span class="kw" aria-hidden="true">{@html icon}</span>
+              {/if}
             {/each}
           </button>
         {/each}
