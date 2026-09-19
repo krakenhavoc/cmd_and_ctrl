@@ -55,8 +55,11 @@ import (
 // which cards were NOT taken — goes in Then. Then runs in every case:
 // after the answer, immediately when there was nothing to take,
 // immediately when All or a forced answer made the choice, and even
-// when the move itself returned an error (with whatever did arrive),
-// so the rest are never left on top because one card failed.
+// when the move itself returned an error, so the rest are never left
+// on top because one card failed. (On that last path `Taken` is empty
+// rather than partial — a route that fails a leg never reports what
+// landed — while `Rest` is read off the live board and is right
+// regardless, which is what "the rest" needs.)
 type TakeFromLibraryToHand struct {
 	// Player chooses, and is the player taking the cards. uuid.Nil
 	// means the resolving item's controller. The cards go to their
@@ -129,7 +132,9 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 	reveal, label := p.Reveal, p.Label
 
 	finish := func(g *game.Game, picked []uuid.UUID) error {
+		reported := false
 		report := func(g *game.Game, taken []uuid.UUID) error {
+			reported = true
 			if then == nil {
 				return nil
 			}
@@ -154,7 +159,24 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 				Cards:  cardsStillInALibrary(g, picked),
 			})
 		}
-		return g.TakeFromLibraryToHandThenForEffect(player, picked, report)
+		moveErr := g.TakeFromLibraryToHandThenForEffect(player, picked, report)
+		if moveErr != nil && !reported {
+			// A leg failed and the route returned before reaching its
+			// continuation, so "the rest" has not been dealt with.
+			// Run it anyway: the looked-at cards must not be left on
+			// TOP of the library — with the looker still a knower of
+			// them — because one card of the batch failed. This is the
+			// rule put_from_library.go states and keeps, and the doc
+			// above promises.
+			//
+			// Taken is empty rather than partial: the route reports
+			// what landed only through the continuation it did not
+			// reach. Rest is read off the live board, so it is right
+			// either way, which is what the rest leg actually needs.
+			thenErr := report(g, nil)
+			_ = thenErr // the move's error is the one worth returning
+		}
+		return moveErr
 	}
 
 	candidates := libraryCardsTakeable(ctx.Game, player, cards, p.Match)

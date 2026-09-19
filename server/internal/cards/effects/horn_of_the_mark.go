@@ -79,6 +79,17 @@ func init() {
 // as attacking them (CR 506.2, CR 508.1d), which is what
 // DefendingPlayerForAttackForEffect resolves and what keeps the count
 // agreeing with the trigger's own per-player key.
+//
+// It counts BOARD state (AttackingTarget), which does not distinguish a
+// declared attacker from one PUT onto the battlefield attacking (CR
+// 506.3c, which is not a declaration and emits no EventAttack). That is
+// safe as the engine stands: every caller of
+// CreateTokensAttackingForEffect is itself an attack trigger, so it
+// resolves strictly after commitAttackDeclarationLocked has announced
+// the whole declaration and this predicate has already run. A future
+// beginning-of-combat effect that put a creature in attacking before
+// the declaration commits would inflate the count, and the fix then is
+// to intersect with the announced set rather than to read the board.
 func b41AttackersAgainst(g *game.Game, attacker, player uuid.UUID) int {
 	n := 0
 	for _, id := range b13AttackingCreaturesYouControl(g, attacker) {

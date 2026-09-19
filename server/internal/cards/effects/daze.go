@@ -18,10 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // let the victim see a tapped-out board and decline to pay against an
 // opponent who had, in fact, just untapped a land's worth of mana.
 //
-// The "unless its controller pays {1}" half reuses the S19 pay-unless
-// prompt (Rhystic Study's machinery): the prompt goes to the SPELL'S
-// controller, not to Daze's, and a "pay" they cannot fund degrades to
-// a decline server-side.
+// The "unless its controller pays {1}" half is CounterUnlessPaid
+// (#951): the prompt goes to the SPELL'S controller, not to Daze's, a
+// "pay" they cannot fund degrades to a decline server-side, and the
+// prompt HOLDS THE STACK while it is unanswered — the spell Daze is
+// answering must not resolve while the {1} is outstanding.
 func init() {
 	Register(Spec{
 		OracleID:     "70486bee-6ee7-41ea-b834-8caf4699302b",
@@ -40,13 +41,6 @@ func init() {
 				return nil
 			}
 			stackID := item.Targets[0].ID
-			// Read the victim's controller BEFORE anything touches
-			// the stack — CounterTarget deletes the StackMeta entry,
-			// so the pay-unless prompt has to capture the payer now.
-			target := ctx.Game.StackItemForEffect(stackID)
-			if target == nil {
-				return nil
-			}
 			return CounterUnlessPaid{
 				StackID:  stackID,
 				Cost:     "{1}",

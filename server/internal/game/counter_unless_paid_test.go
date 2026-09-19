@@ -294,3 +294,80 @@ func TestAWardTaxDroppedByADepartureCountersAndFreesTheTable(t *testing.T) {
 		t.Errorf("the table is still blocked by %q after the payer left", c.Kind)
 	}
 }
+
+// A ward trigger whose resolution FAILS after raising the tax must not
+// strand it. #995 made a failed resolution "still a resolution that
+// happened" — the item leaves the stack, the error is reported, and the
+// table plays on — and that branch runs at the same seam #951's gate
+// reads (passPriorityLocked). The two compose only if the prompt the
+// failed resolution left behind is still a prompt somebody can answer.
+//
+// This is the composition, not either half: the trigger raises the tax
+// and then errors, the table is held by the tax rather than by the
+// broken trigger, and answering it settles the guarded spell and frees
+// everyone.
+func TestAWardTaxOutlivesAFailedTriggerResolution(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	warden, caster := g.Seats[0], g.Seats[1]
+	spell := guardedSpellOnStack(t, g, caster)
+	source := departureTestSource(g, warden.ID, "Rimeshield Frost Giant")
+
+	// The ward trigger, on top of the spell it is taxing: it queues the
+	// tax and then fails.
+	boom := errors.New("ward trigger blew up after queueing its tax")
+	g.WithWriteLock(func() {
+		card := g.Battlefield.Cards[len(g.Battlefield.Cards)-1]
+		item := NewTriggeredItem(&card, "Ward — pay {2} or the spell is countered",
+			func(g *Game, _ *StackItem) error {
+				if err := g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
+					StackItem: spell,
+					Chooser:   caster.ID,
+					Source:    source,
+					Cost:      "{2}",
+					Question:  "Ward — pay {2} or the spell is countered",
+				}); err != nil {
+					return err
+				}
+				return boom
+			})
+		// The two stamps the announce path applies and
+		// NewTriggeredItem leaves to it: an identity, and the LIFO
+		// sequence that makes this the top of the stack.
+		item.ID = uuid.New()
+		item.Seq = g.nextStackSeqLocked()
+		g.StackMeta[item.ID] = item
+	})
+
+	// Pass around the table until the trigger resolves. The failure is
+	// reported, not returned: CR 608.2's "the game continues", which is
+	// what #995's branch is for.
+	for i := 0; i < len(g.Seats)+1 && len(g.PendingChoices) == 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority %d over the failing trigger: %v", i, err)
+		}
+	}
+
+	prompt := onlyPendingChoice(t, g)
+	if prompt.GuardsStackItem != spell {
+		t.Fatalf("the tax does not guard the spell: %s", prompt.GuardsStackItem)
+	}
+	if !g.Stack.Contains(spell) {
+		t.Fatal("the guarded spell resolved under a failed trigger")
+	}
+	if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("PassPriority = %v, want ErrChoicePending — a failed trigger must not "+
+			"let the table walk past the tax it already raised", err)
+	}
+
+	// And it is answerable, which is the half that makes the halt a
+	// halt rather than a wedge.
+	if err := g.ResolvePayUnless(prompt.ID, caster.ID, false); err != nil {
+		t.Fatalf("the payer could not answer a tax left by a failed trigger: %v", err)
+	}
+	if g.Stack.Contains(spell) {
+		t.Error("declining did not counter the guarded spell")
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority after the tax was answered: %v", err)
+	}
+}
