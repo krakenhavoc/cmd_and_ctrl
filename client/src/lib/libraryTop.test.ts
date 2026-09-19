@@ -52,4 +52,36 @@ describe("libraryTopPlayable", () => {
   it("is false for a library nobody may look at", () => {
     expect(libraryTopPlayable(library([card({ castable_here: true })]))).toBe(false);
   });
+
+  // #1035. `castable_here` on a library top is the LIBRARY OWNER's
+  // answer and it is public, so a viewer looking at somebody else's
+  // pile has to be told whose it is. The server says so the way it
+  // does for a foreign graveyard cast: the public `exile_play` names
+  // the holder, and that holder's frame is the only one carrying their
+  // stamps.
+  describe("whose answer the bit is", () => {
+    const top = card({ name: "Their Top", known_by_you: true, castable_here: true });
+
+    it("offers the viewer's own library top", () => {
+      expect(libraryTopPlayable(library([top]), "me", "me")).toBe(true);
+    });
+
+    it("withholds an opponent's, even though the bit is public", () => {
+      expect(libraryTopPlayable(library([top]), "them", "me")).toBe(false);
+      expect(libraryTopPlayable(library([top]), null, "me")).toBe(false);
+    });
+
+    it("offers it to the seat a cross-seat grant names", () => {
+      const granted = card({
+        name: "Their Top",
+        known_by_you: true,
+        castable_here: true,
+        exile_play: { player: "them" },
+      });
+      expect(libraryTopPlayable(library([granted]), "them", "me")).toBe(true);
+      // And to nobody else: a third seat that can see a revealed top
+      // card gets no button off somebody else's grant.
+      expect(libraryTopPlayable(library([granted]), "third", "me")).toBe(false);
+    });
+  });
 });
