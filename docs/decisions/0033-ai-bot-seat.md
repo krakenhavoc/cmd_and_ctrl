@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-09-16 (proposed 2026-09-11 in [#286](https://github.com/krakenhavoc/cmd_and_ctrl/pull/286)) · Sprint S31 · Issue [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)
 **Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
 **Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
+**Amended:** 2026-09-19 · #1013: a bot chooses WHICH cards an alternative cost eats — the payments are priced through a second injected hook and the cap rises to three (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -798,6 +799,10 @@ the same spell with the same targets, and the policy cannot tell them
 apart because it does not price a card in a graveyard at all. The policy
 is written down beside `maxEnumeratedRepeats` in `docs/bot.md`.
 
+> **Update, 2026-09-19 (#1013).** The cap is THREE, the payments are
+> priced rather than indistinguishable, and the extra ones spend no
+> target budget. See the amendment below.
+
 The faces of the cast come from the same pair of engine functions:
 `Card.CastableFaces` (CR 715.3's adventure choice since #719, and a
 modal DFC's two halves), NARROWED by `CastPermission.Faces` when a
@@ -867,3 +872,81 @@ this decides only what order it sees them in — and therefore what it
 does when it scores two of them the same. The arms are deliberately the
 same questions that function asks, answered with the crudest public
 proxy there is.
+
+## Amendment (2026-09-19, #1013): a bot chooses WHICH cards an alternative cost eats
+
+*Amends §1's corollary and the 2026-09-19 (#673 / #687) amendment above.
+Closes [#1013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1013).*
+
+**1. The cap was never the constraint; the missing evaluation was.**
+`maxEnumeratedCostPayments = 1` was justified by §1's corollary — a
+variable in a cost must not become an arity of the target cross product
+— and the corollary is right. But the sentence that made it
+UNAVOIDABLE was the next one: "the policy cannot tell them apart
+because it does not price a card in a graveyard at all". Widening the
+search without an evaluation would have spent the budget ranking
+payments by index. So the order of work was fixed, and the issue said
+so: price the cards first, then widen the search.
+
+**2. The price: `aiseat.CostFuelPricer`, and `TargetOrderer`'s shape.**
+An optional Policy extension, asked once per decision, threaded into
+the enumerator as `legal.Options.OrderCostFuel`. A policy with no
+opinion gets `AltCostCandidatesLocked`'s zone order and the enumeration
+is byte-identical to what it was, which is what every non-bot caller
+gets.
+
+It is a SECOND hook rather than a second meaning for `OrderTargets`,
+and `legal.CostFuelOrder` is a second type despite the identical
+signature, because the two ask **opposite** questions about different
+objects: a target order ranks the board by importance and the
+enumerator keeps the top of it; a fuel price ranks a seat's own cards
+by what it would LOSE and the enumerator spends the bottom. One
+interface with one method would let a policy answer one with the other,
+and neither mistake — pitching your best card, targeting your worst —
+would fail to compile.
+
+**3. One function, two readers.** `heuristic.fuelValue`
+(`aiseat/heuristic/fuel.go`) is read by the enumerator to decide which
+payment to OFFER and by `valueOfCast` to price the payment it was
+offered. That is the whole reason the ordering is injected from up here
+rather than written in `legal`: a second scorer would eventually
+disagree with the first about what an escape costs, and the bot would
+choose a payment it then priced as a mistake. It also closes #673's
+declared gap — a non-hand cast still costs no card in HAND, and what it
+really spends is now priced rather than free.
+
+The three cases, and the tunings, are tabulated in `docs/bot.md`. The
+one judgement worth recording here is the split inside a graveyard: a
+card the seat can still CAST from there (escape, flashback, a granted
+impulse) is a discounted card in hand, and an idle one is a floor —
+`FuelFloor` for a land, `FuelIdle` for anything else. Neither floor is
+zero, because a card nobody can use today is still one tomorrow's delve
+might want, and zero would make every unreadable card the first thing a
+cost ate. "Is this a cast surface" is read off the view's own stamps
+(`castable_here`, the offer list) rather than re-derived, because §3
+says a policy may not import `internal/game` and a second reader of the
+cast gate is exactly what that rule is for.
+
+**4. The corollary is enforced, not restated.** The extra payments are
+offered in a SECOND PASS, out of whatever `MaxExpansionPerSource` the
+target walk did not use, against the first announcement it made — the
+same spell with the same targets at a different price, which is what
+they all are. An Uro with no targets has eleven unspent and gets its
+alternatives; a removal spell with an escape cost over a wide board
+spends its budget on targets and gets none. So a cost variable still
+cannot displace a target, which is the corollary's actual content, and
+the cap can rise without weakening it.
+
+`maxEnumeratedCostPayments` is THREE. A policy gets a small choice
+rather than a decree, the number does not depend on the size of the
+graveyard, and the enumeration stays deterministic and stable — the
+sort is stable, so equal prices keep zone order and two enumerations of
+one board agree.
+
+**Deliberately still not done.** The fuel price does not know what the
+SPELL being cast is, the same limit `TargetOrder` declares: it cannot
+prefer to pitch a card the spell would rather have in the graveyard,
+and it cannot see a graveyard synergy the wire does not carry (a
+Crucible on the board makes a land in the graveyard worth keeping, and
+`FuelFloor` does not know). Ranking by what the seat LOSES is the whole
+of its power, and losing least is right for every cost.

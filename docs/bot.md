@@ -1015,29 +1015,64 @@ candidates come from `game.AltCostCandidatesLocked`, which shares its
 per-card predicate with the announce validator, so a payment the
 enumerator builds is a payment `CastSpell` accepts.
 
-**Exactly ONE payment is enumerated per offer**, and that is the
-policy — `legal.maxEnumeratedCostPayments`, beside
-`maxEnumeratedRepeats` and for the same reason. [ADR
+**Up to THREE payments are enumerated per offer** —
+`legal.maxEnumeratedCostPayments`, beside `maxEnumeratedRepeats` and
+for the same reason. It was ONE until #1013, and the cap was never the
+real constraint: the missing EVALUATION was. [ADR
 0033](decisions/0033-ai-bot-seat.md) §1's corollary is that a variable
-in a cost must not become an arity of the target cross product:
+in a cost must not become an arity of the target cross product —
 escape-five over a twenty-card graveyard is 15,504 payments, each
-needing its own price, and a cap of twelve would spend the whole
-per-source budget on twelve indistinguishable Uros and never offer the
-second target of anything.
+needing its own price — and the payments were indistinguishable to a
+policy that priced the battlefield and the seats and valued a card in a
+graveyard at nothing. It picked between them by index, so an Uro
+escaping over a graveyard holding a second Uro, a Snapcaster target and
+three lands ate whichever three were oldest.
 
-"Indistinguishable" is a statement about the POLICY rather than about
-Magic. The heuristic prices the battlefield and the seats; a card in a
-graveyard has no value in its evaluation at all, so it cannot tell two
-escape payments apart and would pick between them by index. The
-payment chosen is the first in zone order (the oldest cards in the
-graveyard), which is deterministic and stable. When a policy learns to
-price the cards a cost eats, that constant is where the search widens.
+Two things changed, and the corollary still holds.
 
-For the same reason the policy prices a non-hand cast as costing NO
-card in hand (`valueOfCast`): what it really spends is the graveyard
-card, which the evaluation does not count. Charging a hand card there
-was what made every flashback and escape score below passing and never
-get taken.
+**The payments are priced.** `aiseat.CostFuelPricer` is
+`TargetOrderer`'s twin: an optional Policy extension the runner asks
+for once per decision, threaded into the enumerator as
+`legal.Options.OrderCostFuel`. It is a second hook rather than a second
+meaning for the first because the two ask OPPOSITE questions — a
+target order ranks the board by importance and the enumerator keeps the
+TOP of it; a fuel price ranks a seat's own cards by what it would lose
+and the enumerator spends the BOTTOM. A policy that answered one with
+the other would pitch its best card every time. A policy with no
+opinion gets `AltCostCandidatesLocked`'s zone order, byte-identical to
+what it got before.
+
+The heuristic's answer is `heuristic.fuelValue`
+(`aiseat/heuristic/fuel.go`), in three cases:
+
+| where the card is | what it is worth |
+| --- | --- |
+| in hand, or the command zone | `Weights.Hand` (the number `Evaluate` already charges per card in hand) plus what it would do if it resolved |
+| a graveyard or exile, and the seat can still CAST it (escape, flashback, a granted impulse — read off the view's own `castable_here` / offer stamps) | `Config.FuelIdle` plus `Config.FuelRecast` × the same card-in-hand price: a real card, at a discount, because it needs its own cost and its own window |
+| a graveyard or exile, and it is idle | `Config.FuelFloor` for a LAND, `Config.FuelIdle` for anything else. That gap is the whole of "eat the lands, not the spells" |
+| on the battlefield (Daze's Island) | the same `boardValue` the rest of the evaluation uses |
+
+Neither floor is zero: a card nobody can use today is still one
+tomorrow's delve or flashback might want, and zero would make every
+unreadable card the first thing a cost ate.
+
+**And the extra payments spend no target budget.** They are offered in
+a second pass, out of whatever `MaxExpansionPerSource` the target walk
+did not use, against the FIRST announcement it made — the same spell
+with the same targets at a different price, which is what they all
+are. An Uro with no targets has eleven unspent and gets its
+alternatives; a removal spell with an escape cost over a wide board
+spends its budget on targets and gets none. The corollary is enforced
+rather than restated.
+
+ONE function answers both halves, and that is deliberate: the
+enumerator reads it to decide which payment to OFFER, and
+`valueOfCast` reads it to price the payment it was offered. A second
+scorer for the ordering would eventually disagree with the first about
+what an escape costs, and the bot would take a payment it then priced
+as a mistake. It also closes #673's declared gap — a non-hand cast
+still costs no card in HAND, and what it really spends is now the
+alternative cost's own price rather than nothing.
 
 ## Ordering target expansion by threat (#687)
 
@@ -1076,7 +1111,11 @@ Two things it deliberately does not do:
 - **It prices nothing off the battlefield.** A spell on the stack and
   a card in a graveyard score zero, which keeps them in the engine's
   own candidate order. Those clauses have a handful of candidates and
-  the cap does not bite on them.
+  the cap does not bite on them. (A card in a graveyard is priced by
+  the FUEL hook above, and deliberately not by this one: what a card
+  is worth to SPEND and what it is worth to TARGET are different
+  questions, which is why #1013 added a second hook rather than
+  widening this one.)
 
 The sort is stable, so equal scores keep the engine's order and two
 enumerations of one board produce the same move list — which is what

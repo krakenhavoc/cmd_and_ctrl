@@ -25,13 +25,25 @@ import (
 // that one projection instead of building a second: the ordering and
 // the decision describe the same instant, and a bot seat still costs
 // exactly one view per decision.
-func (r *Runner) targetOrder() (legal.TargetOrder, Input) {
-	o, ok := r.policy.(TargetOrderer)
-	if !ok {
-		return nil, Input{}
+// #1013 added the second hook, and it shares the one projection for
+// the same reason the decision does: the ordering, the fuel price and
+// the decision must describe the same instant, and a bot seat still
+// costs exactly one view per decision.
+func (r *Runner) enumerationOrder() (legal.Options, Input) {
+	orderer, wantsOrder := r.policy.(TargetOrderer)
+	pricer, wantsFuel := r.policy.(CostFuelPricer)
+	if !wantsOrder && !wantsFuel {
+		return legal.Options{}, Input{}
 	}
 	in := Input{View: protocol.ViewOfGameFor(r.room.Game, r.seat.String()), Seat: r.seat}
-	return o.TargetOrder(in), in
+	var opts legal.Options
+	if wantsOrder {
+		opts.OrderTargets = orderer.TargetOrder(in)
+	}
+	if wantsFuel {
+		opts.OrderCostFuel = pricer.CostFuelPrice(in)
+	}
+	return opts, in
 }
 
 func (r *Runner) concede(ctx context.Context, in Input) bool {
