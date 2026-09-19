@@ -59,16 +59,24 @@ func EquipAbility(cost string) ActivatedAbility {
 // the stack — the battlefield slice may have been reallocated since
 // the ability was announced.
 //
-// A target that became illegal in response is skipped rather than
-// errored: CR 608.2b's re-check says the ability does as much as it
-// can, and for equip with one target that is nothing at all.
+// Two ways it does nothing, and neither is an error:
+//
+//   - A TARGET that became illegal in response is skipped. CR 608.2b's
+//     re-check says the ability does as much as it can, and for equip
+//     with one target that is nothing at all.
+//   - The SOURCE is gone — the Equipment was sacrificed, destroyed or
+//     bounced while the equip sat on the stack, or bounced and
+//     replayed so that the permanent with that ID is a new object
+//     (CR 400.7). game.AttachSourceForEffect owns that half for every
+//     "attach this permanent" ability, so there is no per-card check
+//     here and none in any card file. #812.
 func AttachSourceToTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return g.AttachForEffect(item.SourceCardID, t)
+		return g.AttachSourceForEffect(item, t)
 	}
 	return nil
 }

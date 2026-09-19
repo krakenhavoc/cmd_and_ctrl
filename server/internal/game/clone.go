@@ -570,6 +570,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Controller:    s.Controller,
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
+		SourceEpoch:   s.SourceEpoch,
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,

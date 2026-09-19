@@ -937,9 +937,15 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		Controller:   playerID,
 		Owner:        playerID,
 		SourceCardID: cardID,
-		Label:        ab.Label,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
+		// CR 400.7: which OBJECT this ability came from, not just
+		// which card. Read after the costs have been paid, because a
+		// cost that moved the source (sacrifice, discard) has already
+		// ended the object the ability belonged to and the stamp must
+		// say so. See StackItem.SourceEpoch.
+		SourceEpoch: g.cardObjectEpochLocked(cardID),
+		Label:       ab.Label,
+		Targets:     append([]TargetRef(nil), params.Targets...),
+		Modes:       append([]int(nil), params.Modes...),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships

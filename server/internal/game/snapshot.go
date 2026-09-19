@@ -465,6 +465,7 @@ type stackItemSnapshot struct {
 	Controller    uuid.UUID         `json:"controller"`
 	Owner         uuid.UUID         `json:"owner"`
 	SourceCardID  uuid.UUID         `json:"sourceCardId"`
+	SourceEpoch   int               `json:"sourceEpoch,omitempty"`
 	Label         string            `json:"label,omitempty"`
 	DoubledBy     uuid.UUID         `json:"doubledBy,omitempty"`
 	DoubledByName string            `json:"doubledByName,omitempty"`
@@ -1068,6 +1069,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Controller:    s.Controller,
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
+		SourceEpoch:   s.SourceEpoch,
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1636,6 +1638,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Controller:    s.Controller,
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
+		SourceEpoch:   s.SourceEpoch,
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,

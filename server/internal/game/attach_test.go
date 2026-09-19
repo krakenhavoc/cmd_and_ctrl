@@ -109,22 +109,71 @@ func TestAttachForEffectLinksAndEmits(t *testing.T) {
 	}
 }
 
-func TestAttachForEffectRejectsSelfAndMissingHost(t *testing.T) {
+// CR 701.3b: an attach that cannot happen DOES NOTHING. Three ways it
+// cannot — the host is gone, the attachment is gone, the two are the
+// same permanent — and all three are a quiet EventAttachSkipped rather
+// than an error, because the ability that asked has resolved and an
+// error would be reported as a bug (#812). Only a TargetRef that names
+// nothing at all is still a caller error.
+func TestAttachForEffectSkipsQuietlyWhenItCannotHappen(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	sword := pushAttachTestCard(g, me.ID, "Test Sword", "Artifact — Equipment")
 
+	bear := pushAttachTestCard(g, me.ID, "Grizzly Bears", "Creature — Bear")
+
 	g.WithWriteLock(func() {
-		if err := g.AttachForEffect(sword, TargetRef{Kind: TargetCard, ID: sword}); err != ErrInvalidParam {
-			t.Errorf("self-attach: got %v, want ErrInvalidParam", err)
+		if err := g.AttachForEffect(sword, TargetRef{Kind: TargetCard, ID: sword}); err != nil {
+			t.Errorf("self-attach: got %v, want nil", err)
 		}
-		if err := g.AttachForEffect(sword, TargetRef{Kind: TargetCard, ID: uuid.New()}); err != ErrCardNotFound {
-			t.Errorf("absent host: got %v, want ErrCardNotFound", err)
+		if err := g.AttachForEffect(sword, TargetRef{Kind: TargetCard, ID: uuid.New()}); err != nil {
+			t.Errorf("absent host: got %v, want nil", err)
 		}
 		if err := g.AttachForEffect(sword, TargetRef{}); err != ErrInvalidParam {
 			t.Errorf("zero host: got %v, want ErrInvalidParam", err)
 		}
+		// The #812 branch: the ATTACHMENT has gone. Reached by every
+		// caller, not just equip — Armored Skyhunter's "you may attach
+		// it to a creature you control" asks a prompt the Equipment
+		// can leave before the answer arrives.
+		if err := g.SacrificePermanentForEffect(sword); err != nil {
+			t.Fatalf("sacrifice: %v", err)
+		}
+		if err := g.AttachForEffect(sword, TargetRef{Kind: TargetCard, ID: bear}); err != nil {
+			t.Errorf("departed attachment: got %v, want nil", err)
+		}
 	})
+
+	if got, ok := battlefieldCardByID(g, sword); ok && got.IsAttached() {
+		t.Errorf("sword attached to %+v after four refused attaches", got.AttachedTo)
+	}
+	var onBear []uuid.UUID
+	g.ReadSnapshot(func() { onBear = g.AttachmentsOf(bear) })
+	if len(onBear) != 0 {
+		t.Errorf("the bear picked up %v", onBear)
+	}
+	if n := countEventsOfKind(g, EventAttachSkipped); n != 3 {
+		t.Errorf("EventAttachSkipped count = %d, want 3 (self, absent host, departed attachment)", n)
+	}
+	if n := countEventsOfKind(g, EventAttach); n != 0 {
+		t.Errorf("EventAttach count = %d, want 0", n)
+	}
+	if n := countEventsOfKind(g, EventEffectError); n != 0 {
+		t.Errorf("EventEffectError count = %d, want 0 — a refused attach is not a failure", n)
+	}
+}
+
+// countEventsOfKind is the event-log read the CR 701.3b tests share.
+func countEventsOfKind(g *Game, kind EventKind) int {
+	n := 0
+	g.ReadSnapshot(func() {
+		for i := range g.Events {
+			if g.Events[i].Kind == kind {
+				n++
+			}
+		}
+	})
+	return n
 }
 
 // Equip is re-activatable (CR 702.6d) and the second activation

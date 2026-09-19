@@ -1669,6 +1669,36 @@ taxonomy, including what the vocabulary deliberately cannot say
 limits, which belong beside `BlockerCountValid` as set-shaped
 predicates rather than as bits).
 
+### Attaching, and an ability whose source has gone (#812)
+
+Two rules, each at one choke point, and no card file checks either.
+
+**An attach that cannot happen does nothing** (CR 701.3b).
+`game.AttachForEffect` is the only writer of `Card.AttachedTo` outside
+the state-based action, and when the attachment is not on the
+battlefield (only a permanent can be attached, CR 301.5c), the host is
+not there, or the two are the same permanent, it emits
+`EventAttachSkipped` with the reason on `Label` and returns **nil**. It
+is not an `EventEffectError`: nothing failed, and the catalog soak
+fails the nightly run on any effect error.
+
+**An ability that attaches its SOURCE checks the source is still that
+permanent.** `game.AttachSourceForEffect(item, host)` is the door for
+equip (CR 702.6a) and for fortify and reconfigure when they arrive; it
+asks `AbilitySourceGoneForEffect`, which is "not on the battlefield, OR
+back with a different `Card.ObjectEpoch`" (CR 400.7 — a Loxodon
+Warhammer bounced and replayed while its equip is on the stack keeps
+its instance ID and is a new object). `StackItem.SourceEpoch` is the
+announce-time reading, stamped by the two paths that build a
+`StackItemActivated` item and by nothing else.
+
+`AbilitySourceGoneForEffect` is NOT a general "did my source survive"
+helper. CR 608.2 resolves an ability whether or not its source is
+around, and almost every ability should carry on from last known
+information — "{T}: this deals 2 damage to any target" deals its damage
+from the graveyard. Consult it only where the effect genuinely cannot
+be performed without the source as a permanent.
+
 ### Adding a triggered ability (S19+)
 
 Triggered abilities ("when ~ enters", "when ~ dies", "at the
@@ -3382,6 +3412,25 @@ Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
 `StackItem.Effect`'s reason: an undo restores a clone and the branch
 has to resolve against that one.
+
+**A rule about the picked SET, not about each card** — "discard two
+cards unless you discard a creature card", "any number of nonland
+permanent cards with total mana value 4 or less from among them" — is
+`Validate func(picked []game.Card) bool`, and it is enforced in exactly
+one place: `checkChooseCardsPicksLocked`, which both `ResolveChooseCards`
+and `internal/legal`'s `ChooseCardsPickLegalLocked` go through, so an
+answer the bot is offered is an answer the resolver accepts. A refused
+set comes back as `ErrChoiceSetRejected` with the prompt **still open**,
+and it is never called for an empty pick, which keeps "choose nothing"
+the answer a zero-floor prompt can always take. Every catalog primitive
+that raises a card-set pick forwards the field verbatim —
+`DiscardPrompt.Validate` (#624), `SearchLibrary.Validate` (#682),
+`PutFromLibraryOntoBattlefield.Validate` and
+`TakeFromLibraryToHand.Validate` (#998) — so **if you add another, add
+the passthrough with it**. One behaviour rides along: a set rule turns
+OFF the "the only legal answer is every candidate" shortcut, because
+with a rule it is the rule and not the count that decides which subsets
+are answers.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 

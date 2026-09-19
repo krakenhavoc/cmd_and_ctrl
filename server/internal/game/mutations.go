@@ -2542,6 +2542,10 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		Controller:   playerID,
 		Owner:        playerID,
 		SourceCardID: sourceCardID,
+		// CR 400.7, the same stamp the catalog activation takes:
+		// which OBJECT the ability came from. See
+		// StackItem.SourceEpoch.
+		SourceEpoch:  g.cardObjectEpochLocked(sourceCardID),
 		Label:        params.Label,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),

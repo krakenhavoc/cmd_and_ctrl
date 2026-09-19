@@ -145,6 +145,25 @@ const (
 	// attached to. Added in S24.
 	EventUnattach EventKind = "unattach"
 
+	// EventAttachSkipped — an effect tried to attach something and
+	// CR 701.3b's "the attachment doesn't happen" applied: the
+	// attachment is not on the battlefield (its equip was activated
+	// and it was sacrificed in response), the host is not, or the two
+	// are the same permanent. CardID and Source are the would-be
+	// attachment, Target the would-be host, and Label says which of
+	// the three it was.
+	//
+	// Deliberately NOT EventEffectError, for the reason
+	// EventPendingChoiceDropped is not one: nothing failed. An equip
+	// whose Equipment has left still RESOLVES and simply does nothing
+	// (CR 608.2, CR 702.6a), and reporting that as an effect error
+	// both misreads the rule and fails the catalog soak, which treats
+	// any effect error as a bug. The breadcrumb stays because a
+	// silent no-op is undebuggable; it produces no public log
+	// entry.
+	// #812.
+	EventAttachSkipped EventKind = "attach_skipped"
+
 	// EventControlChanged — CardID changed controller (CR 613.1b).
 	// Actor is the player who GAINED control, Target the player who
 	// LOST it; Source is the card whose effect took it, and is

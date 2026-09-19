@@ -380,6 +380,14 @@ var stackItemFields = plan(
 	"Controller", carried, "",
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
+	// CR 400.7 (#812): which OBJECT an ability's source was at
+	// announce, so "attach this permanent" can refuse a source that
+	// left — or that left and came back as a new object. Carried,
+	// and it has to be: the epoch is a reading of a card that has
+	// since moved, so nothing in the restored board could recompute
+	// it, and a restore that lost it would let a bounced-and-replayed
+	// Equipment be equipped by the old ability.
+	"SourceEpoch", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
