@@ -498,6 +498,44 @@ func nonNumericStat(s string) bool {
 	return err != nil
 }
 
+// variableToughness answers game.Card.VariableToughness for one set of
+// printed values: "the engine has no number for this toughness, and
+// the 0 it parsed is a stand-in".
+//
+// Two ways that happens, and the second is #691's safety net:
+//
+//   - the string is present and is not a number ("*", "1+*", "?") —
+//     nonNumericStat's case, and the whole of #683;
+//   - the string is ABSENT on a card or face whose type line says
+//     creature. Every creature has a printed toughness, so a missing
+//     one is a record the engine cannot read rather than a printed 0,
+//     and the 0 this importer writes must not be taken for one.
+//
+// The second matters because the toughness state-based action now
+// kills a printed 0/0 that carries a printing (Card.ToughnessIsKnown
+// branch 5). Without this line a Scryfall record that omits a creature
+// face's power and toughness — a layout nobody has taught the dump
+// reader about yet — would put that creature into the graveyard the
+// moment it landed. Flagging it keeps the pre-#683 posture instead:
+// the skip covers it, and it lives as a 0/0 nothing can kill, which is
+// the failure that can be seen and reported.
+//
+// A card with no toughness at all and no creature type — every land,
+// instant, sorcery and artifact — is not flagged, as before. Nor is a
+// JOINED type line ("Creature — Human Wizard // Legendary Planeswalker
+// — Jace"): Scryfall leaves the top-level toughness of a multi-face
+// printing empty on purpose, the number lives on the face, and
+// SetFace(0) overwrites this flag from there anyway.
+func variableToughness(typeLine, toughness string) bool {
+	if strings.TrimSpace(toughness) != "" {
+		return nonNumericStat(toughness)
+	}
+	if strings.Contains(typeLine, "//") {
+		return false
+	}
+	return strings.Contains(strings.ToLower(typeLine), "creature")
+}
+
 // PrintedVariableToughness returns the game.PrintedVariableToughness
 // lookup over idx: the answer toGameCard and printedFaces stamp,
 // recomputed for a printing by its Scryfall ID. Restoring a game
@@ -521,10 +559,10 @@ func PrintedVariableToughness(idx *cards.Index) func(scryfallID string) (top boo
 		if len(c.CardFaces) >= 2 {
 			faces = make([]bool, len(c.CardFaces))
 			for i, f := range c.CardFaces {
-				faces[i] = nonNumericStat(f.Toughness)
+				faces[i] = variableToughness(f.TypeLine, f.Toughness)
 			}
 		}
-		return nonNumericStat(c.Toughness), faces, true
+		return variableToughness(c.TypeLine, c.Toughness), faces, true
 	}
 }
 
@@ -546,7 +584,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// #683: the toughness SBA keeps skipping a `*` creature's
 		// stand-in 0 after it loses its last counter, where a
 		// printed 0/0 dies.
-		VariableToughness: nonNumericStat(c.Toughness),
+		VariableToughness: variableToughness(c.TypeLine, c.Toughness),
 		// CR 306.5b — printed starting loyalty. The engine turns
 		// this into loyalty counters on battlefield entry; without
 		// it the 704.5i SBA eats the walker on the next priority
@@ -632,7 +670,7 @@ func printedFaces(c cards.Card) []game.Face {
 			Colors:            faceColors(f),
 			Power:             power,
 			Toughness:         toughness,
-			VariableToughness: nonNumericStat(f.Toughness),
+			VariableToughness: variableToughness(f.TypeLine, f.Toughness),
 			StartingLoyalty:   loyalty,
 			StartingDefense:   defense,
 			OracleText:        f.OracleText,

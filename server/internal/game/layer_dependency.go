@@ -368,6 +368,12 @@ func sameObservation(a, b observation) bool {
 // slice and one that appends nothing to an empty one are doing the
 // same thing, and calling that a dependency would reorder a layer for
 // no reason.
+//
+// Characteristic.PTDefined is deliberately absent: it is a fact about
+// the PASS ("an effect defined this object's P/T"), not a
+// characteristic of the object, and applyRaw — the probe's whole
+// instruction — never writes it. Comparing it would answer CR 613.8a
+// with bookkeeping.
 func sameCharacteristic(a, b Characteristic) bool {
 	return a.Power == b.Power &&
 		a.Toughness == b.Toughness &&

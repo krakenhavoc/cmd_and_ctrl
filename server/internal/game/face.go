@@ -72,8 +72,9 @@ type Face struct {
 	Toughness int
 
 	// VariableToughness is Card.VariableToughness for this face: the
-	// printed toughness is non-numeric and Toughness is its 0
-	// stand-in.
+	// printed toughness is not a number the engine can use — "*", or
+	// missing from a creature face's record — and Toughness is its 0
+	// stand-in. SetFace materialises it onto the card.
 	VariableToughness bool
 
 	// StartingLoyalty is the face's printed loyalty (CR 306.5b).
