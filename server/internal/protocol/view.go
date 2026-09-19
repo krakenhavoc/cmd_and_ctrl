@@ -1268,6 +1268,30 @@ type CardView struct {
 	// that list is built from, and an inactive static or trigger has
 	// no per-ability representation on the wire to grey out.
 	Solved bool `json:"solved,omitempty"`
+	// ChosenColor and NamedTribe are the answers a player gave to this
+	// permanent's "as this enters, choose a color" (CR 105.4) and "as
+	// this enters, choose a creature type" (CR 614.12) instructions —
+	// one uppercase colour letter (W/U/B/R/G) and one canonical
+	// creature type ("Elf"). Absent when the permanent asks no such
+	// question, and absent in the window between it entering and its
+	// controller answering.
+	//
+	// PUBLIC (#781). A choice made as a card enters is announced at
+	// the table and hidden from nobody, and CR 607.2d makes it the
+	// only way to read the card's OTHER abilities: "creatures you
+	// control of the chosen color" names a set nobody can compute
+	// without the answer. Before this, an opponent could not tell
+	// which creatures a Heraldic Banner was pumping and the
+	// controller had to remember what they named.
+	//
+	// Projected once, here in viewOfCard, straight off the engine
+	// fields — there is no per-card special case anywhere above this
+	// line and there must not be one. Cleared by the non-knower
+	// redaction with the other type-derived bits: a named tribe says
+	// "Cavern of Souls" as loudly as loyalty says "planeswalker", and
+	// CR 708.2 gives a face-down permanent no such choice to report.
+	ChosenColor string `json:"chosen_color,omitempty"`
+	NamedTribe  string `json:"named_tribe,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -3520,6 +3544,16 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// neither. Cleared with the rest of the type-derived bits.
 	out.ClassLevel = 0
 	out.Solved = false
+	// #781: a chosen colour and a named tribe are PUBLIC on a card the
+	// viewer can see — that is the whole point of the fields — but
+	// they are read off the card's own text, so they name it exactly
+	// as loudly as the ability lists above. "Elf" on a face-down
+	// permanent is Cavern of Souls or Adaptive Automaton; "G" is
+	// Coldsteel Heart. CR 708.2 also leaves a face-down permanent with
+	// no such ability to have asked the question, so there is nothing
+	// true left to say.
+	out.ChosenColor = ""
+	out.NamedTribe = ""
 	return stampFaceDownPublicBody(out, c)
 }
 
@@ -3736,10 +3770,17 @@ func viewOfCard(c game.Card) CardView {
 		SummoningSick:       game.HasSummoningSickness(&c),
 		Abilities:           viewOfAbilityBadges(eff),
 		Restrictions:        eff.Restrictions.Names(),
-		knowers:             knowers,
-		Layout:              c.Layout,
-		Faces:               viewOfFaces(c),
-		ActiveFace:          c.ActiveFace,
+		// #781. Straight off the card, with no zone gate and no
+		// catalog lookup: both are cleared on every battlefield exit
+		// (game/zone.go, game/entry_tail.go), so "non-empty" already
+		// means "a permanent on the battlefield whose controller has
+		// answered". This is the one place either is projected.
+		ChosenColor: c.ChosenColor,
+		NamedTribe:  c.NamedTribe,
+		knowers:     knowers,
+		Layout:      c.Layout,
+		Faces:       viewOfFaces(c),
+		ActiveFace:  c.ActiveFace,
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()

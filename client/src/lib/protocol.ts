@@ -1565,6 +1565,25 @@ export interface CardView {
   // `activated_abilities`, and an inactive static or trigger has no
   // per-ability representation here to grey out.
   solved?: boolean;
+  // #781 (CR 105.4 / CR 614.12): the answers this permanent's
+  // controller gave to its "as this enters, choose a color" and "as
+  // this enters, choose a creature type" instructions — one uppercase
+  // colour letter ("G") and one canonical creature type ("Elf").
+  // Absent when the card asks no such question, and absent between
+  // the permanent entering and the prompt being answered.
+  //
+  // PUBLIC. The choice is announced at the table, and CR 607.2d makes
+  // it the only way to read the card's other lines: "creatures you
+  // control of the chosen color" names a set nobody can compute
+  // without it. Cleared with the other type-derived bits for a card
+  // the viewer is not a knower of — "Elf" names Cavern of Souls.
+  //
+  // RENDER THEM THROUGH `chosenValueChips` (chosenValues.ts). That
+  // module is the one place either letter becomes a word, so the card
+  // tile, the hover panel and the zone browser cannot disagree about
+  // what "G" means.
+  chosen_color?: string;
+  named_tribe?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

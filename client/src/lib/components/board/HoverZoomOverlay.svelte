@@ -24,6 +24,7 @@
   import { playerColor } from "../../avatarColor";
   import { seatColor } from "../../colors";
   import { noUntapFooterLines } from "../../noUntap";
+  import { chosenValueChips } from "../../chosenValues";
 
   interface Props {
     view: GameView;
@@ -102,6 +103,11 @@
   });
   const cmdrHasDamage = $derived(cmdrRows.some((r) => r.amount > 0));
   const noUntapLines = $derived(card ? noUntapFooterLines(card, view.seats) : []);
+  // #781 — the chosen colour / creature type, through the one module
+  // that turns "G" into "Green". The panel is where a player comes to
+  // ask what a permanent does, and CR 607.2d makes this half of the
+  // answer for anything with a "the chosen …" clause.
+  const chosen = $derived(card ? chosenValueChips(card) : []);
   // Bars are tinted with the commander's controller colour (the seat
   // dealing the damage) and flip to danger at lethal.
   const controllerColor = $derived(
@@ -186,11 +192,21 @@
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
       {/if}
-      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0}
+      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0}
         <footer class="info-foot">
           {#if card.is_commander}
             <span class="state state-cmd">commander</span>
           {/if}
+          <!-- #781: first in the footer, ahead of tapped / attacking.
+               The others describe what is happening to the permanent
+               right now; this one is what the rest of its printed text
+               MEANS, and a player reading the oracle line above needs
+               it to finish the sentence. -->
+          {#each chosen as chip (chip.kind)}
+            <span class="state state-chosen" title={chip.title}>
+              {chip.kind === "color" ? "chosen color" : "chosen type"}: {chip.label}
+            </span>
+          {/each}
           {#if card.tapped}
             <span class="state">tapped</span>
           {/if}
@@ -428,6 +444,14 @@
   .state-cmd {
     color: var(--gold-strong);
     border-color: rgba(217, 180, 92, 0.5);
+  }
+  /* #781: brighter than the ambient state chips beside it. This one
+     is not a passing condition — it is part of reading the card. */
+  .state-chosen {
+    color: var(--fg);
+    border-color: var(--border-strong);
+    text-transform: none;
+    letter-spacing: 0.04em;
   }
   /* Commander-damage section — lives at the bottom of the info
      panel when the hovered card is a commander. Replaces the
