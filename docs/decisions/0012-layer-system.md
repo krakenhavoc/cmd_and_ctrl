@@ -1,6 +1,7 @@
 # ADR 0012 — Continuous effects + layer system (S16)
 
 **Status:** Accepted · 2026-04-22 · Sprint S16
+**Amended:** 2026-09-19 · Branch `fix/690-691-cda-toughness-sba-and-x-zero` — §3 gains `Characteristic.PTDefined` ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690))
 
 ## Context
 
@@ -92,6 +93,25 @@ needing 7d, and Glorious Anthem ships at 7c (modifies P/T) without
 needing 7d. When the first card needs explicit counter integration
 through the layer engine, the delegation lands as a one-line Apply
 in 7d that reads `CurrentPower() - c.Power`.
+
+**Amended 2026-09-19 ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690)).**
+The pass now records one fact about P/T that is not a characteristic:
+`Characteristic.PTDefined`, set by `applyOneEffectLocked` whenever an
+effect in the 7a or 7b bucket applies to an object. 7c, 7d and 7e do
+not set it — all three move a number something else defined.
+
+It exists because the toughness state-based action cannot tell an
+importer stand-in 0 from a printed 0 (ADR 0007 §7), and a layer 7a
+CDA is the engine answering exactly that question: a Lord of
+Extinction that this engine sizes has a real toughness, empty
+graveyards included. `Card.ToughnessIsKnown` is the only reader.
+
+Two properties keep it out of the way. It is rebuilt with the rest of
+the `Characteristic` on every recompute, so it cannot go stale and the
+snapshot never carries it; and `sameCharacteristic` deliberately does
+not compare it, because CR 613.8a asks what an effect does to an
+object, not what the pass did — `applyRaw`, the probe's whole
+instruction, never writes it.
 
 ### 4. Skip dependency detection (CR 613.8) — pure timestamp
        ordering
