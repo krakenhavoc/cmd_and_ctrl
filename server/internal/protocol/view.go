@@ -1238,6 +1238,30 @@ type CardView struct {
 	// offers them alongside "pay the printed cost", and a cast that
 	// names none is the ordinary case.
 	AlternativeCosts []AlternativeCostView `json:"alternative_costs,omitempty"`
+	// AlternativeCostRequired says the PRINTED mana cost is NOT one
+	// of the prices this cast may claim out of the zone the card is
+	// in right now, so the caster must name one of
+	// `alternative_costs` — a Faithless Looting in the graveyard is
+	// castable at its flashback cost and at nothing else (CR 702.34b,
+	// rule 3 of validateCastPathLocked), and a card a permission
+	// PRICES is the same shape (rule 4).
+	//
+	// Absent — every hand cast, every command-zone cast, and a
+	// Gravecrawler whose graveyard permission carries no price —
+	// means the printed cost is on the menu as usual.
+	//
+	// Shipped as a flag rather than as a nil-keyed entry in
+	// `alternative_costs` (#1012) because the entry would break every
+	// client that walks that list, and because the two questions are
+	// genuinely different: the list is what you may pay INSTEAD, this
+	// is whether the cost in the corner is still on the table. The
+	// engine answers both out of one list — game.CastOffersForLocked,
+	// where a nil entry IS the printed cost — so the picker and the
+	// bot's move list cannot disagree.
+	//
+	// Stamped and stripped with `alternative_costs`, which it is only
+	// meaningful beside.
+	AlternativeCostRequired bool `json:"alternative_cost_required,omitempty"`
 	// TapCost is the S22 convoke / waterbend clause for a card in the
 	// viewer's own hand / command zone: which of your untapped
 	// permanents may be tapped to help pay, and how many. Absent for
@@ -1288,6 +1312,14 @@ type CardView struct {
 	// offers claimable from this zone — so a Faithless Looting in
 	// the graveyard carries flashback and nothing else, while the
 	// same card in hand carries neither.
+	//
+	// DERIVED, since #1015, from exactly two things and in exactly
+	// one place (stampCastOffers): the prices this cast may claim out
+	// of this zone (game.CastOffersForLocked) and the ADR 0073 §7
+	// cast gate. An empty price list is a real "no" — a card whose
+	// only path out of the graveyard is an escape cost the caster
+	// cannot pay is not a cast surface, and marking one rendered a
+	// button the announce path refused with ErrCastCostRequired.
 	//
 	// Public, like `activated_abilities`: the graveyard is a public
 	// zone and a flashback cost is printed on the card, so the bit
@@ -2213,15 +2245,27 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// (ADR 0066) — the same merge the cast path makes,
 					// so the client can never render a button
 					// CastSpell would refuse.
-					var granted *game.AlternativeCost
+					//
+					// #1012: the gate is the PERMISSION, not the offer it
+					// prices. A grant that charges a flat price — Bolas's
+					// Citadel's life, an impulse grant that charges the
+					// printed cost — synthesises no claimable offer, and
+					// reading the offer instead of the permission skipped the
+					// card here and left stampGrantedPermissions to paint
+					// `castable_here` back on with no clauses behind it. One
+					// question, asked once: may this seat cast this card out
+					// of this zone.
+					var grant *game.CastPermission
 					if anyGrant && zone.live != nil && ci < len(zone.live.Cards) {
-						_, granted = grantedCast(g, caster, zone.live.Cards[ci], zone.kind)
+						grant = grantedCast(g, caster, zone.live.Cards[ci], zone.kind)
 					}
-					if granted == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
+					if grant == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
 						continue
 					}
-					c.CastableHere = true
-					stampCastOffers(g, caster, c, c.oracleID, zone.kind, granted)
+					// `castable_here` is NOT set here (#1015):
+					// stampCastOffers derives it from the price list and the
+					// cast gate, in the one place both are known.
+					stampCastOffers(g, caster, c, c.oracleID, zone.kind, grant)
 					continue
 				}
 				stampCastOffers(g, caster, c, c.oracleID, zone.kind, nil)
@@ -2249,14 +2293,18 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 // with different modes and a different target clause, and the exile
 // pile is showing the front.
 //
-// `granted` is the CR 118.9 offer a permission prices the cast under,
-// or nil. It is stamped FIRST and a printed offer for the same zone
-// overwrites it, which is the same precedence
-// resolveAlternativeCostLocked applies: a card that both prints and
-// is granted a key keeps its printed cost.
+// `grant` is the CastPermission that opens this zone for this caster,
+// or nil. It is NOT a price: since #1012 the price question has one
+// answer for the whole engine — game.CastOffersForLocked — and this
+// function reads it rather than building a second list. The view used
+// to stamp the grant's offer first and let a printed offer for the
+// same zone overwrite the WHOLE slice, so a Gravecrawler in the
+// graveyard under an Underworld Breach showed only what the card
+// prints and the Breach's escape offer was gone from the picker even
+// though resolveAlternativeCostLocked would have accepted it.
 //
 // Caller must hold g.mu.
-func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, kind game.ZoneKind, granted *game.AlternativeCost) {
+func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, kind game.ZoneKind, grant *game.CastPermission) {
 	// #662 / #979: the source of a SPELL is the spell itself, so every
 	// legal-target stamp below names the card rather than only its
 	// caster — a creature with protection from red is off the picker
@@ -2264,8 +2312,19 @@ func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, ki
 	// card, so every zone builds it the same way; a card cast off
 	// somebody else's grant is still its own source.
 	src := castSourceOf(g, caster, c.InstanceID)
-	if granted != nil {
-		c.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, nil, []game.AlternativeCost{*granted})
+	// The engine's own card, faced the way the cast path would face
+	// it (ADR 0034): a permission that names a face opens that face
+	// and no other, so the gate below and the price list further down
+	// both judge the half being cast rather than the one the pile
+	// happens to be showing. `key` is that face's catalog key, which
+	// the caller has already resolved.
+	//
+	// A card the lookup cannot find is in no zone at all, which a
+	// zone walk cannot produce; it stamps no gate and no offers
+	// rather than guessing at either.
+	live, haveLive := liveCardForView(g, c)
+	if haveLive {
+		live = grantedFace(live, grant)
 	}
 	if ms := game.ModeSpecFor(key); ms != nil {
 		c.Modes = viewOfModeSpec(g, src, ms)
@@ -2306,12 +2365,12 @@ func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, ki
 	// which is what makes Grafdigger's Cage answerable here at all —
 	// and, since #978, answerable for exile and the library top as
 	// well, because they reach this function too.
-	if liveCard, ok := liveCardForView(g, c); ok {
-		if err := g.CastGateLocked(caster, liveCard, kind, game.CastSpellParams{}); err != nil {
-			c.CantCast = cantCastReason(err)
+	if haveLive {
+		if err := g.CastGateLocked(caster, live, kind, game.CastSpellParams{}); err != nil {
 			// A card the gate refuses is not a cast surface, whatever
-			// opened the zone.
-			c.CastableHere = false
+			// opened the zone — but the bit itself is derived below,
+			// once, out of this refusal and the price list together.
+			c.CantCast = cantCastReason(err)
 		}
 	}
 	// #916: the ceiling on the cast's `phyrexian_life`. Read off the
@@ -2321,15 +2380,46 @@ func stampCastOffers(g *game.Game, caster uuid.UUID, c *CardView, key string, ki
 	// true.
 	c.PhyrexianSymbols = phyrexianSymbolsIn(c.ManaCost)
 	spec := game.TargetSpecFor(key)
-	// S22: the alternative costs are stamped before the early-out
-	// below, because a card can offer one without having any target
-	// clause of its own. S29 filters them by zone — the offers a card
-	// makes from the graveyard (flashback, escape) and the offers it
-	// makes from hand (overload, evoke, cleave) are disjoint sets,
-	// and showing the wrong one produces a button the server will
-	// reject.
-	if alts := game.AlternativeCostsOfferedFromZone(key, kind); len(alts) > 0 {
-		c.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, spec, alts)
+	// #1012: THE list of CR 118.9 prices this cast may claim out of
+	// this zone, from the one function that answers the question for
+	// the engine, the bot enumerator and the view. A nil entry is the
+	// printed mana cost, present only when a cast that claims nothing
+	// would be accepted from here.
+	//
+	// The view used to answer it twice and get three different
+	// answers: AlternativeCostsOfferedFromZone for the printed
+	// offers, a wholesale overwrite of the grant's offer, and
+	// silence about whether the printed cost was on the menu at all.
+	// Stamped before the early-out below, because a card can offer a
+	// price without having any target clause of its own.
+	var offers []*game.AlternativeCost
+	if haveLive {
+		offers = g.CastOffersForLocked(caster, live, kind, grant)
+	}
+	c.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, spec, offers)
+	// #1012: and the wire says so when the printed cost is not one of
+	// them. `castable_here` is one bit and means "you may cast this
+	// from here", never "you may cast this from here for the cost in
+	// the corner" — a Faithless Looting in the graveyard is castable
+	// at its flashback cost and at no other, and the client had to
+	// infer that from the shape of the offer list.
+	c.AlternativeCostRequired = len(offers) > 0 && !printedCostAmong(offers)
+	// #1015: and THE cast-surface bit, derived here because this is
+	// the one place that knows both halves of it — the prices this
+	// cast may claim, and the ADR 0073 §7 gate. An empty price list
+	// is a real answer: a card whose only path out of this zone is an
+	// offer the caster cannot pay (an escape card in a graveyard too
+	// small to pay for it) is not a cast surface, and marking one was
+	// a button the announce path refused with ErrCastCostRequired.
+	//
+	// Hand and the command zone never carry the bit: every card in
+	// them is a cast candidate and an always-true flag would be noise
+	// the client had to ignore. Exile keys its button off `exile_play`
+	// instead, whose per-viewer stamps this bit — public since S29 —
+	// is not part of.
+	switch kind {
+	case game.ZoneGraveyard, game.ZoneLibrary:
+		c.CastableHere = c.CantCast == "" && len(offers) > 0
 	}
 	if spec == nil {
 		return
@@ -2476,34 +2566,33 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // 601.2a moved it to the stack before the cost is paid), but a
 // picker that offers a card the cast will be rejected for choosing
 // is a trap rather than an affordance.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+//
+// `offers` is game.CastOffersForLocked's answer verbatim (#1012), so
+// this function no longer decides WHICH offers exist — only how each
+// one looks on the wire. The nil entry in that list is the printed
+// mana cost, which is not an alternative cost and is projected as
+// `alternative_cost_required` instead.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, card *CardView, base *game.TargetSpec, offers []*game.AlternativeCost) []AlternativeCostView {
 	self := card.InstanceID
-	// The spell being cast, as the engine names it. CR 601.2a has
-	// moved it to the stack before any cost is paid, so it is never a
-	// legal payment for one — which is what escape's printed "other"
-	// means and what the payability check below has to know. An
-	// unparseable ID (no card in the tree has one) excludes nothing,
-	// which is the same answer the pre-#695 view gave.
-	selfID, _ := uuid.Parse(self)
-	out := make([]AlternativeCostView, 0, len(alts))
-	for i := range alts {
-		ac := alts[i]
-		// S28: an offer whose condition is false is not shown at all.
-		// "If you control a commander, you may cast this without
-		// paying its mana cost" is not an offer when you control no
-		// commander, and a greyed-out button the server would reject
-		// is worse than no button.
-		//
-		// #695: that rule is now the whole of CR 601.2b rather than
-		// the Condition alone, through the one predicate CastSpell's
-		// validator and the bot enumerator also read. The life half
-		// had been left out, so Force of Will at 0 life and Snuff Out
-		// at 3 were shown, picked, and refused. Mana is deliberately
-		// not part of it — CR 601.2g lets the caster tap for it after
-		// the cost is chosen, which is what the auto-tapper is for.
-		if !g.AlternativeCostPayableLocked(caster, selfID, &ac) {
+	// A nil result rather than a present-and-empty one: `absent`
+	// is what the field means for a card with no offers, and every
+	// card in every cast surface reaches this function since #1012.
+	var out []AlternativeCostView
+	for i := range offers {
+		if offers[i] == nil {
+			// The printed mana cost. Not an alternative cost, and
+			// `alternative_cost_required` is where the wire says
+			// whether it is claimable from this zone.
 			continue
 		}
+		ac := *offers[i]
+		// S28 asked the offer's Condition here and #695 widened it to
+		// the whole of CR 601.2b — "a greyed-out button the server
+		// would reject is worse than no button". Neither test lives
+		// here any more: CastOffersForLocked applies both, through
+		// the same AlternativeCostPayableLocked the announce
+		// validator and the bot enumerator read, and a second copy
+		// of the filter is exactly the drift #1012 was about.
 		v := AlternativeCostView{
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
 			Life: ac.Life, PayLabel: ac.PayLabel,
@@ -2552,6 +2641,23 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		out = append(out, v)
 	}
 	return out
+}
+
+// printedCostAmong reports whether the printed mana cost is one of
+// the prices this cast may claim — the nil entry game.
+// CastOffersForLocked puts at the head of its list when a cast that
+// claims nothing would be accepted from the zone (#1012).
+//
+// A named function rather than a loop at the call site because the
+// nil-means-printed convention is the one thing a reader of the offer
+// list has to know, and it should be spelled out once.
+func printedCostAmong(offers []*game.AlternativeCost) bool {
+	for _, offer := range offers {
+		if offer == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // viewOfOptionalCosts projects a card's "you may pay an additional
@@ -3843,6 +3949,9 @@ func stripCastOffersNotFor(z ZoneView, viewerID string) ZoneView {
 		c.OptionalCosts = nil
 		c.TapCost = nil
 		c.AlternativeCosts = nil
+		// #1012: "the printed cost is not claimable" is a statement
+		// about the offer list beside it, so it travels with it.
+		c.AlternativeCostRequired = false
 		c.TargetCostNotes = nil
 		c.PhyrexianSymbols = 0
 		// ADR 0073 §7's grey-out reason is computed for the caster the
@@ -3893,6 +4002,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// cost does — "Overload {6}{U}" on a face-down card would give
 	// away the Cyclonic Rift.
 	out.AlternativeCosts = nil
+	// #1012: and "this one cannot be cast for the cost in its corner"
+	// says the card prints a zone-bound price, which is the same leak
+	// one step removed.
+	out.AlternativeCostRequired = false
 	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
 	// cost does, and CR 708.2 leaves a face-down object with no text
 	// to offer it from.
@@ -4137,6 +4250,7 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 			c.Clauses = nil
 			c.Modes = nil
 			c.AlternativeCosts = nil
+			c.AlternativeCostRequired = false
 			c.TapCost = nil
 			// #916: stamped for the owner's cost prompts with the
 			// other cast clauses, so it goes with them.
@@ -4326,17 +4440,23 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
 		}
 		if kind != game.ZoneExile {
 			// S42: a graveyard or library card a permission opens is a
-			// cast surface, exactly as a printed flashback card is.
-			// stampLegalTargets has already stamped its offers, in the
-			// per-seat walk that owns those zones.
+			// cast surface, exactly as a printed flashback card is —
+			// and stampLegalTargets has already said so, in the per-seat
+			// walk that owns those zones, through the same permission
+			// this loop is reading.
 			//
-			// Unless the ADR 0073 §7 cast gate refused it there: a
-			// permission opens a ZONE, and Grafdigger's Cage shuts the
-			// cast anyway (CR 101.2). This pass runs after that one,
-			// so without the guard it would paint the button back on.
-			if v.CantCast == "" {
-				v.CastableHere = true
-			}
+			// This pass used to set `castable_here` a second time here,
+			// guarded on `cant_cast` because it ran after the gate and
+			// would otherwise paint a Grafdigger's-Caged button back on
+			// (CR 101.2, #978). The guard was one clause of the answer
+			// and the payability half was the other (#1015), so the bit
+			// is now derived once, in stampCastOffers, where both are
+			// known — and this branch has nothing left to add.
+			//
+			// It also stamped the bit for a permission held by SOMEBODY
+			// ELSE — a grant over a seat's graveyard that another seat
+			// holds — which marked a cast surface on a card carrying no
+			// offers, no targets and no gate for anyone. Filed as #1022.
 			continue
 		}
 		// #978: and exile gets the same offers, here rather than in
@@ -4352,12 +4472,12 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
 		// and FilterViewFor drops them for everybody else: a legal
 		// target set is narrowed by hexproof and by who is asking, so
 		// one seat's answer is not another's to read.
-		open, offer := grantedCast(g, perm.Player, card, kind)
+		open := grantedCast(g, perm.Player, card, kind)
 		if open == nil {
 			continue
 		}
 		v.castOffersFor = perm.Player.String()
-		stampCastOffers(g, perm.Player, v, game.CatalogKey(grantedFace(card, open)), kind, offer)
+		stampCastOffers(g, perm.Player, v, game.CatalogKey(grantedFace(card, open)), kind, open)
 	}
 }
 
@@ -4390,12 +4510,14 @@ func cantCastReason(err error) string {
 	return "An effect prevents casting this spell."
 }
 
-// grantedCast answers both halves of "may this viewer cast this card
-// out of this zone, and at what price": the permission, and the
-// CR 118.9 offer it prices the cast under. The offer is nil when the
-// permission charges a flat price or the printed cost rather than a
-// claimable offer (impulse exile, airbend, cascade); the permission
-// being nil is the only "no".
+// grantedCast answers "may this viewer cast this card out of this
+// zone": the permission, or nil.
+//
+// It used to answer the PRICE half too, and #1012 took that away —
+// game.CastOffersForLocked is the one list of CR 118.9 prices a cast
+// may claim, it derives the granted offer from this permission
+// itself, and a second caller synthesising one beside it is how the
+// view and the enumerator came to disagree.
 //
 // Straight through game.CastPermissionForLocked, which is the same
 // function CastSpell validates with and the same one legal/cast.go's
@@ -4403,22 +4525,18 @@ func cantCastReason(err error) string {
 // shown a cast the engine would refuse, and it cannot be shown the
 // wrong price for one it would allow.
 //
-// The card is faced first (ADR 0034): a permission that names a face
-// opens that face and no other, so the price — and the clauses
-// stampCastOffers reads — belong to it rather than to whatever the
-// pile happens to be showing.
+// The FACE a permission names (ADR 0034) is applied by the caller and
+// by stampCastOffers, not here: the permission is found by instance,
+// and which half of the card it opens is a question about the price
+// and the clauses rather than about whether a cast is allowed.
 //
 // No second liveness check: CastPermissionForLocked has already asked
 // CastPermissionActiveForEffect, which is the one function that reads
 // a permission's CR 611.2 duration (#945).
 //
 // Caller must hold g.mu.
-func grantedCast(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) (*game.CastPermission, *game.AlternativeCost) {
-	perm := g.CastPermissionForLocked(caster, card, kind)
-	if perm == nil {
-		return nil, nil
-	}
-	return perm, perm.AlternativeCostFor(grantedFace(card, perm))
+func grantedCast(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) *game.CastPermission {
+	return g.CastPermissionForLocked(caster, card, kind)
 }
 
 // stampLibraryTop applies CR 401.5's visibility to the card currently
