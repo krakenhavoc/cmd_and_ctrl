@@ -10,11 +10,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 turn."
 //
 // The green token deck's free anthem: drop creatures, tap the land,
-// everything new grows. "Entered this turn" is read off the event log
-// (b06EnteredThisTurn) — an ETB more recent than the current turn's
-// upkeep — because the engine keeps no such flag and summoning
-// sickness is not the same question. "Green" reads the post-layer
-// colours, and "each green creature" is every player's, as printed.
+// everything new grows. "Entered this turn" is the per-turn tally's
+// per-object entry cell (b06EnteredThisTurn) — every EventETB since
+// the turn began, the untap step included (#1009) — because summoning
+// sickness is not the same question: a creature that entered on an
+// opponent's turn is still sick on yours and did not enter this turn.
+// "Green" reads the post-layer colours, and "each green creature" is
+// every player's, as printed.
 //
 // The counters go through AddCounter, so Doubling Season and Hardened
 // Scales apply.

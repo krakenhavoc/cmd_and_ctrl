@@ -15,37 +15,29 @@ import (
 // battlefield during the current turn — Oran-Rief's "each green
 // creature that entered this turn".
 //
-// The engine keeps no "entered this turn" flag (SummonedThisTurn is
-// summoning sickness, which a creature that entered during an
-// opponent's turn still carries on yours), so this reads the event
-// log: an EventETB for the card that is more recent than the most
-// recent EventBeginUpkeep. Every turn passes through its upkeep, and
-// nothing can enter during the untap step before it, so "since the
-// last upkeep began" is "this turn". A game with no upkeep event yet
-// treats every entry as this turn's, which is correct for that
-// window.
+// The per-turn tally's per-object cell (#1009). It used to walk the
+// event log back to the most recent EventBeginUpkeep on the argument
+// that "nothing can enter during the untap step", which is not true:
+// an untap-step trigger or an untap-step choice can put a permanent
+// onto the battlefield (#70, ADR 0070), and the walk stopped short of
+// it and answered "no" for a permanent that really did enter this
+// turn. The tally is reset as the turn BEGINS, before the untap step,
+// so it answers from the real boundary.
+//
+// Not summoning sickness: a creature that entered during an
+// opponent's turn still carries SummonedThisTurn on yours (CR 302.6)
+// and did not enter this turn.
 func b06EnteredThisTurn(g *game.Game, cardID uuid.UUID) bool {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		switch ev.Kind {
-		case game.EventBeginUpkeep:
-			return false
-		case game.EventETB:
-			if ev.CardID == cardID {
-				return true
-			}
-		}
-	}
-	return false
+	return g.EnteredThisTurn(cardID)
 }
 
 // b06AnOpponentLostAtLeastThisTurn reports whether some single
 // opponent of `controller` has lost at least `n` life this turn —
-// Bloodchief Ascension's end-step condition. Same event-log walk as
-// b06EnteredThisTurn, summing per player with b04OpponentLostLife,
-// which already distinguishes the two ways a life total goes down
-// (a negative EventChangeLife, and an EventDealDamage to a player,
-// which emits no EventChangeLife of its own).
+// Bloodchief Ascension's end-step condition. PlayerTurnTally.LifeLost
+// already distinguishes the two ways a life total goes down (a
+// negative EventChangeLife, and an EventDealDamage to a player, which
+// emits no EventChangeLife of its own), so this is one cell per
+// opponent.
 func b06AnOpponentLostAtLeastThisTurn(g *game.Game, controller uuid.UUID, n int) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller {

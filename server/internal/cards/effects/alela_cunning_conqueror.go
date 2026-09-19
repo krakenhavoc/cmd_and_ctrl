@@ -37,6 +37,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player one of the controller's Faeries dealt combat damage to this
 // turn, and the body re-checks the specific player the firing Faerie
 // hit — a pick under some other hit player's control does nothing.
+// That set is the per-turn tally's, recorded at the damage (#1009):
+// the Faerie Rogue tokens Alela makes are the commonest thing to
+// connect and then trade, and CR 704.5d takes a dead token out of the
+// graveyard, so a set computed later by looking the dealer up would
+// lose exactly the player the goad is for.
 //
 // Sandbox simplification, declared: the goad is a marker the engine
 // shows and does not enforce — the goaded creature is not made to

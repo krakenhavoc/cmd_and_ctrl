@@ -389,9 +389,7 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 		} else {
 			g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
 		}
-		for name, n := range p.out.EntersWithCounters {
-			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-		}
+		g.applyEntryCountersLocked(moved.InstanceID, p.out.EntersWithCounters)
 		p.entered = true
 		entered = append(entered, moved.InstanceID)
 	}

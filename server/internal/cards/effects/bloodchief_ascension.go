@@ -24,8 +24,9 @@ import (
 //     log: b04OpponentLostLife already knows the two shapes a life
 //     loss takes (a negative EventChangeLife, or an EventDealDamage
 //     to a player, which writes the life total directly and emits no
-//     EventChangeLife), and b06AnOpponentLostAtLeastThisTurn sums them per
-//     player back to the current turn's upkeep. The counter goes on
+//     EventChangeLife), and the per-turn tally folds both into one
+//     LifeLost cell per player (b06AnOpponentLostAtLeastThisTurn
+//     reads it). The counter goes on
 //     through AddCounter, so Doubling Season applies.
 //   - The graveyard one watches the four event kinds that put a card
 //     into a graveyard — EventZoneMove (a permanent dying, a spell
