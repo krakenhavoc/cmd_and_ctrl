@@ -220,7 +220,18 @@ func main() {
 	// set but too short fails the boot. There is no default key.
 	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
-	l := lobby.NewLobby(mgr)
+	// With a database, games / seats / invites are rows (ADR 0051
+	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
+	// lobby/*.json the previous binary left. Without one, the lobby
+	// keeps its metadata in memory and nothing about a game survives
+	// the process — the same as every other artifact under an empty
+	// CMDCTRL_DATA_DIR.
+	var l *lobby.Lobby
+	if database != nil {
+		l = lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database))
+	} else {
+		l = lobby.NewLobby(mgr)
+	}
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)

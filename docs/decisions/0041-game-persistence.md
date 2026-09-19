@@ -19,9 +19,20 @@ seeds the key and is persistable like any other game, and
 sub-PR 1, [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607))
 — `<dataDir>/db/` is a new artifact directory alongside the ones below,
 holding the persistent SQLite store and its backup copy; see the
-Artifact layout table. ADR 0051 also supersedes `<dumpDir>/lobby/<id>.json`
-itself once its sub-PR 3 lands (`games` / `seats` / `invites` become
-rows), which is not yet true of the code this ADR describes.
+Artifact layout table.
+**Amended by:** [ADR 0051](0051-user-database.md) decision 4 (S34
+sub-PR 3, [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607))
+— `<dumpDir>/lobby/<id>.json` is retired. Its content is now the
+`games`, `seats` and `invites` rows in the database. Invite tokens are
+stored only as SHA-256 hashes. The first boot of the new binary imports
+any `lobby/*.json` and renames each file to `<id>.json.imported` rather
+than deleting it, so a rolled-back binary can have them back
+([docs/environments.md](../environments.md)). Two behaviours below
+change with it. A restored room is paired with its `games` row instead
+of a file. Rows for games that did not come back are **kept**, not
+pruned: a finished game has no restore point by design, and its row is
+the history "my games" reads. The engine artifacts (`restore/`,
+`replays/`, `games/`) are unchanged.
 
 ## Context
 
@@ -282,7 +293,7 @@ of the server sees — and is the obvious next increment.
 | `<dumpDir>/games/<id>.json` | `protocol.SnapshotPayload` — forensics | no (unchanged) |
 | `<dumpDir>/replays/<id>.jsonl` | append-only view history | no (unchanged) |
 | `<dumpDir>/restore/<id>.json` | `game.GameSnapshot` + room `seq` | **yes** |
-| `<dumpDir>/lobby/<id>.json` | `lobby.GameMeta`, mode 0600 | **yes** |
+| `<dumpDir>/lobby/<id>.json` | `lobby.GameMeta`, mode 0600. **Retired by ADR 0051**: imported into the database at boot and renamed `<id>.json.imported` | only by the one-time importer |
 | `<dumpDir>/db/cmdctrl.sqlite` | The persistent database (ADR 0051, `internal/db`), mode 0600 | **yes** (opened + migrated before `RestoreFromDisk`) |
 | `<dumpDir>/db/cmdctrl.backup.sqlite` | `VACUUM INTO` copy of the above, on a timer (`CMDCTRL_DB_BACKUP_INTERVAL`), mode 0600 | no |
 
