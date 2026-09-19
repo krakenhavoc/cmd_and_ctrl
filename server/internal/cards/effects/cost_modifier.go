@@ -159,6 +159,19 @@ func ArtifactOrEnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
 }
 
+// ColoredSpell passes on a spell that IS the given colour — "BLUE
+// spells you cast cost {1} less to cast" (The Water Crystal). `color`
+// is a single-letter code, "W" / "U" / "B" / "R" / "G", the spelling
+// game.Card.HasColor takes.
+//
+// Colour is read off the spell as it stands at announce, through
+// EffectiveColors, so a layer-5 colour change is honoured and a
+// multicolour spell is every colour it is: a {U}{R} spell is a blue
+// spell and a red one, and each discount that names one applies.
+func ColoredSpell(color string) CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.HasColor(color) }
+}
+
 // SpellManaValueAtLeast passes when the mana value of the spell
 // being cast is at least n. It reads the mana cost, not the price:
 // CR 202.3c says a cost modifier changes what a spell costs and never
