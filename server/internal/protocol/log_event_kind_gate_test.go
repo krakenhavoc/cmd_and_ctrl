@@ -56,11 +56,12 @@ const (
 // drops, and why. Adding a kind here is a decision to keep the table
 // uninformed about it; make it on purpose.
 //
-// Several of these are arguable and a couple are probably wrong — a
-// control change and a counter landing are both things a player
-// announces out loud. That is exactly what the list is for: they are
-// now visible in one place instead of being invisible in the default
-// arm of a switch. #1021 tracks the ones worth a line.
+// Six of the entries this table shipped with were gaps rather than
+// decisions — a control change and a counter landing are both things a
+// player announces out loud — and #1021 turned those eight kinds into
+// eight arms, which is what the list is FOR: they were visible in one
+// place instead of being invisible in the default arm of a switch. The
+// rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
 	// --- already told, by another line -------------------------------
 	"EventETB":            silentAlreadyToldAsAZoneMove,
@@ -71,8 +72,6 @@ var silentEventKinds = map[string]string{
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
 	"EventTrigger":        "a trigger reaching the stack is told by the LogResolve of the ability it becomes",
 	"EventKeywordAction":  silentImpliedByAnotherLine,
-	"EventCycle":          "the cost's discard and the zone move already told the motion; the WORD 'cycled' is not on the wire (#1021)",
-	"EventSpecialAction":  "the zone move says a card left a hand for exile; the word for WHICH action (\"Foretell {2}\") is not (#1021)",
 
 	// --- the step spine ----------------------------------------------
 	"EventStepTransition":     silentStepSpine,
@@ -106,20 +105,14 @@ var silentEventKinds = map[string]string{
 	// --- visible board state -------------------------------------------
 	"EventTapCard":        silentBoardStateIsVisible,
 	"EventUntapCard":      silentBoardStateIsVisible,
-	"EventCounterPlaced":  "the counters are on the CardView and a Commander turn moves dozens; a line for the ones that matter needs a rule for which (#1021)",
 	"EventAttach":         silentBoardStateIsVisible,
 	"EventUnattach":       silentBoardStateIsVisible,
 	"EventCopyApplied":    silentBoardStateIsVisible,
-	"EventClassLevel":     silentBoardStateIsVisible,
-	"EventSagaChapter":    silentBoardStateIsVisible,
 	"EventCaseSolved":     silentBoardStateIsVisible,
 	"EventRegenerated":    silentImpliedByAnotherLine,
 	"EventBattleDefeated": silentBoardStateIsVisible,
-	"EventControlChanged": "a control change is a table announcement and this is a gap, not a decision (#1021)",
 
 	// --- hidden-zone work ----------------------------------------------
-	"EventScry":          "the cards moved are hidden at both ends, so the log has nothing it may say about them; the COUNT is public and is not logged (#1021)",
-	"EventSurveil":       "as EventScry: the bin leg surfaces as its own LogZone line, the rest is hidden at both ends",
 	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
 }
 
@@ -188,6 +181,32 @@ func TestTheThreeChosenValueKindsAreNarrated(t *testing.T) {
 	for _, name := range []string{"EventColorChosen", "EventCreatureTypeChosen", "EventPlayerChosen"} {
 		if !arms[name] {
 			t.Errorf("projectEvent has no arm for game.%s — a chosen colour, type or player is never narrated (#984)", name)
+		}
+	}
+}
+
+// TestTheSixReadSilencesAreNarrated is the same statement for #1021:
+// the six silences that read as gaps when the table was first written
+// down are lines now, and losing one puts it back in the dark rather
+// than failing the gate above (which a re-added silentEventKinds row
+// would satisfy).
+func TestTheSixReadSilencesAreNarrated(t *testing.T) {
+	arms := narratedEventKinds(t)
+	for _, name := range []string{
+		"EventControlChanged",
+		"EventSpecialAction",
+		"EventCycle",
+		"EventCounterPlaced",
+		"EventScry",
+		"EventSurveil",
+		"EventSagaChapter",
+		"EventClassLevel",
+	} {
+		if !arms[name] {
+			t.Errorf("projectEvent has no arm for game.%s — one of #1021's six narrations is gone", name)
+		}
+		if _, listed := silentEventKinds[name]; listed {
+			t.Errorf("game.%s is back in silentEventKinds; #1021 decided it is a line", name)
 		}
 	}
 }

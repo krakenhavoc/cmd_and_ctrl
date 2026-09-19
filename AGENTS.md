@@ -1015,6 +1015,22 @@ that grows a line has to lose its excuse. It was written because
 each shipped with a card, a view field and a test, and none of the three
 ever reached the log.
 
+Reading that table back is what #1021 did: six of its rows were gaps
+rather than decisions, and a control change, a special action, a
+cycling, a counter landing, a scry or surveil, and a Saga chapter or
+Class level are lines now. Two rules came out of it and hold for the
+next arm. **A value that identifies the card is redacted with the
+card's name** — `choice`, `label` and a counter / chapter / level
+`amount` all go when `redactLogForViewer` drops the name, because
+`redactCardForViewer` already strips the same facts off the CardView
+and a line that kept them would hand them straight back. And **a kind
+whose changes are already a line somewhere else says so in a
+predicate, not in a second table**: `counterKindIsNarrated`
+([log.go](server/internal/protocol/log.go)) is why a loyalty tick and
+a lore counter produce nothing, and it is an allowlist of SILENCES so
+that a counter kind nobody has thought of yet gets a line rather than
+a hole.
+
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
@@ -3022,6 +3038,22 @@ offers), and `alternative_cost_required` is "the nil entry is missing",
 i.e. the printed cost is not claimable from this zone. If you are
 writing a second answer to either, you are writing the bug those two
 issues were.
+
+**A permission names an OBJECT, not a pile (#1022).** A `ScopeCards`
+permission can name a card in ANOTHER seat's graveyard — Wrexial's
+"cast target instant or sorcery card from that player's graveyard" —
+and three surfaces used to answer "whose graveyard" by accident:
+`CastSpell` resolved `from_zone: "graveyard"` to the caster's own pile,
+the enumerator walked the caster's own, and the view asked each seat
+about its own. All three ask `CastPermissionForLocked` now, and the
+card is reachable wherever it sits **only** under a permission — a
+card's own text (flashback, escape, Gravecrawler) opens its OWNER's
+graveyard and nobody else's. Two consequences worth knowing before you
+touch this: a STANDING permission is refused over a card its holder
+does not own, because a permanent's printed text says "your graveyard"
+and `PermissionFilter` has no clause for it; and the graveyard stamp
+is per HOLDER, riding the `castOffersFor` marker exile has used since
+#978, which makes `castable_here` per-viewer for exactly those cards.
 
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost

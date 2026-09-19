@@ -81,6 +81,17 @@ const LOG_TONE: Record<LogKind, string> = {
   choose_color: "tone-quiet",
   choose_type: "tone-quiet",
   choose_player: "tone-quiet",
+  // #1021. A control change is a swing in the game and reads like a
+  // removal spell; the rest are beats of a turn a player narrates
+  // without raising their voice.
+  control: "tone-bad",
+  special_action: "tone-cast",
+  cycle: "tone-zone",
+  counters: "tone-quiet",
+  scry: "tone-quiet",
+  surveil: "tone-quiet",
+  saga_chapter: "tone-resolve",
+  class_level: "tone-resolve",
 };
 
 export function logTone(kind: LogKind): string {

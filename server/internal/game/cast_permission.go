@@ -682,6 +682,9 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 		if !perm.CoversCard(card, zone) {
 			continue
 		}
+		if !standingPermissionReachesCard(p.ID, perm, card, zone) {
+			continue
+		}
 		if !g.permissionPositionOKLocked(p, &perm, card) {
 			continue
 		}
@@ -689,6 +692,39 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 		return &out
 	}
 	return nil
+}
+
+// standingPermissionReachesCard is the ownership half of a STANDING
+// permission's scope: Underworld Breach gives escape to the cards in
+// YOUR graveyard, and nothing in PermissionFilter can say so.
+//
+// It went unwritten until #1022 because every caller asked the
+// question about a pile it had already scoped — CastSpell resolved
+// "graveyard" to the caster's own, the enumerator walked the caster's
+// own, and the view walked each seat asking about that seat. The
+// moment any of the three learned to ask about ANOTHER seat's
+// graveyard (a ScopeCards permission can legitimately name a card
+// there — Wrexial's "cast target instant or sorcery card from that
+// player's graveyard"), a standing permission with no ownership clause
+// would have followed it in and handed a Breach controller every
+// graveyard at the table.
+//
+// A ScopeCards permission is deliberately NOT checked here: naming an
+// INSTANCE is naming an object wherever it sits, which is the whole
+// distinction between the two scopes.
+//
+// Only the graveyard needs it. Exile is a shared zone by construction,
+// and CR 401.5's library permissions are pinned to the holder's own
+// library by permissionPositionOKLocked, which reads p.Library.
+func standingPermissionReachesCard(holder uuid.UUID, perm CastPermission, card Card, zone ZoneKind) bool {
+	if perm.Scope != ScopeStanding || zone != ZoneGraveyard {
+		return true
+	}
+	// A card in a graveyard is in its OWNER's graveyard (CR 404.3), so
+	// the card's owner IS the pile's owner and no zone scan is needed
+	// on a path the view walks per card per seat. An ownerless card —
+	// a token that never had one — reaches nobody's standing grant.
+	return card.Owner != uuid.Nil && card.Owner == holder
 }
 
 // permissionPositionOKLocked enforces the restrictions that are about

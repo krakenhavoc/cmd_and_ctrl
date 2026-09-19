@@ -100,6 +100,12 @@ const (
 	// the public log's record that a card left a hand for exile
 	// without being cast or discarded, which no other event says.
 	//
+	// That last sentence was a claim about a line that did not exist
+	// until #1021: the log had no arm for this kind, so the table saw
+	// the zone move and never the word "Foretell {2}". It is now
+	// projected as the `special_action` entry, whose `label` is this
+	// event's Label verbatim (protocol.LogSpecialAction).
+	//
 	// Emitted AFTER the action has been carried out, so the card is
 	// already in exile when a watcher sees it. ADR 0062 Decision 4,
 	// #658 / #659.
@@ -122,10 +128,6 @@ const (
 	// EventUntapCard — CardID was untapped.
 	EventUntapCard EventKind = "untap_card"
 
-	// EventCounterPlaced — a counter of Label (see CounterKind /
-	// KnownCardCounters) was placed on CardID. Amount is the new
-	// count of that counter kind on the card. Fires on AddCounter
-	// and on the SBA +1/+1 / -1/-1 cancel.
 	// EventAttach fires when an Equipment or Aura becomes attached
 	// to a permanent or player (CR 301.5c, CR 303.4). CardID and
 	// Source are the attachment; Target is the host. Emitted by
@@ -180,6 +182,20 @@ const (
 	// one batch. Added for #930.
 	EventControlChanged EventKind = "control_changed"
 
+	// EventCounterPlaced — a counter of Label (see CounterKind /
+	// KnownCardCounters) was placed on or removed from a card.
+	// TARGET names the card — not CardID, which this one leaves
+	// unset — and Amount is the count of that kind on it AFTER the
+	// change, so a placement and a removal are the same event with a
+	// different number and neither carries the delta. Actor is
+	// uuid.Nil: applyCounterLocked is reached from a resolved spell,
+	// a paid cost, a trigger and the CR 704.5q cancel, and no single
+	// player is responsible for all four.
+	//
+	// Fires on AddCounter and on the SBA +1/+1 / -1/-1 cancel. The
+	// public log narrates it as the `counters` entry, for every kind
+	// but the two that are already a line somewhere else — see
+	// protocol.counterKindIsNarrated (#1021).
 	EventCounterPlaced EventKind = "counter_placed"
 
 	// EventTokenCreated — a token was created under Actor's control.

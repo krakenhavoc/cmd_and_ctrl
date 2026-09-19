@@ -437,7 +437,24 @@ export type LogKind =
   // card whose later abilities read it back (CR 607.2d).
   | "choose_color"
   | "choose_type"
-  | "choose_player";
+  | "choose_player"
+  // #1021: six silences the log kept until they were written down.
+  // `control` names two seats — `seat` gained control, `target_seat`
+  // lost it (CR 613.1b). `special_action` carries the printed action
+  // in `label` ("Foretell {2}", CR 116.2). `cycle` REPLACES the zone
+  // line for the discard that paid for it (CR 702.29b). `counters`
+  // carries the kind in `label` and the count AFTER the change in
+  // `amount`. `scry` and `surveil` name NO card for anyone and carry
+  // only the count that moved. `saga_chapter` and `class_level` carry
+  // the chapter or level in `amount`.
+  | "control"
+  | "special_action"
+  | "cycle"
+  | "counters"
+  | "scry"
+  | "surveil"
+  | "saga_chapter"
+  | "class_level";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -486,6 +503,12 @@ export interface LogEvent {
   // knower of the card that asked: the answer identifies the card as
   // loudly as its name does, so it is redacted with it.
   choice?: string;
+  // #1021: the printed name of the thing the entry is about when it is
+  // not a card — the special action as the card prints it ("Foretell
+  // {2}") on a `special_action` entry, the counter kind ("+1/+1") on a
+  // `counters` one. Redacted with the card's name exactly as `choice`
+  // is: both price or characterise the card the line no longer names.
+  label?: string;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;

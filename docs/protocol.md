@@ -489,11 +489,22 @@ canonical type definition. High-level shape:
 - **The engine event log is not on the wire.** S14 documented an `events` field on `GameView`, a rolling window of `EventView` entries (#139), but it was never added: no `GameView` in `server/internal/protocol/view.go` or `client/src/lib/protocol.ts` has ever carried one. The engine's log (`game.Game.Events`, kinds in `server/internal/game/events.go`) stays on the server. Game-state persistence saves it (`server/internal/game/snapshot.go`), and it reaches clients only through two table-visible projections built from it: `log` (LogEvent, below) and `reveals` (RevealView, below).
 
   Two engine event kinds about **prompts that changed hands when a player left the game** are deliberately server-side only and are **not** projected into `log`: `pending_choice_dropped` (#864) and `pending_choice_reassigned` (#902, CR 800.4g/h — `actor` the departed chooser, `target` the player who inherits, `source` the object, `label` the `PendingChoiceKind`). Both are diagnostics for a stalled table. What a player needs to see is already on the wire without them: the prompt itself, which the very next `snapshot` carries under its new `PendingChoiceView.chooser` — no new field, and no client change, because the picker already renders a prompt exactly when `chooser` is the viewer.
-- **LogEvent** (S31, omitempty): `{ seq, kind, turn?, step?, seat, target_seat?, card_id?, target?, amount?, old_zone?, new_zone?, combat?, combat_step?, choice?, text }` — one line of the **public game log** ([ADR 0033](decisions/0033-ai-bot-seat.md) §4). `GameView.log` is the last 200 table-visible events, **oldest first**, and it is a projection of the engine's own event log rather than a stored buffer — nothing on `game.Game` holds it, so it survives an undo, a snapshot restore and a deploy by riding `Game.Events`, which already does.
+- **LogEvent** (S31, omitempty): `{ seq, kind, turn?, step?, seat, target_seat?, card_id?, target?, amount?, old_zone?, new_zone?, combat?, combat_step?, choice?, label?, text }` — one line of the **public game log** ([ADR 0033](decisions/0033-ai-bot-seat.md) §4). `GameView.log` is the last 200 table-visible events, **oldest first**, and it is a projection of the engine's own event log rather than a stored buffer — nothing on `game.Game` holds it, so it survives an undo, a snapshot restore and a deploy by riding `Game.Events`, which already does.
 
-  `kind` is one of `step`, `cast`, `resolve`, `fizzle`, `counter`, `zone`, `draw`, `life`, `damage`, `attack`, `block`, `token`, `sacrifice`, `eliminated`, `reveal`, `roll`, `flip`, `choose_color`, `choose_type`, `choose_player` — deliberately coarser than the engine's event kinds, because several engine events are one line to a reader and most engine events are no line at all. **Which** engine kinds get no line is no longer a matter of taste: `server/internal/protocol/log_event_kind_gate_test.go` (#984) reads every declared `game.EventKind` and fails unless the projection has an arm for it or the file lists it as a deliberate silence with a written reason.
+  `kind` is one of `step`, `cast`, `resolve`, `fizzle`, `counter`, `zone`, `draw`, `life`, `damage`, `attack`, `block`, `token`, `sacrifice`, `eliminated`, `reveal`, `roll`, `flip`, `choose_color`, `choose_type`, `choose_player`, `control`, `special_action`, `cycle`, `counters`, `scry`, `surveil`, `saga_chapter`, `class_level` — deliberately coarser than the engine's event kinds, because several engine events are one line to a reader and most engine events are no line at all. **Which** engine kinds get no line is no longer a matter of taste: `server/internal/protocol/log_event_kind_gate_test.go` (#984) reads every declared `game.EventKind` and fails unless the projection has an arm for it or the file lists it as a deliberate silence with a written reason.
 
   **Chosen values (#984).** `choose_color` (CR 105.4), `choose_type` and `choose_player` (CR 614.12) are the answers a player gives out loud to a "choose a ..." prompt — Coldsteel Heart's colour, Cavern of Souls' tribe, True-Name Nemesis' player. All three carry `card_id` (the card the answer was given for). `choice` carries the VALUE on the first two — the colour **letter** (`"G"`), the canonical creature type (`"Elf"`) — and is absent on `choose_player`, whose answer is a seat and therefore rides `target_seat` like every other player in the log. `text` renders it as "P1 chose green for Coldsteel Heart". `choice` is **redacted with the card's name**: the answer identifies the card as loudly as the name does (which is why `CardView.chosen_color` / `named_tribe` are stripped for a non-knower, #781), so a viewer who may not identify the card gets "P1 chose a color for a card" and no `choice` at all.
+
+  **The six narrated silences (#1021).** Writing the log's deliberate silences down (#984) showed six of them to be gaps rather than decisions, and each is now a line. They are eight `kind`s for six decisions, because scry is not surveil and a Saga chapter is not a Class level — a client tones and filters by `kind`.
+
+  - `control` — a permanent changed controller (CR 613.1b). `seat` is the player who GAINED control and `target_seat` the one who lost it, which is one sentence for a gain, an exchange (CR 701.12) and a duration expiring: "P1 gained control of Grizzly Bears from P2".
+  - `special_action` — a CR 116.2 special action: foretell, suspend. `label` is the action as the card prints it ("Foretell {2}"). The card's zone move says only that a card left a hand for exile; this says which action it was.
+  - `cycle` — a cycling (CR 702.29b). It **replaces** the `zone` entry for the discard that paid the cost, the way a `sacrifice` entry replaces the zone move it causes, and keeps that entry's `seq`.
+  - `counters` — the count of one counter kind on one card changed (CR 122). `label` is the kind (`"+1/+1"`), `amount` the count **after** the change — the engine's event carries no delta, so a placement and a removal are the same line with a different number, and `amount` ≤ 0 means the last one came off. **Loyalty and lore counters get no line**: a planeswalker's loyalty moves on every activation and every point of damage, both of which are already entries, and a lore counter's advance is the `saga_chapter` line below. The rule is `counterKindIsNarrated` in `log.go`.
+  - `scry` / `surveil` — a finished scry (CR 701.22) or surveil (CR 701.25). These carry **no `card_id` for anyone**, not even the spell that scried: the cards are hidden at both ends, and an entry with no card reference cannot leak one. `amount` is the public half — how many cards the table watched go to the bottom of the library, or into the graveyard. It is **not** the size of the scry ("scry 2"), which the engine's event does not carry.
+  - `saga_chapter` / `class_level` — a Saga reached a chapter (CR 714.2b) or a Class became a level (CR 716.2); `amount` is the chapter or the level.
+
+  `label` is **redacted with the card's name**, exactly as `choice` is and for the same reason: "Foretell {2}" prices the card as loudly as an `alternative_costs` entry does, which `redactCardForViewer` already strips from a face-down card. So does the `amount` of a `counters`, `saga_chapter` or `class_level` entry, because `redactCardForViewer` strips `counters` from a non-knower too — a viewer who may not identify the card reads "a card's counters changed" and gets neither the kind nor the number.
 
   **Players are seat indices, not UUIDs.** `seat` is the responsible player (`-1` when there is none — an SBA life loss, a spell resolving with nobody to credit) and `target_seat` is the player acted on. `card_id` and `target` are card instance IDs; exactly one of `target_seat` / `target` is set on an entry that has a target at all. `step` rides only on `step` entries: every entry after one belongs to that step until the next, and a consumer that wants the step on every line carries it forward. All of this is wire-cost discipline — the struct repeats 200 times on every snapshot frame.
 
@@ -715,8 +726,9 @@ Four additive changes, none of them breaking (`v` unchanged):
   card now include GRANTED permissions**, not only the ones a card's
   own text prints (ADR 0066). A card Snapcaster Mage gave flashback to
   renders the same cast affordance a Faithless Looting does, with the
-  synthesised offer in its picker. The stamp is about the zone's
-  OWNER, as it has been since S29.
+  synthesised offer in its picker. The stamp is about the zone's OWNER
+  — **except when somebody else holds the permission**, which is
+  #1022 below.
 - **An opponent's `library.cards` may now carry exactly one card** —
   the top one, when "play with the top card of your library revealed"
   (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer
@@ -756,6 +768,44 @@ Four additive changes, none of them breaking (`v` unchanged):
   opens a ZONE and a restriction shuts the cast anyway (CR 101.2).
   `castable_here` now respects it — a granted graveyard or library
   card the gate refuses is no longer marked a cast surface.
+
+**A graveyard card somebody ELSE may cast is stamped for THEM (#1022).**
+A `ScopeCards` permission names an object, not a pile — Wrexial's "you
+may cast target instant or sorcery card from that player's graveyard" —
+and until #1022 such a card reached the wire with nothing on it at all:
+the per-seat walk asked "may the zone's owner cast this" and no other
+question. The graveyard stamp is now **per holder**:
+
+- the zone's owner wins when the owner may cast the card at all (their
+  own permission, or the card's printed flashback / escape), which is
+  every case that existed before;
+- otherwise the first seat in seat order that holds a permission over
+  it gets the stamps, and the card carries the same unexported
+  `castOffersFor` marker an exiled card has carried since #978, so
+  `FilterViewFor` drops the stamps for every other viewer — the owner
+  of the graveyard and spectators included;
+- **`castable_here` travels with them.** It is public everywhere else
+  because everywhere else it is the same answer for every viewer; on a
+  card stamped for one seat it is that seat's answer, and a public bit
+  with a per-viewer answer is what #1015 removed from this surface.
+
+One holder per card, because a `CardView` is one struct: a card two
+seats may both cast shows the owner's answer and the other holder sees
+the public zone with no stamps. That is exile's limitation since #978,
+and lifting it needs a wire shape rather than a bug fix.
+
+The engine reaches the same card through the same permission. CastSpell's
+`from_zone: "graveyard"` resolves to the caster's own pile and, when the
+card is not in it, to the pile it IS in — **only** under a permission
+the caster holds (`castSourceZoneLocked`); the bot enumerator walks
+every seat's graveyard once anything has granted anything, under the
+same rule. A card's own text opens only its OWNER's graveyard, because
+flashback, escape and Gravecrawler all print "your graveyard", and a
+STANDING permission (Underworld Breach) is scoped the same way for the
+same reason — `CastPermissionForLocked` says so now that anything can
+ask it about another seat's pile. **The library has no equivalent**: CR
+401.5's "the top card of your library" is checked against the HOLDER's
+own library, so a cross-seat library permission opens nothing.
 
 `exile_play` is unchanged in name. It is now projected from the
 per-player permission store rather than from a field on the card,

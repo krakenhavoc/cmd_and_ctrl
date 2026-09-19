@@ -856,3 +856,80 @@ one-way-in button label counts the printed cost as a way in; and
 the printed cost is a price this cast may claim.
 
 Additive on the wire (`v` unchanged).
+
+---
+
+## Amendment (2026-09-19, #1022): a permission names an OBJECT, and the graveyard stamp is its holder's
+
+Decision 1 said a permission is one type with one query and three homes,
+and Decision 7 stamped it on the wire. Neither said whose ZONE the
+object had to be in, and three surfaces answered that question by
+accident instead:
+
+- `CastSpell` resolved `from_zone: "graveyard"` to `p.Graveyard` and
+  nothing else, so a card in another seat's graveyard was
+  `ErrCardNotFound` however live the permission was;
+- `legal/cast.go`'s enumerator walked `p.Graveyard` only, so no bot
+  could see the cast either;
+- `stampLegalTargets` walked each seat's graveyard asking
+  `grantedCast(g, owner, …)`, so the VIEW showed nothing at all —
+  no offers, no targets, no gate, for anybody. That is the bug #1022
+  was filed for, after #1015 removed the bare `castable_here` the
+  non-exile branch used to paint on for a permission somebody else
+  held.
+
+**The permission is the key, and the only key.** A `ScopeCards`
+permission names an INSTANCE, which is a statement about an object
+wherever it sits — Wrexial's "you may cast target instant or sorcery
+card from that player's graveyard" is the printed shape, and the model
+has always been able to express it. So:
+
+- `castSourceZoneLocked` takes the card ID and, when the caster's own
+  graveyard does not hold it, returns the graveyard that does —
+  **only** when `CastPermissionForLocked` says the caster may cast it
+  from there. A card no permission covers is `ErrCardNotFound`, exactly
+  as before, so a client naming a card it has no business naming sees
+  no change.
+- The enumerator walks every seat's graveyard once
+  `AnyCastPermissionsForEffect` is true, with a `mine` flag on each
+  pile: a card's own declaration opens only its owner's graveyard,
+  because flashback (CR 702.34a), escape (CR 702.138a) and
+  Gravecrawler all print "your graveyard".
+- The view computes `CastOffersForLocked` for the HOLDER and marks the
+  card with `castOffersFor`, which is exile's shape from the #978
+  amendment above, on the one per-seat zone that can carry another
+  seat's answer. `FilterViewFor` strips them for every other viewer.
+
+**`castable_here` became per-viewer, for those cards only.** The bit is
+public everywhere else because everywhere else it is the same answer
+for every viewer; on a card whose stamps are one seat's it is that
+seat's answer, and shipping it publicly is precisely the thing #1015
+took off this surface. `stripCastOffersNotFor` clears it beside the
+offers it summarises. Exile never sets it (its button reads
+`exile_play`), so nothing else is touched.
+
+**One holder per card.** A `CardView` is one struct, so when the zone's
+owner may cast the card too, the owner wins — the view only asks the
+other seats once the owner's answer is no — and a second holder sees
+the public zone with no stamps. Exile has had the same limitation since
+#978 (`CastPermissionOnCardForEffect` answers with one permission), and
+lifting it is a wire shape rather than a bug fix.
+
+**And a rule that was true by accident is now written down.** A
+STANDING permission is derived from a permanent's printed text and its
+`PermissionFilter` has no ownership clause, so Underworld Breach's
+"each nonland card in YOUR graveyard has escape" was scoped only by
+every caller looking at its own pile. The moment any caller could ask
+about another seat's, a Breach would have given escape to the whole
+table. `CastPermissionForLocked` now refuses a standing GRAVEYARD
+permission over a card its holder does not own (a card in a graveyard
+is in its owner's, CR 404.3). `ScopeCards` is deliberately exempt:
+naming an instance is naming an object wherever it sits, which is the
+whole distinction between the two scopes. Exile is shared by
+construction and needs no such rule, and CR 401.5's library permissions
+were already pinned to the holder's own library by
+`permissionPositionOKLocked` — which is also why a cross-seat LIBRARY
+grant still opens nothing.
+
+Additive on the wire (`v` unchanged): the new stamps appear on a card
+that carried none, and only for the seat entitled to them.
