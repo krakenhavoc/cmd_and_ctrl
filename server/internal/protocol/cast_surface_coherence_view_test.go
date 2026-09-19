@@ -429,6 +429,31 @@ func viewPrices(c *CardView, zone string) castPrices {
 	return castPrices{printed: !c.AlternativeCostRequired, keys: keys}
 }
 
+// seededCast is one row of the coherence fixture: a card, the zone it
+// sits in and WHOSE zone that is. The third field is what #1035 added
+// — a cast surface is no longer always a pile of the seat being
+// enumerated, because a permission over another seat's graveyard or
+// library top is one too.
+type seededCast struct {
+	label string
+	seat  uuid.UUID
+	zone  string
+}
+
+// zoneViewOf picks one seat's projected pile out of a filtered view.
+func zoneViewOf(t *testing.T, v GameView, seat uuid.UUID, zone string) ZoneView {
+	t.Helper()
+	p := seatViewOf(t, v, seat)
+	switch zone {
+	case "hand":
+		return p.Hand
+	case "library":
+		return p.Library
+	default:
+		return p.Graveyard
+	}
+}
+
 // The two answers are the same list, by construction, and this is the
 // test that says so out loud: for a fixture board, the prices the view
 // stamps on each castable card equal the prices the enumerator offers
@@ -458,19 +483,19 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		oracleEscape: {escapeCost("{R}", 2)},
 	})
 
-	// instance ID + "@" + zone -> what the row is, for the failure
-	// message.
-	seeded := map[string]string{}
+	// instance ID + "@" + zone -> which row it is, for the failure
+	// message and for finding the pile again in the projection.
+	seeded := map[string]seededCast{}
 
 	// The graveyard: a flashback card (one price, and it is not the
 	// printed one), an escape card the yard can pay for, and a plain
 	// card that is no cast surface at all.
 	fb := graveyardCard(me, "Coherence Flashback", oracleFlashback)
-	seeded[fb.String()+"@graveyard"] = "flashback card in the graveyard"
+	seeded[fb.String()+"@graveyard"] = seededCast{"flashback card in the graveyard", me.ID, "graveyard"}
 	esc := graveyardCard(me, "Coherence Escape", oracleEscape)
-	seeded[esc.String()+"@graveyard"] = "escape card in the graveyard"
+	seeded[esc.String()+"@graveyard"] = seededCast{"escape card in the graveyard", me.ID, "graveyard"}
 	plain := graveyardCard(me, "Coherence Plain", "")
-	seeded[plain.String()+"@graveyard"] = "plain card in the graveyard"
+	seeded[plain.String()+"@graveyard"] = seededCast{"plain card in the graveyard", me.ID, "graveyard"}
 	graveyardCard(me, "Coherence Filler A", "")
 	graveyardCard(me, "Coherence Filler B", "")
 
@@ -482,9 +507,30 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	inHand.OracleID = oracleFlashback
 	inHand.KnownBy = map[uuid.UUID]bool{me.ID: true}
 	me.Hand.PushTop(inHand)
-	seeded[inHand.InstanceID.String()+"@hand"] = "flashback card in hand"
+	seeded[inHand.InstanceID.String()+"@hand"] = seededCast{"flashback card in hand", me.ID, "hand"}
+
+	// #1035: ANOTHER seat's library top, under a Xanathar-shaped grant
+	// this seat holds. It is the same property on a pile that is not
+	// this seat's — and the row that would have been silently vacuous
+	// before, because the permission opened nothing at all.
+	them := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	them.Library.Cards = nil
+	buried := libraryTopCard(them, "Coherence Buried", "")
+	theirTop := libraryTopCard(them, "Coherence Their Top", "")
+	xanatharOver(t, g, me, them)
+	seeded[theirTop.String()+"@library"] = seededCast{"another seat's library top under a grant", them.ID, "library"}
 
 	moves := enumeratedPrices(t, g, me.ID)
+	// #1035 non-vacuity, and the position rule from the other end: the
+	// enumerator offers the top card of the named library and nothing
+	// under it.
+	if got := moves[theirTop.String()+"@library"]; !got.printed {
+		t.Fatalf("fixture: the enumerator offers %v (printed=%v) for the foreign library top, want the printed cost",
+			got.sorted(), got.printed)
+	}
+	if got, ok := moves[buried.String()+"@library"]; ok {
+		t.Errorf("the enumerator offered a card BELOW another seat's library top: %v", got.sorted())
+	}
 	// Non-vacuity: two lists that are both empty agree about nothing.
 	// The graveyard flashback cast is the row the whole comparison
 	// hangs on, so the fixture asserts the enumerator really offers it
@@ -495,26 +541,14 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 	}
 
 	v := ViewOfGameFor(g, me.ID.String())
-	var seat *PlayerView
-	for i := range v.Seats {
-		if v.Seats[i].ID == me.ID.String() {
-			seat = &v.Seats[i]
-		}
-	}
-	if seat == nil {
-		t.Fatalf("the active seat is missing from its own view")
-	}
 
-	for key, label := range seeded {
+	for key, row := range seeded {
 		id, zone := key[:36], key[37:]
-		zv := seat.Graveyard
-		if zone == "hand" {
-			zv = seat.Hand
-		}
 		parsed, err := uuid.Parse(id)
 		if err != nil {
-			t.Fatalf("%s: bad id %q", label, id)
+			t.Fatalf("%s: bad id %q", row.label, id)
 		}
+		zv := zoneViewOf(t, v, row.seat, zone)
 		got := viewPrices(cardInSeatZone(t, zv, parsed), zone)
 		want := moves[key]
 		if want.keys == nil {
@@ -522,11 +556,11 @@ func TestViewAndEnumeratorOfferTheSamePrices(t *testing.T) {
 		}
 		if got.printed != want.printed {
 			t.Errorf("%s: view says printed-cost-claimable=%v, the enumerator says %v",
-				label, got.printed, want.printed)
+				row.label, got.printed, want.printed)
 		}
 		if !sameStrings(got.sorted(), want.sorted()) {
 			t.Errorf("%s: view offers %v, the enumerator offers %v",
-				label, got.sorted(), want.sorted())
+				row.label, got.sorted(), want.sorted())
 		}
 	}
 }

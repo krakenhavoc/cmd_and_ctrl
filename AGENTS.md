@@ -3088,12 +3088,47 @@ the enumerator walked the caster's own, and the view asked each seat
 about its own. All three ask `CastPermissionForLocked` now, and the
 card is reachable wherever it sits **only** under a permission — a
 card's own text (flashback, escape, Gravecrawler) opens its OWNER's
-graveyard and nobody else's. Two consequences worth knowing before you
-touch this: a STANDING permission is refused over a card its holder
-does not own, because a permanent's printed text says "your graveyard"
-and `PermissionFilter` has no clause for it; and the graveyard stamp
-is per HOLDER, riding the `castOffersFor` marker exile has used since
-#978, which makes `castable_here` per-viewer for exactly those cards.
+graveyard and nobody else's. One consequence worth knowing before you
+touch it: a STANDING permission is refused over a pile its holder does
+not own, because a permanent's printed text says "your graveyard" and
+`PermissionFilter` has no clause for it.
+
+**And the LIBRARY is the same sentence (#1035).** `permissionPositionOKLocked`
+enforced CR 401.5's "the top card of your library" against the
+permission HOLDER's own pile, which scoped every printed library clause
+by accident and made a cross-seat permission open nothing at all — the
+position rule reads the library the CARD is in now. Three things ride
+on that and are easy to get wrong:
+
+- `CastPermission.ZoneOwner` names the seat whose pile a STANDING
+  permission is over, and it is the only way past the "your own pile"
+  scoping. A DERIVED permission can never carry one — the catalog is
+  static, `standingCastPermissionsLocked` zeroes it, and the view leans
+  on that to rule out a foreign holder without walking the battlefield.
+  "Each opponent's library" is one stored permission per opponent,
+  granted at resolution.
+- `CastPermission.SeesLibraryTop` is CR 401.5's LOOK for a cross-seat
+  grant, because `CardDef.LibraryTopVisible` is per library and derived
+  from the permanents its OWNER controls, and cannot express "you may
+  look at the top card of THEIR library". Ask
+  `LibraryTopVisibleToLocked`, never the enum: it is the one place both
+  spellings are read, and `LibraryTopKnowersLocked` is built out of it
+  so the seat that may cast the card is a seat the view has already
+  made a knower of it.
+- A grant that opens another seat's library top without the look opens
+  nothing. A card you cannot see is a card you cannot play.
+
+**The cast stamps are PER HOLDER (#1037).** `CardView.castOffers` is a
+map of seat → `castStamps` and the exported fields carry only the
+PUBLIC answer: the pile owner's own cast out of their own graveyard or
+library, and nothing at all for exile, which has no owner.
+`stampLegalTargets` stamps the public one, `stampGrantedPermissions`
+files every other holder, `FilterViewFor` promotes exactly one. Two
+seats may hold two permissions over one card and both get a picker. Do
+not write a seat's answer into a `CardView` field — that is the bug
+#1037 was, and `castable_here`'s meaning depends on it: public on a
+per-seat pile, so a CLIENT must read the bit together with whether
+`exile_play` (also resolved per viewer now) names them.
 
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost

@@ -718,10 +718,12 @@ Four additive changes, none of them breaking (`v` unchanged):
 
 - **`cast_spell.from_zone` accepts `"library"`** — CR 401.5's "you may
   play lands and cast spells from the top of your library". Only the
-  TOP card of the caller's own library is ever legal, and only while a
-  permanent grants both the permission and the visibility; the server
-  refuses anything else. `"hand"`, `"command"`, `"graveyard"` and
-  `"exile"` are unchanged.
+  TOP card is ever legal, and only while something grants both the
+  permission and the visibility; the server refuses anything else. The
+  library is the caller's own for every card in the catalog, and since
+  #1035 may be another seat's under a permission that names it — see
+  the `from_zone: "library"` note below. `"hand"`, `"command"`,
+  `"graveyard"` and `"exile"` are unchanged.
 - **`castable_here` and `alternative_costs` on a graveyard or library
   card now include GRANTED permissions**, not only the ones a card's
   own text prints (ADR 0066). A card Snapcaster Mage gave flashback to
@@ -732,10 +734,12 @@ Four additive changes, none of them breaking (`v` unchanged):
 - **An opponent's `library.cards` may now carry exactly one card** —
   the top one, when "play with the top card of your library revealed"
   (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer
-  is a knower of it. Every other library card stays hidden, `count`
-  stays public as before, and a one-shot "reveal the top two cards"
-  does NOT open the zone: it makes those cards known without making
-  them visible where they sit.
+  is a knower of it, or — since #1035 — when the viewer holds a cast
+  permission over that library top whose grant carries CR 401.5's look
+  (Xanathar, Guild Kingpin). Every other library card stays hidden,
+  `count` stays public as before, and a one-shot "reveal the top two
+  cards" does NOT open the zone: it makes those cards known without
+  making them visible where they sit.
 
 - **An exiled card a permission opens now carries the same announce
   surface a hand card does** (#978): `legal_targets`, `clauses`,
@@ -776,23 +780,49 @@ and until #1022 such a card reached the wire with nothing on it at all:
 the per-seat walk asked "may the zone's owner cast this" and no other
 question. The graveyard stamp is now **per holder**:
 
-- the zone's owner wins when the owner may cast the card at all (their
-  own permission, or the card's printed flashback / escape), which is
-  every case that existed before;
-- otherwise the first seat in seat order that holds a permission over
-  it gets the stamps, and the card carries the same unexported
-  `castOffersFor` marker an exiled card has carried since #978, so
-  `FilterViewFor` drops the stamps for every other viewer — the owner
-  of the graveyard and spectators included;
-- **`castable_here` travels with them.** It is public everywhere else
-  because everywhere else it is the same answer for every viewer; on a
-  card stamped for one seat it is that seat's answer, and a public bit
-  with a per-viewer answer is what #1015 removed from this surface.
+- the zone's owner gets the PUBLIC answer when the owner may cast the
+  card at all (their own permission, or the card's printed flashback /
+  escape), which is every case that existed before #1022;
+- every OTHER seat that holds a permission over it gets its own copy of
+  the stamps, computed for them and delivered on their frame alone —
+  `FilterViewFor` drops them for every other viewer, the owner of the
+  graveyard and spectators included. Until #1037 that was one seat (the
+  first in seat order) and one set of stamps; see below.
 
-One holder per card, because a `CardView` is one struct: a card two
-seats may both cast shows the owner's answer and the other holder sees
-the public zone with no stamps. That is exile's limitation since #978,
-and lifting it needs a wire shape rather than a bug fix.
+**Every holder gets their own stamps (#1037), and the wire shape is
+unchanged.** Until #1037 a `CardView` carried ONE seat's answer — the
+graveyard took the first seat in seat order and exile the first live
+permission — so a card two seats may both cast (a flashback on a card
+in your own graveyard under somebody else's Wrexial-style grant, two
+impulse grants over one exiled card) left the second holder with the
+public zone, the public `exile_play` and no picker. The frame is built
+per viewer already, so nothing on the wire had to grow: the server
+computes each holder's answer, files it under their seat, and
+`FilterViewFor` promotes exactly one.
+
+- **The exported fields carry the answer that is PUBLIC.** For a
+  graveyard or a library that is the pile OWNER's own cast out of their
+  own pile — every printed flashback card in every graveyard — and for
+  exile there is no owner, so nothing is public there but the grant.
+- **A holder's answer replaces it, on their frame only.** Every field
+  in the list above travels together, `castable_here` included.
+- **`exile_play` is resolved for the viewer.** It stays PUBLIC and
+  still names a seat, but a viewer who holds a permission over the card
+  gets THEIR OWN grant rather than whichever live one came first — its
+  `cost_override`, its `faces`, its `any_color`. A client that read
+  somebody else's would render the wrong button for a cast it is
+  allowed to make.
+- **A non-knower gets neither.** The stamps name a card as loudly as
+  its mana cost does, so the redaction runs first and a holder who
+  cannot read the card keeps nothing.
+
+**Reading `castable_here` on a card in somebody else's pile.** The bit
+is public and it is the PILE OWNER's answer, so "the server marked it"
+is not "I may cast it". The pair to read is the bit AND whether
+`exile_play` names this viewer: the owner of the pile, or the seat a
+grant names, gets the button and nobody else does. Both client readers
+(`castableFromZone` for the zone browser, `libraryTopPlayable` for the
+library top) ask exactly that.
 
 The engine reaches the same card through the same permission. CastSpell's
 `from_zone: "graveyard"` resolves to the caster's own pile and, when the
@@ -803,9 +833,30 @@ same rule. A card's own text opens only its OWNER's graveyard, because
 flashback, escape and Gravecrawler all print "your graveyard", and a
 STANDING permission (Underworld Breach) is scoped the same way for the
 same reason — `CastPermissionForLocked` says so now that anything can
-ask it about another seat's pile. **The library has no equivalent**: CR
-401.5's "the top card of your library" is checked against the HOLDER's
-own library, so a cross-seat library permission opens nothing.
+ask it about another seat's pile.
+
+**`from_zone: "library"` is the same sentence since #1035.** CR 401.5's
+"the top card of your library" used to be checked against the HOLDER's
+own library, which scoped every printed library clause by accident and
+made a cross-seat permission open nothing at all. The position rule now
+reads the library the CARD is in, so Xanathar, Guild Kingpin's "you may
+play the top card of their library" is expressible: the cast path finds
+the pile the card is in under a permission the caller holds, the
+enumerator walks every seat's library TOP under a grant, and the view
+stamps that seat's offers on the top card of the library it names. Two
+rules ride with it:
+
+- a STANDING library permission with no seat named is "YOUR library",
+  exactly as a Breach is "your graveyard" — two Coursers of Kruphix do
+  not play lands off each other's revealed top card;
+- CR 401.5's other half, the LOOK, comes with the grant. "Play with the
+  top card of your library revealed" and "you may look at the top card
+  of your library" are per library and derived from the permanents its
+  owner controls; "you may look at the top card of THEIR library" is
+  per pair and granted by a resolution, so it rides the permission. A
+  cross-seat grant without it opens nothing, and one with it puts that
+  one card on the holder's wire — the second way an opponent's
+  `library.cards` can carry exactly one entry.
 
 `exile_play` is unchanged in name. It is now projected from the
 per-player permission store rather than from a field on the card,

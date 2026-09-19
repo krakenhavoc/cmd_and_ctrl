@@ -1693,9 +1693,27 @@ export interface CardView {
   // is NOT castable here, and used to render a button with no offer
   // behind it. Whether the printed cost is one of those prices is
   // `alternative_cost_required`, not this bit.
+  //
+  // WHOSE ANSWER IT IS depends on the pile (#1022, #1035). On a
+  // graveyard or a library it is the PILE OWNER's and it is public —
+  // a flashback cost is printed on a card in a public zone — so a
+  // reader looking at somebody else's pile must not take it as their
+  // own. It is YOUR answer when `exile_play` names you: the server
+  // computes the holder's own offers, targets and gate and ships them
+  // to that seat alone. zoneBrowser.logic and libraryTop are the two
+  // readers, and both ask the same question.
   castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
-  // this turn. Absent for ordinary exile, which is nearly all of it.
+  // this turn — and, since ADR 0066, on a card in a graveyard or on a
+  // library top that a permission opens. Absent for ordinary exile,
+  // which is nearly all of it.
+  //
+  // PUBLIC: the trigger that granted it resolved in the open, so every
+  // viewer gets one. #1037: a viewer who holds a permission over the
+  // card gets THEIR OWN rather than whichever live permission the
+  // server found first, so two seats that may both cast one card each
+  // see the grant they would cast under — its cost override, its
+  // faces, its any-color clause. Read it, never guess from the zone.
   exile_play?: ExilePlayView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];

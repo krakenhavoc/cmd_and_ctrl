@@ -187,6 +187,28 @@ type CastPermission struct {
 	// command zone (CR 903.4 is the format's, not an effect's).
 	Zone ZoneKind `json:"zone"`
 
+	// ZoneOwner names the SEAT whose pile a ScopeStanding permission
+	// is over, when that is not the holder's own: Xanathar, Guild
+	// Kingpin's "you may play the top card of THEIR library"
+	// (CR 401.5). uuid.Nil — every permission written before #1035 —
+	// means the holder's own graveyard or library.
+	//
+	// Read by permissionReachesPileLocked, which is the ownership
+	// half of a standing permission's scope, and by the CR 401.5 look
+	// below. A ScopeCards permission ignores it: naming an INSTANCE
+	// is naming an object wherever it sits, which is the whole
+	// distinction between the two scopes (#1022).
+	//
+	// A DERIVED standing permission never carries one. The catalog is
+	// static and cannot name a seat, so standingCastPermissionsLocked
+	// zeroes the field on the way out; a card that wants "each
+	// opponent's library" grants one stored permission per opponent
+	// out of a resolution, the way Xanathar's upkeep trigger does.
+	// The view leans on that: a foreign holder can only ever come
+	// from a STORED permission, so the per-holder stamp needs no walk
+	// of the battlefield to rule one out.
+	ZoneOwner uuid.UUID `json:"zoneOwner,omitempty"`
+
 	// Scope and its two payloads. Cards is read for ScopeCards,
 	// Filter for ScopeStanding; the other is ignored rather than
 	// asserted, because a permission is data and a half-filled one
@@ -201,6 +223,28 @@ type CastPermission struct {
 	// a future "play any card from your library" reads as the
 	// exception it would be.
 	TopOfLibraryOnly bool `json:"topOfLibraryOnly,omitempty"`
+
+	// SeesLibraryTop is CR 401.5's other half, carried by the grant
+	// rather than by a permanent: "you may LOOK at the top card of
+	// their library any time" (Xanathar, Guild Kingpin), which is
+	// what makes the card in the clause beside it playable at all.
+	//
+	// ADR 0066 decision 5 keeps the visibility rule on the POSITION
+	// and derives it from the battlefield — CardDef.LibraryTopVisible,
+	// read by LibraryTopVisibilityLocked. That derivation answers for
+	// the permanent's controller's OWN library and cannot answer for
+	// anybody else's, because the clause that opens another seat's
+	// library is granted by a resolution to one chosen player and is
+	// not a static ability of any permanent. So a cross-seat grant
+	// says it here, and LibraryTopVisibleToLocked is the one place
+	// both spellings are read — the engine's position check and the
+	// view's knower stamp agree by construction (#1035).
+	//
+	// Meaningless without ZoneLibrary, and a permission that opens
+	// another seat's library top without it opens NOTHING: a card you
+	// cannot see is a card you cannot play, and the failure is a card
+	// file that does nothing rather than one that cheats.
+	SeesLibraryTop bool `json:"seesLibraryTop,omitempty"`
 
 	// --- the price -------------------------------------------------
 
@@ -672,7 +716,16 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 		if !g.CastPermissionActiveForEffect(perm, playerID) || !perm.CoversCard(card, zone) {
 			continue
 		}
-		if !g.permissionPositionOKLocked(p, perm, card) {
+		// #1035: the pile rule is asked of a STORED standing
+		// permission too, not only a derived one. Both are "a rule
+		// over a zone" and the zone is the holder's own unless the
+		// grant names a seat; Xanathar's until-end-of-turn grant over
+		// one chosen opponent's library is a stored ScopeStanding
+		// permission, and it is the only kind that can name one.
+		if !permissionReachesPileLocked(playerID, perm, card, zone) {
+			continue
+		}
+		if !g.permissionPositionOKLocked(playerID, perm, card) {
 			continue
 		}
 		out := *perm
@@ -682,10 +735,10 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 		if !perm.CoversCard(card, zone) {
 			continue
 		}
-		if !standingPermissionReachesCard(p.ID, perm, card, zone) {
+		if !permissionReachesPileLocked(p.ID, &perm, card, zone) {
 			continue
 		}
-		if !g.permissionPositionOKLocked(p, &perm, card) {
+		if !g.permissionPositionOKLocked(p.ID, &perm, card) {
 			continue
 		}
 		out := perm
@@ -694,37 +747,62 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 	return nil
 }
 
-// standingPermissionReachesCard is the ownership half of a STANDING
+// PileOwnerFor resolves WHOSE graveyard or library this permission
+// speaks about: the seat it names, or the holder's own when it names
+// none. The one place the uuid.Nil default is spelled out, so a
+// caller cannot get the "your own pile" reading wrong.
+func (p *CastPermission) PileOwnerFor(holder uuid.UUID) uuid.UUID {
+	if p == nil || p.ZoneOwner == uuid.Nil {
+		return holder
+	}
+	return p.ZoneOwner
+}
+
+// permissionReachesPileLocked is the ownership half of a STANDING
 // permission's scope: Underworld Breach gives escape to the cards in
-// YOUR graveyard, and nothing in PermissionFilter can say so.
+// YOUR graveyard, Bolas's Citadel opens the top of YOUR library, and
+// nothing in PermissionFilter can say so.
 //
 // It went unwritten until #1022 because every caller asked the
 // question about a pile it had already scoped — CastSpell resolved
 // "graveyard" to the caster's own, the enumerator walked the caster's
 // own, and the view walked each seat asking about that seat. The
-// moment any of the three learned to ask about ANOTHER seat's
-// graveyard (a ScopeCards permission can legitimately name a card
-// there — Wrexial's "cast target instant or sorcery card from that
-// player's graveyard"), a standing permission with no ownership clause
-// would have followed it in and handed a Breach controller every
-// graveyard at the table.
+// moment any of the three learned to ask about ANOTHER seat's pile (a
+// ScopeCards permission can legitimately name a card there —
+// Wrexial's "cast target instant or sorcery card from that player's
+// graveyard"), a standing permission with no ownership clause would
+// have followed it in and handed a Breach controller every graveyard
+// at the table.
 //
-// A ScopeCards permission is deliberately NOT checked here: naming an
-// INSTANCE is naming an object wherever it sits, which is the whole
-// distinction between the two scopes.
+// #1035 gave the LIBRARY the same rule for the same reason. It used to
+// be true by a different accident — permissionPositionOKLocked read
+// CR 401.5's "the top card of your library" off the HOLDER's own pile,
+// which both scoped the permission and made a cross-seat one
+// impossible. Now that the position check follows the CARD, two
+// Coursers on one table would otherwise have each controller playing
+// lands off the other's revealed library.
 //
-// Only the graveyard needs it. Exile is a shared zone by construction,
-// and CR 401.5's library permissions are pinned to the holder's own
-// library by permissionPositionOKLocked, which reads p.Library.
-func standingPermissionReachesCard(holder uuid.UUID, perm CastPermission, card Card, zone ZoneKind) bool {
-	if perm.Scope != ScopeStanding || zone != ZoneGraveyard {
+// ZoneOwner is the way OUT of the scoping, and the only way: a grant
+// that names a seat (Xanathar's chosen opponent) reaches that seat's
+// pile and no other. A ScopeCards permission is deliberately not
+// checked at all — naming an INSTANCE is naming an object wherever it
+// sits, which is the whole distinction between the two scopes.
+//
+// Exile needs none of it: it is a shared zone by construction, so
+// "whose exile" is not a question a permission has to answer.
+func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
+	if perm.Scope != ScopeStanding {
 		return true
 	}
-	// A card in a graveyard is in its OWNER's graveyard (CR 404.3), so
-	// the card's owner IS the pile's owner and no zone scan is needed
-	// on a path the view walks per card per seat. An ownerless card —
-	// a token that never had one — reaches nobody's standing grant.
-	return card.Owner != uuid.Nil && card.Owner == holder
+	if zone != ZoneGraveyard && zone != ZoneLibrary {
+		return true
+	}
+	// A card in a graveyard is in its OWNER's graveyard (CR 404.3) and
+	// a library holds its owner's cards, so the card's owner IS the
+	// pile's owner and no zone scan is needed on a path the view walks
+	// per card per seat. An ownerless card — a token that never had
+	// one — reaches nobody's standing grant.
+	return card.Owner != uuid.Nil && card.Owner == perm.PileOwnerFor(holder)
 }
 
 // permissionPositionOKLocked enforces the restrictions that are about
@@ -732,24 +810,36 @@ func standingPermissionReachesCard(holder uuid.UUID, perm CastPermission, card C
 // 401.5's "the top card of your library", and the visibility that
 // makes it playable at all.
 //
-// A player may only play the top card of their library if they can
-// SEE it — a permission that opens the top card without the matching
-// "you may look" or "revealed" clause opens nothing. Every printed
-// card carries both halves, so this is a guard against a card file
-// that declares one and forgets the other.
+// BOTH halves are asked about the library the CARD IS IN, not the one
+// the holder owns (#1035). Reading the holder's own pile was the same
+// class of accident #1022 took out of the graveyard: it happened to
+// scope every permission written so far, because every printed
+// library clause before Xanathar says "your library" — and it meant a
+// permission over another seat's library top could never match the
+// card, so it opened nothing, silently, before any surface could ask.
+// The position rule is about a POSITION IN A PILE, and the pile is the
+// card owner's (CR 401.1).
+//
+// A player may only play the top card of a library if they can SEE it
+// — a permission that opens the top card without the matching "you may
+// look" or "revealed" clause opens nothing. Every printed card carries
+// both halves, so this is a guard against a card file that declares
+// one and forgets the other. LibraryTopVisibleToLocked is the one
+// place that knows the spellings.
 //
 // Caller must hold g.mu.
-func (g *Game) permissionPositionOKLocked(p *Player, perm *CastPermission, card Card) bool {
+func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission, card Card) bool {
 	if !perm.TopOfLibraryOnly {
 		return true
 	}
-	if p.Library == nil || len(p.Library.Cards) == 0 {
+	owner := g.playerByIDLocked(card.Owner)
+	if owner == nil || owner.Library == nil || len(owner.Library.Cards) == 0 {
 		return false
 	}
-	if p.Library.Cards[len(p.Library.Cards)-1].InstanceID != card.InstanceID {
+	if owner.Library.Cards[len(owner.Library.Cards)-1].InstanceID != card.InstanceID {
 		return false
 	}
-	return g.LibraryTopVisibilityLocked(p.ID) != LibraryTopHidden
+	return g.LibraryTopVisibleToLocked(owner.ID, holder)
 }
 
 // standingCastPermissionsLocked derives every ScopeStanding
@@ -776,6 +866,14 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		for _, perm := range CatalogCastPermissions(CatalogAbilityKey(*c)) {
 			perm.Player = p.ID
 			perm.Scope = ScopeStanding
+			// #1035: a catalog entry is static and cannot name a SEAT,
+			// so a derived permission is always about its holder's own
+			// pile. Zeroed rather than trusted, because the view's
+			// per-holder stamp relies on it: a foreign holder can only
+			// come from a stored permission, which is what lets the
+			// per-card walk rule one out without deriving every seat's
+			// standing set.
+			perm.ZoneOwner = uuid.Nil
 			perm.Source = c.InstanceID
 			if perm.SourceName == "" {
 				perm.SourceName = c.Name
@@ -851,23 +949,42 @@ func (g *Game) sweepCastPermissionsLocked(endOfTurn bool) {
 
 // anyNamedObjectStillThereLocked reports whether at least one card
 // object a ScopeCards permission names is still in the permission's
-// zone wearing the epoch it was granted at. Caller must hold g.mu.
+// zone wearing the epoch it was granted at.
+//
+// It looks for the card WHERE IT IS rather than in the pile the holder
+// owns (#1035): a permission names an object, and Wrexial's names one
+// in somebody else's graveyard, so resolving the holder's own pile
+// here swept a live grant away at the next cleanup step. CR 400.7 is
+// still the whole test — findCardZoneLocked answers with the zone the
+// card is in now, and a card that has moved on either fails the epoch
+// check or is in the wrong kind of zone.
+//
+// Caller must hold g.mu.
 func (g *Game) anyNamedObjectStillThereLocked(perm CastPermission) bool {
-	zone := g.permissionZoneLocked(perm.Player, perm.Zone)
-	if zone == nil {
-		return false
-	}
-	for i := range zone.Cards {
-		if perm.NamesCard(zone.Cards[i]) {
-			return true
+	for _, ref := range perm.Cards {
+		zone := g.findCardZoneLocked(ref.ID)
+		if zone == nil || zone.Kind != perm.Zone {
+			continue
+		}
+		for i := range zone.Cards {
+			if perm.NamesCard(zone.Cards[i]) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-// permissionZoneLocked resolves a permission's zone to the pile it
-// names: the granting player's own graveyard or library, or the
-// shared exile. Caller must hold g.mu.
+// permissionZoneLocked resolves a permission's zone kind to ONE
+// seat's pile: that player's graveyard or library, or the shared
+// exile, which has no owner to ask about.
+//
+// It answers "which pile of this player's", never "whose pile" — see
+// permissionReachesPileLocked and PileOwnerFor for the second
+// question, which a permission can now answer about another seat
+// (#1035).
+//
+// Caller must hold g.mu.
 func (g *Game) permissionZoneLocked(playerID uuid.UUID, kind ZoneKind) *Zone {
 	switch kind {
 	case ZoneExile:

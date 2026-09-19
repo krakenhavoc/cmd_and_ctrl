@@ -1876,9 +1876,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 // CastSpell before anything moves.
 //
 // Hand and the command zone resolve to the CALLER's own zone, which
-// is what CR 601.1 and CR 903.4 mean by them. The graveyard is the
-// caller's own too, UNLESS a permission the caller holds names this
-// card where it sits — see the branch for why (#1022).
+// is what CR 601.1 and CR 903.4 mean by them. The graveyard and the
+// library are the caller's own too, UNLESS a permission the caller
+// holds names this card where it sits — see the branch for why
+// (#1022, #1035).
 func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string) (*Zone, error) {
 	kind, ok := castZoneFromWire(fromZone)
 	if !ok {
@@ -1914,19 +1915,28 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 		// the same function CastSpell validates with and the view and
 		// the enumerator read — and a card no permission covers stays
 		// exactly as unreachable as it was.
-		return g.foreignGraveyardForCastLocked(p, cardID)
+		return g.foreignPileForCastLocked(p, cardID, ZoneGraveyard)
 	case ZoneLibrary:
 		// S42 / CR 401.5: "you may play lands and cast spells from the
-		// top of your library". Per-player like the graveyard, so a
-		// player naming a card in someone else's library simply won't
-		// find it — casting from another player's library (Bribery) is
-		// a different shape and is out of scope for ADR 0066.
+		// top of your library" — the caller's own library answers
+		// every printed library clause but one.
 		//
 		// THE TOP CARD is the only one a permission opens, and that is
 		// checked by CastPermissionForLocked rather than here: this
 		// lookup answers "which pile", not "may you", and the position
 		// rule belongs with the permission that names it.
-		return p.Library, nil
+		if p.Library != nil && p.Library.Contains(cardID) {
+			return p.Library, nil
+		}
+		// #1035, and the same exception the graveyard has carried
+		// since #1022. Xanathar, Guild Kingpin's "you may play the top
+		// card of their library" is a permission over ANOTHER seat's
+		// pile, and until the position check learned to follow the
+		// card it could not exist — so this branch could not have been
+		// reached. It is the same rule and the same guard: a
+		// permission the caller holds is the only key, and a card
+		// nothing covers is ErrCardNotFound exactly as it was.
+		return g.foreignPileForCastLocked(p, cardID, ZoneLibrary)
 	case ZoneExile:
 		// S21 sub-PR 6: impulse exile. Exile is a SHARED zone, so
 		// unlike hand, command and graveyard the zone lookup does not
@@ -1938,42 +1948,48 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 	}
 }
 
-// foreignGraveyardForCastLocked finds the graveyard a card is sitting
-// in when it is not the caster's own, and only when the caster holds a
-// CastPermission over it there (#1022).
+// foreignPileForCastLocked finds the per-seat pile a card is sitting
+// in when it is not the caster's own — a graveyard (#1022) or a
+// library (#1035) — and only when the caster holds a CastPermission
+// over it there.
+//
+// ONE function for the two zones, because it is one rule: the pile a
+// permission reaches is the pile the CARD is in, and a permission the
+// caller holds is the only way in. Splitting it per zone is how the
+// library came to be missing the branch in the first place.
 //
 // The permission check is the whole point: without it this would open
-// every printed flashback card in every opponent's graveyard, which is
-// the one direction a sandbox must never err in. With it, the answer
-// is the same one CastPermissionForLocked gives the view and the bot
-// enumerator, so the three cannot disagree about whether the cast
-// exists.
+// every printed flashback card in every opponent's graveyard and every
+// revealed library top at the table, which is the one direction a
+// sandbox must never err in. With it, the answer is the same one
+// CastPermissionForLocked gives the view and the bot enumerator, so
+// the three cannot disagree about whether the cast exists — including
+// CR 401.5's "the top card", which lives with the permission rather
+// than here.
 //
-// ErrCardNotFound when no graveyard holds the card, and when one does
-// but nothing lets this player cast it from there — the error the old
+// ErrCardNotFound when no pile holds the card, and when one does but
+// nothing lets this player cast it from there — the error the old
 // per-player lookup gave for both, so a client that names a card it
 // has no business naming sees no change.
 //
-// The LIBRARY has no equivalent branch and cannot have one today:
-// permissionPositionOKLocked reads CR 401.5's "the top card of YOUR
-// library" off the permission HOLDER's own library, so a cross-seat
-// library permission is refused before it is ever looked up. See
-// cast_permission.go.
-//
 // Caller must hold g.mu.
-func (g *Game) foreignGraveyardForCastLocked(p *Player, cardID uuid.UUID) (*Zone, error) {
+func (g *Game) foreignPileForCastLocked(p *Player, cardID uuid.UUID, kind ZoneKind) (*Zone, error) {
 	for _, other := range g.Seats {
-		if other == nil || other == p || other.Graveyard == nil {
+		if other == nil || other == p {
 			continue
 		}
-		for _, card := range other.Graveyard.Cards {
+		pile := g.permissionZoneLocked(other.ID, kind)
+		if pile == nil {
+			continue
+		}
+		for _, card := range pile.Cards {
 			if card.InstanceID != cardID {
 				continue
 			}
-			if g.CastPermissionForLocked(p.ID, card, ZoneGraveyard) == nil {
+			if g.CastPermissionForLocked(p.ID, card, kind) == nil {
 				return nil, ErrCardNotFound
 			}
-			return other.Graveyard, nil
+			return pile, nil
 		}
 	}
 	return nil, ErrCardNotFound

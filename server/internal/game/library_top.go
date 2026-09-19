@@ -29,7 +29,14 @@ import "github.com/google/uuid"
 //     to the players the rule names before the per-viewer redaction
 //     runs;
 //   - CastPermissionForLocked, which refuses a top-of-library
-//     permission on a library nobody may look at.
+//     permission on a library its holder may not look at.
+//
+// #1035 added the one clause the per-library model cannot hold: "you
+// may look at the top card of THEIR library" is per (library, viewer)
+// rather than per library, it is granted by a resolution rather than
+// printed as a static ability, and so it rides the cast permission
+// that comes with it. LibraryTopVisibleToLocked is where the two
+// spellings meet, and every caller asks that rather than the enum.
 //
 // Lazy resolution is correct by construction, because the question is
 // always about whatever is on top NOW. Nothing has to be invalidated,
@@ -95,6 +102,86 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 	return out
 }
 
+// LibraryTopVisibleToLocked reports whether `viewer` may see the top
+// card of `owner`'s library right now — THE predicate behind CR
+// 401.5's "a player can only play a card from the top of a library
+// they can see".
+//
+// Two spellings, and it is the one place that knows both (#1035):
+//
+//   - the per-LIBRARY strength above, derived from the permanents its
+//     owner controls. "You may look at the top card of your library"
+//     is that owner alone; "play with the top card of your library
+//     revealed" is everybody.
+//   - a CROSS-SEAT look carried by a cast permission —
+//     CastPermission.SeesLibraryTop, Xanathar, Guild Kingpin's "you
+//     may look at the top card of their library any time". It cannot
+//     ride the derivation: the clause is granted by a resolution to
+//     one chosen player rather than printed as a static ability, so
+//     no permanent's catalog entry can express it, and the strength
+//     enum cannot either — it is per library, and this one is per
+//     pair.
+//
+// Both the engine's position check (permissionPositionOKLocked) and
+// the view's knower stamp (LibraryTopKnowersLocked) read it, so the
+// card the holder may cast is exactly the card the holder can see.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) LibraryTopVisibleToLocked(owner, viewer uuid.UUID) bool {
+	if owner == uuid.Nil || viewer == uuid.Nil {
+		return false
+	}
+	return g.libraryTopVisibleToLocked(g.LibraryTopVisibilityLocked(owner), owner, viewer)
+}
+
+// libraryTopVisibleToLocked is LibraryTopVisibleToLocked with the
+// per-library strength already derived, so a caller asking about every
+// seat in turn walks the battlefield once rather than once per seat.
+func (g *Game) libraryTopVisibleToLocked(vis LibraryTopVisibility, owner, viewer uuid.UUID) bool {
+	switch vis {
+	case LibraryTopRevealed:
+		return true
+	case LibraryTopOwner:
+		if viewer == owner {
+			return true
+		}
+	}
+	return g.libraryTopLookGrantedLocked(owner, viewer)
+}
+
+// libraryTopLookGrantedLocked reports whether `viewer` holds a live
+// cast permission that carries CR 401.5's look over `owner`'s library
+// (CastPermission.SeesLibraryTop).
+//
+// A scan of ONE seat's stored permissions, which is empty in almost
+// every game — and it reads the permission slice directly rather than
+// going through CastPermissionForLocked, because that function asks
+// this one. The recursion stops here: liveness is
+// CastPermissionActiveForEffect, which reads a duration and nothing
+// else.
+//
+// Caller must hold g.mu.
+func (g *Game) libraryTopLookGrantedLocked(owner, viewer uuid.UUID) bool {
+	p := g.playerByIDLocked(viewer)
+	if p == nil {
+		return false
+	}
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if !perm.SeesLibraryTop || perm.Zone != ZoneLibrary {
+			continue
+		}
+		if perm.PileOwnerFor(viewer) != owner {
+			continue
+		}
+		if !g.CastPermissionActiveForEffect(perm, viewer) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 // LibraryTopVisibilityForEffect is LibraryTopVisibilityLocked for
 // callers outside a locked frame — the view builder asks it while
 // projecting a seat, and the client uses the answer to decide whether
@@ -113,6 +200,12 @@ func (g *Game) LibraryTopVisibilityForEffect(playerID uuid.UUID) LibraryTopVisib
 // caller that only wants "may the owner see it" can read the answer
 // off LibraryTopVisibilityLocked instead.
 //
+// LibraryTopVisibleToLocked per seat rather than a second reading of
+// the strength enum (#1035): the list the view stamps and the
+// predicate the cast path checks are then the same rule, so a seat
+// that may cast the top card of somebody else's library is a seat the
+// projection has already made a knower of it.
+//
 // Caller must hold g.mu (read or write).
 func (g *Game) LibraryTopKnowersLocked(playerID uuid.UUID) ([]uuid.UUID, uuid.UUID) {
 	p := g.playerByIDLocked(playerID)
@@ -120,18 +213,21 @@ func (g *Game) LibraryTopKnowersLocked(playerID uuid.UUID) ([]uuid.UUID, uuid.UU
 		return nil, uuid.Nil
 	}
 	top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-	switch g.LibraryTopVisibilityLocked(playerID) {
-	case LibraryTopOwner:
-		return []uuid.UUID{playerID}, top
-	case LibraryTopRevealed:
-		out := make([]uuid.UUID, 0, len(g.Seats))
+	vis := g.LibraryTopVisibilityLocked(playerID)
+	out := make([]uuid.UUID, 0, len(g.Seats))
+	if g.libraryTopVisibleToLocked(vis, playerID, playerID) {
 		out = append(out, playerID)
-		for _, seat := range g.Seats {
-			if seat != nil && seat.ID != playerID {
-				out = append(out, seat.ID)
-			}
-		}
-		return out, top
 	}
-	return nil, uuid.Nil
+	for _, seat := range g.Seats {
+		if seat == nil || seat.ID == playerID {
+			continue
+		}
+		if g.libraryTopVisibleToLocked(vis, playerID, seat.ID) {
+			out = append(out, seat.ID)
+		}
+	}
+	if len(out) == 0 {
+		return nil, uuid.Nil
+	}
+	return out, top
 }

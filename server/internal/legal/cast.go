@@ -46,7 +46,9 @@ type castParams struct {
 // belongs to the seat being enumerated, which is what decides whether
 // the card's OWN text can open it: flashback, escape and Gravecrawler
 // all say "your graveyard", so in somebody else's a permission is the
-// only key (#1022).
+// only key (#1022). A library is the same story with CR 401.5's "your
+// library" (#1035), and nothing prints a cast surface on a library at
+// all, so there `mine` only ever narrows.
 type castZone struct {
 	z    *game.Zone
 	kind game.ZoneKind
@@ -61,12 +63,15 @@ type castZone struct {
 // and "what may I pay for it" are separate questions the engine
 // answers in separate functions (cast_zones.go).
 //
-// Every seat's graveyard is walked rather than only this one's, and
-// only when something has granted something (`anyGrant`): ADR 0066
-// makes a permission a statement about an OBJECT, and CastSpell finds
-// the card in the pile it is actually in (#1022,
-// castSourceZoneLocked). A four-player table with no grants in play
-// walks exactly the piles it always did.
+// Every seat's graveyard and library top is walked rather than only
+// this one's, and only when something has granted something
+// (`anyGrant`): ADR 0066 makes a permission a statement about an
+// OBJECT, and CastSpell finds the card in the pile it is actually in
+// (#1022, #1035, castSourceZoneLocked). A four-player table with no
+// grants in play walks exactly the piles it always did, and one with
+// grants pays three extra piles plus three extra CARDS — the loop
+// below trims every library to its top (CR 401.5) before it looks at
+// anything.
 func (e *enumerator) castZones(anyGrant bool) []castZone {
 	g, p := e.g, e.p
 	out := []castZone{
@@ -83,14 +88,16 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 		if other == nil || other.ID == e.seat {
 			continue
 		}
-		out = append(out, castZone{other.Graveyard, game.ZoneGraveyard, "graveyard", false})
+		out = append(out,
+			castZone{other.Graveyard, game.ZoneGraveyard, "graveyard", false},
+			castZone{other.Library, game.ZoneLibrary, "library", false})
 	}
 	return out
 }
 
 // castMoves enumerates land plays and spell casts from EVERY zone the
-// seat can cast out of — hand, the command zone, its graveyard, exile
-// and the top of its library — at every price the engine would accept
+// seat can cast out of — hand, the command zone, a graveyard, exile
+// and the top of a library — at every price the engine would accept
 // for each (#673).
 //
 // Two questions, two engine functions, and the whole of this method is
@@ -156,9 +163,9 @@ func (e *enumerator) castMoves() {
 // its land play, and one call into castMovesForCard per price the
 // engine would let this seat announce.
 //
-// `mine` is false for another seat's graveyard (#1022), where the
-// card's own declaration opens nothing and a permission is the only
-// way in.
+// `mine` is false for another seat's graveyard (#1022) or library
+// (#1035), where the card's own declaration opens nothing and a
+// permission is the only way in.
 func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from string, speed, landOwed, anyGrant, mine bool) {
 	g := e.g
 	// CastPermissionForLocked answers nil unless the window is open
@@ -176,10 +183,10 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary:
 		// A card's own declaration opens ITS OWNER's zone and nobody
 		// else's: flashback, escape and Gravecrawler all print "your
-		// graveyard" (#1022). In another seat's pile the permission is
-		// the whole answer, which is also what CastSpell's zone lookup
-		// enforces — castSourceZoneLocked finds the card there only
-		// under one.
+		// graveyard" (#1022), and nothing prints a library cast at all
+		// (#1035). In another seat's pile the permission is the whole
+		// answer, which is also what CastSpell's zone lookup enforces
+		// — castSourceZoneLocked finds the card there only under one.
 		if perm == nil && !(mine && castableFromZoneAnyFace(c, kind)) {
 			return
 		}
