@@ -477,7 +477,7 @@
           {:else if activeTab === "display"}
             <h3>Display</h3>
 
-            <!-- #956 / ADR 0076. First row in the tab on purpose: this
+            <!-- #956 / ADR 0077. First row in the tab on purpose: this
                  is the one a player goes looking for after an upgrade
                  changed what their opponents look like. -->
             <label class="slider-row">
