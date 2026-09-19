@@ -17,6 +17,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // empty it really is a 0/0 and dies to the toughness check, as
 // printed.
 //
+// That last sentence was written before it was true. The toughness
+// check skipped every `*` creature as the importer's stand-in, this
+// one included — and skipped its damage checks with it, so an empty
+// graveyard left an unkillable 0/0. #690 closed it: a layer 7a or 7b
+// effect DEFINES the body, and a body the engine computed is not a
+// stand-in (Characteristic.PTDefined, game.Card.ToughnessIsKnown).
+//
 // DECLARED SIMPLIFICATION, Wight of the Reliquary's: the layer
 // cache is invalidated by battlefield motion, counters, attachments,
 // taps and turn changes, not by a card reaching a graveyard from a

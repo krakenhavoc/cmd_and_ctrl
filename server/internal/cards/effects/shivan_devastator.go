@@ -23,8 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // placed as the SPELL RESOLVES, a beat before the creature enters,
 // because an entry replacement cannot read the spell's X. The
 // creature is on the battlefield at the right size before anything
-// can act — a 0/0 never faces a state-based check — so the difference
-// is invisible except to a payoff that watches counters being PUT on
+// can act — the counters are on the card when it lands, so a 0/0 body
+// never faces a state-based check unless X really was 0, in which
+// case it is a printed 0/0 and CR 704.5f ends it at once (#691) — so
+// the difference is invisible except to a payoff that watches
+// counters being PUT on
 // a permanent (Corpsejack Menace doubles them as printed, but a
 // "whenever one or more counters are put on a creature you control"
 // trigger sees them against a card that is technically still

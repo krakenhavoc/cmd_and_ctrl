@@ -125,6 +125,40 @@ type Characteristic struct {
 	// the same assignment rather than re-derived.
 	ControlSource uuid.UUID
 
+	// PTDefined records that a layer 7a or 7b effect SET this
+	// object's power and toughness in this pass — a
+	// characteristic-defining ability (CR 613.4a, Tarmogoyf,
+	// Consuming Aberration) or an effect that sets P/T to specific
+	// values (CR 613.4b, Humility, Hallowed Haunting over its own
+	// Spirit tokens).
+	//
+	// It is engine bookkeeping rather than a characteristic, and it
+	// exists for one reader: the toughness state-based action's
+	// stand-in skip (Card.ToughnessIsKnown). The importer writes a 0
+	// into Card.Toughness for a printed `*`, and the skip is what
+	// stops CR 704.5f from eating every `*` creature whose
+	// characteristic-defining ability this engine does not compute.
+	// When the engine DOES compute it, the stand-in is not the
+	// answer any more and the skip must not cover the object: a
+	// Lord of Extinction with every graveyard empty is a real 0/0
+	// and dies (#690).
+	//
+	// Set by applyOneEffectLocked, in the 7a and 7b buckets only,
+	// after the effect's Apply has run — so it is true exactly when
+	// an effect that defines P/T applied to this object. Layers 7c
+	// (modify), 7d (counters) and 7e (switch) do not set it: they
+	// move a number that something else has to have defined first.
+	//
+	// Not compared by sameCharacteristic: the CR 613.8 dependency
+	// probe asks what an effect DOES to an object, and "an effect
+	// defined the P/T" is a fact about the pass, not about the
+	// object. The probe's applyRaw never writes it.
+	//
+	// Rebuilt from scratch on every recompute with the rest of the
+	// Characteristic, so it never goes stale and the snapshot never
+	// carries it.
+	PTDefined bool
+
 	// Restrictions is the S24 declaration-time restriction set:
 	// "can't attack", "can't block", "can't be blocked", "its
 	// activated abilities can't be activated". Like Controller it is

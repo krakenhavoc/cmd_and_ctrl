@@ -2951,17 +2951,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// Permanent + counter destruction SBAs. Collect doomed instance
 	// IDs in a pre-pass to avoid mutating the slice while iterating.
 	//
-	// Printed-0 creatures (Toughness == 0 and no counters applied)
-	// are skipped: that's the placeholder / unparseable-stats
-	// convention documented on Card.Power — the SBA would else
-	// destroy every demo seed card. A creature that has LOST its
-	// counters is not skipped (Card.LostLastCounter, #683): a 0/0
-	// whose last +1/+1 counter was removed or cancelled has a real 0
-	// toughness and dies (CR 704.5f).
-	// Unless its printed toughness is not a number
-	// (Card.VariableToughness): a `*` creature's 0 is the import
-	// stand-in whether or not it once had counters, so it stays
-	// skipped.
+	// A creature whose toughness the engine does not KNOW is skipped
+	// whole — Card.ToughnessIsKnown has the rule and the reasons, and
+	// it is the only gate CR 704.5f has here. Skipping is skipping the
+	// creature, not just its 704.5f check: an object with no toughness
+	// has no lethal-damage threshold either.
 	// #667: each entry carries whether its rule DESTROYS the permanent
 	// (CR 704.5g/h) or merely puts it into a graveyard (CR 704.5f/i/v),
 	// because a regeneration shield replaces the first two and not the
@@ -2981,7 +2975,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 			continue
 		}
 		if c.IsCreature() {
-			if c.Toughness == 0 && len(c.Counters) == 0 && (!c.LostLastCounter || c.VariableToughness) {
+			if !c.ToughnessIsKnown() {
 				continue
 			}
 			curT := c.CurrentToughness()

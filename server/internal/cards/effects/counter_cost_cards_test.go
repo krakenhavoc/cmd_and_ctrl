@@ -257,21 +257,19 @@ func TestMikaeusDiesPayingThePumpWithHisLastCounter(t *testing.T) {
 	if got := counterCount(g, bear, game.CounterPlusOne); got != 1 {
 		t.Errorf("the pump still resolves: the bear has %d counters, want 1", got)
 	}
-	// The pump is no longer declared stronger than printed; what is
-	// left is the X-counter timing and the X=0 placeholder gap, and
-	// the latter has to reach players, not just the Go comment.
+	// Neither the pump nor an X=0 cast is stronger than printed any
+	// more — #691 made a printed 0/0 with a printing behind it die at
+	// once, and the X=0 caveat went with the gap
+	// (TestMikaeusCastForXZeroDiesAtOnce). What is left is the
+	// X-counter timing, and nothing here may declare an X=0 gap again.
 	spec, _ := Lookup(ccMikaeusOracle)
-	if len(spec.Caveats) != 2 {
-		t.Errorf("want the X-counter timing and X=0 caveats, got %v", spec.Caveats)
+	if len(spec.Caveats) != 1 {
+		t.Errorf("want the X-counter timing caveat alone, got %v", spec.Caveats)
 	}
-	declaresXZero := false
 	for _, c := range spec.Caveats {
 		if strings.Contains(c, "X=0") {
-			declaresXZero = true
+			t.Errorf("an X=0 caveat is back and the engine no longer has that gap: %q", c)
 		}
-	}
-	if !declaresXZero {
-		t.Errorf("the X=0 gap is not declared to players: %v", spec.Caveats)
 	}
 }
 

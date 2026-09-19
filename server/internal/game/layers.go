@@ -450,6 +450,12 @@ func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLaye
 //     (ContinuesAfterRemoval; Humility's own base 1/1 in layer 7b
 //     after it has taken its own abilities away in layer 6).
 func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *layerPassState) {
+	// #690: an effect in the 7a or 7b bucket DEFINES the object's
+	// power and toughness, and the object it applied to stops being
+	// a `*` whose stats the engine cannot compute. One bool per
+	// effect, read per object it applies to; see
+	// Characteristic.PTDefined and Card.ToughnessIsKnown.
+	definesPT := definesPowerAndToughness(eff)
 	// The fast path, and it is the board almost every recompute runs
 	// on: nothing in play can remove an ability, so CR 613.6 has
 	// nothing to say, no source can be silenced, and the whole of the
@@ -464,6 +470,9 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 				continue
 			}
 			eff.Apply(target.effective, target, g)
+			if definesPT {
+				target.effective.PTDefined = true
+			}
 		}
 		return
 	}
@@ -490,8 +499,25 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			st.recordRemoval(target, bucketIndex)
 		}
 		eff.Apply(target.effective, target, g)
+		if definesPT {
+			target.effective.PTDefined = true
+		}
 		st.recordApplied(src, target)
 	}
+}
+
+// definesPowerAndToughness reports whether an effect SETS power and
+// toughness rather than moving them: CR 613.4a's
+// characteristic-defining abilities (7a) and CR 613.4b's "is a 1/1"
+// effects (7b). 7c modifies, 7d counts counters and 7e switches —
+// all three need a number to already be there, so none of them tells
+// the engine what the number is.
+//
+// The one reader is Characteristic.PTDefined, which the toughness
+// state-based action consults through Card.ToughnessIsKnown (#690).
+func definesPowerAndToughness(eff ContinuousEffect) bool {
+	l, sub := eff.Layer()
+	return l == Layer7PT && (sub == SubLayer7A_CDA || sub == SubLayer7B_Set)
 }
 
 // effectSourceLocked returns the LIVE battlefield permanent an effect

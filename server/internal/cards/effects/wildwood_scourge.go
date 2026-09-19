@@ -26,8 +26,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counters are placed as the spell resolves, a beat before the card
 // enters (an entry replacement cannot read the spell's X), so a
 // "whenever you put counters on a permanent" payoff does not see
-// them. A Scourge cast for X=0 is a printed 0/0 with no counters and
-// dies to the toughness check, as in paper.
+// them.
+//
+// A Scourge cast for X=0 is a printed 0/0 with no counters and dies
+// to the toughness check, as in paper. That sentence was written here
+// before it was true — the check read every printed 0/0 as the
+// importer's stand-in and the Scourge stayed on the battlefield, the
+// false comment #691 was filed to fix. #691 made the engine match the
+// comment instead of the other way round: an object with a printing
+// behind it has a real printed body (game.Card.ToughnessIsKnown), and
+// printed_zero_body_test.go pins it.
 func init() {
 	Register(Spec{
 		OracleID:     "b9dec104-c636-4770-a7fc-7a3331face15",

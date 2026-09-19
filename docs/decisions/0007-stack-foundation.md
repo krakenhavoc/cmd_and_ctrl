@@ -2,6 +2,7 @@
 
 **Status:** Accepted · 2026-04-21 · Sprint S13.1
 **Amended:** 2026-09-16 · Branch `fix/zero-toughness-683` — §7's placeholder-creature exemption ([#683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/683))
+**Amended:** 2026-09-19 · Branch `fix/690-691-cda-toughness-sba-and-x-zero` — §7's exemption becomes one predicate, `Card.ToughnessIsKnown` ([#690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/690), [#691](https://github.com/krakenhavoc/cmd_and_ctrl/issues/691))
 
 ## Context
 
@@ -161,6 +162,61 @@ schema bump. When the printing is unknown (a token, no dump loaded),
 the flag is set for any 0 toughness, which keeps the exemption as it
 was before (`game/snapshot_backfill.go`).
 
+*Amended 2026-09-19 (#690, #691).* The exemption is no longer a shape
+the SBA loop matches on; it is one predicate, `Card.ToughnessIsKnown`,
+and it is the only gate CR 704.5f has. The question it answers is
+"does the engine know what this object's toughness IS", because that,
+and not "is the number 0", is what the convention was ever about.
+Decided in order:
+
+1. A nonzero `Toughness` or any counter — never in question.
+2. `Characteristic.PTDefined`: a layer 7a or 7b effect DEFINED the
+   body in the current pass, so the layer system has computed what
+   the stand-in was standing in for. A coded characteristic-defining
+   ability is out of the exemption and an uncoded `*` stays in it,
+   which is #690: Consuming Aberration and Lord of Extinction print
+   `*`, this engine sizes them, and empty graveyards make them real
+   0/0s. Set in `applyOneEffectLocked` for the 7a and 7b buckets only
+   — 7c modifies, 7d counts counters and 7e switches, and all three
+   need a number something else defined — and deliberately excluded
+   from `sameCharacteristic`, because the CR 613.8 dependency probe
+   asks what an effect does to an object, not what the pass did.
+3. Otherwise `VariableToughness` keeps the exemption, unchanged from
+   the 2026-09-16 amendment.
+4. `LostLastCounter`, unchanged, and now earning its keep for the
+   objects branch 5 does not reach.
+5. A printing behind the object (`ScryfallID`). Branch 3 already took
+   every printing whose toughness did not parse, so what is left is a
+   real printed 0/0 and CR 704.5f applies: a Hangarback Walker cast
+   for X=0, a Wildwood Scourge that entered with no counters, a
+   declined Clone. This is #691. **The engine does not refuse an X=0
+   cast** — CR 601.2b makes X a number the caster announces and 0 is
+   legal — it just does not survive one. The bot enumerator already
+   declines to OFFER X=0 for a card that declares `XMatters`
+   (`internal/legal/x.go`), which is a separate rule about what is
+   worth putting in front of a player.
+
+What is still exempt is what the convention was always for: objects
+with no printing, no computed body and no counter history — a test
+fixture that typed a creature line without a body, a 0/0 token
+template. The old "placeholder" framing is retired with it; the
+engine has no placeholder cards any more, it has objects it has
+printed data for and objects it does not.
+
+Skipping is still skipping the whole creature, and that was a second
+bug: the CR 704.5g lethal-damage and CR 702.2c deathtouch checks sit
+below the same `continue`, so a coded `*` creature could not be killed
+by damage either. Both checks now run for every object the predicate
+answers yes for.
+
+One importer line backs it up (`deck.variableToughness`): a MISSING
+printed toughness on a creature is stamped `VariableToughness` rather
+than read as a printed 0. Every creature prints a toughness, so a
+record the dump reader cannot read must not become a death sentence
+under branch 5; a joined multi-face type line is exempt, because
+Scryfall leaves that toughness empty on purpose and `SetFace(0)`
+overwrites the flag from the face.
+
 Counter-specific SBAs (planeswalker loyalty 0, battle defense 0,
 +1/+1 -1/-1 cancel, poison ≥ 10, saga final chapter) belong to
 S13.2 and inherit the same loop.
@@ -221,9 +277,12 @@ actually matters. Less work, same outcome.
   re-check the world" routine. Future feature work that mutates
   battlefield / life / library state should call it once at the end
   of the mutation; the loop is bounded and safe to invoke liberally.
-- The placeholder-creature exemption is a documented contract
-  pinned by `TestS131SBAPlaceholderCreatureSurvives`; future
-  refactors of the SBA loop must preserve it.
+- The exemption is a documented contract pinned by
+  `TestS131SBAPlaceholderCreatureSurvives` and, since #690/#691, by
+  `game/toughness_known_test.go` and
+  `cards/effects/printed_zero_body_test.go`. Future refactors of the
+  SBA loop must preserve it — and must ask `Card.ToughnessIsKnown`
+  rather than re-deriving the answer from `Toughness == 0`.
 - Heavier announce-time UX (CastDialog with target picker / X input,
   AbilityDialog for `activate_ability` + `announce_trigger` flows,
   inline mark-damage on creature tiles) is follow-up work — the wire

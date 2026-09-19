@@ -52,6 +52,12 @@ type Card struct {
 	// (e.g. "*" for cards like Mortivore — handled manually until
 	// rules enforcement grows). Used by ResolveCombatDamage to
 	// auto-apply unblocked attacker damage. Added in S08.
+	//
+	// A Toughness of 0 is therefore ambiguous on its own: it is a
+	// printed 0/0 on a Hangarback Walker and "no number here" on a
+	// Mortivore, a token template or a test fixture. VariableToughness
+	// records which, and ToughnessIsKnown is the one place that
+	// decides — do not re-derive the answer from this field.
 	Power     int
 	Toughness int
 
@@ -656,43 +662,47 @@ type Card struct {
 	MarkedLethalByDeathtouch bool
 
 	// VariableToughness records that the printed toughness is not a
-	// number ("*", "1+*", "?"), so Toughness is the importer's 0
-	// stand-in rather than a printed 0. The toughness state-based
-	// action's placeholder skip reads it: a `*` creature whose
-	// characteristic-defining ability is handled manually stays
-	// skipped even after it loses its last counter, where a real
-	// printed 0/0 does not (LostLastCounter, #683).
+	// number the engine can use — "*", "1+*", "?", or missing from a
+	// creature's record altogether — so Toughness is the importer's 0
+	// stand-in rather than a printed 0. ToughnessIsKnown reads it: a
+	// `*` creature whose characteristic-defining ability this engine
+	// does not compute stays out of CR 704.5f even after it loses its
+	// last counter, where a real printed 0/0 does not (#683). A `*`
+	// the engine DOES compute is back in, because the layer pass
+	// answers the question the stand-in was standing in for
+	// (Characteristic.PTDefined, #690).
 	//
-	// Stamped by the deck importer, per face on Faces, and carried by
-	// copy effects with the rest of the printed values: Clone-style
-	// copies (CopiableValuesOf) and token copies (TokenCopyTemplate).
-	// A copy whose exception sets a numeric toughness clears it. False
-	// for an empty printed toughness (non-creatures) and for cards
-	// that never went through import (tokens, fixtures, the demo
-	// seed).
+	// Stamped by the deck importer (deck.variableToughness), per face
+	// on Faces, and carried by copy effects with the rest of the
+	// printed values: Clone-style copies (CopiableValuesOf) and token
+	// copies (TokenCopyTemplate). A copy whose exception sets a
+	// numeric toughness clears it. False for a card that prints no
+	// toughness (lands, instants, artifacts), for the joined top-level
+	// type line of a multi-face printing — SetFace(0) overwrites it
+	// from the face — and for cards that never went through import
+	// (tokens, fixtures, the demo seed).
 	VariableToughness bool
 
 	// LostLastCounter records that this object's counters went from
 	// some to none: its last counter was removed (an effect, the
 	// add_counter action) or cancelled (CR 704.5q). Removing a counter
-	// from a card that has none does not set it. It exists for the
-	// toughness state-based action's printed-0 skip — "Toughness == 0
-	// and no counters" is the placeholder / unparseable-stats
-	// convention documented on Power, and a 0/0 that just LOST its
-	// last +1/+1 counter looks exactly like one. A card that has lost
-	// its counters is not a placeholder: its 0 toughness is real, and
-	// CR 704.5f puts it into its owner's graveyard. The exception is
-	// a card whose printed toughness is not a number
-	// (VariableToughness): its 0 is still the import stand-in, so the
-	// skip keeps covering it. Without the flag a Hangarback Walker
-	// whose one +1/+1 counter cancels against a -1/-1 counter, or is
-	// removed by an effect, would stay on the battlefield as a 0/0 no
-	// damage could kill (#683).
+	// from a card that has none does not set it. It is one of the ways
+	// ToughnessIsKnown learns that a 0 is real — the engine WATCHED
+	// the number arrive — and without it a Hangarback Walker whose one
+	// +1/+1 counter cancels against a -1/-1 counter, or is removed by
+	// an effect, would stay on the battlefield as a 0/0 no damage
+	// could kill (#683).
+	//
+	// It is not the only way, and since #691 it is not the way that
+	// covers a printed card: a printing behind the object answers the
+	// same question for every object that has one, counter history or
+	// none, so what this flag still earns its keep for is the objects
+	// with NO printing — a token, a test fixture — whose counters have
+	// come and gone.
 	//
 	// Per object, like Counters: cleared wherever Counters is reset
 	// for a new object (leaving the battlefield, a token, a spell
-	// copy). A card cast for X=0 never had counters, so it is not
-	// flagged — that separate gap is noted on the X cards.
+	// copy).
 	LostLastCounter bool
 
 	// Solved is the CR 719.3 designation on a Case permanent — the
@@ -794,10 +804,10 @@ func (c Card) PowerForComparison() int {
 // +1/+1 counters, minus any -1/-1 counters. Used by the lethal-
 // damage and 0-toughness SBAs (S13.1). May be zero or negative —
 // callers compare against DamageMarked directly. NOT clamped (cf.
-// CurrentPower) because the SBAs need to distinguish "printed 0/0
-// placeholder" (Toughness == 0, no counters) from "reduced to 0/0
-// by -1/-1 counters" (Toughness > 0 + counters) and from "a 0/0 that
-// lost its last counter" (Card.LostLastCounter).
+// CurrentPower) because the SBAs need to tell a real 0 from the
+// importer's stand-in 0; ToughnessIsKnown below is where that
+// distinction is made, and this number means nothing for an object
+// it answers false for.
 //
 // Same caller responsibility as CurrentPower: ensure
 // RecomputeLayersIfStaleLocked has been called for this game state.
@@ -808,6 +818,71 @@ func (c Card) CurrentToughness() int {
 		t -= c.Counters["-1/-1"]
 	}
 	return t
+}
+
+// ToughnessIsKnown reports whether the engine knows what this
+// object's toughness IS. It is the only gate on the toughness
+// state-based action, and the one precondition CR 704.5f has in this
+// engine.
+//
+// CR 704.5f has no precondition in paper: a creature with toughness 0
+// or less is put into its owner's graveyard, full stop. The gate
+// exists because Card.Toughness is not always a toughness. The deck
+// importer parses Scryfall's printed string with strconv.Atoi and
+// writes 0 when that fails, so a `*` creature, a printing the
+// importer could not resolve, a token template with no body and every
+// test fixture that typed a creature line without a body all arrive
+// carrying a 0 that means "no number here". Killing those on sight is
+// the bug the skip has always existed to prevent; letting the skip
+// cover a REAL 0 is #683, #690 and #691.
+//
+// The answer, in the order it is decided:
+//
+//  1. A nonzero Toughness, or any counter on the object, was never in
+//     question. The fast path, and almost every permanent on almost
+//     every board.
+//  2. A layer 7a or 7b effect DEFINED the P/T in the current pass
+//     (Characteristic.PTDefined). Consuming Aberration and Lord of
+//     Extinction print `*`, but this engine computes them, so
+//     Effective().Toughness is the answer and empty graveyards really
+//     do make them 0/0 (#690). This is the branch that lets a CODED
+//     characteristic-defining ability out of the skip while an
+//     uncoded one stays in it, and the only one that reaches a token,
+//     which has no printing behind it.
+//  3. Otherwise a `*` toughness is the importer's stand-in and the
+//     engine does NOT know the number (Card.VariableToughness). A
+//     Mortivore nobody has coded keeps the skip, losing its last
+//     counter included (#683).
+//  4. A 0 the engine WATCHED arrive: the object's counters went from
+//     some to none (Card.LostLastCounter, #683). Holds for tokens and
+//     fixtures as well as for printings.
+//  5. A printing behind the object (ScryfallID). Its 0 came out of
+//     Scryfall's printed toughness and parsed as a number, because
+//     branch 3 already took every printing where it did not. That is
+//     a real printed 0/0 — a Hangarback Walker cast for X=0, a
+//     Wildwood Scourge that entered with no counters — and CR 704.5f
+//     puts it into its owner's graveyard at once, as it does in paper
+//     (#691).
+//
+// What stays skipped is the set with no printing, no computed P/T and
+// no counter history: test fixtures that left the body at 0, and 0/0
+// token templates. Both are objects the engine genuinely has no
+// toughness for.
+//
+// Caller responsibility is CurrentToughness': the effective
+// characteristic must be fresh, so call RecomputeLayersIfStaleLocked
+// first. The state-based action loop does.
+func (c Card) ToughnessIsKnown() bool {
+	if c.Toughness != 0 || len(c.Counters) > 0 {
+		return true
+	}
+	if c.effective != nil && c.effective.PTDefined {
+		return true
+	}
+	if c.VariableToughness {
+		return false
+	}
+	return c.LostLastCounter || c.ScryfallID != ""
 }
 
 // --- card-type predicates ------------------------------------
