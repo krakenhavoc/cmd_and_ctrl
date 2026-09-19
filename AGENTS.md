@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0072 protection) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0074 triggered mana abilities) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -2946,6 +2946,81 @@ optional triggers, `answerLatestTriggerPrompt` then
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](server/internal/cards/effects/cards_test.go).
 
+### Adding a triggered MANA ability (#763)
+
+Some triggers never reach the stack. **CR 605.1b:** a triggered
+ability is a *mana ability* when it triggers off a mana ability
+resolving, does not target, and could add mana — and **CR 605.4a**
+then says a mana ability does not use the stack at all. It resolves
+the instant the mana ability that triggered it has finished, with no
+priority window for anybody.
+
+That is the only way Wild Growth works: its extra `{G}` has to be in
+the pool before the spell the land was tapped for is cast, and a stack
+trigger would arrive long after.
+
+So these live on **`Spec.ManaTriggers []game.ManaTrigger`**, never on
+`Spec.Triggered`. The test is one line: **if the ability fires off a
+permanent being tapped for mana, adds mana, and does not target, it
+goes here.** An "add mana" trigger that fires on a CAST or an ATTACK
+(Electro, Fire Nation Palace) is an ordinary stack trigger — CR 605.5a
+— and stays in `Spec.Triggered`.
+
+```go
+ManaTriggers: []game.ManaTrigger{
+    WheneverAttachedTapsForMana("Wild Growth — add an additional {G}", "{G}"),
+},
+```
+
+Constructors live in
+[mana_triggers.go](server/internal/cards/effects/mana_triggers.go):
+
+| Printed clause | Constructor | Card |
+| --- | --- | --- |
+| "Whenever enchanted land is tapped for mana, its controller adds …" | `WheneverAttachedTapsForMana(label, produced)` | Wild Growth, Overgrowth, Fertile Ground |
+| …with a computed output | `WheneverAttachedTapsForManaFunc(label, fn)` | Utopia Sprawl |
+| "Whenever a player taps a land for mana, that player adds …" | `WheneverAPlayerTapsALandForMana(label, fn)` | Mana Flare, Heartbeat of Spring |
+| "Whenever you tap a land for mana, add …" | `WheneverYouTapALandForMana(label, fn)` | Mirari's Wake, Zendikar Resurgent |
+
+The output callbacks: `AddsFixedMana("{G}{G}")`,
+`AddsOneManaOfAnyTypeProduced()` (reads `prod.Colors` — the produced
+COLOUR, which is the other half of this seam) and
+`AddsOneManaOfTheChosenColor()` (#742's stored `Card.ChosenColor`).
+`Produced` returns the ordinary `ParseProducedMana` grammar, pipes
+included, and returning `""` adds nothing — which is what an unchosen
+colour must mean, never "any colour".
+
+Six rules the engine applies for you, none of which a card declares:
+
+- **It never touches the stack** and never queues a `PendingTrigger`.
+- **It fires once per production**, from whichever of the three
+  production sites knew the colour: the hand-clicked activation, the
+  answered `mana_pick` (a dual land, a Birds) or the auto-tap executor.
+- **Only a `{T}` fires it** (CR 106.12a). A sacrifice-cost mana ability
+  and `AddMana` from a resolving spell (Dark Ritual) do not.
+- **Triggered mana does not re-trigger.** A second Wild Growth does not
+  see the first one's `{G}`.
+- **A colour choice inside the trigger** prompts by hand and picks
+  greedily against the cast under the auto-tapper, so an auto-tapped
+  cast never stops on a prompt.
+- **`ActiveWhen` and ability removal** work exactly as on
+  `Spec.Triggered` — an Aura under Song of the Dryads has no trigger.
+
+**Declared, and say so in the card comment:** the auto-tap PLANNER does
+not count the extra mana ([ADR 0074](docs/decisions/0074-triggered-mana-abilities.md)
+§7). It may tap one land more than it needed and the surplus floats
+until the step ends — weaker than printed and safe. The mana that
+arrives is always right.
+
+Out of scope and still open: mana-production REPLACEMENT (CR 106.12b —
+Nyxbloom Ancient, Mana Reflection) and turn-scoped mana triggers (High
+Tide, Bubbling Muck, left to #663).
+
+**Tests**: `pushAuraOnLand` + `tapForMana` in
+[mana_trigger_cards_test.go](server/internal/cards/effects/mana_trigger_cards_test.go);
+the engine rules themselves are in
+[mana_trigger_test.go](server/internal/game/mana_trigger_test.go).
+
 ### Choices made at resolution (#796, #568)
 
 Three shapes, all addressed by `Player` / `Chooser`, so "you may" and
@@ -3407,9 +3482,12 @@ printed colours with the commander's identity listed first, like a mana
 ability; only printed "in your commander's color identity" text passes
 `game.AddManaOptions{NarrowToCommanderIdentity: true}` to
 `AddManaWithOptionsForEffect` (or sets `AddMana.NarrowToCommanderIdentity`),
-the effect-side twin of the mana ability's flag. The auto-tapper
-plans around such a source, so the player taps it by hand
-([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
+the effect-side twin of the mana ability's flag. **The auto-tapper plans
+such a source (#779)**: it offers the solver one candidate per colour,
+they are mutually exclusive, and the plan carries the colour through to
+the executor — so a Gilded Lotus funds `{3}{U}{U}` beside two Islands
+and never funds `{W}{U}` alone, and the surplus floats
+([ADR 0040](docs/decisions/0040-mana-pipeline.md) #779 addendum).
 
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
 [color_choice_cards_test.go](server/internal/cards/effects/color_choice_cards_test.go).

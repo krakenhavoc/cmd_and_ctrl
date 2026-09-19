@@ -468,9 +468,11 @@ const (
 
 	// EventManaAdded — one mana token landed in a player's pool.
 	// Actor = pool owner, Source = the producing permanent (uuid.Nil
-	// for non-card sources). The token's color rides Amount as 0
-	// (W/U/B/R/G/C carries no numeric weight) — the wire-side mana
-	// pool is the canonical projection. S15 sub-PR 2.
+	// for non-card sources). Colors carries the one symbol added
+	// (#763: it used to carry nothing, which is why nothing could
+	// trigger off "mana of a particular color was added"); the
+	// wire-side mana pool is still the canonical projection of the
+	// pool itself. S15 sub-PR 2.
 	EventManaAdded EventKind = "mana_added"
 
 	// EventManaPoolEmptied — a player's mana pool was cleared at a
@@ -740,7 +742,10 @@ type Event struct {
 	// Empty on a payment the engine waived (permissive mode, a
 	// ForceCast) and on a genuinely free cast, which the log tells
 	// apart by the EventCostWarning that accompanies the first.
-	// Empty on every other event kind.
+	//
+	// On EventManaAdded (#763) it is the ONE symbol that token
+	// carried, "C" included — one event per token, so there is never
+	// more than one. Empty on every other event kind.
 	Colors []string `json:"colors,omitempty"`
 
 	// Sides is the die size for EventRollDie. Call and Won describe an

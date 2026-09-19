@@ -10,11 +10,11 @@ package effects
 // was its own pick, so three slots would have let the player take
 // three different colours — stronger than printed.
 //
-// The auto-tapper plans around a one-colour-N-mana source (its
-// one-slot-one-mana model can't promise the tokens share a colour), so
-// the Lotus is tapped by hand and the floated mana is spent by the
-// cast like any other. That is a planner convenience, not a card
-// simplification.
+// The auto-tapper plans it (#779): the planner offers the solver one
+// candidate per colour — three {U} slots, three {W} slots, and so on —
+// and they are mutually exclusive, so the Lotus can fund {3}{U}{U}
+// beside two Islands but never {W}{U} on its own. The colour the plan
+// booked reaches the executor rather than being re-derived there.
 //
 // "Any one color", flatly — nothing about the commander's identity.
 //

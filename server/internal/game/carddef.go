@@ -53,6 +53,11 @@ type CardDef struct {
 	PrintedKeywords []string
 	Triggered       []TriggeredAbility
 	TriggerDoublers []TriggerDoubler
+	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities — the
+	// one trigger kind that never uses the stack (CR 605.4a). Kept
+	// apart from Triggered because nothing on TriggeredAbility applies
+	// to them; see mana_trigger.go and ADR 0074.
+	ManaTriggers []ManaTrigger
 
 	AdditionalCost *AdditionalCost
 	// OptionalCosts are the additional costs the caster may CHOOSE to
@@ -247,6 +252,12 @@ func init() {
 	CatalogTriggers = func(key string) []TriggeredAbility {
 		if d := catalogDef(key); d != nil {
 			return d.Triggered
+		}
+		return nil
+	}
+	CatalogManaTriggers = func(key string) []ManaTrigger {
+		if d := catalogDef(key); d != nil {
+			return d.ManaTriggers
 		}
 		return nil
 	}

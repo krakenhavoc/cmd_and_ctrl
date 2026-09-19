@@ -357,6 +357,24 @@ type PendingChoice struct {
 	// snapshot. Added for #742.
 	ManaAmounts map[string]int
 
+	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
+	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
+	// whose colour the controller is still choosing.
+	//
+	// It is the one bit that tells ResolveManaChoice whether answering
+	// this pick fires the CR 605.1b triggered mana abilities (#763,
+	// ADR 0074 §3). For a Birds-of-Paradise-style source this is the
+	// only moment the produced colour is known, so it is the only
+	// place Mana Flare can read it. A pick queued by a resolving spell
+	// (AddManaForEffect — Dark Ritual, Sanctum of Fruitful Harvest) or
+	// by a triggered mana ability's own "any color" leaves it false:
+	// neither of those tapped anything, and firing on them would break
+	// CR 106.12a in one direction and recurse in the other.
+	//
+	// Carried by the value copy every clone starts from, and by the
+	// snapshot.
+	ManaTapped bool
+
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
 	// PendingChoiceReplacementOrder entry. The resolve_choice
@@ -1036,6 +1054,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if v, ok := choice.ManaAmounts[color]; ok {
 		n = v
 	}
+	colors := make([]string, 0, n)
 	for k := 0; k < n; k++ {
 		p.ManaPool.AddMana(ManaToken{
 			Color:  color,
@@ -1050,9 +1069,32 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 			Kind:   EventManaAdded,
 			Actor:  chooserID,
 			Source: choice.Source,
+			Colors: []string{color},
 		})
+		colors = append(colors, color)
 	}
+	tapped := choice.ManaTapped
+	source := choice.Source
 	g.dequeueChoiceLocked(idx)
+	// #763, CR 605.1b / 605.4a: the second of the three production
+	// sites, and the ONLY one that knows the colour a
+	// Birds-of-Paradise-style source produced — which is what "one
+	// mana of any type that land produced" needs (Mana Flare,
+	// Mirari's Wake) and what Wild Growth on a dual land waits for.
+	//
+	// After the dequeue, so a trigger that queues a pick of its own
+	// (Fertile Ground's "any color") does not land behind the answered
+	// one in the queue. Fires only for a pick that came from TAPPING a
+	// permanent for mana: see PendingChoice.ManaTapped.
+	if tapped {
+		if card := g.findCardByIDLocked(source); card != nil {
+			g.fireManaTriggersLocked(ManaProduced{
+				Source:     *card,
+				Controller: chooserID,
+				Colors:     colors,
+			}, nil)
+		}
+	}
 	return nil
 }
 

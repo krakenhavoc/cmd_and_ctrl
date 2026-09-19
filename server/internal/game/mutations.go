@@ -1463,13 +1463,20 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // picks an option that consumes one. When no requirement matches,
 // the slot drops its first option as generic-eligible mana.
 //
+// A "N mana of any one color" source (#779) is the one slot whose
+// colour the executor does NOT re-derive: the plan booked one colour
+// for all N tokens and plannedTap.OneColor carries it here, because
+// one activation of such a source is one pick and a second greedy
+// walk could reach a different answer than the solver did.
+//
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
-func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCost) {
+func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 	pending := append([]ColorRequirement(nil), cost.Required...)
 	identity := commanderIdentityFor(g, p)
-	for _, cardID := range plan {
+	for _, planned := range plan {
+		cardID := planned.CardID
 		var card *Card
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -1543,6 +1550,18 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if len(slots) == 0 {
 			continue
 		}
+		// #779: the planned colour, checked BEFORE the tap for the
+		// same reason the CR 903.4f drop above is — a stale plan (the
+		// Nyx Lotus's devotion moved in response, the ability changed)
+		// must not tap the permanent and then find it has no colour to
+		// mint. Two one-colour slots on one ability is a shape the
+		// planner declines, so the executor declines it too rather
+		// than guessing which one the plan meant.
+		oneColorIdx := oneColorSlot(slots)
+		if oneColorIdx == oneColorSlotUnplannable ||
+			(oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor)) {
+			continue
+		}
 		// #789: the counters come off as part of the same payment as
 		// the tap, and first, so a refusal leaves the land untapped.
 		// applyCounterLocked for the same reason the activation path
@@ -1554,18 +1573,35 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 			}
 		}
 		card.Tapped = true
+		// #763: the permanent as it was when it was tapped for mana,
+		// for the triggered mana abilities fired below. Copied for the
+		// same reason ActivateManaAbility copies it, and taken here
+		// because a later source in the same plan may change the
+		// board.
+		tappedForMana := *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
-		for _, slot := range slots {
-			color := pickColorForSlot(slot.Options, &pending)
+		var addedColors []string
+		for si, slot := range slots {
+			var color string
+			if si == oneColorIdx {
+				// #779: the plan's pick, not a fresh one. Its
+				// requirements are booked here so a later slot — or a
+				// later source in the same plan — does not re-pay a
+				// pip these N tokens already cover, which is the #273
+				// rule applied to a multi-token pick.
+				color = planned.OneColor
+				for k := 0; k < slot.AmountFor(color); k++ {
+					bookColorRequirement(color, &pending)
+				}
+			} else {
+				color = pickColorForSlot(slot.Options, &pending)
+			}
 			if color == "" {
 				continue
 			}
 			// #742: a one-colour-N-mana slot adds all N of the picked
-			// colour. The planner never selects such a source
-			// (gatherTapSources skips it), so this is only reached if
-			// that changes — and then it must still mint the amount
-			// the printed card does, not one.
+			// colour, in one activation.
 			for k := 0; k < slot.AmountFor(color); k++ {
 				// Restrictions ride here too. autoTapAbilityFor
 				// already refuses restricted abilities, so this is
@@ -1579,8 +1615,25 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 					Source:       cardID,
 					Restrictions: restrictionsFor(g, ab, p.ID, cardID),
 				})
-				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID})
+				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: cardID, Colors: []string{color}})
+				addedColors = append(addedColors, color)
 			}
+		}
+		// #763, CR 605.1b / 605.4a: the third and last production
+		// site. `pending` goes in, so a trigger whose output is a
+		// colour CHOICE (Fertile Ground's "any color") picks greedily
+		// against what this cast still owes instead of leaving a
+		// prompt open halfway through an auto-tapped cast — the
+		// auto-tapper's "no further player decisions" contract, kept
+		// by the same function that keeps it for the source's own
+		// slots. The extra mana was never PLANNED (ADR 0074 §7), so
+		// whatever it does not pay for simply floats.
+		if len(addedColors) > 0 {
+			g.fireManaTriggersLocked(ManaProduced{
+				Source:     tappedForMana,
+				Controller: p.ID,
+				Colors:     addedColors,
+			}, &pending)
 		}
 	}
 }
@@ -1608,24 +1661,47 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 	if len(options) == 0 {
 		return ""
 	}
+	if best, bestOpt := mostRestrictiveRequirement(options, *pending); best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+		return bestOpt
+	}
+	return options[0]
+}
+
+// bookColorRequirement ticks off one still-unsatisfied requirement
+// that `color` pays, if there is one. The half of pickColorForSlot
+// that runs when the colour is already decided: #779's one-colour
+// source mints N tokens of a colour the PLAN chose, and each of them
+// has to book its pip or the next slot re-pays it (#273).
+func bookColorRequirement(color string, pending *[]ColorRequirement) {
+	if color == "" {
+		return
+	}
+	if best, _ := mostRestrictiveRequirement([]string{color}, *pending); best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+	}
+}
+
+// mostRestrictiveRequirement finds the still-unsatisfied requirement
+// with the fewest legal colours that any of `options` can pay, and
+// returns its index plus the option that pays it. (-1, "") when none
+// matches. The one copy of the restriction-first instinct
+// pickColorForSlot and bookColorRequirement share.
+func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (int, string) {
 	best, bestOpt := -1, ""
-	for i := range *pending {
-		req := (*pending)[i]
+	for i := range pending {
+		req := pending[i]
 		for _, opt := range options {
 			if !matchColor(opt, req.Options) {
 				continue
 			}
-			if best < 0 || len(req.Options) < len((*pending)[best].Options) {
+			if best < 0 || len(req.Options) < len(pending[best].Options) {
 				best, bestOpt = i, opt
 			}
 			break
 		}
 	}
-	if best >= 0 {
-		*pending = append((*pending)[:best], (*pending)[best+1:]...)
-		return bestOpt
-	}
-	return options[0]
+	return best, bestOpt
 }
 
 // effectiveCostLocked parses the cost the cast actually owes — the
@@ -4593,8 +4669,15 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		paid.Mana = spent
 		g.EmitEvent(manaSpentEvent(playerID, cardID, spent))
 	}
+	// #763 / ADR 0074: the permanent as it was at the moment it was
+	// tapped for mana (CR 106.12a), copied because the same cost may
+	// still sacrifice it (Lotus Petal) and a triggered mana ability's
+	// predicate has to be able to ask what it was. Zero value when the
+	// ability has no {T}, which is also when nothing fires.
+	var tappedForMana Card
 	if ab.TapCost {
 		card.Tapped = true
+		tappedForMana = *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
 	// Life after tap, before sacrifice — the same component order
@@ -4698,6 +4781,11 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if ab.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
 		identity = commanderIdentityFor(g, p)
 	}
+	// #763: the mana types this activation put in the pool DIRECTLY,
+	// for the triggered mana abilities fired at the bottom of this
+	// function. A slot that queued a pick contributes nothing here —
+	// its colour is not known yet, and ResolveManaChoice fires for it.
+	var addedColors []string
 	for _, slot := range slots {
 		// The printed option set, commander identity first (Birds of
 		// Paradise offers all five colours), or narrowed to the
@@ -4727,7 +4815,8 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 				Source:       cardID,
 				Restrictions: restrictionsFor(g, &ab, playerID, cardID),
 			})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: cardID, Colors: []string{options[0]}})
+			addedColors = append(addedColors, options[0])
 			continue
 		}
 		// Multi-option slot — see manaPickOptions above.
@@ -4748,6 +4837,12 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
+			// #763: this pick is part of TAPPING A PERMANENT FOR MANA
+			// (CR 106.12a), so answering it is what fires the triggered
+			// mana abilities — this is the only moment the colour a
+			// Birds-style source produced is known. A pick queued by a
+			// resolving spell leaves this false and fires nothing.
+			ManaTapped: ab.TapCost,
 		})
 	}
 	// --- rider --------------------------------------------------
@@ -4773,6 +4868,25 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 				ErrorMsg: err.Error(),
 			})
 		}
+	}
+	// --- triggered mana abilities (#763, CR 605.1b) ---------------
+	//
+	// Wild Growth's extra {G}. It resolves HERE — immediately, with no
+	// stack and no priority window (CR 605.4a), after the mana ability
+	// that triggered it has finished resolving, rider and all.
+	//
+	// Only for an activation that put mana in a pool DIRECTLY. One
+	// that queued a pick instead fires from ResolveManaChoice, where
+	// the colour is finally known; no printed mana ability does both,
+	// so each card takes exactly one branch and fires exactly once
+	// (ADR 0074 §3). An activation that added nothing fires nothing: a
+	// permanent tapped for no mana was not tapped for mana.
+	if ab.TapCost && len(addedColors) > 0 {
+		g.fireManaTriggersLocked(ManaProduced{
+			Source:     tappedForMana,
+			Controller: playerID,
+			Colors:     addedColors,
+		}, nil)
 	}
 	return nil
 }

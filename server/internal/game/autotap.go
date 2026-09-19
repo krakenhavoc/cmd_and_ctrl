@@ -70,7 +70,7 @@ func (g *Game) AutoTapForCostExcluding(
 	excluded map[uuid.UUID]bool,
 ) ([]uuid.UUID, bool) {
 	var (
-		plan []uuid.UUID
+		plan tapPlan
 		ok   bool
 	)
 	// A plan reads effective power and ability removal through the
@@ -80,14 +80,15 @@ func (g *Game) AutoTapForCostExcluding(
 	g.ReadSnapshot(func() {
 		plan, ok = g.autoTapLocked(controller, cost, xValue, excluded)
 	})
-	return plan, ok
+	return plan.cardIDs(), ok
 }
 
 // AutoTapForCostForEffect is the *ForEffect-surface twin of
 // AutoTapForCost for callers already under g.mu (the S31 legal-move
 // enumerator runs inside ReadSnapshot). Read-only, same contract.
 func (g *Game) AutoTapForCostForEffect(controller uuid.UUID, cost ParsedCost, xValue int) ([]uuid.UUID, bool) {
-	return g.autoTapLocked(controller, cost, xValue, nil)
+	plan, ok := g.autoTapLocked(controller, cost, xValue, nil)
+	return plan.cardIDs(), ok
 }
 
 // AutoTapForCostForEffectExcluding is AutoTapForCostForEffect with
@@ -104,7 +105,62 @@ func (g *Game) AutoTapForCostForEffectExcluding(
 	xValue int,
 	excluded map[uuid.UUID]bool,
 ) ([]uuid.UUID, bool) {
-	return g.autoTapLocked(controller, cost, xValue, excluded)
+	plan, ok := g.autoTapLocked(controller, cost, xValue, excluded)
+	return plan.cardIDs(), ok
+}
+
+// plannedTap is one entry of an auto-tap plan: the permanent to tap,
+// and — for a "N mana of any one color" source (#779) — the ONE
+// colour the solver booked it for.
+//
+// The colour is carried rather than re-derived by the executor
+// because one activation of such a source is one pick for all N
+// tokens (ProducedManaEntry.Amounts): a Gilded Lotus the solver
+// booked for {U}{U} must not mint {W} because the executor's greedy
+// walk reached a different answer. That disagreement between the two
+// halves of the tapper is the #273 failure, one slot wider.
+//
+// OneColor is empty for every ordinary source, which is all of them
+// but the Lotus family.
+type plannedTap struct {
+	CardID   uuid.UUID
+	OneColor string
+}
+
+// tapPlan is the auto-tapper's answer: the permanents to tap, in the
+// order the solver picked them (coloured requirements first, generic
+// recruits second). The public API projects it to a plain ID list —
+// the lobby preview and the legal enumerator only ever wanted the
+// IDs — and materializePlanLocked consumes the whole thing.
+type tapPlan []plannedTap
+
+// cardIDs is the projection the public auto-tap API returns.
+func (p tapPlan) cardIDs() []uuid.UUID {
+	if len(p) == 0 {
+		return nil
+	}
+	out := make([]uuid.UUID, len(p))
+	for i, t := range p {
+		out[i] = t.CardID
+	}
+	return out
+}
+
+// hasCard reports whether this permanent is already in the plan.
+//
+// #779: one physical permanent can appear in the candidate list more
+// than once — a "N mana of any one color" source contributes one
+// tapSource PER OFFERED COLOUR, and they are alternatives, not
+// additions. The solver would otherwise happily book a Gilded Lotus
+// as three {W} AND three {U}, which is a plan the one-pick activation
+// can never honour and a permanent that can only be tapped once.
+func (p tapPlan) hasCard(id uuid.UUID) bool {
+	for _, t := range p {
+		if t.CardID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // autoTapLocked is the lock-aware core. Public callers enter through
@@ -117,7 +173,7 @@ func (g *Game) autoTapLocked(
 	cost ParsedCost,
 	xValue int,
 	excluded map[uuid.UUID]bool,
-) ([]uuid.UUID, bool) {
+) (tapPlan, bool) {
 	sources := gatherTapSources(g, controller, excluded)
 	if len(sources) == 0 && (len(cost.Required) > 0 || cost.Generic+cost.XSlots*xValue > 0) {
 		return nil, false
@@ -135,7 +191,7 @@ func (g *Game) autoTapLocked(
 	need := cost.Generic + cost.XSlots*xValue
 	used := make([]bool, len(sources))
 	consumed := make([]int, len(sources)) // per-source slot consumption (colored reqs eat 1 each)
-	plan := make([]uuid.UUID, 0, len(cost.Required))
+	plan := make(tapPlan, 0, len(cost.Required))
 	budget := AutoTapBudget
 	if !solveColored(sources, used, consumed, &plan, cost.Required, 0, &budget) {
 		return nil, false
@@ -159,6 +215,17 @@ type tapSource struct {
 	CardID uuid.UUID
 	Slots  []ProducedManaEntry
 	Frozen bool
+
+	// OneColor is set on a candidate that exists only because its
+	// permanent adds "N mana of any one color" (#779): the ONE colour
+	// this candidate spends the source's single pick on, with Slots
+	// already flattened to that colour's amount. A Gilded Lotus
+	// contributes five such candidates, a Nyx Lotus one per colour it
+	// has devotion to, and they are ALTERNATIVES — tapPlan.hasCard
+	// keeps the solver from taking two of them.
+	//
+	// Empty on every ordinary source.
+	OneColor string
 }
 
 // gatherTapSources walks the battlefield and collects every tap-
@@ -232,18 +299,6 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if err != nil || len(slots) == 0 {
 			continue
 		}
-		// #742: "N mana of any one color" (Gilded Lotus, Nyx Lotus) is
-		// not a source the planner can model. Its model is one slot,
-		// one mana, one colour choice per slot — and a Gilded Lotus
-		// planned as three any-colour slots could be booked for {W},
-		// {U} and {B} at once, a plan the one-colour activation can
-		// never honour. Skipping it is the weaker direction, exactly
-		// like the restricted-output exclusion in autoTapAbilityFor:
-		// the player activates it by hand (one prompt, N tokens) and
-		// the cast spends the floated mana.
-		if hasOneColorAmounts(slots) {
-			continue
-		}
 		// Mirror the activation's option list (manaPickOptions) so
 		// the planner books exactly the colours the activation will
 		// offer: Birds of Paradise keeps all five with the commander's
@@ -269,7 +324,89 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		if len(slots) == 0 {
 			continue
 		}
-		out = append(out, tapSource{CardID: c.InstanceID, Slots: slots, Frozen: untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller)})
+		out = appendTapSource(out, c.InstanceID, slots,
+			untapStepRestrictedBy(&c, g, restrictions) || c.hasNextUntapSkipFor(controller))
+	}
+	return out
+}
+
+// Return values of oneColorSlot.
+const (
+	// oneColorSlotNone: no slot is a "N mana of any one color" pick,
+	// which is every source but the Lotus family.
+	oneColorSlotNone = -1
+	// oneColorSlotUnplannable: more than one such slot on one
+	// ability. Two independent one-colour picks would be a cross
+	// product of candidates for a shape no printed card has, so the
+	// planner declines the source entirely and the player taps it by
+	// hand — the same weaker-and-safe direction the restricted-output
+	// exclusion takes.
+	oneColorSlotUnplannable = -2
+)
+
+// oneColorSlot returns the index of the source's single "N mana of
+// any one color" slot (ProducedManaEntry.OneColorAmounts), or one of
+// the constants above.
+func oneColorSlot(slots []ProducedManaEntry) int {
+	found := oneColorSlotNone
+	for i, slot := range slots {
+		if !slot.OneColorAmounts() {
+			continue
+		}
+		if found != oneColorSlotNone {
+			return oneColorSlotUnplannable
+		}
+		found = i
+	}
+	return found
+}
+
+// appendTapSource turns one permanent's parsed slots into the
+// candidate sources the solver may pick from.
+//
+// Usually that is exactly one candidate. #779: a permanent that adds
+// "N mana of any one color" (Gilded Lotus, Lotus Field, Nyx Lotus,
+// White Lotus Tile) contributes ONE CANDIDATE PER OFFERED COLOUR,
+// each with the pick already flattened into that colour's amount —
+// three {U} slots for a Gilded Lotus booked blue, four {G} slots for
+// a Nyx Lotus with devotion G4. The solver then reasons about them
+// with the model it already has (one slot, one mana, one colour), and
+// the candidates are mutually exclusive because they name the same
+// CardID (tapPlan.hasCard).
+//
+// This replaces #742's blanket skip. The skip was the weaker
+// direction — a payable cast read as unpayable in strict mode, in the
+// cast preview and to every bot (#779) — and the expansion is the
+// stronger one that the one-pick activation can still honour, because
+// each candidate spends the pick on exactly one colour.
+//
+// Surplus is not a problem the planner has to solve: a Gilded Lotus
+// booked for {U}{U} leaves its third slot in the spare tally, which
+// recruitGeneric spends on the generic half of the same cost, and
+// anything still left floats (CR 106.4).
+func appendTapSource(out []tapSource, cardID uuid.UUID, slots []ProducedManaEntry, frozen bool) []tapSource {
+	idx := oneColorSlot(slots)
+	switch idx {
+	case oneColorSlotNone:
+		return append(out, tapSource{CardID: cardID, Slots: slots, Frozen: frozen})
+	case oneColorSlotUnplannable:
+		return out
+	}
+	pick := slots[idx]
+	for _, color := range pick.Options {
+		n := pick.AmountFor(color)
+		if n <= 0 {
+			// A zero-amount option adds nothing; ParseProducedMana
+			// already drops those, so this is belt-and-braces.
+			continue
+		}
+		variant := make([]ProducedManaEntry, 0, len(slots)-1+n)
+		variant = append(variant, slots[:idx]...)
+		for k := 0; k < n; k++ {
+			variant = append(variant, ProducedManaEntry{Options: []string{color}})
+		}
+		variant = append(variant, slots[idx+1:]...)
+		out = append(out, tapSource{CardID: cardID, Slots: variant, Frozen: frozen, OneColor: color})
 	}
 	return out
 }
@@ -445,7 +582,7 @@ func solveColored(
 	sources []tapSource,
 	used []bool,
 	consumed []int,
-	plan *[]uuid.UUID,
+	plan *tapPlan,
 	reqs []ColorRequirement,
 	reqIdx int,
 	budget *int,
@@ -464,6 +601,12 @@ func solveColored(
 		if consumed[i] >= len(sources[i].Slots) {
 			continue
 		}
+		// #779: a colour candidate of a permanent already in the plan
+		// under a DIFFERENT colour is not available — the permanent
+		// taps once and makes one pick.
+		if !used[i] && plan.hasCard(sources[i].CardID) {
+			continue
+		}
 		// Find a slot in this source that hasn't been consumed
 		// AND matches the requirement's options.
 		slotIdx := pickMatchingSlot(sources[i], consumed[i], req.Options)
@@ -476,7 +619,7 @@ func solveColored(
 		wasUsed := used[i]
 		if !wasUsed {
 			used[i] = true
-			*plan = append(*plan, sources[i].CardID)
+			*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor})
 		}
 		consumed[i]++
 		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget) {
@@ -520,7 +663,7 @@ func recruitGeneric(
 	sources []tapSource,
 	used []bool,
 	consumed []int,
-	plan *[]uuid.UUID,
+	plan *tapPlan,
 	need int,
 ) bool {
 	if need <= 0 {
@@ -545,8 +688,14 @@ func recruitGeneric(
 		if used[i] {
 			continue
 		}
+		// #779: same exclusion the coloured pass makes — a colour
+		// candidate whose permanent is already tapped by this plan is
+		// not a second source.
+		if plan.hasCard(sources[i].CardID) {
+			continue
+		}
 		used[i] = true
-		*plan = append(*plan, sources[i].CardID)
+		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor})
 		deficit -= len(sources[i].Slots)
 		if deficit <= 0 {
 			return true
@@ -659,12 +808,16 @@ func hasMultiOptionSlot(slots []ProducedManaEntry) bool {
 	return false
 }
 
-// hasOneColorAmounts reports whether any slot is a "N mana of any one
-// color" pick (#742). See gatherTapSources for why the planner skips
-// such a source.
-func hasOneColorAmounts(slots []ProducedManaEntry) bool {
-	for _, slot := range slots {
-		if slot.OneColorAmounts() {
+// colorOffered reports whether `color` is one of the options a slot
+// offers. The executor's staleness check for a planned one-colour
+// pick (#779): a plan built before a Nyx Lotus's devotion moved may
+// name a colour the source no longer offers.
+func colorOffered(options []string, color string) bool {
+	if color == "" {
+		return false
+	}
+	for _, o := range options {
+		if o == color {
 			return true
 		}
 	}

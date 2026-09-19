@@ -352,6 +352,18 @@ func EnchantPermanent(preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent("enchant permanent", preds...)
 }
 
+// EnchantLand is "Enchant land" (Wild Growth, Overgrowth, Fertile
+// Ground) and, with a predicate, the narrower printings — "Enchant
+// Forest" is EnchantLand(Subtype("Forest")) on Utopia Sprawl.
+//
+// Like every other enchant clause this is the spec the CR 704.5m
+// legality re-check reruns, so an enchanted land that stops being one
+// takes the Aura to the graveyard with it — which is the whole reason
+// it is not just EnchantPermanent(Land()) at each call site.
+func EnchantLand(preds ...CardPredicate) *game.TargetSpec {
+	return TargetPermanent("enchant land", append([]CardPredicate{Land()}, preds...)...)
+}
+
 // EnchantPlayer is a Curse's "Enchant player" clause. The reason
 // Card.AttachedTo is a TargetRef and not a card ID.
 func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {
