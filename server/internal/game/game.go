@@ -429,6 +429,33 @@ type Game struct {
 	// map the same paused window is holding. See token_create.go.
 	enteringTokens []Card
 
+	// resolving is the stack item whose resolution is in flight, plus
+	// the card it was (CR 608.2m last-known information), held for
+	// exactly one event batch — see resolving_item.go (#920).
+	//
+	// resolveTopOfStackLocked removes an item from StackMeta BEFORE it
+	// runs, which is right: the item is no longer on the stack and
+	// nothing may target it. But CR 707.10 lets a resolving spell
+	// create a copy of ITSELF (Chain of Vapor, Chain of Smog), and
+	// CopySpellForEffect finds its source through StackMeta, so with
+	// the entry already gone the copy leg found nothing. This slot is
+	// where it looks instead.
+	//
+	// Its lifetime is the OCCURRENCE, not the function call: the copy
+	// decision is a prompt, so it is answered after the resolution
+	// has returned and the spell has already reached the graveyard.
+	// beginEventBatchLocked clears it, which makes the terminal
+	// boundary exactly the next resolution or the next step — the
+	// same boundary #829 already draws, and one no open prompt can be
+	// crossed by, because a resolution-time prompt blocks the table.
+	//
+	// Clone carries it so an undo across that prompt still has the
+	// source; the persisted snapshot drops it, for the reason
+	// enteringTokens is dropped — it is non-empty between actions only
+	// for a resolution paused on a prompt, and that prompt's resume
+	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
+	resolving *resolvingItem
+
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
 	// random draw goes through randForLocked in rng.go, which derives

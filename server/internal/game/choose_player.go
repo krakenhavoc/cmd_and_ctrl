@@ -1,0 +1,276 @@
+package game
+
+import (
+	"sort"
+	"strconv"
+
+	"github.com/google/uuid"
+)
+
+// choose_player.go — "choose a player" / "choose an opponent", asked
+// of a named seat while an effect resolves (#929).
+//
+// # No new prompt kind
+//
+// This is a PendingChoiceOptionPick (option_pick.go) whose options are
+// SEATS: one option per eligible player, labelled with that player's
+// name, addressed to the chooser. The question a player choice asks —
+// here is a closed list of things, pick exactly one — is the question
+// that kind already asks, so every consumer answers it unchanged: the
+// choice gate has its row, `internal/legal` enumerates it, the wire
+// projection carries it, and the client renders the same modal. A
+// `choose_player` kind would have been a second spelling of an
+// existing question and four files' worth of new cases for nothing
+// (the reason MayChoice rides `confirm` and a pile split rides
+// `option_pick`).
+//
+// # The choice is at RESOLUTION, and it is not a target
+//
+// "Choose a player" is not "target player". A target is named at
+// announce (CR 601.2c), is public from that moment, is re-checked on
+// resolution (CR 608.2b), and can be answered with hexproof or a
+// redirection. A chosen player is picked while the effect resolves,
+// by whoever the card says, and nothing may respond to it. Slithermuse
+// draws off "choose an opponent", not "target opponent", and the
+// difference is what stops a Slithermuse trigger from being fizzled by
+// the opponent it was aimed at.
+//
+// The CR 614.12 "AS this enters, choose a player" form (True-Name
+// Nemesis) is a THIRD thing again — a replacement-time choice made as
+// the permanent enters, stored on the permanent, and read for the rest
+// of its life. That form is designed, not built: see the note on
+// ChoosePlayerPrompt below and ADR 0018's #929 amendment. It waits on
+// protection (#662), which is the only thing that would read it.
+//
+// # The answer rides the item's payload
+//
+// StackItem.Payload already carries "what the effect that created this
+// item had to tell it" as []TargetRef (#636, reflexive triggers). A
+// chosen player is exactly that shape — a TargetPlayer ref — so it
+// goes there rather than on a second payload field. Targets was not an
+// option: a pick_target answer REPLACES Targets wholesale, so a chosen
+// player parked there would be erased by the next re-target prompt.
+//
+// A clause that asks twice appends twice, in the order the card asks
+// (Gluntch's first, second and third player), which is what makes
+// "choose a SECOND player" expressible: the caller passes the players
+// already chosen as the ones to leave out. ChosenPlayersOn reads them
+// back in that order; ChosenPlayerOn reads the most recent.
+//
+// # Bots
+//
+// The eligible seats are offered in DESCENDING LIFE order, ties by
+// seat. That ordering is the whole bot policy: `legal.choiceMoves`
+// marks an option pick's FIRST option always-legal, and docs/bot.md's
+// posture for a prompt from somebody else's card is "price what you
+// can see and take the first offer otherwise" — so a bot with nothing
+// better to say chooses the player with the most life. It is a
+// legality-and-termination policy, not a strength one; see docs/bot.md.
+
+// ChoosePlayerPrompt is the queue-side description of a
+// resolution-time player choice.
+//
+// Among is the CANDIDATE list the card's clause admits — every player
+// for "choose a player", the chooser's opponents for "choose an
+// opponent", somebody else's opponents for "choose an opponent of
+// target player". The caller computes it; this function drops the
+// seats that have left the game (CR 800.4a) and orders what is left.
+//
+// Item is the stack item the answer is recorded on, and may be nil for
+// a caller that reads the answer out of Then instead. Nothing in the
+// engine re-checks a recorded player against the board — it is a
+// record of a choice, not a target — so an effect that cares whether
+// that seat is still seated asks.
+type ChoosePlayerPrompt struct {
+	// Chooser answers the prompt. Required, and frequently NOT the
+	// player the options are about.
+	Chooser uuid.UUID
+
+	// Among are the players the clause admits, in any order.
+	Among []uuid.UUID
+
+	// Source is the card asking.
+	Source uuid.UUID
+
+	// Question is the prompt's header — the card's own sentence.
+	Question string
+
+	// Item is the stack item the chosen player is recorded on. Nil
+	// records nothing.
+	Item *StackItem
+
+	// Then receives the chosen player. Runs with g.mu held; may queue
+	// further choices, which is how a chain continues.
+	Then func(g *Game, chosen uuid.UUID) error
+}
+
+// QueueChoosePlayerForEffect queues a "choose a player" and returns
+// its ID, or uuid.Nil when it queued nothing — no eligible seat, or a
+// chooser who has left the game (QueueChoiceForEffect's CR 800.4a
+// guard).
+//
+// When it queues nothing it records the ABSENCE of a choice on the
+// item, so a later ChosenPlayerOn on the same item reads "nobody was
+// chosen" rather than the PREVIOUS clause's answer. A card that asks
+// twice and gets an answer only the first time would otherwise apply
+// the second clause to the first clause's player, which is the one
+// way this shape can be silently wrong.
+//
+// A caller with more of the effect to run must check the return the
+// way QueueOptionPickForEffect's callers do: nothing queued means
+// nothing will call Then.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
+	eligible := g.eligibleChosenPlayersLocked(p.Among)
+	if len(eligible) == 0 {
+		recordChosenPlayer(p.Item, uuid.Nil)
+		return uuid.Nil
+	}
+	options := make([]ChoiceOption, len(eligible))
+	for i, id := range eligible {
+		options[i] = ChoiceOption{Label: g.seatLabelLocked(id)}
+	}
+	item := p.Item
+	then := p.Then
+	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  p.Chooser,
+		Source:   p.Source,
+		Question: p.Question,
+		Options:  options,
+		// A frozen slice of scalars and a detached item pointer —
+		// the StackItem.Effect contract, so the branch resolves
+		// against whichever *Game an undo restores.
+		Then: func(g *Game, index int) error {
+			if index < 0 || index >= len(eligible) {
+				return ErrInvalidParam
+			}
+			chosen := eligible[index]
+			recordChosenPlayer(item, chosen)
+			if then == nil {
+				return nil
+			}
+			return then(g, chosen)
+		},
+	})
+	if queued == uuid.Nil {
+		recordChosenPlayer(p.Item, uuid.Nil)
+	}
+	return queued
+}
+
+// eligibleChosenPlayersLocked narrows a candidate list to the seats
+// that can actually be chosen and puts them in the order the prompt
+// offers them.
+//
+// Dropped: a duplicate, a player the game does not have, and a player
+// who has left (CR 800.4a — an eliminated seat is not a player, so
+// "choose a player" cannot name one). Ordered: most life first, ties
+// by seat, which is the bot policy documented at the top of this file.
+//
+// Caller must hold g.mu.
+func (g *Game) eligibleChosenPlayersLocked(ids []uuid.UUID) []uuid.UUID {
+	type seat struct {
+		id   uuid.UUID
+		life int
+		n    int
+	}
+	seen := make(map[uuid.UUID]bool, len(ids))
+	seats := make([]seat, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil || seen[id] {
+			continue
+		}
+		p := g.playerByIDLocked(id)
+		if p == nil || p.Eliminated {
+			continue
+		}
+		seen[id] = true
+		seats = append(seats, seat{id: id, life: p.Life, n: p.Seat})
+	}
+	sort.SliceStable(seats, func(i, j int) bool {
+		if seats[i].life != seats[j].life {
+			return seats[i].life > seats[j].life
+		}
+		return seats[i].n < seats[j].n
+	})
+	out := make([]uuid.UUID, len(seats))
+	for i, s := range seats {
+		out[i] = s.id
+	}
+	return out
+}
+
+// seatLabelLocked is what a seat is called on an option button. The
+// player's name, or "Seat N" for a seat that has none — a nameless
+// button is unanswerable, and the option list is the whole of what the
+// chooser reads. Caller must hold g.mu.
+func (g *Game) seatLabelLocked(id uuid.UUID) string {
+	p := g.playerByIDLocked(id)
+	if p == nil {
+		return "Seat ?"
+	}
+	if p.Name != "" {
+		return p.Name
+	}
+	return "Seat " + strconv.Itoa(p.Seat+1)
+}
+
+// recordChosenPlayer appends one player choice to an item's payload.
+//
+// uuid.Nil records the ABSENCE of a choice as a TargetNone ref rather
+// than appending nothing: a card that asks twice has to be able to
+// tell "nobody could be chosen this time" from "this clause was never
+// asked", and ChosenPlayerOn reads the most recent answer either way.
+func recordChosenPlayer(item *StackItem, chosen uuid.UUID) {
+	if item == nil {
+		return
+	}
+	if chosen == uuid.Nil {
+		item.Payload = append(item.Payload, TargetRef{Kind: TargetNone})
+		return
+	}
+	item.Payload = append(item.Payload, TargetRef{Kind: TargetPlayer, ID: chosen})
+}
+
+// ChosenPlayerOn is the player most recently chosen for this item, or
+// uuid.Nil when the last question could not be asked and when none was
+// asked at all.
+//
+// It scans BACKWARDS to the first player-or-absence ref, so a payload
+// that also carries cards (a reflexive trigger's "the creatures
+// tapped this way") does not hide the answer and does not fabricate
+// one.
+func ChosenPlayerOn(item *StackItem) uuid.UUID {
+	if item == nil {
+		return uuid.Nil
+	}
+	for i := len(item.Payload) - 1; i >= 0; i-- {
+		switch item.Payload[i].Kind {
+		case TargetPlayer:
+			return item.Payload[i].ID
+		case TargetNone:
+			return uuid.Nil
+		}
+	}
+	return uuid.Nil
+}
+
+// ChosenPlayersOn is every player chosen for this item, in the order
+// the card asked. The read behind "choose a SECOND player": pass it
+// back as the seats to leave out.
+//
+// Absences are skipped — a clause nobody could be chosen for excludes
+// nobody from the next one.
+func ChosenPlayersOn(item *StackItem) []uuid.UUID {
+	if item == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, ref := range item.Payload {
+		if ref.Kind == TargetPlayer {
+			out = append(out, ref.ID)
+		}
+	}
+	return out
+}

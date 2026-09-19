@@ -91,9 +91,19 @@ import "github.com/google/uuid"
 // cursor moving (CR 514.3a). Together they are "play moved on". See
 // the file comment for why those and nothing else.
 //
+// It is also where the RESOLVING-ITEM slot is cleared (#920,
+// resolving_item.go). The two are the same question asked twice: a
+// resolving spell's metadata has to outlive its own resolution
+// function, because the copy decision it opens is a prompt answered
+// afterwards — and it has to stop being reachable the moment play
+// moves on, which is precisely this boundary. A resolution-time prompt
+// blocks the table, so an open copy decision cannot be crossed by
+// either half of it.
+//
 // Caller must hold g.mu in write mode.
 func (g *Game) beginEventBatchLocked() {
 	g.eventBatch++
+	g.resolving = nil
 }
 
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter

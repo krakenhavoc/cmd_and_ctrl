@@ -75,6 +75,8 @@ func TestFactOrFictionSplitsAndTakesAPile(t *testing.T) {
 
 	castCatalogSpell(t, g, "Fact or Fiction", "Instant", factOrFictionOracle, nil)
 	passPriorityAroundTable(t, g)
+	// #929: "an opponent" is the controller's choice now.
+	answerChoosePlayer(t, g, me.ID, opp)
 
 	split := latestChooseCardsFor(g, opp.ID)
 	if split == nil {
@@ -134,6 +136,7 @@ func TestFactOrFictionAcceptsAnEmptyPile(t *testing.T) {
 
 	castCatalogSpell(t, g, "Fact or Fiction", "Instant", factOrFictionOracle, nil)
 	passPriorityAroundTable(t, g)
+	answerChoosePlayer(t, g, me.ID, opp)
 	split := latestChooseCardsFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("no split prompt: %+v", g.PendingChoices)
@@ -170,6 +173,7 @@ func TestFactOrFictionUndoesAcrossBothPrompts(t *testing.T) {
 
 	castCatalogSpell(t, g, "Fact or Fiction", "Instant", factOrFictionOracle, nil)
 	passPriorityAroundTable(t, g)
+	answerChoosePlayer(t, g, me.ID, opp)
 	split := latestChooseCardsFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("no split prompt: %+v", g.PendingChoices)

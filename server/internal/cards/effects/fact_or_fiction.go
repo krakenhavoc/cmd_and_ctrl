@@ -31,57 +31,69 @@ import (
 // nothing else (redactChoiceCards). Without the reveal they would see
 // an empty prompt rather than a library.
 //
-// # Declared sandbox simplification: WHICH opponent separates
+// # WHICH opponent separates (#929)
 //
-// CR gives the choice of opponent to the spell's controller in a
-// multiplayer game. There is no "choose an opponent" prompt yet (the
-// engine-seams row of that name), so the seat after the controller in
-// turn order does the splitting. In a two-player game there is no
-// difference at all.
+// "An opponent" is the controller's choice in a multiplayer game, and
+// it used to be the seat after them in turn order because no prompt
+// could ask. The choose-a-player primitive is that prompt, so the
+// caveat is gone: at more than two seats the controller names the
+// splitter first and the split is queued from that answer.
 func init() {
 	Register(Spec{
 		OracleID:     "437b2dab-15e0-4b9a-a204-58622d37a3b3",
 		Name:         "Fact or Fiction",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"With more than one opponent, the player who splits the piles is the one after you in turn order rather than an opponent you pick.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return factOrFictionReveal(ctx)
 		},
 	})
 }
 
-// factOrFictionReveal is the whole card: reveal five, hand the split
-// to an opponent, and chain the pile pick back to the controller.
+// factOrFictionReveal is the whole card: reveal five, name the
+// opponent who separates them, and chain the pile pick back to the
+// controller.
 //
 // Caller holds g.mu.
 func factOrFictionReveal(ctx *Context) error {
-	controller := ctx.Controller()
-	opponents := ctx.Opponents()
-	revealed := ctx.Game.RevealTopOfLibraryForEffect(controller, ctx.Source(), 5,
+	revealed := ctx.Game.RevealTopOfLibraryForEffect(ctx.Controller(), ctx.Source(), 5,
 		"Fact or Fiction — reveal the top five cards of your library")
 	if len(revealed) == 0 {
 		// An empty library reveals nothing, and there is nothing to
 		// separate. Not an error: revealing is not drawing.
 		return nil
 	}
-	if len(opponents) == 0 {
-		// Nobody left to separate them (CR 800.4a). The cards were
-		// revealed and the spell still resolves; everything is one
-		// pile and the controller takes it, which is the only
-		// outcome left.
-		return factOrFictionSettle(ctx.Game, revealed, nil)
-	}
-	return PileSplit{
-		Splitter:      opponents[0],
-		Chooser:       controller,
-		Owner:         controller,
-		SplitQuestion: "Fact or Fiction — separate these five cards into two piles",
-		PickQuestion:  "Fact or Fiction — take one pile into your hand; the other goes to your graveyard",
-		Cards:         revealed,
-		Then:          factOrFictionTake,
+	return ChoosePlayer{
+		Among:    Opponents,
+		Question: "Fact or Fiction — choose an opponent to separate these cards into two piles",
+		Then:     factOrFictionSplit(revealed),
 	}.Apply(ctx)
+}
+
+// factOrFictionSplit hands the revealed cards to the chosen opponent.
+//
+// A package-level function closing over a FROZEN slice of IDs and
+// nothing else — the StackItem.Effect contract, so an undo across
+// either prompt resolves it against the restored game.
+func factOrFictionSplit(revealed []uuid.UUID) func(ctx *Context) error {
+	return func(ctx *Context) error {
+		splitter := ctx.ChosenPlayer()
+		if splitter == uuid.Nil {
+			// Nobody left to separate them (CR 800.4a). The cards
+			// were revealed and the spell still resolves; everything
+			// is one pile and the controller takes it, which is the
+			// only outcome left.
+			return factOrFictionSettle(ctx.Game, revealed, nil)
+		}
+		return PileSplit{
+			Splitter:      splitter,
+			Chooser:       ctx.Controller(),
+			Owner:         ctx.Controller(),
+			SplitQuestion: "Fact or Fiction — separate these five cards into two piles",
+			PickQuestion:  "Fact or Fiction — take one pile into your hand; the other goes to your graveyard",
+			Cards:         revealed,
+			Then:          factOrFictionTake,
+		}.Apply(ctx)
+	}
 }
 
 // factOrFictionTake is the continuation both prompts lead to: the

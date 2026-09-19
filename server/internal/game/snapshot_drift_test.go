@@ -160,6 +160,7 @@ var gameFields = plan(
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
+	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )

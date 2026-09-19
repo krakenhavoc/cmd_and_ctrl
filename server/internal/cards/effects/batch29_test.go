@@ -139,9 +139,13 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 		b29YargleAndMultaniOracle:     "Yargle and Multani",
 		b29ChitterspitterOracle:       "Chitterspitter",
 		b29GimliOracle:                "Gimli of the Glittering Caves",
+		// #929 shipped the resolution-time choose-a-player prompt and
+		// the chosen player's own card pick, which is the pair Gluntch
+		// was skipped for. It is a batch-29 card and is now registered.
+		"0222dc7c-459b-4909-a037-72b2eb248599": "Gluntch, the Bestower",
 	}
-	if len(want) != 26 {
-		t.Fatalf("the batch registers 26 cards, the table lists %d", len(want))
+	if len(want) != 27 {
+		t.Fatalf("the batch registers 27 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -153,14 +157,12 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The six declared skips must stay out until their seam lands:
+	// The four declared skips must stay out until their seam lands:
 	// a put-a-card-from-hand-onto-the-battlefield prompt (Walking
 	// Atlas, Elvish Piper), a counter-removal cost on an ability that
 	// MOVES a counter rather than spending it (Power Conduit, Staff of
-	// the Storyteller), a resolution-time choose-a-player prompt plus
-	// another player's choice at resolution (Gluntch), and an
-	// opponent's three-way choice at resolution (Master of
-	// Ceremonies).
+	// the Storyteller), and an opponent's three-way choice at
+	// resolution (Master of Ceremonies).
 	//
 	// Ramos, Dragon Engine came off this list in #789, which gave a
 	// MANA ability a counter cost — see ramos_dragon_engine.go. It was
@@ -174,7 +176,6 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
 		"2e358f7e-c282-4b92-8255-1436c99cda49": "Power Conduit",
 		"0c4e2c90-c17b-42cc-b4d7-cf75970fbe90": "Staff of the Storyteller",
-		"0222dc7c-459b-4909-a037-72b2eb248599": "Gluntch, the Bestower",
 		"18ed0c8a-db8f-4247-87c4-544b833f01bd": "Master of Ceremonies",
 	} {
 		if _, ok := Lookup(oracle); ok {

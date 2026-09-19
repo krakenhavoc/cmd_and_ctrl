@@ -311,6 +311,8 @@ func TestSlithermuseDrawsHandSizeDifference(t *testing.T) {
 
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(muse) })
 	passPriorityAroundTable(t, g)
+	// #929: "choose an opponent" is a prompt now, not an auto-pick.
+	answerChoosePlayer(t, g, p0.ID, p1)
 
 	if len(p0.Hand.Cards) != want {
 		t.Errorf("hand %d, want %d (the three-card difference)", len(p0.Hand.Cards), want)
