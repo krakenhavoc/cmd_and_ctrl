@@ -64,8 +64,8 @@ func TestPolicyStatsProjectsStats(t *testing.T) {
 	if !ok {
 		t.Fatal("the funnel was not found as a PolicyStatser through Capability")
 	}
-	if got.Windows != st.Windows {
-		t.Errorf("Capability-found Windows = %d, want %d", got.Windows, st.Windows)
+	if w := got.PolicyStats().Windows; w != st.Windows {
+		t.Errorf("Capability-found Windows = %d, want %d", w, st.Windows)
 	}
 }
 

@@ -2,6 +2,7 @@ package aiseat_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
@@ -68,7 +69,7 @@ func TestRunnerPolicyStatsFromTheOutermostPolicy(t *testing.T) {
 	if !ok {
 		t.Fatal("PolicyStats() ok = false, want true")
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("PolicyStats() = %+v, want %+v", got, want)
 	}
 }
@@ -92,7 +93,7 @@ func TestRunnerPolicyStatsForwardsThroughAWrapper(t *testing.T) {
 	if !ok {
 		t.Fatal("PolicyStats() did not forward through the wrapper")
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("PolicyStats() = %+v, want %+v", got, want)
 	}
 }

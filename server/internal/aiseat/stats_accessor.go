@@ -94,5 +94,9 @@ type PolicyStatser interface {
 // it, and a caller asking for them already gets the right zero value
 // for free from the bool this returns.
 func (r *Runner) PolicyStats() (PolicyStats, bool) {
-	return Capability[PolicyStatser](r.policy)
+	s, ok := Capability[PolicyStatser](r.policy)
+	if !ok {
+		return PolicyStats{}, false
+	}
+	return s.PolicyStats(), true
 }
