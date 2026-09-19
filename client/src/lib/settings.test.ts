@@ -62,7 +62,7 @@ describe("settings", () => {
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
-  // #956 / ADR 0076. Pinned as its own test rather than folded into
+  // #956 / ADR 0077. Pinned as its own test rather than folded into
   // the shape check above, because these three are the defaults that
   // decide what a new player's table LOOKS like, and the ADR's
   // consequences section is written assuming exactly these values.
@@ -197,7 +197,7 @@ describe("settings", () => {
     expect(get(settings).shortcuts.bindings).toEqual({});
   });
 
-  // #956 / ADR 0076. Unlike the eight migrations before it, this one
+  // #956 / ADR 0077. Unlike the eight migrations before it, this one
   // changes what the table LOOKS like for a user who has touched
   // nothing: opponentDetail arrives as "summary" and their opponents
   // stop being drawn as cards. The test says so explicitly so nobody
