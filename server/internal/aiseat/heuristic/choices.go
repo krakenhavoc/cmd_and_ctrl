@@ -134,7 +134,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range cp.CardIDs {
 			if c := lookup(id); c != nil {
-				v -= st.w.permanentValue(c)
+				v -= st.permanentValue(c)
 			}
 		}
 		return v, "sacrifice the least"
@@ -218,7 +218,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range cp.CardIDs {
 			if c := lookup(id); c != nil {
-				v += st.w.permanentValue(c)
+				v += st.permanentValue(c)
 			}
 		}
 		return v, "untap the best"

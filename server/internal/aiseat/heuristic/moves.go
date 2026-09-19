@@ -111,7 +111,7 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 			// half of that trade it can see — which is the right way
 			// round, because an ultimate it cannot evaluate is not an
 			// ultimate it should be firing.
-			v -= st.w.permanentValue(src)
+			v -= st.permanentValue(src)
 		}
 	}
 	for _, cp := range c.Counters {
@@ -205,7 +205,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		v += st.targetsValue(p.cfg, cp.Targets)
 		for _, id := range cp.SacrificeIDs {
 			if c := st.bf[id]; c != nil {
-				v -= st.w.permanentValue(c)
+				v -= st.permanentValue(c)
 			}
 		}
 		// An {X} ability does more the bigger X is, and the
@@ -292,7 +292,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	for _, id := range cp.SacrificeIDs {
 		if c := st.bf[id]; c != nil {
-			v -= st.w.permanentValue(c)
+			v -= st.permanentValue(c)
 		}
 	}
 	v += st.targetsValue(p.cfg, cp.Targets)
@@ -380,7 +380,7 @@ func (st *state) cardTargetValue(cfg Config, id string) float64 {
 		if c.Controller == st.me {
 			return cfg.OwnPermanentTarget
 		}
-		base := st.w.permanentValue(c)
+		base := st.permanentValue(c)
 		if isCreature(c) {
 			base = st.w.CreatureValue(c)
 		}
