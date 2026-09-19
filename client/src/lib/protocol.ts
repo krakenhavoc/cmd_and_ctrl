@@ -112,6 +112,13 @@ export type ActionType =
   | "set_initiative"
   | "set_monarch"
   | "set_promise"
+  // ADR 0075 §2.3. The params object IS a settings patch — only the
+  // fields present are applied. Host or admin only, and deliberately
+  // not undoable.
+  | "set_table_settings"
+  // Deprecated since S35: a one-field alias for set_table_settings
+  // that cannot select an unlimited budget (a negative limit clamps
+  // to 0). Kept so an old client and the gamecli scripts still work.
   | "set_undo_limit"
   | "shuffle_library"
   | "special_action"
@@ -458,7 +465,13 @@ export type LogKind =
   | "scry"
   | "surveil"
   | "saga_chapter"
-  | "class_level";
+  | "class_level"
+  // ADR 0075 §2.3: the host or the admin changed a table setting.
+  // `label` is the setting's key ("undo_limit", "allow_spawn") and
+  // `choice` its new value as text; `seat` is the host, or NoSeat when
+  // the server admin made the change. The only kind that is about the
+  // rules rather than about the game.
+  | "settings";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the

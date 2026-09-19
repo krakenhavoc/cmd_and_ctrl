@@ -364,6 +364,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		gameID:   gameID,
 		playerID: playerID,
 		readOnly: binding.ReadOnly,
+		admin:    binding.Admin,
 		userID:   binding.UserID,
 		issuedAt: binding.IssuedAt,
 	}
@@ -685,11 +686,37 @@ type Client struct {
 	// in S11.
 	readOnly bool
 
+	// admin marks a connection authenticated as the server admin,
+	// copied from Binding.Admin at upgrade time. PlayerID alone cannot
+	// say it: an admin may bind to a seat with `?player=`, and then
+	// looks exactly like that player. The host gates (ADR 0075 §2.1,
+	// Room.CanManageTable) are the readers — nothing else on the hub
+	// asks, because readOnly already covers "may this connection
+	// mutate at all". Added in S35 (#1032).
+	admin bool
+
 	// userID and issuedAt are the session this connection was opened
 	// with, copied from Binding. Read only by EvictUserSessions; the
 	// hub makes no other decision on them.
 	userID   uuid.UUID
 	issuedAt time.Time
+}
+
+// binding reconstructs the Binding this connection was upgraded with,
+// for the gates that ask Room a question about the whole connection
+// rather than about one field of it (Room.CanManageTable). Keeping the
+// reassembly in one place is what stops a caller building a Binding by
+// hand and forgetting Admin — the field whose absence would silently
+// turn a host gate into "any seat".
+func (c *Client) binding() Binding {
+	return Binding{
+		GameID:   c.gameID,
+		PlayerID: c.playerID,
+		ReadOnly: c.readOnly,
+		Admin:    c.admin,
+		UserID:   c.userID,
+		IssuedAt: c.issuedAt,
+	}
 }
 
 func (c *Client) readPump() {
@@ -902,6 +929,37 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	// spectator — gated branches let those through unchanged.
 	action.Caller = c.playerID
 
+	// ADR 0075 §2.3: the table's rules belong to the table's host (and
+	// the server admin), not to whoever thinks of it first. Both verbs
+	// that change them are gated here rather than in actions.Dispatch,
+	// because Dispatch sees only a *game.Game and a caller ID — it
+	// cannot tell the admin from the seat they are bound to, and it
+	// has no handle on the room that knows who hosts.
+	if isTableSettingsAction(action.Type) {
+		if !room.CanManageTable(c.binding()) {
+			c.sendError(frame.ID, protocol.CodeBadRequest,
+				"only the table host or the server admin may change table settings")
+			return
+		}
+		// …and NOT through Apply: a settings change is not a play, so
+		// it mints no undo entry. Otherwise lowering the undo limit
+		// could be taken back with the undo it was meant to stop, and
+		// a later undo would rewind the table to before the change.
+		// (Game.RestoreFrom already carries Settings forward for the
+		// same reason.)
+		view, seq, err := room.ApplyExternal(func() error {
+			return actions.Dispatch(room.Game, action)
+		})
+		if err != nil {
+			code, msg := classifyActionError(err)
+			c.sendError(frame.ID, code, msg)
+			return
+		}
+		c.hub.broadcastToRoom(room.Game.ID, seq, view)
+		c.log.Debug("table settings changed", "type", payload.Type, "seq", seq)
+		return
+	}
+
 	view, seq, err := room.Apply(c.playerID, func() error {
 		return actions.Dispatch(room.Game, action)
 	})
@@ -941,6 +999,15 @@ func (c *Client) handleAction(frame protocol.Frame) {
 	}
 	c.hub.broadcastToRoom(room.Game.ID, seq, view)
 	c.log.Debug("action dispatched", "type", payload.Type, "seq", seq)
+}
+
+// isTableSettingsAction reports whether an action type changes
+// Game.Settings (ADR 0075 §2.3). The two members share one gate and
+// one non-undoable apply path; set_undo_limit is the deprecated
+// one-field alias for set_table_settings, so treating it any
+// differently would leave the old verb as the way around the new gate.
+func isTableSettingsAction(t actions.Type) bool {
+	return t == actions.TypeSetTableSettings || t == actions.TypeSetUndoLimit
 }
 
 // classifyActionError maps a dispatch-time error from the game or

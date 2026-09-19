@@ -11,6 +11,13 @@
   import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
+  import {
+    UNDO_UNLIMITED,
+    canManageTable,
+    formatUndoCount,
+    hasUndoBudget,
+    isUnlimitedUndo,
+  } from "../lib/tableSettings";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
@@ -624,6 +631,18 @@
   );
 
   const isAdmin = $derived(sess?.principal.role === "admin");
+  // ADR 0075 §2.1: the table's settings belong to its host and to the
+  // server admin. The server enforces it; this is what greys the
+  // control rather than offering a click that returns an error frame.
+  const canManage = $derived(canManageTable(sess?.principal.role, viewerSeat));
+  // The table's undo budget, and whether it is unlimited. Read off
+  // GameView.undo_limit, which mirrors settings.undo_limit.
+  const undoLimit = $derived(view?.undo_limit ?? 1);
+  const undoUnlimited = $derived(isUnlimitedUndo(undoLimit));
+  // Whether THIS viewer may press undo now. Not the same question as
+  // the limit: an admin bypasses the budget, and an unlimited table
+  // reports -1 remaining on every seat.
+  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, isAdmin));
   // Spectator sessions (S11) are read-only — the server rejects every
   // action frame with bad_request, so the toolbar / mulligan / deck-
   // import / quick-action surfaces all hide here too. Bound by role,
@@ -697,9 +716,7 @@
   // undo restores tap state and declarations together. That is why
   // this button is here rather than only in the ⋯ menu.
   const canUndoDeclaration = $derived(
-    canDeclareAttackers &&
-      attackPlan.declared.length > 0 &&
-      (isAdmin || (viewerSeat?.undos_remaining ?? 0) > 0),
+    canDeclareAttackers && attackPlan.declared.length > 0 && canSpendUndo,
   );
   function undoDeclaration(): void {
     client.sendAction("undo");
@@ -815,7 +832,10 @@
       passLegal: hasPassMove(view),
       // Admin undo bypasses the caller / budget gates, same as the
       // ⋯ menu's Undo row.
-      undosRemaining: isAdmin ? null : (viewerSeat?.undos_remaining ?? 0),
+      // null means "no budget gate": an admin bypasses it, and so
+      // does an unlimited table, whose seats report -1 remaining —
+      // a number the shortcut's `<= 0` test would read as exhausted.
+      undosRemaining: isAdmin || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
       attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
       attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
     });
@@ -954,36 +974,56 @@
                 class="mi"
                 role="menuitem"
                 onclick={() => viaMenu(() => client.sendAction("undo"))}
-                disabled={!isAdmin && (viewerSeat?.undos_remaining ?? 0) <= 0}
+                disabled={!canSpendUndo}
                 title={(isAdmin
                   ? "rewind the most recent action (admin — bypasses caller / budget gates)"
-                  : (viewerSeat?.undos_remaining ?? 0) <= 0
-                    ? "no undos remaining this turn (refreshes on your next untap)"
-                    : `undo your most recent action — ${viewerSeat?.undos_remaining ?? 0} left this turn`) +
+                  : undoUnlimited
+                    ? "undo your most recent action — this table has no undo limit"
+                    : !canSpendUndo
+                      ? "no undos remaining this turn (refreshes on your next untap)"
+                      : `undo your most recent action — ${formatUndoCount(viewerSeat?.undos_remaining)} left this turn`) +
                   keyHint(keys.undo)}
               >
                 <Icon name="undo" size={15} /> Undo
                 {#if !isAdmin && viewerSeat}
-                  <span class="mi-r">{viewerSeat.undos_remaining ?? 0} left</span>
+                  <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
                 {/if}
               </button>
+              <!-- ADR 0075 §2.3: the undo budget is a TABLE SETTING, so
+                   only the host and the admin may turn it. Everyone
+                   else reads it here, because "how many undos does this
+                   table allow" is not the host's private business. The
+                   full settings panel is sub-PR 5; this row is the one
+                   control that already existed and had to be regated.
+                   -1 is unlimited and renders as ∞. -->
               <label
                 class="mi mi-row"
-                title="per-player undo budget refreshed each turn (any seat may change)"
+                title={canManage
+                  ? "per-player undo budget, refreshed each turn — -1 is unlimited, 0 turns undo off"
+                  : "per-player undo budget, refreshed each turn — only the table host can change it"}
               >
                 <span class="mi-indent">Undo limit</span>
                 <input
                   type="number"
-                  min="0"
+                  min="-1"
                   max="20"
-                  value={view?.undo_limit ?? 1}
+                  disabled={!canManage}
+                  value={undoLimit}
+                  aria-label="table undo limit"
                   onchange={(e) => {
                     const next = Number((e.currentTarget as HTMLInputElement).value);
-                    if (Number.isFinite(next) && next >= 0) {
-                      client.sendAction("set_undo_limit", undefined, { limit: next });
+                    if (Number.isFinite(next) && next >= UNDO_UNLIMITED) {
+                      // set_table_settings, not the deprecated
+                      // set_undo_limit alias: the alias clamps a
+                      // negative limit to 0, so it cannot say
+                      // "unlimited" at all.
+                      client.sendAction("set_table_settings", undefined, { undo_limit: next });
                     }
                   }}
                 />
+                {#if undoUnlimited}
+                  <span class="mi-r">∞</span>
+                {/if}
               </label>
               <button
                 class="mi"

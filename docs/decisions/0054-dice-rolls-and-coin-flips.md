@@ -338,8 +338,11 @@ This applies to **every** random use, not only the new ones:
   what that source will roll next this turn, and can decide not to
   trigger it again. That is information paper Magic never gives. It is
   limited to that stream and that turn (Decision 2), and to the undo
-  budget (`UndoLimit`, default 1). The budget is only a soft limit,
-  because `set_undo_limit` is a sandbox verb any seated player can send.
+  budget (`UndoLimit`, default 1). The budget was only a soft limit when
+  this was written, because `set_undo_limit` was a sandbox verb any seated
+  player could send. Since S35 it is not: both it and `set_table_settings`
+  are host-or-admin only ([ADR 0075](0075-table-settings-and-host-controls.md)
+  §2.3), so a player cannot raise their own budget to mine a roll.
 - **The roll may sit in someone else's undo entry.** A roll made while
   the stack resolves belongs to whoever passed last, often the
   opponent. Under rewind, that player's undo and redo reproduce the roll

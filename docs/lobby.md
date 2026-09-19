@@ -258,6 +258,9 @@ Every table has at most one **host**: the seat that may manage the table
   they sit down.
 - **A bot seat never hosts.** A table with only bots has no host.
 - **Transfer**: `POST /games/{id}/host` (below).
+- **What hosting lets you do**: change the table's settings, through
+  `PATCH /games/{id}/settings` (below) or the `set_table_settings` WebSocket
+  action. The deprecated `set_undo_limit` action is gated the same way.
 - **The host leaving passes it on.** When the host concedes or loses
   ([ADR 0060](decisions/0060-leaving-the-game.md)), hosting passes to the
   next human seat in turn order, skipping bots and departed seats and
@@ -305,6 +308,75 @@ claimant does not take the table back.
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
 | 422 | `player_id` is not a seat at this table, is a bot, or has left the game |
+
+### `PATCH /games/{id}/settings`
+
+Change the table's settings
+([ADR 0075 §2.3](decisions/0075-table-settings-and-host-controls.md)). **Host
+or admin only** — the same `CanManageTable` predicate the transfer route
+uses. Valid in the lobby **and** on a live game: a host sitting on the lobby
+page of a running table should not have to open the board to turn undos back
+on. The WebSocket twin is the `set_table_settings` action
+([protocol.md](protocol.md)), which takes the identical body.
+
+**Request** — a *partial*. Only the fields present are applied; a field left
+out is untouched, which is why this is a `PATCH` and not a `PUT`.
+
+```json
+{
+  "undo_limit": 3,
+  "undo_scope": "own",
+  "starting_life": 40,
+  "commander_damage": 21,
+  "bot_pace": "normal",
+  "allow_spawn": false
+}
+```
+
+| Field | Range | Effect |
+|---|---|---|
+| `undo_limit` | `-1` and up | Per-player per-turn undo budget. `-1` is unlimited (never debited, shown as ∞), `0` turns undo off. Takes effect immediately and refreshes every seat's `undos_remaining`. |
+| `undo_scope` | `"own"` \| `"host_any"` | Whose entries a seat may take back. |
+| `starting_life` | 1..999 | Each seat's life at `start`. In the lobby it also rewrites the already-seated players' totals. **Rejected once the game is active.** |
+| `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
+| `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | AI seat pacing preset. |
+| `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
+
+The **whole patch is validated first**, so a patch with one bad field changes
+nothing — including the good fields beside it.
+
+**Response 200** — the table's settings *after* the patch, whole, so the
+client can render its panel from the answer instead of waiting for the
+WebSocket broadcast:
+
+```json
+{
+  "settings": {
+    "undo_limit": 3,
+    "undo_scope": "own",
+    "starting_life": 40,
+    "commander_damage": 21,
+    "bot_pace": "normal",
+    "allow_spawn": false
+  }
+}
+```
+
+Every connected client also gets a fresh snapshot carrying the new
+`settings`, and the game log gains one `settings` line per field that
+actually changed ("Luke (host) set undos to 3 per turn"). A settings change
+is **not undoable** — it pushes no undo entry, and a later `undo` carries the
+settings forward rather than rolling them back.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | malformed body, or a value outside its range (`undo_limit` below `-1`, `starting_life` outside 1..999, `commander_damage` outside 1..99, an unknown `undo_scope` or `bot_pace`) |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals |
 
 ### `GET /games`
 
