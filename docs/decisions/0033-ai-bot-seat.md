@@ -950,3 +950,31 @@ and it cannot see a graveyard synergy the wire does not carry (a
 Crucible on the board makes a land in the graveyard worth keeping, and
 `FuelFloor` does not know). Ranking by what the seat LOSES is the whole
 of its power, and losing least is right for every cost.
+
+## Amendment (2026-09-19, #938): §2's subscription is taken by `Start`, not by the loop
+
+§2 says the runner is notified through an edge-triggered, capacity-1
+channel and re-reads the room on wake. It did not say **when** the seat
+joins that observer list, and the answer was "whenever the runner
+goroutine is first scheduled" — which nothing orders, because the
+caller does not schedule it.
+
+`aiseat.Start` now calls `room.Subscribe()` itself, before it returns,
+and hands the channel to the loop. "Start returned" therefore means
+"this seat is listening from now on", which is the only ordering a
+caller can establish at all.
+
+The gap it closes is a wake, not a decision. The runner's first look is
+at the live game rather than at a notification payload, so it still sees
+the *effect* of a commit it was never told about — §2's "no payload
+ordering" is what makes that true, and it is why this was latent for a
+sprint. What a lost wake costs is the seat's next turn to act: a runner
+that wants nothing from a window returns and parks until the next
+commit, so a commit that landed inside the window is one it will never
+be woken for. At a table where the last seat is bot-seated while another
+seat's move is in flight, that bot can park for good.
+
+No change to the notification model, the channel, or `Room`. The
+edge-trigger, the non-blocking send and the "re-read, trust no payload"
+rule are all exactly as decided. The only thing that moved is which
+goroutine registers.
