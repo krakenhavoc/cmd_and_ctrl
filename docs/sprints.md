@@ -76,8 +76,8 @@ planned just-in-time from the S12 pain-point triage.
 | Post-S30 | Rolling deck-driven catalog growth                                   | 7     | TBD at S30 retro                                               | rolling    | not started |
 | S31      | AI bot seat (legal-move enumeration + tiered policy)                 | 8     | [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)   | 2027-09-26 | **done**    |
 | S32      | Playtest stabilisation, round 1                                      | 6     | [#277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/277) | —          | partial     |
-| S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | planned     |
-| S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | planned     |
+| S33      | Surviving a deploy: reconnect, resume, and schema safety             | 6     | [#515](https://github.com/krakenhavoc/cmd_and_ctrl/issues/515) | 2027-10-10 | partial     |
+| S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | partial     |
 | S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | planned     |
 
 ### How to read the status column
@@ -2586,5 +2586,103 @@ The parallel track: no dependency on the reconnect chain, and the item that deci
 - **Reaping abandoned restore points** — they accumulate and re-`ERROR` on every boot forever. Adjacent, separate.
 
 Also found during the audit and filed separately, not sprint scope: [#525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/525) — `pruneOrphanMeta` deletes the lobby metadata of an abandoned game, so ADR 0041's documented roll-back recovery destroys the game (and its replay log) rather than returning it.
+
+---
+
+## S34 — Persistent user database: people, their games, and their decks
+
+**Phase:** 6 · **Goal:** give the server a notion of a *person* — an account that outlives one game, "my games" across every table, a deck library, and the off-site backup that makes losing the data disk survivable rather than catastrophic. Design per [ADR 0051](decisions/0051-user-database.md), tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607).
+
+The server has only ever had seats. A session bound one socket to one game and one player ID; two games played by the same four friends shared no row, no key, no file. None of "show me my games", "invite the people I usually play with", "stay signed in" or "keep my decks" could be answered. ADR 0051 adds one SQLite file at `<dataDir>/db/cmdctrl.sqlite`, WAL mode, the server its only writer, opened and migrated before `RestoreFromDisk` runs. Sessions stay stateless — S33's HMAC-signed `Principal` ([#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) / [#1029](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1029)) gains exactly one field, `UserID`, so the credential shape changes once rather than twice. The engine's own files (`restore/`, `replays/`, `games/`) and the Scryfall/image/avatar caches stay on disk, untouched; only the lobby's bookkeeping — games, seats, invites — and the new `users`, `identities` and `decks` tables move into the database.
+
+### Sub-PR 0 — ADR 0051, sprint docs, tracking issue
+
+- [x] `docs/decisions/0051-user-database.md` — the eight decisions, with rejected alternatives ([#608](https://github.com/krakenhavoc/cmd_and_ctrl/pull/608))
+- [x] This section and the S34 index row — the deliverable #1030's author and later agents each found missing (this PR)
+- [x] Tracking issue [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607), whose checklist and 2026-09-19 status comment are the sub-PR map this section follows
+
+### Sub-PR 1 — `internal/db`: open, WAL, migrations runner, `VACUUM INTO` backup timer
+
+- [x] `internal/db`: `modernc.org/sqlite` (pure Go, no cgo), WAL, `foreign_keys` on, file mode `0600`; numbered SQL migrations embedded and applied in a transaction at boot, recorded in `schema_migrations`, forward-only — a database newer than the binary's embedded migrations refuses to boot (`ErrSchemaTooNew`) ([#1030](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1030))
+- [x] `VACUUM INTO` backup sweep on `CMDCTRL_DB_BACKUP_INTERVAL` (default `1h`), writing `db/cmdctrl.backup.sqlite` beside the live file ([#1030](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1030))
+- [x] Fix: each backup had a context deadline equal to the loop interval, so a short interval cancelled every backup before it finished; a fixed 10-minute bound replaces it ([#1040](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1040))
+- [x] Fix: the loop waited a full interval before its *first* backup, so a fresh host or one just restarted had no consistent copy for up to an hour; it now writes one at start and keeps its interval after ([#1050](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1050))
+- [x] Off-node backup prerequisite (ADR 0051 decision 1): nightly restic to a per-host Cloudflare R2 bucket, credentials and the restore runbook shipped from this repo's CD ([#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041), closing [#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031)); the two buckets themselves came from [HomeLab#59](https://github.com/krakenhavoc/HomeLab/pull/59)
+
+### Sub-PR 2 — `users` + `identities`
+
+- [x] Migration 0003: `users`, `identities`; rebuilds `games`, `seats` and `invites` so `created_by` / `user_id` become real foreign keys ([#1044](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1044))
+- [x] OAuth callback upserts the user and identity before it claims a seat; `Principal.UserID` lands as the single field decision 3 asked S33's [#517](https://github.com/krakenhavoc/cmd_and_ctrl/issues/517) to carry
+- [x] Discord refresh token encrypted at rest, AES-256-GCM under `CMDCTRL_IDENTITY_KEY`; an absent key discards the refresh token rather than storing it in the clear
+- [x] `games.created_by` / `invites.created_by` taken from the creating principal's `UserID` (NULL for an admin session)
+
+### Sub-PR 3 — `games` / `seats` / `invites` replace `lobby/*.json`
+
+- [x] Migration 0002: the three tables from ADR 0051 decision 4, plus `seats.pending_discord_id`; a `Store` seam behind `SQLStore` (real database) and an in-memory store (no `CMDCTRL_DATA_DIR`) ([#1034](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1034))
+- [x] Invites stored as a SHA-256 hash of the token; the "no short-circuit" scan `FindByInvite` needed against a plaintext list is gone
+- [x] Boot-time importer: each `lobby/<id>.json` becomes a `games` row, its `SeatInfo` entries become `seats` rows, its two tokens become hashed `invites` rows; the file is renamed `.json.imported`, never deleted
+
+### Sub-PR 4 — `GET /me/games` and seat linking
+
+- [x] `GET /me/games` — a signed-in user's seats, newest first, live and ended, with a `rejoin` path while the table is open and no invite tokens in the response ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059))
+- [x] `POST /me/games/{id}/session` — reclaim by user, alongside (not folded into) [#520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/520)'s unauthenticated ticket route for guests
+- [x] `seats.user_id` written on every claim by a signed-in person (invite callback, `POST /join`, `POST /games/{id}/join`); pending seats link to a new user at every Discord sign-in, not only the first
+- [x] `GET /auth/discord/link`, carried over from #59: a seated player links or re-links Discord without leaving the game, including a seated **guest** mid-game — decided and recorded in ADR 0051
+
+### Sub-PR 5 — deck library
+
+- [x] Migration 0004: `decks` (owner, source text, commanders, card count); rebuilds `seats` a second time so `deck_id` becomes a real foreign key ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061))
+- [x] A pasted or Moxfield-JSON upload from a signed-in caller additionally saves to the library (same owner + same name updates in place); a catalog pick or a `url` import never does
+- [x] `POST /games/{id}/decks/{deck_id}` seats a library deck without re-pasting, re-validated against the current catalog at seat time
+- [x] `GET /me/decks` lists a caller's library, newest first
+
+### Sub-PR 6 — tablemates, invite picker, DM invites
+
+**Open — the only sub-PR left.** [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) (the `/cc-invite-dm` slash command) is a thin client of this sub-PR's route and follows it.
+
+- [ ] Tablemates query (ADR 0051 decision 8): people who share a `seats` row with the caller, recency-ordered, offered as suggestions when inviting
+- [ ] Invite picker UI over that query
+- [ ] `POST /games/{id}/invites/dm` — the server sends the DM itself over Discord REST with a bot token; the gateway bot does not open the DM
+- [ ] [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613) — `/cc-invite-dm @user`, a thin client of the route above
+
+### Sub-PR 7 — `sessions_invalid_before`: logout-everywhere, admin remove-user
+
+- [x] `auth.WithRevocation` wraps the session authenticator; a principal with a `UserID` whose token was issued **at or before** `users.sessions_invalid_before` is refused, `401 "session revoked"` ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056))
+- [x] Watermarks cached in memory at boot and updated in place on write, so no request, WS upgrade or WS frame touches SQLite on the hot path
+- [x] `Hub.EvictUserSessions` closes a revoked user's open sockets with terminal `1000 "session revoked"`
+- [x] `POST /logout/everywhere` (caller's own user) and `POST /admin/users/{id}/revoke-sessions` (admin, any user); no row is deleted, the person can sign in again
+- [x] `CMDCTRL_IDENTITY_TTL` (default 30 days) for the `identified` session; fixed the client's expiry timer, which would have dropped a 30-day session at ~23 days by clamping `setTimeout` and never re-arming
+
+### Out of scope (explicit handoffs)
+
+- **The rest of sub-PR 6** — tablemates, the invite picker and `POST /games/{id}/invites/dm` — and [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the slash command that calls it once it ships.
+- **[#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098) — the host, not just an admin.** `games.created_by` now exists, but invite rotation ([#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057), closing [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038)) and `/cc-end` ([#1058](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1058), closing [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614)) both shipped admin-only, each with its own `TODO(#1044)`. Letting a game's creator do either without an admin token is #1098, still open.
+- **Collapsing `player` sessions into `identified`** — one durable credential per person, the `seats` table answering "which seat is yours" at upgrade time. Deferred in ADR 0051 until S33 and S34 have both settled.
+- **A second identity provider** (Microsoft Entra External ID) — the `identities` table is shaped for it; not adopted now. See ADR 0051's Deferred section for the reversal triggers.
+- **Explicit friends list, stats/ratings, spectator accounts, guest-to-user upgrade for a seat whose session is already gone** — all named and deferred in ADR 0051.
+
+### Risks / gotchas
+
+- **The off-node backup was a merge prerequisite, not a nice-to-have.** ADR 0051 decision 1 blocked sub-PR 2 (`users`/`identities`) on it explicitly: losing `cmdctrl.sqlite` loses every account, deck and invite, where losing a restore point (S33) costs one game. [#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041) shipped nightly restic backups to Cloudflare R2 on both hosts before sub-PR 2 merged; the two buckets came from [HomeLab#59](https://github.com/krakenhavoc/HomeLab/pull/59).
+- **Two backup-timing bugs surfaced standing that up.** [#1040](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1040): `RunBackupLoop` gave each `VACUUM INTO` a deadline equal to the loop interval, so a short interval cancelled every backup before it finished (caught by a CI race failure at a 20ms test interval; in production it would have meant a warning on every tick and no file ever written). [#1050](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1050): the loop waited a full interval — default 1h — before its first backup, so a fresh host or one just restarted had no consistent copy to hand the nightly job; found running the first off-site backup on the dev host, whose restic run logged `skipping db/cmdctrl.backup.sqlite (not present)`. Both fixed before the backup was relied on.
+- **Invite tokens exist as hashes once the process that minted them has restarted.** Decision 4's SHA-256-at-rest closes the timing-oracle concern ADR 0050 raised, but the plaintext link now lives only in that process's memory. A lost link cannot be shown again after a restart — only re-minted. That gap is [#1038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1038), closed by [#1057](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1057)'s `POST /games/{id}/invites/rotate`.
+- **SQLite's `PRAGMA foreign_keys = OFF` is a silent no-op inside a transaction.** Migration 0003 rebuilds `games`/`seats`/`invites` to add real foreign keys, and SQLite's documented table-rebuild procedure needs enforcement off — left on, `DROP TABLE games` fires `ON DELETE CASCADE` and deletes every seat and invite with it. The migration runner now pins one connection, sets `PRAGMA foreign_keys = OFF` before `BEGIN`, runs `PRAGMA foreign_key_check` inside the transaction before commit (a violation rolls the migration back), and restores enforcement before the connection returns to the pool. This applies to every migration, not only 0003.
+- **The deploy that carried HMAC sessions logs everyone out once.** The old in-memory tokens carry no signature, so the first deploy after S33's [#1029](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1029) reached production invalidated every live session; every deploy since carries a signed session straight through.
+
+### Exit criteria
+
+1. A signed-in person sees every game they have sat in, live or ended, from any device, at `GET /me/games` — no invite link needed. **Met** (sub-PR 4).
+2. A pasted or Moxfield deck a signed-in person uploads is kept, and can be reseated without re-pasting. **Met** (sub-PR 5).
+3. A Discord sign-in survives a restart and can be revoked, everywhere, by the person or an admin. **Met** (sub-PRs 2 and 7).
+4. Losing the data disk does not lose every account: a nightly off-site backup exists on both hosts and a restore has been rehearsed. **Met** — [#1041](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1041); restore rehearsed on the dev host 2026-09-19, evidence on [#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031).
+5. Inviting the people you usually play with is a picker over people you've shared a table with, not a pasted link. **Not met** — sub-PR 6.
+
+### Status
+
+**In production** since promotion [#1053](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1053), deployed 2026-09-19 14:06 UTC: the database (sub-PR 1), the lobby importer (13 files imported, none skipped, 11 games restored), users and identities (sub-PR 2), games/seats/invites with hashed tokens (sub-PR 3), S33's HMAC sessions, and the nightly off-site backup — prod stores 1.90 GiB as 56.8 MiB, dev 1.37 GiB as 29.7 MiB, both to Cloudflare R2 via restic.
+
+**On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
+
+**Not built:** sub-PR 6 (tablemates, invite picker, DM invites) and its follow-on, [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613).
 
 ---
