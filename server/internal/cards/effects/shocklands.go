@@ -59,6 +59,21 @@ import (
 // — putOntoBattlefieldFromZoneLocked's batch is the last one — the
 // engine takes the un-paid branch and the land enters tapped: weaker
 // than printed, never stronger. See ReplacementEvent.entryResumable.
+//
+// # The caveat says the second of those, not the first (#1051)
+//
+// The caveat below used to read "put onto the battlefield by another
+// spell always enters tapped", which #478 made an overstatement: a
+// SEARCH is the biggest "another spell" there is, and a fetched
+// shockland is prompted. What is left is the hand / library PUT —
+// Warp World, Genesis Wave, Coiling Oracle, Arboreal Grazer — whose
+// batch cannot pause without losing the simultaneity it exists for
+// (server/internal/game/battlefield_put.go:313, the one entry event
+// in the tree built without entryResumable).
+//
+// TestWhichShocklandEntrySitesOfferThePayment (shocklands_test.go)
+// holds the caveat's two halves against the engine, so the words
+// cannot go stale again without a test going red.
 
 // EntersTappedUnlessYouPayLife is "as this permanent enters, you may
 // pay N life. If you don't, it enters tapped." The prompt is queued
@@ -131,7 +146,7 @@ func init() {
 			OracleID:     t.oracleID,
 			Name:         name,
 			Completeness: CompletenessCaveats,
-			Caveats:      []string{"A shockland put onto the battlefield by another spell always enters tapped — the chance to pay 2 life is only offered when you play it as a land."},
+			Caveats:      []string{"A shockland a spell PUTS onto the battlefield out of a hand or library — Genesis Wave, Coiling Oracle, Arboreal Grazer — always enters tapped. Playing it as a land, or fetching it with a search (a fetchland, Farseek), does offer the 2 life."},
 			Replacements: []game.ReplacementEffect{
 				EntersTappedUnlessYouPayLife(name, shocklandLifeCost),
 			},
