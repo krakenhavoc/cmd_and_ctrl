@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { grantedFace, impulseActionLabel, impulseGrantFor } from "./zoneBrowser.logic";
+import {
+  grantedFace,
+  grantedFaceIndex,
+  impulseActionLabel,
+  impulseGrantFor,
+} from "./zoneBrowser.logic";
 import type { CardView } from "./protocol";
 
 // impulseExile.test.ts — S21 sub-PR 6. The grant names a player who
@@ -112,11 +117,44 @@ describe("impulse exile — a grant that names a face", () => {
       { name: "Invasion of Karsus", type_line: "Battle — Siege", mana_cost: "{2}{R}{R}" },
       { name: "Refraction Elemental", type_line: "Creature — Elemental", mana_cost: "" },
     ],
-    exile_play: { player: "me", cast_only: true, cost_override: "{0}", face: 1 },
+    exile_play: { player: "me", cast_only: true, cost_override: "{0}", faces: [1] },
   });
 
   it("names the back face on the button, not the card in the pile", () => {
     expect(grantedFace(siege(), siege().exile_play ?? null).name).toBe("Refraction Elemental");
+  });
+
+  it("names the creature half for CR 715.4's Adventure grant — face 0", () => {
+    // grantedFaceIndex has to tell "face 0" from "no face". An
+    // adventure card in exile is front-face-up already, so the button
+    // label is the same either way — what must not happen is the index
+    // coming back undefined and the Board opening its face picker on
+    // a cast with exactly one legal half.
+    const knight: CardView = {
+      instance_id: "knight",
+      name: "Foulmire Knight",
+      owner: "me",
+      controller: "me",
+      type_line: "Creature — Zombie Knight",
+      layout: "adventure",
+      active_face: 0,
+      faces: [
+        { name: "Foulmire Knight", type_line: "Creature — Zombie Knight", mana_cost: "{B}" },
+        { name: "Profane Insight", type_line: "Instant — Adventure", mana_cost: "{2}{B}" },
+      ],
+      exile_play: { player: "me", cast_only: true, faces: [0] },
+    };
+    expect(grantedFaceIndex(knight.exile_play ?? null)).toBe(0);
+    expect(grantedFace(knight, knight.exile_play ?? null).name).toBe("Foulmire Knight");
+    expect(impulseActionLabel(knight, "exile", "me")).toBe("cast");
+  });
+
+  it("names no face for a grant that opens several, or none", () => {
+    // Nothing declares a multi-face grant today, and a picker is the
+    // honest answer when one really does leave a choice.
+    expect(grantedFaceIndex({ player: "me", faces: [0, 1] })).toBeUndefined();
+    expect(grantedFaceIndex({ player: "me" })).toBeUndefined();
+    expect(grantedFaceIndex(null)).toBeUndefined();
   });
 
   it("leaves a faceless grant pointing at the card itself", () => {
@@ -134,12 +172,12 @@ describe("impulse exile — a grant that names a face", () => {
       { name: "Front Sorcery", type_line: "Sorcery" },
       { name: "Back Land", type_line: "Land" },
     ];
-    landBack.exile_play = { player: "me", face: 1 };
+    landBack.exile_play = { player: "me", faces: [1] };
     expect(impulseActionLabel(landBack, "exile", "me")).toBe("play");
 
     const castOnlyLandBack = {
       ...landBack,
-      exile_play: { player: "me", cast_only: true, face: 1 },
+      exile_play: { player: "me", cast_only: true, faces: [1] },
     };
     expect(impulseActionLabel(castOnlyLandBack, "exile", "me")).toBeNull();
 

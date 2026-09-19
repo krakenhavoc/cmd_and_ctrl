@@ -72,6 +72,16 @@ func TestRealDumpMultiFaceImport(t *testing.T) {
 			layout: "split", faces: 2, castable: 1,
 		},
 		{
+			// #719 / CR 715.3: a real adventure card imports with the
+			// creature's own cost and type line — not the joined
+			// "{B} // {2}{B}" — and offers BOTH halves, because the
+			// caster chooses which spell to cast.
+			lookup: "Foulmire Knight", name: "Foulmire Knight",
+			typeLine: "Creature — Zombie Knight", manaCost: "{B}",
+			layout: "adventure", faces: 2, castable: 2,
+			power: 1, toughness: 1,
+		},
+		{
 			lookup: "Sol Ring", name: "Sol Ring",
 			typeLine: "Artifact", manaCost: "{1}",
 			layout: "normal", faces: 0, castable: 1,

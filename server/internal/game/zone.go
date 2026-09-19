@@ -304,7 +304,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Live from S32, when a `transform` card could first be on the
 	// battlefield showing its back: a defeated Siege's back face is
 	// cast out of exile and resolves as the back face
-	// (CastPermission.Face, faceOnResolve). Without this, a
+	// (CastPermission.Faces, faceOnResolve). Without this, a
 	// Refraction Elemental that died would sit in the graveyard as a
 	// CREATURE card rather than as the battle card Invasion of
 	// Karsus, and "return target creature card from your graveyard"

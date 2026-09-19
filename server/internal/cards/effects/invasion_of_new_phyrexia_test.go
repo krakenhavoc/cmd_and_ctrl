@@ -241,7 +241,8 @@ func TestInvasionOfNewPhyrexiaBecomesTeferiAkosa(t *testing.T) {
 	if !inExile(g, id) {
 		t.Fatal("the defeated Siege was not exiled")
 	}
-	if grant := exileGrantFor(g, id); grant.Face != SiegeBackFace || grant.Player != owner.ID {
+	grant := exileGrantFor(g, id)
+	if face, ok := grant.NamedFace(); !ok || face != SiegeBackFace || grant.Player != owner.ID {
 		t.Fatalf("grant = %+v, want face 1 for the battle's controller", grant)
 	}
 

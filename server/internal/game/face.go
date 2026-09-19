@@ -115,10 +115,13 @@ const (
 	// 401 oracle IDs.
 	LayoutTransform = "transform"
 
-	// LayoutAdventure is a creature with an instant/sorcery half.
-	// The face choice picks which SPELL is cast, but the permanent
-	// that ends up on the battlefield is always face 0. Out of
-	// scope for this PR beyond the cost fix the spine gives.
+	// LayoutAdventure is a creature with an instant/sorcery half
+	// (CR 715). The face choice picks which SPELL is cast, but the
+	// permanent that ends up on the battlefield is always face 0 —
+	// the Adventure half is an instant or sorcery and never becomes
+	// one. See adventure.go for the rest of the lifecycle: the
+	// Adventure spell exiles as it resolves and its owner may cast
+	// the creature from exile for as long as it stays there.
 	LayoutAdventure = "adventure"
 
 	// LayoutSplit and LayoutPrepare carry a joined top-level cost.
@@ -197,17 +200,25 @@ func (c Card) FaceCount() int {
 //	modal_dfc          both — the faces are independently playable
 //	                   (CR 712.12a), and this is the whole reason
 //	                   the picker exists.
+//	adventure          both — CR 715.3 lets the caster choose whether
+//	                   to cast the creature or the Adventure, and the
+//	                   choice is made wherever the cast is legal from.
+//	                   Which HALF a granted cast opens is the
+//	                   permission's business, not the card's:
+//	                   CR 715.4's exile grant names the creature face
+//	                   and an impulse grant over the same card names
+//	                   none, so a zone rule here would be wrong for
+//	                   one of them.
 //	transform          front only (CR 712.4). The back is reached by
 //	                   transforming the permanent, not by casting it.
-//	adventure/split/   front only for now. Adventure's face choice is
-//	prepare            real but needs the exile-and-recast permission
-//	                   (ADR 0034 §4); split needs fusing. Deferred.
+//	split/prepare      front only for now — split needs fusing.
+//	                   Deferred.
 //	anything else      front only.
 func (c Card) CastableFaces() []int {
 	if len(c.Faces) < 2 {
 		return []int{0}
 	}
-	if c.Layout == LayoutModalDFC {
+	if c.Layout == LayoutModalDFC || c.Layout == LayoutAdventure {
 		out := make([]int, len(c.Faces))
 		for i := range c.Faces {
 			out[i] = i
@@ -249,23 +260,27 @@ func faceCastable(c Card, i int) bool {
 //     own CastableFaces decides, exactly as it always has, and a face
 //     it does not offer is ErrInvalidFace.
 //
-//  2. A grant NAMES a face. Then that face is the only one this
-//     permission opens, and it is also the ANSWER rather than a thing
-//     to check the request against: the caller's `want` is ignored.
+//  2. A grant NAMES faces. Then those are the only ones this
+//     permission opens; when it names exactly ONE — which is every
+//     grant anything declares today — that face is also the ANSWER
+//     rather than a thing to check the request against, and the
+//     caller's `want` is ignored.
 //
 // The second half of (2) is the deliberate part, and it is the one
 // place this departs from ADR 0034's "reject, never clamp" rule.
 // That rule exists because a modal DFC OFFERS a choice and silently
 // casting the wrong half of a choice is the worst available failure.
-// A face-naming grant offers no choice: there is exactly one legal
+// A single-face grant offers no choice: there is exactly one legal
 // cast of that card by that player, so there is nothing to mis-pick
 // and nothing a stricter reading would protect. Rejecting instead
 // would mean every caller — the client's exile pile, the zone
 // browser, a future enumerator entry — had to re-derive the one
 // possible answer and spell it back, and each of them forgetting is a
-// cast that fails for no reason a player can see.
+// cast that fails for no reason a player can see. A grant naming
+// SEVERAL faces is back to being a choice, so it narrows `want`
+// instead of answering for it.
 func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UUID) (int, bool) {
-	if face, ok := grant.GrantsFace(playerID); ok {
+	if faces, ok := grant.GrantsFaces(playerID); ok {
 		// A grant for a face the card does not have is REFUSED, not
 		// clamped. SetFace clamps, by design, so a card is never left
 		// incoherent — but here the clamp would land on face 0, and
@@ -274,10 +289,19 @@ func faceForCastLocked(c Card, want int, grant *CastPermission, playerID uuid.UU
 		// face never imported would become a free cast of the battle
 		// itself. Refusing costs the player a card they were owed;
 		// clamping hands them one they were not.
-		if face < 0 || face >= c.FaceCount() {
-			return 0, false
+		if len(faces) == 1 {
+			face := faces[0]
+			if face < 0 || face >= c.FaceCount() {
+				return 0, false
+			}
+			return face, true
 		}
-		return face, true
+		for _, face := range faces {
+			if face == want && want >= 0 && want < c.FaceCount() {
+				return want, true
+			}
+		}
+		return 0, false
 	}
 	if !faceCastable(c, want) {
 		return 0, false

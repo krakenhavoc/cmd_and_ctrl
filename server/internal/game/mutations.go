@@ -2218,10 +2218,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
-	// exile, when the flashback cost was paid (CR 702.34a), or to the
-	// owner's HAND, when the buyback cost was paid (CR 702.27b). This
-	// is the one call site that resolves, so it is the one that
-	// passes `true`.
+	// exile, when the flashback cost was paid (CR 702.34a) or the
+	// spell went on an Adventure (CR 715.3d), or to the owner's HAND,
+	// when the buyback cost was paid (CR 702.27b). This is the one
+	// call site that resolves, so it is the one that passes `true`.
 	return g.routeStackCardToGraveyardLocked(top, item, true)
 }
 
@@ -2419,8 +2419,11 @@ func (g *Game) resolveTopAbilityLocked() {
 // instants / sorceries and by the "countered by game rules" path
 // (sub-PR 3) when every target is illegal on resolve.
 //
-// `item` is the spell's stack item, because two costs replace this
-// destination and both are facts about what was paid:
+// THE ONE PLACE a spell leaving the stack chooses a destination.
+// Three rules replace the graveyard, and all three decide here rather
+// than in the resolution frame, because a spell has exactly one
+// destination and a reader should be able to see the whole contest in
+// one switch:
 //
 //   - FLASHBACK — "exile this card instead of putting it anywhere
 //     else any time it would leave the stack" (CR 702.34a). Every
@@ -2431,11 +2434,30 @@ func (g *Game) resolveTopAbilityLocked() {
 //     and no other exit, which is what `resolved` is for: a bought-back
 //     Capsize whose only target left in response is countered by game
 //     rules, does not resolve, and goes to the graveyard.
+//   - ADVENTURE — "exile that card instead of putting it into its
+//     owner's graveyard as that spell finishes resolving", CR 715.3d,
+//     with CR 715.4's cast permission landing on it there (#719,
+//     adventure.go). Resolution only, for the same reason buyback is:
+//     CR 715.3e leaves a countered, fizzled, discarded or milled
+//     adventure card an ordinary card in an ordinary graveyard, and
+//     `resolved` is the fact that tells them apart. Before #988 gave
+//     this helper that fact, the adventure leg had to live one frame
+//     up to get it.
 //
-// Flashback wins when a card somehow has both, because 702.34a
-// replaces every exit and buyback replaces one of them. No printed
-// card has both; the order is written down so it is a decision rather
-// than an accident.
+// `item` is the spell's stack item, because the first two are facts
+// about what was PAID; the third is a fact about the card and reads
+// the face instead.
+//
+// PRECEDENCE. Flashback wins over both, because CR 702.34a replaces
+// every exit and the other two replace one of them. Between buyback
+// and the Adventure exile the order is buyback, and that one is a
+// judgement call worth stating: both replace the same "put it into its
+// owner's graveyard as it resolves" event, so CR 616.1 would hand the
+// choice to the spell's controller, and taking buyback honours the
+// mana they actually spent to get the card back. No printed card has
+// any of these pairs — an adventure card prints no buyback and no
+// flashback — so every combination here is written down to be a
+// decision rather than an accident.
 //
 // Pass nil for the defensive no-StackMeta path, where there is no
 // cost to read, and `resolved` false with it.
@@ -2463,6 +2485,17 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// bought-back commander still gets its CR 903.9 choice and a
 		// replacement watching the stack exit still sees one.
 		r.Dst = ZoneHand
+	case resolved && castAsAdventure(c):
+		// CR 715.3d, and CR 715.4's permission rides the route's
+		// continuation rather than the next line: a route that paused
+		// on a CR 903.9 prompt finishes later, and the grant has to
+		// land when it does. See adventure.go.
+		cardID := c.InstanceID
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+		r.then = func(g *Game) error {
+			g.grantAdventureCastFromExileLocked(cardID)
+			return nil
+		}
 	}
 	_, err := g.routeCardToZoneLocked(r)
 	return err

@@ -195,7 +195,11 @@ func TestCastableFacesPerLayout(t *testing.T) {
 	}{
 		{LayoutModalDFC, 2},
 		{LayoutTransform, 1},
-		{LayoutAdventure, 1},
+		// CR 715.3: the caster chooses the creature or the Adventure,
+		// so both halves are offered (#719). Which half a GRANTED cast
+		// opens is the permission's business — see CR 715.4's exile
+		// grant in adventure.go.
+		{LayoutAdventure, 2},
 		{LayoutSplit, 1},
 		{LayoutPrepare, 1},
 		{"flip", 1},

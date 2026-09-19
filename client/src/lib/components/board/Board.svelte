@@ -560,22 +560,31 @@
   // "exile", so an impulse cast does too.
   //
   // `face` is a face the CALLER already knows, which is only ever an
-  // exile grant naming one (a defeated Siege's back face). It is not a
-  // default for the picker: a grant that names a face offers no
-  // choice, so asking would be asking a question with one answer,
-  // and the server ignores the request and uses the grant's face
-  // anyway (game/face.go, faceForCastLocked). What passing it buys is
-  // that the REST of the chain — the X picker, the targets, the modes
-  // — reads the half being cast rather than the half sitting face-up
-  // in exile.
+  // exile grant naming one — a defeated Siege's back face, or the
+  // creature half of an adventure card exiled by its own Adventure
+  // (CR 715.4). It is not a default for the picker: a grant that names
+  // a face offers no choice, so asking would be asking a question with
+  // one answer, and the server ignores the request and uses the
+  // grant's face anyway (game/face.go, faceForCastLocked). What
+  // passing it buys is that the REST of the chain — the X picker, the
+  // targets, the modes — reads the half being cast rather than the
+  // half sitting face-up in exile.
+  //
+  // Which is why the gate is "defined", not "greater than zero". A
+  // CR 715.4 grant names face 0, and a `face > 0` test read that as
+  // "no face given" and re-opened the picker on a cast with exactly
+  // one legal half. Face 0 skips cardAsFace all the same: the card
+  // already IS its front face here, and cardAsFace would strip the
+  // announce-prompt fields the server computed for it.
   //
   // The face picker's confirm re-enters at afterFace with its own
   // choices object, so the zone has to be seeded here rather than at
   // the end — otherwise a modal DFC cast out of the graveyard would
   // lose it.
   function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
-    if (face !== undefined && face > 0) {
-      afterFace(cardAsFace(card, face), fromZone ? { face, fromZone } : { face });
+    if (face !== undefined) {
+      const played = face > 0 ? cardAsFace(card, face) : card;
+      afterFace(played, fromZone ? { face, fromZone } : { face });
       return;
     }
     if (needsFacePicker(card)) {

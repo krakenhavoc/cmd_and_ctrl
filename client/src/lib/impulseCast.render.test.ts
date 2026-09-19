@@ -114,7 +114,7 @@ describe("the exile impulse button — #874", () => {
       instance_id: "siege",
       name: "Invasion of New Phyrexia",
       type_line: "Battle — Siege",
-      exile_play: grant({ face: 1, cast_only: true, cost_override: "{0}" }),
+      exile_play: grant({ faces: [1], cast_only: true, cost_override: "{0}" }),
     });
     const { container, handed } = mount([siege]);
     click(impulseButton(container)!);
@@ -124,6 +124,30 @@ describe("the exile impulse button — #874", () => {
     const plain = mount([exiled({ exile_play: grant() })]);
     click(impulseButton(plain.container)!);
     expect(plain.handed[0].face).toBeUndefined();
+  });
+
+  it("passes face 0 when CR 715.4's Adventure grant names the creature", () => {
+    // The case a bare `face?: number` could not carry: the creature
+    // half of an adventure card IS face 0, so an absent field and the
+    // real answer looked identical and the Board re-opened its face
+    // picker on a cast with exactly one legal half (#719).
+    const knight = exiled({
+      instance_id: "knight",
+      name: "Foulmire Knight",
+      type_line: "Creature — Zombie Knight",
+      mana_cost: "{B}",
+      layout: "adventure",
+      active_face: 0,
+      faces: [
+        { name: "Foulmire Knight", type_line: "Creature — Zombie Knight", mana_cost: "{B}" },
+        { name: "Profane Insight", type_line: "Instant — Adventure", mana_cost: "{2}{B}" },
+      ],
+      exile_play: grant({ faces: [0], cast_only: true }),
+    });
+    const { container, handed } = mount([knight]);
+    click(impulseButton(container)!);
+    expect(handed[0].face).toBe(0);
+    expect(handed[0].zone).toBe("exile");
   });
 
   it("shows no button at all when there is nothing behind it", () => {

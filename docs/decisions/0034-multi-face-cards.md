@@ -836,3 +836,64 @@ reason (the announce path has no frame for a half-validated cast). A
 Siege defeated on somebody else's turn is therefore lost, which is
 weaker than printed and never stronger. `effects.SiegeTransformedCastCaveat`
 is the one sentence every Siege in the catalog publishes about it.
+
+---
+
+## Amendment (2026-09-18): step 6 is done — adventure (#719, CR 715)
+
+The execution order above ends at *"6. Adventure. On top of
+`ExilePlay`."* That step has landed, and three of the things §4 and
+the sizing section said about it need correcting rather than merely
+ticking off.
+
+**1. `CastableFaces` offers both halves, and it does not ask where the
+card is.** §4's table already said adventure's announce-time face
+choice is real; what it did not settle is whether the choice depends on
+the zone. It does not. CR 715.4 restricts the cast to the creature
+*because the card was exiled as an Adventure*, not because it is in
+exile — a Ragavan that impulse-exiles an adventure card opens **both**
+halves. So the restriction lives on the PERMISSION, and a zone rule on
+the card would have been wrong for one of the two grants that can cover
+the same card in the same zone.
+
+**2. `ExilePlayPermission` does not need a "does not expire" flag.**
+§4's gap list asked for one. ADR 0066 deleted the type and the
+replacement already has the flag: `CastPermission.WhileInZone`, whose
+duration is the card's continued presence in the zone and whose
+enforcement is `Card.ObjectEpoch`. Nothing sweeps the Adventure grant;
+casting the creature mints a new object and the grant stops naming it.
+
+**3. The S32 addendum's `Face int` became `Faces []int`.** Addendum
+change 1 above says *"Zero means the grant does not speak about faces
+… non-zero names the ONE face the grant opens."* That was right for a
+Siege and unsayable for an adventure: CR 715.4 opens the creature half,
+which **is** face 0. One field, one meaning — an empty list is "no
+opinion", `[1]` is the Siege's back face, `[0]` is the Adventure grant's
+creature. `faceForCastLocked` keeps addendum change 2 exactly: a list of
+ONE is still the answer rather than a thing to check the request
+against, and only a list of several (which nothing declares) narrows
+the caller's `want`. The wire moved with it, `exile_play.face` →
+`exile_play.faces`.
+
+**Where the reroute went, and where it did not.** §4 pointed at
+`routeStackCardToGraveyardLocked`. It is not there: that helper also
+carries a spell that fizzled (CR 608.2b) and the defensive no-meta
+path, and both are CR 715.3e cards that must reach a graveyard. The
+branch is on the resolution path, one call above it, in
+`game/adventure.go`.
+
+**The caveat §4 stated plainly still stands, in a narrower form.** Both
+adventure cards in the tracked lists are blocked on their effects, so
+this makes them castable rather than functional. What ships instead is
+Foulmire Knight // Profane Insight: the cheapest printed Adventure half
+that needs no announce-time choice. A TARGETED Adventure half is
+blocked on one thing that is not in this ADR — the view publishes
+`target_mode` and `legal_targets` for the face that is UP, so a human
+client asked to cast face 1 has no picker to open. That is
+`cardAsFace`'s "when they are, the server will need to publish per-face
+prompt data" (client/src/lib/faces.ts) coming due.
+
+**Still outstanding after this:** split fusing (step 6's neighbour),
+and Omens — "shuffle it into its owner's library instead of exiling
+it", which is the same branch with a different destination and no
+grant.

@@ -726,9 +726,10 @@ Four additive changes, none of them breaking (`v` unchanged):
   `castable_here` now respects it — a granted graveyard or library
   card the gate refuses is no longer marked a cast surface.
 
-`exile_play` is unchanged in name and shape. It is now projected from
-the per-player permission store rather than from a field on the card,
-which is invisible on the wire.
+`exile_play` is unchanged in name. It is now projected from the
+per-player permission store rather than from a field on the card,
+which is invisible on the wire. Its `face` key became `faces` in #719
+— see below.
 
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
@@ -789,6 +790,20 @@ readable by every client that ignores them.
   A cast that races the stamp (the board changed between the snapshot
   and the click) comes back as `bad_request` with the clause in the
   message.
+
+**`exile_play.face` became `exile_play.faces` (#719, CR 715.4).** The
+field says which printed faces a grant opens, and it had to stop being
+a single `omitempty` integer for the reason the trap below names: zero
+is both "this grant does not speak about faces" and a real face index,
+and an adventure card's creature half — the one half CR 715.4 opens
+from exile — IS face 0. A list says "none" by being absent and "face
+0" by being `[0]`. Absent still means the card's own layout decides,
+which is what `faces` and `layout` already tell the client. Present
+means those faces and no other; every grant anything declares today
+names exactly one. Breaking within `v` only in the sense that a reader
+of the old key sees nothing rather than something wrong — the field
+was advisory, because the server settles the face from the grant
+rather than from the request.
 
 ## Schema evolution rules
 

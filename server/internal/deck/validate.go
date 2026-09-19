@@ -296,9 +296,16 @@ func identitySet(syms []string) map[string]struct{} {
 // modal_dfc is deliberately ABSENT: both its faces are playable and
 // the face picker chooses between them, so there is nothing to warn
 // about. So is `normal` and every other single-faced layout.
+//
+// `adventure` LEFT this map in #719, for the same reason modal_dfc was
+// never in it: CR 715 is played now. Both halves are offered from
+// hand, the Adventure spell exiles as it resolves (CR 715.3d) and its
+// owner may cast the creature from exile (CR 715.4). What an adventure
+// card still shares with every other card is the ordinary catalog gap
+// — an Adventure half with no Spec resolves manually, which is the
+// `unimplemented` badge's job (ADR 0037) and not a layout warning.
 var layoutSimplifications = map[string]string{
 	"transform": "imports as its front face; transforming it isn't implemented yet",
-	"adventure": "casts as its creature half only; the adventure half isn't implemented yet",
 	"split":     "casts as its left half only; fusing isn't implemented yet",
 	"prepare":   "casts as its creature half only; preparing isn't implemented yet",
 	"flip":      "imports as its front face only",

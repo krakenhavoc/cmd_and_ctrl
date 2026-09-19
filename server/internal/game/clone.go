@@ -540,10 +540,10 @@ func clonePlayer(p *Player) *Player {
 }
 
 // cloneCastPermissions deep-copies a player's granted permissions.
-// The only reference-typed field is Cards, so one reallocation per
-// permission is the whole copy; everything else is scalar, which is
-// exactly the property that lets the snapshot mirror the type rather
-// than rebuild it.
+// The only reference-typed fields are Cards and Faces, so two
+// reallocations per permission are the whole copy; everything else is
+// scalar, which is exactly the property that lets the snapshot mirror
+// the type rather than rebuild it.
 func cloneCastPermissions(in []CastPermission) []CastPermission {
 	if len(in) == 0 {
 		return nil
@@ -553,6 +553,9 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 	for i := range out {
 		if len(in[i].Cards) > 0 {
 			out[i].Cards = append([]PermissionCardRef(nil), in[i].Cards...)
+		}
+		if len(in[i].Faces) > 0 {
+			out[i].Faces = append([]int(nil), in[i].Faces...)
 		}
 	}
 	return out

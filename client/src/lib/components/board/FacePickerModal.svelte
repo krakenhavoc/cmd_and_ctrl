@@ -20,6 +20,7 @@
   import type { CardView } from "../../protocol";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { LAYOUT_ADVENTURE } from "../../faces";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -88,6 +89,14 @@
   const verb = $derived(
     (faces[chosen]?.type_line ?? "").toLowerCase().includes("land") ? "Play" : "Cast",
   );
+
+  // The rule the choice comes from, named for the player. A modal DFC
+  // and an adventure card ask the same question — "which half?" — out
+  // of two different rules, and the caption is the only place the
+  // modal says which one it is looking at.
+  const provenance = $derived(
+    card?.layout === LAYOUT_ADVENTURE ? "adventure · CR 715.3" : "modal double-faced · CR 712.12",
+  );
 </script>
 
 {#if card && faces.length > 1}
@@ -96,7 +105,7 @@
     <div class="prompt-modal face-modal">
       <h2 id="face-title">
         {card.name}
-        <span class="prompt-src" aria-hidden="true">modal double-faced · CR 712.12</span>
+        <span class="prompt-src" aria-hidden="true">{provenance}</span>
       </h2>
       <p class="prompt-hint">Which half are you playing?</p>
       <ul class="face-options">

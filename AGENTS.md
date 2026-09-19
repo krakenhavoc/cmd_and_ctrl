@@ -2677,7 +2677,35 @@ library permission needs its visibility half too** (`LibraryTopVisible`
 — `LibraryTopOwner` for "you may look at the top card any time",
 `LibraryTopRevealed` for "play with the top card revealed"): a card you
 cannot see is a card you cannot play, and every printed card in the
-family carries both clauses.
+family carries both clauses. **A permission may name FACES**
+(`Faces []int`, ADR 0034): empty means it does not speak about faces
+and the card's own `CastableFaces` decides; a list NARROWS to those and
+no other, and a list of one is also the ANSWER — the caller's requested
+face is ignored, because there is exactly one legal cast. A defeated
+Siege's grant is `Faces: []int{1}` and CR 715.4's Adventure grant is
+`Faces: []int{0}`, which is why it is a list: zero cannot mean both
+"no opinion" and "the front face".
+
+**Adventure cards (CR 715, #719, ADR 0034 step 6).** A card file writes
+nothing for the lifecycle — the engine owns it
+([game/adventure.go](server/internal/game/adventure.go)). What a card
+file does is register **both faces**: the creature under the bare
+oracle ID and the Adventure half under `"<oracle_id>#1"`, the same
+composite keyspace a Siege's back face and the sixty MDFC land backs
+live in. See
+[foulmire_knight.go](server/internal/cards/effects/foulmire_knight.go).
+The creature's entry is usually a bare `Completeness` declaration plus
+its `PrintedKeywords` — without it the whole card wears the
+"unimplemented" badge in hand, because the Adventure's text makes
+`NeedsCatalogEffect` true for the card. **One thing is still missing,
+and it decides which adventure cards are worth writing:** the view
+publishes `target_mode` and `legal_targets` for the face that is UP, so
+a human client asked to cast face 1 has no target picker. An Adventure
+half that TARGETS (Stomp, Petty Theft, Swift End) is therefore blocked
+on per-face announce data, while one that does not (Profane Insight,
+Fertile Footsteps, Heart's Desire) ships today. The bot enumerator is
+already face-correct, and an uncatalogued adventure card is unaffected
+— it has no announce data on either face and resolves by hand.
 
 **The window is a `game.Duration`** (#945,
 [ADR 0063](docs/decisions/0063-durations-and-control.md)) — the same

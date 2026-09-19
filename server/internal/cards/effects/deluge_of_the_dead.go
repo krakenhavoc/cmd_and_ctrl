@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // simplification in that sprint: the defeated Siege was exiled and
 // its back face was never cast, because nothing in the multi-face
 // model could say "cast THAT FACE of this exiled card". S32 closes
-// that — CastPermission.Face, faceForCastLocked and
+// that — CastPermission.Faces, faceForCastLocked and
 // faceOnResolve — so the back face finally becomes reachable and
 // finally needs rules.
 //
