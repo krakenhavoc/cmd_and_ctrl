@@ -1933,3 +1933,392 @@ func TestDiesTriggersFromOneWrathStackAPNAP(t *testing.T) {
 		t.Errorf("Doomed Traveler dies: got %d Spirit tokens, want 1", spirits)
 	}
 }
+
+// --- b5-instants: Counterflux, Devious Cover-Up, Discombobulate,
+// Blue Sun's Zenith, Finale of Revelation --------------------------
+
+const (
+	counterfluxOracle        = "8c983da8-1436-4c06-af9c-91b72cab48c1"
+	deviousCoverUpOracle     = "feb221fb-59bf-4671-a53f-1bbe8e9c2ca9"
+	discombobulateOracle     = "b58d7a20-4bcd-4c33-8cda-955362525f48"
+	blueSunsZenithOracle     = "613a41b8-0b4f-4995-bf1e-ca41f96e6438"
+	finaleOfRevelationOracle = "755bd5d8-67f1-4f24-a4e8-d98edf2f2e03"
+	b5ShockOracle            = "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d"
+)
+
+func TestCounterfluxCountersOpponentsSpell(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opponent := g.Seats[1]
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	shockID := uuid.New()
+	opponent.Hand.PushTop(game.Card{
+		InstanceID: shockID, Name: "Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: opponent.ID, Controller: opponent.ID,
+	})
+	if err := g.CastSpell(opponent.ID, shockID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: caster.ID}},
+	}); err != nil {
+		t.Fatalf("Opponent CastSpell Shock: %v", err)
+	}
+
+	fluxID := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: fluxID, Name: "Counterflux", TypeLine: "Instant",
+		OracleID: counterfluxOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	if err := g.CastSpell(caster.ID, fluxID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: shockID}},
+	}); err != nil {
+		t.Fatalf("Caster CastSpell Counterflux: %v", err)
+	}
+
+	passPriorityAroundTable(t, g)
+
+	if !opponent.Graveyard.Contains(shockID) {
+		t.Error("countered Shock not in opponent graveyard")
+	}
+	if !caster.Graveyard.Contains(fluxID) {
+		t.Error("Counterflux not in caster graveyard")
+	}
+}
+
+// An overloaded Counterflux sweeps every spell an OPPONENT controls
+// and leaves the caster's own spell on the stack to resolve normally
+// — OpponentControls() is what draws that line, both in the target
+// clause and in the overload sweep.
+func TestCounterfluxOverloadSweepsOpponentsSpellsOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opp1 := g.Seats[1]
+	opp2 := g.Seats[2]
+	casterLifeBefore := caster.Life
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	mine := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: mine, Name: "My Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	opp1LifeBefore := opp1.Life
+	if err := g.CastSpell(caster.ID, mine, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp1.ID}},
+	}); err != nil {
+		t.Fatalf("Caster CastSpell own Shock: %v", err)
+	}
+
+	shock1 := uuid.New()
+	opp1.Hand.PushTop(game.Card{
+		InstanceID: shock1, Name: "Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: opp1.ID, Controller: opp1.ID,
+	})
+	if err := g.CastSpell(opp1.ID, shock1, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: caster.ID}},
+	}); err != nil {
+		t.Fatalf("Opponent 1 CastSpell Shock: %v", err)
+	}
+
+	shock2 := uuid.New()
+	opp2.Hand.PushTop(game.Card{
+		InstanceID: shock2, Name: "Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: opp2.ID, Controller: opp2.ID,
+	})
+	if err := g.CastSpell(opp2.ID, shock2, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: caster.ID}},
+	}); err != nil {
+		t.Fatalf("Opponent 2 CastSpell Shock: %v", err)
+	}
+
+	castWithAltCost(t, g, "Counterflux", "Instant", counterfluxOracle, "overload")
+
+	passPriorityAroundTable(t, g)
+
+	if !opp1.Graveyard.Contains(shock1) {
+		t.Error("overloaded Counterflux left an opponent's spell on the stack uncountered")
+	}
+	if !opp2.Graveyard.Contains(shock2) {
+		t.Error("overloaded Counterflux left the other opponent's spell on the stack uncountered")
+	}
+	if caster.Life != casterLifeBefore {
+		t.Errorf("caster took damage from a countered spell: %d, want %d", caster.Life, casterLifeBefore)
+	}
+	if !caster.Graveyard.Contains(mine) {
+		t.Error("caster's own spell should have resolved normally, not been countered")
+	}
+	if opp1.Life != opp1LifeBefore-2 {
+		t.Errorf("caster's own Shock should have dealt its damage: opp1 life %d, want %d", opp1.Life, opp1LifeBefore-2)
+	}
+}
+
+// Devious Cover-Up's second sentence is a genuinely separate target
+// clause (#764 Clauses), answered at announce alongside the spell —
+// not a reflexive "when you do" chosen later.
+func TestDeviousCoverUpCountersAndShufflesGraveyardCards(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opponent := g.Seats[1]
+
+	gy1 := pushGraveyardCardForTest(caster, "Dead One")
+	gy2 := pushGraveyardCardForTest(caster, "Dead Two")
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	shockID := uuid.New()
+	opponent.Hand.PushTop(game.Card{
+		InstanceID: shockID, Name: "Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: opponent.ID, Controller: opponent.ID,
+	})
+	if err := g.CastSpell(opponent.ID, shockID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: caster.ID}},
+	}); err != nil {
+		t.Fatalf("Opponent CastSpell Shock: %v", err)
+	}
+
+	coverUpID := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: coverUpID, Name: "Devious Cover-Up", TypeLine: "Instant",
+		OracleID: deviousCoverUpOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	// No explicit Slot: the first ref fills the mandatory "target
+	// spell" clause (Max 1), the rest spill into the up-to-four
+	// graveyard clause — assignAnnouncedSlots' compatibility fill.
+	if err := g.CastSpell(caster.ID, coverUpID, game.CastSpellParams{
+		Targets: []game.TargetRef{
+			{Kind: game.TargetCard, ID: shockID},
+			{Kind: game.TargetCard, ID: gy1},
+			{Kind: game.TargetCard, ID: gy2},
+		},
+	}); err != nil {
+		t.Fatalf("Caster CastSpell Devious Cover-Up: %v", err)
+	}
+
+	passPriorityAroundTable(t, g)
+
+	if !opponent.Graveyard.Contains(shockID) {
+		t.Error("countered Shock should land in its owner's graveyard (the caveated, non-exile path)")
+	}
+	if caster.Graveyard.Contains(gy1) || caster.Graveyard.Contains(gy2) {
+		t.Error("the chosen graveyard cards should have left the graveyard")
+	}
+	if !caster.Library.Contains(gy1) || !caster.Library.Contains(gy2) {
+		t.Error("the chosen graveyard cards should be shuffled into the library")
+	}
+	if !caster.Graveyard.Contains(coverUpID) {
+		t.Error("Devious Cover-Up itself should be in its owner's graveyard")
+	}
+}
+
+// Discombobulate counters, then queues the look-at-top-four prompt —
+// nothing moves until it's answered.
+func TestDiscombobulateCountersThenQueuesLookAtTopFour(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opponent := g.Seats[1]
+	seedLibrary(caster, "First", "Second", "Third", "Fourth")
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	shockID := uuid.New()
+	opponent.Hand.PushTop(game.Card{
+		InstanceID: shockID, Name: "Shock", TypeLine: "Instant",
+		OracleID: b5ShockOracle, Owner: opponent.ID, Controller: opponent.ID,
+	})
+	if err := g.CastSpell(opponent.ID, shockID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: caster.ID}},
+	}); err != nil {
+		t.Fatalf("Opponent CastSpell Shock: %v", err)
+	}
+
+	discomboID := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: discomboID, Name: "Discombobulate", TypeLine: "Instant",
+		OracleID: discombobulateOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	if err := g.CastSpell(caster.ID, discomboID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: shockID}},
+	}); err != nil {
+		t.Fatalf("Caster CastSpell Discombobulate: %v", err)
+	}
+
+	passPriorityAroundTable(t, g)
+
+	if !opponent.Graveyard.Contains(shockID) {
+		t.Error("countered Shock not in opponent graveyard")
+	}
+	c := lookAtTopChoiceFor(g, caster.ID)
+	if c == nil {
+		t.Fatal("Discombobulate queued no look-at-top-four prompt")
+	}
+	if len(c.ScryCards) != 4 {
+		t.Errorf("looked at %d cards, want 4", len(c.ScryCards))
+	}
+	if got := libraryTopNames(caster, 4); got[0] != "First" || got[3] != "Fourth" {
+		t.Errorf("library is %v before the answer; nothing should move yet", got)
+	}
+}
+
+func TestBlueSunsZenithDrawsThenShufflesItselfIn(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	opponent := g.Seats[1]
+	oppHandBefore := opponent.Hand.Size()
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	id := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Blue Sun's Zenith", TypeLine: "Instant",
+		OracleID: blueSunsZenithOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	if err := g.CastSpell(caster.ID, id, game.CastSpellParams{
+		XValue:  3,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opponent.ID}},
+	}); err != nil {
+		t.Fatalf("CastSpell Blue Sun's Zenith: %v", err)
+	}
+
+	passPriorityAroundTable(t, g)
+
+	if got := opponent.Hand.Size() - oppHandBefore; got != 3 {
+		t.Errorf("opponent drew %d cards, want 3", got)
+	}
+	if caster.Graveyard.Contains(id) {
+		t.Error("Blue Sun's Zenith should not go to the graveyard")
+	}
+	if !caster.Library.Contains(id) {
+		t.Error("Blue Sun's Zenith should be shuffled into its owner's library")
+	}
+}
+
+func TestFinaleOfRevelationLowXJustDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	id := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Finale of Revelation", TypeLine: "Sorcery",
+		OracleID: finaleOfRevelationOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	handBefore := caster.Hand.Size()
+	if err := g.CastSpell(caster.ID, id, game.CastSpellParams{XValue: 3}); err != nil {
+		t.Fatalf("CastSpell Finale of Revelation: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got, want := caster.Hand.Size(), handBefore-1+3; got != want {
+		t.Errorf("hand size %d, want %d (cast the spell, drew 3)", got, want)
+	}
+	if !g.Exile.Contains(id) {
+		t.Error("Finale of Revelation should exile itself")
+	}
+	if caster.Graveyard.Contains(id) {
+		t.Error("Finale of Revelation should not land in the graveyard")
+	}
+	if caster.MaxHandSize == game.NoMaxHandSize {
+		t.Error("X<10 should not grant no maximum hand size")
+	}
+}
+
+func TestFinaleOfRevelationHighXShufflesDrawsUntapsAndGrantsNoMaxHandSize(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+
+	gy1 := pushGraveyardCardForTest(caster, "Dead One")
+	gy2 := pushGraveyardCardForTest(caster, "Dead Two")
+
+	var lands []uuid.UUID
+	for i := 0; i < 6; i++ {
+		landID := uuid.New()
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: landID, Name: "Island", TypeLine: "Basic Land — Island",
+			Owner: caster.ID, Controller: caster.ID, Tapped: true,
+		})
+		lands = append(lands, landID)
+	}
+
+	libBefore := caster.Library.Size()
+
+	id := uuid.New()
+	caster.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Finale of Revelation", TypeLine: "Sorcery",
+		OracleID: finaleOfRevelationOracle, Owner: caster.ID, Controller: caster.ID,
+	})
+	handBefore := caster.Hand.Size()
+	if err := g.CastSpell(caster.ID, id, game.CastSpellParams{XValue: 10}); err != nil {
+		t.Fatalf("CastSpell Finale of Revelation: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	if got, want := caster.Hand.Size(), handBefore-1+10; got != want {
+		t.Errorf("hand size %d, want %d (cast the spell, drew 10)", got, want)
+	}
+	if caster.Graveyard.Contains(gy1) || caster.Graveyard.Contains(gy2) {
+		t.Error("the graveyard should have been shuffled into the library")
+	}
+	// The shuffle happens BEFORE the draw, so a shuffled-in graveyard
+	// card can legally end up drawn into hand rather than staying in
+	// the library — that's the shuffle working, not a bug. The only
+	// thing pinned here is that neither card is still stuck in the
+	// graveyard.
+	if (caster.Library.Contains(gy1) || caster.Hand.Contains(gy1)) == false {
+		t.Error("Dead One should have left the graveyard for the library (and possibly then the hand)")
+	}
+	if (caster.Library.Contains(gy2) || caster.Hand.Contains(gy2)) == false {
+		t.Error("Dead Two should have left the graveyard for the library (and possibly then the hand)")
+	}
+	if got, want := caster.Library.Size(), libBefore+2-10; got != want {
+		t.Errorf("library size %d, want %d (2 shuffled in, 10 drawn)", got, want)
+	}
+	untapped := 0
+	for _, c := range g.Battlefield.Cards {
+		for _, lid := range lands {
+			if c.InstanceID == lid && !c.Tapped {
+				untapped++
+			}
+		}
+	}
+	if untapped != 5 {
+		t.Errorf("untapped %d of the caster's lands, want 5", untapped)
+	}
+	if caster.MaxHandSize != game.NoMaxHandSize {
+		t.Error("X>=10 should grant no maximum hand size for the rest of the game")
+	}
+	if !g.Exile.Contains(id) {
+		t.Error("Finale of Revelation should exile itself")
+	}
+}

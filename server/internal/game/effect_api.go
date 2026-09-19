@@ -2918,3 +2918,31 @@ func (g *Game) addManaSlotsLocked(
 	}
 	return nil
 }
+
+// SetMaxHandSizeForEffect is SetMaxHandSize's lock-free twin, for a
+// SPELL that grants "you have no maximum hand size for the rest of
+// the game" (Finale of Revelation) rather than a permanent's static
+// ability (Reliquary Tower's Spec.NoMaxHandSize, which is derived
+// from the battlefield at cleanup and lapses the moment the
+// permanent does — wrong for a effect that has to outlive the spell
+// that granted it, and outlive every permanent on the board).
+//
+// Writes the same Player.MaxHandSize field SetMaxHandSize does, and
+// EffectiveMaxHandSizeLocked checks it FIRST, before consulting the
+// battlefield — so this is a permanent per-player grant with no
+// battlefield dependency, exactly as the printed clause reads.
+//
+// `value` is clamped to NoMaxHandSize (-1) for "no cap"; any other
+// negative value is rejected with ErrInvalidParam. Caller must hold
+// g.mu.
+func (g *Game) SetMaxHandSizeForEffect(playerID uuid.UUID, value int) error {
+	if value < NoMaxHandSize {
+		return ErrInvalidParam
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.MaxHandSize = value
+	return nil
+}
