@@ -14,6 +14,7 @@
   import type { CardView, GameView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
   import { dealIn, dealOut } from "../../animations";
+  import { fanAngle, fanLift, handOverlap } from "../../handFan";
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { canCastFromHand, type Legality } from "../../timing";
@@ -84,24 +85,12 @@
   });
   const layout = $derived($settings.display.handLayout);
 
-  // Per-card fan angle in degrees. Caps the total fan spread so very
-  // large hands don't tip cards past sideways. Matches the Pixi math
-  // from drawHandFan in the old table.ts.
-  function fanAngle(i: number, n: number): number {
-    if (n <= 1) return 0;
-    const maxStepDeg = 7; // ~0.12 rad
-    const maxTotalDeg = 60;
-    const step = Math.min(maxStepDeg, maxTotalDeg / (n - 1));
-    const totalDeg = step * (n - 1);
-    return -totalDeg / 2 + i * step;
-  }
-
-  function fanLift(i: number, n: number): number {
-    if (n <= 1) return 0;
-    const center = (n - 1) / 2;
-    const distFromCenter = Math.abs(i - center);
-    return Math.round(distFromCenter * 3);
-  }
+  // #956 — the resting overlap for this layout, tightened for large
+  // hands so the fan cannot outgrow its panel and get clipped. The
+  // three resting values are the ones the CSS used to hard-code per
+  // layout; handOverlap only ever tightens them.
+  const overlapBase = $derived(layout === "stacked" ? 0.85 : isSelf ? 0.5 : 0.62);
+  const overlap = $derived(handOverlap(cards.length, overlapBase));
 
   function handleCardClick(card: CardView): void {
     if (!isSelf) return;
@@ -140,6 +129,7 @@
   class="hand"
   class:opponent={!isSelf}
   class:stacked={layout === "stacked"}
+  style:--hand-overlap={overlap}
   aria-label={isSelf ? "your hand" : "opponent hand"}
 >
   {#each cards as c, i (c.instance_id)}
@@ -189,6 +179,10 @@
        board (see .hand:hover) to reveal full cards without pushing
        layout. PlayerPanel's .hand-zone reserves the same 62%. */
     max-height: calc(var(--card-h, 168px) * 0.62);
+    /* #956 — never wider than the zone that holds it. The fan's own
+       width is bounded by --hand-overlap below; this is the backstop
+       for the case where it is not. */
+    max-width: 100%;
     overflow: hidden;
     position: relative;
     z-index: 1;
@@ -213,32 +207,26 @@
     max-height: calc(var(--card-h, 168px) * 0.55);
     overflow: hidden;
   }
+  /* #956 — the overlap is handOverlap()'s answer, published by the
+     markup as --hand-overlap, rather than three hard-coded per-layout
+     values. A constant let the fan's width grow linearly with the
+     card count (1 + (n-1)/2 card-widths for the self hand: 4 wide at
+     seven cards, 7.5 at fourteen) until .panel's overflow: hidden cut
+     it off — and --card-h's 168px floor means the cards do not shrink
+     to fit. The resting values are unchanged: 0.5 self, 0.62 for an
+     opponent's face-down fan, 0.85 stacked; only large hands tighten.
+     The fallback matches the self hand's resting value.
+
+     The overlap is sized relative to the card width (--card-w, which
+     cascades from the card-size setting) rather than the container,
+     because a % margin-left in flexbox resolves against the flex
+     container, pushing cards off-screen. */
   .hand-slot {
-    margin-left: calc(var(--card-w, 80px) * -0.5);
+    margin-left: calc(var(--card-w, 80px) * -1 * var(--hand-overlap, 0.5));
     transform-origin: bottom center;
     transition: transform 80ms ease;
   }
   .hand-slot:first-child {
-    margin-left: 0;
-  }
-  .hand.opponent .hand-slot {
-    margin-left: calc(var(--card-w, 80px) * -0.62);
-  }
-  .hand.opponent .hand-slot:first-child {
-    margin-left: 0;
-  }
-  /* Stacked layout: drop the fan rotation and tightly overlap the
-     cards into a deck-like pile. The overlap is sized relative to
-     the card width (--card-w, which cascades from the card-size
-     setting) rather than the container, because a % margin-left in
-     flexbox resolves against the flex container, pushing cards off-
-     screen. 85% overlap leaves a 15% sliver of each trailing card
-     visible — enough to see how many are in hand without spreading
-     them across the strip. */
-  .hand.stacked .hand-slot {
-    margin-left: calc(var(--card-w, 80px) * -0.85);
-  }
-  .hand.stacked .hand-slot:first-child {
     margin-left: 0;
   }
   /* Stacked layout needs left alignment — justify-content: center
@@ -251,9 +239,9 @@
   }
   /* Opponent hand sizes are inherited from the parent
      .panel.opponent via --card-w/--card-h, so no explicit override
-     here. The fan offset stays tighter (see .hand.opponent .hand-slot
-     above) because face-down stacks read better tightly packed than
-     the self hand's wider fan. */
+     here. Their resting fan is tighter than the self hand's (0.62 vs
+     0.5, see overlapBase in the script) because face-down stacks read
+     better tightly packed. */
   .empty {
     font-size: 11px;
     color: var(--fg-dim);
