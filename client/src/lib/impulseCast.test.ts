@@ -1,7 +1,18 @@
 import { describe, it, expect } from "vitest";
 
 import { cardAsFace, needsFacePicker } from "./faces";
-import { applyCastChoices, castLocksXAtZero, hasXCost } from "./targeting";
+import {
+  alternativeCostByKey,
+  alternativeCostsOf,
+  applyCastChoices,
+  castLocksXAtZero,
+  discardCostOf,
+  hasXCost,
+  isModal,
+  modeSteps,
+  stepsFor,
+  tapCostOf,
+} from "./targeting";
 import type { CardView } from "./protocol";
 
 // impulseCast.test.ts — #874, the other half. The render test pins
@@ -104,5 +115,80 @@ describe("an impulse cast of a granted FACE", () => {
     const params: Record<string, unknown> = { instance_id: siege.instance_id };
     applyCastChoices(params, { fromZone: "exile", face: 1 });
     expect(params).toEqual({ instance_id: "impulsed", from_zone: "exile", face: 1 });
+  });
+});
+
+describe("the fields the chain reads off an exiled card (#978)", () => {
+  // Before #978 the server stamped `legal_targets`, `modes`,
+  // `additional_cost`, `tap_cost` and `alternative_costs` on cards in
+  // hand, the command zone, the graveyard and the library top — all
+  // per-seat zones. Exile is shared, so an exiled card arrived with
+  // `target_mode` and `mana_cost` and nothing else, and every seam
+  // below fell back to a heuristic or to nothing at all.
+  //
+  // These read exactly what the Board's chain reads, so they fail if
+  // the projection ever stops stamping the shared zone.
+
+  it("walks the server's legal set instead of guessing at targets", () => {
+    const card = exiled({
+      exile_play: { player: "me" },
+      legal_targets: { min: 1, max: 1, cards: ["bear"], players: ["them"] },
+    });
+    const steps = stepsFor("any", card.legal_targets, undefined, 0);
+    expect(steps).toHaveLength(1);
+    expect(steps[0].legal?.cards.has("bear")).toBe(true);
+    expect(steps[0].legal?.players.has("them")).toBe(true);
+    expect(steps[0].max).toBe(1);
+  });
+
+  it("opens the mode picker for an exiled modal spell", () => {
+    const plain = exiled({ exile_play: { player: "me" } });
+    expect(isModal(plain)).toBe(false);
+
+    const charm = exiled({
+      name: "Test Charm",
+      exile_play: { player: "me" },
+      modes: {
+        prompt: "Choose one —",
+        min: 1,
+        max: 1,
+        options: [
+          { label: "Draw a card" },
+          {
+            label: "Deal 2 damage to target creature",
+            target_mode: "creature",
+            legal_targets: { min: 1, max: 1, cards: ["bear"] },
+          },
+        ],
+      },
+    });
+    expect(isModal(charm)).toBe(true);
+    // The untargeted mode asks for no walk; the targeted one walks
+    // the set the server stamped on the EXILED card.
+    expect(modeSteps(charm, [0])).toHaveLength(0);
+    const steps = modeSteps(charm, [1]);
+    expect(steps).toHaveLength(1);
+    expect(steps[0].legal?.cards.has("bear")).toBe(true);
+  });
+
+  it("finds the additional cost, the tap cost and the granted offer", () => {
+    const card = exiled({
+      exile_play: { player: "me" },
+      additional_cost: { discard_cards: 1, label: "As an additional cost, discard a card" },
+      tap_cost: { key: "convoke", label: "Convoke", max: 3 },
+      alternative_costs: [{ key: "flashback", label: "Flashback", mana_cost: "{1}{R}" }],
+    });
+    expect(discardCostOf(card)).toBe(1);
+    expect(tapCostOf(card)?.key).toBe("convoke");
+    expect(alternativeCostByKey(card, "flashback")?.mana_cost).toBe("{1}{R}");
+  });
+
+  it("is still the bystander's empty card — the stamps are the holder's", () => {
+    // What the server sends a viewer who is not the grant's holder:
+    // the card and the public grant, and none of the announce surface.
+    const bystander = exiled({ exile_play: { player: "me" } });
+    expect(bystander.legal_targets).toBeUndefined();
+    expect(isModal(bystander)).toBe(false);
+    expect(alternativeCostsOf(bystander)).toEqual([]);
   });
 });

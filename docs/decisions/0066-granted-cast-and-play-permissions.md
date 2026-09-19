@@ -454,3 +454,64 @@ cleanup. That is a semantic shift in an existing field, which is what
 `SnapshotSchemaVersion` is for. `Player.CastPermissions` stays classified
 `carried` in `snapshot_drift_test.go`: `Duration` is pure data, so the type is
 still embedded by value and still marshals.
+
+
+## Amendment (2026-09-18, #978): the view stamps exile through the engine's castability predicate
+
+Decision 7 gave exile `exile_play` and left it there. Everything else the
+cast dialog needs — `legal_targets`, `clauses`, `modes`, `additional_cost`,
+`tap_cost`, `target_cost_notes`, `phyrexian_symbols`, `alternative_costs` —
+was stamped by `stampLegalTargets`, which walks hand, the command zone, the
+graveyard and the library top. All four are per-seat zones. Exile is a shared
+top-level one, so an exiled card a permission opened arrived carrying
+`target_mode` and `mana_cost` and nothing else, and once #977 routed the
+impulse button through the one cast chain that chain had nothing to read: an
+exiled modal spell got no mode picker and a targeted one relied on client
+heuristics.
+
+**One stamping function, called once per zone.** The per-card body of
+`stampLegalTargets` is now `stampCastOffers(g, caster, card, key, zone,
+granted)`. `stampLegalTargets` calls it for the four per-seat zones;
+`stampGrantedPermissions` calls it for exile, where it already holds the
+permission the engine answered with. Not a copy — the graveyard's answer and
+exile's come out of the same lines.
+
+**The gate is `CastPermissionForLocked`**, re-asked for the holder
+`CastPermissionOnCardForEffect` named. That matters twice: it is the function
+`CastSpell` validates with and `legal/cast.go` enumerates with, so the three
+cannot disagree; and it refuses a window that has not OPENED yet (warp's
+CR 702.185a floor), which is exactly right — the grant is still shown, so the
+client can grey the button, but there is no cast to compute a target set for.
+
+**The key is the granted FACE's** (ADR 0034). `game.CatalogKey` of the card
+with the permission's face applied, so a defeated Siege's back-face cast
+ships the back face's modes and target clause rather than the battle's. The
+per-seat zones keep reading the bare oracle ID, because no permission there
+names a face.
+
+**The stamps are per viewer, and that is new for a shared zone.**
+`CardView.castOffersFor` (unexported, never on the wire) carries the seat the
+stamps were computed for, and `FilterViewFor` drops them for everybody else —
+spectators and admins included, for the reason `legalMovesFor` gives. A legal
+target set is narrowed by hexproof, shroud and "target opponent", so one
+seat's answer is not another's to read. Everywhere else this was implied by
+the zone belonging to the seat.
+
+`redactCardForViewer` also learned to clear `modes`, `additional_cost`,
+`legal_targets`, `clauses` and `cant_cast` for a non-knower. Before this pass
+those only ever landed on a card in a zone the filter drops wholesale, so
+nothing cleared them; a face-down foretold card in exile is a card in a SHARED
+zone that carries them, and "this spell chooses two of three modes" names a
+card.
+
+**Two things ADR 0073 gets for free, because it stamps through the same
+function.** `optional_costs` and `cant_cast` now reach an exiled or
+library-top card as well: a permission opens a ZONE, and a cast restriction
+shuts the cast anyway (CR 101.2). And the precedence between them is fixed
+here — `stampGrantedPermissions` runs after `stampLegalTargets`, and it used
+to set `castable_here` back to true over the gate's refusal, so a granted
+flashback under Grafdigger's Cage rendered a button the engine would reject.
+It now leaves `castable_here` alone when `cant_cast` is set.
+
+Additive on the wire (`v` unchanged): a client that ignores the new fields on
+an exiled card behaves exactly as it did.
