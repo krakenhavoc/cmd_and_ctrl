@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     CardView,
     GameView,
+    LegalTargetsView,
     ManaAbilityView,
     ZoneView,
   } from "../../protocol";
@@ -56,7 +57,9 @@
     castLocksXAtZero,
     isModal,
     discardCostOf,
-    sacrificeCostOptions,
+    castSacrificeClause,
+    castSacrificeLabel,
+    optionalCostsOf,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -252,13 +255,19 @@
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
   let altCostPromptChoices: CastChoices = {};
-  function confirmAltCost(key: string | undefined): void {
+  function confirmAltCost(key: string | undefined, optional: number[]): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
     altCostPromptCard = null;
     altCostPromptChoices = {};
     if (!card) return;
-    afterAltCost(card, key === undefined ? choices : { ...choices, altCost: key });
+    // ADR 0073 (#664): one prompt answers both halves of CR 601.2b —
+    // the cost paid INSTEAD of the mana cost, and the costs paid ON
+    // TOP of whichever that turns out to be. They compose, so neither
+    // branch of `key` drops the other.
+    let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
+    if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    afterAltCost(card, next);
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -300,10 +309,17 @@
 
   // #747: in the server's payment order, not board order, so the
   // picker's "Choose for me" takes the top of the list.
+  // ADR 0073: WHICH clause this cast is paying is settled when the
+  // prompt opens, not re-derived while it is open. The announcement
+  // cannot change underneath an open picker — the optional costs were
+  // claimed two prompts ago — and stashing it keeps the derived option
+  // list depending only on the board, which is the thing that CAN
+  // change while the player is choosing.
+  let sacrificePromptClause = $state<LegalTargetsView | undefined>(undefined);
+  let sacrificePromptLabel = $state("a permanent");
   const castSacrificeOptions = $derived.by(() => {
-    const card = sacrificePromptCard;
-    if (!card) return [];
-    return orderSacrificeOptions(view.battlefield.cards, sacrificeCostOptions(card));
+    if (!sacrificePromptCard) return [];
+    return orderSacrificeOptions(view.battlefield.cards, sacrificePromptClause?.cards);
   });
 
   function confirmSacrificeCost(instanceIDs: string[]): void {
@@ -417,7 +433,15 @@
   }
 
   function afterDiscardCost(card: CardView, choices: CastChoices): void {
-    if (sacrificeCostOptions(card) !== undefined) {
+    // ADR 0073: a NON-MANA optional cost (Constant Mists'
+    // "Buyback—Sacrifice a land") is paid through the same picker the
+    // mandatory clause opens. castSacrificeClause picks whichever
+    // clause this cast is actually paying, so the modal's options,
+    // count and label all come from one place.
+    const clause = castSacrificeClause(card, choices);
+    if (clause !== undefined) {
+      sacrificePromptClause = clause;
+      sacrificePromptLabel = castSacrificeLabel(card, choices);
       sacrificePromptChoices = choices;
       sacrificePromptCard = card;
       return;
@@ -516,7 +540,11 @@
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
-    if (alternativeCostsOf(card).length > 0) {
+    // ADR 0073: a card with kicker and no alternative cost opens the
+    // same picker with only the add-ons showing — one prompt for one
+    // question (CR 601.2b), rather than a second modal asking the
+    // other half of it.
+    if (alternativeCostsOf(card).length > 0 || optionalCostsOf(card).length > 0) {
       altCostPromptChoices = choices;
       altCostPromptCard = card;
       return;
@@ -1406,9 +1434,9 @@
   />
   <SacrificeCostModal
     source={sacrificePromptCard}
-    label={sacrificePromptCard?.additional_cost?.label ?? "a permanent"}
+    label={sacrificePromptLabel}
     options={castSacrificeOptions}
-    count={sacrificeCount(sacrificePromptCard?.additional_cost?.sacrifice_options)}
+    count={sacrificeCount(sacrificePromptClause)}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;

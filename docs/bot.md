@@ -869,6 +869,55 @@ every legal multiset of the bullets the prompt carries, capped by the
 same budget, and labels each move with the bullets rather than their
 indexes so the decision log reads.
 
+## Enumerating an optional additional cost (#664)
+
+A card with kicker, multikicker or buyback is not one cast, it is
+several: an unkicked Burst Lightning and a kicked one are different
+moves at different prices with different effects, and a bot only ever
+offered the cheap one could never kick anything. Each announced set
+walks the whole modes x targets x payments expansion on its own, so
+the policy for choosing the sets is what keeps that product finite
+([ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)
+§9):
+
+- **Decline everything, or pay exactly ONE of the offered costs.**
+  Paying two different optional costs at once (Thornscape Battlemage's
+  "Kicker {R} and/or {W}") is a power-set search whose every member
+  needs its own affordability probe, and no card in the catalog offers
+  two. A bot does not take that line yet; it is never offered one it
+  cannot pay for.
+- **A repeatable cost is offered up to THREE times.** Multikicker is
+  unbounded in paper, but an announcement has to be finite and a
+  decision loop has to terminate. Three is a policy number, not a
+  rule, and it lives in `legal.maxEnumeratedRepeats`.
+- **Priced through the engine's own helper.** `game.AddOptionalCostMana`
+  adds the claimed costs' mana at CR 601.2f, and both the cast path
+  and the enumerator call it — so a kicked line is never advertised at
+  the unkicked price, which is the same #544 discipline the cost
+  modifiers follow.
+- **The move label names the kick** ("Cast Burst Lightning (Kicker
+  {4})", "... (Multikicker {G} x3)"), so the kicked and unkicked casts
+  of one card are distinguishable in the move list and in a bot-eval
+  trace.
+
+A NON-MANA optional cost (Constant Mists' "Buyback—Sacrifice a land")
+is expanded through the same payment search the mandatory sacrifice
+cost uses. A cast owing TWO card-shaped sacrifice clauses at once — a
+mandatory one and a kicker's — is not enumerated, for the reason
+escape's exile-from-graveyard cost is not: the two pools have to be
+searched together into one flat list, and no card asks for it.
+
+## Never offered a banned cast (#760)
+
+The announce-time cast gate (`game.CastGateLocked`) is called once per
+candidate cast in `castMovesForCard`, and it is the SAME function
+`CastSpell` refuses with. A bot under a Rule of Law that had already
+cast a spell would otherwise be offered the cast, refused, and offer
+it to itself again on the next decision — the stall that shared
+predicates exist to prevent. The view's `cant_cast` stamp is the third
+reader of the same answer, so the human client greys exactly what the
+bot is not offered.
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than

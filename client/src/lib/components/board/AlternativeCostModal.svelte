@@ -16,23 +16,80 @@
   // preference the way DiscardCostModal's position is: overload and
   // cleave rewrite the target clause, so the answer here decides what
   // the targeting prompt after it is even allowed to offer.
+  //
+  // ADR 0073 (#664) puts the OPTIONAL ADDITIONAL costs in the same
+  // prompt rather than in a modal of their own — kicker, multikicker,
+  // buyback. They are the same question asked at the same moment
+  // ("what am I paying for this?"), CR 601.2b announces them
+  // together, and a second modal would be one more click for no extra
+  // decision. They also COMPOSE with the radio list above them: an
+  // alternative cost REPLACES the mana cost and an optional one ADDS
+  // to whichever cost is being paid, so the toggles stay live
+  // whichever radio is selected.
+  //
+  // A card with optional costs and no alternative costs opens this
+  // same modal with only the add-ons showing, which is why the
+  // heading and the hint are written for both.
   import { onDestroy } from "svelte";
   import type { CardView } from "../../protocol";
-  import { alternativeCostsOf } from "../../targeting";
+  import {
+    alternativeCostsOf,
+    optionalCostMaxTimes,
+    optionalCostPayOptions,
+    optionalCostSelection,
+    optionalCostsOf,
+  } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
     // The spell being cast; null closes the modal.
     card: CardView | null;
-    // Fires with the chosen cost's key, or undefined for "pay the
-    // printed mana cost".
-    onConfirm: (key: string | undefined) => void;
+    // Fires with the chosen cost's key (or undefined for "pay the
+    // printed mana cost") and the optional costs being paid, as
+    // repeated indices.
+    onConfirm: (key: string | undefined, optional: number[]) => void;
     onCancel: () => void;
   }
 
   const { card, onConfirm, onCancel }: Props = $props();
 
   const offers = $derived(card ? alternativeCostsOf(card) : []);
+  const addOns = $derived(card ? optionalCostsOf(card) : []);
+
+  // How many times each optional cost is being paid, by index. A Map
+  // rather than an array so the wire shape is built in exactly one
+  // place (optionalCostSelection) and the picker never has to think
+  // about repeated indices.
+  let paying = $state(new Map<number, number>());
+
+  // An offer whose sacrifice list is present-and-empty cannot be
+  // taken right now — a Constant Mists with no land. Disabled rather
+  // than hidden: the card prints the cost, and hiding it would look
+  // like a bug.
+  function unpayable(index: number): boolean {
+    const offer = addOns[index];
+    if (!offer) return true;
+    const options = optionalCostPayOptions(offer);
+    return options !== undefined && options.length === 0;
+  }
+
+  function timesPaid(index: number): number {
+    return paying.get(index) ?? 0;
+  }
+
+  function setTimes(index: number, n: number): void {
+    const offer = addOns[index];
+    if (!offer) return;
+    const capped = Math.max(0, Math.min(n, optionalCostMaxTimes(offer)));
+    const next = new Map(paying);
+    if (capped === 0) next.delete(index);
+    else next.set(index, capped);
+    paying = next;
+  }
+
+  function toggle(index: number): void {
+    setTimes(index, timesPaid(index) > 0 ? 0 : 1);
+  }
 
   // undefined = the printed mana cost. Reset whenever a different
   // cast opens the prompt, so last turn's overload isn't preselected.
@@ -43,11 +100,12 @@
     if (id !== lastCardID) {
       lastCardID = id;
       chosen = undefined;
+      paying = new Map();
     }
   });
 
   function confirm(): void {
-    onConfirm(chosen);
+    onConfirm(chosen, optionalCostSelection(paying));
   }
 
   function handleKey(e: KeyboardEvent): void {
@@ -76,41 +134,95 @@
         {card.name}
         <span class="prompt-src" aria-hidden="true">alternative cost · CR 118.9</span>
       </h2>
-      <p class="prompt-hint">Cast this for which cost?</p>
-      <ul class="prompt-options">
-        <li>
-          <button
-            type="button"
-            class="prompt-opt"
-            class:on={chosen === undefined}
-            aria-pressed={chosen === undefined}
-            onclick={() => (chosen = undefined)}
-          >
-            <span class="prompt-radio" aria-hidden="true"></span>
-            <span class="name">Its mana cost</span>
-            {#if card.mana_cost}
-              <span class="note cost">{card.mana_cost}</span>
-            {/if}
-          </button>
-        </li>
-        {#each offers as offer (offer.key)}
+      <p class="prompt-hint">
+        {offers.length > 0 ? "Cast this for which cost?" : "Pay any additional costs?"}
+      </p>
+      {#if offers.length > 0}
+        <ul class="prompt-options">
           <li>
             <button
               type="button"
               class="prompt-opt"
-              class:on={chosen === offer.key}
-              aria-pressed={chosen === offer.key}
-              onclick={() => (chosen = offer.key)}
+              class:on={chosen === undefined}
+              aria-pressed={chosen === undefined}
+              onclick={() => (chosen = undefined)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
-              <span class="name">{offer.label ?? offer.key}</span>
-              {#if offer.mana_cost}
-                <span class="note cost">{offer.mana_cost}</span>
+              <span class="name">Its mana cost</span>
+              {#if card.mana_cost}
+                <span class="note cost">{card.mana_cost}</span>
               {/if}
             </button>
           </li>
-        {/each}
-      </ul>
+          {#each offers as offer (offer.key)}
+            <li>
+              <button
+                type="button"
+                class="prompt-opt"
+                class:on={chosen === offer.key}
+                aria-pressed={chosen === offer.key}
+                onclick={() => (chosen = offer.key)}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="name">{offer.label ?? offer.key}</span>
+                {#if offer.mana_cost}
+                  <span class="note cost">{offer.mana_cost}</span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      {#if addOns.length > 0}
+        <p class="prompt-hint add-on-hint">
+          Additional costs <span class="prompt-src" aria-hidden="true">CR 601.2b</span>
+        </p>
+        <ul class="prompt-options">
+          {#each addOns as offer (offer.index)}
+            <li>
+              {#if optionalCostMaxTimes(offer) > 1}
+                <div class="prompt-opt stepper" class:on={timesPaid(offer.index) > 0}>
+                  <span class="name">{offer.label ?? offer.key}</span>
+                  {#if offer.mana_cost}
+                    <span class="note cost">{offer.mana_cost}</span>
+                  {/if}
+                  <button
+                    type="button"
+                    class="step"
+                    aria-label={`Pay ${offer.label ?? offer.key} one fewer time`}
+                    disabled={timesPaid(offer.index) === 0}
+                    onclick={() => setTimes(offer.index, timesPaid(offer.index) - 1)}>-</button
+                  >
+                  <span class="times" aria-live="polite">x{timesPaid(offer.index)}</span>
+                  <button
+                    type="button"
+                    class="step"
+                    aria-label={`Pay ${offer.label ?? offer.key} one more time`}
+                    disabled={unpayable(offer.index) ||
+                      timesPaid(offer.index) >= optionalCostMaxTimes(offer)}
+                    onclick={() => setTimes(offer.index, timesPaid(offer.index) + 1)}>+</button
+                  >
+                </div>
+              {:else}
+                <button
+                  type="button"
+                  class="prompt-opt"
+                  class:on={timesPaid(offer.index) > 0}
+                  aria-pressed={timesPaid(offer.index) > 0}
+                  disabled={unpayable(offer.index)}
+                  onclick={() => toggle(offer.index)}
+                >
+                  <span class="prompt-radio" aria-hidden="true"></span>
+                  <span class="name">{offer.label ?? offer.key}</span>
+                  {#if offer.mana_cost}
+                    <span class="note cost">{offer.mana_cost}</span>
+                  {/if}
+                </button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
       <div class="prompt-foot">
         <button type="button" class="ghost" onclick={onCancel}
           >Cancel <span class="kbd">Esc</span></button
@@ -132,6 +244,23 @@
   }
   .cost {
     font-family: var(--font-mono);
+  }
+  .add-on-hint {
+    margin-top: 12px;
+  }
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .step {
+    min-width: 28px;
+  }
+  .times {
+    font-family: var(--font-mono);
+    min-width: 2.5em;
+    text-align: center;
   }
   .primary .kbd {
     color: var(--accent-fg);

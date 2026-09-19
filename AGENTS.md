@@ -1813,6 +1813,103 @@ picker the CR 602 abilities open.
 helper, so a sacrifice cost is validated by the same code whether it
 hangs off a spell, an activated ability or a mana ability.
 
+**An OPTIONAL additional cost — kicker, multikicker, buyback (ADR
+0073, #664):** the same `game.AdditionalCost` with `Optional` set,
+declared in `Spec.OptionalCosts` rather than `Spec.AdditionalCost`
+because an optional cost has an INDEX — the announcement names
+positions in that slice:
+
+```go
+OptionalCosts: []game.AdditionalCost{Kicker("{4}")},                            // Burst Lightning
+OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   // Wolfbriar Elemental
+OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
+OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
+OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+```
+
+Use the keyword constructor, never a hand-rolled
+`game.AdditionalCost{Optional: true}` — for the reason `Flashback` has
+one. The constructor carries the `Key` the ENGINE reads, and a
+hand-rolled one compiles and then never returns a bought-back card to
+hand. `Register` refuses the mistakes that would otherwise ship
+quietly: an `Optional` cost in the mandatory slot, a missing or
+duplicated `Key`, a repeatable cost that also demands cards or
+permanents (every printed multikicker is mana), and an optional
+`PayLifeX` (it would fight the mandatory cost for the shared `XValue`
+slot).
+
+Read the choice back at RESOLUTION with `ctx.WasKicked()` /
+`ctx.KickedTimes()`, the same shape `ctx.PaidAltCost("overload")`
+gives an overloaded spell:
+
+```go
+amount := 2
+if ctx.WasKicked() { amount = 4 }        // Burst Lightning
+```
+
+Read it from a PERMANENT's own trigger with
+`game.CardKickedTimes(*source)` — Gatekeeper of Malakir's "when this
+enters, **if it was kicked**", Wolfbriar Elemental's count. Not the
+stack item: it is out of `StackMeta` before the ETB event is emitted,
+so the resolution path carries the record onto the permanent as
+`Card.PaidOptionalCosts` (CR 400.7d) and that is what these read. It
+is per-instance and cleared on the way out, so a kicked creature that
+dies and is reanimated is not kicked.
+
+**Buyback's return is the engine's, not the card's.** Declare the cost
+and stop. `routeStackCardToGraveyardLocked` reads the paid record and
+routes the resolving spell to its owner's hand through the same
+stack-exit primitive flashback uses (CR 702.27b) — only on a
+RESOLUTION, so a bought-back spell countered by game rules still goes
+to the graveyard. A card that also returned itself in `OnResolve`
+would be moving a card that is still on the stack.
+
+**Still out:** escalate and entwine (their cost is per extra MODE,
+which the index-list announcement cannot express), and "enters with a
+counter for each time it was kicked" (Everflowing Chalice, Joraga
+Warcaller) — that count is read during the CR 614 entry pipeline,
+before the record reaches the permanent.
+
+**"You can't cast …" and "cast this only if …" (ADR 0073, #760):**
+one announce-time gate, two ways to reach it. A restriction a
+PERMANENT imposes goes in `Spec.CastRestrictions`, built from the
+constructors in
+[cast_restriction.go](server/internal/cards/effects/cast_restriction.go):
+
+```go
+CastRestrictions: []game.CastRestriction{                                  // Rule of Law
+    EachPlayerMaxSpellsPerTurn(1, "Rule of Law — each player can't cast more than one spell each turn."),
+},
+CastRestrictions: []game.CastRestriction{                                  // Grafdigger's Cage
+    PlayersCantCastFrom("Grafdigger's Cage — players can't cast spells from graveyards or libraries.",
+        game.ZoneGraveyard, game.ZoneLibrary),
+},
+```
+
+A condition the SPELL prints goes in `Spec.CastCondition`, with its
+printed clause beside it — `Register` refuses either half alone,
+because the clause is the message the player is shown:
+
+```go
+CastCondition:      LegendarySorcery(),      // Urza's Ruinous Blast, CR 307.6
+CastConditionLabel: LegendarySorceryLabel,
+```
+
+Same contract an ability's `Condition` has: read-only, under `g.mu`,
+public information only — the answer reaches every viewer as
+`cant_cast` on the card. Checked once, at announce, and never at
+resolution: a legendary creature that dies while the sorcery is on the
+stack does not counter it. The engine reads them; you do not — one
+function (`Game.CastGateLocked`) answers for `CastSpell`, the
+legal-move enumerator and the view, which is what keeps a bot from
+being offered a cast the engine refuses and the client from rendering
+a button it would reject.
+
+**Still out, and named in the ADR:** a ban with a DURATION (Silence,
+Reflector Mage) wants #755's registries, and a ban on a chosen card
+NAME (Meddling Mage, Nevermore) wants a choose-a-card-name prompt that
+does not exist.
+
 **"Each player sacrifices a creature of their choice" (S21):** use the
 `EachPlayerSacrifices` primitive, not a loop over opponents:
 

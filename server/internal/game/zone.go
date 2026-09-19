@@ -231,6 +231,13 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
+		// ADR 0073 / CR 400.7d: the optional costs paid for the SPELL
+		// that became this permanent are a fact about that spell, and
+		// the object that leaves is not the one that comes back. A
+		// kicked Gatekeeper of Malakir that dies and is reanimated was
+		// not kicked — the spell that returned it was a different
+		// spell, and it was not even a spell.
+		c.PaidOptionalCosts = nil
 		// ADR 0071 / CR 400.7: the level and solved designations are
 		// battlefield state on a permanent, not characteristics of a
 		// card. A Wizard Class that is bounced and replayed is level 1
