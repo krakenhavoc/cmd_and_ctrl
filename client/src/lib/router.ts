@@ -45,6 +45,9 @@ export type Route =
       gameID?: string;
       playerID?: string;
       displayName?: string;
+      // userID is the server's user id, present when it has a user
+      // database. It is what makes "sign out everywhere" available.
+      userID?: string;
     };
 
 const defaultRoute: Route = { name: "login" };
@@ -107,6 +110,7 @@ function parseHash(hash: string): Route {
         gameID: gameID ?? undefined,
         playerID: playerID ?? undefined,
         displayName: params.get("name") ?? undefined,
+        userID: params.get("user_id") ?? undefined,
       };
     }
     default:

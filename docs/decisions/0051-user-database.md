@@ -502,6 +502,95 @@ open, or did something differently from how they read.
   (`CMDCTRL_IDENTITY_TTL`) is not in any sub-PR's scope yet. Identity
   sessions still use `CMDCTRL_SESSION_TTL`.
 
+### Implementation notes — sub-PR 7 (per-user revocation, identity TTL)
+
+Decision 6 in full, and decision 3's identity TTL, which sub-PR 2 left
+unclaimed.
+
+- **Where the check lives.** `auth.WithRevocation(inner,
+  list)` wraps the HMAC authenticator (or the in-memory one). Its
+  `Validate` runs the inner check first, so a bad signature or an
+  expiry is reported as such. It then refuses a principal with a
+  non-zero `UserID` whose `IssuedAt` is **at or before** that user's
+  watermark, with the new sentinel `auth.ErrRevokedCredential`. The
+  middleware answers `401 "session revoked"`. `auth` defines only the
+  one-method `RevocationList` interface and has no database import.
+  `users.Revocations` implements it. `main` wraps the authenticator
+  before anything else takes a reference to it, so the lobby routes,
+  `POST /join`'s optional session and the WS upgrade authorizer all
+  validate through the same wrapper. Issue and Revoke pass through, so
+  a single token's `Revoke` stays advisory.
+- **"At or before", not "before".** The request that revokes carries a
+  token issued earlier, and a token minted in the same millisecond as
+  the revocation is refused rather than let through on a tie. The only
+  cost is that a sign-in in that same millisecond has to sign in again.
+- **The cache.** `users.NewRevocations` reads every non-zero
+  `sessions_invalid_before` once at boot. A failed read stops the
+  boot, because booting without the watermarks would accept revoked
+  sessions. After that, `Revoked` is a map lookup under a read lock,
+  and a user not in the map has watermark 0. That is also true of any
+  user created after boot, since the column defaults to 0. The request
+  path never touches SQLite: not a WS frame, not a WS upgrade, not an
+  HTTP request. `RevokeAll` writes the row
+  (`MAX(sessions_invalid_before, now)`, so it never moves back) and
+  then replaces the cache entry with the value written. The write is
+  the only event that can change the answer, so the cache is
+  invalidated exactly when it goes stale. A failed write leaves the
+  cache alone and the route returns 500. This is sound because the
+  server is the database's only writer (decision 1) and `RevokeAll` is
+  the only code that writes the column. A hand-run `UPDATE` on a live
+  server is not seen until the next restart.
+- **Open WebSockets are closed.** A token is validated once, at the
+  upgrade, so revocation alone would leave an open socket playing on.
+  `ws.Binding` now carries the session's `UserID` and `IssuedAt`, which
+  the lobby's `WSAuthorizer` fills in from the principal. The new
+  `Hub.EvictUserSessions(user, before)` closes every socket of that
+  user opened with a session issued at or before the watermark, the
+  same rule as `Validate`. It sends close `1000 "session revoked"`,
+  which is terminal on the client (ADR 0044 decision 2), so the client
+  does not redial with a dead token. It is the same shape as
+  `EvictGame`: one scan of the client map under the read lock, which
+  holds a playgroup's sockets. Both revocation routes call it, and the
+  admin route reports how many sockets it closed.
+- **Routes.** `POST /logout/everywhere` sits beside `POST /logout`.
+  Unlike `/logout` it needs a valid session: it acts on the caller's
+  own `UserID` and has no way to name another user. A session with no
+  user is refused with 403, and `/logout` is the sign-out for those.
+  It returns 204 and clears the cookie. The admin route is
+  `POST /admin/users/{id}/revoke-sessions`. It is named for what it
+  does, because "remove" is revocation only here. No row is deleted,
+  and the user can sign in with Discord again straight away. Keeping
+  someone out for good would need a flag checked at sign-in, and that
+  is not part of this decision. `/logout/*` was added to
+  `deploy/Caddyfile`'s `@api` matcher, since Caddy's `/logout` matches
+  that exact path only. `/logout` was also missing from the Vite dev
+  proxy and has been added. The service worker's prefix match already
+  covered both.
+- **With no database** there is no revocation list. The authenticator
+  is not wrapped, sessions carry no `UserID`, logout-everywhere answers
+  403 because the session has no user, and the admin route answers 503.
+  Everything else behaves as it did before this ADR.
+- **Identity TTL.** `CMDCTRL_IDENTITY_TTL` is a Go duration, default
+  `720h`, and invalid or `<= 0` fails the boot. It applies only to the
+  `RoleIdentified` session the Discord callback mints on the login
+  page, through `lobby.Config.IdentityTTL`. Seat sessions keep
+  `CMDCTRL_SESSION_TTL`, including those minted from an identity
+  session by `POST /join` or by the callback's invite flow, and so do
+  spectator and admin sessions. The session cookie's `Expires` follows
+  the token.
+- **The client did not drop long sessions at 12 hours, but it did at
+  about 23 days.** It stores whatever `expires_at` the server hands it.
+  Its expiry timer, though, clamped the `setTimeout` delay to 2·10⁹ ms
+  (the API overflows past 2³¹−1 ms) and then cleared the session when
+  the clamped timer fired. A 30-day session would have been discarded
+  on day 23. The timer now re-arms for the remainder when the session
+  is still good. The callback's `#/oauth-complete` fragment now
+  carries `user_id`, and the client's principal keeps it. Its presence
+  is what shows "log out everywhere" in the lobby header and "sign out
+  everywhere" on the login page's signed-in card. That card also gains
+  a plain "sign out", since a 30-day identity session needs a way out
+  before it joins a table.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the

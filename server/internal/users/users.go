@@ -43,8 +43,11 @@ type User struct {
 	AvatarURL  string
 	CreatedAt  time.Time
 	LastSeenAt time.Time
-	// SessionsInvalidBefore is decision 6's revocation watermark.
-	// Stored from this sub-PR; nothing reads it until sub-PR 7.
+	// SessionsInvalidBefore is decision 6's revocation watermark: a
+	// session for this user issued at or before it is refused. Zero
+	// until the user first signs out everywhere or is removed by an
+	// admin. The request path reads it through Revocations, never
+	// through Get; see there.
 	SessionsInvalidBefore time.Time
 }
 

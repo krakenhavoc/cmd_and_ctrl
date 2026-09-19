@@ -81,6 +81,8 @@ func Middleware(a Authenticator, requireRoles ...Role) func(http.Handler) http.H
 					msg = "session expired"
 				case ErrInvalidCredential:
 					msg = "invalid credential"
+				case ErrRevokedCredential:
+					msg = "session revoked"
 				default:
 					msg = err.Error()
 				}

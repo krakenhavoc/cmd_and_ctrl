@@ -744,6 +744,39 @@ export async function logout(): Promise<void> {
   setSession(null);
 }
 
+// logoutEverywhere withdraws every session the signed-in user holds,
+// in every browser, and then drops this one (POST /logout/everywhere,
+// ADR 0051 decision 6). Only meaningful when canSignOutEverywhere is
+// true: the server refuses a session with no user.
+//
+// Unlike logout, a failure is reported: the user asked for their
+// OTHER browsers to be signed out, and clearing the local session
+// quietly would tell them that happened when it may not have. The
+// local session is still dropped on success and on a 401, since a 401
+// means this session is already dead (revoked from another browser,
+// or expired). It bypasses authFetch for the same reason logout does:
+// a 401 here is an answer, not a reason to throw "session expired".
+export async function logoutEverywhere(): Promise<void> {
+  const s = currentSession();
+  const res = await fetch("/logout/everywhere", {
+    method: "POST",
+    headers: s?.token ? { Authorization: `Bearer ${s.token}` } : {},
+    credentials: "same-origin",
+  });
+  if (res.ok || res.status === 401) {
+    setSession(null);
+    return;
+  }
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { error?: string };
+    if (body.error) message = body.error;
+  } catch {
+    // not JSON — keep the status line
+  }
+  throw new LobbyApiError(res.status, message);
+}
+
 // --- develop-environment card spawner (ADR 0023) ---------------------
 //
 // These call routes that exist only on a dev deployment. In

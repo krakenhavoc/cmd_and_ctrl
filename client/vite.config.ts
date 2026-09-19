@@ -46,6 +46,12 @@ export default defineConfig({
       // the page renders "couldn't load" in dev only.
       "/catalog": { target: "http://localhost:8080", changeOrigin: true },
       "/me": { target: "http://localhost:8080", changeOrigin: true },
+      // POST /logout and POST /logout/everywhere (ADR 0051 decision
+      // 6). Missing before S34 sub-PR 7: without it Vite answered the
+      // POST itself, the server never cleared the cookie, and dev
+      // logout only looked like it worked because the client drops its
+      // stored copy regardless.
+      "/logout": { target: "http://localhost:8080", changeOrigin: true },
       // Deployment identity + dev feature flags (ADR 0023). The client
       // fetches this at shell mount; without the proxy Vite answers
       // with index.html, the JSON parse fails, and env.ts falls back

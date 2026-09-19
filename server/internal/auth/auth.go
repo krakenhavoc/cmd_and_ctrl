@@ -75,6 +75,15 @@ type Principal struct {
 	// from it (the callback's invite flow, and POST /join). Zero for
 	// admin, spectator and guest sessions, and zero for everyone on a
 	// deployment with no database (CMDCTRL_DATA_DIR empty).
+	//
+	// UserID is also what makes a session revocable (ADR 0051 decision
+	// 6): WithRevocation refuses a principal whose IssuedAt is at or
+	// before its user's sessions_invalid_before. A principal with a
+	// zero UserID — admin, spectator, guest, or any session on a
+	// deployment with no database — is never checked. It keeps exactly
+	// the ADR 0044 decision 3 posture: a short TTL and an advisory
+	// Revoke. There is no way to withdraw one early short of rotating
+	// CMDCTRL_SESSION_KEY.
 	UserID   uuid.UUID `json:"user_id,omitempty"`
 	AdminID  uuid.UUID `json:"admin_id,omitempty"`
 	GameID   uuid.UUID `json:"game_id,omitempty"`
@@ -110,6 +119,10 @@ var (
 	ErrInvalidCredential = errors.New("auth: invalid credential")
 	ErrExpiredCredential = errors.New("auth: expired credential")
 	ErrUnknownPrincipal  = errors.New("auth: unknown principal")
+	// ErrRevokedCredential is a genuine, unexpired credential whose
+	// user has since signed out everywhere or been removed by an
+	// admin (ADR 0051 decision 6). Only WithRevocation returns it.
+	ErrRevokedCredential = errors.New("auth: revoked credential")
 )
 
 // Authenticator mints and validates credentials. Implementations must

@@ -20,6 +20,11 @@
 //	                        create games and list the whole lobby.
 //	CMDCTRL_SESSION_TTL   — session lifetime, Go duration string (e.g. 12h).
 //	                        Default 12h.
+//	CMDCTRL_IDENTITY_TTL  — lifetime of the identity-only session a Discord
+//	                        sign-in mints (ADR 0051 decision 3), Go
+//	                        duration. Default 720h (30 days). Seat,
+//	                        spectator and admin sessions keep
+//	                        CMDCTRL_SESSION_TTL.
 //	CMDCTRL_SESSION_KEY   — HMAC-SHA256 key that signs session tokens, at
 //	                        least 32 bytes, distinct from the admin token.
 //	                        Set: sessions survive a restart. Unset: sessions
@@ -249,6 +254,21 @@ func main() {
 	// and sign-in mints a session with a zero UserID, as before.
 	userStore := newUserStore(log, database)
 
+	// Per-user revocation (ADR 0051 decision 6, S34 sub-PR 7). Every
+	// watermark is read once here; from then on the authenticator
+	// answers "has this user revoked this session?" from memory, on
+	// every HTTP request and WS upgrade, and the only writes go through
+	// revocations itself (logout-everywhere, the admin route), which
+	// update the cache as they write. Wrapped BEFORE anything takes a
+	// reference to authenticator, so the hub's WS authorizer and the
+	// lobby routes all see the same checked one. With no database there
+	// is nothing to check: sessions carry no UserID, the authenticator
+	// is left as it is, and the two revocation routes answer 503.
+	revocations := newRevocations(ctx, log, userStore)
+	if revocations != nil {
+		authenticator = auth.WithRevocation(authenticator, revocations)
+	}
+
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&lobby.WSAuthorizer{Auth: authenticator})
@@ -449,6 +469,7 @@ func main() {
 		Auth:              authenticator,
 		AdminToken:        cfg.AdminToken,
 		SessionTTL:        cfg.SessionTTL,
+		IdentityTTL:       cfg.IdentityTTL,
 		Env:               cfg.Env,
 		Features:          cfg.Features,
 		Cards:             cardIdx,
@@ -457,6 +478,8 @@ func main() {
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
 		Users:             userStore,
+		Revocations:       lobbyRevoker(revocations),
+		SessionEvictor:    hub,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
@@ -518,7 +541,12 @@ type config struct {
 	DataDir    string
 	AdminToken string
 	SessionTTL time.Duration
-	SeedDemo   bool
+	// IdentityTTL is the lifetime of the identity-only session a
+	// Discord sign-in mints (CMDCTRL_IDENTITY_TTL, ADR 0051 decision
+	// 3). Default 720h. Seat, spectator and admin sessions keep
+	// SessionTTL.
+	IdentityTTL time.Duration
+	SeedDemo    bool
 	// AllowedOrigins is the cross-origin hostname allow-list passed to
 	// the hub's WebSocket CheckOrigin. Same-origin is always allowed
 	// (no config needed). Set CMDCTRL_ALLOWED_ORIGINS to a comma-
@@ -573,6 +601,7 @@ func loadConfig(log *slog.Logger) config {
 		AdminToken:       os.Getenv("CMDCTRL_ADMIN_TOKEN"),
 		SeedDemo:         os.Getenv("CMDCTRL_SEED_DEMO") == "1",
 		SessionTTL:       12 * time.Hour,
+		IdentityTTL:      720 * time.Hour,
 		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
@@ -644,6 +673,19 @@ func loadConfig(log *slog.Logger) config {
 			os.Exit(1)
 		}
 		c.SessionTTL = d
+	}
+
+	if raw := os.Getenv("CMDCTRL_IDENTITY_TTL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Error("CMDCTRL_IDENTITY_TTL invalid", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		if d <= 0 {
+			log.Error("CMDCTRL_IDENTITY_TTL must be positive", "value", raw)
+			os.Exit(1)
+		}
+		c.IdentityTTL = d
 	}
 
 	// CMDCTRL_DATA_DIR: honour an explicit empty string (disables
@@ -718,6 +760,33 @@ func newUserStore(log *slog.Logger, database *db.DB) users.Store {
 		log.Info("Discord refresh tokens are stored encrypted", "var", users.IdentityKeyEnv)
 	}
 	return users.NewSQLStore(database, sealer)
+}
+
+// newRevocations loads the per-user revocation watermarks (ADR 0051
+// decision 6) when there is a user database, and exits if they cannot
+// be read: booting without them would accept sessions their users have
+// revoked. Returns nil with no database.
+func newRevocations(ctx context.Context, log *slog.Logger, store users.Store) *users.Revocations {
+	sq, ok := store.(*users.SQLStore)
+	if !ok {
+		log.Info("no user database; per-user session revocation (logout everywhere) is unavailable")
+		return nil
+	}
+	r, err := users.NewRevocations(ctx, sq)
+	if err != nil {
+		log.Error("session revocation list could not be loaded", "err", err)
+		os.Exit(1)
+	}
+	return r
+}
+
+// lobbyRevoker keeps a nil *users.Revocations a nil interface, so the
+// lobby's "no database" check (Config.Revocations == nil) sees it.
+func lobbyRevoker(r *users.Revocations) lobby.SessionRevoker {
+	if r == nil {
+		return nil
+	}
+	return r
 }
 
 func envOr(key, dflt string) string {

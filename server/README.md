@@ -29,6 +29,7 @@ make
 | `CMDCTRL_DATA_DIR` | `./data` | Root directory for crash-recovery snapshots, the Scryfall dump, and the image cache. Set to empty (`CMDCTRL_DATA_DIR=""`) to disable disk writes entirely. |
 | `CMDCTRL_ADMIN_TOKEN` | *(required)* | Shared admin secret for `POST /admin/login`. Must be at least 16 characters. |
 | `CMDCTRL_SESSION_TTL` | `12h` | Session lifetime; any valid Go duration. |
+| `CMDCTRL_IDENTITY_TTL` | `720h` | Lifetime of the identity session a Discord sign-in mints (ADR 0051 decision 3); any valid Go duration. Seat, spectator and admin sessions keep `CMDCTRL_SESSION_TTL`. |
 | `CMDCTRL_SEED_DEMO` | unset | If `1`, seed the S03 4-player demo game at startup for the gamecli dev loop. |
 
 Example:
