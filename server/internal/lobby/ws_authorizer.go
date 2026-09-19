@@ -80,7 +80,7 @@ func (a *WSAuthorizer) AuthorizeUpgrade(r *http.Request) (ws.Binding, error) {
 			}
 			playerID = id
 		}
-		return ws.Binding{GameID: requestedGame, PlayerID: playerID, UserID: p.UserID, IssuedAt: p.IssuedAt}, nil
+		return ws.Binding{GameID: requestedGame, PlayerID: playerID, UserID: p.UserID, IssuedAt: p.IssuedAt, Admin: true}, nil
 
 	case auth.RoleSpectator:
 		// Spectator sessions are minted bound to one game (no player).

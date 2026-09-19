@@ -181,9 +181,15 @@ func (c *ServerClient) doAuthorized(ctx context.Context, do func(token string) (
 
 // CreateGame calls POST /games with the cached admin session
 // (re-logging in once on a 401). The returned GameMeta carries the
-// invite token the bot posts back to Discord.
-func (c *ServerClient) CreateGame(ctx context.Context, name string) (lobby.GameMeta, error) {
-	body, err := json.Marshal(map[string]string{"name": name})
+// invite token the bot posts back to Discord. hostDiscordID, when
+// non-empty, names the table host (ADR 0075 §2.1): the server binds
+// hosting to that Discord user's seat once they claim one.
+func (c *ServerClient) CreateGame(ctx context.Context, name, hostDiscordID string) (lobby.GameMeta, error) {
+	req := map[string]string{"name": name}
+	if hostDiscordID != "" {
+		req["host_discord_id"] = hostDiscordID
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return lobby.GameMeta{}, err
 	}

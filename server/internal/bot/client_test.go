@@ -188,7 +188,7 @@ func TestCreateGame_Success(t *testing.T) {
 		InviteToken: "invite-xyz",
 		State:       "lobby",
 	}
-	meta, err := c.CreateGame(context.Background(), "friday-commander")
+	meta, err := c.CreateGame(context.Background(), "friday-commander", "")
 	if err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestCreateGame_MissingInviteToken(t *testing.T) {
 	fs, c := newFakeServer(t)
 	// Token-less response — something's wrong on the server side.
 	fs.createMeta = lobby.GameMeta{ID: uuid.New(), Name: "x", State: "lobby"}
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if err == nil || !strings.Contains(err.Error(), "missing invite_token") {
 		t.Errorf("want missing-invite-token error, got %v", err)
 	}
@@ -219,7 +219,7 @@ func TestCreateGame_MissingInviteToken(t *testing.T) {
 func TestCreateGame_Unauthorized(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.createStatus = http.StatusUnauthorized
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("want ErrUnauthorized, got %v", err)
 	}
@@ -228,7 +228,7 @@ func TestCreateGame_Unauthorized(t *testing.T) {
 func TestCreateGame_ServerError(t *testing.T) {
 	fs, c := newFakeServer(t)
 	fs.createStatus = http.StatusInternalServerError
-	_, err := c.CreateGame(context.Background(), "x")
+	_, err := c.CreateGame(context.Background(), "x", "")
 	if err == nil || !strings.Contains(err.Error(), "500") {
 		t.Errorf("want 500-carrying error, got %v", err)
 	}
@@ -374,7 +374,7 @@ func TestSessionTokenCachedAcrossCommands(t *testing.T) {
 	if _, err := c.ListGames(context.Background()); err != nil {
 		t.Fatalf("ListGames #2: %v", err)
 	}
-	if _, err := c.CreateGame(context.Background(), "FNM"); err != nil {
+	if _, err := c.CreateGame(context.Background(), "FNM", ""); err != nil {
 		t.Fatalf("CreateGame: %v", err)
 	}
 	if fs.loginCalls != 1 {

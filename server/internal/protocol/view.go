@@ -851,6 +851,12 @@ type PlayerView struct {
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
 
+	// IsHost marks the table host (ADR 0075 §2.1) — the seat that may
+	// change table settings alongside the server admin. Public to
+	// every viewer. Not read from the engine: the room stamps it on
+	// each capture from the host the lobby designated (ws/host.go).
+	IsHost bool `json:"is_host,omitempty"`
+
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
 	// UUID string. Drives the "+N tax" indicator next to the

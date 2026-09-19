@@ -40,6 +40,10 @@ export interface GameMeta {
   // /games?archived=1 instead. Nothing is deleted — unarchiving puts
   // it back, replay and all.
   archived_at?: string;
+  // Table host (ADR 0075 §2.1): the seat that may manage the table
+  // alongside the admin. The zero UUID when nobody hosts. Mirrored per
+  // seat by SeatInfo.is_host.
+  host_player_id?: string;
 }
 
 export interface SeatInfo {
@@ -60,6 +64,8 @@ export interface SeatInfo {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
+  is_host?: boolean;
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
