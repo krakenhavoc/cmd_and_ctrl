@@ -53,6 +53,7 @@ import (
 //	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
 //	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
 //	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
+//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.13a)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
@@ -108,6 +109,28 @@ const (
 	// times for proliferate, cards for scry and surveil — and is
 	// written on the KeywordAction constants.
 	RepEventKeywordAction ReplacementEventKind = "keyword_action"
+
+	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.13a),
+	// opened once per instruction before any card moves — the third
+	// member of the count-carrying family, after RepEventCreateTokens
+	// and RepEventKeywordAction, and opened for the same reason: "if an
+	// opponent would mill one or more cards, they mill twice that many
+	// cards instead" (Bruvac the Grandiloquent) replaces the NUMBER,
+	// not the per-card zone change.
+	//
+	// The per-card zone change is a separate, older window and was
+	// never missing: every milled card routes through
+	// routeCardToZoneLocked, so Leyline of the Void sees each card and
+	// a milled commander is offered the command zone (CR 903.9). What
+	// had no seam was the amount. See #569 and mill.go.
+	//
+	// Opened only for a real mill: a graveyard destination (CR 701.13a
+	// defines the keyword action by where the cards go, so "exile the
+	// top N cards of your library" is not a mill and opens no window)
+	// and a positive count (there is nothing to replace about milling
+	// nothing, and the unbounded `until` run — Helm of Obedience — names
+	// no number to double).
+	RepEventMill ReplacementEventKind = "mill"
 
 	RepEventStepTransition ReplacementEventKind = "step"
 )
@@ -481,6 +504,38 @@ type ReplacementEvent struct {
 	//
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	keywordAction *keywordActionTail
+
+	// --- RepEventMill fields ---
+
+	// MillPlayer is the player milling — the one whose library is read,
+	// which is NOT always the card's owner or the effect's controller
+	// ("each opponent mills three cards"). Actor carries the same
+	// value; this is the name the rules use, and it is the affected
+	// player for CR 616.1.
+	MillPlayer uuid.UUID
+
+	// MillCount is how many cards the instruction mills, and the one
+	// field a mill replacement rewrites: Bruvac the Grandiloquent is
+	// `ev.MillCount *= 2`, The Water Crystal is `+= 4`.
+	//
+	// It is the number the instruction ASKED for, not what the library
+	// can supply. A player told to mill more cards than they have mills
+	// as many as possible (CR 701.13b) and the clamp happens in
+	// millPlanLocked, after this window settles — so a Bruvac doubling
+	// a mill of twenty against a library of twelve doubles twenty,
+	// which is what the card says and is observable through any
+	// "plus N" sharing the window.
+	MillCount int
+
+	// mill is the mill's tail: what the instruction still owes once the
+	// window settles — the destination it named, its `until` predicate,
+	// and the caller's continuation. Set by the two entry points in
+	// effect_api.go and read only by applyResolvedMillLocked, which
+	// both the inline path and the CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See mill.go.
+	mill *millTail
 
 	// --- RepEventCounter fields ---
 
@@ -1622,6 +1677,19 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// EventKeywordAction, which is a replacement-watch sentinel
 		// like EventStepTransition rather than a logged event.
 		want = EventKeywordAction
+	case RepEventMill:
+		// CR 701.13a. EventMill is the post-event twin and it fires per
+		// CARD, after the move, while this window is one per
+		// INSTRUCTION and opens before any card has left the library.
+		// Reusing the key rather than minting a sentinel is what
+		// RepEventCreateTokens and RepEventDiscard already do with
+		// EventTokenCreated and EventDiscardCard, whose twins fire
+		// afterwards too: an EventKind means "the mill" in a
+		// ReplacementEffect.Watches and "a card was milled" in a
+		// TriggeredAbility.Watches, and no code reads one as the other.
+		// The sentinel spelling is for a family with no twin at all
+		// (EventStepTransition, EventKeywordAction).
+		want = EventMill
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:

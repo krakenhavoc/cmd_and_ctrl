@@ -1512,6 +1512,16 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// Anointed Procession on YOUR creation used to put the CR 616
 		// ordering prompt to the Primal Vigor player.
 		return ev.TokenController
+	case RepEventMill:
+		// #569. CR 701.13a: the player who mills is the one whose
+		// library is being read, and they are the affected player
+		// whoever controls the replacements. Bruvac the Grandiloquent
+		// and The Water Crystal both replace an OPPONENT's mill, so
+		// with the two of them on one battlefield the fallback below
+		// would name their controller rather than the opponent CR 616.1
+		// gives the choice to. The first printed board where the
+		// fallback is not accidentally right.
+		return ev.MillPlayer
 	case RepEventStepTransition:
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
@@ -1895,6 +1905,24 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// sweep from the resolution bookend it runs inside.
 		g.runStateChecksLocked()
 		return nil
+	case RepEventMill:
+		// #569: the CR 614 window has settled on how many cards this
+		// instruction mills. Planning and routing them is the same
+		// function the unpaused path runs, so a mill that paused on an
+		// ordering prompt and one that did not cannot drift apart — and
+		// each card then takes the ordinary per-card exit, which may
+		// pause again on CR 903.9.
+		if _, err := g.applyResolvedMillLocked(ev); err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the effect-time helpers
+		// deliberately skip happens here. Running a library out is NOT
+		// a loss (CR 701.13b, #767), but the cards that landed can be —
+		// a milled Aura loses its host and a mill payoff's trigger has
+		// to be put on the stack against a swept board.
+		g.runStateChecksLocked()
+		return nil
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is
@@ -1990,6 +2018,13 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// happened — so the continuation has to be told rather than
 		// left waiting on a prompt that will never be queued.
 		return g.abandonKeywordActionLocked(ev)
+	case RepEventMill:
+		// #569: and a cancelled MILL, whose caller is often reading the
+		// list. "Mill three cards, then return a creature card milled
+		// this way to your hand" returns nothing when the mill was
+		// replaced away, but it has to be told that rather than wait
+		// for cards that will never arrive.
+		return g.abandonMillLocked(ev)
 	case RepEventMove, RepEventDiscard:
 		// #853: a cancelled EXIT that carries a route. The card stays
 		// where it is, but a multi-card discard sequenced through the

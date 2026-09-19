@@ -901,13 +901,18 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // that is neither a graveyard nor exile. A leg that cannot move is
 // skipped by the batch body rather than failing the mill.
 //
+// #569: the AMOUNT is replaceable. A mill into a graveyard opens a
+// RepEventMill window on n before any card moves, so Bruvac the
+// Grandiloquent doubles the instruction; an exile of the top N is not a
+// mill (CR 701.13a) and opens none. That window can PAUSE, on a CR 616
+// ordering prompt between two amount replacements, and then this
+// returns an EMPTY slice with the mill still owed — the contract
+// CreateTokensForEffect's empty ID slice already carries, and the
+// reason a caller that reads the list should use the Then form.
+//
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
-	ids, err := g.millPlanLocked(playerID, n, dest, until)
-	if err != nil {
-		return nil, err
-	}
-	return g.routeAllLandedLocked(millRoute(playerID, dest), ids), nil
+	return g.millThroughReplacementsLocked(playerID, n, dest, until, nil)
 }
 
 // MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
@@ -935,6 +940,13 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 // report a true list — the same trade DestroyPermanentsThenForEffect
 // and the discard batch already make.
 //
+// #569 adds a second thing that can pause, and it pauses EARLIER: the
+// CR 614 window on the amount, before any card is chosen. `then` runs
+// from wherever the mill ends either way — inline, from the CR 903.9
+// resume of one leg, or from the amount window's resume — and it runs
+// with an empty list when the mill was replaced away entirely, because
+// a caller sequencing work behind it has to be told even then.
+//
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) MillToZoneThenForEffect(
 	playerID uuid.UUID,
@@ -943,11 +955,15 @@ func (g *Game) MillToZoneThenForEffect(
 	until func(Card) bool,
 	then func(g *Game, milled []uuid.UUID) error,
 ) error {
-	ids, err := g.millPlanLocked(playerID, n, dest, until)
-	if err != nil {
-		return err
+	if then == nil {
+		// The tail's nil-ness is what picks the form inside, so a caller
+		// that passes nil here would silently get the fire-and-forget
+		// one. Refusing is not an option — a mill of nothing is still a
+		// legal mill — so give it a continuation that does nothing.
+		then = func(*Game, []uuid.UUID) error { return nil }
 	}
-	return g.routeAllThenLocked(millRoute(playerID, dest), ids, then)
+	_, err := g.millThroughReplacementsLocked(playerID, n, dest, until, then)
+	return err
 }
 
 // millPlanLocked validates a mill and chooses the cards it will move,

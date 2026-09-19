@@ -376,6 +376,11 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// a cancelled one. Before this the continuation went out with
 		// the frame.
 		return g.abandonKeywordActionLocked(ev)
+	case RepEventMill:
+		// #569: an abandoned MILL has read no cards off the library —
+		// the plan is made after the amount settles — and the caller
+		// reading "the cards milled this way" still has to be told.
+		return g.abandonMillLocked(ev)
 	case RepEventMove, RepEventDiscard:
 		// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
 		// staged and unentered. It never reached the battlefield, so it
