@@ -726,8 +726,9 @@ Four additive changes, none of them breaking (`v` unchanged):
   card now include GRANTED permissions**, not only the ones a card's
   own text prints (ADR 0066). A card Snapcaster Mage gave flashback to
   renders the same cast affordance a Faithless Looting does, with the
-  synthesised offer in its picker. The stamp is about the zone's
-  OWNER, as it has been since S29.
+  synthesised offer in its picker. The stamp is about the zone's OWNER
+  — **except when somebody else holds the permission**, which is
+  #1022 below.
 - **An opponent's `library.cards` may now carry exactly one card** —
   the top one, when "play with the top card of your library revealed"
   (Oracle of Mul Daya, Courser of Kruphix) is in force and the viewer
@@ -767,6 +768,44 @@ Four additive changes, none of them breaking (`v` unchanged):
   opens a ZONE and a restriction shuts the cast anyway (CR 101.2).
   `castable_here` now respects it — a granted graveyard or library
   card the gate refuses is no longer marked a cast surface.
+
+**A graveyard card somebody ELSE may cast is stamped for THEM (#1022).**
+A `ScopeCards` permission names an object, not a pile — Wrexial's "you
+may cast target instant or sorcery card from that player's graveyard" —
+and until #1022 such a card reached the wire with nothing on it at all:
+the per-seat walk asked "may the zone's owner cast this" and no other
+question. The graveyard stamp is now **per holder**:
+
+- the zone's owner wins when the owner may cast the card at all (their
+  own permission, or the card's printed flashback / escape), which is
+  every case that existed before;
+- otherwise the first seat in seat order that holds a permission over
+  it gets the stamps, and the card carries the same unexported
+  `castOffersFor` marker an exiled card has carried since #978, so
+  `FilterViewFor` drops the stamps for every other viewer — the owner
+  of the graveyard and spectators included;
+- **`castable_here` travels with them.** It is public everywhere else
+  because everywhere else it is the same answer for every viewer; on a
+  card stamped for one seat it is that seat's answer, and a public bit
+  with a per-viewer answer is what #1015 removed from this surface.
+
+One holder per card, because a `CardView` is one struct: a card two
+seats may both cast shows the owner's answer and the other holder sees
+the public zone with no stamps. That is exile's limitation since #978,
+and lifting it needs a wire shape rather than a bug fix.
+
+The engine reaches the same card through the same permission. CastSpell's
+`from_zone: "graveyard"` resolves to the caster's own pile and, when the
+card is not in it, to the pile it IS in — **only** under a permission
+the caster holds (`castSourceZoneLocked`); the bot enumerator walks
+every seat's graveyard once anything has granted anything, under the
+same rule. A card's own text opens only its OWNER's graveyard, because
+flashback, escape and Gravecrawler all print "your graveyard", and a
+STANDING permission (Underworld Breach) is scoped the same way for the
+same reason — `CastPermissionForLocked` says so now that anything can
+ask it about another seat's pile. **The library has no equivalent**: CR
+401.5's "the top card of your library" is checked against the HOLDER's
+own library, so a cross-seat library permission opens nothing.
 
 `exile_play` is unchanged in name. It is now projected from the
 per-player permission store rather than from a field on the card,

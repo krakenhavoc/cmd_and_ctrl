@@ -3038,6 +3038,22 @@ i.e. the printed cost is not claimable from this zone. If you are
 writing a second answer to either, you are writing the bug those two
 issues were.
 
+**A permission names an OBJECT, not a pile (#1022).** A `ScopeCards`
+permission can name a card in ANOTHER seat's graveyard — Wrexial's
+"cast target instant or sorcery card from that player's graveyard" —
+and three surfaces used to answer "whose graveyard" by accident:
+`CastSpell` resolved `from_zone: "graveyard"` to the caster's own pile,
+the enumerator walked the caster's own, and the view asked each seat
+about its own. All three ask `CastPermissionForLocked` now, and the
+card is reachable wherever it sits **only** under a permission — a
+card's own text (flashback, escape, Gravecrawler) opens its OWNER's
+graveyard and nobody else's. Two consequences worth knowing before you
+touch this: a STANDING permission is refused over a card its holder
+does not own, because a permanent's printed text says "your graveyard"
+and `PermissionFilter` has no clause for it; and the graveyard stamp
+is per HOLDER, riding the `castOffersFor` marker exile has used since
+#978, which makes `castable_here` per-viewer for exactly those cards.
+
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost
 that includes `X`, has exactly one legal `X` and it is `0` — cascade's
