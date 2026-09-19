@@ -1,3 +1,16 @@
+// Package aiseat runs a bot in a seat: a goroutine that watches a
+// ws.Room, asks a Policy which legal move to make whenever the seat
+// has a decision, and dispatches it through the same action path a
+// WebSocket client uses. ADR 0033 §2–§3.
+//
+// The hidden-information guarantee is structural: a Policy receives
+// an Input built only from the seat's filtered protocol.GameView and
+// the legal.Move list, never a *game.Game. Real policies (heuristic,
+// model-backed) land in subpackages under aiseat/ that are forbidden
+// from importing internal/game. That ban is enforced by
+// TestPolicyPackagesDoNotImportGame in aiseat/heuristic — it walks
+// every package under aiseat/ rather than just its own, so a policy
+// written later is covered without its author having to know.
 package model
 
 import (
@@ -343,6 +356,37 @@ func (p *Policy) Spend() aiseat.Spend {
 			Usage:   traceUsage(st.ImprovUsage),
 			Latency: st.ImprovLatency,
 		},
+	}
+}
+
+// Compile-time assertion: the funnel reports its own layer/escalation
+// counters (#505 part 2).
+var _ aiseat.PolicyStatser = (*Policy)(nil)
+
+// PolicyStats projects the funnel's per-decision instrumentation into
+// the package-neutral shape aiseat.Runner.PolicyStats reads — see
+// aiseat/stats_accessor.go. Same reasoning as Spend just above: a
+// projection of the counters Stats already publishes, not a second
+// tally that could drift from it.
+//
+// Safe to call while the seat plays; the recorder has its own lock.
+func (p *Policy) PolicyStats() aiseat.PolicyStats {
+	st := p.rec.snapshot()
+	return aiseat.PolicyStats{
+		Windows:         st.Windows,
+		ByLayer:         st.ByLayer,
+		ByEscalation:    st.ByEscalation,
+		ByFallback:      st.ByFallback,
+		Escalated:       st.Escalated,
+		ModelCalls:      st.ModelCalls,
+		ModelTimeouts:   st.ModelTimeouts,
+		Usage:           traceUsage(st.Usage),
+		ModelLatency:    st.ModelLatency,
+		MaxModelLatency: st.MaxModelLatency,
+		ByImprov:        st.ByImprov,
+		ImprovCalls:     st.ImprovCalls,
+		ImprovUsage:     traceUsage(st.ImprovUsage),
+		ImprovLatency:   st.ImprovLatency,
 	}
 }
 
