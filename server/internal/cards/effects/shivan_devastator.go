@@ -15,9 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Haste is what separates it from every other Hydra — X mana of
 // damage the turn you cast it, out of nowhere.
 //
-// The two keywords are printed strings. The X counters take
-// Benevolent Hydra's posture, and it carries the same declared
-// simplification for the same engine reason.
+// The two keywords are printed strings; the X counters are the
+// printed entry clause below.
 //
 // The X counters are the printed CR 614.1c entry clause and ride the
 // CR 614 pipeline as one — XCounters, seeded onto the entry event off

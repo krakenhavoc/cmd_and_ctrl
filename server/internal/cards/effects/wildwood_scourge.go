@@ -9,12 +9,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Whenever one or more +1/+1 counters are put on another non-Hydra
 //	 creature you control, put a +1/+1 counter on this creature."
 //
-// The counters deck's snowball. The X counters go on as the spell
-// resolves (Goldvein Hydra's posture, declared below), so the
-// Scourge enters as an X/X. The growth trigger watches
-// EventCounterPlaced: the engine emits one event per permanent per
-// placement with the post-change total, so "one or more" is the
-// event itself and the delta is read back off the log
+// The counters deck's snowball. The X counters are the printed entry
+// clause (below), so the Scourge enters as an X/X. The growth trigger
+// watches EventCounterPlaced: the engine emits one event per
+// permanent per placement with the post-change total, so "one or
+// more" is the event itself and the delta is read back off the log
 // (b33CountersPlacedDelta — a removal is not a placement). The
 // counters must land on a creature the controller controls that is
 // neither the Scourge nor a Hydra (effective subtypes, so a

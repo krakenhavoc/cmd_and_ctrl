@@ -11,8 +11,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 its power."
 //
 // The Hydra that pays out on death. Trample rides PrintedKeywords;
-// the X counters go on as the spell resolves (Goldvein Hydra's
-// posture, declared below); the death trigger reads the Hydra's
+// the X counters are the printed entry clause (below); the death
+// trigger reads the Hydra's
 // last-known power — the harvester's LKI characteristic carries the
 // layer-computed P/T and the +1/+1 counters are read back off the
 // log (b13LastKnownPower, Conclave Mentor's shape), so a pumped or

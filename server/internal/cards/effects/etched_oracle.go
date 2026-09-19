@@ -14,13 +14,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // paid (#761), and the draw ability spends the counters it made
 // (#625's self form, now on a card that can actually make four).
 //
-// Sunburst (CR 702.44a) is SunburstCounters, and it carries that
-// helper's declared simplification: the counters go on as the spell
-// RESOLVES, a beat before the Oracle enters, because the entry
-// pipeline cannot read the paid-cost record. They are on it when it
-// lands, so the 0/0 body never meets the state-based check without
-// them and every ETB watcher sees the finished creature — the same
-// road Hangarback Walker's X counters take.
+// Sunburst (CR 702.44a) is SunburstCounters, and since #1002 it is a
+// CR 614.1c entry clause like Hangarback Walker's X rather than an
+// OnResolve: the engine seeds it onto the entry event off the
+// resolving stack item, so the counters are part of the ENTRY. They
+// are on the permanent before EventETB, a doubler applies, and a
+// "whenever one or more counters are put on a permanent you control"
+// payoff sees them.
+//
+// One declared simplification is left, and it is the paid-cost
+// record's rather than the entry's: with strict mana off the engine
+// never saw what paid, so the record claims no colours (ADR 0068 §3,
+// unknown answers weaker than printed) and the Oracle enters as a 0/0
+// that dies at once.
 //
 // Spec.WantsDistinctColors makes the cast gate spread the payment
 // across colours, so an Oracle cast off four different lands really
