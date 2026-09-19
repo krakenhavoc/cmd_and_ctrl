@@ -238,13 +238,20 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		LoyaltyActivated:    true,
 		ClassLevel:          3,
 		Solved:              true,
-		ManaCost:            "{2}{U}",
-		ManaAbilities:       []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
-		Abilities:           []string{"flying"},
-		Restrictions:        []string{"cant_block"},
-		Layout:              "modal_dfc",
-		Faces:               []CardFaceView{{Name: "Hidden Name"}, {Name: "Hidden Back"}},
-		ActiveFace:          1,
+		// #781. Deliberately NOT added to redactedCardKeys: both are
+		// public on a card the viewer can see and both are stripped
+		// from one they cannot, because "Elf" names Cavern of Souls
+		// and "G" names Coldsteel Heart. They are here so this table
+		// is the thing that proves it.
+		ChosenColor:   "G",
+		NamedTribe:    "Elf",
+		ManaCost:      "{2}{U}",
+		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
+		Abilities:     []string{"flying"},
+		Restrictions:  []string{"cant_block"},
+		Layout:        "modal_dfc",
+		Faces:         []CardFaceView{{Name: "Hidden Name"}, {Name: "Hidden Back"}},
+		ActiveFace:    1,
 	}
 }
 

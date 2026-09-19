@@ -398,7 +398,11 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
-    <KeywordBadgeRow abilities={card.abilities} />
+    <KeywordBadgeRow
+      abilities={card.abilities}
+      chosenColor={card.chosen_color}
+      namedTribe={card.named_tribe}
+    />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
@@ -465,7 +469,11 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
-    <KeywordBadgeRow abilities={card.abilities} />
+    <KeywordBadgeRow
+      abilities={card.abilities}
+      chosenColor={card.chosen_color}
+      namedTribe={card.named_tribe}
+    />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
