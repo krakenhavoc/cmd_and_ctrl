@@ -2120,6 +2120,125 @@ Gearhulk to the continuation form. `MillBecomes{Count, Scope, Label}`
 carries the family, with `MillsByController` and `MillsByAnyone` beside
 `MillsByOpponents` so the first printing of either is a line.
 
+### 5v. Amendment, 2026-09-19: the payout lint is about EXITS, and an ordering fix is not a gate
+
+*Amendment, 2026-09-19, branch
+`chore/993-1005-exit-lint-and-carried-enforcement`. Closes
+[#993](https://github.com/krakenhavoc/cmd_and_ctrl/issues/993). §5t
+scoped the payout lint to exile "because widening it to destroy, bounce,
+tuck, mill and sacrifice flags six more sites that each need their own
+rules answer". This is those answers, and the widening.*
+
+**1. One lint, every pausable exit.** `exile_payout_guard_test.go` is
+`exit_payout_guard_test.go`, and its two tables carry a VERB rather than
+a bool: exile, destroy, sacrifice, bounce, tuck, mill, a discard (§5g)
+and a graveyard arrival (§5q). The shape it flags is unchanged — a
+CONDITION, after a fire-and-forget exit, reading a local the function
+assigned before it — and the verb is what lets a finding name its own
+fix, which is the only way a lint in a tree this size stops costing the
+next author an afternoon.
+
+The lint asks a COARSE question on purpose: "is this clause gated on
+something read before the move?" The fine question is the one below, and
+it is why the lint has an allowlist rather than a cleverer AST walk.
+
+**2. The line §5t drew, restated so it decides cases.** §5t said a
+clause GATED on a pre-exile fact is about the card and a clause that
+merely USES one as a value is not. That is the right answer for the
+family §5t was about and it is not the test. The test is **what the
+clause is ABOUT**:
+
+- **About the object that moved** — "if it WAS a creature card", "for
+  each card exiled this way", "if you do". A move that did not happen
+  leaves the clause with no referent (CR 614.10: an event replaced with
+  nothing never happened), so the clause does not run. §5t's three
+  cards, and Ruthless Technomancer below.
+- **About a player, or about the spell's TARGET** — "its controller
+  gains life equal to its power", "you lose life equal to its mana
+  value", "if you controlled that permanent, draw a card", "then that
+  permanent's controller may sacrifice a land". Every one of these is
+  true or false before anything moves and no replacement can rewrite it:
+  a commander of yours that took CR 903.9's offer was still yours. The
+  clause runs whichever way the question is answered — and it still has
+  to WAIT for the answer, because the order is observable.
+
+So the six sites split three ways, and only one of them changed an
+outcome.
+
+**3. The one that was wrong: Ruthless Technomancer.** "You may sacrifice
+another creature you control. **If you do**, create a number of Treasure
+tokens equal to that creature's power." The card read the live board on
+the line after the sacrifice — "is it still on the battlefield?" — which
+is `sacrificedThisWayLocked`'s rule written out by hand, and correct for
+every outcome but the one that matters: a sacrificed COMMANDER is still
+on the battlefield while its owner answers CR 903.9, so the read said
+"not sacrificed" and the Treasures never came for a sacrifice that
+landed a beat later. It is `SacrificePermanent.Then` now. Both answers
+pay — CR 701.17a's keyword action is the controller's move OFF the
+battlefield, and a replacement rewrites only where the permanent goes —
+and a sacrifice the window cancelled outright pays nothing.
+
+**4. The ones that were only out of order.** Boomerang Basics' draw and
+Chain of Vapor's chain, on the reading in item 2, and Hermit Druid's
+hand-off. All three move into the continuation with the answer
+deliberately IGNORED, which is §5m item 2's shape (Path to Exile's
+search) and its whole risk: only the order changes.
+
+- Boomerang Basics — "Return target nonland permanent to its owner's
+  hand. If you controlled that permanent, draw a card." The condition is
+  about the player, and the draw was landing while the bounced
+  commander's owner was still being asked about the command zone.
+- Chain of Vapor — "Then that permanent's controller may sacrifice a
+  land of their choice." Two prompts at once, in the wrong order, at a
+  table where the second is a reasonable thing to answer first.
+- Hermit Druid — "Put that card into your hand and all other cards
+  revealed this way into your graveyard" is one instruction about a
+  settled run, and the land was reaching hand with cards above it still
+  in the library.
+
+**5. The one that was spinning: Consuming Aberration.** "Each opponent
+reveals cards from the top of their library until they reveal a land
+card." The loop read the top of the library, milled one card, and asked
+whether the card it had READ was a land. A paused leg leaves the card
+exactly where it was (`millPlanLocked`), so the next pass read the same
+card and milled it again — round and round to the 1000-iteration fuse.
+It is `MillToZone`'s own `Until` run now, chosen up front against the
+pre-move copies, which is the same reason §5l gave for choosing a mill's
+batch before the first card moves.
+
+**6. Two allowlist entries, both the ungated family.** Solitude's
+`if power <= 0` (§5t's) and Dark Confidant's `if life == 0`. Neither is
+a gate on the move: both are guards against asking the engine for a
+change of nothing, in front of a clause about a PLAYER that §5m item 5
+declared ungated. They stay as they are, with the reason on the entry.
+
+**7. What the engine grew, and what it did not.**
+`BounceToHandThenForEffect` is the fourth single-card WRAPPER over the
+batch, beside `ExileCardThenForEffect` (#870), `SacrificeThenForEffect`
+(#910) and `TuckToLibraryThenForEffect` (#783) — six lines, no second
+path, because a second path with its own notion of what landed is how
+exile and destroy drifted apart (#815, #866). `BounceToHand.Then` and
+`SacrificePermanent.Then` are the catalog side, shaped exactly like
+`ExileTarget.Then`. `SacrificeChoice.Then` now means what its doc always
+said, "once the permanent has gone".
+
+**Deliberately NOT in the lint's tables:**
+`g.PlayerSacrificesForEffect` and `g.EachPlayerSacrificesForEffect`.
+They queue a QUESTION and return how many seats were asked; nothing has
+left the battlefield when they return, and the prompt carries no
+continuation for a card to hang a clause on. Rise of the Witch-king's
+"if you sacrificed a creature this way" therefore pays out before the
+answer, which the card declares as a caveat and
+[#1019](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1019) tracks.
+A lint whose message names a fix that does not exist is worse than no
+lint.
+
+**8. Nothing new is snapshotted.** Every migrated site rides an existing
+`zoneRoute.then` and the `replacementResume` frame from §5g, with §5k's
+undo contract. `cards/effects/exit_payout_cards_test.go` pins all five
+cards on a real board, and each fix was backed out and its test confirmed
+to fail without it.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
