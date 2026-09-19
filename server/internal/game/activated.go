@@ -201,6 +201,32 @@ type AbilityCost struct {
 	// floor on a variable that cannot vary is a card-file mistake,
 	// and it would silently make the ability unactivatable.
 	MinX int
+
+	// DiscardSelf discards the SOURCE card as part of the cost —
+	// cycling's "Discard this card" (CR 702.29a, #660). The source
+	// leaves whatever zone the ability was activated from, which for
+	// every card that prints it is the hand.
+	//
+	// Separate from DiscardCards below, and deliberately so
+	// (ADR 0062 Decision 2): this component names no card, needs no
+	// chooser and puts no options on the wire. Folding it into the
+	// general one as "N = 1 matching only this card" would ask the
+	// activator a question with one answer on every cycling in the
+	// game, and would admit a payload naming some OTHER card.
+	DiscardSelf bool
+
+	// DiscardCards is the general discard component: "Discard a
+	// card" (Cryptbreaker), "Discard a creature card" (Fauna Shaman,
+	// Survival of the Fittest, Tortured Existence). Nil means no
+	// discard-another component. See DiscardCost in discard_cost.go.
+	//
+	// The activator names the cards in
+	// ActivateAbilityParams.DiscardIDs at announce, beside the
+	// sacrifice and crew picks — the SAME announce-time cost pause
+	// the client already opens for those, not a new one. CR 602.2b
+	// activates an ability in one indivisible step, so a cost may
+	// not stop to ask the server a question mid-announce.
+	DiscardCards *DiscardCost
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -280,6 +306,40 @@ type ActivatedAbilityShape struct {
 
 	// SorcerySpeed marks "activate only as a sorcery" (CR 602.5d).
 	SorcerySpeed bool
+
+	// Zones is the set of zones this ability functions from
+	// (CR 113.6 — an ability works only where it says it does).
+	// Nil means the BATTLEFIELD, which is every ability written
+	// before this field existed and nearly every ability there will
+	// ever be.
+	//
+	// A slice rather than a FromHand bool, and per-ABILITY rather
+	// than per-card, because the cards immediately behind cycling
+	// want other zones and want them one entry at a time:
+	// Reassembling Skeleton and Drownyard Temple activate from the
+	// graveyard, and Eternal Dragon prints a hand ability
+	// (plainscycling) and a graveyard ability on one card.
+	// ADR 0062 Decision 1.
+	//
+	// ActivateCatalogAbility checks it AFTER the index lookup and
+	// before anything is validated or paid (ErrActivationZoneNotAllowed),
+	// so there is one activation path with a zone dimension rather
+	// than a second entry point for hand abilities. A cost component
+	// that names the source as a permanent — Tap, SacrificeSelf,
+	// Crew, Loyalty — is refused at effects.Register on an ability
+	// that declares a non-battlefield zone, not silently at runtime.
+	Zones []ZoneKind
+
+	// Cycling marks this ability as the card's CYCLING ability
+	// (CR 702.29a). Activating it is "cycling a card" (CR 702.29b),
+	// which emits EventCycle beside the cost's EventDiscardCard so
+	// Astral Slide / Drake Haven-style watchers can see it.
+	//
+	// A declarative bit rather than a name match on the label: the
+	// event has to be a fact about what the card printed, and a
+	// typecycling ability ("Basic landcycling {2}") is a cycling
+	// ability too even though its effect searches rather than draws.
+	Cycling bool
 
 	// Condition is the ability's other activation instructions
 	// (CR 602.1b): "Activate only if an opponent controls four or
@@ -430,6 +490,18 @@ type ActivateAbilityParams struct {
 	// 601.2b's "announce the value of X", one component over).
 	CounterCounts []int
 
+	// DiscardIDs names the cards paid to a DiscardCards cost
+	// (#660): exactly the clause's count, each once, each in the
+	// activator's hand and each matching the clause. Never the
+	// source of an ability activated FROM hand — a card cannot pay
+	// for its own activation twice, and cycling's "Discard this
+	// card" is the separate DiscardSelf component.
+	//
+	// Chosen at announce with the sacrifice and crew picks
+	// (CR 602.2b), on the wire as `discard_ids`, exactly as a cast's
+	// additional discard cost rides CastSpellParams.DiscardIDs.
+	DiscardIDs []uuid.UUID
+
 	// CounterKind is the kind a "remove a counter" cost of ANY kind
 	// removes (Fain, the Broker), chosen at announce with the
 	// permanent. Optional for a cost that prints its kind — if sent,
@@ -538,28 +610,56 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// "do you control this permanent" too. Fast-path no-op when
 	// nothing has changed.
 	g.RecomputeLayersIfStaleLocked()
-	source := findBattlefieldCard(g, cardID)
+	// #660 / ADR 0062 Decision 1: the source is found in WHATEVER
+	// zone holds it, not on the battlefield alone. One activation
+	// path with a zone dimension — cycling is an ordinary CR 602
+	// activation whose ability happens to function from hand
+	// (CR 702.29a), not a fork.
+	source, srcZone := g.findCardAndZoneLocked(cardID)
 	if source == nil {
 		return ErrCardNotFound
 	}
-	if source.Controller != playerID {
+	if srcZone == ZoneBattlefield {
+		if source.Controller != playerID {
+			return ErrCardCallerMismatch
+		}
+		// CR 602.5: "its activated abilities can't be activated"
+		// (Arrest, Faith's Fetters). Checked before the index lookup
+		// so the answer does not depend on which ability was named,
+		// and before any cost validation so nothing is paid. Loyalty
+		// abilities are activated abilities (CR 606.1) and are
+		// covered here too. Mana abilities take the other entry
+		// point and the other bit — see restrictions.go on why that
+		// split exists.
+		if !CanActivateAbilities(source) {
+			return ErrCantActivate
+		}
+	} else if source.Owner != playerID {
+		// CR 108.4: a card outside the battlefield and the stack has
+		// no controller, so its owner is the "you" of the printed
+		// text. Every hand in this engine holds only its owner's
+		// cards, so this is the same check the battlefield arm makes,
+		// asked of the field that means something here.
+		//
+		// CanActivateAbilities is deliberately NOT asked: Arrest and
+		// Faith's Fetters apply to a permanent, and layer 6 has
+		// nothing to say about a card in a hand.
 		return ErrCardCallerMismatch
-	}
-	// CR 602.5: "its activated abilities can't be activated"
-	// (Arrest, Faith's Fetters). Checked before the index lookup so
-	// the answer does not depend on which ability was named, and
-	// before any cost validation so nothing is paid. Loyalty
-	// abilities are activated abilities (CR 606.1) and are covered
-	// here too. Mana abilities take the other entry point and the
-	// other bit — see restrictions.go on why that split exists.
-	if !CanActivateAbilities(source) {
-		return ErrCantActivate
 	}
 	abilities := ActivatedAbilitiesForCard(*source)
 	if index < 0 || index >= len(abilities) {
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// CR 113.6: an ability functions only from the zone it says it
+	// functions from. Checked after the index lookup (so the index
+	// is the one the view and the enumerator published) and before
+	// everything else, so a cycling ability fired from the
+	// battlefield — or a sacrifice outlet fired from hand — costs
+	// nothing and pays nothing.
+	if !AbilityFunctionsFromZone(ab, srcZone) {
+		return ErrActivationZoneNotAllowed
+	}
 
 	// --- timing -------------------------------------------------
 	// CR 606.3: a loyalty ability is sorcery-speed whether or not
@@ -670,6 +770,13 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 	// leaves the source untapped and the pool untouched.
 	if !g.canPlaceCounterLocked(playerID, cardID, ab.Cost.AddCounter) {
 		return ErrCantPayCounterCost
+	}
+	// #660: the discard components. Validated here with everything
+	// else and paid last (a discard moves the source out of hand,
+	// which invalidates `source` exactly as a sacrifice does).
+	discards, err := g.validateDiscardCostLocked(playerID, cardID, srcZone, ab.Cost, params.DiscardIDs)
+	if err != nil {
+		return err
 	}
 	if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
 		// CR 119.4 forbids paying more life than you have. Paying
@@ -799,6 +906,21 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		return err
 	}
 	source = nil
+	// Discards last (#660). They move cards out of the hand, which
+	// invalidates `source` for a DiscardSelf cost, and they go
+	// through the ONE discard helper with cause cost — so
+	// EventDiscardCard still fires per card, the CR 614 window still
+	// runs over the exit, and CR 601.2h / 602.2b's indivisible step
+	// is expressed by MustSettleNow rather than by a second loop
+	// that knows not to prompt. See discard.go.
+	//
+	// Cycling emits EventCycle here too (CR 702.29b): the ability
+	// has been paid for, so the card HAS been cycled, and the
+	// watchers see it with the card already in the graveyard, which
+	// is where CR 702.29c says it is.
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards); err != nil {
+		return err
+	}
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()

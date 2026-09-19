@@ -70,6 +70,25 @@ const (
 	// EventDiscardCard — Actor discarded CardID.
 	EventDiscardCard EventKind = "discard_card"
 
+	// EventCycle — Actor cycled CardID (CR 702.29b): they activated
+	// its cycling ability and paid the cost, which discarded it.
+	// Source and CardID are both the cycled card.
+	//
+	// Emitted AFTER the cost's EventDiscardCard, with the card
+	// already in the graveyard, because that is where CR 702.29c
+	// puts it for the watchers. Both events fire for one cycling and
+	// that is the rule, not double-counting: a "cycles or discards"
+	// clause (CR 702.29d) watches one of them, and the discard
+	// payoffs in the catalog (Marauding Mako, Scrounging Skyray)
+	// watch the other.
+	//
+	// A watcher on the BATTLEFIELD — Astral Slide, Drake Haven,
+	// Fluctuator — sees this through the harvester's ordinary
+	// battlefield scan. "When you cycle THIS card" (Magmakin
+	// Artillerist) does not, and waits on a zone dimension for
+	// triggered abilities: ADR 0062 Decision 7.
+	EventCycle EventKind = "cycle"
+
 	// EventMill — Actor milled CardID from the top of their library.
 	// Fires per card.
 	EventMill EventKind = "mill"

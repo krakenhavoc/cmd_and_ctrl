@@ -608,6 +608,17 @@ type ActivatedAbility struct {
 	// order. Declare the target clause on the OPTION, not here.
 	Modes        *game.ModeSpec
 	SorcerySpeed bool
+	// Zones is the set of zones this ability functions from
+	// (CR 113.6). Nil — nearly every ability — means the
+	// battlefield. Cycling declares ZoneHand; a graveyard activation
+	// (Reassembling Skeleton) will declare ZoneGraveyard. Build the
+	// entry with Cycling / Typecycling rather than setting this by
+	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062.
+	Zones []game.ZoneKind
+	// Cycling marks the card's cycling ability (CR 702.29a), so
+	// activating it emits EventCycle. Set by the Cycling /
+	// Typecycling constructors; no card file sets it directly.
+	Cycling bool
 	// Condition is the "Activate only if …" / "Activate only during
 	// your turn" gate (CR 602.1b, #743). Same contract and helpers as
 	// ManaAbility.Condition — see game.ActivatedAbilityShape.Condition

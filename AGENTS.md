@@ -3278,6 +3278,51 @@ proliferates or doubles it, a copy does not take it (CR 716.2c,
 `Designation.Active`, and a layer-version bump on the event that
 changes it — nothing else.
 
+### Abilities from the hand (#660)
+
+An activated ability declares **where it functions** (CR 113.6) with
+`ActivatedAbility.Zones []game.ZoneKind`. Nil — nearly every ability —
+means the battlefield. Cycling declares `{game.ZoneHand}`, and the
+graveyard activations behind it (Reassembling Skeleton, Drownyard
+Temple) will declare `{game.ZoneGraveyard}`. There is **one**
+activation path with a zone dimension, not a hand fork:
+`ActivateCatalogAbility` finds its source in whatever zone holds it,
+treats the card's OWNER as "you" off the battlefield (CR 108.4), and
+refuses a mismatch with `ErrActivationZoneNotAllowed` before anything
+is validated or paid. See
+[ADR 0062](docs/decisions/0062-abilities-and-special-actions-from-the-hand.md).
+
+Write cycling with the constructors, never by hand:
+
+```go
+Activated: []ActivatedAbility{Cycling("{3}")},                 // Cycling {3}
+Activated: []ActivatedAbility{BasicLandcycling("{2}")},        // Basic landcycling {2}
+Activated: []ActivatedAbility{Typecycling("Plainscycling", "{2}",
+    "a Plains card", IsLandWithSubtype("plains"))},
+```
+
+They stamp the zone, the `DiscardSelf` cost and the `Cycling` bit that
+makes `EventCycle` fire (CR 702.29b). A battlefield watcher of that
+event is `WheneverYouCycle(label, effect)` — Astral Slide, Drake Haven.
+**"When you cycle THIS card" does not work yet**: the card is in the
+graveyard by then (CR 702.29c) and the harvester has no scan that finds
+it there (ADR 0062 Decision 7). Declare that half as a caveat, as
+Magmakin Artillerist does.
+
+Two discard cost components sit on `AbilityCost`. `DiscardThis()` is
+cycling's and is only legal on a hand ability. `DiscardACard()` /
+`DiscardCardsMatching(n, label, match)` / `DiscardN(n, label)` are the
+general clause — Fauna Shaman's "Discard a creature card" — whose picks
+the activator names at announce (`discard_ids`), like a sacrifice cost's.
+Both pay through the one discard helper with cause COST, so every
+discard payoff sees them and none of them can pause (CR 601.2h /
+602.2b).
+
+`effects.Register` panics at boot on a non-battlefield ability that
+declares a tap, sacrifice-this, crew or loyalty component: none of them
+has a permanent to pay with. That is the check to read if a new hand
+ability refuses to boot.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

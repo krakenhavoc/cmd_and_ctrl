@@ -21,29 +21,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reminder-text ability has to be spelled out or the land taps for
 // nothing.
 //
-// DECLARED SIMPLIFICATION — NO CYCLING, exactly as on Raffine's
-// Tower, and for exactly the same two engine reasons:
-//
-//   - game.AbilityCost has no discard component. Spec.AdditionalCost's
-//     DiscardCost is a spell-cast cost, not an ability cost.
-//   - The CR 602 activation path only offers abilities on
-//     battlefield permanents, and cycling is activated FROM HAND.
-//
-// Shipping without it makes the Triome strictly worse than printed,
-// which is the safe direction. Cycling {3} is a late-game mana sink
-// and a mulligan-smoother; the land's main job — fixing three
-// colours and being fetchable — is all live.
+// Cycling {3} arrived with #660 — the late-game mana sink and
+// mulligan-smoother that made this a four-of over the tri-lands. It
+// is an activated ability from hand (CR 702.29a), which is why it
+// took a zone dimension on the activation path rather than an
+// alternative cast cost (ADR 0062).
 func init() {
 	Register(Spec{
 		OracleID:     "6bae00e8-06cf-4ac4-a1cc-757e454109fe",
 		Name:         "Ketria Triome",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Cycling {3} is not implemented — the land can only be played, not cycled from hand."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G|U|R}",
 			Label:    "Add {G}, {U}, or {R}",
 		}},
+		Activated: []ActivatedAbility{Cycling("{3}")},
 	})
 }

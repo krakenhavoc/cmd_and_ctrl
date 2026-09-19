@@ -1192,6 +1192,28 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
+	// HandAbilities are the CR 602 activated abilities this card
+	// offers while it is IN HAND — cycling and typecycling today
+	// (CR 702.29a/e), and whatever else declares
+	// ActivatedAbilityShape.Zones = {hand} later. Absent for every
+	// card that prints none, which is nearly all of them.
+	//
+	// A separate field from ActivatedAbilities rather than a reuse,
+	// and ADR 0062 Decision 5 says why: the two lists are disjoint by
+	// construction, but they are read by different UI (a permanent's
+	// menu versus a hand card's popover beside "cast"), and a client
+	// that has not been taught about this field shows nothing rather
+	// than showing a cycling row on a battlefield permanent.
+	//
+	// UNLIKE ActivatedAbilities, this is NOT public: a hand is not.
+	// It is stamped for every seat's own hand and FilterViewFor
+	// strips other seats' hands wholesale, as it already does for
+	// their contents.
+	//
+	// `index` is the ability's index in the card's FULL ability
+	// list, so the client sends the same activate_ability payload it
+	// sends for a permanent. Added for #660.
+	HandAbilities []ActivatedAbilityView `json:"hand_abilities,omitempty"`
 	// SummoningSick reports CR 302.6 sickness: the permanent is a
 	// creature, it entered this turn and it has no haste, so it
 	// can't attack or pay a {T} cost. Battlefield creatures only —
@@ -1456,6 +1478,31 @@ type ActivatedAbilityView struct {
 	// before #789 split them out, and so a mana ability can carry the
 	// same ones without a second declaration to keep in step.
 	CounterCostView
+	// DiscardSelf is cycling's "Discard this card" cost component
+	// (CR 702.29a, #660). Advisory: the client renders the cost
+	// chip, and there is nothing to collect — the source IS the
+	// payment, so no `discard_ids` is sent for it.
+	DiscardSelf bool `json:"discard_self,omitempty"`
+	// DiscardCostN / Label / Options describe a "Discard N cards"
+	// cost component (#660): Fauna Shaman's "Discard a creature
+	// card", Cryptbreaker's "Discard a card". DiscardCostN is the
+	// count and its presence marks the component; zero and absent
+	// for every ability without one.
+	//
+	//   - DiscardCostLabel is the clause as printed, without the
+	//     verb ("a creature card").
+	//   - DiscardCostOptions is what could pay right now: the cards
+	//     in the activator's hand that match the clause, in hand
+	//     order, with the source excluded (an ability activated from
+	//     hand cannot pay for itself). Absent when nothing can pay.
+	//
+	// The client sends the chosen cards as `discard_ids` and skips
+	// its picker entirely when the options number exactly
+	// DiscardCostN — a modal with one possible answer is a worse
+	// version of no modal.
+	DiscardCostN       int      `json:"discard_cost_n,omitempty"`
+	DiscardCostLabel   string   `json:"discard_cost_label,omitempty"`
+	DiscardCostOptions []string `json:"discard_cost_options,omitempty"`
 	// DemandsX marks an ability whose mana component contains {X}
 	// (Helm of Obedience, Treasure Vault, Soothsaying). The client
 	// opens its X picker before the targeting step and sends the
@@ -1780,6 +1827,7 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		stampLegalTargets(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
+		stampHandAbilities(g, view.Seats)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		view.legalBySeat = enumerateLegalMoves(g)
@@ -2186,12 +2234,54 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		if !ok {
 			continue
 		}
-		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller)
+		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield)
 		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
 		stampManaCounterCosts(g, card, controller, c.ManaAbilities)
+	}
+}
+
+// stampHandAbilities fills CardView.HandAbilities for every card in
+// every seat's own hand — the CR 602 abilities that function from
+// there (CR 113.6), which today means cycling and typecycling
+// (CR 702.29). #660 / ADR 0062 Decision 5.
+//
+// Mirrors stampActivatedAbilities and is split from viewOfCard for
+// the same reason: the cost projections (which cards in hand could
+// pay a discard clause, which targets are legal) need a game handle,
+// and viewOfCard has one card.
+//
+// The "you" is the hand's OWNER, not a controller: a card in a hand
+// has no controller (CR 108.4), and every hand in this engine holds
+// only its owner's cards. Unlike a permanent's abilities these are
+// not public, and they do not have to be stripped here — FilterViewFor
+// already blanks another seat's hand wholesale.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampHandAbilities(g *game.Game, seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		owner, err := uuid.Parse(seat.ID)
+		if err != nil {
+			continue
+		}
+		for ci := range seat.Hand.Cards {
+			c := &seat.Hand.Cards[ci]
+			if c.oracleID == "" {
+				continue
+			}
+			instanceID, err := uuid.Parse(c.InstanceID)
+			if err != nil {
+				continue
+			}
+			card, ok := g.LookupCardForEffect(instanceID)
+			if !ok {
+				continue
+			}
+			c.HandAbilities = viewOfActivatedAbilities(g, card, owner, game.ZoneHand)
+		}
 	}
 }
 
@@ -3324,6 +3414,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.TargetMode = ""
 	out.ManaAbilities = nil
 	out.ActivatedAbilities = nil
+	// #660: a hand ability quotes the card's text as loudly as its
+	// mana cost — "Cycling {3}" on an opponent's face-down hand card
+	// would name the Triome. It is also the only ability list on the
+	// wire that is not public information in the first place.
+	out.HandAbilities = nil
 	out.Restrictions = nil
 	out.ExilePlay = nil
 	// The hand / command / graveyard stamps are only meaningful to a
@@ -3720,18 +3815,28 @@ func equalStrings(a, b []string) bool {
 // them in the same right-click menu the mana abilities use; the
 // cost flags tell it which extra picks to collect before firing
 // activate_ability (a sacrifice choice, a target).
-func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []ActivatedAbilityView {
+// `zone` is where the card is sitting, and abilities that do not
+// function there are left out (CR 113.6, #660): a Ketria Triome on
+// the battlefield offers no cycling row, and the same card in hand
+// offers nothing but one. The index is the ability's index in the
+// card's FULL list either way, which is what the engine validates
+// against — so a filtered list never renumbers.
+func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone game.ZoneKind) []ActivatedAbilityView {
 	raw := game.ActivatedAbilitiesForCard(c)
 	if len(raw) == 0 {
 		return nil
 	}
-	out := make([]ActivatedAbilityView, len(raw))
+	var out []ActivatedAbilityView
 	for i, a := range raw {
+		if !game.AbilityFunctionsFromZone(a, zone) {
+			continue
+		}
 		v := ActivatedAbilityView{
 			Index:         i,
 			Label:         a.Label,
 			TapCost:       a.Cost.Tap,
 			SacrificeSelf: a.Cost.SacrificeSelf,
+			DiscardSelf:   a.Cost.DiscardSelf,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
@@ -3765,6 +3870,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		}
 		// #917 / #916: the "or 2 life" half of the announcement.
 		v.PhyrexianSymbols = phyrexianSymbolsIn(a.Cost.Mana)
+		if dc := a.Cost.DiscardCards; dc != nil && dc.N > 0 {
+			v.DiscardCostN = dc.N
+			v.DiscardCostLabel = dc.Label
+			v.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, c.InstanceID, dc))
+		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
 			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
@@ -3776,7 +3886,19 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID) []Act
 		if a.Modes != nil {
 			v.Modes = viewOfModeSpec(g, caster, a.Modes)
 		}
-		out[i] = v
+		out = append(out, v)
+	}
+	return out
+}
+
+// cardIDStrings renders a list of instance IDs for the wire.
+func cardIDStrings(ids []uuid.UUID) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
 	}
 	return out
 }

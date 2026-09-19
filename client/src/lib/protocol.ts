@@ -1161,6 +1161,20 @@ export interface ActivatedAbilityView {
   // then lower mana value, then the source. See sacrificeCost.ts.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #660: the discard cost components (CR 702.29a and the general
+  // "Discard a creature card" clause). `discard_self` is cycling's
+  // "Discard this card" — advisory only, there is nothing to pick,
+  // because the source IS the payment. `discard_cost_n` is the count
+  // of the general clause and its presence marks that component;
+  // `discard_cost_label` is the clause as printed ("a creature
+  // card"), and `discard_cost_options` the cards in hand that could
+  // pay it right now. The picks ride activate_ability as
+  // `discard_ids`; exactly `discard_cost_n` options means there is
+  // nothing to ask and the client skips its picker.
+  discard_self?: boolean;
+  discard_cost_n?: number;
+  discard_cost_label?: string;
+  discard_cost_options?: string[];
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -1520,6 +1534,14 @@ export interface CardView {
   exile_play?: ExilePlayView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];
+  // #660: activated abilities this card offers while it is IN HAND —
+  // cycling and typecycling (CR 702.29). A separate field from
+  // `activated_abilities` because the two are read by different UI
+  // and because a hand, unlike the battlefield, is not public: the
+  // server strips this from every seat but the hand's owner. `index`
+  // is the ability's index in the card's FULL list, so the same
+  // activate_ability payload works for both.
+  hand_abilities?: ActivatedAbilityView[];
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;

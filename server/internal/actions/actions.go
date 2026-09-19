@@ -946,6 +946,11 @@ func Dispatch(g *game.Game, a Action) error {
 			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
 			CounterKinds     []string `json:"counter_kinds,omitempty"`
+			// #660 — discard_ids names the cards paid to a
+			// "Discard a creature card" cost on an activated
+			// ability (CR 602.2b). Cycling's "Discard this card"
+			// needs none: the source IS the payment.
+			DiscardIDs []string `json:"discard_ids,omitempty"`
 			// CR 107.4f / CR 602.2b (#917) — how many of the mana
 			// component's Phyrexian symbols are being paid with 2
 			// life each instead of mana (Birthing Pod's {1}{G/P}).
@@ -995,6 +1000,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				counterIDs = append(counterIDs, id)
 			}
+			discardIDs := make([]uuid.UUID, 0, len(p.DiscardIDs))
+			for _, raw := range p.DiscardIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability discard_ids: %w", err)
+				}
+				discardIDs = append(discardIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -1010,6 +1023,7 @@ func Dispatch(g *game.Game, a Action) error {
 				CounterCounts:    p.CounterCounts,
 				CounterKind:      p.CounterKind,
 				CounterKinds:     p.CounterKinds,
+				DiscardIDs:       discardIDs,
 				Targets:          refs,
 				// #764, CR 602.2b: a modal activated ability announces
 				// its modes with its targets, in one indivisible step.

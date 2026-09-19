@@ -34,7 +34,11 @@ type activateParams struct {
 	// parts may differ in kind (Tekuthal). Omitted whenever the
 	// payment is of one kind, which counter_kind says.
 	CounterKinds []string `json:"counter_kinds,omitempty"`
-	XValue       int      `json:"x_value,omitempty"`
+	// #660: the cards paid to a "Discard a creature card" cost.
+	// Cycling's "Discard this card" sends none — the source is the
+	// payment.
+	DiscardIDs []string `json:"discard_ids,omitempty"`
+	XValue     int      `json:"x_value,omitempty"`
 	// #917, CR 107.4f: how many of the mana component's Phyrexian
 	// symbols this activation pays with 2 life each. Omitted for
 	// every ability that prints none, which is nearly all of them.
@@ -67,237 +71,292 @@ func (e *enumerator) activatedMoves() {
 		if !game.CanActivateAbilities(source) {
 			continue
 		}
-		abilities := game.ActivatedAbilitiesForCard(*source)
-		for idx, ab := range abilities {
-			if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
+		e.abilityMovesForSource(source, game.ZoneBattlefield, speed)
+	}
+	// #660: the seat's OWN hand. Cycling is an ordinary CR 602
+	// activation whose ability functions from hand (CR 702.29a), so
+	// it goes through the same body below rather than through a
+	// second enumerator — the zone predicate is the only thing that
+	// differs, which is the whole point of ADR 0062 Decision 1.
+	//
+	// No CanActivateAbilities call: layer 6 removes a PERMANENT's
+	// abilities, and ActivateCatalogAbility does not ask it off the
+	// battlefield either. Offering a move the engine refuses, and
+	// withholding one it would accept, are both #544.
+	if p != nil && p.Hand != nil {
+		for i := range p.Hand.Cards {
+			e.abilityMovesForSource(&p.Hand.Cards[i], game.ZoneHand, speed)
+		}
+	}
+}
+
+// abilityMovesForSource enumerates one card's activated abilities,
+// from the zone that card is actually in. Split out of activatedMoves
+// so the battlefield loop and the hand loop share every line of the
+// cost solve: the mana and Phyrexian affordability, the sacrifice,
+// crew, counter and discard payments, the mode and target expansion
+// and the per-source budget.
+//
+// The ability list comes from game.ActivatedAbilitiesForCard, which is
+// the one accessor every consumer reads through — so a designation-
+// gated ability (ADR 0071) is absent here exactly as it is absent from
+// the activation path and the wire.
+func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind, speed bool) {
+	g, p := e.g, e.p
+	abilities := game.ActivatedAbilitiesForCard(*source)
+	for idx, ab := range abilities {
+		// CR 113.6: the ability has to function from the zone the
+		// card is in. Same predicate the engine gates on, so a
+		// hand card's battlefield abilities are never offered and
+		// a permanent's cycling never is either.
+		if !game.AbilityFunctionsFromZone(ab, zone) {
+			continue
+		}
+		if (ab.SorcerySpeed || ab.Cost.Loyalty != nil) && !speed {
+			continue
+		}
+		// CR 602.1b (#743): the "Activate only if …" gate, with
+		// the same arguments ActivateCatalogAbility passes, so a
+		// policy is never offered Tectonic Edge while no
+		// opponent has four lands (#544).
+		if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
+			continue
+		}
+		// CR 606: a loyalty ability needs a planeswalker, one
+		// activation per turn, and enough counters to pay a −N.
+		// Mirrors ActivateCatalogAbility so a policy never
+		// proposes a move the engine will bounce.
+		if ab.Cost.Loyalty != nil {
+			if !source.IsPlaneswalker() || g.LoyaltyActivatedThisTurn[source.InstanceID] {
 				continue
 			}
-			// CR 602.1b (#743): the "Activate only if …" gate, with
-			// the same arguments ActivateCatalogAbility passes, so a
-			// policy is never offered Tectonic Edge while no
-			// opponent has four lands (#544).
-			if ab.Condition != nil && !ab.Condition(g, e.seat, source.InstanceID) {
+			if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
 				continue
 			}
-			// CR 606: a loyalty ability needs a planeswalker, one
-			// activation per turn, and enough counters to pay a −N.
-			// Mirrors ActivateCatalogAbility so a policy never
-			// proposes a move the engine will bounce.
-			if ab.Cost.Loyalty != nil {
-				if !source.IsPlaneswalker() || g.LoyaltyActivatedThisTurn[source.InstanceID] {
-					continue
-				}
-				if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
-					continue
-				}
+		}
+		if ab.Cost.Tap {
+			if source.Tapped {
+				continue
 			}
+			if source.IsCreature() && game.HasSummoningSickness(source) {
+				continue
+			}
+		}
+		if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
+			continue
+		}
+		// CR 602.2b: X is announced with the activation, so the
+		// enumerator has to pick one. It picks the LARGEST
+		// affordable value at or above the cost's printed floor,
+		// exactly as castMovesForCard does for an {X} spell, and
+		// emits ONE move for it.
+		//
+		// One move, not one per value in 0..MaxX, and that is the
+		// #544 lesson applied rather than re-learned: the
+		// expansion budget below is shared with the target and
+		// sacrifice sets, so an X that added an arity to the
+		// cross product would spend the budget on near-duplicate
+		// activations of the first target and never reach the
+		// second. X consumes no budget at all here.
+		//
+		// The floor is the other half, and since #810 it has two
+		// sources, both settled by enumeratedXFloor (x.go).
+		// Helm of Obedience's printed "X can't be 0" means an
+		// activator who cannot afford X=1 has no legal
+		// activation, and offering one at X=0 would be exactly
+		// the bug #544 describes — an enumeration the engine
+		// refuses. Soothsaying's "{X}: Look at the top X cards"
+		// prints no floor, so X=0 IS legal (CR 602.2b) and the
+		// engine accepts it — but it costs nothing, does
+		// nothing, and comes straight back, which is CR 732.2a's
+		// repeatable no-op. Neither is a move worth offering, so
+		// both are answered by the same floor.
+		xValue := 0
+		phyrexianLife := 0
+		if ab.Cost.Mana != "" {
+			cost, err := game.ParseCost(ab.Cost.Mana)
+			if err != nil {
+				continue
+			}
+			// #352: an activated ability's mana is paid under an
+			// activation context keyed on the SOURCE permanent,
+			// mirroring payAbilityManaCostLocked. So is the
+			// exclusion: a {T} ability cannot tap its own source
+			// for mana, and an enumerator that thought it could
+			// would offer activations the engine refuses.
+			var excluded map[uuid.UUID]bool
 			if ab.Cost.Tap {
-				if source.Tapped {
-					continue
-				}
-				if source.IsCreature() && game.HasSummoningSickness(source) {
-					continue
-				}
+				excluded = map[uuid.UUID]bool{source.InstanceID: true}
 			}
-			if ab.Cost.Life > 0 && p.Life < ab.Cost.Life {
+			floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+			// #917, CR 107.4f: the announcement has TWO numbers
+			// when the cost prints a Phyrexian symbol — the X and
+			// how many symbols are paid with 2 life each — and
+			// they are solved together, because striking a symbol
+			// changes what X the pool can afford.
+			x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
+			if !ok {
 				continue
 			}
-			// CR 602.2b: X is announced with the activation, so the
-			// enumerator has to pick one. It picks the LARGEST
-			// affordable value at or above the cost's printed floor,
-			// exactly as castMovesForCard does for an {X} spell, and
-			// emits ONE move for it.
-			//
-			// One move, not one per value in 0..MaxX, and that is the
-			// #544 lesson applied rather than re-learned: the
-			// expansion budget below is shared with the target and
-			// sacrifice sets, so an X that added an arity to the
-			// cross product would spend the budget on near-duplicate
-			// activations of the first target and never reach the
-			// second. X consumes no budget at all here.
-			//
-			// The floor is the other half, and since #810 it has two
-			// sources, both settled by enumeratedXFloor (x.go).
-			// Helm of Obedience's printed "X can't be 0" means an
-			// activator who cannot afford X=1 has no legal
-			// activation, and offering one at X=0 would be exactly
-			// the bug #544 describes — an enumeration the engine
-			// refuses. Soothsaying's "{X}: Look at the top X cards"
-			// prints no floor, so X=0 IS legal (CR 602.2b) and the
-			// engine accepts it — but it costs nothing, does
-			// nothing, and comes straight back, which is CR 732.2a's
-			// repeatable no-op. Neither is a move worth offering, so
-			// both are answered by the same floor.
-			xValue := 0
-			phyrexianLife := 0
-			if ab.Cost.Mana != "" {
-				cost, err := game.ParseCost(ab.Cost.Mana)
-				if err != nil {
-					continue
-				}
-				// #352: an activated ability's mana is paid under an
-				// activation context keyed on the SOURCE permanent,
-				// mirroring payAbilityManaCostLocked. So is the
-				// exclusion: a {T} ability cannot tap its own source
-				// for mana, and an enumerator that thought it could
-				// would offer activations the engine refuses.
-				var excluded map[uuid.UUID]bool
-				if ab.Cost.Tap {
-					excluded = map[uuid.UUID]bool{source.InstanceID: true}
-				}
-				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
-				// #917, CR 107.4f: the announcement has TWO numbers
-				// when the cost prints a Phyrexian symbol — the X and
-				// how many symbols are paid with 2 life each — and
-				// they are solved together, because striking a symbol
-				// changes what X the pool can afford.
-				x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
-				if !ok {
-					continue
-				}
-				xValue, phyrexianLife = x, life
-			} else if ab.Cost.DemandsX() {
-				// Unreachable — DemandsX reads the same string — but
-				// a cost that demanded X with no mana component
-				// would be an unannouncable ability, so refuse it
-				// rather than emit an activation at X=0.
+			xValue, phyrexianLife = x, life
+		} else if ab.Cost.DemandsX() {
+			// Unreachable — DemandsX reads the same string — but
+			// a cost that demanded X with no mana component
+			// would be an unannouncable ability, so refuse it
+			// rather than emit an activation at X=0.
+			continue
+		}
+		// Crew (CR 702.122a). The engine rejects a crew
+		// activation that names no creatures, so an enumerator
+		// that skipped this offered a move that could only ever
+		// bounce — the same class of defect as #544, one cost
+		// component over. The pick is the cheapest set that
+		// clears the number; any set the engine accepts is a
+		// legal answer, and offering all of them would be a
+		// combinatorial expansion for a choice the policy has no
+		// information to make.
+		var crewIDs []uuid.UUID
+		if ab.Cost.Crew > 0 {
+			crewIDs = e.crewPayment(ab.Cost.Crew)
+			if crewIDs == nil {
 				continue
 			}
-			// Crew (CR 702.122a). The engine rejects a crew
-			// activation that names no creatures, so an enumerator
-			// that skipped this offered a move that could only ever
-			// bounce — the same class of defect as #544, one cost
-			// component over. The pick is the cheapest set that
-			// clears the number; any set the engine accepts is a
-			// legal answer, and offering all of them would be a
-			// combinatorial expansion for a choice the policy has no
-			// information to make.
-			var crewIDs []uuid.UUID
-			if ab.Cost.Crew > 0 {
-				crewIDs = e.crewPayment(ab.Cost.Crew)
-				if crewIDs == nil {
-					continue
-				}
-			}
-			sacrificeSets := [][]uuid.UUID{nil}
-			if ab.Cost.SacrificeOther != nil {
-				pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf, ab.Cost.SacrificeOther)
-				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
-				if len(sacrificeSets) == 0 {
-					continue
-				}
-			}
-			// #625: a "remove N counters" cost. One move per (permanent,
-			// kind) that could pay, most counters first — so a capped
-			// budget spends itself on the payments that hurt least
-			// (a 6-loyalty walker before a 1-loyalty one) — and the
-			// ability is not offered at all when nothing can pay. The
-			// candidates come from the same walk the engine's option
-			// view and validation agree with, so an offered payment is
-			// one ActivateCatalogAbility accepts (#544).
-			counterChoices := []counterChoice{{}}
-			if rc := ab.Cost.RemoveCounters; rc != nil {
-				counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
-				if len(counterChoices) == 0 {
-					continue
-				}
-			}
-			// #789: CR 118.3's other direction — a cost that PUTS a
-			// counter on cannot be paid by a permanent that can't
-			// have one. Same predicate ActivateCatalogAbility
-			// refuses on, so the list never offers what the engine
-			// bounces (#544).
-			if ac := ab.Cost.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+		}
+		sacrificeSets := [][]uuid.UUID{nil}
+		if ab.Cost.SacrificeOther != nil {
+			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf, ab.Cost.SacrificeOther)
+			sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
+			if len(sacrificeSets) == 0 {
 				continue
 			}
-			budget := e.opts.MaxExpansionPerSource
-			// #764: a modal activated ability announces its modes with
-			// its targets (CR 602.2b), so the enumerator expands the
-			// same product a modal cast does.
-			modeSets := [][]int{nil}
-			if ab.Modes != nil {
-				modeSets = e.legalModeSets(ab.Modes)
-				if len(modeSets) == 0 {
-					continue
-				}
-			}
-			type announcement struct {
-				modes   []int
-				targets []game.TargetRef
-			}
-			var announcements []announcement
-			for _, modes := range modeSets {
-				steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
-				sets := e.legalStepSets(steps, budget)
-				for _, ts := range sets {
-					announcements = append(announcements, announcement{modes: modes, targets: ts})
-				}
-			}
-			if len(announcements) == 0 {
+		}
+		// #625: a "remove N counters" cost. One move per (permanent,
+		// kind) that could pay, most counters first — so a capped
+		// budget spends itself on the payments that hurt least
+		// (a 6-loyalty walker before a 1-loyalty one) — and the
+		// ability is not offered at all when nothing can pay. The
+		// candidates come from the same walk the engine's option
+		// view and validation agree with, so an offered payment is
+		// one ActivateCatalogAbility accepts (#544).
+		counterChoices := []counterChoice{{}}
+		if rc := ab.Cost.RemoveCounters; rc != nil {
+			counterChoices = counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, source.InstanceID, rc), rc)
+			if len(counterChoices) == 0 {
 				continue
 			}
-			// #74: the life and loyalty components ride the Move
-			// rather than the params, because the params are the
-			// action payload and the dispatcher reads neither — it
-			// reads them off the ability. Without this a policy
-			// cannot tell "Pay 7 life: Draw seven cards" from a
-			// free ability and activates itself to death.
-			loyalty := 0
-			if ab.Cost.Loyalty != nil {
-				loyalty = *ab.Cost.Loyalty
+		}
+		// #789: CR 118.3's other direction — a cost that PUTS a
+		// counter on cannot be paid by a permanent that can't
+		// have one. Same predicate ActivateCatalogAbility
+		// refuses on, so the list never offers what the engine
+		// bounces (#544).
+		if ac := ab.Cost.AddCounter; ac != nil && !g.CanPlaceCounterForEffect(e.seat, source.InstanceID, ac) {
+			continue
+		}
+		// #660: a "Discard N cards" cost. Solved the way crew is —
+		// ONE payment, the cheapest set, rather than one move per
+		// subset: a discard's subsets are the powerset of a
+		// seven-card hand, and the policy has no information here
+		// that a different pick would use. "Cheapest" is hand
+		// order over the cards the clause admits, with the source
+		// excluded (an ability activated from hand cannot pay
+		// itself). Nothing payable means no move at all — #544.
+		var discardIDs []uuid.UUID
+		if dc := ab.Cost.DiscardCards; dc != nil {
+			opts := g.DiscardCostOptionsForEffect(e.seat, source.InstanceID, dc)
+			if len(opts) < dc.N {
+				continue
 			}
-			for _, ann := range announcements {
-				targets := ann.targets
-				for _, sacs := range sacrificeSets {
-					for _, cc := range counterChoices {
-						if budget <= 0 {
-							break
-						}
-						budget--
-						label := source.Name + ": " + ab.Label
-						if xValue > 0 {
-							label += fmt.Sprintf(" for X=%d", xValue)
-						}
-						if phyrexianLife > 0 {
-							label += fmt.Sprintf(" paying %d life for Phyrexian mana",
-								phyrexianLife*game.PhyrexianLifePerSymbol)
-						}
-						label += cc.label(g)
-						label += targetLabel(g, targets)
-						// #74: the life on the Move is what the
-						// controller pays at announce, so the
-						// Phyrexian half counts — a policy that saw
-						// only the printed component would read a
-						// four-life activation as free.
-						cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
-						for _, price := range cc.prices() {
-							cost = withCounterPrice(cost, price)
-						}
-						e.add(Move{
-							Type:   TypeActivateAbility,
-							Player: e.seat,
-							Kind:   KindActivate,
-							Label:  label,
-							Source: source.InstanceID,
-							Cost:   cost,
-							Params: mustJSON(activateParams{
-								SourceCardID:     source.InstanceID.String(),
-								AbilityIndex:     idx,
-								Targets:          wireTargets(targets),
-								Modes:            ann.modes,
-								SacrificeIDs:     idStrings(sacs),
-								CrewIDs:          idStrings(crewIDs),
-								CounterSourceIDs: cc.wireIDs(),
-								CounterCounts:    cc.wireCounts(),
-								CounterKind:      cc.wireKind(),
-								CounterKinds:     cc.wireKinds(),
-								XValue:           xValue,
-								PhyrexianLife:    phyrexianLife,
-								Strict:           true,
-								AutoTap:          true,
-							}),
-						})
+			discardIDs = opts[:dc.N]
+		}
+		budget := e.opts.MaxExpansionPerSource
+		// #764: a modal activated ability announces its modes with
+		// its targets (CR 602.2b), so the enumerator expands the
+		// same product a modal cast does.
+		modeSets := [][]int{nil}
+		if ab.Modes != nil {
+			modeSets = e.legalModeSets(ab.Modes)
+			if len(modeSets) == 0 {
+				continue
+			}
+		}
+		type announcement struct {
+			modes   []int
+			targets []game.TargetRef
+		}
+		var announcements []announcement
+		for _, modes := range modeSets {
+			steps := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
+			sets := e.legalStepSets(steps, budget)
+			for _, ts := range sets {
+				announcements = append(announcements, announcement{modes: modes, targets: ts})
+			}
+		}
+		if len(announcements) == 0 {
+			continue
+		}
+		// #74: the life and loyalty components ride the Move
+		// rather than the params, because the params are the
+		// action payload and the dispatcher reads neither — it
+		// reads them off the ability. Without this a policy
+		// cannot tell "Pay 7 life: Draw seven cards" from a
+		// free ability and activates itself to death.
+		loyalty := 0
+		if ab.Cost.Loyalty != nil {
+			loyalty = *ab.Cost.Loyalty
+		}
+		for _, ann := range announcements {
+			targets := ann.targets
+			for _, sacs := range sacrificeSets {
+				for _, cc := range counterChoices {
+					if budget <= 0 {
+						break
 					}
+					budget--
+					label := source.Name + ": " + ab.Label
+					if xValue > 0 {
+						label += fmt.Sprintf(" for X=%d", xValue)
+					}
+					if phyrexianLife > 0 {
+						label += fmt.Sprintf(" paying %d life for Phyrexian mana",
+							phyrexianLife*game.PhyrexianLifePerSymbol)
+					}
+					label += cc.label(g)
+					label += targetLabel(g, targets)
+					// #74: the life on the Move is what the
+					// controller pays at announce, so the
+					// Phyrexian half counts — a policy that saw
+					// only the printed component would read a
+					// four-life activation as free.
+					cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
+					for _, price := range cc.prices() {
+						cost = withCounterPrice(cost, price)
+					}
+					e.add(Move{
+						Type:   TypeActivateAbility,
+						Player: e.seat,
+						Kind:   KindActivate,
+						Label:  label,
+						Source: source.InstanceID,
+						Cost:   cost,
+						Params: mustJSON(activateParams{
+							SourceCardID:     source.InstanceID.String(),
+							AbilityIndex:     idx,
+							Targets:          wireTargets(targets),
+							Modes:            ann.modes,
+							SacrificeIDs:     idStrings(sacs),
+							CrewIDs:          idStrings(crewIDs),
+							CounterSourceIDs: cc.wireIDs(),
+							CounterCounts:    cc.wireCounts(),
+							CounterKind:      cc.wireKind(),
+							CounterKinds:     cc.wireKinds(),
+							DiscardIDs:       idStrings(discardIDs),
+							XValue:           xValue,
+							PhyrexianLife:    phyrexianLife,
+							Strict:           true,
+							AutoTap:          true,
+						}),
+					})
 				}
 			}
 		}

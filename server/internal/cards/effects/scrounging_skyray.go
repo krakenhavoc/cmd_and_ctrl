@@ -12,15 +12,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Marauding Mako with evasion, which in a deck that loots every turn
 // matters more than the extra mana: the counters actually connect.
 //
-// Same per-card batching as the Mako (CR 603.1). Cycling isn't
-// modelled: it is an activated ability from hand (CR 702.29a), not a
-// cast, and waits on a discard cost and activation from hand (#660).
+// Same per-card batching as the Mako (CR 603.1). Cycling arrived with
+// #660: an activated ability from hand (CR 702.29a), not a cast.
 func init() {
 	Register(Spec{
 		OracleID:        "3a46d85b-ce1a-4842-a342-92a5bddb1053",
 		Name:            "Scrounging Skyray",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Cycling {2} is not implemented — the creature can only be cast."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -30,5 +28,6 @@ func init() {
 				return AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}.Apply(ctx)
 			}),
 		},
+		Activated: []ActivatedAbility{Cycling("{2}")},
 	})
 }

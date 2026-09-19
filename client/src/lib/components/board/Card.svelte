@@ -61,7 +61,11 @@
     // where activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
-    // parents for battlefield permanents the viewer controls.
+    // parents for battlefield permanents the viewer controls, and
+    // since #660 by Hand.svelte for the viewer's own hand — a card in
+    // hand offers the abilities that function THERE (cycling), which
+    // ride `hand_abilities` rather than `activated_abilities`. One
+    // callback for both: the index means the same thing on the wire.
     onActivateAbility?: (abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
     // it is open. Passed straight through to ManaAbilityMenu, which
@@ -121,9 +125,13 @@
   // Dismissed on selection, Escape (handled inside the menu), or
   // click elsewhere (the window-level onclick handler below).
   let manaMenuOpen = $state(false);
+  // #660: a card projects EITHER list, never both — the server
+  // filters by the zone the card is in (CR 113.6) — so one menu reads
+  // whichever is present and the indices stay the card's own.
+  const menuAbilities = $derived(card.activated_abilities ?? card.hand_abilities ?? []);
   const hasManaAbilities = $derived(
     (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
-      (!!onActivateAbility && !!card.activated_abilities && card.activated_abilities.length > 0),
+      (!!onActivateAbility && menuAbilities.length > 0),
   );
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
@@ -505,7 +513,7 @@
         abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
-        activated={onActivateAbility ? (card.activated_abilities ?? []) : []}
+        activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}

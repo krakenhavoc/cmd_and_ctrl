@@ -308,6 +308,18 @@ var (
 	// Added in S24.
 	ErrCantActivate = errors.New("game: an effect prevents activating this permanent's abilities")
 
+	// ErrActivationZoneNotAllowed is returned by
+	// ActivateCatalogAbility when the ability does not function from
+	// the zone its source is actually in (CR 113.6): a sacrifice
+	// outlet fired at a card in hand, or a cycling ability fired at
+	// a permanent on the battlefield.
+	//
+	// Distinct from ErrCantActivate, which is a continuous effect
+	// taking a permanent's abilities away. This one is the card
+	// never having offered the ability there at all. #660 /
+	// ADR 0062 Decision 1.
+	ErrActivationZoneNotAllowed = errors.New("game: this ability cannot be activated from that zone")
+
 	// ErrIllegalBlock is what DeclareBlocker's refusal wraps when an
 	// evasion keyword on the attacker (flying, landwalk) or a CR
 	// 509.1b restriction on either card ("~ can't block", "~ can't
