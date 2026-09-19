@@ -82,12 +82,15 @@ type Game struct {
 	// Added in S10.
 	Initiative uuid.UUID
 
-	// UndoLimit is the per-player budget of undos allowed each turn.
-	// Refreshed on each player's untap step. Default DefaultUndoLimit;
-	// admin / any seated player can change via the set_undo_limit
-	// action. Sandbox — players self-police, the limit is a guardrail
-	// against runaway rewinds, not a strict policy. Added in S11.
-	UndoLimit int
+	// Settings is the table's configuration: the undo budget and
+	// scope, starting life, the commander damage threshold, bot pace
+	// and the spawn switch (ADR 0075 §2.2, settings.go). NewGame sets
+	// DefaultTableSettings; UpdateSettings changes it, in the lobby or
+	// mid-game. Carried by Clone and the snapshot, and deliberately
+	// NOT rolled back by RestoreFrom — an undo must not be able to
+	// undo the setting that limits undos. Replaced the S11 UndoLimit
+	// field in S35 (#1032).
+	Settings TableSettings
 
 	// StartingSeat is the seat index that took the first turn. Set in
 	// Start() to the active seat at game start. Used by the StepDraw
@@ -599,6 +602,7 @@ func NewGame() *Game {
 		Battlefield: newZone(ZoneBattlefield, uuid.Nil),
 		Stack:       newZone(ZoneStack, uuid.Nil),
 		Exile:       newZone(ZoneExile, uuid.Nil),
+		Settings:    DefaultTableSettings(),
 	}
 	// S16 sub-PR 2: install the layer-engine invalidation listener.
 	// Bumps g.layerVersion on the events that change which static
@@ -667,6 +671,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	seat := len(g.Seats)
 	p := newPlayer(name, seat)
+	p.Life = g.Settings.StartingLife
 
 	// Stamp every card with its owner (overwriting whatever the caller
 	// set) and route commanders vs. library cards.
@@ -792,9 +797,9 @@ func (g *Game) start(key *[32]byte) error {
 		g.rngKey = mintRNGKey()
 		g.rngCounters = nil
 	}
-	if g.UndoLimit <= 0 {
-		g.UndoLimit = DefaultUndoLimit
-	}
+	// No "<= 0 means default" rewrite here any more (ADR 0075 §2.2):
+	// NewGame sets the defaults, and a limit of 0 set in the lobby is
+	// a table that wants no undos.
 	// S13.5: collect every seated player's ID so command-zone
 	// initialisation can mark all knowers in one pass.
 	allSeatedIDs := make([]uuid.UUID, 0, len(g.Seats))
@@ -802,7 +807,8 @@ func (g *Game) start(key *[32]byte) error {
 		allSeatedIDs = append(allSeatedIDs, p.ID)
 	}
 	for _, p := range g.Seats {
-		p.UndosRemaining = g.UndoLimit
+		p.UndosRemaining = g.Settings.UndoLimit
+		p.Life = g.Settings.StartingLife
 		// The opening shuffle is the pre-game turn index's first draw
 		// on this seat's shuffle stream (the cursor is set to turn 1
 		// below).
@@ -848,11 +854,10 @@ func (g *Game) start(key *[32]byte) error {
 // count for redraws (simplified — no London bottom-N penalty yet).
 const OpeningHandSize = 7
 
-// DefaultUndoLimit is the per-player undo budget refreshed each turn
-// when Game.UndoLimit is unset. One is intentionally tight — undo is
-// for "I clicked the wrong card", not for re-litigating turns. Admin
-// or any seated player can raise it via set_undo_limit if the table
-// wants more leniency. Added in S11.
+// DefaultUndoLimit is the default per-player undo budget refreshed
+// each turn (TableSettings.UndoLimit). One is intentionally tight —
+// undo is for "I clicked the wrong card", not for re-litigating
+// turns. The table can change it through UpdateSettings. Added in S11.
 const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
@@ -1375,7 +1380,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		}
 	case StepUntap:
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
-			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
+			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.Settings.UndoLimit
 			// CR 502.1-502.3, in untap.go: the active seat's
 			// permanents untap and stop being summoning-sick, plus
 			// whatever an UntapStepPermission (Seedborn Muse)

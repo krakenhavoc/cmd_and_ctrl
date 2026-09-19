@@ -91,6 +91,19 @@ var (
 	// the cursor enters that player's untap step. Added in S11.
 	ErrNoUndosRemaining = errors.New("game: no undos remaining this turn")
 
+	// ErrInvalidSetting is returned by UpdateSettings (wrapped, with
+	// the offending field and value) when a patch value is out of
+	// range or not a known enum value. Nothing in the patch is applied.
+	// Added in S35 (#1032).
+	ErrInvalidSetting = errors.New("game: invalid table setting")
+
+	// ErrStartingLifeLocked is returned by UpdateSettings when a patch
+	// changes StartingLife after Start. The value has already been
+	// applied to every seat, and rewriting life totals mid-game would
+	// be a different feature (ADR 0075 §2.3). Nothing in the patch is
+	// applied. Added in S35 (#1032).
+	ErrStartingLifeLocked = errors.New("game: starting life cannot change once the game has started")
+
 	// ErrNoPriority is returned by PassPriority when called during a
 	// step that does not grant priority (currently Untap and Cleanup
 	// per CR 502.4 / 514.3). Added in S13.

@@ -205,8 +205,12 @@ export interface GameView {
   vote?: VoteView;
   // Per-player per-turn undo budget. Refreshed on each player's untap
   // step. Drives the "undos: N" indicator and gates the undo button.
-  // Added in S11.
+  // Added in S11. Since ADR 0075 it mirrors `settings.undo_limit`:
+  // -1 means unlimited, 0 means no undos.
   undo_limit?: number;
+  // The table's settings (ADR 0075 §2.2). Public: every viewer,
+  // spectators included, gets the same object. Added in S35 (#1032).
+  settings?: TableSettingsView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -1956,4 +1960,23 @@ export function uuid(): string {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+// TableSettingsView is a table's configuration (ADR 0075 §2.2). The
+// keys match the settings patch the server accepts, so a client can
+// send back exactly the fields it read.
+export interface TableSettingsView {
+  // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
+  undo_limit: number;
+  // Whose undo entries a seat may take back.
+  undo_scope: "own" | "host_any";
+  // Each seat's life at game start. Fixed once the game is active.
+  starting_life: number;
+  // Damage from one commander that loses the game.
+  commander_damage: number;
+  // AI seat pacing preset.
+  bot_pace: "fast" | "normal" | "slow";
+  // Whether the host and admin may spawn cards and tokens on a live
+  // table (every spawn is announced in the log).
+  allow_spawn: boolean;
 }

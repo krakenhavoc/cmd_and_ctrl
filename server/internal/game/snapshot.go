@@ -97,10 +97,24 @@ import (
 // a semantic shift in an existing field, which is exactly what this
 // constant is for.
 //
+// v4 is #1032 (ADR 0075): the table's configuration moved from the
+// single `undoLimit` field into the `settings` object. A v3 file has
+// no `settings` key, and its zero value is not a table anyone set up:
+// StartingLife and CommanderDamage 0, and an UndoLimit of 0 that the
+// v3 binary's Start would have rewritten to the default. So a pre-v4
+// file is migrated ONCE, by version, in migrateLegacySettings — and a
+// v4 file is restored as written, which is what lets a deliberate
+// "no undos" survive a restore. The other direction needs the bump
+// too: a v3 binary reading a v4 file would drop every setting.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 3
+const SnapshotSchemaVersion = 4
+
+// settingsSchemaVersion is the first schema that carries
+// GameSnapshot.Settings. Older files are migrated from UndoLimit.
+const settingsSchemaVersion = 4
 
 // minRestorableSchema is the oldest schema Restore still understands.
 // Raise it only when carrying a migration forward stops being worth
@@ -156,13 +170,19 @@ type GameSnapshot struct {
 	Stack       *zoneSnapshot `json:"stack"`
 	Exile       *zoneSnapshot `json:"exile"`
 
-	Turn              Turn      `json:"turn"`
-	MulligansOpen     bool      `json:"mulligansOpen"`
-	Monarch           uuid.UUID `json:"monarch"`
-	Initiative        uuid.UUID `json:"initiative"`
-	UndoLimit         int       `json:"undoLimit"`
-	StartingSeat      int       `json:"startingSeat"`
-	SplitSecondActive bool      `json:"splitSecondActive"`
+	Turn          Turn      `json:"turn"`
+	MulligansOpen bool      `json:"mulligansOpen"`
+	Monarch       uuid.UUID `json:"monarch"`
+	Initiative    uuid.UUID `json:"initiative"`
+	// UndoLimit is the pre-v4 home of the undo budget. Read only when
+	// migrating an older file (migrateLegacySettings); a v4 capture
+	// leaves it zero and it is omitted.
+	UndoLimit int `json:"undoLimit,omitempty"`
+	// Settings is the table's configuration (ADR 0075). Carried from
+	// v4; see settingsSchemaVersion.
+	Settings          TableSettings `json:"settings"`
+	StartingSeat      int           `json:"startingSeat"`
+	SplitSecondActive bool          `json:"splitSecondActive"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -775,7 +795,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		MulligansOpen:     g.MulligansOpen,
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
-		UndoLimit:         g.UndoLimit,
+		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
@@ -1300,6 +1320,27 @@ func (s *GameSnapshot) RestoreStrict() (*Game, error) {
 	return s.restoreGame(), nil
 }
 
+// migrateLegacySettings builds the settings of a pre-v4 file, which
+// knew only an undo limit (#1032). Every other setting takes its
+// default, which is what those games were played under.
+//
+// The undo limit is kept when the v3 binary would have honoured it:
+// once a game was active its Start had already rewritten any value
+// <= 0 to the default, so an active or ended game's 0 was set on
+// purpose with set_undo_limit and survives. A LOBBY game's 0 (or less)
+// is the unset field Start was about to rewrite, and becomes the
+// default here instead.
+func migrateLegacySettings(state State, undoLimit int) TableSettings {
+	out := DefaultTableSettings()
+	switch {
+	case undoLimit > 0:
+		out.UndoLimit = undoLimit
+	case state != StateLobby:
+		out.UndoLimit = 0
+	}
+	return out
+}
+
 // checkSchema implements the version-skew policy: understand it, or
 // refuse it. Never guess at a shape you do not recognise.
 func (s *GameSnapshot) checkSchema() error {
@@ -1330,7 +1371,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.MulligansOpen = s.MulligansOpen
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
-	g.UndoLimit = s.UndoLimit
+	g.Settings = s.Settings
+	if s.Schema < settingsSchemaVersion {
+		g.Settings = migrateLegacySettings(s.State, s.UndoLimit)
+	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq

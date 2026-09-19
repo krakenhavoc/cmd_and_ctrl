@@ -58,7 +58,18 @@ type GameView struct {
 	Vote *VoteView `json:"vote,omitempty"`
 	// UndoLimit is the per-player per-turn undo budget. Drives the
 	// client's "undos remaining" indicator. Added in S11.
-	UndoLimit int `json:"undo_limit,omitempty"`
+	//
+	// Kept for wire compatibility since ADR 0075: it mirrors
+	// Settings.UndoLimit, and -1 (game.UndoUnlimited) means no budget.
+	// No omitempty any more: 0 is a real limit ("no undos") since the
+	// Start-time rewrite of 0 to the default was removed, and a client
+	// reading an absent key falls back to 1.
+	UndoLimit int `json:"undo_limit"`
+	// Settings is the table's configuration (ADR 0075 §2.2). Public on
+	// purpose — every viewer, spectators included, sees the same
+	// object, because undo rules and the spawn switch are things the
+	// other players should be able to see. Added in S35 (#1032).
+	Settings *TableSettingsView `json:"settings,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -2052,7 +2063,8 @@ func ViewOfGame(g *game.Game) GameView {
 			Initiative:        uuidStringOrEmpty(g.Initiative),
 			Promises:          viewOfPromises(g.Promises),
 			Vote:              viewOfVote(g.Vote),
-			UndoLimit:         g.UndoLimit,
+			UndoLimit:         g.Settings.UndoLimit,
+			Settings:          viewOfTableSettings(g.Settings),
 			StartingSeat:      g.StartingSeat,
 			StackItems:        viewOfStackItemsInStackOrder(g),
 			PendingTriggers:   viewOfStackItemSlice(g.PendingTriggers),
@@ -3787,6 +3799,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Promises:          v.Promises,
 		Vote:              v.Vote,
 		UndoLimit:         v.UndoLimit,
+		Settings:          v.Settings,
 		StartingSeat:      v.StartingSeat,
 		StackItems:        v.StackItems,
 		PendingTriggers:   v.PendingTriggers,
@@ -5163,4 +5176,34 @@ func zoneOf(p *game.Player, kind game.ZoneKind) *game.Zone {
 		return p.Command
 	}
 	return nil
+}
+
+// TableSettingsView is game.TableSettings on the wire (ADR 0075). The
+// keys match game.SettingsPatch's, so a client can send back exactly
+// the fields it read.
+type TableSettingsView struct {
+	// UndoLimit is the per-player per-turn undo budget; -1 is
+	// unlimited, 0 is no undos.
+	UndoLimit int `json:"undo_limit"`
+	// UndoScope is "own" or "host_any".
+	UndoScope string `json:"undo_scope"`
+	// StartingLife is fixed once the game is active.
+	StartingLife int `json:"starting_life"`
+	// CommanderDamage is the damage from one commander that loses.
+	CommanderDamage int `json:"commander_damage"`
+	// BotPace is "fast", "normal" or "slow".
+	BotPace string `json:"bot_pace"`
+	// AllowSpawn is the production spawn switch.
+	AllowSpawn bool `json:"allow_spawn"`
+}
+
+func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
+	return &TableSettingsView{
+		UndoLimit:       s.UndoLimit,
+		UndoScope:       string(s.UndoScope),
+		StartingLife:    s.StartingLife,
+		CommanderDamage: s.CommanderDamage,
+		BotPace:         string(s.BotPace),
+		AllowSpawn:      s.AllowSpawn,
+	}
 }

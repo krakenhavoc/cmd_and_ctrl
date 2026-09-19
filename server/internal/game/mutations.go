@@ -3011,7 +3011,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		if p.Eliminated {
 			continue
 		}
-		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage() {
+		if p.Life <= 0 || p.AttemptedEmptyDraw || p.IsDeadByCommanderDamage(g.Settings.CommanderDamage) {
 			left = g.leaveGameLocked(p) || left
 			fired = true
 			continue
@@ -7312,29 +7312,35 @@ func setPlayerCounterLocked(p *Player, name string, value int) {
 	p.Counters[name] = value
 }
 
-// SetUndoLimit sets the per-player per-turn undo budget. Refreshes
-// every seated player's UndosRemaining to the new limit immediately
-// (so a mid-turn raise is usable right away by the active player).
-// Clamped at 0 from below — passing a negative is treated as "no
-// undos allowed".
+// SetUndoLimit is the legacy set_undo_limit action's mutation, now a
+// thin wrapper over UpdateSettings (ADR 0075 §2.3): it sets
+// Settings.UndoLimit, refreshes every seat's UndosRemaining to the new
+// value immediately, and emits EventSettingsChanged. actor is the
+// player who asked (uuid.Nil for the admin), recorded on the event.
 //
-// Sandbox: any seated player or admin may call it. The intent is
-// "the table agreed to relax the limit for this game"; in casual
-// play that's social, not enforced.
-func (g *Game) SetUndoLimit(limit int) error {
+// Two behaviours are kept from before the settings struct existed, on
+// purpose, because this action's callers were written against them:
+//
+//   - Only valid while the game is active (ErrGameNotActive). Use
+//     UpdateSettings for a lobby-phase change.
+//   - A negative limit is clamped to 0, "no undos allowed". That clamp
+//     now matters more than it did: UndoUnlimited is -1, and the legacy
+//     action must not be a way to switch the budget off by passing a
+//     negative number. Unlimited is reachable only through
+//     UpdateSettings (the set_table_settings action, ADR 0075 sub-PR 3).
+//
+// WHO may send the action is decided in the actions / room layer, not
+// here.
+func (g *Game) SetUndoLimit(actor uuid.UUID, limit int) error {
+	if limit < 0 {
+		limit = 0
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if limit < 0 {
-		limit = 0
-	}
-	g.UndoLimit = limit
-	for _, p := range g.Seats {
-		p.UndosRemaining = limit
-	}
-	return nil
+	return g.updateSettingsLocked(actor, SettingsPatch{UndoLimit: &limit})
 }
 
 // SpendUndo decrements the named player's UndosRemaining if they
@@ -7345,6 +7351,9 @@ func (g *Game) SetUndoLimit(limit int) error {
 // Returns ErrPlayerNotFound for an unseated playerID. Admin / spectator
 // undos (callerID uuid.Nil) bypass this entirely — the room layer
 // short-circuits to never call SpendUndo for those.
+//
+// Under Settings.UndoLimit == UndoUnlimited the budget is never
+// debited and never refuses (ADR 0075 §2.2).
 func (g *Game) SpendUndo(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -7354,6 +7363,9 @@ func (g *Game) SpendUndo(playerID uuid.UUID) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
+	}
+	if g.Settings.UndoLimit == UndoUnlimited {
+		return nil
 	}
 	if p.UndosRemaining <= 0 {
 		return ErrNoUndosRemaining

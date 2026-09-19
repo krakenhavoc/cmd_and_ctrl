@@ -282,6 +282,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -713,6 +721,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -1131,6 +1147,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -1571,6 +1595,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -1976,6 +2008,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "log": [
         {
@@ -2225,6 +2265,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -2517,6 +2565,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
@@ -2828,6 +2884,14 @@
       },
       "mulligans_open": false,
       "undo_limit": 1,
+      "settings": {
+        "undo_limit": 1,
+        "undo_scope": "own",
+        "starting_life": 40,
+        "commander_damage": 21,
+        "bot_pace": "normal",
+        "allow_spawn": false
+      },
       "starting_seat": 0,
       "legal_moves": [
         {
