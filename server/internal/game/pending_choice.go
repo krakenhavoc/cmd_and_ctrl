@@ -3439,10 +3439,21 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // reason: a queued choice stops priority from passing, so the
 // state-check loop is exactly what does NOT run while one is open.
 //
+// THE WHOLE QUEUE IS EXAMINED BEFORE ANY PROMPT IS DROPPED, which is
+// pruneStaleZoneChangeChoicesLocked's shape and its reason: a drop runs
+// the kind's drop action, a run leg settling runs the rest of the
+// card, and that continuation can queue the next prompt, withdraw
+// another one, or re-enter this very function through an exit it
+// starts. Walking the slice by index while a callee rewrites it reads
+// the wrong entry at best and indexes past the end at worst. The first
+// pass only rewrites candidate lists, which move nothing; the second
+// re-finds each emptied prompt by ID, so one that a continuation has
+// already withdrawn is simply gone.
+//
 // Caller must hold g.mu.
 func (g *Game) pruneCardSetChoicesLocked() {
-	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
-		c := g.PendingChoices[i]
+	var emptied []*PendingChoice
+	for _, c := range g.PendingChoices {
 		if c == nil || c.Kind != PendingChoiceChooseCards {
 			continue
 		}
@@ -3460,16 +3471,23 @@ func (g *Game) pruneCardSetChoicesLocked() {
 			continue
 		}
 		if len(live) == 0 {
-			g.EmitEvent(Event{
-				Kind:   EventPendingChoiceDropped,
-				Actor:  c.Chooser,
-				Source: c.Source,
-				Label:  string(c.Kind),
-			})
-			g.dropChoiceLocked(i)
+			emptied = append(emptied, c)
 			continue
 		}
 		setCardSetCandidates(c, live)
+	}
+	for _, c := range emptied {
+		idx, _ := g.findChoiceLocked(c.ID)
+		if idx < 0 {
+			continue
+		}
+		g.EmitEvent(Event{
+			Kind:   EventPendingChoiceDropped,
+			Actor:  c.Chooser,
+			Source: c.Source,
+			Label:  string(c.Kind),
+		})
+		g.dropChoiceLocked(idx)
 	}
 }
 
