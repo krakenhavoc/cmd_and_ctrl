@@ -98,18 +98,11 @@ func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 			return target.InstanceID == source.InstanceID && b31GraveyardSize(g, source.Controller) < n
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			kept := make([]string, 0, len(c.Types))
-			for _, t := range c.Types {
-				if t != "Creature" {
-					kept = append(kept, t)
-				}
-			}
-			c.Types = kept
-			// SetSubtypes, not a bare assignment: dropping the
-			// creature subtypes drops "is every creature type" with
-			// them, so a Maskwood Nexus does not leave the god a
-			// Goblin while it is not a creature (CR 205.1b, #670).
-			c.SetSubtypes(nil)
+			// notACreature (helpers.go), shared with impending: it
+			// drops the creature subtypes along with the type, so a
+			// Maskwood Nexus does not leave the god a Goblin while it
+			// is not a creature (CR 205.1b, #670).
+			notACreature(c)
 		},
 	}
 }
