@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -546,5 +548,42 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 			Target: item.Targets[0].ID,
 			Amount: amount,
 		}.Apply(ctx)
+	}
+}
+
+// EachLandIsAlso is "each land is a <basic land type> in addition to
+// its other land types" — Urborg's sentence with the type as an
+// argument, which is Yavimaya, Cradle of Growth.
+//
+// One layer-4 static, and an APPEND rather than a set: "in addition
+// to" takes nothing away, so an Island keeps {U} and keeps its printed
+// ability in slot 0. The intrinsic mana ability for the added type is
+// not declared here — game.ManaAbilitiesForCard derives it from the
+// EFFECTIVE subtypes (CR 305.6), which is the whole reason the
+// sentence does anything.
+//
+// "Each land" is every land on the battlefield under every player's
+// control, the source included. IsLand is read through the effective
+// view on purpose: a permanent another layer-4 effect made a land is
+// one, and CR 613.8a then makes this depend on that effect rather
+// than race it by timestamp (ADR 0067).
+//
+// Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
+// of the Moon, Blood Moon) and takes the land's own rules text with
+// it.
+func EachLandIsAlso(subtype string) game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer4Type,
+		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
+			return target.IsLand()
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			for _, st := range c.Subtypes {
+				if strings.EqualFold(st, subtype) {
+					return
+				}
+			}
+			c.Subtypes = append(c.Subtypes, subtype)
+		},
 	}
 }

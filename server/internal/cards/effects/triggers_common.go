@@ -564,3 +564,13 @@ func WhenYouGainControlOfThis(label string, effect Effect) game.TriggeredAbility
 func WheneverAnOpponentGainsControlOfAPermanentYouOwn(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventControlChanged, AnOpponentGainedControlOfAPermanentYouOwn, label, effect)
 }
+
+// selfEnteredUntapped — "when this land enters untapped" (Gingerbread
+// Cabin, Idyllic Grange, Mystic Sanctuary). The `When` form of
+// b27SelfEnteredUntapped, which takes only the event and the source:
+// the harvester runs with the source already on the battlefield and
+// its enters-tapped replacement applied, so the tapped flag is the
+// answer.
+func selfEnteredUntapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return b27SelfEnteredUntapped(ev, source)
+}

@@ -147,6 +147,27 @@ func NoncreatureSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return !q.Card.IsCreature() }
 }
 
+// SpellOfTheSourcesChosenType passes on a spell whose subtypes carry
+// the creature type the MODIFIER'S SOURCE named as it entered (CR
+// 614.12) — Herald's Horn's "creature spells you cast of the chosen
+// type", Urza's Incubator's, Stoneforge Acolyte's.
+//
+// It reads q.Source.NamedTribe, not a printed list, so two copies
+// naming different types each discount their own. A source with no
+// type named yet matches nothing: an empty tribe read as "every
+// spell" would make the artifact a Semblance Anvil the moment it
+// entered, which is the dangerous direction.
+//
+// The spell's subtypes are printed characteristics (the layer engine
+// does not recompute a card on the stack), and HasSubtype answers
+// true for every creature type on a changeling, which is the printed
+// ruling.
+func SpellOfTheSourcesChosenType() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Source.NamedTribe != "" && q.Card.HasSubtype(q.Source.NamedTribe)
+	}
+}
+
 // InstantOrSorcerySpell passes on an instant or sorcery — Goblin
 // Electromancer.
 func InstantOrSorcerySpell() CostPredicate {
