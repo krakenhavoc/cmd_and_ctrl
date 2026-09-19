@@ -28,6 +28,16 @@ import (
 // It is deliberately a test and not a linter: it runs on every CI
 // build, it names the exact field, and it tells you which file to
 // edit.
+//
+// WHAT THIS FILE DOES NOT DO, and #1005 is the report that it was read
+// as doing: it walks field NAMES and never reads a value. A row saying
+// `carried` is a promise, and `dropped` is the only disposition this
+// file holds to anything — TestDroppedFieldsAreAllCensused makes a
+// dropped field name the census counter that accounts for it.
+// snapshot_carried_test.go is the other half: it writes a value into
+// every `carried` field, runs the real capture → restore, and reads it
+// back off the restored game. Neither test is enough alone — one knows
+// which fields exist, the other knows what happens to them.
 
 // disposition records what the snapshot does with one field.
 type disposition int
@@ -221,7 +231,11 @@ var cardFields = plan(
 	// object's "only once each turn" counts with the ones the object
 	// before it wrote. Absent in a file written before the field
 	// existed, which decodes as zero: the same answer a card that has
-	// never moved gives.
+	// never moved gives. It is also the CR 400.7 object identity a
+	// granted cast permission names (ADR 0066), so a restore that reset
+	// it would revive every permission ever granted against the card —
+	// the one direction this field must not fail in. Listed once: the
+	// row was written twice, and a map keeps the last one.
 	"ObjectEpoch", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
@@ -234,11 +248,6 @@ var cardFields = plan(
 	// from the printing when a file written before #683 has no key
 	// (snapshot_backfill.go); every file this binary writes has it.
 	"VariableToughness", carried, "",
-	// ADR 0066: the CR 400.7 object identity a granted cast permission
-	// names. Carried, and it has to be — a restore that reset it to
-	// zero would revive every permission ever granted against the
-	// card, which is the one direction this field must not fail in.
-	"ObjectEpoch", carried, "",
 	// S24 attachments (ADR 0036). Carried, not rebuilt: which sword
 	// is on which creature is not derivable from anything else, and
 	// a restore that dropped it would silently un-equip the board.
@@ -570,23 +579,35 @@ var pendingChoiceFields = plan(
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 )
 
+// driftPlans is every domain type the snapshot touches, paired with the
+// plan that classifies its fields.
+//
+// ONE list, because three tests walk it: the drift guard below, the
+// dropped-field census check under it, and the `carried` enforcement in
+// snapshot_carried_test.go. A domain type added to one list and not the
+// others is exactly the drift this file exists to stop — and the third
+// of those tests fails until a new type has a probe, so a plan cannot
+// arrive with nothing checking its promises.
+var driftPlans = []struct {
+	sample any
+	plan   fieldPlan
+}{
+	{Game{}, gameFields},
+	{Card{}, cardFields},
+	{Player{}, playerFields},
+	{Zone{}, zoneFields},
+	{StackItem{}, stackItemFields},
+	{DelayedTrigger{}, delayedTriggerFields},
+	{PendingChoice{}, pendingChoiceFields},
+	{ScopedStatic{}, scopedStaticFields},
+}
+
+// driftPlanName is the type name a plan is keyed and reported under.
+func driftPlanName(sample any) string { return reflect.TypeOf(sample).Name() }
+
 // TestSnapshotCoversEveryDomainField is the drift guard.
 func TestSnapshotCoversEveryDomainField(t *testing.T) {
-	cases := []struct {
-		sample any
-		plan   fieldPlan
-	}{
-		{Game{}, gameFields},
-		{Card{}, cardFields},
-		{Player{}, playerFields},
-		{Zone{}, zoneFields},
-		{StackItem{}, stackItemFields},
-		{DelayedTrigger{}, delayedTriggerFields},
-		{PendingChoice{}, pendingChoiceFields},
-		{ScopedStatic{}, scopedStaticFields},
-	}
-
-	for _, tc := range cases {
+	for _, tc := range driftPlans {
 		rt := reflect.TypeOf(tc.sample)
 		t.Run(rt.Name(), func(t *testing.T) {
 			live := map[string]bool{}
@@ -632,15 +653,9 @@ problem.`, rt.Name(), name, strings.ToLower(rt.Name()[:1])+rt.Name()[1:])
 // game state. Without this the `dropped` bucket would be a place to
 // quietly lose things.
 func TestDroppedFieldsAreAllCensused(t *testing.T) {
-	all := map[string]fieldPlan{
-		"Game":           gameFields,
-		"Card":           cardFields,
-		"Player":         playerFields,
-		"Zone":           zoneFields,
-		"StackItem":      stackItemFields,
-		"DelayedTrigger": delayedTriggerFields,
-		"PendingChoice":  pendingChoiceFields,
-		"ScopedStatic":   scopedStaticFields,
+	all := map[string]fieldPlan{}
+	for _, tc := range driftPlans {
+		all[driftPlanName(tc.sample)] = tc.plan
 	}
 	censusFields := map[string]bool{}
 	ct := reflect.TypeOf(ContinuationCensus{})
