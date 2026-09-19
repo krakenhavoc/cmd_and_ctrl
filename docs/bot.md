@@ -309,6 +309,40 @@ one cannot be seated at a tier this server cannot honour.
 
 ---
 
+## Which colour a bot names (#780)
+
+Every `choose_color` prompt (CR 105.4) offers five legal answers and, on
+its own, says nothing about which one the card wants. So a bot with no
+other information named the colour its hand needed most — right for
+Coldsteel Heart, right by accident for Selective Obliteration, and a
+self-inflicted board wipe for Wash Out, where a mono-green bot named
+green and bounced its own permanents while leaving the opposition's
+alone.
+
+The prompt now carries the card's own declaration of what it will do
+with the answer (`color_purpose` on the wire, `game.ColorPurpose` in the
+catalog), and the policy is one function switching on it —
+`colorChoiceValue` in `aiseat/heuristic/choices.go`. There are no
+per-card branches anywhere in it.
+
+| Purpose | Cards | What the bot names |
+|---|---|---|
+| `mana` | Coldsteel Heart, the Thriving lands, the Gates, and the one-colour lands (Uncharted Haven, Crossroads Village, Mirage Mesa, Valgavoth's Lair) | the colour its **hand** asks for most — the pre-#780 rule, unchanged |
+| `benefit` | Heraldic Banner, Selective Obliteration | the same, with the colour it has most of on its **own board** breaking ties. Selective Obliteration's chosen colour is the one that *survives*, so "name what you want to keep" is the same question the anthem asks |
+| `harm` | Wash Out | the colour that costs the **opposition** most net of what it costs the bot, priced with the same `permanentValue` the board evaluation uses |
+| `filter` | Oona, Queen of the Fae | the colour most common among the opponents' **known** cards — their battlefield, their graveyards and the stack. Libraries and hands are counts on the wire and stay that way ([ADR 0033 §3](decisions/0033-ai-bot-seat.md)), so this is a proxy, and on a board that has shown nothing every colour ties and the enumerator's order decides |
+| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
+
+**An undeclared prompt keeps the old rule.** The purpose is a string,
+its zero value is "nothing was said", and the default arm is the
+hand-need scoring exactly as it was — so a card nobody has annotated
+plays no worse than it did yesterday. What stops one *staying*
+unannotated is a catalog guard rather than a runtime check:
+`cards/effects/color_purpose_guard_test.go` scans the catalog's source
+and fails the build for a `choose_color` prompt whose first argument is
+not one of the declared constants, in the style of #806's and #810's
+lints.
+
 ## An attached permanent is priced once, by its role (#727)
 
 An Equipment's +2/+2 arrives on the wire as its host's `power` and

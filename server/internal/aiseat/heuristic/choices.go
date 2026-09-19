@@ -115,13 +115,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return float64(n) + 0.1*float64(need[cp.Color]), "add {" + cp.Color + "}"
 
 	case choiceColor:
-		// #742 "choose a color": the colour the bot's hand asks for
-		// most. A tie keeps the enumerator's order, which already
-		// ranks by the colours the bot has on the battlefield — so an
-		// empty hand still names the board's main colour for a
-		// Coldsteel Heart rather than white by default.
-		need := colorSymbols(st.seatHand())
-		return 1 + 0.1*float64(need[cp.Color]), "choose " + cp.Color
+		// #742 "choose a color", #780 "…for what?". Every one of the
+		// five is legal (CR 105.4), so the answer turns entirely on
+		// what the card does with it — and the card says, on the
+		// prompt. One policy, one switch: colorChoiceValue below.
+		purpose := ""
+		if ch != nil {
+			purpose = ch.ColorPurpose
+		}
+		return st.colorChoiceValue(p.cfg, purpose, cp.Color)
 
 	case choicePickTarget:
 		targets := cp.Targets
@@ -320,6 +322,196 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 		kept += st.cardValue(cfg, c)
 	}
 	return kept, true
+}
+
+// --- "choose a color" (#780) -----------------------------------------
+
+// Colour purposes, as they appear on the wire (game.ColorPurpose). The
+// empty string is a prompt that declares nothing, and it is handled by
+// the default arm rather than by an arm of its own.
+const (
+	colorForMana       = "mana"
+	colorForBenefit    = "benefit"
+	colorForHarm       = "harm"
+	colorForFilter     = "filter"
+	colorForProtection = "protect"
+)
+
+// threatAttacking multiplies a creature that is already declared as an
+// attacker when the protection policy ranks threats. Protection is a
+// defensive answer bought a beat before it is needed, so what is coming
+// at you now outranks what is merely large.
+const threatAttacking = 2.0
+
+// boardTieBreak is the ceiling of the own-board term in the benefit
+// arm. It is deliberately under 0.1 — one mana symbol in hand — so the
+// board only ever breaks a tie between colours the hand wants equally.
+const boardTieBreak = 0.09
+
+// colorChoiceValue is the ONE "choose a color" policy (#780), switching
+// on the purpose the card declared when it asked (CR 105.4 makes all
+// five colours legal, so nothing else on the prompt can say which one
+// the effect wants).
+//
+// The UNDECLARED prompt keeps the pre-#780 rule exactly — the colour
+// the bot's hand asks for most, with ties left to the enumerator's
+// order, which already ranks by the colours the bot has on the
+// battlefield. That is what stops a card nobody has annotated from
+// regressing quietly; the catalog guard in `cards/effects` is what
+// stops one from staying unannotated.
+func (st *state) colorChoiceValue(cfg Config, purpose, color string) (float64, string) {
+	switch purpose {
+	case colorForHarm:
+		// Wash Out: everything of this colour is punished, the bot's
+		// own board included. Take the colour that costs the opposition
+		// most net of what it costs here — which is how a mono-green
+		// bot stops naming green and bouncing itself.
+		return st.colorSwing(color), "harm " + color
+
+	case colorForFilter:
+		// Oona: the colour picks which of somebody else's cards the
+		// effect acts on, and nothing of the bot's is at stake. The
+		// best public proxy for "what is in their deck" is what they
+		// have already shown — board, graveyard and stack. With nothing
+		// shown every colour scores zero and the enumerator's order
+		// decides, which is the fixed fallback.
+		return st.opponentColorCount(color), "filter " + color
+
+	case colorForProtection:
+		// Mother of Runes, Story Circle: the colour is what is being
+		// defended AGAINST, so it is the colour of the biggest thing
+		// pointed this way.
+		return st.biggestThreatOfColor(cfg, color), "protect from " + color
+
+	case colorForBenefit:
+		// Heraldic Banner's anthem, and Selective Obliteration's "each
+		// permanent survives only if it is its controller's chosen
+		// colour" — from the chooser's seat both are "name the colour
+		// you want to keep". The hand still leads, because a colour the
+		// bot cannot cast is a colour it will not have; the board
+		// breaks the tie, which is what makes Selective Obliteration a
+		// policy rather than a coincidence.
+		return st.colorWanted(color) + st.ownBoardShare(color), "benefit " + color
+	}
+	// colorForMana, and any prompt that declares nothing.
+	return st.colorWanted(color), "choose " + color
+}
+
+// colorWanted is the pre-#780 rule: how much the bot's hand is asking
+// for this colour.
+func (st *state) colorWanted(color string) float64 {
+	return 1 + 0.1*float64(colorSymbols(st.seatHand())[color])
+}
+
+// ownBoardShare is the fraction of the bot's own permanents that are
+// this colour, scaled to stay strictly under one mana symbol's worth of
+// hand need. A tie-break, never a decision.
+func (st *state) ownBoardShare(color string) float64 {
+	var mine, total float64
+	for i := range st.view.Battlefield.Cards {
+		c := &st.view.Battlefield.Cards[i]
+		if c.Controller != st.me || len(c.Colors) == 0 {
+			continue
+		}
+		total++
+		if hasColor(c, color) {
+			mine++
+		}
+	}
+	if total == 0 {
+		return 0
+	}
+	return boardTieBreak * mine / total
+}
+
+// colorSwing is what a "hurt everything of this colour" effect buys:
+// the value of the opposition's permanents of that colour, less the
+// value of the bot's own. Priced with the same permanentValue the board
+// evaluation uses, so an opponent's 8/8 is not traded for two of the
+// bot's Islands.
+func (st *state) colorSwing(color string) float64 {
+	var swing float64
+	for i := range st.view.Battlefield.Cards {
+		c := &st.view.Battlefield.Cards[i]
+		if !hasColor(c, color) {
+			continue
+		}
+		v := st.permanentValue(c)
+		if c.Controller == st.me {
+			swing -= v
+			continue
+		}
+		swing += v
+	}
+	return swing
+}
+
+// opponentColorCount counts the opponents' cards of this colour that
+// the bot is entitled to see: their battlefield, their graveyards and
+// the stack. Libraries and hands are counts on the wire and stay that
+// way — ADR 0033 §3 is the reason this is a proxy rather than a lookup.
+func (st *state) opponentColorCount(color string) float64 {
+	var n float64
+	count := func(cards []protocol.CardView) {
+		for i := range cards {
+			c := &cards[i]
+			// A graveyard card carries no controller, so fall back to
+			// the owner there; on the battlefield and the stack the
+			// controller is the one that matters.
+			if c.Controller == st.me || (c.Controller == "" && c.Owner == st.me) {
+				continue
+			}
+			if hasColor(c, color) {
+				n++
+			}
+		}
+	}
+	count(st.view.Battlefield.Cards)
+	count(st.view.Stack.Cards)
+	for i := range st.view.Seats {
+		if st.view.Seats[i].ID == st.me {
+			continue
+		}
+		count(st.view.Seats[i].Graveyard.Cards)
+	}
+	return n
+}
+
+// biggestThreatOfColor is the value of the largest thing of this colour
+// that an opponent has pointed at the table: a declared attacker first,
+// then any creature, then any other permanent, then a spell on the
+// stack. Zero for a colour nobody is threatening in, so a quiet board
+// leaves the enumerator's order to decide.
+func (st *state) biggestThreatOfColor(cfg Config, color string) float64 {
+	var best float64
+	consider := func(v float64) {
+		if v > best {
+			best = v
+		}
+	}
+	for i := range st.view.Battlefield.Cards {
+		c := &st.view.Battlefield.Cards[i]
+		if c.Controller == st.me || !hasColor(c, color) {
+			continue
+		}
+		if !isCreature(c) {
+			consider(st.permanentValue(c))
+			continue
+		}
+		v := st.w.CombatValue(c)
+		if c.AttackingTarget != "" {
+			v *= threatAttacking
+		}
+		consider(v)
+	}
+	for i := range st.view.Stack.Cards {
+		c := &st.view.Stack.Cards[i]
+		if c.Controller == st.me || !hasColor(c, color) {
+			continue
+		}
+		consider(st.cardValue(cfg, c))
+	}
+	return best
 }
 
 // seatHand is the bot's own hand, or nil. Used for colour-preference

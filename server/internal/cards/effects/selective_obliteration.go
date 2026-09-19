@@ -56,7 +56,7 @@ func selectiveObliterationAsk(g *game.Game, item *game.StackItem, order []uuid.U
 		}}.Apply(NewContext(g, item))
 	}
 	player := order[0]
-	ChooseColorThen(g, player, item.SourceCardID, "Selective Obliteration — choose a color",
+	ChooseColorThen(game.ColorForBenefit, g, player, item.SourceCardID, "Selective Obliteration — choose a color",
 		func(g *game.Game, color string) error {
 			next := make(map[uuid.UUID]string, len(chosen)+1)
 			for k, v := range chosen {

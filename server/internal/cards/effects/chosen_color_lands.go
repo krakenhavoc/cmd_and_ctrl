@@ -58,7 +58,7 @@ func init() {
 			Name:         l.name,
 			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-			AsEnters:     ChooseColorOtherThanAsEnters(l.name, l.color),
+			AsEnters:     ChooseColorOtherThanAsEnters(game.ColorForMana, l.name, l.color),
 			ManaAbilities: []ManaAbility{{
 				Cost:         ManaAbilityCost{Tap: true},
 				ProducedFunc: ProducedColorOrChosen(l.color),
@@ -78,7 +78,7 @@ func init() {
 			Name:         l.name,
 			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-			AsEnters:     ChooseColorAsEnters(l.name),
+			AsEnters:     ChooseColorAsEnters(game.ColorForMana, l.name),
 			ManaAbilities: []ManaAbility{{
 				Cost:         ManaAbilityCost{Tap: true},
 				ProducedFunc: ProducedChosenColor(),

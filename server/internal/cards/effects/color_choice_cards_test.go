@@ -53,7 +53,7 @@ func pushChosenColorPermanent(t *testing.T, g *game.Game, owner uuid.UUID, name,
 		InstanceID: uuid.New(), Name: name, TypeLine: typeLine, OracleID: oracleID,
 		Owner: owner, Controller: owner,
 	})
-	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(owner, id, name, nil) })
+	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(owner, id, name, nil, game.ColorForMana) })
 	answerColor(t, g, owner, color)
 	return id
 }

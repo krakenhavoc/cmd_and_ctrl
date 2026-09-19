@@ -323,6 +323,14 @@ type PendingChoice struct {
 	// first — see manaPickOptionsFor). Added in S15 sub-PR 2.
 	ColorOptions []string
 
+	// ColorPurpose is what the card asking a PendingChoiceColor will do
+	// with the answer — #780's card-side declaration. Unused for every
+	// other kind. It is carried rather than derived because the only
+	// thing that could derive it is the card's own text, and the
+	// engine does not read card text. Projected onto the wire as
+	// `color_purpose`; see ColorPurpose.
+	ColorPurpose ColorPurpose
+
 	// ManaRestrictions are the spend restrictions the token minted
 	// by this PendingChoiceMana will carry — Delighted Halfling's
 	// "spend this mana only to cast a legendary spell". Empty for

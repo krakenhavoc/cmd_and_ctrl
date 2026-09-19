@@ -3107,7 +3107,7 @@ pattern above: the prompt goes on `AsEnters`, the answer lands on
 `Card.ChosenColor`, and the card's other abilities read it back.
 
 ```go
-AsEnters: ChooseColorOtherThanAsEnters("Thriving Isle", "U"), // or ChooseColorAsEnters(name)
+AsEnters: ChooseColorOtherThanAsEnters(game.ColorForMana, "Thriving Isle", "U"),
 ManaAbilities: []ManaAbility{{
     Cost:         ManaAbilityCost{Tap: true},
     ProducedFunc: ProducedColorOrChosen("U"), // or ProducedChosenColor()
@@ -3115,6 +3115,28 @@ ManaAbilities: []ManaAbility{{
 }},
 Static: []game.StaticAbility{ChosenColorAnthem(1, 0)}, // Heraldic Banner
 ```
+
+**Every prompt declares a PURPOSE, and it is the first argument (#780).**
+CR 105.4 makes all five colours a legal answer, so nothing about the
+prompt says which one the card wants — an automated chooser with no
+other information names its own main colour, which is right for
+Coldsteel Heart and makes Wash Out a self-inflicted board wipe. Pick
+the `game.ColorPurpose` that matches what happens to the colour named:
+
+| Purpose | The chosen colour… | Cards |
+|---|---|---|
+| `game.ColorForMana` | is produced as mana | Coldsteel Heart, the Thriving lands, the Gates |
+| `game.ColorForBenefit` | is helped, or survives | Heraldic Banner, Selective Obliteration |
+| `game.ColorForHarm` | is punished, yours included | Wash Out |
+| `game.ColorForFilter` | selects somebody else's cards | Oona, Queen of the Fae |
+| `game.ColorForProtection` | is defended against | Mother of Runes, Story Circle |
+
+It rides the prompt to the wire as `color_purpose` and the bot's policy
+switches on it (`aiseat/heuristic/choices.go`, `colorChoiceValue`); the
+engine itself never reads it. `color_purpose_guard_test.go` fails the
+build for a prompt whose first argument is not one of those constants,
+and for a card file that reaches `QueueColorChoiceForEffect` without
+going through a builder.
 
 Until the controller answers, the colour is empty, and every reader
 must treat that as the weaker outcome: no mana, no anthem. Never read
@@ -3136,7 +3158,7 @@ both ways, and it is the only `ProducedFunc` shape "could produce"
 skips.
 
 **At resolution** ("Choose a color. …" inside a spell or ability) stores
-nothing: `ChooseColorThen(g, chooser, source, question, then)` hands the
+nothing: `ChooseColorThen(purpose, g, chooser, source, question, then)` hands the
 answer to a continuation that runs the rest of the effect (Wash Out,
 Oona). The continuation receives the live `*Game`; rebuild the context
 with `NewContext(g, item)` inside it. "Each player chooses a color" is a

@@ -26,7 +26,7 @@ func TestColorChoiceStoredFormStampsChosenColor(t *testing.T) {
 	seat := g.Seats[0].ID
 	heart := pushTypedTestCard(g, Card{Name: "Coldsteel Heart", TypeLine: "Snow Artifact", Owner: seat, Controller: seat})
 	var id uuid.UUID
-	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil) })
+	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil, ColorForMana) })
 
 	c := choiceByKind(g, PendingChoiceColor)
 	if c == nil || !reflect.DeepEqual(c.ColorOptions, AllColors) {
@@ -58,7 +58,9 @@ func TestColorChoiceRefusesAnswersOffTheList(t *testing.T) {
 	seat, other := g.Seats[0].ID, g.Seats[1].ID
 	isle := pushTypedTestCard(g, Card{Name: "Thriving Isle", TypeLine: "Land", Owner: seat, Controller: seat})
 	var id uuid.UUID
-	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, isle, "Thriving Isle", ColorsOtherThan("U")) })
+	g.WithWriteLock(func() {
+		id = g.QueueColorChoiceForEffect(seat, isle, "Thriving Isle", ColorsOtherThan("U"), ColorForMana)
+	})
 
 	for _, bad := range []string{"U", "C", "", "blue", "WU"} {
 		if err := g.ResolveColorChoice(id, seat, bad); !errors.Is(err, ErrInvalidParam) {
@@ -90,7 +92,7 @@ func TestColorChoiceStoredAnswerAfterTheSourceLeft(t *testing.T) {
 	bystander := pushTypedTestCard(g, Card{Name: "Sol Ring", TypeLine: "Artifact", Owner: seat, Controller: seat})
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil)
+		id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil, ColorForMana)
 		if _, err := MoveCard(g.Battlefield, g.Seats[0].Graveyard, heart); err != nil {
 			t.Fatalf("MoveCard: %v", err)
 		}
@@ -122,7 +124,9 @@ func TestColorChoiceStoredAnswerAfterTheSourceLeft(t *testing.T) {
 func TestColorChoiceOptionsAreRealColorsOnly(t *testing.T) {
 	g := newActiveGame(t)
 	seat := g.Seats[0].ID
-	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(seat, uuid.New(), "x", []string{"g", "C", "Z", "W", "G"}) })
+	g.WithWriteLock(func() {
+		g.QueueColorChoiceForEffect(seat, uuid.New(), "x", []string{"g", "C", "Z", "W", "G"}, ColorForMana)
+	})
 	if got := choiceByKind(g, PendingChoiceColor).ColorOptions; !reflect.DeepEqual(got, []string{"W", "G"}) {
 		t.Errorf("options = %v, want [W G]", got)
 	}
