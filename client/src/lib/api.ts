@@ -14,6 +14,7 @@ import {
 } from "./bugReport";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
+import type { MyGame } from "./myGames";
 import type { AutoTapCastParams } from "./castPreview";
 
 // Re-export the violation shape so consumers of api.ts don't also
@@ -546,6 +547,46 @@ export async function discordAuthEnabled(): Promise<boolean> {
 // only a real navigation lands the user on the consent screen.
 export function discordLoginHref(): string {
   return "/auth/discord/start";
+}
+
+// discordLinkHref starts the link round-trip for a seated player (GET
+// /auth/discord/link, S34 sub-PR 4): Discord's consent screen, then back
+// to the same seat, now carrying the account. A navigation, like the
+// other two, and it relies on the session COOKIE — the server binds the
+// round-trip to the browser whose cookie holds the seat. `game` is the
+// table this page is showing; the server refuses the link if the
+// cookie's seat is at a different one.
+export function discordLinkHref(gameID: string): string {
+  return `/auth/discord/link?game=${encodeURIComponent(gameID)}`;
+}
+
+// fetchMyGames is GET /me/games: every seat the signed-in person holds,
+// newest first. A 401 (a guest or admin session) clears the session via
+// authFetch, which is right: the page is only linked for signed-in
+// users, so reaching it otherwise means the session went stale.
+export async function fetchMyGames(): Promise<MyGame[]> {
+  const res = await authFetch("/me/games");
+  const body = (await res.json()) as { games?: MyGame[] };
+  return body.games ?? [];
+}
+
+// rejoinMyGame trades the signed-in session for a player session on the
+// caller's own seat at an open table (POST /me/games/{id}/session, ADR
+// 0051 decision 3) and installs it. `path` is the game's `rejoin` field
+// from GET /me/games; the server's route is authoritative, so the client
+// follows it rather than rebuilding it.
+export async function rejoinMyGame(path: string): Promise<Session> {
+  const res = await authFetch(path, { method: "POST" });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
 }
 
 // BugReportConfig mirrors the JSON from GET /bugreport/config.

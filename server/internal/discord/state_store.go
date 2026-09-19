@@ -28,11 +28,25 @@ import (
 // GameID / InviteToken are both zero for a round-trip started from
 // the login page, where the user signs in BEFORE they have an
 // invite. See Unbound.
+//
+// LinkPlayerID is set, with GameID, for the third shape: an
+// already-seated player attaching a Discord identity to the seat they
+// hold (GET /auth/discord/link, ADR 0051 sub-PR 4). See Link.
 type StateEntry struct {
 	GameID       uuid.UUID
 	InviteToken  string
+	LinkPlayerID uuid.UUID
 	CodeVerifier string
 	CreatedAt    time.Time
+}
+
+// Link reports whether this round-trip was started by a seated player
+// to link Discord to their own seat, rather than to claim a new one.
+// The callback takes a different branch for it: it touches the seat
+// named here and no other, and only for the browser whose session
+// cookie still holds that seat.
+func (e StateEntry) Link() bool {
+	return e.LinkPlayerID != uuid.Nil
 }
 
 // Unbound reports whether this round-trip started without an invite
@@ -45,7 +59,7 @@ type StateEntry struct {
 // pair, and treating that as "unbound" would silently drop a seat
 // claim the user asked for.
 func (e StateEntry) Unbound() bool {
-	return e.GameID == uuid.Nil && e.InviteToken == ""
+	return e.GameID == uuid.Nil && e.InviteToken == "" && e.LinkPlayerID == uuid.Nil
 }
 
 // StateStore is a tiny in-memory TTL map. Sized for at most a
@@ -87,6 +101,20 @@ var ErrStateNotFound = errors.New("discord: oauth state not found or expired")
 // Caller feeds both into the Discord authorize URL: state becomes
 // the ?state= param, codeChallenge becomes ?code_challenge=.
 func (s *StateStore) Start(game uuid.UUID, inviteToken string) (state, codeChallenge string, err error) {
+	return s.start(StateEntry{GameID: game, InviteToken: inviteToken})
+}
+
+// StartLink is Start for the link flow: it parks the seat a player is
+// linking Discord to, and no invite. game and player must both be
+// set; a link with no seat would be an unbound sign-in by mistake.
+func (s *StateStore) StartLink(game, player uuid.UUID) (state, codeChallenge string, err error) {
+	if game == uuid.Nil || player == uuid.Nil {
+		return "", "", errors.New("discord: a link round-trip needs a game and a player")
+	}
+	return s.start(StateEntry{GameID: game, LinkPlayerID: player})
+}
+
+func (s *StateStore) start(entry StateEntry) (state, codeChallenge string, err error) {
 	// Both values are 32 random bytes → base64url. state doubles as
 	// the map key; verifier is the PKCE S256 source. Separate
 	// randomness so compromising one doesn't compromise the other.
@@ -106,12 +134,9 @@ func (s *StateStore) Start(game uuid.UUID, inviteToken string) (state, codeChall
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.gcLocked()
-	s.entries[state] = StateEntry{
-		GameID:       game,
-		InviteToken:  inviteToken,
-		CodeVerifier: verifier,
-		CreatedAt:    s.nowFn(),
-	}
+	entry.CodeVerifier = verifier
+	entry.CreatedAt = s.nowFn()
+	s.entries[state] = entry
 	return state, codeChallenge, nil
 }
 

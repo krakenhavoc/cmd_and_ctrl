@@ -28,6 +28,10 @@ export type Route =
   // personal-use and serving card art to signed-out visitors is a
   // different posture from the one the repo states.
   | { name: "catalog" }
+  // "My games" (ADR 0051 decision 4, S34): every seat the signed-in
+  // person holds, with a way back into the open ones. Session-gated;
+  // the page itself explains what a guest or admin session is missing.
+  | { name: "myGames" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
   // reads them, installs the session, and navigates onward.
@@ -45,14 +49,15 @@ export type Route =
       gameID?: string;
       playerID?: string;
       displayName?: string;
-      // userID is the server's user id, present when it has a user
-      // database. It is what makes "sign out everywhere" available.
+      // userID is the server's users row (S34), present when it has a
+      // user database. It gates "sign out everywhere" and "My games".
       userID?: string;
     };
 
 const defaultRoute: Route = { name: "login" };
 
-function parseHash(hash: string): Route {
+// parseHash is exported for tests; everything else reads `route`.
+export function parseHash(hash: string): Route {
   const raw = hash.replace(/^#\/?/, "");
   if (!raw) return defaultRoute;
 
@@ -69,6 +74,8 @@ function parseHash(hash: string): Route {
       return { name: "lobby" };
     case "catalog":
       return { name: "catalog" };
+    case "my-games":
+      return { name: "myGames" };
     case "games":
       // /games/:id/join?t=<token> → Join
       // /games/:id                → Game
@@ -118,7 +125,10 @@ function parseHash(hash: string): Route {
   }
 }
 
-const store = guardedWritable<Route>(parseHash(location.hash), "route");
+const store = guardedWritable<Route>(
+  parseHash(typeof location === "undefined" ? "" : location.hash),
+  "route",
+);
 
 if (typeof window !== "undefined") {
   window.addEventListener("hashchange", () => {

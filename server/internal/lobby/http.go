@@ -265,6 +265,10 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
+	// Linking Discord to a seat already held (S34 sub-PR 4, from S12.5
+	// #59). Unlike /start it needs a player session: the seat it links
+	// is the session's own. Same bucket as /start.
+	mux.Handle("GET /auth/discord/link", limit.Middleware(auth.Middleware(c.Auth, auth.RolePlayer)(handlerFunc(c, discordLink))))
 	// Discord avatar cache. Session-gated: the board's <img> tags are
 	// same-origin, so the httpOnly session cookie rides along without
 	// the client attaching a token. Rate-limited because each cold
@@ -339,6 +343,13 @@ func Handler(c Config) http.Handler {
 	// API_PATH, or it 404s in production only.
 	mux.Handle("GET /decks", auth.Middleware(c.Auth)(handlerFunc(c, prebuiltDecks)))
 	mux.Handle("GET /me", auth.Middleware(c.Auth)(handlerFunc(c, me)))
+	// "My games" and seat reclaim by user (ADR 0051 decisions 3 and 4,
+	// S34 sub-PR 4). Session-gated here; the handlers then require a
+	// UserID on it, since the answer is a person's, not a seat's.
+	// /me/* is in deploy/Caddyfile's @api matcher; /me in the Vite
+	// proxy and the service worker's API_PATH already covers it.
+	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
+	mux.Handle("POST /me/games/{id}/session", auth.Middleware(c.Auth)(handlerFunc(c, myGameSession)))
 
 	// Develop-environment card spawner (ADR 0023). Both routes are
 	// wrapped in requireDevFeature: in production they are 404s, and
@@ -560,7 +571,17 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	meta, playerID, err := c.Lobby.Join(id, body.InviteToken, body.Name)
+	// A signed-in person clicking an invite link sits as themselves
+	// (ADR 0051 sub-PR 4): the seat takes the Discord identity and the
+	// user from the session, and body.name is ignored, as on POST
+	// /join. Anyone else, including a session that no longer
+	// validates, joins exactly as before, by name.
+	identity, userID := signedInIdentity(c, r)
+	name := body.Name
+	if identity.Populated() {
+		name = ""
+	}
+	meta, playerID, err := c.Lobby.JoinAs(id, body.InviteToken, name, identity, userID)
 	if err != nil {
 		return err
 	}
@@ -571,9 +592,17 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	// to spy on a different game.
 	p := auth.Principal{
 		Role:     auth.RolePlayer,
+		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     body.Name,
+	}
+	if identity.Populated() {
+		p.Name = identity.DisplayName()
+		p.DiscordID = identity.ID
+		p.DiscordUsername = identity.Username
+		p.DiscordGlobalName = identity.GlobalName
+		p.DiscordAvatarHash = identity.AvatarHash
 	}
 	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
 	if err != nil {
@@ -666,7 +695,7 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	if identity.Populated() {
 		name = ""
 	}
-	meta, playerID, err := c.Lobby.JoinWithIdentity(gameID, body.InviteToken, name, identity)
+	meta, playerID, err := c.Lobby.JoinAs(gameID, body.InviteToken, name, identity, userID)
 	if err != nil {
 		return err
 	}
@@ -2267,6 +2296,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
 		errors.Is(err, ErrSeatTaken),
+		errors.Is(err, ErrAlreadySeated),
 		errors.Is(err, ErrDeckNotUploaded),
 		errors.Is(err, game.ErrNotEnoughPlayers),
 		errors.Is(err, game.ErrGameAlreadyStarted),

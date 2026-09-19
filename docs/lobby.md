@@ -84,6 +84,17 @@ enough to claim a seat and mint a RolePlayer session.
 Sets the `cmdctrl_session` cookie. Subsequent calls to `/ws?game=<id>`
 automatically bind to this seat.
 
+The session is **optional** here too (S34 sub-PR 4,
+[ADR 0051](decisions/0051-user-database.md)). When the request carries
+a signed-in person's session, that person takes the seat as
+themselves: the seat gets the session's Discord name and avatar,
+`seats.user_id` is their users row, `name` in the body is ignored, and
+the minted principal carries `user_id` and the `discord_*` fields. A
+signed-in session is an `identified` one, or a `player` one with a
+non-nil `user_id` (the same person at their next table). Any other
+session, and a credential that no longer validates, joins by `name`
+exactly as before.
+
 **Errors**
 
 | Status | Reason |
@@ -91,7 +102,7 @@ automatically bind to this seat.
 | 400 | empty name |
 | 401 | invite token did not match |
 | 404 | game not found |
-| 409 | game already started, or game full |
+| 409 | game already started, game full, or the signed-in person already holds a seat at this table |
 
 ---
 
@@ -143,7 +154,13 @@ own it can do nothing else — the WS authorizer refuses it outright.
 |---|---|
 | 400 | empty name on the anonymous path |
 | 401 | no live table has that invite code (an archived one reads the same way) |
-| 409 | game already started, game full, or a session that already belongs to a table |
+| 409 | game already started, game full, a session that already belongs to a table, or the signed-in person already holds a seat at this table |
+
+Since S34 sub-PR 4 a seat claimed on the Discord path records its
+person in `seats.user_id`. One person holds at most one seat per
+table, because reclaiming a seat by user
+([`POST /me/games/{id}/session`](#post-megamesidsession)) looks up
+"the seat whose `user_id` is yours".
 
 ---
 
@@ -875,6 +892,85 @@ stranger from calling it at all.
 Echo the principal attached to the request. Used by the client for
 bootstrap — "am I still logged in, and as what?"
 
+### `GET /me/games`
+
+"My games" ([ADR 0051](decisions/0051-user-database.md) decision 4,
+S34 sub-PR 4): every seat the caller's user holds, joined with its
+game, **newest game first**. Ended and archived games are included,
+as is a finished game whose table did not survive a restart; the
+`games` and `seats` rows are the record.
+
+Needs a signed-in person: an `identified` session, or a `player`
+session with a non-nil `user_id`. Every other caller gets **401**:
+no session, a guest seat's session, an admin, a spectator, and
+everyone on a deployment with no database (there are no users).
+
+**Response 200**
+
+```json
+{
+  "games": [
+    {
+      "id": "<game uuid>",
+      "name": "Friday Night Commander",
+      "state": "ended",
+      "seat": 1,
+      "winner_seat": 1,
+      "created_at": 1789820000000,
+      "started_at": 1789820300000,
+      "ended_at": 1789825000000,
+      "archived_at": null,
+      "others": [
+        { "seat": 0, "name": "Bob" },
+        { "seat": 2, "name": "Ghoul", "bot": true }
+      ],
+      "rejoin": "/me/games/<game uuid>/session"
+    }
+  ]
+}
+```
+
+- Every time is **Unix milliseconds** (the unit the tables store), and
+  a time that has not happened is `null`. `winner_seat` is `null` until
+  the engine reports a winner.
+- `seat` is the caller's seat. `others` is every other seat in seat
+  order. A seat's `name` is its user's current display name when it
+  has one, so a friend who renamed themselves on Discord reads
+  correctly on old games, and otherwise the name stored on the seat.
+- For a table live in this process, `state`, the times and
+  `winner_seat` come from the engine, as `GET /games` reads them.
+- `rejoin` is present only while the table is still open: live in this
+  process and not archived. It is the path to POST for a seat session.
+- No invite token appears anywhere in the response.
+
+### `POST /me/games/{id}/session`
+
+Seat reclaim by user ([ADR 0051](decisions/0051-user-database.md)
+decision 3). A signed-in person gets a fresh `player` session for
+**their own** seat at a live table, without the invite link and
+without an admin-minted ticket. `seats.user_id` is the proof, and only
+a Discord sign-in writes it. The ticket route
+([`POST /games/{id}/reclaim`](#post-gamesidreclaim)) stays the backstop
+for guests, who have no identity to prove.
+
+Same caller rule as `GET /me/games`. No body.
+
+**Response 200**: the `sessionResponse` shape `/join` returns, cookie
+included. The principal is bound to the seat's `(game_id, player_id)`
+and carries the caller's `user_id` and the seat's Discord identity.
+Both invite tokens are stripped from the embedded `game`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | not a signed-in person (see `GET /me/games`) |
+| 403 | the caller holds no seat at this table |
+| 404 | the table is not live in this process |
+| 409 | the table has been archived |
+
+---
+
 ## Signing out
 
 Session lifetimes: the identity session a Discord sign-in mints from
@@ -943,6 +1039,70 @@ are unaffected, including the caller's.
 | 403 | caller is not an admin |
 | 404 | no such user |
 | 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
+
+---
+
+## Discord sign-in (S12.5, ADR 0004 / 0050 / 0051)
+
+`GET /auth/discord/start` and `GET /auth/discord/callback` are the
+OAuth round-trip ([ADR 0004](decisions/0004-discord-identity.md),
+[ADR 0050](decisions/0050-discord-login-identity.md)). Since S34 the
+callback also:
+
+- records the person in `users` / `identities`
+  ([ADR 0051](decisions/0051-user-database.md) decision 2), and puts
+  `user_id` in the `#/oauth-complete?…` fragment when it did (absent
+  on a deployment with no database);
+- links every seat waiting on this Discord account's snowflake
+  (`seats.pending_discord_id`, set on seats imported from
+  `lobby/*.json` and on seats claimed while there was no database) to
+  that user, and clears the pending id. One transaction, idempotent,
+  on every sign-in. A failure is logged and the sign-in goes ahead;
+  the next sign-in tries again.
+
+### `GET /auth/discord/link`
+
+Link Discord to a seat you already hold (S34 sub-PR 4, carried over
+from S12.5 [#59](https://github.com/krakenhavoc/cmd_and_ctrl/issues/59)).
+A navigation from the in-game menu: the server answers **302** to
+Discord's consent screen, and the callback comes back to the same
+seat. Works in any game state. A guest who signs in mid-game becomes
+that seat's user, and a seat already linked to one Discord account can
+be moved to another.
+
+Needs a `player` session (401 without a session, 403 for any other
+role). Optional `?game=<uuid>`: when present it must be the session's
+own game (409 otherwise), so a browser whose cookie was replaced by a
+join in another tab cannot link the wrong seat.
+
+What the callback then does:
+
+1. **Checks the browser.** The state parks `(game, player)`, and the
+   callback requires the request's session **cookie** to be the player
+   session for that same seat before it exchanges the code. Anything
+   else is a **403**. This is the CSRF binding: without it, a link
+   started by one person could be finished by another who is sent the
+   consent URL, and their Discord account would end up on your seat.
+2. Records the person and links pending seats, as for every sign-in.
+3. Puts the identity on the seat: `display_name`, `discord_id` and
+   `discord_avatar_hash` on the seat and on the engine's player, and
+   `seats.user_id`. The seat's typed `name` is kept. The change goes
+   through the room, so every client at the table gets a state
+   broadcast carrying the new name and avatar straight away.
+4. Mints a new `player` session for the same seat, now carrying
+   `user_id` and the `discord_*` fields, sets the cookie, and
+   redirects to `/#/oauth-complete?token=…&game=…&player_id=…&user_id=…`.
+
+**Errors** (as JSON, like the other callback errors)
+
+| Status | Reason |
+|---|---|
+| 401 | no session on `/link` |
+| 403 | not a player session on `/link`; on the callback, the cookie is not the seat's own session |
+| 404 | the table is not live in this process |
+| 409 | `?game=` names another table; the table is archived; or the Discord account already holds a different seat at this table |
+| 422 | the seat is a bot |
+| 503 | Discord is not configured on this server |
 
 ---
 

@@ -13,6 +13,7 @@
   import Reclaim from "./routes/Reclaim.svelte";
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
+  import MyGames from "./routes/MyGames.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -123,6 +124,8 @@
   <Lobby />
 {:else if $route.name === "catalog"}
   <Catalog />
+{:else if $route.name === "myGames"}
+  <MyGames />
 {:else if $route.name === "join"}
   <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
 {:else if $route.name === "reclaim"}

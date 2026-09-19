@@ -8,7 +8,8 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
-  import { fetchBugReportConfig } from "../lib/api";
+  import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
+  import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
@@ -165,6 +166,18 @@
     void fetchBugReportConfig().then((cfg) => {
       bugReportAvailable = cfg.enabled;
       bugReportAttachments = cfg.attachments;
+    });
+  });
+
+  // "Link Discord" (S34 sub-PR 4, from S12.5 #59): a seated player can
+  // attach a Discord account to the seat they hold, mid-game included —
+  // a guest who signs in becomes that seat's user, and the table sees
+  // the new name and avatar at once. Offered only when the server has
+  // Discord configured, probed once like the bug-report config.
+  let discordEnabled = $state(false);
+  onMount(() => {
+    void discordAuthEnabled().then((on) => {
+      discordEnabled = on;
     });
   });
 
@@ -992,6 +1005,29 @@
                   <Icon name="bug" size={15} /> Report a bug or idea
                 </button>
               {/if}
+              {#if canLinkDiscord( { role: sess?.principal.role, discordEnabled, isBotSeat: Boolean(viewerSeat?.is_bot) }, )}
+                <!-- A navigation, not a fetch: the server answers with a
+                     302 to Discord's consent screen and comes back to
+                     this table with the seat linked. -->
+                <a
+                  class="mi"
+                  role="menuitem"
+                  href={discordLinkHref(gameID)}
+                  title="sign in with Discord and put your Discord name and avatar on this seat"
+                >
+                  <Icon name="link" size={15} />
+                  {linkDiscordLabel(Boolean(viewerSeat?.discord_id))}
+                </a>
+              {/if}
+              {#if signedInUserID(sess)}
+                <button
+                  class="mi"
+                  role="menuitem"
+                  onclick={() => viaMenu(() => navigate("#/my-games"))}
+                >
+                  <Icon name="library" size={15} /> My games
+                </button>
+              {/if}
               <button class="mi" role="menuitem" onclick={() => viaMenu(back)}>
                 <Icon name="chevronLeft" size={15} /> Back to lobby
               </button>
@@ -1693,6 +1729,11 @@
     justify-content: flex-start;
     text-align: left;
     box-shadow: none;
+    box-sizing: border-box;
+  }
+  /* "Link Discord" is a navigation, so it is a link styled as a row. */
+  a.mi {
+    text-decoration: none;
     box-sizing: border-box;
   }
   .mi:hover:not(:disabled) {
