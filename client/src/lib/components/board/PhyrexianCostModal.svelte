@@ -25,6 +25,7 @@
 
   import { onDestroy } from "svelte";
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
+  import type { AutoTapCastParams } from "../../castPreview";
   import {
     PhyrexianLifePerSymbol,
     clampPhyrexianLife,
@@ -52,6 +53,10 @@
     // component instead of the card's printed cast cost.
     abilityIndex?: number;
     costLabel?: string;
+    // #696: the rest of the announcement the preview prices against —
+    // source zone, alternative cost, optional costs, face. Ignored on
+    // the ability branch, which prices the ability's own cost.
+    castParams?: AutoTapCastParams;
     confirmVerb?: string;
     onConfirm: (n: number) => void;
     onCancel: () => void;
@@ -65,6 +70,7 @@
     xValue = undefined,
     abilityIndex = undefined,
     costLabel = undefined,
+    castParams = {},
     confirmVerb = "Cast",
     onConfirm,
     onCancel,
@@ -110,12 +116,14 @@
     const claim = n;
     const x = xValue;
     const ability = abilityIndex;
+    const cast = castParams;
     if (!id) return;
     loading = true;
     fetchAutoTapPreview(gameID, id, {
       xValue: x,
       abilityIndex: ability,
       phyrexianLife: claim,
+      cast,
     })
       .then((p) => {
         if (reqID === fetchSeq) preview = p;

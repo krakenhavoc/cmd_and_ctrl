@@ -9,6 +9,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import { fetchBugReportConfig } from "../lib/api";
+  import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
@@ -379,6 +380,13 @@
   // insufficient-mana toast is the canonical entry point; the
   // dismiss button (and ESC inside the modal) closes it.
   let autoTapCardID = $state<string | null>(null);
+  // #696: the preview has to price the cast the confirm button will
+  // replay, not the card's printed cost — so the stashed payload's
+  // source zone, alternative cost, optional costs, convoke taps and
+  // face are read back out of the same stash confirmAutoTap replays.
+  const autoTapCastParams = $derived(
+    castPreviewParamsFromPayload(autoTapCardID ? lastCastByCardID.get(autoTapCardID) : undefined),
+  );
   function openAutoTap(): void {
     if (!manaOverride) return;
     autoTapCardID = manaOverride.cardID;
@@ -1426,6 +1434,7 @@
         {gameID}
         snap={view}
         cardID={autoTapCardID}
+        castParams={autoTapCastParams}
         onConfirm={confirmAutoTap}
         onCancel={cancelAutoTap}
       />
