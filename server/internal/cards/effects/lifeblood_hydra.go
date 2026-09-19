@@ -11,36 +11,38 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 its power."
 //
 // The Hydra that pays out on death. Trample rides PrintedKeywords;
-// the X counters go on as the spell resolves (Goldvein Hydra's
-// posture, declared below); the death trigger reads the Hydra's
+// the X counters are the printed entry clause (below); the death
+// trigger reads the Hydra's
 // last-known power — the harvester's LKI characteristic carries the
 // layer-computed P/T and the +1/+1 counters are read back off the
 // log (b13LastKnownPower, Conclave Mentor's shape), so a pumped or
 // grown Hydra pays out for what it was when it died — and gains that
 // much life, then draws that many, in printed order.
 //
-// One declared simplification, weaker than printed: the X +1/+1
-// counters are placed as the spell resolves, a beat before the card
-// enters (an entry replacement cannot read the spell's X), so a
-// "whenever you put counters on a permanent" payoff does not see
-// them. Cast for X=0 the Hydra enters as the printed 0/0 it is and
-// the next state-based check puts it into its owner's graveyard
-// (CR 704.5f), paying out nothing, exactly as in paper. CR 601.2b
-// allows the announcement; it simply does not survive it. That was an
-// engine gap until #691 — the toughness check read every printed 0/0
-// as the importer's stand-in — and what closed it is the printing
-// behind the object (game.Card.ToughnessIsKnown).
+// The X counters are the printed CR 614.1c entry clause and ride the
+// CR 614 pipeline as one — XCounters, seeded onto the entry event off
+// the resolving stack item while the spell is still there (#1002).
+// They land on the PERMANENT, after the move and before EventETB, so
+// Doubling Season and Hardened Scales apply, the card's own enters
+// trigger reads a finished creature, and a "whenever one or more
+// counters are put on a permanent you control" payoff sees them —
+// which it could not while they went onto a card still on the stack.
+//
+// Cast for X=0 the Hydra enters as the printed 0/0 it is and the next
+// state-based check puts it into its owner's graveyard (CR 704.5f),
+// paying out nothing, exactly as in paper. CR 601.2b allows the
+// announcement; it simply does not survive it. That was an engine gap
+// until #691 — the toughness check read every printed 0/0 as the
+// importer's stand-in — and what closed it is the printing behind the
+// object (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
-		OracleID:        "b14d05c0-fe10-4079-a90e-0aea1a8fd375",
-		Name:            "Lifeblood Hydra",
-		XMatters:        true,
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
-		PrintedKeywords: []string{"trample"},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
-		},
+		OracleID:                   "b14d05c0-fe10-4079-a90e-0aea1a8fd375",
+		Name:                       "Lifeblood Hydra",
+		XMatters:                   true,
+		Completeness:               CompletenessFull,
+		PrintedKeywords:            []string{"trample"},
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

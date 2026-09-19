@@ -112,12 +112,15 @@ func b15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
 
 // b15LandsEnteredThisTurn is how many lands entered the battlefield
 // under each player's control this turn — Smuggler's Share's second
-// count. EventETB carries only the card, so the land is looked up
-// where it sits now for its type and controller; the Controller
-// field survives a zone move, so a fetchland that entered and
-// sacrificed itself still counts, as printed. A land that has since
-// changed control is counted for its new controller — weaker for
-// its old one, never stronger.
+// count.
+//
+// One tally read (#811): PlayerTurnTally.LandsEntered is bumped by
+// the turn-tally listener at the EventETB itself, off the permanent as
+// it entered, so a fetchland that entered and sacrificed itself still
+// counts and one that has since changed control still counts for the
+// player it entered under, both as printed. The doc comment used to
+// describe an event-log walk that looked the land up where it sits
+// now; the code has read the tally since #586 and this says so.
 func b15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
 	lands := map[uuid.UUID]int{}
 	for id, t := range g.TurnTally.Players {

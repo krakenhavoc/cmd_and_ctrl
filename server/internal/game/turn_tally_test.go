@@ -238,3 +238,61 @@ func TestTurnTallySurvivesClone(t *testing.T) {
 		t.Errorf("restore did not bring the tally back: %+v", g.TurnTallyFor(me))
 	}
 }
+
+// #811, CR 603.10 / CR 608.2h: the entered-subtype tally is a record
+// of ENTRY EVENTS, not a view of the board, and a card reading it must
+// get the same answer however the board has changed since.
+//
+// The TOKEN is the case that matters and the one an event-log walk
+// cannot answer at all: it enters, it dies, and CR 704.5d takes it out
+// of the graveyard at the next state-based check, so a moment later
+// there is no object anywhere to look up and ask what it was.
+// TestTurnTallyEnteredSubtypes covers the type-change and
+// controller-change halves on ordinary cards.
+func TestEnteredSubtypeTallyCountsEntriesNotTheBoard(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	var token uuid.UUID
+	g.WithWriteLock(func() {
+		ids, err := g.CreateTokensForEffect(me, Card{
+			Name: "Goblin", TypeLine: "Token Creature \u2014 Goblin", Power: 1, Toughness: 1,
+		}, 1, TokenEntryOptions{})
+		if err != nil {
+			t.Fatalf("create the token: %v", err)
+		}
+		if len(ids) != 1 {
+			t.Fatalf("created %d tokens, want 1", len(ids))
+		}
+		token = ids[0]
+	})
+	if got := g.EnteredWithSubtypeThisTurn(me, "Goblin"); got != 1 {
+		t.Fatalf("the entry was not tallied: %d", got)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.SacrificePermanentForEffect(token); err != nil {
+			t.Fatalf("sacrifice: %v", err)
+		}
+		g.stateBasedActionsLocked()
+	})
+	if g.Battlefield.Contains(token) {
+		t.Fatal("the token is still on the battlefield")
+	}
+	if got := g.EnteredWithSubtypeThisTurn(me, "Goblin"); got != 1 {
+		t.Errorf("a token that entered and left: tally %d, want 1 \u2014 the entry happened", got)
+	}
+
+	// And it is THIS turn's record: the next turn starts at zero.
+	seat := g.Turn.ActiveSeat
+	for i := 0; i < 40 && g.Turn.ActiveSeat == seat; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if g.Turn.ActiveSeat == seat {
+		t.Fatal("setup: the turn never passed")
+	}
+	if got := g.EnteredWithSubtypeThisTurn(me, "Goblin"); got != 0 {
+		t.Errorf("the entry tally survived the turn change: %d", got)
+	}
+}

@@ -12,8 +12,15 @@ import (
 //
 // Each of these is one read of game.PaidCost through effects.Context,
 // and each is written once here rather than per card. A card file says
-// what the card says — ctx.ColorsSpentCount(), SunburstCounters(),
-// AdamantSpent("R", 3) — and never reaches for the record itself.
+// what the card says — ctx.ColorsSpentCount(), AdamantSpent("R", 3) —
+// and never reaches for the record itself.
+//
+// Sunburst is the one that is NOT here. CR 702.44a is an "enters with
+// counters" clause, so since #1002 it is declared as one —
+// SunburstCounters in entry_counters.go — and the engine reads the
+// paid-cost record off the resolving stack item while the CR 614 entry
+// window is open, rather than the card reading it a beat earlier in
+// OnResolve.
 //
 // The one rule they all inherit, from ADR 0068 §3: a payment the
 // engine WAIVED (permissive mode, a strict-mode override) answers
@@ -21,40 +28,6 @@ import (
 // answer. Converge counts no colours, adamant does not turn on, and
 // "if no mana was spent" is false. None of these helpers has to say
 // so; PaidCost already does.
-
-// SunburstCounters is sunburst (CR 702.44a): "This permanent enters
-// with a +1/+1 counter on it for each color of mana spent to cast it"
-// — a +1/+1 counter for a creature, a charge counter for a
-// non-creature artifact (CR 702.44b).
-//
-// DECLARED SIMPLIFICATION, and it is Hangarback Walker's and Goldvein
-// Hydra's: the counters go on as the spell RESOLVES, a beat before
-// the card moves from the stack to the battlefield, rather than
-// through the entry replacement a printed "enters with" uses. The
-// entry pipeline cannot read the resolving spell's paid-cost record
-// without exporting the stack item to the catalog, and this is the
-// last moment the record is reachable.
-//
-// They are on the card when it lands, so a 0/0 sunburst creature never
-// meets the state-based check without them, every ETB watcher sees the
-// finished permanent, and a counter doubler applies exactly as it does
-// to a printed "enters with". The one observable difference is that a
-// "whenever you put counters on a permanent" payoff does not see them,
-// because the card was not a permanent yet — weaker, never stronger.
-//
-// Pair it with Spec.WantsDistinctColors, which is what makes the cast
-// gate spread the payment across colours rather than paying
-// colourless-first; without that a sunburst creature cast off five
-// lands into a wide pool would routinely enter smaller than it should.
-func SunburstCounters(kind string) func(*game.StackItem, *Context) error {
-	return func(item *game.StackItem, ctx *Context) error {
-		n := ctx.ColorsSpentCount()
-		if n <= 0 {
-			return nil
-		}
-		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.Apply(ctx)
-	}
-}
 
 // AdamantSpent is adamant's condition (CR 207.2c): "if at least three
 // <colour> mana was spent to cast this spell". An ability word, so the

@@ -227,9 +227,10 @@ type AlternativeCost struct {
 	// Charger), even though "+1/+1" is the case that matters.
 	//
 	// Applied through the CR 614 entry pipeline — the same
-	// ReplacementEvent.EntersWithCounters map Hangarback Walker's own
-	// self-replacement writes — rather than stapled on after the
-	// permanent lands. So a creature escaping under Doubling Season
+	// ReplacementEvent.EntersWithCounters map the card-printed clause
+	// writes (Hangarback Walker's X, Etched Oracle's sunburst; see
+	// entry_counters.go) — rather than stapled on after the permanent
+	// lands. So a creature escaping under Doubling Season
 	// gets twice the counters (CR 616), and an ETB trigger already
 	// sees them.
 	EntersWithCounterName  string
@@ -722,8 +723,10 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 // entry, and the clause should use whichever existing machinery
 // matches its timing. Evoke's sacrifice is a triggered ability, warp's
 // exile is a delayed trigger, and "escapes with counters" is a
-// replacement — so it rides the same EntersWithCounters map Hangarback
-// Walker writes, rather than an AddCounter after the permanent lands.
+// replacement — so it rides the same EntersWithCounters map the CARD's
+// own printed "enters with X +1/+1 counters" writes one line later
+// (applyCastEntryCountersLocked, entry_counters.go), rather than an
+// AddCounter after the permanent lands.
 //
 // The difference is observable in both directions. Under Doubling
 // Season a Typhon escaping with three counters gets six, because the

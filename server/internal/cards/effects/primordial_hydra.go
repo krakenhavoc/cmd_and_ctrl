@@ -19,15 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counter placement bumps the layer version so it appears the moment
 // the tenth counter lands.
 //
-// Sandbox simplification, declared, for the X counters — Goldvein
-// Hydra's: an entry replacement cannot see the X announced for the
-// spell (the stack item is gone by the time the entry pipeline runs),
-// so the counters go on as the spell RESOLVES, a beat before the
-// card moves from the stack to the battlefield. They are on the card
-// when it lands, so the 0/0 body never meets the state-based check
-// without them, and a counter doubler applies. The one observable
-// difference is that a "whenever you put counters on a permanent"
-// payoff does not see them — weaker, never stronger.
+// The X counters are the printed CR 614.1c entry clause and ride the
+// CR 614 pipeline as one — XCounters, seeded onto the entry event off
+// the resolving stack item while the spell is still there (#1002).
+// They land on the PERMANENT, after the move and before EventETB, so
+// Doubling Season and Hardened Scales apply, the card's own enters
+// trigger reads a finished creature, and a "whenever one or more
+// counters are put on a permanent you control" payoff sees them —
+// which it could not while they went onto a card still on the stack.
 //
 // Cast for X=0 the Hydra enters as the printed 0/0 it is and the next
 // state-based check puts it into its owner's graveyard (CR 704.5f),
@@ -38,14 +37,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // object (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
-		OracleID:     "1c36ed3a-c806-47e5-83f9-e44999c67fe5",
-		Name:         "Primordial Hydra",
-		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
-		},
+		OracleID:                   "1c36ed3a-c806-47e5-83f9-e44999c67fe5",
+		Name:                       "Primordial Hydra",
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
+		XMatters:                   true,
+		Completeness:               CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

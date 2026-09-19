@@ -21,16 +21,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard (CR 704.5f) with the pump still on the stack, where it
 // resolves anyway.
 //
-// Sandbox simplification, declared, for the X counters — Goldvein
-// Hydra's: an entry replacement cannot see the X announced for the
-// spell (the stack item is gone by the time the entry pipeline
-// runs), so the counters go on as the spell RESOLVES, a beat before
-// the card moves from the stack to the battlefield, which is the
-// last moment X is readable. They are on the card when it lands, so
-// the 0/0 body never meets the state-based check without them, and
-// a counter doubler applies. The one observable difference is that a
-// "whenever you put counters on a permanent" payoff does not see
-// them — weaker, never stronger.
+// The X counters are the printed CR 614.1c entry clause and ride the
+// CR 614 pipeline as one — XCounters, seeded onto the entry event off
+// the resolving stack item while the spell is still there (#1002).
+// They land on the PERMANENT, after the move and before EventETB, so
+// Doubling Season and Hardened Scales apply, the card's own enters
+// trigger reads a finished creature, and a "whenever one or more
+// counters are put on a permanent you control" payoff sees them —
+// which it could not while they went onto a card still on the stack.
 //
 // Cast for X=0 Mikaeus enters as the printed 0/0 he is and the next
 // state-based check puts him into the graveyard (CR 704.5f) before
@@ -41,16 +39,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // away.
 func init() {
 	Register(Spec{
-		OracleID:     "82f3faa8-39fa-450b-843f-d60a4c36d8f7",
-		Name:         "Mikaeus, the Lunarch",
-		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The X +1/+1 counters are put on Mikaeus as the spell resolves, a beat before he enters, so effects that watch you put counters on a permanent don't see them.",
-		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
-		},
+		OracleID:                   "82f3faa8-39fa-450b-843f-d60a4c36d8f7",
+		Name:                       "Mikaeus, the Lunarch",
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
+		XMatters:                   true,
+		Completeness:               CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
 				Label:  "{T}: Put a +1/+1 counter on Mikaeus.",

@@ -134,24 +134,27 @@ func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
 
 // b34GoblinsEnteredUnderYourControlThisTurn is Hobgoblin Bandit
 // Lord's count: the Goblins that entered the battlefield under
-// `controller`'s control this turn, walked off the event log back to
-// the turn's upkeep. Each entry is read wherever the card now sits,
-// so a Goblin that has since died still counts, as printed; one
-// that can no longer be found does not, which errs weaker. Effective
-// subtypes, so a changeling counts.
+// `controller`'s control this turn.
+//
+// ONE TALLY READ, and it has to be (#811, CR 603.10 / CR 608.2h).
+// This used to walk the event log for EventETB and then look each
+// card up to ask what it is NOW, which answers a different question
+// in three places at once. A Soldier that entered and has since been
+// turned into a Goblin by a Maskwood Nexus counted, and the printed
+// card counts what entered. A Goblin that entered under an opponent's
+// control and that you have since stolen counted for you, because
+// c.Controller is a fact about now. And a Goblin TOKEN that entered
+// and has since died counted for nothing, because CR 704.5d had
+// already removed it and the lookup found no card — the commonest
+// case the card is printed for, on a Goblin board, silently missing.
+//
+// Game.EnteredWithSubtypeThisTurn records each permanent's subtypes
+// and the player it entered under at its EventETB, so it answers the
+// printed question directly, and it is the same accessor Lilypad
+// Village and Eowyn read. A changeling counts (CR 702.73a, the
+// tally's all-creature-types bucket).
 func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUID) int {
-	n := 0
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(ev.CardID)
-		if !ok || c.Controller != controller || !c.HasSubtype("Goblin") {
-			continue
-		}
-		n++
-	}
-	return n
+	return g.EnteredWithSubtypeThisTurn(controller, "Goblin")
 }
 
 // b34DamageSourceController resolves who controls the source of a
@@ -511,8 +514,9 @@ func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item 
 // b34DamageChosenTargetPerGoblinEnteredThisTurn is Hobgoblin Bandit
 // Lord's activation body: damage from the Lord to the announced
 // target, if still legal, equal to the Goblins that entered under
-// the controller's control this turn, counted as the ability
-// resolves.
+// the controller's control this turn. Counted as the ability
+// RESOLVES (CR 608.2h) — a Goblin that entered in response to the
+// activation is in the number — off the per-turn entry tally.
 func b34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := b34GoblinsEnteredUnderYourControlThisTurn(g, item.Controller)
