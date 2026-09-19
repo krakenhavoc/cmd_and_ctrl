@@ -708,6 +708,19 @@ func TestEnumeratorOffersASuspendedFreeCast(t *testing.T) {
 	dispatchAll(t, g, seat.ID, moves)
 }
 
+// --- adventures (CR 715) and madness (CR 702.35) ------------------
+//
+// Not here, and deliberately: #719 and #657 each shipped their own
+// enumerator tests — adventure_moves_test.go and
+// madness_cast_moves_test.go — and both were written against the
+// walk this file replaced. They still pass, which is the claim worth
+// making: an adventure's two castable faces and a madness grant's
+// flash-timed exile cast needed NO new enumerator code, because the
+// new walk asks the same two engine functions (Card.CastableFaces
+// narrowed by CastPermission.Faces, and CastOffersForLocked) the old
+// one did. Adding a third copy of those scenarios here would be
+// duplicating them rather than covering anything.
+
 // --- the converse of the soundness contract -----------------------
 
 // dispatchAll proves every enumerated move is accepted. This is the

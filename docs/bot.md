@@ -926,6 +926,127 @@ mandatory one and a kicker's — is not enumerated, for the reason
 escape's exile-from-graveyard cost is not: the two pools have to be
 searched together into one flat list, and no card asks for it.
 
+## Enumerating a cast from a zone that is not the hand (#673)
+
+A bot casts from every zone the engine would accept a cast from —
+hand, the command zone, its own graveyard, exile and the top of its
+own library — at every price the engine would charge. Two questions,
+and the enumerator asks the engine both rather than answering either
+itself:
+
+- **May this card be cast from here?** The card's own declaration
+  (`game.CastableZonesFor` — flashback, escape, Gravecrawler) or a
+  granted `game.CastPermission` ([ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)
+  — Snapcaster, cascade, impulse exile, warp's recast, a foretold,
+  suspended or madness-discarded card). The graveyard is walked on
+  every decision, because
+  a card's own flashback opens it with nothing granted; exile and the
+  library are walked only when something has granted a permission,
+  because nothing else can open them.
+- **At what price?** `game.CastOffersForLocked` is the one list: a nil
+  entry for the printed mana cost when the cast path allows a claim of
+  nothing, plus every alternative cost claimable from that zone, in
+  announce precedence and already filtered through
+  `AlternativeCostPayableLocked`, the predicate the client's picker is
+  filtered with too. One move per entry, so a flashed-back Faithless
+  Looting and a
+  hard-cast one are separate moves at separate prices — the same rule
+  the optional costs follow.
+
+A third question the same walk answers, and the reason an adventure
+needed no code here: WHICH FACE. `Card.CastableFaces` offers both
+halves of an adventure (CR 715.3) and of a modal DFC, and a grant that
+names faces NARROWS the choice to exactly those (CR 715.4's "cast the
+creature from exile") — `faceForCastLocked`'s own rule, so a half the
+enumerator offers is a half the announce path accepts.
+
+A zone the card PRICES must be paid for. A Faithless Looting in the
+graveyard is never offered at the {R} in its corner, because
+`validateCastPathLocked` would refuse that cast and the enumerator
+must not offer a move the engine refuses.
+
+The move label names the price and, when the price eats cards, what it
+ate: `Cast Voracious Typhon from graveyard (Escape—{5}{G}{G}, Exile
+four other cards from your graveyard, exiling Fuel 0, Fuel 1, …)`. The
+life half of a pitch rides `Move.Cost.Life`, so a policy reading only
+the wire payload does not price Force of Will as free.
+
+### The card component of an alternative cost
+
+Escape's "exile N other cards from your graveyard", Force of Will's
+pitched blue card and Daze's returned Island are all one mechanism: a
+COST paid in cards, named on the wire as `alt_cost_ids`. The
+candidates come from `game.AltCostCandidatesLocked`, which shares its
+per-card predicate with the announce validator, so a payment the
+enumerator builds is a payment `CastSpell` accepts.
+
+**Exactly ONE payment is enumerated per offer**, and that is the
+policy — `legal.maxEnumeratedCostPayments`, beside
+`maxEnumeratedRepeats` and for the same reason. [ADR
+0033](decisions/0033-ai-bot-seat.md) §1's corollary is that a variable
+in a cost must not become an arity of the target cross product:
+escape-five over a twenty-card graveyard is 15,504 payments, each
+needing its own price, and a cap of twelve would spend the whole
+per-source budget on twelve indistinguishable Uros and never offer the
+second target of anything.
+
+"Indistinguishable" is a statement about the POLICY rather than about
+Magic. The heuristic prices the battlefield and the seats; a card in a
+graveyard has no value in its evaluation at all, so it cannot tell two
+escape payments apart and would pick between them by index. The
+payment chosen is the first in zone order (the oldest cards in the
+graveyard), which is deterministic and stable. When a policy learns to
+price the cards a cost eats, that constant is where the search widens.
+
+For the same reason the policy prices a non-hand cast as costing NO
+card in hand (`valueOfCast`): what it really spends is the graveyard
+card, which the evaluation does not count. Charging a hand card there
+was what made every flashback and escape score below passing and never
+get taken.
+
+## Ordering target expansion by threat (#687)
+
+`legal.Options.MaxExpansionPerSource` is spent in candidate order, so
+before this the answer to "which twelve of an opponent's twenty
+permanents may the bot point a removal spell at" was whatever order
+`LegalTargetsForEffect` happened to walk the battlefield in — and the
+table leader's best creature could simply be absent from the move
+list, at which point no policy could pick it. [ADR
+0033](decisions/0033-ai-bot-seat.md) §1 promised an ordering from the
+start and it was not built until now.
+
+**It is a hook, not a scorer in `legal`.** Ranking a board is a policy
+question and `legal` may not import `aiseat` (which imports it), so
+the enumerator takes `Options.OrderTargets` and the seat that wants an
+order supplies one: `aiseat.TargetOrderer`, an optional Policy
+extension the runner asks for once per decision. A policy with no
+opinion pays nothing and gets exactly the enumeration it got before.
+
+The heuristic implements it with the SAME functions it scores
+everything else with — `Weights.Threat` for a seat (the one the attack
+rotation ranks opponents with) and `Weights.boardValue` for a
+permanent (the one `Evaluate` adds up, so #727's attachment roles and
+every restriction discount apply). There is no second scorer to drift
+from the first.
+
+Two things it deliberately does not do:
+
+- **It does not know what the spell is**, so it cannot prefer an
+  opponent's creature for a Murder and your own for a Giant Growth.
+  The ordering is by IMPORTANCE — the biggest objects on the table
+  survive the cap, whoever controls them — and choosing among the
+  survivors stays `Decide`'s job, where the spell is known. Its only
+  power is to stop a target being dropped, and dropping the board's
+  biggest permanent is wrong for every spell.
+- **It prices nothing off the battlefield.** A spell on the stack and
+  a card in a graveyard score zero, which keeps them in the engine's
+  own candidate order. Those clauses have a handful of candidates and
+  the cap does not bite on them.
+
+The sort is stable, so equal scores keep the engine's order and two
+enumerations of one board produce the same move list — which is what
+makes a decision log replayable.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per
@@ -956,6 +1077,18 @@ never negotiate.
 **No learning across games, and no opponent modelling.** Bots are
 stateless between games. The one played you last night remembers
 nothing about it.
+
+**A card in a hidden or unordered zone has no value to the
+evaluation.** `score.go` prices the battlefield and the seats; a card
+in a graveyard, in exile or on top of a library is worth nothing to
+it. Two consequences worth stating, because both look like bugs: the
+bot cannot choose WHICH cards an escape cost eats (see
+[above](#the-card-component-of-an-alternative-cost)), and a
+graveyard cast whose payoff is not a permanent — Lingering Souls'
+two tokens, made by a sorcery's resolution the scorer does not model
+— is priced at roughly nothing and taken only when nothing else is
+on offer. The move is enumerated either way; what is missing is the
+number, not the option.
 
 **No deckbuilding.** A bot never builds, tunes or swaps a deck. In the
 lobby, picking one of the four curated decks is the whole of the
