@@ -399,6 +399,21 @@ const (
 	// runs the frame's decline continuation
 	// (declineDepartedChoiceLocked, pending_choice.go).
 	dropDecline
+	// dropDefault — the question ends, and the REST OF THE CARD does
+	// not. The drop runs the frame's continuation with the outcome the
+	// kind reserves for "nobody chose" (option_pick's NoChoiceIndex,
+	// defaultDroppedChoiceLocked in option_pick.go), which takes no
+	// branch on the departed chooser's behalf and touches none of their
+	// material.
+	//
+	// It is the #544 rule at the drop path (#1006): a continuation is
+	// the rest of a card that is paused mid-resolution, and one that is
+	// silently never called is a card that stops halfway — Fact or
+	// Fiction putting neither pile anywhere, a Torment of Hailfire that
+	// stops at the victim who left, a "choose a player" whose printed
+	// sentence after the choice never runs. The two QUEUE-time paths
+	// into the same kind were already careful about exactly this.
+	dropDefault
 )
 
 // choiceDepartureDecisions classifies every PendingChoiceKind against
@@ -422,7 +437,9 @@ const (
 //   - CR 800.4f — the choice is a cost, or whether to pay one. The
 //     rule says the cost is simply not paid, so there is nobody to ask.
 //     Not paying is still an ANSWER, though, and what it answers is in
-//     the second column: pay_unless declares dropDecline (#961).
+//     the second column: pay_unless declares dropDecline (#961), and
+//     option_pick declares dropDefault (#1006) for the other half of
+//     the same idea — the question ends, the card does not.
 //   - The material is the departed player's own, and CR 800.4a has
 //     already taken it out of the game: their library, their hand,
 //     their permanents, their mana pool, their loop.
@@ -450,7 +467,15 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in
 	// reassignDepartedChoiceLocked, not by this row.
-	PendingChoiceOptionPick: {reassign: true},
+	//
+	// Its DROP is not the end of the effect, though, which is the
+	// second column's whole point (#1006). An option pick is asked
+	// from inside a resolution that is paused waiting for it, so the
+	// drop runs the continuation with "nobody chose" and the rest of
+	// the card finishes. That action asks a NARROWER question than
+	// dropDecline's before it runs — see
+	// departedChoiceActionAllowedLocked below.
+	PendingChoiceOptionPick: {reassign: true, onDrop: dropDefault},
 	// confirm is trigger_prompt's resolution-time twin — a CR 603.5
 	// "you may" a card can address to any seat (Combustible Gearhulk
 	// asks its target) — and it is reassigned for the same reason.
@@ -577,10 +602,11 @@ func ReassignableChoiceKinds() []PendingChoiceKind {
 //     An unset FromPlayer makes no claim about material and falls
 //     through to the other two gates.
 //
-// Gates 2 and 3 are departedChoiceObjectLocked, because the drop
-// action (#961) has to pass exactly the same two: CR 800.4f's "an
-// OBJECT requires a player who has left the game to pay a cost" is
-// 800.4g's opening clause, one rule earlier.
+// Gates 2 and 3 are departedChoiceObjectLocked, which dropDecline
+// (#961) also has to pass in full: CR 800.4f's "an OBJECT requires a
+// player who has left the game to pay a cost" is 800.4g's opening
+// clause, one rule earlier. dropDefault passes gate 2 only —
+// departedChoiceActionAllowedLocked below says why.
 //
 // Caller must hold g.mu.
 func (g *Game) reassignDepartedChoiceLocked(c *PendingChoice) bool {
@@ -615,6 +641,37 @@ func (g *Game) departedChoiceObjectLocked(c *PendingChoice) (uuid.UUID, bool) {
 	if c == nil || c.FromPlayer == c.Chooser {
 		return uuid.Nil, false
 	}
+	return g.choiceObjectSurvivesLocked(c)
+}
+
+// choiceObjectSurvivesLocked is gate 2 on its own: is there still an
+// object, in the game and somebody else's, whose text this prompt
+// belongs to? Returns that object's controller.
+//
+// Split out of departedChoiceObjectLocked in #1006 because the two
+// drop actions need different halves of it, and the difference is the
+// difference between the two actions:
+//
+//   - dropDecline ACTS, and what it acts on is the departed player's
+//     own material — cumulative upkeep's "sacrifice this permanent
+//     unless you pay". So it needs gate 3 as well (FromPlayer is not
+//     the chooser), or it sacrifices a permanent CR 800.4a has already
+//     taken off the table, which is observable: a sacrifice is a death
+//     and other players' triggers watch for one.
+//   - dropDefault takes NO branch. It runs the continuation with
+//     "nobody chose", which touches nothing the departed player owned
+//     and decides nothing on their behalf. What it needs is only an
+//     object whose text is unfinished — gate 2. Torment of Hailfire is
+//     the case that makes the difference load-bearing: the prompt is
+//     about the departing opponent's OWN permanents and hand (gate 3
+//     fails), and the rest of the run is every LATER opponent's
+//     question, which used to die with it.
+//
+// Caller must hold g.mu.
+func (g *Game) choiceObjectSurvivesLocked(c *PendingChoice) (uuid.UUID, bool) {
+	if c == nil {
+		return uuid.Nil, false
+	}
 	controller := g.choiceObjectControllerLocked(c)
 	if controller == uuid.Nil || controller == c.Chooser {
 		return uuid.Nil, false
@@ -623,6 +680,32 @@ func (g *Game) departedChoiceObjectLocked(c *PendingChoice) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	return controller, true
+}
+
+// departedChoiceActionAllowedLocked is the precondition for running a
+// dropped prompt's DROP ACTION after its chooser has left the game —
+// the one place the per-action difference in gates is written down.
+//
+// It is asked by the departure sweep only. A prompt withdrawn for any
+// other reason (dropChoiceLocked, pending_choice.go) has a chooser and
+// an object still in the game by construction, so there is nothing to
+// gate: only a departure can take the card the continuation belongs to
+// out of the game underneath it.
+//
+// Caller must hold g.mu.
+func (g *Game) departedChoiceActionAllowedLocked(c *PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	switch choiceDepartureDecisions[c.Kind].onDrop {
+	case dropDecline:
+		_, ok := g.departedChoiceObjectLocked(c)
+		return ok
+	case dropDefault:
+		_, ok := g.choiceObjectSurvivesLocked(c)
+		return ok
+	}
+	return false
 }
 
 // choiceInheritorLocked is CR 800.4g's "who makes it instead", and the

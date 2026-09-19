@@ -1138,21 +1138,85 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
-	g.dropChoiceLocked(idx)
+	g.removeChoiceAtLocked(idx)
 	g.notePlayerDecisionLocked()
 }
 
-// dropChoiceLocked removes the choice at index idx without recording
-// a player decision: the engine withdrawing a prompt nobody answered
-// (a sacrifice choice whose card has left, a stale zone-change
-// prompt). Caller must hold g.mu.
+// dropChoiceLocked is the engine WITHDRAWING a prompt nobody answered
+// — a sacrifice choice whose card has left, a stale zone-change
+// prompt, a CR 726 shortcut whose notice was cleared, an option pick
+// with no legal answer left. No player decision is recorded (that is
+// dequeueChoiceLocked's job, above).
+//
+// THE WITHDRAWAL IS NOT ALWAYS THE END OF THE QUESTION (#1006). The
+// departure table's second column says what a dropped prompt of this
+// kind still has to do, and it is performed here, so every withdrawal
+// path settles a kind the same way and the next prune cannot forget
+// it: `option_pick` runs its continuation with the no-choice outcome,
+// because the effect that asked is paused mid-resolution and its
+// continuation is the rest of the card. Every other kind's action is
+// the zero value and this costs a map lookup.
+//
+// The action runs AFTER the queue has been rewritten, so a
+// continuation that queues the next link of a chain does not land
+// behind the question it is replacing. A caller sweeping the queue by
+// index should walk it BACKWARDS, as every existing one does.
+//
+// The departure sweep does NOT come through here — it rebuilds the
+// slice in one pass and runs the same actions itself, behind the CR
+// 800.4f/g gates that only a departure needs
+// (dropChoicesForPlayerLocked, mutations.go). There is no path that
+// reaches both.
+//
+// Caller must hold g.mu.
 func (g *Game) dropChoiceLocked(idx int) {
+	if idx < 0 || idx >= len(g.PendingChoices) {
+		return
+	}
+	c := g.PendingChoices[idx]
+	g.removeChoiceAtLocked(idx)
+	g.runChoiceDropActionLocked(c)
+}
+
+// removeChoiceAtLocked takes the choice at idx out of the queue and
+// does nothing else, preserving slice order for the rest. The two
+// exits from the queue — an answer (dequeueChoiceLocked) and a
+// withdrawal (dropChoiceLocked) — differ in what they do around this,
+// and share the one line that does it. Caller must hold g.mu.
+func (g *Game) removeChoiceAtLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
 	g.PendingChoices = append(g.PendingChoices[:idx], g.PendingChoices[idx+1:]...)
 	if len(g.PendingChoices) == 0 {
 		g.PendingChoices = nil
+	}
+}
+
+// runChoiceDropActionLocked performs the departure table's second
+// column for one prompt that has just left the queue unanswered —
+// THE one place those actions are performed (choiceDepartureDecisions,
+// leave_game.go).
+//
+// Two callers, and the split between them is deliberate: this says
+// WHAT a dropped prompt of a kind still owes, and each caller says
+// WHEN a prompt is dropped and what it has to check first. The
+// departure sweep checks CR 800.4f/g's gates
+// (departedChoiceActionAllowedLocked); an ordinary withdrawal checks
+// nothing, because the chooser and the card are both still in the game
+// and only the question has gone.
+//
+// Caller must hold g.mu, and must have taken the prompt out of the
+// queue already.
+func (g *Game) runChoiceDropActionLocked(c *PendingChoice) {
+	if c == nil {
+		return
+	}
+	switch choiceDepartureDecisions[c.Kind].onDrop {
+	case dropDecline:
+		g.declineDepartedChoiceLocked(c)
+	case dropDefault:
+		g.defaultDroppedChoiceLocked(c)
 	}
 }
 
@@ -3287,15 +3351,21 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 //
 // It prunes and does not re-ask. A player choice is a choice among
 // seats, so a shorter list is the same question with one fewer answer;
-// there is no continuation to re-run and no card to re-read.
+// the question is the same one and the card is not re-read.
 //
 // An emptied prompt is DROPPED rather than left unanswerable. That is
 // the state QueueChoosePlayerForEffect refuses to queue in the first
 // place — no eligible seat, no question — and an option_pick blocks the
 // table (choice_gate.go), so a prompt with nothing on it is the #544
-// wedge rather than a harmless leftover. The drop is the departure
-// table's own default for this kind (choiceDepartureDecisions:
-// option_pick is dropDiscard), reached from a second direction.
+// wedge rather than a harmless leftover.
+//
+// The drop goes through dropChoiceLocked, which since #1006 also runs
+// the departure table's action for the kind: option_pick is
+// dropDefault, so the frame runs with "nobody chose" and the rest of
+// the card — the sentence printed after "choose a player" — still
+// happens. This path is the reason that fix is not only about
+// departures: here the CHOOSER is still at the table and it is the
+// question that has gone.
 //
 // Card options are NOT touched here. A card that left with its owner is
 // removeObjectsOwnedByLocked's business and reaches the prompts through

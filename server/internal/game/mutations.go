@@ -3395,14 +3395,24 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 //
 // #961 / CR 800.4f: a drop is not always the end of the question. The
 // departure table's second column names the DEFAULT ACTION a dropped
-// prompt of that kind still has to take — for pay_unless, the cost is
-// not paid, so the "unless" branch runs. The actions run at the bottom
-// of this function, after the queue has been rewritten, for the reason
-// #808's replacement frames do: a continuation may queue the next
-// prompt, and it must not land in a slice this loop is still writing
-// over. A continuation that queues to the DEPARTED seat is refused by
-// QueueChoiceForEffect's own guard (#864); one that queues to a
-// survivor is a prompt that seat really does owe.
+// prompt of that kind still has to take — for pay_unless the cost is
+// not paid, so the "unless" branch runs; for option_pick the question
+// ends but the rest of the card does not, so the continuation runs
+// with "nobody chose" (#1006). The actions themselves are
+// runChoiceDropActionLocked (pending_choice.go), shared with every
+// other withdrawal path so a kind cannot be settled two ways; what is
+// local to a DEPARTURE is the gate in front of them
+// (departedChoiceActionAllowedLocked, leave_game.go), because only a
+// departure can take the material or the card out of the game
+// underneath the action.
+//
+// They run at the bottom of this function, after the queue has been
+// rewritten, for the reason #808's replacement frames do: a
+// continuation may queue the next prompt, and it must not land in a
+// slice this loop is still writing over. A continuation that queues to
+// the DEPARTED seat is refused by QueueChoiceForEffect's own guard
+// (#864); one that queues to a survivor is a prompt that seat really
+// does owe.
 //
 // Caller must hold g.mu.
 func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResumeFrame {
@@ -3444,14 +3454,12 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 	for _, c := range settle {
 		// The object gate is re-read here rather than in the loop
 		// above: an earlier action may have been the thing that took
-		// the next one's object off the table.
-		if _, ok := g.departedChoiceObjectLocked(c); !ok {
+		// the next one's object off the table. Which gate depends on
+		// the action, and leave_game.go holds that policy.
+		if !g.departedChoiceActionAllowedLocked(c) {
 			continue
 		}
-		switch choiceDepartureDecisions[c.Kind].onDrop {
-		case dropDecline:
-			g.declineDepartedChoiceLocked(c)
-		}
+		g.runChoiceDropActionLocked(c)
 	}
 	return dropped
 }
