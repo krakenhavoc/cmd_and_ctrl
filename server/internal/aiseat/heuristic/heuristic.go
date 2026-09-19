@@ -75,6 +75,30 @@ type Config struct {
 	CommanderBonus float64
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
+
+	// FuelFloor is what a LAND in a graveyard or in exile is worth to
+	// its owner (#1013, fuel.go). The bottom of the scale: a land card
+	// in a graveyard does nothing at all without a Crucible, which is
+	// why it is the first thing an escape eats. Small and positive,
+	// not zero — a floor of zero would make it free rather than
+	// cheapest, and free is what "eat it before anything else" already
+	// means.
+	FuelFloor float64
+	// FuelIdle is what any OTHER card in a graveyard or exile is worth
+	// when the seat cannot cast it from there. Above FuelFloor, and
+	// that gap is the whole of "eat the lands, not the spells": it
+	// stands for the graveyard synergies the policy cannot see —
+	// delve, a flashback granted later, a Snapcaster target — which
+	// want a spell far more often than they want a land.
+	FuelIdle float64
+	// FuelRecast discounts a graveyard or exile card the seat CAN
+	// still cast — escape, flashback, a granted impulse — against the
+	// same card in hand. Below one, and that gap is the whole
+	// behaviour: an escaping Uro eats the lands rather than the
+	// Snapcaster target, and it eats a second Uro last of all. It is a
+	// real card and it is not a card in hand: it needs its own cost,
+	// its own window, and it can be exiled out from under the plan.
+	FuelRecast float64
 	// LifePayoff is the value proxy for one point of life a move's
 	// cost charges — the life-cost twin of SpellPerMana, and there
 	// for the same reason. No oracle text reaches a policy, so what
@@ -195,6 +219,9 @@ func DefaultConfig() Config {
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
 		ActivateBase:   0.50,
+		FuelFloor:      0.05,
+		FuelIdle:       0.30,
+		FuelRecast:     0.55,
 		LifePayoff:     0.35,
 		LifeFloor:      1,
 		ManaFloat:      -0.50,

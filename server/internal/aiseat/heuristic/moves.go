@@ -272,33 +272,19 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		reason = "cast (" + cp.AlternativeCost + ")"
 	}
 	if card != nil {
+		// What the card is worth once it resolves — the same function
+		// the FUEL price reads, so "what an escape spends" and "what an
+		// escape buys" cannot disagree about one card (#1013, fuel.go).
+		// The targets are added below; a card being pitched points at
+		// nothing, which is the one difference.
+		v += p.resolvedValue(st, card, cp.XValue)
 		switch {
+		case card.Unimplemented:
+			reason = "cast (unimplemented)"
 		case isCreature(card) || isPermanentSpell(card):
-			// What the permanent will be worth once it resolves. It
-			// arrives summoning-sick and untapped; permanentValue
-			// reads SummoningSick off the hand card, which is false
-			// there, so discount a creature explicitly.
-			pv := st.w.permanentValue(card)
-			if isCreature(card) {
-				pv *= st.w.SickCreature
-			}
-			v += pv
 			reason = "cast permanent"
 		default:
-			// An instant or sorcery: no body, so its value is its
-			// targets plus a mana-value proxy for whatever it does
-			// that the wire does not describe.
-			v += p.cfg.SpellPerMana * float64(manaValue(card.ManaCost, cp.XValue))
 			reason = "cast spell"
-		}
-		if card.IsCommander {
-			v += p.cfg.CommanderBonus
-		}
-		if card.Unimplemented {
-			// The engine will run none of this card's printed rules
-			// (ADR 0037). It still costs a card.
-			v -= p.cfg.SpellPerMana * float64(manaValue(card.ManaCost, cp.XValue))
-			reason = "cast (unimplemented)"
 		}
 	}
 	// A card leaves HAND: one fewer resource. #673 — a cast out of the
@@ -306,23 +292,22 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// hand, and charging one there was what made every flashback,
 	// escape and impulse cast score below passing and never get taken.
 	// What such a cast really spends is the card in the graveyard,
-	// which the evaluation does not price at all (score.go reads the
-	// battlefield and the seats); that is a known gap rather than a
-	// free lunch, and it is written down in docs/bot.md.
+	// which since #1013 is the alternative cost's own price below
+	// rather than a gap.
 	if cp.FromZone == "" || cp.FromZone == "hand" || cp.FromZone == "command" {
 		v -= st.w.Hand
 	}
 	// CR 601.2b's card half of a claimed alternative cost: Force of
-	// Will's pitched blue card is a card out of hand exactly as a
-	// discard is, and Daze's Island is a permanent off the board.
-	// Escape's exiled graveyard is the unpriced case above.
+	// Will's pitched blue card, Daze's Island off the board, escape's
+	// five cards out of the graveyard.
+	//
+	// #1013: one price for all three, and it is the SAME one the
+	// enumerator sorted the payments by — so the payment the bot is
+	// offered first is the payment it then prices as cheapest, and the
+	// two cannot disagree. A graveyard card used to be worth nothing
+	// here, which made an escape look free.
 	for _, id := range cp.AltCostIDs {
-		switch {
-		case st.mine[id] != nil:
-			v -= st.w.Hand
-		case st.bf[id] != nil:
-			v -= st.permanentValue(st.bf[id])
-		}
+		v -= p.fuelValue(st, id)
 	}
 	// Additional costs are paid out of the same pool of resources.
 	v -= st.w.Hand * float64(len(cp.DiscardIDs))
