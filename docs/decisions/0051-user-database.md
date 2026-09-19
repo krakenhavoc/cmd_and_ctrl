@@ -591,6 +591,82 @@ unclaimed.
   a plain "sign out", since a 30-day identity session needs a way out
   before it joins a table.
 
+### Implementation notes — sub-PR 4 (my games, seat linking, Discord link)
+
+**Decided: a seated guest can link Discord mid-game.** This was the
+question the #59 carry-over left open (#607). A guest who holds a
+seat, at a table in any state, can sign in with Discord from the
+in-game menu and become that seat's user. The proof is the guest's
+own live `player` session for the seat, and the callback checks it
+(below). This is not the deferred "guest-to-user upgrade": that one is
+about claiming a *past* guest seat after the session is gone, and it
+still has no proof to offer. A seat linked while its session is alive
+needs none beyond the session.
+
+- **No migration.** Migration 0002 already has `seats.user_id`,
+  `seats.pending_discord_id` and an index on each. 0005 stays unused
+  by this sub-PR.
+- **`seats.user_id` rides the in-memory seat.** `SeatInfo` gained a
+  server-only `UserID` (`json:"-"`). `ReplaceSeats` rewrites a table's
+  whole seat list on every seat mutation, so a `user_id` written to the
+  row alone would be undone by the next deck upload.
+  `persistSeatsLocked` writes it from memory like every other column,
+  and `loadEntry` reads it back after a restart. `pending_discord_id`
+  is written only for a Discord seat with no user, so the two columns
+  are never both set.
+- **Every claim by a signed-in person writes it.** The Discord invite
+  callback, `POST /join` with an identity session, and now `POST
+  /games/{id}/join`. That last one used to ignore any session. It now
+  seats an `identified` session, or a `player` session with a
+  `UserID`, as that person, and ignores the typed name, as `POST /join`
+  does. Without this, a signed-in user who clicked an invite link sat
+  down as a guest and the client replaced their identity session with
+  a guest one. Every other session joins by name as before.
+- **One seat per person per table.** A second claim by the same user
+  is a 409 (`ErrAlreadySeated`), at join and at link. Reclaim by user
+  answers "the seat whose `user_id` is yours", and two such seats
+  would make that a guess.
+- **Pending seats link at every sign-in**, not only the first. It is
+  one indexed `UPDATE seats SET user_id = ?, pending_discord_id = NULL
+  WHERE pending_discord_id = ?` in a transaction, idempotent, and it
+  also covers seats claimed later on a deployment that had no database
+  at the time. The lobby holds its mutex across the row update and the
+  same change to every live table's in-memory seats, so no seat write
+  can land in between and undo it. A failure is logged and the sign-in
+  goes ahead; the seats keep their pending id for next time.
+- **Reclaim by user is `POST /me/games/{id}/session`**, a new route
+  beside #520's ticket route, not an extension of it. The ticket route
+  is unauthenticated by design (its caller has no session) and the
+  user route is the opposite. Folding them together would give one
+  handler two authentication models. The caller is an `identified`
+  session or a `player` session with a `UserID`, and the result is the
+  same `sessionResponse` as a ticket redemption. Guests keep the
+  ticket.
+- **`GET /me/games`** returns times in milliseconds, the unit the
+  table stores. That differs from `GameMeta.created_at` (RFC 3339) on
+  purpose: this is a new, row-shaped response. A live table's state
+  and times come from the engine, as `GET /games` reads them. `rejoin`
+  (the path to the route above) is present only for a table that is
+  live in this process and not archived. Other seats are labelled
+  with the user's current `display_name` where they have one.
+- **`GET /auth/discord/link`** reuses the state store: `StateEntry`
+  gained `LinkPlayerID`, `StartLink` parks `(game, player)`, and the
+  callback branches on `Link()`. The CSRF binding is new. The callback
+  requires the request's session **cookie** (not `?token=` or a
+  bearer header) to be the player session for the parked seat, and
+  checks it *before* exchanging the code. Without it, a link started by
+  one person and finished by another would put the finisher's Discord
+  account on the starter's seat. The link goes through the room
+  (`SetDiscordIdentity` under `ApplyExternal`), so the broadcast that
+  follows carries the new name and avatar to every seat at once. It
+  also lands in the replay. A seat can be relinked to a different
+  account; bot seats and archived tables are refused.
+- **The oauth-complete fragment carries `user_id`** whenever the
+  sign-in recorded a person, so the client knows to offer "My games"
+  without another round trip. The client reads a principal's
+  `user_id` as "signed in" only when it is non-nil. `uuid.UUID` has no
+  `omitempty`, so a guest's principal spells it as the nil uuid.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the
@@ -643,6 +719,9 @@ unclaimed.
 - **Spectator accounts** — spectator sessions stay token-only.
 - **Guest-to-user upgrade** — claiming a past guest seat after signing
   in. Needs a proof the guest seat can offer, which today it cannot.
+  A guest seat whose session is still live *can* be linked, mid-game
+  included (`GET /auth/discord/link`, sub-PR 4 notes above). What stays
+  deferred is the seat whose session is gone.
 
 ## Alternatives considered
 

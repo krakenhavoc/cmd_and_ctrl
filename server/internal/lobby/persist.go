@@ -72,11 +72,18 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 	out := make([]SeatRecord, 0, len(seats))
 	for _, s := range seats {
 		rec := SeatRecord{
-			Seat:             s.Seat,
-			PlayerID:         s.PlayerID,
-			GuestName:        s.Name,
-			DeckName:         s.DeckName,
-			PendingDiscordID: s.DiscordID,
+			Seat:      s.Seat,
+			PlayerID:  s.PlayerID,
+			UserID:    s.UserID,
+			GuestName: s.Name,
+			DeckName:  s.DeckName,
+		}
+		// A Discord seat with no users row yet (no database when it
+		// was claimed, or a seat imported from lobby/*.json) waits on
+		// its snowflake. A linked seat never does: the two columns are
+		// never both set.
+		if s.UserID == "" {
+			rec.PendingDiscordID = s.DiscordID
 		}
 		if s.IsBot {
 			rec.BotTier = s.BotTier
@@ -380,6 +387,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 			Name:      s.GuestName,
 			Seat:      s.Seat,
 			DeckName:  s.DeckName,
+			UserID:    s.UserID,
 			DiscordID: s.PendingDiscordID,
 			IsBot:     s.BotTier != "",
 			BotTier:   s.BotTier,

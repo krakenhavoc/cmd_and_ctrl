@@ -56,6 +56,10 @@ var (
 	// ErrInvalidInviteKind is returned by RotateInvite for a kind
 	// other than InvitePlayer or InviteSpectator.
 	ErrInvalidInviteKind = errors.New("lobby: invalid invite kind")
+	// ErrAlreadySeated is returned when a signed-in person claims, or
+	// links Discord to, a second seat at a table where they already
+	// hold one. One person, one seat per table (ADR 0051 sub-PR 4).
+	ErrAlreadySeated = errors.New("lobby: you already hold a seat at this table")
 )
 
 // GameMeta is the lobby-facing projection of a game. It holds the
@@ -146,6 +150,14 @@ type SeatInfo struct {
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
 	// seat. Mirrors GameMeta.HostPlayerID.
 	IsHost bool `json:"is_host,omitempty"`
+
+	// UserID is the users row of the signed-in person holding the seat
+	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
+	// and a Discord seat still waiting for its person to sign in again
+	// (seats.pending_discord_id). Server-side only: it is the proof
+	// behind "My games" and user seat reclaim, and it never goes on
+	// the wire — the other seats have no use for it.
+	UserID string `json:"-"`
 }
 
 // BotHost runs bot seats. Satisfied by *aiseat.Manager; an interface
@@ -530,6 +542,19 @@ func (d DiscordIdentity) DisplayName() string {
 // Non-populated identity is indistinguishable from the legacy
 // Join path.
 func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identity DiscordIdentity) (GameMeta, uuid.UUID, error) {
+	return l.JoinAs(id, invite, playerName, identity, uuid.Nil)
+}
+
+// JoinAs is JoinWithIdentity for a signed-in person: userID is the
+// users row of the principal claiming the seat, written to
+// seats.user_id (ADR 0051 sub-PR 4). uuid.Nil is a guest, exactly
+// JoinWithIdentity.
+//
+// A person holds at most one seat per table. A second claim by the
+// same user is ErrAlreadySeated: seat reclaim by user (POST
+// /me/games/{id}/session) finds "the seat whose user_id is theirs",
+// and two of them would make that a guess.
+func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID) (GameMeta, uuid.UUID, error) {
 	// Fall back to the Discord display name when the caller didn't
 	// pass an explicit override. This is the path the OAuth
 	// callback takes — the user never typed a name.
@@ -568,6 +593,11 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	}
 	if len(entry.meta.Players) >= game.MaxPlayers {
 		return GameMeta{}, uuid.Nil, ErrGameFull
+	}
+	if userID != uuid.Nil {
+		if _, taken := seatOfUser(entry.meta.Players, userID); taken {
+			return GameMeta{}, uuid.Nil, ErrAlreadySeated
+		}
 	}
 
 	// Placeholder deck: one commander + one filler so the library
@@ -634,6 +664,9 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		seat.DiscordID = identity.ID
 		seat.DiscordAvatarHash = identity.AvatarHash
 		seat.DisplayName = identity.DisplayName()
+	}
+	if userID != uuid.Nil {
+		seat.UserID = userID.String()
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)

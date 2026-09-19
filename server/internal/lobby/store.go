@@ -91,8 +91,9 @@ type GameRecord struct {
 type SeatRecord struct {
 	Seat     int
 	PlayerID uuid.UUID
-	// UserID is users(id), a foreign key from migration 0003. Always
-	// "" until sub-PR 4 links seats to the people sitting in them.
+	// UserID is users(id), a foreign key from migration 0003: the
+	// signed-in person holding the seat (sub-PR 4). "" for a guest, a
+	// bot, or a Discord seat still waiting on PendingDiscordID.
 	UserID string
 	// GuestName is the seat label (SeatInfo.Name). Every seat carries
 	// one until a signed-in seat can take its name from users.
@@ -103,7 +104,8 @@ type SeatRecord struct {
 	DeckName string
 	// PendingDiscordID is the snowflake of a seat claimed through
 	// Discord, waiting for a users row to link to (ADR 0051,
-	// "Migration").
+	// "Migration"). Never set alongside UserID: the next sign-in with
+	// this snowflake moves it into UserID (LinkPendingSeats).
 	PendingDiscordID string
 }
 
@@ -172,6 +174,35 @@ type Store interface {
 	// RestoreFromDisk refuses to pair engine restore points with a
 	// store that cannot have their metadata.
 	Durable() bool
+
+	// LinkPendingSeats links every seat waiting on discordID
+	// (seats.pending_discord_id) to userID and clears the pending id,
+	// in one transaction (ADR 0051 "Migration" step 3). Idempotent: a
+	// second call finds nothing left to link. Returns how many seats
+	// it linked.
+	LinkPendingSeats(ctx context.Context, discordID, userID string) (int, error)
+	// SeatsOfUser lists every seat whose user_id is userID, with its
+	// game and the other seats at that table, newest game first
+	// (ADR 0051 decision 4, "My games"). Ended and archived games are
+	// included.
+	SeatsOfUser(ctx context.Context, userID string) ([]UserSeatRecord, error)
+}
+
+// UserSeatRecord is one row of "My games": a seat a user holds, the
+// game it is in, and who else sat there.
+type UserSeatRecord struct {
+	Game   GameRecord
+	Seat   int
+	Others []OtherSeatRecord // ordered by seat
+}
+
+// OtherSeatRecord is another seat at a UserSeatRecord's table.
+type OtherSeatRecord struct {
+	Seat int
+	// Name is the seat's label: the linked user's current display
+	// name when the seat has one, else the name stored on the seat.
+	Name string
+	Bot  bool
 }
 
 // memoryStore is the no-database Store. See the file comment.

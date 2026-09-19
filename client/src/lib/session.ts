@@ -15,10 +15,12 @@ export interface Session {
     role: "player" | "admin" | "spectator" | "identified";
     // user_id is the server's users-table row (ADR 0051 decision 3).
     // Present on a Discord sign-in, and on a seat claimed from one,
-    // when the server has a user database. Its presence is what makes
-    // the session revocable, so it is what gates "sign out everywhere"
-    // (canSignOutEverywhere). Absent for admin, guest and spectator
-    // sessions, and for everyone on a server with no database.
+    // when the server has a user database; absent (or the nil uuid)
+    // for admin, guest and spectator sessions, and for everyone on a
+    // server with no database. Its presence is what makes the session
+    // revocable, so it gates "sign out everywhere"
+    // (canSignOutEverywhere); lib/myGames.ts's signedInUserID gates
+    // every "My games" link on it.
     user_id?: string;
     admin_id?: string;
     game_id?: string;

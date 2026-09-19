@@ -96,3 +96,40 @@ func TestStateStoreGCsOnConsume(t *testing.T) {
 		t.Errorf("post-gc map miss: got %v, want ErrStateNotFound", err)
 	}
 }
+
+func TestStateStoreLinkRoundTrip(t *testing.T) {
+	s := NewStateStore()
+	game, player := uuid.New(), uuid.New()
+	state, _, err := s.StartLink(game, player)
+	if err != nil {
+		t.Fatalf("StartLink: %v", err)
+	}
+	e, err := s.Consume(state)
+	if err != nil {
+		t.Fatalf("Consume: %v", err)
+	}
+	if !e.Link() || e.Unbound() {
+		t.Errorf("link entry: Link()=%v Unbound()=%v, want true/false", e.Link(), e.Unbound())
+	}
+	if e.GameID != game || e.LinkPlayerID != player || e.InviteToken != "" {
+		t.Errorf("entry = %+v", e)
+	}
+	if e.CodeVerifier == "" {
+		t.Error("link entry has no PKCE verifier")
+	}
+}
+
+func TestStateStoreLinkNeedsASeat(t *testing.T) {
+	s := NewStateStore()
+	if _, _, err := s.StartLink(uuid.New(), uuid.Nil); err == nil {
+		t.Error("StartLink with no player succeeded")
+	}
+	if _, _, err := s.StartLink(uuid.Nil, uuid.New()); err == nil {
+		t.Error("StartLink with no game succeeded")
+	}
+	// The invite and unbound shapes are not links.
+	st, _, _ := s.Start(uuid.New(), "tok")
+	if e, _ := s.Consume(st); e.Link() {
+		t.Error("an invite round-trip reports Link()")
+	}
+}

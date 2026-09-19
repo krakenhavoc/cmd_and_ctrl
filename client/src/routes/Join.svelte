@@ -9,7 +9,8 @@
     type SeatInfo,
   } from "../lib/api";
   import { navigate } from "../lib/router";
-  import { LobbyApiError } from "../lib/session";
+  import { LobbyApiError, session } from "../lib/session";
+  import { signedInUserID } from "../lib/myGames";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
 
@@ -80,6 +81,30 @@
   const discordHref = $derived(
     `/auth/discord/start?game=${encodeURIComponent(gameID)}&t=${encodeURIComponent(inviteToken)}`,
   );
+
+  // A person already signed in with Discord joins as themselves: the
+  // server takes the seat's name, avatar and user from the session and
+  // ignores a typed name (ADR 0051 sub-PR 4), so the page does not ask
+  // for one. Player invites only — a spectator's label is just a label.
+  const signedInAs = $derived.by(() => {
+    const s = $session;
+    if (spectator || !s) return null;
+    if (s.principal.role !== "identified" && !signedInUserID(s)) return null;
+    return s.principal.name || "your Discord account";
+  });
+
+  async function joinSignedIn(): Promise<void> {
+    busy = true;
+    error = "";
+    try {
+      await joinGame(gameID, inviteToken, "");
+      navigate("#/lobby");
+    } catch (err) {
+      error = err instanceof LobbyApiError ? err.message : "join failed";
+    } finally {
+      busy = false;
+    }
+  }
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -205,40 +230,47 @@
         </p>
         <p class="help">Ask your host for a spectator link to watch.</p>
       {:else}
-        {#if discordEnabled}
-          <a class="primary discord-btn" href={discordHref}>
-            Continue with Discord <Icon name="chevronRight" size={14} />
-          </a>
-          <p class="help centered">
-            Your Discord name and avatar become your seat, and the bot can ping you when it's your
-            turn.
-          </p>
-          <div class="divider" aria-hidden="true"><span>or</span></div>
-        {/if}
-        <form class="frow" onsubmit={submit}>
-          <input
-            type="text"
-            placeholder={spectator ? "your name (chat label)" : "your name"}
-            bind:value={name}
-            required
-          />
-          <button
-            type="submit"
-            class="lg"
-            class:primary={spectator || !discordEnabled}
-            disabled={busy || !name.trim()}
-          >
-            {#if busy}
-              …
-            {:else if spectator}
-              watch <Icon name="chevronRight" size={14} />
-            {:else if discordEnabled}
-              join with a name
-            {:else}
-              join <Icon name="chevronRight" size={14} />
-            {/if}
+        {#if signedInAs}
+          <button type="button" class="primary lg" disabled={busy} onclick={joinSignedIn}>
+            {busy ? "…" : `Join as ${signedInAs}`}
+            <Icon name="chevronRight" size={14} />
           </button>
-        </form>
+        {:else}
+          {#if discordEnabled}
+            <a class="primary discord-btn" href={discordHref}>
+              Continue with Discord <Icon name="chevronRight" size={14} />
+            </a>
+            <p class="help centered">
+              Your Discord name and avatar become your seat, and the bot can ping you when it's your
+              turn.
+            </p>
+            <div class="divider" aria-hidden="true"><span>or</span></div>
+          {/if}
+          <form class="frow" onsubmit={submit}>
+            <input
+              type="text"
+              placeholder={spectator ? "your name (chat label)" : "your name"}
+              bind:value={name}
+              required
+            />
+            <button
+              type="submit"
+              class="lg"
+              class:primary={spectator || !discordEnabled}
+              disabled={busy || !name.trim()}
+            >
+              {#if busy}
+                …
+              {:else if spectator}
+                watch <Icon name="chevronRight" size={14} />
+              {:else if discordEnabled}
+                join with a name
+              {:else}
+                join <Icon name="chevronRight" size={14} />
+              {/if}
+            </button>
+          </form>
+        {/if}
         {#if spectator}
           <p class="help">
             You'll see the table from a non-seated viewpoint. Opponent hands and libraries stay

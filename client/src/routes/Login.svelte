@@ -10,6 +10,7 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { canSignOutEverywhere, expiryNotice, LobbyApiError, session } from "../lib/session";
+  import { signedInUserID } from "../lib/myGames";
   import Icon from "../lib/components/Icon.svelte";
 
   // Player-first landing: Discord sign-in and the invite box are
@@ -166,6 +167,9 @@
         {#if identity}
           <p class="signed-in" role="status">
             Signed in as {identity.name ?? "your Discord account"}.
+            {#if signedInUserID($session)}
+              <a class="ghost-link" href="#/my-games">See my games</a>
+            {/if}
           </p>
           <div class="signout">
             <button type="button" class="ghost" onclick={signOut}>sign out</button>

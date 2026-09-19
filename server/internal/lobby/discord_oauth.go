@@ -104,6 +104,16 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "oauth state not found or expired")
 	}
 
+	// A link round-trip only finishes in the browser that started it:
+	// the one whose session cookie still holds the seat being linked.
+	// Checked before the code is exchanged, so a callback that fails it
+	// costs nothing upstream. See seatSessionFromCookie.
+	if entry.Link() {
+		if _, err := seatSessionFromCookie(c, r, entry.GameID, entry.LinkPlayerID); err != nil {
+			return err
+		}
+	}
+
 	client := c.DiscordHTTPClient
 	if client == nil {
 		client = http.DefaultClient
@@ -140,12 +150,21 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		// The store's error can name tables and columns; the browser
 		// gets a plain sentence and the log gets the detail.
-		log := c.Log
-		if log == nil {
-			log = slog.Default()
-		}
-		log.Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
+		c.logger().Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
 		return httpError(http.StatusInternalServerError, "could not record your sign-in; try again")
+	}
+
+	// Seats this snowflake claimed before it had a users row — every
+	// Discord seat imported from lobby/*.json, and any claimed while
+	// the deployment had no database — become this user's now (ADR
+	// 0051 "Migration" step 3). Idempotent, so it runs on every
+	// sign-in and costs one indexed UPDATE when there is nothing left
+	// to link. A failure is logged, not fatal: the seats keep their
+	// pending id and the next sign-in tries again.
+	if u.ID != uuid.Nil {
+		if _, err := c.Lobby.LinkPendingSeats(user.ID, u.ID); err != nil {
+			c.logger().Warn("linking pending seats failed", "discord_id", user.ID, "err", err)
+		}
 	}
 
 	// Login-page flow: nobody named a table, so there is no seat to
@@ -182,7 +201,11 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	meta, playerID, err := c.Lobby.JoinWithIdentity(entry.GameID, entry.InviteToken, "", identity)
+	if entry.Link() {
+		return finishDiscordLink(c, w, r, entry, identity, user, u.ID)
+	}
+
+	meta, playerID, err := c.Lobby.JoinAs(entry.GameID, entry.InviteToken, "", identity, u.ID)
 	if err != nil {
 		// Join failures (game full, game started, invalid invite, etc.)
 		// surface as plain 4xx so the SPA's oauth-complete route can
@@ -220,6 +243,128 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	frag.Set("player_id", playerID.String())
 	frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
 	setUserIDFragment(frag, u.ID)
+	http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
+	return nil
+}
+
+// discordLink starts the link round-trip: GET /auth/discord/link, from
+// a player session, attaches the caller's Discord account to the seat
+// that session holds (ADR 0051 sub-PR 4, carried over from S12.5 #59).
+// A guest seat becomes that person's seat; a Discord seat can be moved
+// to a different account. Game state does not matter: this is how a
+// guest at a live table signs in without leaving it.
+//
+// ?game=<uuid> is optional. When present it must be the session's own
+// game. It is the client saying which table it thinks it is linking,
+// and a session cookie for another table (a second tab that joined
+// somewhere else) is refused here rather than linking the wrong seat.
+//
+// CSRF is the existing state mechanism plus one binding. The state
+// parks (game, player). The callback then requires the browser's
+// session COOKIE to hold that same seat before it touches anything.
+// Without the binding, a link round-trip started by one person could be
+// finished by another: send someone the Discord consent URL, and their
+// account ends up on your seat, so your seat is labelled as them and
+// their "My games" lists it. Cookie only, not the ?token= or
+// Authorization fallbacks, because a navigation back from Discord
+// carries the cookie and nothing else.
+//
+// A plain GET for the same reason /start is one: the client reaches it
+// by navigating, and the answer is a 302 to Discord.
+func discordLink(c Config, w http.ResponseWriter, r *http.Request) error {
+	if !c.Discord.Enabled() {
+		return httpError(http.StatusServiceUnavailable, "Discord auth is not configured on this server")
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	if raw := r.URL.Query().Get("game"); raw != "" {
+		want, err := uuid.Parse(raw)
+		if err != nil {
+			return httpError(http.StatusBadRequest, "game id must be a uuid")
+		}
+		if want != p.GameID {
+			return httpError(http.StatusConflict,
+				"this browser's session is for a different table; reopen the game you want to link and try again")
+		}
+	}
+	// Refuse what the callback would refuse, before the consent
+	// screen rather than after it.
+	meta, err := c.Lobby.Get(p.GameID)
+	if err != nil {
+		return err
+	}
+	if meta.Archived() {
+		return ErrGameArchived
+	}
+	seat, ok := findSeat(meta.Players, p.PlayerID)
+	if !ok {
+		return ErrPlayerNotInGame
+	}
+	if seat.IsBot {
+		return ErrSeatIsBot
+	}
+
+	state, challenge, err := c.discordStore().StartLink(p.GameID, p.PlayerID)
+	if err != nil {
+		return fmt.Errorf("discord link start: %w", err)
+	}
+	http.Redirect(w, r, c.Discord.AuthorizeURL(state, challenge), http.StatusFound)
+	return nil
+}
+
+// seatSessionFromCookie validates the request's session cookie and
+// returns its principal if it is the player session for (gameID,
+// playerID). Anything else is a 403: the link was started by a
+// different session, or this browser has since moved to another seat.
+func seatSessionFromCookie(c Config, r *http.Request, gameID, playerID uuid.UUID) (auth.Principal, error) {
+	refuse := httpError(http.StatusForbidden,
+		"this Discord link was started from a different session; open your game and choose Link Discord again")
+	ck, err := r.Cookie(auth.SessionCookie)
+	if err != nil || ck.Value == "" {
+		return auth.Principal{}, refuse
+	}
+	p, err := c.Auth.Validate(r.Context(), ck.Value)
+	if err != nil || p.Role != auth.RolePlayer || p.GameID != gameID || p.PlayerID != playerID {
+		return auth.Principal{}, refuse
+	}
+	return p, nil
+}
+
+// finishDiscordLink is the link branch of the callback: the identity
+// goes onto the seat, the table hears about it, and the browser gets a
+// fresh player session for the same seat that now carries the user.
+func finishDiscordLink(c Config, w http.ResponseWriter, r *http.Request, entry discord.StateEntry,
+	identity DiscordIdentity, user discord.User, userID uuid.UUID) error {
+	meta, seat, err := c.Lobby.LinkSeat(entry.GameID, entry.LinkPlayerID, identity, userID)
+	if err != nil {
+		return err
+	}
+	p := auth.Principal{
+		Role:              auth.RolePlayer,
+		UserID:            userID,
+		GameID:            meta.ID,
+		PlayerID:          seat.PlayerID,
+		Name:              identity.DisplayName(),
+		DiscordID:         user.ID,
+		DiscordUsername:   user.Username,
+		DiscordGlobalName: user.GlobalName,
+		DiscordAvatarHash: user.Avatar,
+	}
+	tok, issued, err := c.Auth.Issue(r.Context(), p, c.SessionTTL)
+	if err != nil {
+		return fmt.Errorf("issue session: %w", err)
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+
+	frag := url.Values{}
+	frag.Set("token", tok)
+	frag.Set("game", meta.ID.String())
+	frag.Set("player_id", seat.PlayerID.String())
+	frag.Set("expires_at", issued.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"))
+	frag.Set("name", identity.DisplayName())
+	setUserIDFragment(frag, userID)
 	http.Redirect(w, r, "/#/oauth-complete?"+frag.Encode(), http.StatusFound)
 	return nil
 }
@@ -263,6 +408,14 @@ func discordAvatar(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadGateway, err.Error())
 	}
 	return nil
+}
+
+// logger returns the Config's logger, or slog's default.
+func (c Config) logger() *slog.Logger {
+	if c.Log == nil {
+		return slog.Default()
+	}
+	return c.Log
 }
 
 // userStore returns the Config's user store, or users.NoStore when none

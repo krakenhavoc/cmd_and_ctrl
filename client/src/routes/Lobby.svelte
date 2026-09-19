@@ -22,6 +22,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
   import { canSignOutEverywhere, session, LobbyApiError } from "../lib/session";
+  import { signedInUserID } from "../lib/myGames";
   import { openSettings } from "../lib/settings";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
@@ -482,6 +483,10 @@
       {/if}
       <b>{$session?.principal.role}</b>
     </span>
+    {#if signedInUserID($session)}
+      <!-- ADR 0051 decision 4: every table this person has sat at. -->
+      <button class="ghost" onclick={() => navigate("#/my-games")}>my games</button>
+    {/if}
     <button
       class="ibtn"
       title="settings (press , from anywhere)"
