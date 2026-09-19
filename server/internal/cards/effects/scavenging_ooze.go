@@ -15,6 +15,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // to still be on the battlefield for the counter to land — an Ooze
 // that died in response exiles the card and grows nothing.
 //
+// #911, ADR 0013 §5t: the clause also waits for the exile and is
+// gated on it. An Ooze whose meal was kept in its graveyard by the
+// CR 614 window — or whose owner sent a commander card to the command
+// zone instead — ate nothing, so it grows nothing and gains nothing.
+// ExileThenIfItWas holds both halves.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -28,23 +34,28 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {
-					c, ok := g.LookupCardForEffect(t.ID)
-					if !ok {
-						continue
-					}
-					wasCreature := c.IsCreature()
-					if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					if !wasCreature {
-						continue
-					}
-					if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneBattlefield {
-						if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
+					if err := (ExileThenIfItWas{
+						Target: t.ID,
+						Was:    WasCreatureCard,
+						Then: func(ctx *Context) error {
+							// Re-read here rather than before the
+							// exile: the Ooze has to be on the
+							// battlefield when the counter lands, and
+							// with a CR 903.9 prompt in between that
+							// is not the same moment as the cast.
+							if z := ctx.Game.FindCardZoneForEffect(item.SourceCardID); z != nil &&
+								z.Kind == game.ZoneBattlefield {
+								if err := (AddCounter{
+									Target: item.SourceCardID,
+									Kind:   "+1/+1",
+									N:      1,
+								}).Apply(ctx); err != nil {
+									return err
+								}
+							}
+							return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+						},
+					}).Apply(ctx); err != nil {
 						return err
 					}
 				}
