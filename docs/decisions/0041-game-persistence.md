@@ -15,6 +15,13 @@ stands; 0044 builds the return path they assumed was already there.
 the snapshot writes `rngKind: "keyed"`, a caller-supplied `*rand.Rand`
 seeds the key and is persistable like any other game, and
 `"pcg"` / `"external"` files restore with a fresh key.
+**Amended by:** [ADR 0051](0051-user-database.md) decision 1 (S34
+sub-PR 1, [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607))
+— `<dataDir>/db/` is a new artifact directory alongside the ones below,
+holding the persistent SQLite store and its backup copy; see the
+Artifact layout table. ADR 0051 also supersedes `<dumpDir>/lobby/<id>.json`
+itself once its sub-PR 3 lands (`games` / `seats` / `invites` become
+rows), which is not yet true of the code this ADR describes.
 
 ## Context
 
@@ -276,6 +283,8 @@ of the server sees — and is the obvious next increment.
 | `<dumpDir>/replays/<id>.jsonl` | append-only view history | no (unchanged) |
 | `<dumpDir>/restore/<id>.json` | `game.GameSnapshot` + room `seq` | **yes** |
 | `<dumpDir>/lobby/<id>.json` | `lobby.GameMeta`, mode 0600 | **yes** |
+| `<dumpDir>/db/cmdctrl.sqlite` | The persistent database (ADR 0051, `internal/db`), mode 0600 | **yes** (opened + migrated before `RestoreFromDisk`) |
+| `<dumpDir>/db/cmdctrl.backup.sqlite` | `VACUUM INTO` copy of the above, on a timer (`CMDCTRL_DB_BACKUP_INTERVAL`), mode 0600 | no |
 
 The room's `seq` travels with the snapshot: a restored room that
 restarted its counter would hand reconnecting clients a sequence number

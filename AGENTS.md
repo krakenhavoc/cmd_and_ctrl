@@ -66,7 +66,8 @@ cmd_and_ctrl/
 │   │   │   └── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   ├── catalog/     # public /catalog routes — what the engine automates + how completely (ADR 0042)
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
-│   │   └── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
+│   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
+│   │   └── db/          # persistent SQLite store (ADR 0051): open/WAL/migrate/backup (S34 sub-PR 1); users/games/decks land in later sub-PRs
 │   ├── Makefile
 │   └── .golangci.yml
 ├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
@@ -241,7 +242,8 @@ unused — they can be removed in a later cleanup PR.)
 - Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](docs/protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](docs/lobby.md)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](docs/decisions/0042-card-catalog-page.md))
 - Env vars:
   - `CMDCTRL_ADDR` — listen addr (default `:8080`)
-  - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache)
+  - `CMDCTRL_DATA_DIR` — data root (default `./data`; empty string disables disk writes + card cache). Holds `db/cmdctrl.sqlite` (ADR 0051, S34 sub-PR 1 — the persistent user/game/deck store, `internal/db`) and its `db/cmdctrl.backup.sqlite` VACUUM INTO copy, alongside the existing `scryfall/`, `images/`, `avatars/`, `bugreports/`, `lobby/`, `restore/`, `replays/` and `games/`.
+  - `CMDCTRL_DB_BACKUP_INTERVAL` — Go duration between the database's in-process `VACUUM INTO` backup sweeps (default `1h`; `<= 0` disables the sweep). The sweep writes `db/cmdctrl.backup.sqlite` beside the live file so a disk-level backup picks up a consistent copy. This is the same-disk copy only — a nightly off-node copy to HomeLab is a separate, manual obligation (ADR 0051 decision 1), not something this server does.
   - `CMDCTRL_ADMIN_TOKEN` — **required**. Shared admin secret for `POST /admin/login`. At least 16 characters.
   - `CMDCTRL_SESSION_TTL` — session lifetime as a Go duration (default `12h`)
   - `CMDCTRL_SESSION_KEY` — HMAC-SHA256 key that signs session tokens (`auth.HMACAuthenticator`, #517, [ADR 0044](docs/decisions/0044-surviving-a-deploy.md) decision 3). Set: a token minted before a restart validates after it. **Unset: sessions fall back to the in-memory store, with a warning naming the variable on every boot, and every deploy logs everyone out.** Set but under 32 bytes, or equal to `CMDCTRL_ADMIN_TOKEN`: the boot fails. There is no default key. `Revoke` is advisory under HMAC, so `POST /logout` clears the cookie but does not kill a copied token before its expiry. **Provisioned by CI/CD**: generated on each host the first time it is missing and never rewritten, since a new key logs every player out. See [docs/environments.md](docs/environments.md#secrets).

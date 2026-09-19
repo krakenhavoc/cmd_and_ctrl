@@ -30,6 +30,20 @@
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
 //
+// Persistent database (S34 sub-PR 1, ADR 0051). Opened at
+// <CMDCTRL_DATA_DIR>/db/cmdctrl.sqlite, before RestoreFromDisk runs;
+// skipped entirely when CMDCTRL_DATA_DIR is empty, same as every other
+// disk-backed store below.
+//
+//	CMDCTRL_DB_BACKUP_INTERVAL — Go duration between VACUUM INTO backup
+//	                              sweeps (db/cmdctrl.backup.sqlite,
+//	                              beside the live file). Default 1h.
+//	                              <= 0 disables the sweep. This is the
+//	                              in-process, same-disk copy only — the
+//	                              nightly off-node copy to HomeLab is
+//	                              the deploy owner's job, not this
+//	                              server's.
+//
 // Bot seats (S31). The `random` and `heuristic` tiers need nothing;
 // `assisted` and `strong` need a model endpoint, and report themselves
 // UNAVAILABLE in the picker until one is configured — a bot labelled
@@ -103,6 +117,7 @@ import (
 	// and every card falls through to manual sandbox resolution.
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
@@ -158,6 +173,42 @@ func main() {
 	// misconception sit in the file.
 	for _, k := range appenv.StrayProdOverrides(cfg.Env) {
 		log.Warn("dev feature override set in a production deployment; it has no effect and should be removed", "var", k)
+	}
+
+	// Process-lifetime context: canceled on SIGINT/SIGTERM. Created
+	// here, rather than just before srv.Shutdown as before S34, so the
+	// database's backup loop (below) can share it and stop on the same
+	// signal without its own plumbing.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// The persistent database (ADR 0051, S34 sub-PR 1): people, their
+	// games and their decks in later sub-PRs; today just the migrated,
+	// WAL-mode file and its backup sweep. Opened and migrated BEFORE
+	// RestoreFromDisk below, so a migration failure or a too-new schema
+	// (ErrSchemaTooNew) stops the boot before anything reads game state
+	// — mirroring game.SnapshotSchemaVersion's refuse-loudly posture.
+	//
+	// Skipped entirely when CMDCTRL_DATA_DIR is empty, same as the card
+	// index, avatar cache and bug-report store below: an empty data dir
+	// means "no disk persistence at all" for this deployment.
+	var database *db.DB
+	if cfg.DataDir != "" {
+		var err error
+		database, err = db.Open(ctx, cfg.DataDir)
+		if err != nil {
+			log.Error("database open/migrate failed", "err", err)
+			os.Exit(1)
+		}
+		log.Info("database opened", "path", database.Path())
+		go database.RunBackupLoop(ctx, log, cfg.DBBackupInterval)
+		if cfg.DBBackupInterval > 0 {
+			log.Info("database backup sweep started", "interval", cfg.DBBackupInterval)
+		} else {
+			log.Warn("CMDCTRL_DB_BACKUP_INTERVAL <= 0; the in-process backup sweep is disabled")
+		}
+	} else {
+		log.Info("CMDCTRL_DATA_DIR is empty; persistent database disabled")
 	}
 
 	// Auth + room manager are global singletons for the lifetime of
@@ -399,9 +450,6 @@ func main() {
 		IdleTimeout: 120 * time.Second,
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
 	go func() {
 		log.Info("server listening", "addr", cfg.Addr, "data_dir", cfg.DataDir)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -426,6 +474,11 @@ func main() {
 	}
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
+	if database != nil {
+		if err := database.Close(); err != nil {
+			log.Error("database close", "err", err)
+		}
+	}
 	log.Info("server stopped")
 }
 
@@ -461,6 +514,10 @@ type config struct {
 	// table and is operator-only. BotDecisionLogMode is its fullness.
 	BotDecisionLog     string
 	BotDecisionLogMode decisionlog.Mode
+	// DBBackupInterval is how often the persistent database's VACUUM
+	// INTO backup sweep runs (CMDCTRL_DB_BACKUP_INTERVAL). Defaults to
+	// db.DefaultBackupInterval; <= 0 disables the sweep.
+	DBBackupInterval time.Duration
 	// Env is the deployment identity from CMDCTRL_ENV. Unset means
 	// production — a forgotten variable fails closed.
 	Env appenv.Env
@@ -491,8 +548,22 @@ func loadConfig(log *slog.Logger) config {
 		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		DBBackupInterval: db.DefaultBackupInterval,
 		Env:              env,
 		Features:         appenv.LoadFeatures(env),
+	}
+
+	// CMDCTRL_DB_BACKUP_INTERVAL is a misconfiguration worth failing
+	// the boot over, same reasoning as CMDCTRL_BOT_MAX_THINK below: a
+	// deployment that asked for a backup cadence and silently did not
+	// get one is worse than a boot that refuses to start.
+	if raw := os.Getenv("CMDCTRL_DB_BACKUP_INTERVAL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Error("CMDCTRL_DB_BACKUP_INTERVAL invalid", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		c.DBBackupInterval = d
 	}
 
 	// CMDCTRL_BOT_MAX_THINK is a misconfiguration worth failing the
