@@ -245,6 +245,18 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// does not want one.
 		return -1, "combat handled elsewhere"
 
+	case legal.KindSpecialAction:
+		// CR 116.2. A special action puts nothing on the stack and
+		// buys a cheaper or free cast on a later turn, which is why
+		// it is priced as a flat positive rather than through
+		// valueOfCast: there is no spell here to value, and the
+		// payoff arrives on a turn this evaluator cannot see.
+		//
+		// The enumerator has already checked the timing and the
+		// affordability, so anything that reaches here is a move the
+		// engine will accept (#544).
+		return p.cfg.SpecialActionValue, "special action: " + decode[specialActionParams](m.Params).Kind
+
 	case legal.KindChoice:
 		return p.valueOfChoice(st, m)
 	}

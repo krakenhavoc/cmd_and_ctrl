@@ -97,6 +97,20 @@ const (
 	// 0-based offset into the catalog's Spec.ManaAbilities (or 0 for
 	// the synthetic basic-land ability derived from TypeLine).
 	TypeActivateManaAbility Type = "activate_mana_ability"
+	// TypeSpecialAction is a CR 116.2 special action: a game action a
+	// player takes without using the stack and without passing
+	// priority. Params carry `{card_id, kind}` plus the usual
+	// `{strict, auto_tap}` payment pair; `kind` is one of `foretell`
+	// (CR 702.143a) and `suspend` (CR 702.62a), with `turn_face_up`
+	// (CR 116.2g) reserved for #95.
+	//
+	// ONE verb rather than one per keyword, because CR 116 groups
+	// these actions precisely because their contract is identical —
+	// no stack, no announce, no response window, no targets. The
+	// per-kind differences are when it may be taken and what it
+	// costs, which is a switch in game.PerformSpecialAction's timing
+	// table and not a second verb. ADR 0062 Decision 4; #658 / #659.
+	TypeSpecialAction Type = "special_action"
 	// S21 sub-PR 1 — sacrifice a permanent you control (CR 701.21).
 	// Params carry `{instance_id}`. Distinct from a manual
 	// move_card to the graveyard: it emits EventSacrifice, so
@@ -294,6 +308,10 @@ var playerScopedActions = map[Type]struct{}{
 	TypeResolveChoice:       {},
 	TypeSetMaxHandSize:      {},
 	TypeActivateManaAbility: {},
+	// A special action is taken on a card in your OWN hand
+	// (CR 702.143a, CR 702.62a), so a seat may never take one for
+	// another seat.
+	TypeSpecialAction: {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
 	// initiator is `Player`) but the "any caller may start a vote"
@@ -1522,6 +1540,38 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.SetMaxHandSize(a.Player, p.Value)
+
+	case TypeSpecialAction:
+		// CR 116.2: a special action is taken by a player who has
+		// priority, and it uses no stack. The priority gate is the
+		// same one every other announce runs; there is deliberately
+		// no SplitSecondActive check here, because whether split
+		// second bars this action is the KIND's question and the
+		// engine's timing table answers it (foretell yes, suspend
+		// no — CR 702.61b, CR 702.62c).
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			CardID  string `json:"card_id"`
+			Kind    string `json:"kind"`
+			Strict  bool   `json:"strict,omitempty"`
+			AutoTap bool   `json:"auto_tap,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		cardID, err := uuid.Parse(p.CardID)
+		if err != nil {
+			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		return g.PerformSpecialAction(a.Player, cardID, game.SpecialActionKind(p.Kind), game.SpecialActionParams{
+			Strict:  p.Strict,
+			AutoTap: p.AutoTap,
+		})
 
 	case TypeSacrificePermanent:
 		var p struct {

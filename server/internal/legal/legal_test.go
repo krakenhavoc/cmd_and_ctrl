@@ -43,6 +43,7 @@ func TestWireTypesMatchActions(t *testing.T) {
 		legal.TypeKeepHand:            actions.TypeKeepHand,
 		legal.TypeMulligan:            actions.TypeMulligan,
 		legal.TypeDiscardSelection:    actions.TypeDiscardSelection,
+		legal.TypeSpecialAction:       actions.TypeSpecialAction,
 	}
 	for got, want := range pairs {
 		if got != string(want) {

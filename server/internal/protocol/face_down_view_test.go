@@ -235,6 +235,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ExilePlay:           &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
 		ActivatedAbilities:  []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
 		HandAbilities:       []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
+		SpecialActions:      []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
 		SummoningSick:       true,
 		LoyaltyActivated:    true,
 		ClassLevel:          3,

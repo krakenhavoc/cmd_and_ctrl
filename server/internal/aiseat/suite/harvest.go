@@ -243,6 +243,8 @@ func autoTags(rec decisionlog.Record) []string {
 			seen["mulligan"] = true
 		case legal.KindCast:
 			seen["cast"] = true
+		case legal.KindSpecialAction:
+			seen["special_action"] = true
 		case legal.KindPass, legal.KindActivate, legal.KindMana:
 			// Present in almost every window; tagging on them would
 			// make the tag mean nothing.

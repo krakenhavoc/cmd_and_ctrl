@@ -157,6 +157,34 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q gates an ability on an unlocked Room door, which is designed but not built (ADR 0071 decision 3, #886)", spec.Name))
 		}
 	}
+	// ADR 0062 Decision 4: a special action the engine cannot carry
+	// out would take a card out of a hand and do nothing with it, so
+	// the declaration fails at boot rather than mid-game. The cost
+	// is parsed here for the same reason an ability's is: an
+	// unparseable one is refused at payment time, which is after the
+	// timing check has already said yes.
+	for i, sa := range spec.SpecialActions {
+		if !game.SpecialActionKindBuilt(sa.Kind) {
+			panic(fmt.Sprintf("effects.Register: %q special action %d declares kind %q, which the engine cannot carry out (ADR 0062 Decision 4)",
+				spec.Name, i, sa.Kind))
+		}
+		if sa.Cost != "" {
+			if _, err := game.ParseCost(sa.Cost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q special action %d declares an unparseable cost %q: %v",
+					spec.Name, i, sa.Cost, err))
+			}
+		}
+		if sa.CastCost != "" {
+			if _, err := game.ParseCost(sa.CastCost); err != nil {
+				panic(fmt.Sprintf("effects.Register: %q special action %d declares an unparseable cast cost %q: %v",
+					spec.Name, i, sa.CastCost, err))
+			}
+		}
+		if sa.Kind == game.SpecialActionSuspend && sa.Counters <= 0 {
+			panic(fmt.Sprintf("effects.Register: %q suspends with %d time counters — suspend N is at least one (CR 702.62a)",
+				spec.Name, sa.Counters))
+		}
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both

@@ -46,6 +46,12 @@ const (
 	KindBlock    Kind = "block"
 	KindChoice   Kind = "choice"
 	KindMulligan Kind = "mulligan"
+	// KindSpecialAction is a CR 116.2 special action — foretell,
+	// suspend. Its own kind rather than an activation, because a
+	// special action uses no stack and is not an ability, and a
+	// policy that prices "what does this put on the stack" must be
+	// able to tell them apart. ADR 0062 Decision 4.
+	KindSpecialAction Kind = "special_action"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -63,6 +69,7 @@ const (
 	TypeKeepHand            = "keep_hand"
 	TypeMulligan            = "mulligan"
 	TypeDiscardSelection    = "discard_selection"
+	TypeSpecialAction       = "special_action"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -305,6 +312,7 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		})
 		e.castMoves()
 		e.activatedMoves()
+		e.specialActionMoves()
 		e.manaMoves()
 	}
 	// Combat declarations are not priority-gated in the engine

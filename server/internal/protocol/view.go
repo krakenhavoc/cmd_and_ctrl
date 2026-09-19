@@ -1242,6 +1242,21 @@ type CardView struct {
 	// list, so the client sends the same activate_ability payload it
 	// sends for a permanent. Added for #660.
 	HandAbilities []ActivatedAbilityView `json:"hand_abilities,omitempty"`
+	// SpecialActions are the CR 116.2 special actions this card
+	// offers while it is IN HAND — "Foretell {2}" (CR 702.143a),
+	// "Suspend 1—{R}" (CR 702.62a). Each entry is a menu row the
+	// client fires directly as a `special_action` action; neither
+	// kind's cost needs a choice, so there is no picker between the
+	// row and the wire.
+	//
+	// `available` is the per-kind TIMING answer for right now, from
+	// the engine's own table — so the client greys the row instead
+	// of re-deriving "is it my turn" and "could I cast this" and
+	// getting split second backwards. ADR 0062 Decision 4.
+	//
+	// Not public, and stripped by the same redaction that strips
+	// hand_abilities: "Suspend 4—{U}" names Ancestral Vision.
+	SpecialActions []SpecialActionView `json:"special_actions,omitempty"`
 	// SummoningSick reports CR 302.6 sickness: the permanent is a
 	// creature, it entered this turn and it has no haste, so it
 	// can't attack or pay a {T} cost. Battlefield creatures only —
@@ -1415,6 +1430,32 @@ type CardFaceView struct {
 // this turn" (S21 sub-PR 6). Public information: the trigger that
 // created it resolved in the open, so every viewer sees who may
 // play the card. The client offers the action only to `player`.
+
+// SpecialActionView is one CR 116.2 special action offered on a card
+// in the viewer's own hand — a menu row and nothing more. There are
+// no targets, no modes and no cost picker, so the client fires the
+// `special_action` verb straight from the row. ADR 0062 Decision 4;
+// #658 / #659.
+type SpecialActionView struct {
+	// Kind is the wire kind the action payload carries: "foretell",
+	// "suspend".
+	Kind string `json:"kind"`
+	// Label is the row's text, as the card prints the keyword:
+	// "Foretell {2}", "Suspend 1—{R}".
+	Label string `json:"label"`
+	// Cost is the mana cost of TAKING the action, for a client that
+	// renders the price separately. Empty is a free action — Lotus
+	// Bloom suspends for nothing.
+	Cost string `json:"cost,omitempty"`
+	// Available is the engine's own per-kind timing answer for this
+	// moment: foretell only during its owner's turn (and legal under
+	// split second), suspend only when the card could begin to be
+	// cast (and not under split second). False means grey the row,
+	// never hide the keyword — a player has to be able to see that
+	// the card has it.
+	Available bool `json:"available,omitempty"`
+}
+
 type ExilePlayView struct {
 	// Player is the instance ID of the player who may play it —
 	// usually not the card's owner.
@@ -2426,8 +2467,33 @@ func stampHandAbilities(g *game.Game, seats []PlayerView) {
 				continue
 			}
 			c.HandAbilities = viewOfActivatedAbilities(g, card, owner, game.ZoneHand)
+			c.SpecialActions = viewOfSpecialActions(g, card, owner)
 		}
 	}
+}
+
+// viewOfSpecialActions projects the CR 116.2 special actions a card
+// in its owner's hand offers, with the engine's own per-kind timing
+// answer stamped on each (ADR 0062 Decision 4).
+//
+// A kind the engine cannot carry out is not projected at all: the
+// client must never show a row the server would refuse.
+//
+// Runs under the read lock ViewOfGame already holds.
+func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID) []SpecialActionView {
+	var out []SpecialActionView
+	for _, sa := range game.SpecialActionsFor(game.CatalogKey(card)) {
+		if !game.SpecialActionKindBuilt(sa.Kind) {
+			continue
+		}
+		out = append(out, SpecialActionView{
+			Kind:      string(sa.Kind),
+			Label:     sa.Label,
+			Cost:      sa.Cost,
+			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
+		})
+	}
+	return out
 }
 
 // stampManaConditions sets ManaAbilityView.ConditionUnmet for every
@@ -3582,6 +3648,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// would name the Triome. It is also the only ability list on the
 	// wire that is not public information in the first place.
 	out.HandAbilities = nil
+	// #658 / #659: "Foretell {1}{U}" and "Suspend 4—{U}" quote the
+	// card exactly as a hand ability does, and are hidden for the
+	// same reason.
+	out.SpecialActions = nil
 	out.Restrictions = nil
 	out.ExilePlay = nil
 	// The hand / command / graveyard stamps are only meaningful to a

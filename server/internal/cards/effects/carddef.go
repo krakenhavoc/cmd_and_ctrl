@@ -35,6 +35,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CostModifiers:         spec.CostModifiers,
 		SelfCostModifiers:     spec.SelfCostModifiers,
 		CastableZones:         spec.CastableZones,
+		SpecialActions:        spec.SpecialActions,
 		UntapStep:             spec.UntapStep,
 		UntapStepRestrictions: spec.UntapStepRestrictions,
 		UntapCaps:             spec.UntapCaps,

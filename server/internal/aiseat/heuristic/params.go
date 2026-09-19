@@ -41,6 +41,11 @@ type activateParams struct {
 	XValue       int         `json:"x_value"`
 }
 
+type specialActionParams struct {
+	CardID string `json:"card_id"`
+	Kind   string `json:"kind"`
+}
+
 type attackParams struct {
 	Attacker string `json:"attacker"`
 	Target   string `json:"target"`

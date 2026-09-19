@@ -504,6 +504,44 @@ describe("buildMenuSections — non-battlefield zones", () => {
     expect(itemById(sections, "move-battlefield")).toBeDefined();
   });
 
+  // #658 / #659, ADR 0062 Decision 4. A special-action row fires the
+  // verb straight from the menu: no targeting, no cost picker, no
+  // modal - the whole payload is the card and the kind.
+  it("offers the CR 116.2 special actions a hand card declares", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [{ kind: "foretell", label: "Foretell {2}", cost: "{2}", available: true }],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    expect(sectionIDs(sections)).toEqual(["special_actions", "move"]);
+    const row = itemById(sections, "special-foretell");
+    expect(row?.label).toBe("Foretell {2}");
+    expect(row?.disabled).toBeFalsy();
+    expect(row?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "h1", kind: "foretell", strict: true, auto_tap: true },
+      player: "a",
+    });
+  });
+
+  // The server timing answer greys the row rather than hiding it - a
+  // player has to be able to see the card has the keyword, and the
+  // client must not re-derive a rule (split second differs per kind)
+  // it would get backwards.
+  it("greys a special action the server says is unavailable", () => {
+    const c = {
+      ...card("h1", "a"),
+      special_actions: [{ kind: "suspend", label: "Suspend 1", cost: "{R}" }],
+    };
+    const v = view([seat("a", "Alice", { hand: [c] })]);
+    const sections = buildMenuSections(v, c, "a", false);
+    const row = itemById(sections, "special-suspend");
+    expect(row).toBeDefined();
+    expect(row?.disabled).toBe(true);
+    expect(row?.hint).toBe("not right now");
+  });
+
   it("gives a graveyard card a route back to hand and battlefield", () => {
     const c = card("g1", "a");
     const v = view([seat("a", "Alice", { graveyard: [c] })]);
