@@ -462,6 +462,41 @@ amendment deliberately does not restate the design, because two copies
 of it would drift. What #929 owes #980 is the resolution-time prompt,
 and that is what it ships.
 
+**Amendment (2026-09-19, #980 / #994): the as-enters form landed on
+this kind too, and the kind learned to prune itself.**
+
+`Game.QueueChoosePlayerAsEntersForEffect` (`game/choose_player.go`) is
+the CR 614.12 sibling, and it is the SAME `option_pick`: same option
+list, same gate row, same enumerator case, same wire projection.
+Nothing about this amendment's "no kind of its own" changes. The only
+difference is where the answer goes — `Card.ChosenPlayer` on the
+permanent, rather than a `TargetPlayer` ref on one item's payload —
+and that difference is a lifetime, not a prompt. The design is ADR
+0072 §7 and its #980 amendment; this one still does not restate it.
+
+What DID change about the kind is worth recording here, because it is a
+property of `option_pick` and not of either player prompt.
+**`ChoiceOption` can now name a seat** (`ChoiceOption.Player`, #994),
+`uuid.Nil` on every option that is not about one. Two consequences:
+
+- **An open option list can SHRINK.** A seat that leaves the game is
+  pruned off every open prompt that offers it (CR 800.4a) — by
+  `reassignChoiceLocked` when the chooser is the one leaving, and by
+  `pruneDepartedSeatOptionsLocked` when anybody else is. Before this,
+  eligibility was filtered exactly once, at queue time, and a prompt
+  went on offering a player who was not a player. A list pruned to
+  nothing is dropped, which is the state `QueueChoosePlayerForEffect`
+  refuses to queue in the first place and the departure table's own
+  `dropDiscard` for this kind.
+- **A seat prompt is therefore answered with its SEAT, not its index.**
+  `OptionPickPrompt.ThenSeat` is the continuation for an option list of
+  players; `ResolveOptionPick` reads `PickOptions[index].Player` off the
+  list the chooser was shown and hands that to the branch. The index
+  form (`Then`) is unchanged and is still what every consequence-shaped
+  prompt uses — a pile, a Torment branch — because those options do not
+  move. A player prompt's do, and a closure holding the candidate slice
+  it was built with would record the player one seat along.
+
 **The answer rides `StackItem.Payload`.** #636 already carries "what
 the effect that created this item had to tell it" as `[]TargetRef`; a
 chosen player is a `TargetPlayer` ref and goes there rather than on a

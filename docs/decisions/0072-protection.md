@@ -321,6 +321,56 @@ classification and its own clearing rule. That half, the player
 quality in the grammar and the card are **#980**; everything this
 section specifies above still stands as its design.
 
+**Amendment (2026-09-19, #980): it shipped, and the design above held.**
+Every bullet is as written — `Card.ChosenPlayer` on `ChosenColor`'s
+pattern, classified `carried`, the token `protection from the chosen
+player`, the matcher on the source's controller. Four things the design
+did not say, each of which the build had to decide:
+
+- **Where the seat is resolved.** The token names no player, so a
+  quality parsed on its own protects from nobody. `ProtectionQuality`
+  gains a `Player uuid.UUID` that the READER fills in
+  (`bindProtectionQuality`, called by both `ProtectionQualities` and
+  `MatchedProtection`) off the card it was handed. That is what lets all
+  four DEBT checks keep their existing `ProtectedFrom(card, chars)`
+  call — none of them changed — and it is why no raw UUID reaches a
+  display string: `Printed` stays the card's own words and the id sits
+  beside it.
+- **The prompt is a third door, not a flag.**
+  `QueueChoosePlayerAsEntersForEffect` sits beside
+  `QueueChoosePlayerForEffect` rather than inside it. They share the
+  option list (`seatChoiceOptionsLocked`) and therefore the kind, the
+  gate, the enumerator, the wire and the CR 800.4a pruning; what differs
+  is only where the answer goes, and folding that into a flag would have
+  made one function answer two questions about lifetime.
+- **Which prompt shape.** Queued from the `AsEnters` hook, not by
+  pausing the CR 614 pipeline — S26's declared simplification
+  (`creature_type_choice.go`) carried forward a third time, for its
+  original reason: `entryResumable` is set on the land-play branch
+  alone, and True-Name Nemesis is a creature.
+- **No layer bump.** `ResolveCreatureTypeChoice` and
+  `ResolveColorChoice` both bump `layerVersion` because their answers
+  are `AppliesTo` inputs to their permanent's statics. A chosen player
+  is not one: protection rides the printed token, which has been in
+  `Abilities` since the permanent entered, and the reader binds the seat
+  at check time rather than baking it into a characteristic.
+
+**§10's "player protection" row is unchanged and is a different rule.**
+A player HAVING protection (Teferi's Protection, Leyline of Sanctity)
+still has no home; this is a permanent protected FROM a player.
+
+**The grammar's closed set is now five shapes**, and the table in §1
+should be read with a fifth row: `protection from the chosen player`,
+matched against the source's `Characteristic.Controller`. The
+`ProtectionFromChosenPlayer` constant is the only spelling; a card file
+that types the phrase by hand and misses mints no token at all.
+
+**Two cards, not one.** True-Name Nemesis is the proof for the quality;
+Sawhorn Nemesis reads the same stored field from a damage replacement
+and never touches `protection.go`, which is the evidence that
+`Card.ChosenPlayer` is general as-enters machinery rather than a
+protection back door.
+
 ### 8. Bots read the reader
 
 `aiseat/heuristic`'s `hasKeyword` prefix-matches `"protection"` and
@@ -349,7 +399,13 @@ one.
 - **`Preemptive`** is a field on a `ReplacementEffect` value, and
   built-ins are shared by reference across a clone
   (`clone.go`) exactly as they were.
-- **`Card.ChosenPlayer`** will be `carried` when it lands (§7).
+- **`Card.ChosenPlayer`** is `carried` (§7, landed with #980), and
+  cleared at BOTH CR 400.7 sites — `zone.go`'s battlefield exit and
+  `resetAsNewObjectLocked`'s new-object reset — because a blinked
+  permanent reaches the second without passing the first. It is not a
+  copiable value (CR 707.2) and needs no rule to say so:
+  `CopiableValuesOf` projects printed characteristics and never looks
+  at it, exactly as ADR 0071 arranged for `ClassLevel`.
 
 ### 10. Out of scope, stated
 
