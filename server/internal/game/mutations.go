@@ -4668,6 +4668,14 @@ type ManaAbilityParams struct {
 	CounterCounts    []int
 	CounterKind      string
 	CounterKinds     []string
+
+	// TapIDs names the permanents paying a TapOthers component
+	// (#758), with exactly the meaning
+	// ActivateAbilityParams.TapIDs gives them — one component, one
+	// payment shape, whichever ability kind carries it. Empty for
+	// every mana ability that does not print the clause, which is
+	// all of them but Springleaf Drum's family.
+	TapIDs []uuid.UUID
 }
 
 func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, params ManaAbilityParams) error {
@@ -4780,6 +4788,26 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 	if !g.canPlaceCounterLocked(playerID, cardID, ab.AddCounter) {
 		return ErrCantPayCounterCost
 	}
+	// #758: the tap-another component, validated by the SAME
+	// function the CR 602 activated path uses, for the same reason
+	// the counter components are — Springleaf Drum's "tap an
+	// untapped creature you control" and Earthcraft's are one cost
+	// shape with two owners.
+	if err := g.validateTapOthersCostLocked(playerID, cardID, ab.TapOthers, params.TapIDs); err != nil {
+		return err
+	}
+	// CR 118.3, as on the activated path: a cost that prints both
+	// {T} and "tap another untapped creature you control" (Jaspera
+	// Sentinel) has already spent the source, so naming it here
+	// would pay one of the N with a permanent that is tapping
+	// anyway.
+	if ab.TapCost && !ab.TapOthers.Empty() {
+		for _, id := range params.TapIDs {
+			if id == cardID {
+				return ErrInvalidParam
+			}
+		}
+	}
 	// A mana component in the cost — the Signet cycle's "{1}, {T}",
 	// Cabal Coffers' "{2}, {T}". Parsed and checked here, spent
 	// below with everything else, so an unaffordable Signet fails
@@ -4851,6 +4879,17 @@ func (g *Game) ActivateManaAbility(playerID, cardID uuid.UUID, abilityIdx int, p
 		tappedForMana = *card
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
+	// #758: the tap-another half, after the source's own {T} and
+	// before the life and the sacrifices — the same component order
+	// the CR 602 path pays in, and before the sacrifices for the
+	// same reason: a sacrifice moves cards and would take a named
+	// permanent off the battlefield before it could be tapped.
+	//
+	// There is no "after the ability is on the stack" here to
+	// respect: a mana ability never uses the stack (CR 605.3b), so
+	// whatever the taps trigger is drained by the state-check pass
+	// on the way out with everything else this activation queued.
+	g.payTapOthersCostLocked(playerID, params.TapIDs)
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
