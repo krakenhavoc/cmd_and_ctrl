@@ -2278,6 +2278,37 @@ permanent WAS sacrificed. `EventSacrifice` still fires before the move,
 so a "whenever you sacrifice" payoff is unaffected either way. See
 [ADR 0013 §5r](docs/decisions/0013-replacement-effects.md).
 
+**"If it WAS a creature card" is a clause about the exiled card, so it
+waits and it is gated (#911).** Cling to Dust, Scavenging Ooze and
+Deluge of the Dead. Two facts at two moments: the card's TYPE is read
+BEFORE the move (after it the card is in exile with none of its
+battlefield-era layers — CR 608.2h), and the CLAUSE runs from the
+continuation and only when the card ARRIVED in exile. "It" is the card
+the first sentence moved, so with no exile there is no "it" and neither
+branch runs — Cling to Dust's "Otherwise, you draw a card" is the same
+conditional's other half, not a separate sentence. Write the whole
+family as `ExileThenIfItWas{Target, Was: WasCreatureCard, Then,
+Otherwise}` rather than by hand; `cards/effects/exile_payout_guard_test.go`
+fails the build on a condition, after a fire-and-forget exile, that
+reads a local assigned before it, and its allowlist is where a clause
+that is genuinely ungated (Swords to Plowshares, Solitude) gets
+recorded. See
+[ADR 0013 §5t](docs/decisions/0013-replacement-effects.md).
+
+**A spell whose own text moves it off the stack is not routed again
+(#489).** "Exile Ascend from Avernus", Genesis Ultimatum's "exile
+Genesis Ultimatum", "shuffle this into your library": the instruction
+runs in `OnResolve`, which is before the resolution frame picks the
+spell's destination, so `spellMovedItselfLocked` stops the frame from
+moving a card its own effect has already placed (CR 608.2m — the spell
+put into a graveyard is the one ON THE STACK). Nothing on the card side
+is needed: write the self-move as an ordinary `ExileTarget` or tuck on
+the spell's own ID and the frame leaves it alone. A resolution that
+FAILS still runs the post-resolution state checks and the CR 117.3b
+priority reset, and reports itself as an `EventEffectError` rather than
+as a failed pass. See
+[ADR 0013 §5t](docs/decisions/0013-replacement-effects.md).
+
 **Never call a locking accessor inside a snapshot body (#877).**
 Anything that runs inside `g.ReadSnapshot(func(){…})` or
 `g.WithWriteLock(func(){…})` already holds `g.mu`, and `sync.RWMutex`
