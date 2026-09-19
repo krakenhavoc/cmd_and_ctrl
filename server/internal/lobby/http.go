@@ -344,6 +344,12 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// #505 part 3: admin-only latency/token readout for every bot seat
+	// at this table. BotStatsHandler wraps its own
+	// auth.Middleware(c.Auth, auth.RoleAdmin) — see botstats.go — so
+	// this is the one line that mounts it, matching every other admin
+	// route above.
+	mux.Handle(BotStatsRoute, BotStatsHandler(c))
 	// What the picker needs before it can offer anything: the tier
 	// list (including the ones that are declared but not built, so
 	// the UI can grey them out) and the curated deck catalog.
