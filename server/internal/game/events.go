@@ -253,15 +253,19 @@ const (
 	// scry rather than an in-flight one. Source is the card that
 	// scried. Not emitted when the scry looked at nothing (an empty
 	// library), because no scry happened.
+	//
+	// LookedAt is the SIZE of the scry — the "2" in "scry 2" — and
+	// Amount is what moved. They are two different numbers and the
+	// log says both; see the field.
 	EventScry EventKind = "scry"
 
 	// EventSurveil — Actor finished a surveil (CR 701.25). Same
 	// shape as EventScry: emitted after the cards have been put
 	// back, with Amount = how many went to the GRAVEYARD (not the
 	// bottom — surveil has no bottom leg), so a "whenever you
-	// surveil" payoff sees a completed surveil. Source is the card
-	// that surveilled. Not emitted when the surveil looked at
-	// nothing (an empty library).
+	// surveil" payoff sees a completed surveil, and LookedAt = the
+	// size of the surveil. Source is the card that surveilled. Not
+	// emitted when the surveil looked at nothing (an empty library).
 	//
 	// Deliberately a distinct kind from EventScry rather than a
 	// flag on it: the two are different keywords with different
@@ -762,6 +766,29 @@ type Event struct {
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
+
+	// LookedAt is the SIZE of a finished keyword action that looks at
+	// the top of a library — the "2" in "scry 2" — on EventScry and
+	// EventSurveil, and zero on every other kind.
+	//
+	// A second number rather than a re-purposed Amount, because the
+	// two facts are both wanted at once and neither implies the
+	// other: Amount is how many cards MOVED (to the bottom, to the
+	// graveyard) and a scry 2 that moves one card is not a scry 1.
+	// Amount is also what "whenever you scry" payoffs and the
+	// surveil tests read, and #1036 was explicit that its meaning
+	// must not change.
+	//
+	// It is the size the action ACTUALLY had, which is two
+	// adjustments away from the number printed on the card: the
+	// CR 614 keyword-action window may have rewritten the count
+	// before the prompt was queued (Crystal Ball's "scry that many
+	// plus one" — see keyword_action.go), and a library shorter than
+	// the count clamps it (CR 701.22a looks at as many as there are).
+	// So it is len(PendingChoice.ScryCards) at the site that answers
+	// the prompt, and never the argument ScryForEffect was called
+	// with. Added for #1036.
+	LookedAt int `json:"looked_at,omitempty"`
 
 	// Label is a free-text qualifier: counter kind
 	// ("+1/+1", "loyalty", "poison"), trigger label, error

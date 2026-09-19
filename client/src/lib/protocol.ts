@@ -486,6 +486,13 @@ export interface LogEvent {
   target?: string;
   // Signed / counting payload: life delta, damage dealt, cards drawn.
   amount?: number;
+  // #1036: the SIZE of a `scry` / `surveil` entry's keyword action —
+  // the "2" in "scry 2" — where `amount` is how many cards the table
+  // then watched move. Absent on every other kind, and absent on a
+  // scry recorded before the field existed. The rendered `text`
+  // already says both; this is here for a client that wants the
+  // numbers without parsing the sentence.
+  looked_at?: number;
   old_zone?: string;
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).

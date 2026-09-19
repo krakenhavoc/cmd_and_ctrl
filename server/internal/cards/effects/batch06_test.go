@@ -16,19 +16,24 @@ import (
 // b06-prefixed.
 
 const (
-	b06IntoTheFloodMawOracle     = "8cb36a67-9206-4665-a03f-64f52ba559c4"
-	b06GrimTutorOracle           = "e62f8d69-a559-4f13-a5c9-5fb750b4af2c"
-	b06CastleArdenvaleOracle     = "f8f4fc60-725d-46d8-8e8f-e68e00d20589"
-	b06WhipOfErebosOracle        = "53987a39-c18c-4c13-b1ea-fd1b2a369f9e"
-	b06FireDiamondOracle         = "97b477d8-2e05-475e-8ed6-7d680cb21cd9"
-	b06RiveteersOverlookOracle   = "5548ff43-e5f6-4a63-8562-a2b1de06d6f5"
-	b06RisingOfTheDayOracle      = "434a20f8-3f87-4004-9155-0f196fc2257e"
-	b06VernalFenOracle           = "40544d12-0391-4a61-af95-9b8ec01ed8fc"
-	b06WarstormSurgeOracle       = "42fb1a1c-ab3d-4cdc-a6ff-a591f7481583"
-	b06ForbiddenOrchardOracle    = "cfd60d1f-9832-4408-b84e-0fd3018b015b"
-	b06OranRiefOracle            = "e88027a6-24cc-4a8b-86db-734f26149ea8"
-	b06ElvesOfDeepShadowOracle   = "20347559-95a9-4689-bb79-c5bb3809b719"
-	b06SpelunkingOracle          = "2962fe4c-bf48-454b-8a6b-0f8253352ae8"
+	b06IntoTheFloodMawOracle   = "8cb36a67-9206-4665-a03f-64f52ba559c4"
+	b06GrimTutorOracle         = "e62f8d69-a559-4f13-a5c9-5fb750b4af2c"
+	b06CastleArdenvaleOracle   = "f8f4fc60-725d-46d8-8e8f-e68e00d20589"
+	b06WhipOfErebosOracle      = "53987a39-c18c-4c13-b1ea-fd1b2a369f9e"
+	b06FireDiamondOracle       = "97b477d8-2e05-475e-8ed6-7d680cb21cd9"
+	b06RiveteersOverlookOracle = "5548ff43-e5f6-4a63-8562-a2b1de06d6f5"
+	b06RisingOfTheDayOracle    = "434a20f8-3f87-4004-9155-0f196fc2257e"
+	b06VernalFenOracle         = "40544d12-0391-4a61-af95-9b8ec01ed8fc"
+	b06WarstormSurgeOracle     = "42fb1a1c-ab3d-4cdc-a6ff-a591f7481583"
+	b06ForbiddenOrchardOracle  = "cfd60d1f-9832-4408-b84e-0fd3018b015b"
+	b06OranRiefOracle          = "e88027a6-24cc-4a8b-86db-734f26149ea8"
+	b06ElvesOfDeepShadowOracle = "20347559-95a9-4689-bb79-c5bb3809b719"
+	b06SpelunkingOracle        = "2962fe4c-bf48-454b-8a6b-0f8253352ae8"
+	// #732's two fetch routes: a sorcery's search and an ETB
+	// trigger's. Neither card is a batch-06 card; the IDs live here
+	// because the Spelunking tests below are the only callers.
+	b06CultivateOracle           = "8b755881-a72d-4e21-a369-d2924eb4585a"
+	b06SolemnSimulacrumOracle    = "00c0543c-2a1f-4425-8283-4062d74a1637"
 	b06ScouredBarrensOracle      = "d37f858e-03c8-4594-9b92-cd03699a1591"
 	b06StartingTownOracle        = "d04e0975-f401-41b8-a9db-9bcf9cbbce66"
 	b06IdyllicTutorOracle        = "57c9ff89-dd30-467b-bb3e-499eeea8cb94"
@@ -842,6 +847,121 @@ func TestB06SpelunkingDoesNotUntapAnOpponentsLands(t *testing.T) {
 	}
 	top100AssertEnteredTapped(t, g, land, "Scoured Barrens under an opponent's Spelunking")
 	passPriorityAroundTable(t, g)
+}
+
+// #732: the caveat Spelunking shipped with said a land another effect
+// put onto the battlefield TAPPED still entered tapped, because the
+// fetching spell's clause was OR-ed in after the CR 614 pipeline had
+// run. It is not any more — searchEnterBattlefieldLocked seeds it onto
+// the entry event before the window opens (#478, #964) — so the
+// replacement sees the tapped entry and clears it, exactly as it does
+// for a land's own clause.
+//
+// Cultivate is the shape: "search your library for a basic land card,
+// put it onto the battlefield TAPPED". The fetched Forest has no
+// enters-tapped clause of its own, so Spelunking's is the only
+// applicable replacement and there is no ordering prompt.
+func TestB06SpelunkingUntapsALandFetchedTapped(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, me.ID, "Spelunking", "Enchantment", b06SpelunkingOracle, false)
+
+	forest := pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+
+	castCatalogSpell(t, g, "Cultivate", "Sorcery", b06CultivateOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, forest)
+
+	fetched := findBattlefieldByName(g, "Forest")
+	if fetched == uuid.Nil {
+		t.Fatal("Cultivate put no Forest onto the battlefield")
+	}
+	top100AssertEnteredUntapped(t, g, fetched, "a Cultivate-fetched Forest under Spelunking")
+	// It ENTERED untapped rather than entering tapped and untapping —
+	// the distinction shocklands_test.go exists to make, and the one a
+	// Tapped assertion alone cannot see.
+	if n := untapEventsFor(g, fetched); n != 0 {
+		t.Errorf("%d untap events on the fetched Forest — it entered tapped and was untapped after", n)
+	}
+	if b06ReplacementOrderFor(g, me.ID) != nil {
+		t.Error("a basic with no clause of its own must not raise a CR 616 ordering prompt")
+	}
+}
+
+// The second fetch route the issue named, and a different caller: an
+// ETB trigger's search rather than a sorcery's.
+func TestB06SpelunkingUntapsASolemnFetchedLand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, me.ID, "Spelunking", "Enchantment", b06SpelunkingOracle, false)
+	pushLibraryCardForTest(me, game.Card{Name: "Island", TypeLine: "Basic Land — Island"})
+
+	castCatalogSpell(t, g, "Solemn Simulacrum", "Artifact Creature — Golem", b06SolemnSimulacrumOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+
+	fetched := findBattlefieldByName(g, "Island")
+	if fetched == uuid.Nil {
+		t.Fatal("Solemn Simulacrum put no Island onto the battlefield")
+	}
+	top100AssertEnteredUntapped(t, g, fetched, "a Solemn-fetched Island under Spelunking")
+	if n := untapEventsFor(g, fetched); n != 0 {
+		t.Errorf("%d untap events on the fetched Island — it entered tapped and was untapped after", n)
+	}
+}
+
+// The other half of the same seam, and the one that proves the entry
+// site can PAUSE: a fetched land that carries its own enters-tapped
+// clause has two applicable replacements, so CR 616.1 asks the
+// controller to order them — from a search, which #478 made
+// resumable. Answering finishes the fetch; nothing is stranded.
+func TestB06SpelunkingOrdersAFetchedTaplandAndResumes(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	spelunking := pushCatalogPermanent(g, me.ID, "Spelunking", "Enchantment", b06SpelunkingOracle, false)
+	seedSearchLibrary(me,
+		searchTestLand("Forest", "Basic Land — Forest"),
+		searchTestLand("Plains", "Basic Land — Plains"),
+		game.Card{Name: "Simic Guildgate", TypeLine: "Land — Gate", OracleID: b16SimicGuildgateOracle},
+	)
+
+	castCatalogSpell(t, g, "Circuitous Route", "Sorcery", b16CircuitousRouteOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchNamed(t, g, me.ID, "Forest", "Simic Guildgate")
+
+	// The basic came in untapped with no prompt; the Guildgate is
+	// still in flight behind the ordering question.
+	top100AssertEnteredUntapped(t, g, findBattlefieldByName(g, "Forest"), "a fetched Forest under Spelunking")
+	order := b06ReplacementOrderFor(g, me.ID)
+	if order == nil {
+		t.Fatal("a fetched Guildgate under Spelunking raised no CR 616 ordering prompt")
+	}
+	var landEff, spelunkingEff game.ReplacementEffectID
+	for _, id := range order.ReplacementEffectIDs {
+		if _, src := g.ReplacementOptionMetaForEffect(id); src == spelunking {
+			spelunkingEff = id
+		} else {
+			landEff = id
+		}
+	}
+	if len(order.ReplacementEffectIDs) != 2 || landEff == 0 || spelunkingEff == 0 {
+		t.Fatalf("the prompt should list the Guildgate's clause and Spelunking's, got %v", order.ReplacementEffectIDs)
+	}
+	// Spelunking's last is the untapping order (CR 616.1).
+	if err := g.ResolveReplacementOrder(order.ID, me.ID, []game.ReplacementEffectID{landEff, spelunkingEff}); err != nil {
+		t.Fatalf("ResolveReplacementOrder: %v", err)
+	}
+
+	gate := findBattlefieldByName(g, "Simic Guildgate")
+	if gate == uuid.Nil {
+		t.Fatal("the fetched Guildgate was stranded by the ordering prompt")
+	}
+	top100AssertEnteredUntapped(t, g, gate, "a fetched Simic Guildgate under Spelunking")
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("%d prompts still open after the order was answered", len(g.PendingChoices))
+	}
 }
 
 // --- Springbloom Druid ---------------------------------------------

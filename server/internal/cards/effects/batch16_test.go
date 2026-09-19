@@ -968,8 +968,16 @@ func TestB16HorizonExplorerLandsEnterUntapped(t *testing.T) {
 		t.Fatal("no ordering prompt: the Explorer applies after the land's own effect")
 	}
 
-	// A basic fetched "onto the battlefield tapped" enters untapped;
-	// a fetched Guildgate does not (declared).
+	// A basic fetched "onto the battlefield tapped" enters untapped
+	// with no prompt: the search seeds the flag, so the Explorer is
+	// the only applicable effect.
+	//
+	// A fetched Guildgate is the one entry that raises the CR 616.1
+	// ordering prompt, because the seeded flag and the Gate's own
+	// clause are applicable at once. It used to be a declared retreat
+	// — the helper left such a land alone because the search entry
+	// could not pause without stranding it — and #478 made that entry
+	// resumable, so #732 took the retreat out.
 	seedSearchLibrary(me,
 		searchTestLand("Forest", "Basic Land — Forest"),
 		searchTestLand("Plains", "Basic Land — Plains"),
@@ -981,8 +989,31 @@ func TestB16HorizonExplorerLandsEnterUntapped(t *testing.T) {
 	if b16Tapped(t, g, findBattlefieldByName(g, "Forest")) {
 		t.Error("a fetched basic enters untapped under the Explorer")
 	}
-	if !b16Tapped(t, g, findBattlefieldByName(g, "Dimir Guildgate")) {
-		t.Error("a fetched Guildgate enters tapped — the declared retreat")
+	order := b06ReplacementOrderFor(g, me.ID)
+	if order == nil {
+		t.Fatal("a fetched Guildgate under the Explorer raised no CR 616 ordering prompt")
+	}
+	// The Explorer's clause last is the untapping order.
+	var gateEff, explorerEff game.ReplacementEffectID
+	for _, id := range order.ReplacementEffectIDs {
+		if _, src := g.ReplacementOptionMetaForEffect(id); src == findBattlefieldByName(g, "Horizon Explorer") {
+			explorerEff = id
+		} else {
+			gateEff = id
+		}
+	}
+	if len(order.ReplacementEffectIDs) != 2 || gateEff == 0 || explorerEff == 0 {
+		t.Fatalf("the prompt should list the Gate's clause and the Explorer's, got %v", order.ReplacementEffectIDs)
+	}
+	if err := g.ResolveReplacementOrder(order.ID, me.ID, []game.ReplacementEffectID{gateEff, explorerEff}); err != nil {
+		t.Fatalf("ResolveReplacementOrder: %v", err)
+	}
+	dimir := findBattlefieldByName(g, "Dimir Guildgate")
+	if dimir == uuid.Nil {
+		t.Fatal("the fetched Guildgate was stranded by the ordering prompt")
+	}
+	if b16Tapped(t, g, dimir) {
+		t.Error("a fetched Guildgate enters untapped under the Explorer once the order is answered")
 	}
 	if len(g.PendingChoices) != 0 || me.Library.Size() != 1 {
 		t.Error("nothing is stranded and nothing prompts")
