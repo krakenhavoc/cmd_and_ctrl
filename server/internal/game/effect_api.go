@@ -163,7 +163,25 @@ type DiscardPrompt struct {
 	// instruction after "then" is not conditional on there having
 	// been cards to pitch. Same contract Scry's Then has for an
 	// empty library.
-	Then func(g *Game) error
+	//
+	// IT IS THIS PROMPT'S OWN "then", one leg of the instruction —
+	// Vicious Rumors' "…discards a card, THEN mills a card" per
+	// opponent. The rest of the printed INSTRUCTION, the clause that
+	// runs once after every seat has answered and is told what was
+	// really discarded, is the RUN's continuation instead
+	// (PlayerDiscardsThenForEffect and its two siblings, #1027).
+	// Reaching for this one to write a fan-out's payoff gives a card
+	// that pays out per answer, which is what Syphon Mind did.
+	//
+	// `seat` is the player who was asked and `discarded` is what they
+	// really discarded (discardedThisWayLocked), both because a
+	// fan-out copies ONE template per seat: a closure that captured
+	// the player would mill the wrong one, and a leg that read the
+	// hand back would count a card a replacement left there. `seat`
+	// is p.Player for a single-seat prompt, where the caller knew it
+	// already; `discarded` is nil for an empty hand, which is the
+	// case this still fires for.
+	Then func(g *Game, seat uuid.UUID, discarded []uuid.UUID) error
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -198,13 +216,38 @@ type DiscardPrompt struct {
 // with no candidates and a floor of one is a prompt nobody can
 // answer, holding the whole table (#544).
 //
+// THE FIRE-AND-FORGET FORM since #1027, and what it returns is the
+// prompt's ID rather than an outcome: nothing has left the hand when
+// it returns, and a clause on the next line pays out for a discard
+// nobody has chosen yet. A card with anything hanging off the answer —
+// "you draw a card for each card discarded this way", or simply a
+// clause printed AFTER the discard, which is Archon of Cruelty's bug —
+// uses PlayerDiscardsThenForEffect and its two siblings
+// (discard_run.go, ADR 0013 §5y).
+//
 // Caller must hold g.mu.
 func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
+	return g.queueDiscardPromptLocked(p, uuid.Nil)
+}
+
+// queueDiscardPromptLocked queues ONE discard prompt and returns its
+// ID (uuid.Nil when nothing went up). `run` is the prompted-discard
+// run the prompt is one leg of (prompt_run.go), or uuid.Nil for a
+// prompt nothing is waiting on.
+//
+// THE one place a discard prompt is created, so the run link cannot be
+// forgotten by a new caller — queueSacrificePromptLocked's shape, and
+// for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUID {
 	// A prompt addressed to a seat that has left the game can never
 	// be answered. Unlike the empty-hand case, Then does NOT run:
 	// "each other player discards a card, then you draw a card for
 	// each card discarded this way" draws nothing for a player who is
-	// no longer there.
+	// no longer there. The RUN is not told about the seat either — it
+	// was never asked — which reads the same as a seat that was asked
+	// and discarded nothing, and is the right answer for both.
 	if p.Player == uuid.Nil || g.chooserGoneLocked(p.Player) {
 		return uuid.Nil
 	}
@@ -216,8 +259,15 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 	}
 	if n <= 0 {
 		// Nothing to pitch, but "then draw three" still happens.
+		//
+		// The RUN is not told, and the seat gets no entry in the
+		// answer: no prompt went up, so there is no leg to settle and
+		// nothing was owed. That reads the same to a continuation as a
+		// seat that was asked and discarded nothing — both discarded
+		// nothing — which is the rule PromptedSacrifices states for a
+		// seat CR 701.21a excused.
 		if p.Then != nil {
-			if err := p.Then(g); err != nil {
+			if err := p.Then(g, p.Player, nil); err != nil {
 				g.EmitEvent(Event{
 					Kind:     EventEffectError,
 					Actor:    p.Player,
@@ -243,8 +293,25 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 	if question == "" {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
-	discarder := p.Player
-	opts := discardOptions{cause: DiscardCauseEffect, source: p.Source, then: p.Then}
+	discarder, source := p.Player, p.Source
+	legThen := p.Then
+	opts := discardOptions{
+		cause:  DiscardCauseEffect,
+		source: p.Source,
+		// Reached once the whole batch has landed. This prompt's own
+		// "then" is the rest of ITS sentence and goes first; the RUN's
+		// leg settle follows, because the run's continuation is the
+		// rest of the printed instruction and must be the last thing
+		// on the far side of the last leg (#1027).
+		then: func(g *Game, landed []uuid.UUID) error {
+			if legThen != nil {
+				if err := legThen(g, discarder, landed); err != nil {
+					g.emitChoiceEffectErrorLocked(discarder, source, err)
+				}
+			}
+			return g.settleRunLegLocked(run, discarder, landed)
+		},
+	}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -255,6 +322,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		Max:        n,
 		Zone:       ZoneHand,
 		Validate:   p.Validate,
+		promptRun:  run,
 		Then: func(g *Game, picked []uuid.UUID) error {
 			return g.discardCardsLocked(discarder, picked, opts)
 		},
@@ -801,20 +869,45 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 // (ADR 0054 Decision 5), so an undone random discard redoes with the
 // same cards. There is no "first card when the game has no RNG"
 // branch any more: every game draws from a key (rng.go).
+//
+// THE FIRE-AND-FORGET FORM. A discard is an exit (ADR 0013 §5g) and a
+// discarded commander's CR 903.9 prompt pauses the batch, so nil means
+// "no error", never "the cards are in the graveyard". A card with a
+// clause hanging off the discard uses DiscardRandomThenForEffect.
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
+	return g.DiscardRandomThenForEffect(playerID, n, nil)
+}
+
+// DiscardRandomThenForEffect is DiscardRandomForEffect with the rest
+// of the card attached — "discard a card at random. If it was a land
+// card, …" — run once the whole batch has reached a terminal outcome
+// and handed the cards that were really discarded
+// (discardedThisWayLocked).
+//
+// It is the random discard's answer to the payout lint's `discardVerb`
+// row (#1027, ADR 0013 §5y). `then` runs even when nothing was
+// discarded, including for an empty hand: a continuation is the rest
+// of a card, and one that is silently never called is a card that
+// stops halfway (#544, #1006).
+//
+// Caller must hold g.mu.
+func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g *Game, discarded []uuid.UUID) error) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
 	if n <= 0 || p.Hand.Size() == 0 {
-		return nil
+		if then == nil {
+			return nil
+		}
+		return then(g, nil)
 	}
 	ids := make([]uuid.UUID, len(p.Hand.Cards))
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
 	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
-	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect})
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect, then: then})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the

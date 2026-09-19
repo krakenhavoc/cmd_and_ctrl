@@ -570,12 +570,17 @@ type Game struct {
 	// sub-PR 2.
 	nextReplacementEventID atomic.Uint64
 
-	// sacrificeRuns holds the prompted-sacrifice runs in flight, keyed
-	// by the id each of the run's PendingChoiceSacrifice entries
-	// carries (#1019, sacrifice_run.go). One run is one printed
-	// "sacrifice" instruction; the entry lives from the moment its
-	// prompts are queued until the last of them has settled and its
-	// continuation has run.
+	// promptRuns holds the prompted runs in flight — sacrifices
+	// (#1019) and discards (#1027) alike — keyed by the id each of a
+	// run's prompts carries on PendingChoice.promptRun
+	// (prompt_run.go). One run is one printed instruction; the entry
+	// lives from the moment its prompts are queued until the last of
+	// them has settled and its continuation has run.
+	//
+	// ONE registry for both verbs, because the keys are freshly
+	// minted uuids and "which prompt is a leg of which run" is one
+	// question: a second map would be a second place for a new verb's
+	// clone, restore and census wiring to be forgotten.
 	//
 	// So between actions it holds an entry only for an instruction
 	// paused on a prompt, and that entry is part of the prompt's
@@ -584,7 +589,7 @@ type Game struct {
 	// undo into the open prompt would otherwise replay the answer
 	// against a counter that had already been decremented and pay out
 	// a seat early.
-	sacrificeRuns map[uuid.UUID]*sacrificeRun
+	promptRuns map[uuid.UUID]*promptRun
 
 	mu sync.RWMutex
 }

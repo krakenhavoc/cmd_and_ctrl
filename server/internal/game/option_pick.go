@@ -249,14 +249,21 @@ func (f *optionPickFrame) runWithNoChoice(g *Game) error {
 // Caller must hold g.mu, and must already have taken the prompt out of
 // the queue: the continuation may queue the next link of the chain and
 // must not land behind the question it is replacing.
-// #1019 adds the SECOND kind to declare dropDefault, and it is the
-// same idea in a different currency: a withdrawn sacrifice prompt is
-// a seat that sacrificed nothing, and the run waiting on it has to be
-// told so — a run whose last leg was dropped silently is a card that
-// stops halfway exactly as a dropped option pick was. The two are one
-// function rather than two drop paths because the departure table has
-// one second column, and a kind settled in two places is a kind
-// settled two ways.
+// #1019 added the SECOND kind to declare dropDefault and #1027 the
+// third, and both are the same idea in a different currency: a
+// withdrawn sacrifice or discard prompt is a seat that moved nothing,
+// and the RUN waiting on it has to be told so — a run whose last leg
+// was dropped silently is a card that stops halfway exactly as a
+// dropped option pick was. They are one function rather than three
+// drop paths because the departure table has one second column, and a
+// kind settled in two places is a kind settled two ways.
+//
+// The branch is on the RUN LINK rather than on the kind (#1027). Two
+// kinds carry one today and the discard's is a PendingChoiceChooseCards
+// — the same kind Thoughtseize's revealed-hand pick uses, which is no
+// run's leg — so "is this prompt part of a run" is a question about
+// the prompt, not about its kind. A fourth verb then needs no fourth
+// case here.
 //
 // Caller must hold g.mu, and must already have taken the prompt out of
 // the queue: the continuation may queue the next link of the chain and
@@ -266,9 +273,9 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		return
 	}
 	var err error
-	switch c.Kind {
-	case PendingChoiceSacrifice:
-		err = g.settleSacrificeRunLegLocked(c.sacrificeRun, c.Chooser, nil)
+	switch {
+	case c.promptRun != uuid.Nil:
+		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
 	}

@@ -470,11 +470,20 @@ type PendingChoice struct {
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
 
-	// sacrificeRun links a PendingChoiceSacrifice to the RUN it is one
-	// prompt of — the printed instruction whose continuation waits for
-	// every seat it asked (#1019, sacrifice_run.go). uuid.Nil on a
-	// prompt nothing is waiting on, which is every sacrifice the
-	// fire-and-forget entry points queue.
+	// promptRun links this prompt to the RUN it is one leg of — the
+	// printed instruction whose continuation waits for every seat it
+	// asked (#1019, #1027, prompt_run.go). uuid.Nil on a prompt
+	// nothing is waiting on, which is every sacrifice and every
+	// discard the fire-and-forget entry points queue.
+	//
+	// TWO KINDS carry one: PendingChoiceSacrifice (one leg of a
+	// prompted sacrifice, sacrifice_run.go) and the
+	// PendingChoiceChooseCards a discard prompt is
+	// (discard_run.go). One field rather than one per verb, because
+	// the runs are one registry and "this prompt is a leg of that
+	// run" is one fact; defaultDroppedChoiceLocked reads the FIELD
+	// rather than the kind for the same reason, so a third verb needs
+	// no third branch.
 	//
 	// A plain id rather than a pointer to the frame, and that is the
 	// undo contract rather than a style choice: the prompts of one run
@@ -482,10 +491,10 @@ type PendingChoice struct {
 	// value — a shared pointer would be duplicated per prompt and an
 	// undo snapshot would hold as many half-finished runs as the run
 	// had prompts. The runs themselves live on the Game
-	// (Game.sacrificeRuns) and are deep-copied once, so the counter and
+	// (Game.promptRuns) and are deep-copied once, so the counter and
 	// the queue rewind together. Not serialised, like every other
 	// continuation link.
-	sacrificeRun uuid.UUID
+	promptRun uuid.UUID
 
 	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
 	// may be copied from — "any creature on the battlefield" for
@@ -3317,7 +3326,7 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// The run this prompt is one leg of, read BEFORE the dequeue: the
 	// entry is about to leave the queue and the continuation below
 	// closes over the id rather than over the entry.
-	run, seat := choice.sacrificeRun, choice.Chooser
+	run, seat := choice.promptRun, choice.Chooser
 	g.dequeueChoiceLocked(idx)
 	// #1019: the picked permanent goes through the sacrifice's own
 	// CONTINUATION rather than the fire-and-forget call, for the two
@@ -3338,7 +3347,7 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 		if sacrificed {
 			landed = []uuid.UUID{cardID}
 		}
-		return g.settleSacrificeRunLegLocked(run, seat, landed)
+		return g.settleRunLegLocked(run, seat, landed)
 	}); err != nil {
 		return err
 	}

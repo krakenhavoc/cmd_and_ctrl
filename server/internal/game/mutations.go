@@ -4202,7 +4202,7 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 	// batch has landed.
 	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
 		cause: DiscardCauseCleanup,
-		then: func(g *Game) error {
+		then: func(g *Game, _ []uuid.UUID) error {
 			delete(g.DiscardPending, playerID)
 			if len(g.DiscardPending) == 0 {
 				g.DiscardPending = nil

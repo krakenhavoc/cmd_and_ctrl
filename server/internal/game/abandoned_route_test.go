@@ -60,7 +60,7 @@ func TestADroppedDiscardPromptStillRunsTheRestOfTheBatch(t *testing.T) {
 	queueEffectDiscard(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game) error { thenRuns++; return nil },
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
 	})
 	c := discardPromptFor(g, p.ID)
 	if c == nil {
