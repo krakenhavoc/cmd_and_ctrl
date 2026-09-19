@@ -264,8 +264,24 @@ func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error 
 // loop carries on and the first error is returned, as the random-order
 // bottom does.
 func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
+	return restIntoGraveyard(g, res.Rest)
+}
+
+// restIntoGraveyard is the body PutRestIntoGraveyard and
+// TakeRestIntoGraveyard share: "the rest" into their owners'
+// graveyards, one routed move each.
+//
+// game.PutIntoGraveyardForEffect routes, so Rest in Peace, Leyline of
+// the Void and CR 903.9 all see the arrival; it is not a mill (CR
+// 701.17a counts off the TOP of a library), so it emits an ordinary
+// zone move.
+//
+// A token stays where it is (CR 111.8), and an error on one card does
+// not keep the others out: the loop carries on and the first error is
+// returned.
+func restIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
 	var firstErr error
-	for _, id := range res.Rest {
+	for _, id := range ids {
 		if c, ok := g.LookupCardForEffect(id); ok && c.IsToken() {
 			continue
 		}

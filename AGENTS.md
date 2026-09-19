@@ -2481,8 +2481,24 @@ only place that knows which cards were not chosen. Several picks enter
 as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
 so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
-`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
-bottom in a random order" anywhere else is
+`RevealUntilThenPutOntoBattlefield` (The Regalia).
+
+**"Put it into your HAND" is the twin, and it is a different door
+(#952).** `effects.TakeFromLibraryToHand` — same fields, same `Then`,
+with a `Reveal` flag for "you may REVEAL a creature card from among
+them" (only the TAKEN cards become public; the rest of a private look
+stays private) — over the engine's
+`Game.TakeFromLibraryToHandThenForEffect`. Whole sentences:
+`LookAtTopThenMayTakeToHand` (Horn of the Mark) and
+`RevealTopThenTakeToHand` (Goblin Ringleader). **Never `BounceToHand`
+for this.** It appears to work only because the zone router finds a
+card's zone by scan; "return it to its owner's hand" is not "put it
+into your hand off the top of your library", the fire-and-forget form
+drops a paused CR 903.9 leg from the accounting, and nothing watching a
+bounce should see a library take. `TakeRestOnBottomInRandomOrder` and
+`TakeRestIntoGraveyard` are the two rests.
+
+"Put the rest on the bottom in a random order" anywhere else is
 `g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
 from the game's keyed RNG (`random_order` stream, ADR 0054) — never
 `math/rand` — and repositions cards already in the library without a
