@@ -187,3 +187,15 @@ func MatchColor(color string) func(game.Card) bool {
 func MatchLegendaryCreature(c game.Card) bool {
 	return c.IsCreature() && c.IsLegendary()
 }
+
+// DuringYourUpkeep — "Activate only during your upkeep" (Magus of the
+// Mirror). Both halves are load-bearing: the step is the upkeep AND
+// the activator is the active player, so an opponent's upkeep is not
+// a window. Not a sorcery-speed gate — the upkeep is not a main
+// phase, and SorcerySpeed would forbid exactly the step the card
+// opens.
+func DuringYourUpkeep() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		return g.Turn.Step == game.StepUpkeep && IsYourTurn(g, controller)
+	}
+}

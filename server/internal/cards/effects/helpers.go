@@ -587,3 +587,17 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 		},
 	}
 }
+
+// firstLegalPlayerTarget returns the first still-legal player slot on
+// the item being resolved, or false when there is none. The CR 608.2b
+// read for every single-player-target card: a target that became
+// illegal in response is skipped, and a card whose only target is
+// gone does nothing rather than erroring.
+func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return t.ID, true
+		}
+	}
+	return uuid.Nil, false
+}
