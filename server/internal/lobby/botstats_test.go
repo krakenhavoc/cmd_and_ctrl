@@ -19,11 +19,15 @@ import (
 
 // botstats_test.go covers GET /games/{id}/bot/stats (#505 part 3).
 //
-// BotStatsHandler is not yet reachable through Handler(cfg)'s own mux
-// — see botstats.go's file comment for why — so these tests mount it
-// directly on its own route, exactly as BotStatsHandler's doc says a
-// caller should until http.go (or main.go) can safely take the
-// one-line addition.
+// http.go now mounts BotStatsHandler on Handler(cfg)'s own mux (see
+// its mux.Handle(BotStatsRoute, BotStatsHandler(c)) line), so most of
+// these tests mount the handler standalone anyway — on its own bare
+// mux, via newBotStatsServer — to exercise its own status-code and
+// payload behaviour without the rest of Handler's routes in the way.
+// TestBotStatsIsRoutedThroughTheRealMux below is the one that goes
+// through Handler(cfg) itself, covering the thing that was actually
+// broken before that line existed: a fully tested handler nothing
+// ever dispatched to.
 
 // fakeBotStatsHost wraps fakeBotHost (bots_test.go) with the one
 // extra method BotStats asks for, so these tests get the existing
@@ -91,6 +95,55 @@ func newBotStatsTestRoom(t *testing.T) *ws.Room {
 		t.Fatalf("Start: %v", err)
 	}
 	return ws.NewRoom(g, discardLogger(), "")
+}
+
+// TestBotStatsIsRoutedThroughTheRealMux is #505's actual regression
+// target: BotStatsHandler existed, fully tested, and was reachable
+// only when a test (or nothing) mounted it on a standalone mux by
+// hand — see the other tests in this file, which predate http.go's
+// mux.Handle(BotStatsRoute, BotStatsHandler(c)) line and deliberately
+// exercise the handler that way. This one goes through Handler(cfg)
+// itself, the same constructor every other route in this package is
+// tested through, so a regression that unroutes the pattern again
+// (or loosens its admin gate) fails here rather than only in a unit
+// test of the handler in isolation.
+func TestBotStatsIsRoutedThroughTheRealMux(t *testing.T) {
+	l := newTestLobby(t)
+	host := newFakeBotStatsHost()
+	l.SetBotHost(host)
+	a := newTestAuth()
+	meta, _ := l.Create("FNM")
+	srv := httptest.NewServer(Handler(Config{Lobby: l, Auth: a, Bots: host, Log: discardLogger()}))
+	t.Cleanup(srv.Close)
+
+	// Reachable and admin-gated: an admin session gets the real
+	// response shape through the real mux.
+	token := adminSession(t, a)
+	resp := doGet(t, srv, "/games/"+meta.ID.String()+"/bot/stats", token)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		t.Fatalf("admin through real mux: got %d, want 200 (body=%s)", resp.StatusCode, body)
+	}
+	var out botStatsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if len(out.Seats) != 0 {
+		t.Errorf("seats: %+v, want none", out.Seats)
+	}
+
+	// A seated player is not an admin — the real mux's route must
+	// carry the same auth.RoleAdmin gate BotStatsHandler wraps itself
+	// in, not a looser one some other registration point might apply.
+	playerTok := playerSession(t, a, meta.ID)
+	resp = doGet(t, srv, "/games/"+meta.ID.String()+"/bot/stats", playerTok)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		t.Errorf("player through real mux: got %d, want %d (body=%s)", resp.StatusCode, http.StatusForbidden, body)
+	}
 }
 
 func TestBotStatsRequiresAdmin(t *testing.T) {
