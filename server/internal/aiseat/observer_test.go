@@ -262,21 +262,30 @@ func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
 	})
 
 	t.Run("a pass on offer, so the decline becomes it", func(t *testing.T) {
+		// Waiting for an APPLIED one, not merely for one: the seat
+		// that reaches the dispatcher second in a two-runner race has
+		// its pass refused (priority has moved), which is a window
+		// that reports the decline→pass perfectly well and never
+		// commits anything. That rejection is the ordinary step race
+		// between two seats — `isStepRace` in runner_test.go names the
+		// same thing — and it is not what this test is about.
+		declinePass := func(ev aiseat.DecisionEvent) bool {
+			return ev.Fallback == aiseat.FallbackDeclinePass
+		}
 		c, _ := runWithObserverUntil(t, decliner{keepHand: true}, aiseat.Config{},
-			"a decline the runner turned into a pass", func(c *collector) bool {
+			"a decline the runner turned into a pass and played", func(c *collector) bool {
 				for _, ev := range c.events() {
-					if ev.Fallback == aiseat.FallbackDeclinePass {
+					if declinePass(ev) && ev.Applied {
 						return true
 					}
 				}
 				return false
 			})
-		found := false
+		applied := 0
 		for i, ev := range c.events() {
-			if ev.Fallback != aiseat.FallbackDeclinePass {
+			if !declinePass(ev) {
 				continue
 			}
-			found = true
 			if ev.Index < 0 || ev.Index >= len(ev.Input.Moves) {
 				t.Fatalf("event %d: a decline that became a pass dispatched index %d of %d moves", i, ev.Index, len(ev.Input.Moves))
 			}
@@ -286,14 +295,23 @@ func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
 			if ev.Decision.Index != aiseat.Decline {
 				t.Errorf("event %d: the policy's own answer reads %d; the runner overwrote it instead of recording it", i, ev.Decision.Index)
 			}
-			// The runner played it, so the table moved: this is the
-			// half that keeps a declining bot from stalling a game.
-			if !ev.Applied {
-				t.Errorf("event %d: the pass was never dispatched", i)
+			switch {
+			case ev.Applied:
+				applied++
+			// The two ways a decided window legitimately commits
+			// nothing, both of which the event has to say out loud or
+			// a decision census cannot balance: the dispatcher refused
+			// it, or the runner's context ended before it got there.
+			case ev.RejectErr != nil || ev.Forced == aiseat.ForcedCancelled:
+			default:
+				t.Errorf("event %d: the pass was neither played, refused, nor cancelled: %+v", i, ev)
 			}
 		}
-		if !found {
-			t.Fatalf("no decline→pass over %d events", c.len())
+		// The runner played at least one of them, so the table moved:
+		// this is the half that keeps a declining bot from stalling a
+		// game.
+		if applied == 0 {
+			t.Fatalf("no decline→pass reached the table over %d events", c.len())
 		}
 	})
 }
