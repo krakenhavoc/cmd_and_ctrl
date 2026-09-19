@@ -29,9 +29,18 @@ export function fanLift(i: number, n: number): number {
 // card-widths, i.e. 4 wide at seven cards and 7.5 at fourteen. Any
 // panel narrower than that clipped the fan, because .panel sets
 // overflow: hidden and --card-h has a 168px floor that stops the
-// cards shrinking to fit. Tightening the overlap past a seven-card
-// hand bounds the fan at roughly 4.5 card-widths however many cards
-// are held, which every panel in every layout can show.
+// cards shrinking to fit.
+//
+// Tightening past a seven-card hand holds the fan inside about 4.5
+// card-widths up to roughly twenty cards, which covers every hand
+// size that occurs in play — #956 is a seven-to-fourteen card hand in
+// a half-width panel. It is NOT a bound for all n: once CAP binds at
+// about fifteen cards the overlap stops tightening and the width
+// grows again at 0.15 card-widths per card. Holding 4.5 at sixty
+// cards would need an overlap of 0.94, which leaves a 6% sliver of
+// each card and stops reading as a fan at all, so the cap is the
+// right trade and the limit is recorded in handFan.test.ts rather
+// than papered over.
 //
 // CAP is the point past which the cards stop reading as separate
 // cards; base is the layout's resting overlap (0.5 self, 0.62
