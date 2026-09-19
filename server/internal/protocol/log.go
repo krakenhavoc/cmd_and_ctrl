@@ -208,6 +208,17 @@ const (
 	// earned, which is the condition the feature ships under; a
 	// spawn into a hidden zone names the zone and not the card.
 	LogSpawn LogKind = "spawn"
+	// LogTransform — a permanent was turned over to its other face
+	// (CR 701.27a). `Label` is the name of the face it turned FROM,
+	// which is the only place that name survives: the card's own name
+	// is already the new face by the time the entry is projected.
+	//
+	// Narrated rather than silent, unlike the other board-state
+	// changes: a card physically turning over is the clearest case
+	// there is of a thing a player announces out loud, and a reader
+	// scrolling back wants to know WHEN it happened, which the board
+	// alone cannot say. Added in S46 (ADR 0079, #343).
+	LogTransform LogKind = "transform"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -837,6 +848,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventTransform:
+		// CR 701.27a. Not a zone move (CR 712.18), so no LogZone entry
+		// says it — this is the only line the table gets, and without
+		// it a permanent silently becomes a different card.
+		base.Kind = LogTransform
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
@@ -1224,6 +1244,15 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return renderSettingsText(e)
 	case LogSpawn:
 		return renderSpawnText(e, target)
+	case LogTransform:
+		// The card name is the face it turned INTO — viewOfCard reads
+		// the active face — and Label is the one it turned from. Label
+		// is cleared with the name on a redacted entry, so the fallback
+		// is the line a viewer who may not identify the card reads.
+		if e.Label == "" {
+			return fmt.Sprintf("%s transformed", card)
+		}
+		return fmt.Sprintf("%s transformed into %s", e.Label, card)
 	default:
 		return card
 	}
