@@ -126,6 +126,21 @@ jobs:
         # golangci-lint v1.64.8 via `go run` (see server/Makefile): the
         # repo's .golangci.yml, with errcheck and unparam excluded in
         # test files. Wired in by #582 once the tree was clean under it.
+        #
+        # GOTOOLCHAIN=auto is load-bearing and belongs to THIS step
+        # only. setup-go v6 exports GOTOOLCHAIN=local for the whole job
+        # (v5 left Go's own `auto` default in place), and golangci-lint
+        # v1.64.8 requires go >= 1.23 while the job is pinned to the
+        # 1.22 that go.mod supports. Under `local` the `go run` above
+        # refuses outright:
+        #   go: ...golangci-lint@v1.64.8 requires go >= 1.23.0
+        #   (running go 1.22.12; GOTOOLCHAIN=local)
+        # Under `auto` it fetches the toolchain the TOOL needs and
+        # leaves the toolchain the SERVER builds and tests with alone,
+        # which is what v5 was silently doing. Scoped to the step so
+        # gofmt, vet, test and build cannot quietly drift off 1.22.
+        env:
+          GOTOOLCHAIN: auto
         run: make lint
 
       - name: Server — test
