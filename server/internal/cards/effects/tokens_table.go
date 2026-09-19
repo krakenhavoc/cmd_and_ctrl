@@ -128,6 +128,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Cat":                             {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2},
 	"2/2 colorless Spawn artifact":                  {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
 	"2/2 colorless Knight with vigilance":           {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Keywords: []string{"vigilance"}},
+	"2/2 colorless Robot artifact":                  {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 2, Toughness: 2},
 	"2/2 colorless Samurai with vigilance":          {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Keywords: []string{"vigilance"}},
 	"2/2 colorless Zombie":                          {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2},
 	"2/2 green Boar":                                {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 2, Toughness: 2, Colors: []string{"G"}},
