@@ -1486,6 +1486,32 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
 			return card.Controller
 		}
+	case RepEventDiscard:
+		// #982. A discard is a move out of a hand, but the affected
+		// player is not "the controller of the card" the move branch
+		// above looks up — a card in a hand has no controller, and
+		// CR 701.8a puts it into THAT PLAYER'S graveyard. The
+		// discarding player is on the event; read it.
+		//
+		// Not observable while every discard replacement in the catalog
+		// is controller-scoped, because the fallback below then names
+		// the same player. Madness (#657) and the Obstinate Baloth
+		// family read a discard an OPPONENT caused, and the first of
+		// those to share a window with another discard replacement
+		// would otherwise ask the wrong player.
+		return ev.DiscardPlayer
+	case RepEventCreateTokens:
+		// #982, and the same rule read off the other event ADR 0061
+		// added: "create one or more tokens UNDER YOUR CONTROL", so the
+		// affected player is the one the tokens are created under the
+		// control of.
+		//
+		// Primal Vigor is the printed shape that needs it. It is
+		// deliberately symmetrical ("if one or more tokens would be
+		// created"), so an opponent's Primal Vigor beside your own
+		// Anointed Procession on YOUR creation used to put the CR 616
+		// ordering prompt to the Primal Vigor player.
+		return ev.TokenController
 	case RepEventStepTransition:
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
@@ -1930,63 +1956,76 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if ev == nil {
 		return nil
 	}
-	// #793: a cancelled LIFE change is still an answer to whoever
-	// asked for it. "You gain life equal to the life lost this way"
-	// gains nothing when the loss was replaced away — but a drain
-	// adding up several players' losses has to be told so, or it waits
-	// on this one forever.
-	if ev.Kind == RepEventLife {
+	// One arm per ReplacementEventKind, and #982's enumeration test
+	// (replacement_kind_gate_test.go) fails until a new kind has one.
+	// This was an if-chain until then — the same code in the same
+	// order, because every condition on it is exclusive on Kind — but a
+	// chain is not something a scanner can read a kind out of, and
+	// "nothing is owed here" is a decision worth writing down rather
+	// than falling off the end of.
+	switch ev.Kind {
+	case RepEventLife:
+		// #793: a cancelled LIFE change is still an answer to whoever
+		// asked for it. "You gain life equal to the life lost this way"
+		// gains nothing when the loss was replaced away — but a drain
+		// adding up several players' losses has to be told so, or it
+		// waits on this one forever.
 		return g.runLifeTailLocked(ev, 0)
-	}
-	// #807: and the same for a cancelled DAMAGE event. "You gain life
-	// equal to the damage dealt this way" gains nothing when a Fog ate
-	// the damage, and the batch behind Creeping Bloodsucker has to be
-	// told so before it can move on to the next opponent.
-	if ev.Kind == RepEventDamage {
+	case RepEventDamage:
+		// #807: and the same for a cancelled DAMAGE event. "You gain
+		// life equal to the damage dealt this way" gains nothing when a
+		// Fog ate the damage, and the batch behind Creeping Bloodsucker
+		// has to be told so before it can move on to the next opponent.
 		return g.runDamageTailLocked(ev, 0)
-	}
-	// #762: a cancelled or replaced-away token CREATION makes nothing,
-	// and the rest of the card ("create a Treasure, then sacrifice
-	// it") has to be told so rather than wait for tokens that will
-	// never arrive.
-	if ev.Kind == RepEventCreateTokens {
+	case RepEventCreateTokens:
+		// #762: a cancelled or replaced-away token CREATION makes
+		// nothing, and the rest of the card ("create a Treasure, then
+		// sacrifice it") has to be told so rather than wait for tokens
+		// that will never arrive.
 		return g.abandonTokenCreationLocked(ev)
-	}
-	// #976: and a cancelled KEYWORD ACTION. "Scry 2, then draw a card"
-	// still draws when the scry was replaced away — the sentence after
-	// "then" is not conditional on the action having happened — so the
-	// continuation has to be told rather than left waiting on a prompt
-	// that will never be queued.
-	if ev.Kind == RepEventKeywordAction {
+	case RepEventKeywordAction:
+		// #976: and a cancelled KEYWORD ACTION. "Scry 2, then draw a
+		// card" still draws when the scry was replaced away — the
+		// sentence after "then" is not conditional on the action having
+		// happened — so the continuation has to be told rather than
+		// left waiting on a prompt that will never be queued.
 		return g.abandonKeywordActionLocked(ev)
-	}
-	// #853: and the same for a cancelled EXIT that carries a route.
-	// The card stays where it is, but a multi-card discard sequenced
-	// through the route's continuation has to be told, or the rest of
-	// the batch — and the "then draw two" behind it — never happens.
-	//
-	// #478: and for a cancelled ENTRY that carries a tail. A search
-	// whose fetched permanent the window cancelled still owes its
-	// library a shuffle and its caller a "found nothing"; a leg of a
-	// multi-card fetch has to be told before it can start the next one.
-	// Only one of the two is ever set, so running both is one call and
-	// a no-op.
-	if isExitMove(ev.Kind) {
+	case RepEventMove, RepEventDiscard:
+		// #853: a cancelled EXIT that carries a route. The card stays
+		// where it is, but a multi-card discard sequenced through the
+		// route's continuation has to be told, or the rest of the batch
+		// — and the "then draw two" behind it — never happens.
+		//
+		// #478: and a cancelled ENTRY that carries a tail. A search
+		// whose fetched permanent the window cancelled still owes its
+		// library a shuffle and its caller a "found nothing"; a leg of
+		// a multi-card fetch has to be told before it can start the
+		// next one. A move carries a route or an entry tail, never
+		// both, so running both is one call and a no-op.
+		//
 		// #762: a cancelled ENTRY of a created token is the one move
 		// that leaves an object behind. A token exists only on the
 		// battlefield (CR 111.1), so one whose entry was replaced away
 		// simply ceases to be; the rest of its batch still lands,
-		// through the entry tail below.
+		// through the entry tail.
 		g.dropEnteringTokenLocked(ev.CardID)
 		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
 			return err
 		}
 		return g.runEntryTailLocked(ev, uuid.Nil)
-	}
-	if ev.Kind != RepEventStepTransition {
+	case RepEventStepTransition:
+		// The one kind whose cancellation is not nothing — see the
+		// doc comment above.
+		return g.applyResolvedReplacementEventLocked(ev)
+	case RepEventDraw, RepEventCounter:
+		// Nothing is sequenced behind either: a cancelled draw and a
+		// cancelled counter placement simply do not happen, and neither
+		// entry point carries a continuation, so there is nobody to
+		// tell. A draw tail or a counter tail, if one is ever added,
+		// belongs here.
 		return nil
 	}
-	return g.applyResolvedReplacementEventLocked(ev)
+	return nil
 }
 
 // QueueDiscardFromRevealedHand is the Thoughtseize entry point.

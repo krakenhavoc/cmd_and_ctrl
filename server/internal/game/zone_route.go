@@ -316,6 +316,12 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 //     never happen (pruneStaleZoneChangeChoicesLocked / #605, and its
 //     answer-path twin dropStaleReplacementResumeLocked).
 //
+// Despite the name it is the abandon-side dispatcher for EVERY
+// replacement event kind, not just a routed exit: every caller reaches
+// it with whatever frame the discarded prompt was holding, and the
+// switch inside decides what that kind owes. #982's enumeration test
+// reads that switch, so a new kind cannot arrive here undecided.
+//
 // NOTHING MOVES and no event is emitted. A paused route has moved
 // nothing (see routeCardToZoneLocked), so the card is still in its old
 // zone and the route's own bookkeeping never happened — which is the
@@ -349,31 +355,62 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 	// The CR 614.5 once-per-event bookkeeping the abandoned event was
 	// holding: nothing else will release it now.
 	g.clearReplacementEventLocked(ev.ID)
-	if ev.Kind == RepEventCreateTokens {
+	// One arm per ReplacementEventKind, for the reason
+	// finishSettledReplacementLocked's switch carries: #982's
+	// enumeration test (replacement_kind_gate_test.go) reads this
+	// switch, so a new kind cannot reach the abandon path with nobody
+	// deciding what it owes. Naming the kinds that owe NOTHING is half
+	// the value — the keyword action was silently one of them until the
+	// test said so.
+	switch ev.Kind {
+	case RepEventCreateTokens:
 		// #762: an abandoned CREATION makes nothing, and the rest of
 		// the card behind it still has to be told. Nothing is staged
 		// yet — the tokens are not minted until the window settles.
 		return g.abandonTokenCreationLocked(ev)
-	}
-	if !isExitMove(ev.Kind) {
+	case RepEventKeywordAction:
+		// #982: and an abandoned KEYWORD ACTION, which this path was
+		// missing. "Scry 2, then draw a card" whose CR 616 ordering
+		// prompt is taken away has scried nothing and still owes the
+		// draw — the same call finishSettledReplacementLocked makes for
+		// a cancelled one. Before this the continuation went out with
+		// the frame.
+		return g.abandonKeywordActionLocked(ev)
+	case RepEventMove, RepEventDiscard:
+		// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
+		// staged and unentered. It never reached the battlefield, so it
+		// never existed (CR 111.1). A no-op for every other entry.
+		g.dropEnteringTokenLocked(ev.CardID)
+		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
+			return err
+		}
+		// #478: a paused ENTRY is abandoned the same way and owes the
+		// same answer. A fetch whose entry prompt is taken away — its
+		// chooser left, or the card left the library by another route
+		// while the question was open — moved nothing, and the search
+		// behind it has to be told so, or its shuffle and its caller's
+		// Then wait forever. A move carries a route or an entry tail,
+		// never both, so this is one call and a no-op for every exit.
+		// Since #762 a token creation threads the rest of its batch
+		// through the same tail.
+		return g.runEntryTailLocked(ev, uuid.Nil)
+	case RepEventLife, RepEventDamage:
+		// finishDroppedReplacementLocked settles these two itself, with
+		// their own tails and an amount of zero, and never reaches
+		// here; the prune and the stale-resume paths only ever hold a
+		// zone change. Nothing to do either way — the tail has already
+		// run, and running it again through the cleared pointer would
+		// be a no-op rather than a second payout.
+		return nil
+	case RepEventDraw, RepEventCounter, RepEventStepTransition:
+		// No continuation exists on any of the three, so an abandoned
+		// one owes nobody an answer. A cancelled step transition is a
+		// SKIP and does move the cursor (CR 500.11), but only when its
+		// prompt is ANSWERED — one taken away leaves the step where it
+		// was, which a player can always advance.
 		return nil
 	}
-	// #762: an abandoned ENTRY of a CREATED TOKEN leaves the token
-	// staged and unentered. It never reached the battlefield, so it
-	// never existed (CR 111.1). A no-op for every other entry.
-	g.dropEnteringTokenLocked(ev.CardID)
-	if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
-		return err
-	}
-	// #478: a paused ENTRY is abandoned the same way and owes the same
-	// answer. A fetch whose entry prompt is taken away — its chooser
-	// left, or the card left the library by another route while the
-	// question was open — moved nothing, and the search behind it has
-	// to be told so, or its shuffle and its caller's Then wait forever.
-	// A move carries a route or a tail, never both, so this is one call
-	// and a no-op for every exit. Since #762 a token creation threads
-	// the rest of its batch through the same tail.
-	return g.runEntryTailLocked(ev, uuid.Nil)
+	return nil
 }
 
 // routeCardToZoneLocked opens the CR 614 replacement window for a
