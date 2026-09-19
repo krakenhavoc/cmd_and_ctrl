@@ -2,6 +2,7 @@ package legal
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -1096,6 +1097,7 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 	for _, id := range lt.Cards {
 		cands = append(cands, game.TargetRef{Kind: game.TargetCard, ID: id})
 	}
+	e.orderCandidates(cands)
 	lo, hi := spec.Min, spec.Max
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
@@ -1127,6 +1129,39 @@ func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpe
 		rec(0, nil)
 	}
 	return out
+}
+
+// orderCandidates sorts a clause's candidates so the ones the seat's
+// policy cares most about are the ones that survive
+// MaxExpansionPerSource (#687, ADR 0033 §1).
+//
+// The cap is spent in candidate order, so before this the answer to
+// "which twelve of an opponent's twenty permanents may the bot point
+// a removal spell at" was whatever order LegalTargetsForEffect
+// happened to walk the battlefield in — and the table leader's
+// Blightsteel Colossus could simply be absent from the move list, at
+// which point no policy could pick it.
+//
+// A no-op without Options.OrderTargets, which is every caller but a
+// bot seat. Sorted STABLY, so the engine's order is the tiebreak and
+// two enumerations of one board agree.
+func (e *enumerator) orderCandidates(cands []game.TargetRef) {
+	if e.opts.OrderTargets == nil || len(cands) < 2 {
+		return
+	}
+	// Priced once per candidate rather than inside the comparator: a
+	// policy's score is a board read, and sort.SliceStable would ask
+	// for it O(n log n) times.
+	score := make(map[uuid.UUID]float64, len(cands))
+	for _, c := range cands {
+		score[c.ID] = e.opts.OrderTargets(TargetCandidate{
+			ID:     c.ID,
+			Player: c.Kind == game.TargetPlayer,
+		})
+	}
+	sort.SliceStable(cands, func(i, j int) bool {
+		return score[cands[i].ID] > score[cands[j].ID]
+	})
 }
 
 // combinations returns every k-subset of pool for k in min..max, in

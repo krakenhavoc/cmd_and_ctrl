@@ -204,7 +204,50 @@ type Options struct {
 	// MaxX caps the X the enumerator will try for an {X} spell when
 	// searching for the largest affordable value. Default 20.
 	MaxX int
+
+	// OrderTargets ranks a clause's candidate targets before
+	// MaxExpansionPerSource is applied, so that what survives the cap
+	// is the part of the board that matters (#687, ADR 0033 §1).
+	//
+	// Nil — the default, and what every non-bot caller passes — keeps
+	// the candidates in LegalTargetsForEffect order, which is what
+	// the enumerator did before this field existed.
+	//
+	// A HOOK rather than a scorer in this package, and that is the
+	// layering decision ADR 0033 §1's amendment records. Ranking a
+	// board is a POLICY question; `legal` states the rules and must
+	// not import `aiseat` (which imports it). So the enumerator asks
+	// for an order and the seat that wants one supplies it —
+	// aiseat.TargetOrderer, implemented by the heuristic with the
+	// same Weights it scores every other decision with, rather than a
+	// second scorer that could disagree with the first.
+	OrderTargets TargetOrder
 }
+
+// TargetCandidate is one object a target clause could be pointed at,
+// as the ordering hook sees it: an identity and nothing else.
+//
+// Nothing else, deliberately. The hook lives above the
+// hidden-information boundary (ADR 0033 §3) and resolves these IDs
+// against the seat's own filtered view; handing it characteristics
+// read off the authoritative game would be the one thing that
+// boundary exists to prevent.
+type TargetCandidate struct {
+	// ID is the player's seat ID, or the card's instance ID.
+	ID uuid.UUID
+	// Player is true when the candidate is a seat rather than an
+	// object.
+	Player bool
+}
+
+// TargetOrder prices one candidate target for the enumerating seat.
+// Higher sorts earlier; the sort is STABLE, so equal scores keep the
+// engine's own candidate order and two enumerations of one board
+// always produce the same move list.
+//
+// It is an ordering rather than a filter: nothing it returns can add
+// or remove a legal target, only decide which ones reach the cap.
+type TargetOrder func(c TargetCandidate) float64
 
 const (
 	defaultMaxExpansionPerSource = 12
