@@ -405,7 +405,7 @@ func sorcerySpeedOpen(g *game.Game, seat uuid.UUID) bool {
 // they cannot disagree again.
 func anyBlockingChoiceOpen(g *game.Game) bool {
 	for _, c := range g.PendingChoices {
-		if c != nil && game.ChoicePromptBlocksTable(c) {
+		if c != nil && g.ChoicePromptBlocksTable(c) {
 			return true
 		}
 	}

@@ -3194,7 +3194,14 @@ that question — the gated verbs ask it and so does `internal/legal`,
 which is what keeps the bots and the engine from disagreeing the way
 they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
-that does not (ADR 0018 §6). **Two:** a case in `choiceMoves`
+that does not (ADR 0018 §6). That row answers for the KIND; a live
+PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
+adds two one-way narrowings on top of it — `PendingChoice.ForceBlocks`,
+a prompt that asks to block anyway (#567), and
+`PendingChoice.GuardsStackItem`, a prompt whose decline counters an
+object still on the stack (#951, `counter_unless_paid.go`). Both can
+only make a prompt block, never let one through. **Two:** a case in
+`choiceMoves`
 (`server/internal/legal/choices.go`), or every seat owing one is
 offered no answer *and* no pass — the #499 / #618 wedge that stopped
 real tables on Door of Destinies and Cavern of Souls.

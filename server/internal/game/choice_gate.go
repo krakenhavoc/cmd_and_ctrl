@@ -85,6 +85,25 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //	the cursor: the answer spends from the chooser's pool or runs
 //	OnDecline, neither of which reads the step.
 //
+// That row is about the KIND, and it is not the whole answer for a
+// PROMPT of that kind. Two narrowings sit on top of it, both read by
+// Game.ChoicePromptBlocksTable below, and neither able to loosen the
+// gate for anything:
+//
+//   - #567: a prompt may ask to block anyway
+//     (PendingChoice.ForceBlocks) — cumulative upkeep's "sacrifice
+//     this unless you pay", asked of the ACTIVE player during their
+//     own upkeep.
+//   - #951: a prompt whose decline counters an object still on the
+//     stack blocks while that object is there
+//     (PendingChoice.GuardsStackItem, counter_unless_paid.go). Ward
+//     borrows Rhystic Study's prompt and none of §6's reasoning
+//     survives the move: resolving the guarded spell ANSWERS the
+//     question by doing it, for free and against the payer. Derived
+//     by the engine from what the prompt is about rather than
+//     declared by each card, because six counter-unless-pays cards
+//     shipped before it and all six were wrong the same way.
+//
 // mana_pick is deliberately NOT one of them, though it looks like a
 // candidate. The engine does not treat it as a background decision:
 // legal offers nothing else while it is open, and the auto-tapper
@@ -105,7 +124,11 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // one answer to "does this prompt stop the table" and no second list
 // to drift from.
 var choiceGateDecisions = map[PendingChoiceKind]bool{
-	// The ADR 0018 §6 allowlist, entire.
+	// The ADR 0018 §6 allowlist, entire — and a statement about the
+	// KIND only. A pay_unless prompt still blocks when it asks to
+	// (ForceBlocks, #567) or when its decline counters an object on
+	// the stack (GuardsStackItem, #951); see the doc block above and
+	// counter_unless_paid.go.
 	PendingChoicePayUnless: false,
 
 	// Everything else stops the table.
@@ -181,19 +204,34 @@ func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 }
 
 // ChoicePromptBlocksTable is ChoiceBlocksTable for one live prompt:
-// the kind's answer, unless that prompt has asked to block anyway.
+// the kind's answer, unless the prompt has asked to block anyway
+// (#567) or is guarding an object still on the stack (#951).
 //
 // Everything that asks "does this stop the table" about an OUTSTANDING
 // choice goes through here (blockingChoiceLocked below, and
-// legal.anyBlockingChoiceOpen), so the per-prompt override cannot
+// legal.anyBlockingChoiceOpen), so the per-prompt narrowings cannot
 // drift from the kind's answer the way #794's second list did.
 // ChoiceBlocksTable stays the answer for a KIND, which is what the
 // classification gate tests and what an author reasons about.
-func ChoicePromptBlocksTable(c *PendingChoice) bool {
+//
+// Both narrowings are ONE-WAY: they can only make a prompt block, so
+// the deny-by-default direction is intact and a kind classified
+// `true` is unaffected by anything either of them says.
+//
+// A method on *Game since #951, because the second narrowing is a
+// question about the board — is the guarded object still on the
+// stack? — and the answer has to be re-read rather than frozen at the
+// moment the prompt was queued. Keeping it inside this one predicate
+// is the whole of #794's lesson: the engine gate and `internal/legal`
+// must not each work it out.
+func (g *Game) ChoicePromptBlocksTable(c *PendingChoice) bool {
 	if c == nil {
 		return false
 	}
-	return c.ForceBlocks || ChoiceBlocksTable(c.Kind)
+	if c.ForceBlocks || ChoiceBlocksTable(c.Kind) {
+		return true
+	}
+	return g.choiceGuardsALiveStackItem(c)
 }
 
 // ClassifiedChoiceKinds lists every kind the gate has an explicit
@@ -217,7 +255,7 @@ func (g *Game) blockingChoiceLocked() *PendingChoice {
 		if c == nil {
 			continue
 		}
-		if !ChoicePromptBlocksTable(c) {
+		if !g.ChoicePromptBlocksTable(c) {
 			continue
 		}
 		return c

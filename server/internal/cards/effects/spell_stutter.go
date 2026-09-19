@@ -62,16 +62,12 @@ func init() {
 			if target == nil {
 				return nil
 			}
-			victim := target.Controller
 			tax := 2 + b38FaeriesYouControl(ctx.Game, item.Controller)
 			cost := "{" + strconv.Itoa(tax) + "}"
-			return PayUnless{
-				Chooser:  victim,
+			return CounterUnlessPaid{
+				StackID:  stackID,
 				Cost:     cost,
 				Question: "Spell Stutter — pay " + cost + " or your spell is countered",
-				OnDecline: func(ctx *Context) error {
-					return CounterTarget{StackID: stackID}.Apply(ctx)
-				},
 			}.Apply(ctx)
 		},
 	})

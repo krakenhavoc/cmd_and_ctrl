@@ -47,14 +47,10 @@ func init() {
 			if target == nil {
 				return nil
 			}
-			victim := target.Controller
-			return PayUnless{
-				Chooser:  victim,
+			return CounterUnlessPaid{
+				StackID:  stackID,
 				Cost:     "{1}",
 				Question: "Daze — pay {1} or your spell is countered",
-				OnDecline: func(ctx *Context) error {
-					return CounterTarget{StackID: stackID}.Apply(ctx)
-				},
 			}.Apply(ctx)
 		},
 	})

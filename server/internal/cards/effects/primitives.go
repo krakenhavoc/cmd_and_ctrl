@@ -673,6 +673,52 @@ func (p PayUnless) Apply(ctx *Context) error {
 		})
 }
 
+// CounterUnlessPaid is "counter <StackID> unless its controller pays
+// <Cost>" — Daze, Dazzling Denial, Izzet Charm's first mode, Mystic
+// Confluence's first mode, Spell Stutter, and ward's mana leg.
+//
+// USE THIS RATHER THAN PayUnless WITH A CounterTarget DECLINE. It is
+// the same CR 118.12 prompt, and the difference is the whole of #951:
+// a pay-unless whose decline counters an object on the stack must
+// stop the table while it is unanswered, because resolving that
+// object answers the question by doing it. The engine derives the
+// halt from the guarded object (Game.QueueCounterUnlessPaidForEffect,
+// game/counter_unless_paid.go); a card that hand-rolls the shape out
+// of PayUnless gets the Rhystic Study latitude instead and the spell
+// resolves for free. Six cards did exactly that before this existed.
+//
+// It also absorbs the two checks every one of those six spelled out:
+// an object that has already left the stack raises no prompt at all
+// (there is nothing to counter and so nothing to charge for), and the
+// decline re-checks before countering.
+type CounterUnlessPaid struct {
+	// StackID is the object to counter — the "that spell".
+	StackID uuid.UUID
+
+	// Cost is the printed payment ("{1}", "{2}").
+	Cost string
+
+	// Question is the prompt header.
+	Question string
+
+	// Chooser overrides "its controller", which is what the engine
+	// reads off the guarded object when this is left zero. Ward sets
+	// it: CR 702.21a asks the player who cast the spell that targeted
+	// the warded permanent, and the trigger captured that player when
+	// the targeting event fired.
+	Chooser uuid.UUID
+}
+
+func (c CounterUnlessPaid) Apply(ctx *Context) error {
+	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+		StackItem: c.StackID,
+		Chooser:   c.Chooser,
+		Source:    ctx.Source(),
+		Cost:      c.Cost,
+		Question:  c.Question,
+	})
+}
+
 // EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
 // Marauder), "each other player sacrifices a creature" (Grave Pact) or
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR
