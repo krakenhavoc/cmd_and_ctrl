@@ -122,6 +122,65 @@ func TestMalcolmIgnoresNonPirateDamage(t *testing.T) {
 	}
 }
 
+// Malcolm prints "deal damage", not "deal combat damage" — a
+// Pirate's noncombat damage should still make a Treasure.
+func TestMalcolmTriggersOnNoncombatPirateDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Malcolm, Keen-Eyed Navigator",
+		"Legendary Creature — Siren Pirate", malcolmNavigatorOrc, false)
+	pirate := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() { _ = g.DealDamageToPlayerForEffect(pirate, victim.ID, 1) })
+	passPriorityAroundTable(t, g)
+
+	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 {
+		t.Errorf("noncombat damage from a Pirate you control should still make a Treasure")
+	}
+}
+
+// "for each opponent dealt damage": the count is opponents damaged,
+// not Pirates that dealt the damage — two Pirates hitting two
+// DIFFERENT opponents in one batch make two Treasures, and two
+// Pirates hitting the SAME opponent make one, not two.
+func TestMalcolmCountsOpponentsDamagedNotPiratesThatDealtDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, v1, v2 := g.Seats[0], g.Seats[1], g.Seats[2]
+	pushCatalogPermanent(g, me.ID, "Malcolm, Keen-Eyed Navigator",
+		"Legendary Creature — Siren Pirate", malcolmNavigatorOrc, false)
+	p1 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+	p2 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(p1, v1.ID, 1)
+		_ = g.DealDamageToPlayerForEffect(p2, v2.ID, 1)
+	})
+	passPriorityAroundTable(t, g)
+
+	if n := countBattlefieldNamed(g, me.ID, "Treasure"); n != 2 {
+		t.Errorf("two Pirates hitting two different opponents should make 2 Treasures, got %d", n)
+	}
+}
+
+func TestMalcolmCollapsesTwoPiratesHittingTheSameOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Malcolm, Keen-Eyed Navigator",
+		"Legendary Creature — Siren Pirate", malcolmNavigatorOrc, false)
+	p1 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+	p2 := pushCatalogPermanent(g, me.ID, "Corsair", "Creature — Human Pirate", "", false)
+
+	g.WithWriteLock(func() {
+		_ = g.DealDamageToPlayerForEffect(p1, victim.ID, 1)
+		_ = g.DealDamageToPlayerForEffect(p2, victim.ID, 1)
+	})
+	passPriorityAroundTable(t, g)
+
+	if n := countBattlefieldNamed(g, me.ID, "Treasure"); n != 1 {
+		t.Errorf("two Pirates hitting the same opponent should make 1 Treasure, got %d", n)
+	}
+}
+
 func TestScroungingSkyrayGrowsOnDiscard(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

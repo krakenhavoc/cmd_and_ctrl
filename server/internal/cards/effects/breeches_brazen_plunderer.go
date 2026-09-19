@@ -23,14 +23,20 @@ import (
 // relaxation that makes an off-colour steal actually usable in a
 // two-colour deck.
 //
-// "One or more … deal damage to your opponents" is CR 603.2c's
-// per-player collapse (#784): the engine still emits one damage
-// event per source, but OncePerBatchPerPlayer fires this trigger at
-// most once per opponent per damage batch, so two Pirates connecting
-// with the SAME opponent in one combat damage step now exile exactly
-// one card from them, matching the printed card. Two Pirates hitting
-// TWO DIFFERENT opponents still correctly produce two triggers, one
-// per opponent.
+// "One or more … deal damage to your opponents" — no "combat" in
+// the printed text, so a Pirate's non-combat damage (an activated or
+// triggered ability, not just an attack) counts too:
+// damagedOpponentByAnyDamage, not damagedOpponent.
+//
+// It is also CR 603.2c's per-player collapse (#784): the engine
+// still emits one damage event per source, but OncePerBatchPerPlayer
+// fires this trigger at most once per opponent per damage batch, so
+// two Pirates connecting with the SAME opponent in one batch now
+// exile exactly one card from them, matching the printed card. Two
+// Pirates hitting TWO DIFFERENT opponents in the same batch still
+// correctly produce two separate triggers, one per opponent — which
+// is what "exile the top card of EACH of those opponents' libraries"
+// needs, since each trigger exiles from its own one victim.
 //
 // Partner is a deck-construction rule, not a game action, and is
 // not modelled.
@@ -45,7 +51,7 @@ func init() {
 			OncePerBatchPerPlayer(game.TriggeredAbility{
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					victim := damagedOpponent(ev, source.Controller, g)
+					victim := damagedOpponentByAnyDamage(ev, source.Controller, g)
 					if victim == uuid.Nil {
 						return false
 					}

@@ -19,12 +19,18 @@ import (
 // cards — the ramp half of the same attack. Both partners in the
 // same deck is the intended line.
 //
-// "One or more … deal damage to your opponents" is CR 603.2c's
-// per-player collapse (#784): OncePerBatchPerPlayer fires this
-// trigger at most once per opponent per damage batch, matching the
-// printed "for each opponent dealt damage" — three Pirates into
-// three players still makes three Treasures, and three Pirates into
-// the SAME player now makes one, not three.
+// "One or more … deal damage to your opponents" — no "combat" in
+// the printed text, so a Pirate's non-combat damage counts too:
+// damagedOpponentByAnyDamage, not damagedOpponent.
+//
+// It is also CR 603.2c's per-player collapse (#784):
+// OncePerBatchPerPlayer fires this trigger at most once per opponent
+// per damage batch, matching the printed "for each opponent dealt
+// damage" — the count is opponents damaged, not Pirates that dealt
+// the damage. Three Pirates into three DIFFERENT opponents still
+// makes three Treasures (one trigger per opponent, one Treasure
+// each), and three Pirates into the SAME opponent now makes one, not
+// three.
 //
 // Partner is a deck-construction rule, not a game action, and is
 // not modelled.
@@ -37,7 +43,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if damagedOpponent(ev, source.Controller, g) == uuid.Nil {
+				if damagedOpponentByAnyDamage(ev, source.Controller, g) == uuid.Nil {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.Source)
