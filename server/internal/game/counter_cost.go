@@ -478,7 +478,7 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		// specMatchLocked(..., false), not targetLegalLocked: choosing
 		// a permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
-		if rc.From != nil && !g.specMatchLocked(playerID, rc.From, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if rc.From != nil && !g.specMatchLocked(SourceChooser(playerID), rc.From, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return counterPayment{}, ErrIllegalTarget
 		}
 		if c.Counters[kind] < n {

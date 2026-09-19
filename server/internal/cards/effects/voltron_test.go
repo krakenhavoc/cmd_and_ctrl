@@ -506,10 +506,10 @@ func TestUrilAndSigardaCarryEnforcedHexproof(t *testing.T) {
 			if c.InstanceID != uril {
 				continue
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, opp.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(opp.ID)) {
 				t.Error("an opponent may target Uril despite hexproof")
 			}
-			if !game.CanBeTargetedBy(c, game.ZoneBattlefield, me.ID) {
+			if !game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(me.ID)) {
 				t.Error("Uril's own controller may not target him — hexproof is not shroud")
 			}
 		}

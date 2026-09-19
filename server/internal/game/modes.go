@@ -1,7 +1,5 @@
 package game
 
-import "github.com/google/uuid"
-
 // modes.go — modal spells, triggers and activated abilities
 // (CR 700.2). A card with "Choose one —" / "Choose two —" text
 // declares a ModeSpec: the option labels, how many must be chosen,
@@ -198,16 +196,18 @@ func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec) {
 // choosableModeOptionsLocked lists the option indexes a chooser may
 // pick right now: every option, minus those whose clause list cannot
 // be filled from the current board (CR 603.3d — an option with no
-// legal target is not on offer). `caster` is the chooser.
+// legal target is not on offer). `src` names the spell or ability
+// doing the choosing, because whether a clause is fillable depends on
+// the source under CR 702.16b as well as on the chooser (#662).
 //
 // Caller must hold g.mu.
-func (g *Game) choosableModeOptionsLocked(caster uuid.UUID, ms *ModeSpec) []int {
+func (g *Game) choosableModeOptionsLocked(src TargetSource, ms *ModeSpec) []int {
 	if ms == nil {
 		return nil
 	}
 	out := make([]int, 0, len(ms.Options))
 	for i, o := range ms.Options {
-		if o.Targets != nil && g.anyClauseUnfillableLocked(caster, AnnouncedClauses(o.Targets, nil, nil)) {
+		if o.Targets != nil && g.anyClauseUnfillableLocked(src, AnnouncedClauses(o.Targets, nil, nil)) {
 			continue
 		}
 		out = append(out, i)
@@ -234,11 +234,11 @@ func (s *StackItem) ModeLabels() []string {
 }
 
 // ChoosableModeOptionsForEffect is choosableModeOptionsLocked on the
-// *ForEffect surface: which of a ModeSpec's options `chooser` could
-// take right now, for callers already under g.mu — the bot's move
-// enumerator and the protocol projection.
-func (g *Game) ChoosableModeOptionsForEffect(chooser uuid.UUID, ms *ModeSpec) []int {
-	return g.choosableModeOptionsLocked(chooser, ms)
+// *ForEffect surface: which of a ModeSpec's options the spell or
+// ability `src` could take right now, for callers already under g.mu
+// — the bot's move enumerator and the protocol projection.
+func (g *Game) ChoosableModeOptionsForEffect(src TargetSource, ms *ModeSpec) []int {
+	return g.choosableModeOptionsLocked(src, ms)
 }
 
 // EnoughChoosableModes reports whether `n` takeable options can fill a

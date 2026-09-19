@@ -94,7 +94,10 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	// that case the copy keeps the original's targets and is
 	// countered by game rules on resolution, which is the printed
 	// outcome rather than a wedged prompt.
-	lt := g.legalTargetsLocked(controller, spec)
+	// The copy's source is the copied SPELL (CR 707.10 — the copy has
+	// its characteristics), not the player making the copy, so
+	// protection is tested against the original's colour and type.
+	lt := g.legalTargetsLocked(SourceObject(controller, &src), spec)
 	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 		g.createSpellCopyLocked(src, item, controller, item.Targets)
 		return nil
@@ -249,7 +252,11 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateTargetsLocked(cf.controller, cf.spec, targets); err != nil {
+	// A SNAPSHOT, deliberately: the original spell can be countered
+	// between the prompt and the answer, and the copy's
+	// characteristics are the original's as they were (CR 707.10).
+	// cf.src is the value copy the frame kept for exactly this.
+	if err := g.validateTargetsLocked(SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src)), cf.spec, targets); err != nil {
 		return err
 	}
 	g.dequeueChoiceLocked(idx)

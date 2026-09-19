@@ -131,6 +131,13 @@ type damageTail struct {
 	// which is what the non-combat effect paths have always done.
 	actor uuid.UUID
 
+	// sourceLKI is the damage source's characteristics at
+	// event-creation time, copied onto ReplacementEvent.SourceLKI by
+	// damageThroughReplacementsLocked. CR 702.16e reads it; see the
+	// field's doc on ReplacementEvent for why a DamageSource lookup
+	// cannot answer the same question. #662.
+	sourceLKI *Characteristic
+
 	// deathtouch marks the target as destroyed-at-the-next-sweep
 	// (Card.MarkedLethalByDeathtouch, read by the CR 704.5h SBA).
 	// CR 702.2b is the rule: "a creature with toughness greater than
@@ -198,6 +205,7 @@ type damageTail struct {
 // Caller must hold g.mu.
 func (g *Game) combatDamageTailLocked(kind damageTailKind, sourceID uuid.UUID, step string) *damageTail {
 	t := &damageTail{kind: kind, combat: true, combatStep: step}
+	t.sourceLKI = g.damageSourceLKILocked(sourceID)
 	src := findBattlefieldCard(g, sourceID)
 	if src == nil {
 		return t
@@ -252,6 +260,12 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *
 	if sourceID == uuid.Nil {
 		return t
 	}
+	// #662: unlike deathtouch and lifelink, the LKI is read from
+	// WHATEVER ZONE holds the source. A Lightning Bolt is on the
+	// stack while it deals its damage and has never been on the
+	// battlefield, and its colour is exactly what CR 702.16e asks
+	// about.
+	t.sourceLKI = g.damageSourceLKILocked(sourceID)
 	src := findBattlefieldCard(g, sourceID)
 	if src == nil {
 		return t
@@ -261,6 +275,30 @@ func (g *Game) effectDamageTailLocked(kind damageTailKind, sourceID uuid.UUID) *
 		t.lifelinkTo = src.Controller
 	}
 	return t
+}
+
+// damageSourceLKILocked snapshots the damage source's
+// characteristics from WHATEVER ZONE holds it right now — CR 608.2h's
+// last-known information, taken at event-creation time so a CR 616
+// pause, an SBA sweep or a resolution that puts the source in a
+// graveyard cannot change the answer.
+//
+// Deliberately not findBattlefieldCard: a SPELL deals its damage from
+// the stack, and "protection from red" is mostly about spells.
+//
+// Returns nil for uuid.Nil and for a source in no zone at all, which
+// the matcher reads as "unknown source" and lets the damage through.
+//
+// Caller must hold g.mu.
+func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
+	if sourceID == uuid.Nil {
+		return nil
+	}
+	c, ok := g.LookupCardForEffect(sourceID)
+	if !ok {
+		return nil
+	}
+	return SourceCharacteristics(&c)
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued
@@ -283,6 +321,7 @@ func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *dam
 		combatStep: frame.CombatStep,
 		actor:      frame.SourceController,
 		deathtouch: frame.HasDeathtouch,
+		sourceLKI:  frame.SourceLKI,
 	}
 	if frame.SourceLifelink {
 		t.lifelinkTo = frame.SourceController
@@ -314,6 +353,13 @@ func damageTailFromFrame(kind damageTailKind, frame *DamageAssignmentFrame) *dam
 func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused bool, err error) {
 	if ev == nil {
 		return false, nil
+	}
+	// #662: the ONE place the source's last-known information moves
+	// from the tail (where every entry point already snapshots it,
+	// alongside deathtouch and lifelink) onto the event the CR 614
+	// pipeline sees. CR 702.16e's built-in reads it there.
+	if ev.SourceLKI == nil && ev.damageTail != nil {
+		ev.SourceLKI = ev.damageTail.sourceLKI
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {

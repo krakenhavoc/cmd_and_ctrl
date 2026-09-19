@@ -71,14 +71,14 @@ func TestWanderingRescuerHexproofGrantIsLive(t *testing.T) {
 	_, tapped := rescuerBoard(t, g, true)
 
 	spec := TargetCreature("target creature")
-	oppTargets := g.LegalTargetsForEffect(opp.ID, spec)
+	oppTargets := g.LegalTargetsForEffect(game.SourceChooser(opp.ID), spec)
 	for _, id := range oppTargets.Cards {
 		if id == tapped {
 			t.Fatalf("a tapped creature under the Rescuer is still offered to an opponent — the grant is inert")
 		}
 	}
 	// Its own controller is unaffected: hexproof is "your opponents".
-	mine := g.LegalTargetsForEffect(me.ID, spec)
+	mine := g.LegalTargetsForEffect(game.SourceChooser(me.ID), spec)
 	found := false
 	for _, id := range mine.Cards {
 		if id == tapped {
@@ -100,7 +100,7 @@ func TestWanderingRescuerGrantFollowsTapState(t *testing.T) {
 	_, untapped := rescuerBoard(t, g, false)
 
 	spec := TargetCreature("target creature")
-	lt := g.LegalTargetsForEffect(opp.ID, spec)
+	lt := g.LegalTargetsForEffect(game.SourceChooser(opp.ID), spec)
 	for _, id := range lt.Cards {
 		if id == untapped {
 			return
@@ -122,7 +122,7 @@ func TestWanderingRescuerGrantTracksALaterTap(t *testing.T) {
 
 	spec := TargetCreature("target creature")
 	offered := func() bool {
-		for _, id := range g.LegalTargetsForEffect(opp.ID, spec).Cards {
+		for _, id := range g.LegalTargetsForEffect(game.SourceChooser(opp.ID), spec).Cards {
 			if id == bear {
 				return true
 			}
@@ -162,7 +162,7 @@ func TestWanderingRescuerDoesNotProtectItself(t *testing.T) {
 	})
 	g.ReadSnapshot(func() {})
 
-	lt := g.LegalTargetsForEffect(opp.ID, TargetCreature("target creature"))
+	lt := g.LegalTargetsForEffect(game.SourceChooser(opp.ID), TargetCreature("target creature"))
 	for _, id := range lt.Cards {
 		if id == rescuer {
 			return

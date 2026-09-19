@@ -89,7 +89,7 @@ cmd_and_ctrl/
     ├── lobby.md         # lobby HTTP API reference
     ├── bot.md           # AI bot seat — user-facing guide (S31)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0071 designations that switch abilities on) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0072 protection) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -1222,6 +1222,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"shadow"` | Shadow (CR 702.28b) — attacker and blocker must both have it or both lack it |
 | `"horsemanship"` | Horsemanship (CR 702.31b) — requires horsemanship on the blocker |
 | `"skulk"` | Skulk (CR 702.118b) — blocker power cannot exceed attacker power |
+| `"protection from <quality>"` | Protection (CR 702.16) — #662, all four DEBT checks. The one PARAMETERISED token; see "Protection" below before writing one |
 
 Hexproof, shroud, indestructible and changeling are not combat
 keywords, but they ride the same `PrintedKeywords` slot and the same
@@ -1346,6 +1347,55 @@ trigger and the turn structure is already right.
 write flying/trample/deathtouch logic in the card file. The combat
 engine reads `HasKeyword(card, "flying")` and routes accordingly.
 Card files declare the strings; the engine does the rest.
+
+**Protection (CR 702.16, #662, [ADR 0072](docs/decisions/0072-protection.md)).**
+The one keyword whose token carries a PARAMETER, so it is the one
+keyword with a parser. Declare it like any other — in
+`PrintedKeywords` for printed protection, in `GrantToAttached` /
+`GrantKeywordUntilEOT` for a granted one — but write the token as
+`"protection from <quality>"` with the quality spelled the way the
+card prints it:
+
+```go
+PrintedKeywords: []string{"flying", "protection from Demons", "protection from Dragons"},
+Static:          []game.StaticAbility{GrantToAttached("protection from red", "protection from blue")},
+```
+
+Three rules, and all three exist so the grammar keeps exactly one
+owner (`server/internal/game/protection.go`):
+
+1. **One printed clause can be two abilities.** "Protection from
+   Demons and from Dragons" is two tokens (CR 702.16m), and each is
+   checked on its own. Never write a joined one.
+2. **The closed grammar is colours (`red`), card types (`artifacts`),
+   creature subtypes (`Demons`) and `everything`.** Anything else —
+   "monocolored", "the chosen player" — parses as NOTHING, so the
+   permanent gets no protection at all and the card keeps its ADR 0037
+   unimplemented flag. That is the honest answer, not a bug: do not
+   route round it with a bespoke static, declare the caveat.
+3. **Never parse a token yourself.** `game.ProtectionQualities(card)`
+   is the reader, `game.ProtectedFrom(card, chars)` is the predicate,
+   and `game.ProtectionFromColor(letter)` is how a colour PICK
+   (Mother of Runes, the `choose_color` prompt) becomes a token. The
+   client and the bot read the parse off `CardView.Protection`
+   instead, because the bot may not import `internal/game` at all.
+
+The four checks are engine-side and a card opts into none of them:
+targeting (`CanBeTargetedBy`, CR 702.16b), attachment
+(`attachmentLegalLocked`, CR 702.16c-d), damage (the
+`protectionPreventsDamageReplacement` built-in, CR 702.16e) and
+blocking (`BlockPairRefusalLocked`, CR 702.16f). **The quality is
+tested against the SOURCE OBJECT, never its controller** — a white
+player's Lightning Bolt is red, and an Equipment's own ability is
+colourless however red the creature wearing it is. If you add a new
+targeting path, it has to name its source: pass a `game.TargetSource`
+built with `SourceObject` (a live spell or permanent),
+`SourceSnapshot` (a value copy, when the object may be gone by the
+time the answer arrives) or `SourceChooser` (a cost payment, which
+does not target — a DECLARATION, not an omission).
+
+Player protection (Teferi's Protection, Leyline of Sanctity) is out
+of scope: `game.Player` carries no ability slice.
 
 ### Adding a "can't" card (S24+)
 

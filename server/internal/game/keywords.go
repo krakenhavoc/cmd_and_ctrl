@@ -28,11 +28,7 @@ package game
 //
 // Added in S18 sub-PR 2.
 
-import (
-	"strings"
-
-	"github.com/google/uuid"
-)
+import "strings"
 
 // canonicalKeywords is the set of keyword abilities this engine
 // actually enforces — the S18 table, one entry per consumer in the
@@ -114,6 +110,19 @@ var canonicalKeywords = map[string]bool{
 	// that prints one today (Sylvan Reclamation) is an instant,
 	// which has no badge row at all.
 	"cycling": true,
+	// protection (CR 702.16) joins with #662, in the same change that
+	// teaches all four of its DEBT checks to read it — targeting
+	// (CanBeTargetedBy, below), attachment (attach.go), damage
+	// (builtin_replacements.go) and blocking (block_legality.go).
+	//
+	// It is the table's one PARAMETERISED entry, and so the one entry
+	// that is not itself a wire token. The tokens are "protection
+	// from <quality>" and they are minted by ProtectionTokens
+	// (protection.go), which is also the only thing that parses them;
+	// CanonicalKeywords refuses a bare "protection", because a badge
+	// that does not say what it protects from is a promise the rules
+	// layer cannot keep. See docs/decisions/0072-protection.md §1.
+	KeywordProtection: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -127,58 +136,62 @@ var canonicalKeywords = map[string]bool{
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
 
-// CanBeTargetedBy reports whether `caster` may choose this card as
-// the target of a spell or ability they control, under the CR 702
+// CanBeTargetedBy reports whether the spell or ability `src`
+// describes may choose this card as a target, under the CR 702
 // protection-style keywords the engine honours:
 //
 //   - shroud (CR 702.18a) — can't be the target of spells or
 //     abilities AT ALL, its own controller's included.
 //   - hexproof (CR 702.11b) — can't be the target of spells or
 //     abilities your OPPONENTS control.
+//   - protection (CR 702.16b) — can't be the target of spells with
+//     the stated quality, or of abilities from a SOURCE with it.
 //
-// Two keywords that belong to the same family are deliberately
-// ABSENT, and each is absent for a structural reason rather than
-// for lack of time (see docs/decisions/0038-protection-style-keywords.md):
+// The three are not the same shape, and that is the whole reason
+// this function takes a TargetSource rather than a caster ID.
+// Hexproof asks who is casting; protection asks what is casting. A
+// white player's Lightning Bolt is red; a red player's Sol Ring
+// ability is colourless. #662 threaded the source through every
+// targeting call site so the second question could be asked here.
 //
-//   - ward — CR 702.21a makes ward a TRIGGERED ability, not a
-//     targeting restriction. A warded permanent is a perfectly
-//     legal target; the trigger then counters the spell unless its
-//     controller pays. Enforcing it here would be the wrong rule in
-//     the wrong place — it would refuse the target outright instead
-//     of offering the payment.
-//   - protection — CR 702.16b tests the quality against the SOURCE
-//     of the spell or ability. This choke point receives only the
-//     controller's ID and never the source object, so the test it
-//     needs cannot be expressed here at all. Tracked in #662.
+// Ward is still deliberately ABSENT, for the reason ADR 0038 §7
+// gives and #95 confirmed by shipping it elsewhere: CR 702.21a makes
+// ward a TRIGGERED ability, not a targeting restriction. A warded
+// permanent is a perfectly legal target; the trigger then counters
+// the spell unless its controller pays. Enforcing it here would
+// refuse the target outright instead of offering the payment. It
+// lives in cards/effects/ward.go.
 //
-// Both are also PARAMETERISED keywords ("ward {2}", "protection
-// from red") and Characteristic.Abilities is a []string of bare
-// tokens, so there is nowhere to put the cost or the quality.
+// Only the battlefield is checked. All three keywords are abilities
+// of a permanent (CR 113.6 — a continuous effect from a static
+// ability applies only while its source is on the battlefield, and
+// the printed abilities name a permanent), so a creature card
+// sitting in a graveyard that happens to print hexproof is a legal
+// target for Regrowth. Without this zone guard the off-battlefield
+// ability fallback — which reads the card's own printed Keywords —
+// would wrongly protect it there.
 //
-// Only the battlefield is checked. Both keywords are abilities of a
-// permanent (CR 113.6 — a continuous effect from a static ability
-// applies only while its source is on the battlefield, and the
-// printed abilities name a permanent), so a creature card sitting in
-// a graveyard that happens to print hexproof is a legal target for
-// Regrowth. Without this zone guard the off-battlefield HasKeyword
-// fallback — which reads the card's own printed Keywords — would
-// wrongly protect it there.
-//
-// Players are not covered: hexproof on a PLAYER (Leyline of
-// Sanctity) has no home yet, because Player carries no keyword
-// slice. TargetPlayer refs pass this gate by not reaching it.
+// Players are not covered: hexproof and protection on a PLAYER
+// (Leyline of Sanctity, Teferi's Protection) have no home yet,
+// because Player carries no keyword slice. TargetPlayer refs pass
+// this gate by not reaching it.
 //
 // nil card returns true: a caller that has lost the card has an
 // existence problem, not a targeting one, and the zone walk that
 // wraps this reports that separately.
-func CanBeTargetedBy(c *Card, zone ZoneKind, caster uuid.UUID) bool {
+func CanBeTargetedBy(c *Card, zone ZoneKind, src TargetSource) bool {
 	if c == nil || zone != ZoneBattlefield {
 		return true
 	}
 	if HasKeyword(c, "shroud") {
 		return false
 	}
-	if HasKeyword(c, "hexproof") && c.Controller != caster {
+	if HasKeyword(c, "hexproof") && c.Controller != src.Controller {
+		return false
+	}
+	// CR 702.16b. The pre-test is cheap and the snapshot is not, so
+	// a board with no protection on it pays one ability-list walk.
+	if HasProtection(c) && ProtectedFrom(c, src.Characteristics()) {
 		return false
 	}
 	return true
@@ -195,12 +208,50 @@ func CanBeTargetedBy(c *Card, zone ZoneKind, caster uuid.UUID) bool {
 // keeping the table in this package means the reader
 // (HasKeyword) and the writer (deck.printedKeywords) can never
 // drift on spelling. Added with the #317 / #319 / #320 fix.
+//
+// One printed clause can be more than one ability — "protection from
+// Demons and from Dragons" is two (CR 702.16m) — so a caller
+// scanning printed TEXT wants CanonicalKeywords below. This singular
+// form answers false for such a clause rather than picking one of
+// the two.
 func CanonicalKeyword(s string) (string, bool) {
-	kw := strings.ToLower(strings.TrimSpace(s))
-	if !canonicalKeywords[kw] {
+	kws, ok := CanonicalKeywords(s)
+	if !ok || len(kws) != 1 {
 		return "", false
 	}
-	return kw, true
+	return kws[0], true
+}
+
+// CanonicalKeywords is the plural form: the engine tokens one printed
+// keyword-ability clause stands for, or ("", false) for a clause the
+// engine does not enforce.
+//
+// Protection (CR 702.16) is the only keyword that can yield more than
+// one token, and the only one whose token carries a parameter. The
+// three readers that scan printed TEXT — deck.printedKeywords,
+// deck.keywordLines and coverage.keywordOnlyLine — call this, so what
+// the importer stamps and what the ADR 0037 coverage signal believes
+// can never drift. A quality protection.go's closed grammar cannot
+// parse yields NOTHING, which leaves the card flagged unimplemented
+// and errs weaker.
+//
+// A bare "Protection" is refused for the same reason: Scryfall's
+// keywords array carries it on every protection card and the quality
+// lives only in the oracle text, so taking the array at its word
+// would stamp a badge with nothing behind it (ADR 0038 §6 made the
+// same call for "Hexproof from").
+func CanonicalKeywords(s string) ([]string, bool) {
+	kw := strings.ToLower(strings.TrimSpace(s))
+	if kw == KeywordProtection {
+		return nil, false
+	}
+	if canonicalKeywords[kw] {
+		return []string{kw}, true
+	}
+	if toks, ok := ProtectionTokens(s); ok {
+		return toks, true
+	}
+	return nil, false
 }
 
 // HasKeyword reports whether the card has the named keyword. kw
@@ -229,19 +280,44 @@ func HasKeyword(c *Card, kw string) bool {
 	if c == nil || kw == "" {
 		return false
 	}
+	found := false
+	forEachAbilityToken(c, func(a string) bool {
+		if a == kw {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// forEachAbilityToken walks the card's ability tokens in the zone
+// rules HasKeyword documents, calling fn until it returns false.
+// Allocation-free, because it is on the targeting and combat hot
+// paths.
+//
+// Factored out of HasKeyword for ProtectionQualities (#662), which
+// asks the same question of the same list and must not grow a second
+// copy of the zone rules: a protection granted by an Equipment's
+// layer-6 static and a protection the card prints have to answer
+// alike, in every zone, or the four DEBT checks disagree with each
+// other.
+//
+// nil card walks nothing.
+func forEachAbilityToken(c *Card, fn func(token string) bool) {
+	if c == nil {
+		return
+	}
 	// Battlefield path: the layer engine populates `effective` on
-	// entry. The `EnteredBattlefieldAt > 0` guard is a defensive
-	// check for cards that have been on the battlefield in this
-	// game's lifetime but briefly have a stale/nil cache; in
-	// practice the recompute pass ensures `effective` is non-nil
-	// on battlefield cards before any consumer reads it.
+	// entry. In practice the recompute pass ensures `effective` is
+	// non-nil on battlefield cards before any consumer reads it.
 	if c.effective != nil {
 		for _, a := range c.effective.Abilities {
-			if a == kw {
-				return true
+			if !fn(a) {
+				return
 			}
 		}
-		return false
+		return
 	}
 	// CR 708.2a, ADR 0069: a face-down permanent has no text and so
 	// no keywords. CatalogKey already answers "" for it, but
@@ -249,27 +325,26 @@ func HasKeyword(c *Card, kw string) bool {
 	// catalog entirely — without this guard a face-down Ambush Viper
 	// would still have flash.
 	if c.FaceDownIsPermanent() {
-		return false
+		return
 	}
 	// Off-battlefield path: the card's own printed keywords first
 	// (S21 sub-PR 1 — token templates carry them on the Card, since
 	// a token has no oracle ID for the catalog to key on), then the
 	// catalog. Lookup-miss (non-catalog card) returns nil → no
-	// keywords → false.
+	// keywords.
 	for _, a := range c.Keywords {
-		if a == kw {
-			return true
+		if !fn(a) {
+			return
 		}
 	}
 	if CatalogPrintedKeywords == nil || c.OracleID == "" {
-		return false
+		return
 	}
 	for _, a := range CatalogPrintedKeywords(CatalogKey(*c)) {
-		if a == kw {
-			return true
+		if !fn(a) {
+			return
 		}
 	}
-	return false
 }
 
 // HasSummoningSickness reports whether the card is currently unable

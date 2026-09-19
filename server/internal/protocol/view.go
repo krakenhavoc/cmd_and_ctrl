@@ -902,6 +902,19 @@ type CardView struct {
 	// Colors is the effective color list (W/U/B/R/G), including layer-5
 	// changes. Absent means colorless; mana cost is not a color fallback.
 	Colors []string `json:"colors,omitempty"`
+	// Protection is this permanent's CR 702.16 protections, PARSED
+	// server-side (#662). The raw tokens are in Abilities like every
+	// other keyword; this is the same list with the quality pulled
+	// out, because protection is the only keyword whose ability
+	// carries a parameter and the grammar has exactly one owner
+	// (game/protection.go).
+	//
+	// Two consumers and the same reason for both. The client's badge
+	// row renders the quality rather than the raw token, and the bot
+	// may not import internal/game at all (ADR 0033 §3) — so the
+	// engine hands both the parse rather than letting either
+	// re-implement it.
+	Protection []ProtectionView `json:"protection,omitempty"`
 	// Power and Toughness are the parsed printed stats. Zero for
 	// non-creatures and for any card with non-numeric printed stats
 	// ("*", "1+*"). The client uses Power to label combat-panel
@@ -2038,6 +2051,15 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 			}
 			for ci := first; ci < len(zone.view.Cards); ci++ {
 				c := &zone.view.Cards[ci]
+				// #662: the source of a SPELL is the spell itself, so
+				// every legal-target stamp below names the card rather
+				// than only its caster — a creature with protection
+				// from red is off the picker for a red spell and on it
+				// for a white one. Computed once per card, and used by
+				// the granted-permission offer (ADR 0066) too: a card
+				// cast off somebody else's grant is still its own
+				// source.
+				src := castSourceOf(g, caster, c.InstanceID)
 				if zone.kind == game.ZoneGraveyard || zone.kind == game.ZoneLibrary {
 					// The card's own text, or a granted permission
 					// (ADR 0066) — the same merge the cast path makes,
@@ -2052,11 +2074,11 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					}
 					c.CastableHere = true
 					if granted != nil {
-						c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c, nil, []game.AlternativeCost{*granted})
+						c.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, nil, []game.AlternativeCost{*granted})
 					}
 				}
 				if ms := game.ModeSpecFor(c.oracleID); ms != nil {
-					c.Modes = viewOfModeSpec(g, caster, ms)
+					c.Modes = viewOfModeSpec(g, src, ms)
 				}
 				if ac := game.AdditionalCostFor(c.oracleID); !ac.Empty() {
 					c.AdditionalCost = &AdditionalCostView{
@@ -2100,13 +2122,13 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// disjoint sets, and showing the wrong one produces a
 				// button the server will reject.
 				if alts := game.AlternativeCostsOfferedFromZone(c.oracleID, zone.kind); len(alts) > 0 {
-					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, c, spec, alts)
+					c.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c, spec, alts)
 				}
 				if spec == nil {
 					continue
 				}
-				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
-				c.Clauses = viewOfClauses(g, caster, spec)
+				c.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
+				c.Clauses = viewOfClauses(g, src, spec)
 			}
 		}
 	}
@@ -2131,6 +2153,44 @@ func phyrexianSymbolsIn(costStr string) int {
 		return 0
 	}
 	return cost.PhyrexianSymbols()
+}
+
+// ProtectionView is one "protection from <quality>" on a permanent,
+// parsed by game.ProtectionQualities so nothing downstream has to
+// read the token. #662, CR 702.16.
+type ProtectionView struct {
+	// Printed is the quality as the CARD prints it — "red",
+	// "Demons", "artifacts", "everything". The badge tooltip's text,
+	// which is why the engine's token keeps the card's own spelling
+	// and plural instead of a canonical singular.
+	Printed string `json:"printed"`
+	// Kind is which characteristic of a source the quality is
+	// compared against: "color", "card_type", "subtype" or
+	// "everything". Stable tokens; see game.ProtectionQualityKind.
+	Kind string `json:"kind"`
+	// Value is what the rules actually compare — the wire colour
+	// ("R"), the lowercase card type ("artifact"), the canonical
+	// singular subtype ("Demon"). Empty for "everything", which
+	// compares nothing.
+	Value string `json:"value,omitempty"`
+}
+
+// viewOfProtection projects a card's parsed protections. Nil for the
+// overwhelming majority of cards, which have none.
+func viewOfProtection(c *game.Card) []ProtectionView {
+	qs := game.ProtectionQualities(c)
+	if len(qs) == 0 {
+		return nil
+	}
+	out := make([]ProtectionView, 0, len(qs))
+	for _, q := range qs {
+		out = append(out, ProtectionView{
+			Printed: q.Printed,
+			Kind:    q.Kind.String(),
+			Value:   q.Value,
+		})
+	}
+	return out
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
@@ -2192,7 +2252,7 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, c *CardView, tc *game.TapPerm
 // 601.2a moved it to the stack before the cost is paid), but a
 // picker that offers a card the cast will be rejected for choosing
 // is a trap rather than an affordance.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, card *CardView, base *game.TargetSpec, alts []game.AlternativeCost) []AlternativeCostView {
 	self := card.InstanceID
 	out := make([]AlternativeCostView, 0, len(alts))
 	for i := range alts {
@@ -2221,7 +2281,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base
 		}
 		if spec := game.TargetSpecUnderAlternativeCost(base, &ac); spec != nil {
 			v.TargetMode = spec.Mode
-			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, spec), spec)
+			v.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, spec), spec)
 		}
 		// The card-shaped half. SpecCandidatesForEffect, not
 		// LegalTargetsForEffect, for the same reason the additional
@@ -2256,7 +2316,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, card *CardView, base
 // viewOfModeSpec projects a modal card's options with each targeted
 // option's legal set from the caster's point of view. Caller must
 // hold g.mu.
-func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpecView {
+func viewOfModeSpec(g *game.Game, src game.TargetSource, ms *game.ModeSpec) *ModeSpecView {
 	out := &ModeSpecView{
 		Prompt:     ms.Prompt,
 		Min:        ms.Min,
@@ -2268,8 +2328,8 @@ func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpec
 		ov := ModeOptionView{Label: o.Label}
 		if o.Targets != nil {
 			ov.TargetMode = o.Targets.Mode
-			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(caster, o.Targets), o.Targets)
-			ov.Clauses = viewOfClauses(g, caster, o.Targets)
+			ov.LegalTargets = viewOfLegalTargets(g.LegalTargetsForEffect(src, o.Targets), o.Targets)
+			ov.Clauses = viewOfClauses(g, src, o.Targets)
 		}
 		out.Options = append(out.Options, ov)
 	}
@@ -2280,14 +2340,14 @@ func viewOfModeSpec(g *game.Game, caster uuid.UUID, ms *game.ModeSpec) *ModeSpec
 // with its own legal set and bounds. Nil for a single-clause
 // statement, where `legal_targets` alone is the whole answer and
 // every pre-#764 client path keeps working. Caller must hold g.mu.
-func viewOfClauses(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) []LegalTargetsView {
+func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) []LegalTargetsView {
 	if spec.ClauseCount() < 2 {
 		return nil
 	}
 	out := make([]LegalTargetsView, 0, spec.ClauseCount())
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		v := viewOfLegalTargets(g.LegalTargetsForEffect(caster, c), c)
+		v := viewOfLegalTargets(g.LegalTargetsForEffect(src, c), c)
 		v.Label = c.Label
 		out = append(out, *v)
 	}
@@ -3470,6 +3530,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// #662: the parsed half of Abilities. "Protection from Demons"
+	// names a card as loudly as the raw token does, and clearing one
+	// without the other would put the leak back.
+	out.Protection = nil
 	// S22: an alternative cost names the card as loudly as its mana
 	// cost does — "Overload {6}{U}" on a face-down card would give
 	// away the Cyclonic Rift.
@@ -3739,6 +3803,7 @@ func viewOfCard(c game.Card) CardView {
 		ScryfallID: c.ScryfallID,
 		TypeLine:   effectiveTypeLine(c, eff),
 		Colors:     append([]string(nil), eff.Colors...),
+		Protection: viewOfProtection(&c),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
@@ -4055,6 +4120,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	if len(raw) == 0 {
 		return nil
 	}
+	// #662: every target clause below is chosen BY this object — the
+	// permanent, or since #660 the hand card whose cycling ability
+	// this is — so the protection check has the source it needs.
+	abilitySrc := game.SourceObject(caster, &c)
 	var out []ActivatedAbilityView
 	for i, a := range raw {
 		if !game.AbilityFunctionsFromZone(a, zone) {
@@ -4106,14 +4175,17 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Targets != nil {
 			v.TargetMode = a.Targets.Mode
-			v.LegalTargets = abilityLegalTargets(g, caster, a.Targets)
-			v.Clauses = viewOfClauses(g, caster, a.Targets)
+			// #662: an activated ability's source is the permanent
+			// that has it, so the picker hides a creature with
+			// protection from that permanent's colour or type.
+			v.LegalTargets = abilityLegalTargets(g, abilitySrc, a.Targets)
+			v.Clauses = viewOfClauses(g, abilitySrc, a.Targets)
 		}
 		// #764: a modal activated ability announces its modes with
 		// its targets, so the menu needs the same picker a modal
 		// spell's hand card gets.
 		if a.Modes != nil {
-			v.Modes = viewOfModeSpec(g, caster, a.Modes)
+			v.Modes = viewOfModeSpec(g, abilitySrc, a.Modes)
 		}
 		out = append(out, v)
 	}
@@ -4219,8 +4291,25 @@ func counterCostOptions(g *game.Game, caster, sourceID uuid.UUID, rc *game.Count
 // clause. It applies the targeting gate (hexproof, shroud), so it is
 // only for clauses whose text says "target". A cost clause goes
 // through sacrificeCostOptions instead. Caller must hold g.mu.
-func abilityLegalTargets(g *game.Game, caster uuid.UUID, spec *game.TargetSpec) *LegalTargetsView {
-	return abilityClauseView(g.LegalTargetsForEffect(caster, spec), spec)
+func abilityLegalTargets(g *game.Game, src game.TargetSource, spec *game.TargetSpec) *LegalTargetsView {
+	return abilityClauseView(g.LegalTargetsForEffect(src, spec), spec)
+}
+
+// castSourceOf is the TargetSource for a card a player is about to
+// cast: the card itself, looked up by the wire instance ID the view
+// carries. Falls back to the chooser alone when the ID does not
+// resolve, which is the same posture every other lookup in this file
+// takes for a card that has moved under the projection.
+func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.TargetSource {
+	id, err := uuid.Parse(instanceID)
+	if err != nil {
+		return game.SourceChooser(caster)
+	}
+	c, ok := g.LookupCardForEffect(id)
+	if !ok {
+		return game.SourceChooser(caster)
+	}
+	return game.SourceObject(caster, &c)
 }
 
 // sacrificeCostOptions is the set of permanents that can pay an

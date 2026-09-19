@@ -588,6 +588,11 @@ func NewGame() *Game {
 	g.BuiltinReplacements = append(g.BuiltinReplacements,
 		commanderZoneReplacement,
 		regenerationShieldReplacement,
+		// #662, CR 702.16e. Order in this slice is not precedence —
+		// the protection built-in declares Preemptive, which is what
+		// puts it ahead of every other applicable replacement and
+		// keeps a charged prevention shield unspent (ADR 0072 §4).
+		protectionPreventsDamageReplacement,
 	)
 	return g
 }

@@ -204,6 +204,12 @@ func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
 // the seat can afford, capped at MaxExpansionPerSource.
 func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, perm *game.CastPermission) {
 	g, p := e.g, e.p
+	// #662: the spell IS its own source (CR 702.16b), so every legal
+	// set below is computed against the card's colour and type. An
+	// enumerator that passed only the seat would offer the bot a
+	// pro-red creature for its red spell and the server would refuse
+	// the move — the #347 / #544 failure mode.
+	castSrc := game.SourceObject(e.seat, &card)
 
 	// Timing (CR 307.1 / 702.8): instants and flash any time the seat
 	// holds priority; everything else needs the sorcery-speed window.
@@ -330,7 +336,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
 	if modeSpec != nil {
-		modeSets = e.legalModeSets(modeSpec)
+		modeSets = e.legalModeSets(castSrc, modeSpec)
 		if len(modeSets) == 0 {
 			return
 		}
@@ -417,7 +423,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, p
 			}
 			steps = openXCountedSteps(steps, bound)
 		}
-		targetSets := e.legalStepSets(steps, budget)
+		targetSets := e.legalStepSets(castSrc, steps, budget)
 		if len(targetSets) == 0 {
 			continue
 		}
@@ -578,12 +584,12 @@ func (e *enumerator) canPayExcluding(
 // legalModeSets lists every distinct mode selection of size
 // Min..Max, excluding any with more than one targeted option (the
 // engine's castTargetSpec rejects those).
-func (e *enumerator) legalModeSets(ms *game.ModeSpec) [][]int {
+func (e *enumerator) legalModeSets(src game.TargetSource, ms *game.ModeSpec) [][]int {
 	// ADR 0065 §6, "prefer the modes that have legal targets": an
 	// option whose clause cannot be filled is dropped before any
 	// combination is built, so the budget never goes on a selection
 	// the engine would refuse at announce.
-	options := e.g.ChoosableModeOptionsForEffect(e.seat, ms)
+	options := e.g.ChoosableModeOptionsForEffect(src, ms)
 	if !game.EnoughChoosableModes(len(options), ms) {
 		return nil
 	}
@@ -647,11 +653,11 @@ func (e *enumerator) legalModeSets(ms *game.ModeSpec) [][]int {
 // picks, in step order, capped at `budget` (#764, ADR 0065 §6). An
 // announcement with no steps yields the single empty set, which is
 // how an untargeted cast stays one move.
-func (e *enumerator) legalStepSets(steps []game.AnnouncedClause, budget int) [][]game.TargetRef {
+func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.AnnouncedClause, budget int) [][]game.TargetRef {
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
 		clause := steps[i].Clause
-		picks := e.legalTargetSets(&clause, budget)
+		picks := e.legalTargetSets(src, &clause, budget)
 		if len(picks) == 0 {
 			return nil
 		}
@@ -759,8 +765,14 @@ func announcedXCount(steps []game.AnnouncedClause, xSteps []int, targets []game.
 // lists: the empty list when Min is 0, then every k-subset of the
 // legal candidates for k in max(Min,1)..Max, players before cards,
 // stopping at budget entries.
-func (e *enumerator) legalTargetSets(spec *game.TargetSpec, budget int) [][]game.TargetRef {
-	lt := e.g.LegalTargetsForEffect(e.seat, spec)
+//
+// `src` is the spell or ability doing the targeting, not just the
+// seat: CR 702.16b tests protection against the SOURCE, so an
+// enumerator that passed only a seat would offer the bot a pro-red
+// creature as a target for its red spell and the server would then
+// refuse the move — the #347 / #544 failure mode.
+func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpec, budget int) [][]game.TargetRef {
+	lt := e.g.LegalTargetsForEffect(src, spec)
 	cands := make([]game.TargetRef, 0, len(lt.Players)+len(lt.Cards))
 	for _, id := range lt.Players {
 		cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})

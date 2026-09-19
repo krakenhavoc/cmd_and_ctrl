@@ -133,7 +133,7 @@ func TestAshesToAshesRejectsArtifactCreature(t *testing.T) {
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Targets: cardRefs(bear, golem)}); err != game.ErrIllegalTarget {
 		t.Fatalf("artifact creature: %v, want ErrIllegalTarget", err)
 	}
-	lt := g.LegalTargetsFor(me.ID, ashesToAshesOracle)
+	lt := g.LegalTargetsFor(game.SourceChooser(me.ID), ashesToAshesOracle)
 	if lt == nil || len(lt.Cards) != 1 || lt.Cards[0] != bear {
 		t.Errorf("legal set = %+v, want just the bear", lt)
 	}

@@ -241,9 +241,32 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// battlefield without one.
 		return !c.IsAura() || TargetSpecFor(CatalogKey(*c)) == nil
 	}
+	// CR 702.16c-d: a permanent with protection from a quality can't
+	// be enchanted, equipped or fortified by anything WITH that
+	// quality. Checked here, ahead of the catalogued-Aura branch
+	// below, because that branch answers with the Aura's own enchant
+	// clause and returns — a Pacifism's "target creature" is happily
+	// satisfied by a creature that has just gained protection from
+	// white, and the rule would never be asked.
+	//
+	// The test is against the ATTACHMENT, not against its controller:
+	// a red Aura falls off a pro-red creature whoever controls it.
+	//
+	// The two outcomes are already right and are not this function's
+	// business: attachmentSBALocked sends an illegal Aura to the
+	// graveyard (CR 704.5m) and merely unattaches an illegal
+	// Equipment or Fortification (CR 704.5n). #662.
+	if c.AttachedTo.Kind == TargetCard {
+		if idx := findCardOnBattlefield(g, c.AttachedTo.ID); idx >= 0 {
+			host := &g.Battlefield.Cards[idx]
+			if HasProtection(host) && ProtectedFrom(host, SourceCharacteristics(c)) {
+				return false
+			}
+		}
+	}
 	if c.IsAura() {
 		if spec := TargetSpecFor(CatalogKey(*c)); spec != nil {
-			return g.specMatchLocked(c.Controller, spec, c.AttachedTo, false)
+			return g.specMatchLocked(SourceChooser(c.Controller), spec, c.AttachedTo, false)
 		}
 	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") && !c.IsCreature() && !c.IsBattle() {
 		// CR 704.5p — "if any nonbattle, noncreature permanent

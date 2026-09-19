@@ -73,8 +73,12 @@ func (g *Game) refreshTargetChoicesLocked() {
 			continue
 		}
 		var (
-			spec    *TargetSpec
-			chooser = c.Chooser
+			spec *TargetSpec
+			// #662: the SOURCE, not just the chooser. Each frame
+			// already keeps a value copy of the object whose ability
+			// (or spell) is picking, which is what CR 702.16b tests
+			// the quality against.
+			src = SourceChooser(c.Chooser)
 		)
 		switch {
 		case c.pickTargetResume != nil:
@@ -82,15 +86,15 @@ func (g *Game) refreshTargetChoicesLocked() {
 			// ability's first — a multi-clause trigger re-reads
 			// whichever one the prompt belongs to.
 			spec = c.pickTargetResume.currentClause()
-			chooser = c.pickTargetResume.source.Controller
+			src = SourceObject(c.pickTargetResume.source.Controller, &c.pickTargetResume.source)
 		case c.copySpellResume != nil:
 			spec = c.copySpellResume.spec
-			chooser = c.copySpellResume.controller
+			src = SourceSnapshot(c.copySpellResume.controller, SourceCharacteristics(&c.copySpellResume.src))
 		}
 		if spec == nil {
 			continue
 		}
-		lt := g.legalTargetsLocked(chooser, spec)
+		lt := g.legalTargetsLocked(src, spec)
 		if len(lt.Players) > 0 || len(lt.Cards) > 0 {
 			c.PickTargetPlayers, c.PickTargetCards = lt.Players, lt.Cards
 			continue

@@ -24,7 +24,7 @@ func pushTypedCard(g *game.Game, owner uuid.UUID, name, typeLine, manaCost strin
 }
 
 func legalCards(g *game.Game, caster uuid.UUID, oracle string) map[uuid.UUID]bool {
-	lt := g.LegalTargetsFor(caster, oracle)
+	lt := g.LegalTargetsFor(game.SourceChooser(caster), oracle)
 	out := map[uuid.UUID]bool{}
 	if lt == nil {
 		return out
@@ -114,7 +114,7 @@ func TestTargetAnyOffersPlayersAndCreaturesOnly(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	bear := pushTypedCard(g, opp.ID, "Bear", "Creature — Bear", "{1}{G}")
 	rock := pushTypedCard(g, opp.ID, "Sol Ring", "Artifact", "{1}")
-	lt := g.LegalTargetsFor(me.ID, lightningBoltOracle)
+	lt := g.LegalTargetsFor(game.SourceChooser(me.ID), lightningBoltOracle)
 	if lt == nil {
 		t.Fatalf("Lightning Bolt has no legal-target set")
 	}

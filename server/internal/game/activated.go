@@ -804,7 +804,11 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+	// CR 702.16b: the SOURCE of an activated ability is the permanent
+	// that has it, not its controller. A red player activating a
+	// colourless Equipment's ability may still target a pro-red
+	// creature; a red permanent's ability may not (#662).
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), steps, params.Targets); err != nil {
 		return err
 	}
 
@@ -1098,7 +1102,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// permanent to pay a cost does not target it (CR 601.2h), so
 		// the CR 702 keyword gate must not apply — Carrion Feeder can
 		// still eat your own hexproof creature.
-		if !g.specMatchLocked(playerID, cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(SourceChooser(playerID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return nil, ErrIllegalTarget
 		}
 		// Paying the same permanent twice (self-sacrifice plus the

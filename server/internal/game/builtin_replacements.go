@@ -6,11 +6,12 @@ import "github.com/google/uuid"
 // effects — the ones that live in the rules themselves, not on
 // any particular card. Registered on every game at NewGame.
 //
-// Two today: commanderZoneReplacement (CR 903.9), refactored from
-// S13.1's inline applyCommanderZoneReplacementLocked, and
-// regenerationShieldReplacement (CR 701.19). Future built-ins (e.g.
-// the "if a card would be exiled by an effect that replaces it with
-// something else" meta-replacement) would live here too.
+// Three today: commanderZoneReplacement (CR 903.9), refactored from
+// S13.1's inline applyCommanderZoneReplacementLocked,
+// regenerationShieldReplacement (CR 701.19), and
+// protectionPreventsDamageReplacement (CR 702.16e). Future built-ins
+// (e.g. the "if a card would be exiled by an effect that replaces it
+// with something else" meta-replacement) would live here too.
 //
 // What makes a rule a BUILT-IN rather than a card's declared
 // effect: it is printed in the Comprehensive Rules rather than on any
@@ -135,4 +136,85 @@ var regenerationShieldReplacement = ReplacementEffect{
 		return g.controllerOfBattlefieldCardLocked(ev.CardID)
 	},
 	Label: "Regeneration shield",
+}
+
+// protectionPreventsDamageReplacement implements CR 702.16e: "any
+// damage that would be dealt by sources that have the stated quality
+// to a permanent or player with protection from that quality is
+// prevented."
+//
+// The third engine-owned replacement, and a built-in for the same
+// reason the other two are: it is printed in the Comprehensive Rules
+// rather than on any object. The protection is an ability of the
+// permanent being damaged, but the PREVENTION is a rule, and there is
+// no card for the pipeline to hang it on.
+//
+// PREEMPTIVE. It applies before every other applicable replacement
+// and asks no CR 616 ordering question. That is what stops a charged
+// prevention shield (effects.PreventNextDamage, "prevent the next 4
+// damage") from spending a charge absorbing damage that was never
+// going to be dealt — #420 — and it is a declared simplification of
+// CR 616.1, which would hand the ordering choice to the affected
+// permanent's controller. ADR 0072 §4 carries the argument and names
+// the cost (Phytohydra, which would rather its own replacement
+// applied).
+//
+// THE SOURCE IS READ FROM LAST-KNOWN INFORMATION, never from a
+// battlefield lookup. ev.SourceLKI is the source's characteristics as
+// they were when the damage event was created (CR 608.2h), which is
+// the only thing that answers for a SPELL — never on the battlefield
+// at all — and for an attacker already swept into a graveyard by the
+// time a CR 616 pause resumes. A nil LKI is an unknown source and
+// prevents nothing, which errs weaker.
+//
+// PLAYERS ARE NOT COVERED. ev.DamageTarget is a card ID or a player
+// ID and this looks only on the battlefield: a player with protection
+// (Teferi's Protection) has no ability slice to read. ADR 0072 §10.
+//
+// CR 615.12 ("this damage can't be prevented") is not modelled
+// anywhere in this engine, so it does not stop this either — the
+// pre-existing gap Banefire's caveat already names.
+//
+// No Controller: CR 616.1 would ask the affected permanent's
+// controller, and a preemptive effect is never ordered against
+// anything, so there is nobody to ask.
+var protectionPreventsDamageReplacement = ReplacementEffect{
+	Watches:    []EventKind{EventDealDamage},
+	Preemptive: true,
+	AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
+		return g.protectionPreventsDamageLocked(ev)
+	},
+	Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+		// CR 615.1: prevented damage is not dealt at all — no
+		// EventDealDamage, no lifelink, no deathtouch, no "whenever ~
+		// is dealt damage" trigger. Cancel is exactly that.
+		ev.Cancel()
+		return nil
+	},
+	Label: "Protection",
+}
+
+// protectionPreventsDamageLocked is the built-in's AppliesTo: is the
+// damage target a battlefield permanent with protection from the
+// source this event's last-known information describes?
+//
+// Caller must hold g.mu.
+func (g *Game) protectionPreventsDamageLocked(ev *ReplacementEvent) bool {
+	if ev == nil || ev.Kind != RepEventDamage || ev.DamageAmount <= 0 {
+		return false
+	}
+	// A source-less event (a sandbox mark with no source, an effect
+	// that names none) prevents nothing: CR 702.16e is about a source
+	// WITH the quality, and an unknown one is not known to have it.
+	if ev.SourceLKI == nil {
+		return false
+	}
+	idx := findCardOnBattlefield(g, ev.DamageTarget)
+	if idx < 0 {
+		// Not a permanent: a player, or a permanent that has already
+		// left. Player protection has no home yet (ADR 0072 §10).
+		return false
+	}
+	c := &g.Battlefield.Cards[idx]
+	return HasProtection(c) && ProtectedFrom(c, ev.SourceLKI)
 }

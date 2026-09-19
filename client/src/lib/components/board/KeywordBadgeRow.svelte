@@ -20,9 +20,24 @@
   // the tile would mean a second row competing for the same two
   // pixels. They render first, in words rather than icons, because
   // "Elf" cannot be abbreviated into a glyph anyone would recognise.
+  //
+  // PROTECTION (#662) is the third kind of chip here, and the one
+  // keyword whose token carries a PARAMETER. It does not ride
+  // `abilities` with the rest: the badge abbreviates the QUALITY
+  // ("DEM" for Demons, "ALL" for everything) and the tooltip names it
+  // in full. The parse comes from the server on `card.protection` —
+  // the engine has exactly one protection grammar and the client is
+  // not a second copy of it. The raw tokens are filtered out of
+  // `abilities` so the same ability is not badged twice.
+  //
+  // Order on the row: chosen values, then protections, then the
+  // ordinary keyword icons. Words before glyphs, and the two facts a
+  // player most often has to check before pointing a spell at the
+  // permanent come first.
 
   import { chosenValueChips } from "../../chosenValues";
   import { KEYWORD_ICONS } from "../../keywordIcons";
+  import type { ProtectionView } from "../../protocol";
 
   interface Props {
     abilities?: string[];
@@ -30,11 +45,28 @@
     // a CardView so this component keeps taking only what it renders.
     chosenColor?: string;
     namedTribe?: string;
+    // #662, CR 702.16. The qualities the SERVER parsed; the client
+    // owns no protection grammar.
+    protection?: ProtectionView[];
   }
 
-  const { abilities = [], chosenColor, namedTribe }: Props = $props();
+  const { abilities = [], chosenColor, namedTribe, protection = [] }: Props = $props();
 
   const chosen = $derived(chosenValueChips({ chosen_color: chosenColor, named_tribe: namedTribe }));
+
+  // CR 702.16m: a permanent can have the same protection twice (two
+  // Swords of Fire and Ice on one creature). It is ONE quality for
+  // every rules check, and two identical badges would also be a
+  // duplicate `{#each}` key, which Svelte 5 throws on. Deduped here
+  // rather than server-side, because the ability list is the
+  // engine's truth and the row is a presentation of it.
+  const plain = $derived([
+    ...new Set((abilities ?? []).filter((kw) => !kw.toLowerCase().startsWith("protection from "))),
+  ]);
+  const protections = $derived([
+    ...new Map((protection ?? []).map((p) => [p.printed.toLowerCase(), p])).values(),
+  ]);
+  const anyBadges = $derived(plain.length > 0 || protections.length > 0 || chosen.length > 0);
 
   const KEYWORD_LONG: Record<string, string> = {
     flying: "Flying",
@@ -60,9 +92,22 @@
   function fallbackShort(kw: string): string {
     return kw.slice(0, 3).toUpperCase();
   }
+
+  // "Protection from Demons" — the tooltip a player reads. The
+  // quality keeps the card's own spelling and plural, which is why
+  // the server's token does too.
+  function protectionLabel(p: ProtectionView): string {
+    return `Protection from ${p.printed}`;
+  }
+
+  // The badge face. "Everything" reads better as ALL than as EVE, and
+  // it is the only quality that is not a characteristic.
+  function protectionShort(p: ProtectionView): string {
+    return p.kind === "everything" ? "ALL" : fallbackShort(p.printed);
+  }
 </script>
 
-{#if abilities.length > 0 || chosen.length > 0}
+{#if anyBadges}
   <div class="keyword-row" aria-label="keywords">
     {#each chosen as chip (chip.kind)}
       <span
@@ -73,7 +118,13 @@
         {chip.label}
       </span>
     {/each}
-    {#each abilities as kw (kw)}
+    {#each protections as p (p.printed)}
+      {@const long = protectionLabel(p)}
+      <span class="kw-badge kw-text kw-protection" title={long} aria-label={long}>
+        {protectionShort(p)}
+      </span>
+    {/each}
+    {#each plain as kw (kw)}
       {@const long = labelFor(kw)}
       {@const icon = KEYWORD_ICONS[kw]}
       {#if icon}
@@ -124,6 +175,12 @@
     width: 100%;
     height: 100%;
     display: block;
+  }
+  .kw-protection {
+    /* Protection is the only badge that is a shield rather than an
+       ability the creature uses, so it reads as a different thing. */
+    background: rgba(24, 48, 92, 0.85);
+    border-color: rgba(160, 200, 255, 0.45);
   }
   .kw-text {
     padding: 1px 3px;

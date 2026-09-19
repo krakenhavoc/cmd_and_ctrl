@@ -162,6 +162,14 @@ in `canonicalKeywords`, so cards printing them still flag as
 unimplemented. That is the honest answer until the whole of DEBT
 lands.
 
+*Superseded 2026-09-18 (S40, #662):* the protection half of this
+decision is now superseded in full by
+[ADR 0072 — Protection (CR 702.16)](0072-protection.md), which
+shipped it. Read that ADR, not this paragraph, for how protection is
+represented, where its four DEBT checks live, and what is out of
+scope. Ward is untouched and everything decision 7 says about ward
+still stands.
+
 *Amended 2026-09-16 (S30 closeout, #95):* the protection half of this
 decision is superseded by the protection ADR that
 [#662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/662) asks
@@ -262,6 +270,20 @@ tested against the SOURCE object (CR 702.16b) and neither
 receive one — and S30 did not attempt it. Protection-printing cards
 continue to flag as unimplemented, which keeps the DEBT problem
 (shipping only the T while the signal goes quiet) from arising.
+
+*Update, 2026-09-18 (S40, #662):* protection shipped, in
+[ADR 0072](0072-protection.md). The refactor decision 7 predicted is
+what it cost: `game.TargetSource` replaced the bare `caster
+uuid.UUID` on the targeting half of `targets.go` and every targeting
+call site now names its source. The quality lives in a parameterised
+token (`protection from red`) with one closed-grammar reader in
+`game/protection.go`, which is the half decision 7 called impossible
+because `Characteristic.Abilities` is a `[]string` — it turned out a
+token can carry its parameter as long as exactly one reader parses
+it. The DEBT-signal argument held: `canonicalKeywords` gained
+`protection` in the same change that enforced all four checks, and a
+quality the grammar cannot parse still mints no token and still
+flags the card.
 
 **Indestructible joined the table separately, in S25**
 ([#380](https://github.com/krakenhavoc/cmd_and_ctrl/pull/380),

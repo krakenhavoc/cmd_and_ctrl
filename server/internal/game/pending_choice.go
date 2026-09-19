@@ -820,6 +820,14 @@ type DamageAssignmentFrame struct {
 	// battlefield).
 	SourceController uuid.UUID
 
+	// SourceLKI is the attacker's characteristics at prompt-queue
+	// time, for the same died-before-resume reason as SourceLifelink:
+	// CR 702.16e prevents damage from a source with the quality, and
+	// the quality has to be read off the attacker as it was when it
+	// assigned, not off a card in a graveyard. Rides onto the damage
+	// event through damageTailFromFrame. #662.
+	SourceLKI *Characteristic `json:",omitempty"`
+
 	// SourceIsCommander is the attacker's commander flag at
 	// prompt-queue time, cached for the same died-before-resume
 	// reason as SourceLifelink. The trample-to-player resume path
@@ -2218,7 +2226,11 @@ func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, 
 func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 	for f.step < len(f.steps) {
 		clause := f.currentClause()
-		lt := g.legalTargetsLocked(f.source.Controller, clause)
+		// The frame's source is a VALUE COPY taken when the trigger
+		// was harvested, which is exactly the source CR 702.16b wants:
+		// the permanent may have left between the trigger and the
+		// prompt, and its qualities then are what count.
+		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source), clause)
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 			if clause.Min > 0 {
@@ -2377,7 +2389,7 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 		t.Mode, t.Slot = cur.Mode, cur.Slot
 		stamped = append(stamped, t)
 	}
-	if err := g.validateAnnouncedTargetsLocked(chooserID, frame.steps[frame.step:frame.step+1], stamped); err != nil {
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(chooserID, &frame.source), frame.steps[frame.step:frame.step+1], stamped); err != nil {
 		return err
 	}
 	if step.Distinct {

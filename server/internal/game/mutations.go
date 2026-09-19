@@ -751,7 +751,10 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateAnnouncedTargetsLocked(playerID, steps, params.Targets); err != nil {
+	// CR 702.16b: the source of a SPELL is the spell itself, so the
+	// quality protection is tested against is the card's own colour
+	// and type — not its caster's (#662).
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, &card), steps, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -3542,7 +3545,10 @@ func (g *Game) markDamageWithKind(source, cardID uuid.UUID, delta int, isCombat 
 		// delta straight onto DamageMarked, no CR 120.3 split, no
 		// combat riders. It is the sandbox verb, and a negative delta
 		// (undo a mark) is a legitimate use of it.
-		damageTail: &damageTail{kind: damageTailManualMark},
+		damageTail: &damageTail{
+			kind:      damageTailManualMark,
+			sourceLKI: g.damageSourceLKILocked(source),
+		},
 	}
 	paused, err := g.damageThroughReplacementsLocked(ev)
 	if err != nil {
@@ -6022,6 +6028,9 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 		SourceLifelink:    HasKeyword(atk, "lifelink"),
 		SourceController:  atk.Controller,
 		SourceIsCommander: atk.IsCommander,
+		// #662: CR 702.16e is read off the attacker as it was when it
+		// assigned, for the same reason lifelink and deathtouch are.
+		SourceLKI: SourceCharacteristics(atk),
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
