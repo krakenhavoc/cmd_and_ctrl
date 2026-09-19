@@ -2638,7 +2638,12 @@ unanswerable rather than being withdrawn and settling its leg. It is
 reachable only by an effect emptying a hand under an open prompt, which
 no catalog card does, and it predates this change; filed as
 [#1045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1045) rather
-than fixed here.
+than fixed here. *(Closed 2026-09-19 by #1045, and the prune is keyed
+by ZONE rather than by the verb — one function for the hand, the
+graveyard and the library picks alike. See
+[ADR 0018](0018-triggers-on-the-stack.md) §6's 2026-09-19 amendment;
+the withdrawal settles the leg through this section's `dropDefault`,
+unchanged.)*
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

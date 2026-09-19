@@ -481,13 +481,7 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 			// Re-checked against the LIVE zone, not the frozen
 			// candidate list: the prompt is asynchronous and a card
 			// can leave between the question and the answer.
-			z := g.findCardZoneLocked(id)
-			if z == nil || z.Kind != frame.zone {
-				return ErrCardNotFound
-			}
-			// Per-player zones carry an owner; the shared ones
-			// (battlefield, exile, stack) leave it nil.
-			if z.Owner != uuid.Nil && z.Owner != choice.FromPlayer {
+			if !g.pickStillInPickZoneLocked(choice, frame.zone, id) {
 				return ErrCardNotFound
 			}
 		}
@@ -510,6 +504,27 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 		return ErrChoiceSetRejected
 	}
 	return nil
+}
+
+// pickStillInPickZoneLocked is the live-zone re-check above on ONE
+// card: is `id` still in the zone `choice` picks from?
+//
+// Split out in #1045 because the ENGINE has to ask it too, of the
+// candidates rather than of the answer: pruneCardSetChoicesLocked
+// trims an open prompt to the cards a submitted answer would still be
+// accepted for. Two readings of "is this candidate still there" is the
+// pair that drifts, and the drift is a prompt offering an answer its
+// own resolver refuses — which for a floor of one is the #544 wedge.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) pickStillInPickZoneLocked(choice *PendingChoice, zone ZoneKind, id uuid.UUID) bool {
+	z := g.findCardZoneLocked(id)
+	if z == nil || z.Kind != zone {
+		return false
+	}
+	// Per-player zones carry an owner; the shared ones (battlefield,
+	// exile, stack) leave it nil.
+	return z.Owner == uuid.Nil || z.Owner == choice.FromPlayer
 }
 
 // ChooseCardsPickLegalLocked reports whether `picks` is an answer
