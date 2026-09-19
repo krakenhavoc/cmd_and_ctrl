@@ -514,7 +514,7 @@ Every "out of scope" deferral from the initial planning pass is pulled into this
 - [x] New top-level directory `bot/` or a cmd under `server/cmd/bot/` — picked `server/cmd/bot/` + `server/internal/bot/` in ADR 0004 (shared module, separate binary). Go, using `bwmarrin/discordgo`. Allow-list gate via `CMDCTRL_DISCORD_GUILD_IDS`.
 - [x] Slash command `/cc-invite [name]` — calls server `POST /games` with admin credentials (bot holds `CMDCTRL_ADMIN_TOKEN` via env), posts the invite link back to the channel (channel-visible embed; ephemeral-toggle deferred).
 - [ ] Slash command `/cc-invite-dm @user [name]` — deferred (needs invite-side pre-bind of DiscordID; not in MVP).
-- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX).
+- [x] Slash command `/cc-games` — ephemeral list of active/lobby games (invite tokens already stripped by `Lobby.List`). `/cc-end <id>` deferred (destructive, wants confirmation UX) — shipped as an S34 follow-up, [#614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/614).
 - [x] Bot deploys as a second systemd unit on the same VPS (S12 infra). Unit at `deploy/cmd-and-ctrl-bot.service`; env file separate from the server's (ADR 0004 §6).
 
 **Rich Presence:**

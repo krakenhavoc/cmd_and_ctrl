@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 )
 
@@ -28,6 +30,12 @@ const defaultRequestTimeout = 5 * time.Second
 var (
 	ErrServerUnreachable = errors.New("game server is not reachable")
 	ErrUnauthorized      = errors.New("bot is not authorized against the game server")
+	// ErrGameNotFound is returned by GetGame and ArchiveGame on a 404
+	// — either the ID is wrong or the game was deleted (not merely
+	// archived: GET /games/{id} and POST /games/{id}/archive both
+	// still find an archived game, since neither is the listing
+	// endpoint that filters them out).
+	ErrGameNotFound = errors.New("game not found")
 )
 
 // ServerClient is the bot's view of the game server over
@@ -248,6 +256,87 @@ func (c *ServerClient) ListGames(ctx context.Context) ([]lobby.GameMeta, error) 
 		return nil, fmt.Errorf("decode list: %w", err)
 	}
 	return lr.Games, nil
+}
+
+// GetGame calls GET /games/{id} with the cached admin session
+// (re-logging in once on a 401). Unlike ListGames, this reaches
+// archived games too — Lobby.Get does not filter them the way
+// Lobby.List does — which is what lets /cc-end tell "already
+// archived" apart from "no such game" before it asks for
+// confirmation.
+func (c *ServerClient) GetGame(ctx context.Context, id uuid.UUID) (lobby.GameMeta, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/games/"+id.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return lobby.GameMeta{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return lobby.GameMeta{}, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return lobby.GameMeta{}, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return lobby.GameMeta{}, statusErr(resp)
+	}
+
+	var meta lobby.GameMeta
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
+	}
+	return meta, nil
+}
+
+// ArchiveGame calls POST /games/{id}/archive with the cached admin
+// session (re-logging in once on a 401). The route is idempotent
+// server-side (lobby.Lobby.SetArchived): archiving an
+// already-archived game still returns 200 with the same
+// archived_at, rather than an error.
+func (c *ServerClient) ArchiveGame(ctx context.Context, id uuid.UUID) (lobby.GameMeta, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/games/"+id.String()+"/archive", nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return lobby.GameMeta{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return lobby.GameMeta{}, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return lobby.GameMeta{}, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return lobby.GameMeta{}, statusErr(resp)
+	}
+
+	var meta lobby.GameMeta
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
+	}
+	return meta, nil
 }
 
 // statusErr builds an informative error for an unexpected

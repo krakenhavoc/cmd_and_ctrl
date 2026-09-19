@@ -19,6 +19,7 @@ import (
 const (
 	CmdInvite = "cc-invite"
 	CmdGames  = "cc-games"
+	CmdEnd    = "cc-end"
 )
 
 // commandDefinitions returns the ApplicationCommand payload
@@ -45,11 +46,26 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 			Name:        CmdGames,
 			Description: "List active and lobby games on cmd_and_ctrl.",
 		},
+		{
+			Name:        CmdEnd,
+			Description: "Archive a cmd_and_ctrl game, after confirming (admin only).",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:         "game",
+					Description:  "Game to archive — id or name; autocompletes over active games.",
+					Type:         discordgo.ApplicationCommandOptionString,
+					Required:     true,
+					Autocomplete: true,
+					MaxLength:    100,
+				},
+			},
+		},
 	}
 }
 
-// RegisterCommands registers both slash commands on every guild
-// in guildIDs. A failure on one guild is logged and skipped
+// RegisterCommands registers every slash command in
+// commandDefinitions() on every guild in guildIDs. A failure on one
+// guild is logged and skipped
 // rather than aborting — a partial registration is better than
 // no registration if an operator added the bot to a guild
 // without the applications.commands scope.
@@ -74,29 +90,43 @@ type Handler struct {
 	client *ServerClient
 	log    *slog.Logger
 	// now is injected so tests can freeze the default-name
-	// timestamp used when /cc-invite is called without an arg.
+	// timestamp used when /cc-invite is called without an arg, and
+	// the /cc-end confirmation-expiry clock.
 	now func() time.Time
+	// confirmations holds outstanding /cc-end confirm/cancel
+	// buttons. In-memory only — same "no SIGHUP reload" trade-off
+	// ADR 0004 already accepts for the guild allow-list; a bot
+	// restart drops any confirmation mid-flight and the operator
+	// just runs /cc-end again.
+	confirmations *endConfirmations
 }
 
 // NewHandler wires the bot's configuration and HTTP client into
 // a dispatcher suitable for session.AddHandler.
 func NewHandler(cfg Config, client *ServerClient, log *slog.Logger) *Handler {
-	return &Handler{cfg: cfg, client: client, log: log, now: time.Now}
+	return &Handler{cfg: cfg, client: client, log: log, now: time.Now, confirmations: newEndConfirmations()}
 }
 
-// Dispatch is the entry point called on every InteractionCreate.
-// It gates on the guild allow-list (defense-in-depth; the
-// commands should not even be registered on non-allowed
-// guilds), then routes to per-command handlers.
+// Dispatch is the entry point called on every InteractionCreate. It
+// gates on the guild allow-list (defense-in-depth; the commands
+// should not even be registered on non-allowed guilds) for every
+// interaction type this bot handles, then routes to per-command,
+// per-autocomplete or per-component handlers.
 func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type != discordgo.InteractionApplicationCommand {
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand, discordgo.InteractionApplicationCommandAutocomplete, discordgo.InteractionMessageComponent:
+		// handled below
+	default:
 		return
 	}
-	data := i.ApplicationCommandData()
 
 	if !h.cfg.GuildAllowed(i.GuildID) {
-		h.log.Warn("rejected interaction from non-allowed guild", "guild", i.GuildID, "command", data.Name)
-		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("This bot is not authorized for this server."))
+		h.log.Warn("rejected interaction from non-allowed guild", "guild", i.GuildID, "type", i.Type.String())
+		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
+			_ = s.InteractionRespond(i.Interaction, autocompleteResponse(nil))
+		} else {
+			_ = s.InteractionRespond(i.Interaction, ephemeralResponse("This bot is not authorized for this server."))
+		}
 		return
 	}
 
@@ -108,11 +138,23 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
+	switch i.Type {
+	case discordgo.InteractionApplicationCommandAutocomplete:
+		h.dispatchAutocomplete(ctx, s, i)
+		return
+	case discordgo.InteractionMessageComponent:
+		h.dispatchComponent(ctx, s, i)
+		return
+	}
+
+	data := i.ApplicationCommandData()
 	switch data.Name {
 	case CmdInvite:
 		h.handleInvite(ctx, s, i, data)
 	case CmdGames:
 		h.handleGames(ctx, s, i)
+	case CmdEnd:
+		h.handleEnd(ctx, s, i, data)
 	default:
 		h.log.Warn("unknown command", "name", data.Name)
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Unknown command."))

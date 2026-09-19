@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-04-22 · Sprint S12.5
 **Revised:** 2026-09-16 · Operator runbook, First deploy step 2: guilds authorize `bot applications.commands`, not `applications.commands` alone (owner decision, for #613's DM invites) · Branch `feat/bot-provisioning-cd`
 **Revised:** 2026-09-16 · §6 and the operator runbook: the server env file is `/etc/cmd_and_ctrl/env`, both env files' owners are corrected, and "Rotating tokens" follows the CD-owned `bot.env` and the HomeLab-owned admin token (#251) · Branch `docs/adr-0004-env-path-251`
+**Revised:** 2026-09-19 · A third command, `/cc-end <game>` (confirm, then archive), joins `/cc-invite` and `/cc-games` — admin-only for now via two new optional env vars, `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`; the "host" half of #614's design point waits on S34 `games.created_by` (#1044). Details in `server/internal/bot/end.go` and AGENTS.md's Discord bot section, not repeated here · Issue #614
 
 ## Context
 
@@ -73,7 +74,10 @@ clients. Not worth it for the deploy-simplicity savings.
 Comma-separated snowflakes in a single env var. Enforced at:
 
 1. **Registration time.** `RegisterCommands` iterates the
-   allow-list and registers the two commands per allowed guild.
+   allow-list and registers every command in `commandDefinitions()`
+   per allowed guild (`/cc-invite`, `/cc-games`, and `/cc-end` as of
+   #614 — see the revision note above and AGENTS.md's Discord bot
+   section for the current list).
    A `GuildCreate` event on a non-listed guild logs a warning and
    skips registration; we do NOT auto-leave the guild because
    an operator may be mid-setup and have not yet added the new
