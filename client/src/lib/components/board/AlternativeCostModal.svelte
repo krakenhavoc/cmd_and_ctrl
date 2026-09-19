@@ -8,9 +8,20 @@
   // target. What differs is that this prompt is optional. An
   // additional cost is a demand — a card that says "discard a card"
   // gives you no way out — whereas "you MAY cast this spell for its
-  // overload cost" always leaves the printed cost available, so the
-  // printed cost is listed first as an ordinary option and is the
-  // default the keyboard confirms.
+  // overload cost" leaves the printed cost available, so it is listed
+  // first as an ordinary option and is the default the keyboard
+  // confirms.
+  //
+  // #1012: "leaves the printed cost available" is not true of every
+  // cast, and the modal used to assume it was. A flashback cast out
+  // of the graveyard may not be announced at the cost in the card's
+  // corner (CR 702.34b, rule 3 of validateCastPathLocked), so "Its
+  // mana cost" was a preselected default the server would refuse with
+  // ErrCastCostRequired. The server now says so —
+  // `alternative_cost_required` — and the row is dropped rather than
+  // disabled: an option that cannot ever be taken for this cast is
+  // not a choice the player declined, it is one the card does not
+  // offer here.
   //
   // It opens before every other cast prompt, and that is not a UI
   // preference the way DiscardCostModal's position is: overload and
@@ -38,6 +49,7 @@
     optionalCostPayOptions,
     optionalCostSelection,
     optionalCostsOf,
+    printedCostClaimable,
   } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
 
@@ -55,6 +67,8 @@
 
   const offers = $derived(card ? alternativeCostsOf(card) : []);
   const addOns = $derived(card ? optionalCostsOf(card) : []);
+  // #1012: whether "Its mana cost" is a row at all.
+  const printedOK = $derived(card ? printedCostClaimable(card) : true);
 
   // How many times each optional cost is being paid, by index. A Map
   // rather than an array so the wire shape is built in exactly one
@@ -93,13 +107,18 @@
 
   // undefined = the printed mana cost. Reset whenever a different
   // cast opens the prompt, so last turn's overload isn't preselected.
+  //
+  // #1012: when the printed cost is not claimable from this zone the
+  // default is the FIRST offer instead, because `undefined` there is
+  // an announcement the server refuses and the confirm button must
+  // never start on one.
   let chosen = $state<string | undefined>(undefined);
   let lastCardID: string | null = null;
   $effect(() => {
     const id = card?.instance_id ?? null;
     if (id !== lastCardID) {
       lastCardID = id;
-      chosen = undefined;
+      chosen = printedOK ? undefined : offers[0]?.key;
       paying = new Map();
     }
   });
@@ -135,25 +154,31 @@
         <span class="prompt-src" aria-hidden="true">alternative cost · CR 118.9</span>
       </h2>
       <p class="prompt-hint">
-        {offers.length > 0 ? "Cast this for which cost?" : "Pay any additional costs?"}
+        {offers.length === 0
+          ? "Pay any additional costs?"
+          : printedOK
+            ? "Cast this for which cost?"
+            : "Cast this for which cost? Its mana cost can't be paid from here."}
       </p>
       {#if offers.length > 0}
         <ul class="prompt-options">
-          <li>
-            <button
-              type="button"
-              class="prompt-opt"
-              class:on={chosen === undefined}
-              aria-pressed={chosen === undefined}
-              onclick={() => (chosen = undefined)}
-            >
-              <span class="prompt-radio" aria-hidden="true"></span>
-              <span class="name">Its mana cost</span>
-              {#if card.mana_cost}
-                <span class="note cost">{card.mana_cost}</span>
-              {/if}
-            </button>
-          </li>
+          {#if printedOK}
+            <li>
+              <button
+                type="button"
+                class="prompt-opt"
+                class:on={chosen === undefined}
+                aria-pressed={chosen === undefined}
+                onclick={() => (chosen = undefined)}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="name">Its mana cost</span>
+                {#if card.mana_cost}
+                  <span class="note cost">{card.mana_cost}</span>
+                {/if}
+              </button>
+            </li>
+          {/if}
           {#each offers as offer (offer.key)}
             <li>
               <button

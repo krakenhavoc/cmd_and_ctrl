@@ -2946,6 +2946,17 @@ afterwards). The bot enumerator walks it; a card file adds an offer and
 every price surface follows. Do not re-derive "what can this be cast
 for" anywhere else.
 
+Since #1012 the VIEW reads it too — `protocol.stampCastOffers` — so
+`alternative_costs` on the wire is that list verbatim, and the
+projection decides only how each entry LOOKS. Two things fall out of
+the same call and are derived nowhere else: `castable_here` is
+`no cant_cast && at least one claimable price` (#1015 — an empty list
+is a real "this card is not castable from here", not a card with no
+offers), and `alternative_cost_required` is "the nil entry is missing",
+i.e. the printed cost is not claimable from this zone. If you are
+writing a second answer to either, you are writing the bug those two
+issues were.
+
 **`{X}` and a free cast (CR 107.3b, #831):** a spell with `{X}` in its
 mana cost, cast while paying neither that cost nor an alternative cost
 that includes `X`, has exactly one legal `X` and it is `0` — cascade's

@@ -30,7 +30,7 @@
     impulseActionLabel,
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
-  import type { CastSourceZone } from "../../targeting";
+  import { printedCostClaimable, type CastSourceZone } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -133,10 +133,17 @@
 
   // The label is the printed clause when the card offers exactly one
   // way in ("Flashback {2}{R}"), so the button reads like the card.
-  // Two or more offers, or none, fall back to the verb — the Board's
+  // Two or more ways in, or none, fall back to the verb — the Board's
   // picker is about to ask anyway.
+  //
+  // #1012: "one way in" counts the PRINTED cost too. A Gravecrawler
+  // under an Underworld Breach has one offer and the printed cost
+  // beside it, and labelling that button "Escape" would name a price
+  // the player has not chosen yet.
   const castLabelFor = (card: CardView) =>
-    card.alternative_costs?.length === 1 ? card.alternative_costs[0].label || "cast" : "cast";
+    card.alternative_costs?.length === 1 && !printedCostClaimable(card)
+      ? card.alternative_costs[0].label || "cast"
+      : "cast";
 
   function castFromZone(card: CardView): void {
     if (!onCastCard || zoneKind !== "graveyard") return;

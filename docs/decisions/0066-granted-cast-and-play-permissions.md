@@ -681,7 +681,9 @@ is.
   per-card, so the answer is "no payable offer remains AND this zone
   requires one", which needs `zoneBoundAlternativeCosts` at the view and is
   a third thing #695 was not asked for. Filed as #1015; the predicate it
-  would call already exists.
+  would call already exists. **Closed by the #1012 / #1015 amendment at the
+  foot of this ADR**, which derives the bit from the price list rather than
+  adding a fourth reader of the predicate.
 
 ## Amendment — 2026-09-19 (#657): madness is the third keyword on the model, and `TimingFlash`'s first user
 
@@ -747,3 +749,110 @@ tell a madness exile from a Rest in Peace exile of the same discard,
 and offers the cast for both — a choice CR 616.1 gives the discarding
 player, where the two lines produce the same board state in this
 engine.
+
+## Amendment — 2026-09-19 (#1012 / #1015): the view reads the one price list, and the wire says where the printed cost stands
+
+The #978 amendment above gave exile the same announce surface a hand card
+has, by making `stampCastOffers` the one body every zone calls. It left one
+thing alone, and #673's `game.CastOffersForLocked` is what makes it fixable:
+`stampCastOffers` was still ANSWERING "which prices may this cast claim" on
+its own, and its answer differed from the engine's in two places and was
+silent in a third.
+
+### The view stops answering and starts reading (#1012)
+
+```go
+func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost
+```
+
+is now `protocol.stampCastOffers`'s only source for `alternative_costs`, as
+it already was `legal.castMovesFromZone`'s and as the gates inside it are
+`CastSpell`'s. What that deletes:
+
+- **The wholesale overwrite.** The grant's offer was stamped first and the
+  card's printed set replaced the whole slice, so a Gravecrawler in the
+  graveyard under an Underworld Breach showed only what the card prints and
+  the Breach's escape offer was missing from the picker — a cast
+  `resolveAlternativeCostLocked` would have accepted. Precedence is now
+  stated once, in the engine, in the order announce judges a claim: the
+  card's own first, the grant's after, a granted key the card also prints
+  dropped rather than listed twice.
+- **The second payability filter.** `viewOfAlternativeCosts` kept its own
+  call to `AlternativeCostPayableLocked` after #1004 put the rule in one
+  place; it is a projection now and decides nothing. Two copies of a filter
+  is the shape of the drift this amendment is about, even while they agree.
+- **The second question.** `grantedCast` used to answer "may this viewer
+  cast this, and at what price". It answers the first half only; the price
+  half is derived inside `CastOffersForLocked` from the same permission.
+
+`stampCastOffers` takes the `*CastPermission` rather than the offer it
+synthesises, which is what let `stampLegalTargets`'s graveyard and library
+gate stop reading the OFFER as a proxy for the permission. A grant that
+charges a flat price — Bolas's Citadel's life, an impulse grant that charges
+the printed cost — synthesises no offer, so that walk used to skip the card
+entirely and `stampGrantedPermissions` then painted `castable_here` back on
+with no clauses behind it. A library top under a Citadel now carries its
+modes, its target clause and its `cant_cast` like every other cast surface.
+
+### `castable_here` is derived, in one place, from that list plus the gate (#1015)
+
+The #695 amendment above recorded the debt: an offer is only stamped when it
+is payable, so a card whose ONLY path out of a zone is a filtered offer kept
+a cast surface with nothing behind it, and the announce path refused the
+click with `ErrCastCostRequired`. Escape is the canonical case — a graveyard
+too small to pay "exile N other cards" is a graveyard the card cannot be
+cast from at all.
+
+The bit is now one expression, in `stampCastOffers`, and set nowhere else:
+
+```go
+c.CastableHere = c.CantCast == "" && len(offers) > 0
+```
+
+An EMPTY price list is a real answer rather than a degenerate one, which is
+`CastOffersForLocked`'s own documented contract, and the #978 rule ("a card
+the gate refuses is not a cast surface") falls out as the other clause of
+the same sentence rather than as a separate assignment in a later pass.
+
+The exception #1015's checklist named holds because the engine's rules make
+it hold, not because the view special-cases it: a grant that charges the
+printed cost puts a nil entry in the list (rule 4 of
+`validateCastPathLocked`), so the card stays a cast surface with an
+unpayable offer beside it. The OTHER direction is pinned too, and it is the
+one a reader will get wrong: a card that DECLARES and PRICES its own zone
+owes that price even under such a grant (rule 3), so an unpayable bound
+offer leaves no cast at all.
+
+`stampGrantedPermissions`'s non-exile branch, which set the bit a second
+time behind a `cant_cast` guard, is now a `continue`. It also used to set it
+for a permission held by somebody ELSE — a cast surface on a card carrying
+no offers, no targets and no gate for any viewer — and that half is filed
+as #1022 rather than silently kept: the fix wants exile's per-viewer
+`castOffersFor` shape, and a public bit with a per-viewer answer is a wire
+decision, not a bug fix.
+
+### The wire says when the printed cost is not claimable (#1012)
+
+`castable_here` is one bit and means "you may cast this from here", never
+"you may cast this from here for the cost in the corner". The client
+inferred the second sentence from the shape of the offer list, which is
+right for a Faithless Looting and wrong for a Gravecrawler under a Breach.
+
+`CardView.alternative_cost_required` (`alternative_cost_required`, omitted
+when false) is the missing half, and it is exactly "the nil entry is not in
+`CastOffersForLocked`'s list". A flag rather than a nil-keyed entry in
+`alternative_costs`, for two reasons: the entry would break every client
+that walks that list, and the two questions are genuinely different — the
+list is what you may pay INSTEAD, the flag is whether the printed cost is
+still on the table. Stamped and stripped with `alternative_costs`, because
+it is only meaningful beside it.
+
+Client side, the flag is read in three places and inferred in none:
+`AlternativeCostModal` DROPS the "Its mana cost" row rather than greying it
+(an option that cannot be taken for this cast is not a choice the player
+declined) and defaults the picker to the first offer; the zone browser's
+one-way-in button label counts the printed cost as a way in; and
+`timing.ts`'s tooltip derivation weighs the printed target clause only when
+the printed cost is a price this cast may claim.
+
+Additive on the wire (`v` unchanged).

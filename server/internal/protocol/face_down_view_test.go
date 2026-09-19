@@ -228,19 +228,23 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Modes:               &ModeSpecView{Prompt: "Choose one", Min: 1, Max: 1, Options: []ModeOptionView{{Label: "mode"}}},
 		AdditionalCost:      &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts:    []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},
-		TapCost:             &TapCostView{Key: "convoke", Options: lt},
-		TargetCostNotes:     []string{"This spell costs {1} more to cast for each target beyond the first."},
-		PhyrexianSymbols:    1,
-		CastableHere:        true,
-		OptionalCosts:       []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
-		ExilePlay:           &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
-		ActivatedAbilities:  []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
-		HandAbilities:       []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
-		SpecialActions:      []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
-		SummoningSick:       true,
-		LoyaltyActivated:    true,
-		ClassLevel:          3,
-		Solved:              true,
+		// #1012: the flag that says the printed cost is not one of
+		// the prices this cast may claim. Redacted with the offer
+		// list it is only meaningful beside.
+		AlternativeCostRequired: true,
+		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
+		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PhyrexianSymbols:        1,
+		CastableHere:            true,
+		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
+		ExilePlay:               &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
+		ActivatedAbilities:      []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},
+		HandAbilities:           []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
+		SpecialActions:          []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
+		SummoningSick:           true,
+		LoyaltyActivated:        true,
+		ClassLevel:              3,
+		Solved:                  true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls

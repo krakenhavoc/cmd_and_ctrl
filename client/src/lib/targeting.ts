@@ -568,6 +568,20 @@ export function alternativeCostsOf(card: CardView): AlternativeCostView[] {
   return card.alternative_costs ?? [];
 }
 
+// printedCostClaimable reports whether "its mana cost" is one of the
+// prices this cast may claim out of the zone the card is in (#1012).
+//
+// The server decides this — one list of CR 118.9 prices for the
+// engine, the bot and the view — and the client reads the answer. It
+// used to infer it: a graveyard card with an offer list was assumed
+// to be flashback-only and a hand card was assumed not to be, which
+// is right for the two common cards and wrong for a Gravecrawler
+// under an Underworld Breach, where the printed cost and the granted
+// escape cost are both on the menu.
+export function printedCostClaimable(card: CardView): boolean {
+  return card.alternative_cost_required !== true;
+}
+
 // optionalCostsOf returns the "you may pay an additional cost" offers
 // on a card — kicker, multikicker, buyback — or an empty list for the
 // vast majority that have none (ADR 0073).
