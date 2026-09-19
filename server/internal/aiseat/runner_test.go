@@ -224,6 +224,42 @@ func waitForRunner(t *testing.T, what string, r *aiseat.Runner) {
 	})
 }
 
+// waitForChan waits for a channel that will receive (or be closed)
+// exactly once, and returns what it received. It is waitForRunner
+// generalised: the same non-blocking receive, polled through the same
+// backstop, for the handshakes that are not a *Runner.
+//
+// It exists for the same reason (#1048). A `select` on a channel
+// against a `time.After` reads like a wait and asserts a deadline —
+// "the runner must have asked the policy within 10s", "StopBots must
+// have returned within 5s" — and a deadline tight enough to mean
+// anything is one a loaded machine blows. Ten seconds is generous
+// today and was generous for every budget #635 removed on the morning
+// before it went red. Here the budget is waitForBudget, shared with
+// every other wait in this package, and it is a backstop for a wedge
+// rather than the assertion: nothing may depend on it being reached.
+//
+// A closed channel works as well as a sent value: a non-blocking
+// receive on a closed channel succeeds and yields the zero value, so
+// `close(done)` and `done <- struct{}{}` are both "it happened".
+//
+// On the backstop the wait calls t.Fatalf, so the return is
+// unreachable and the caller never sees the zero value by accident.
+func waitForChan[T any](t *testing.T, what string, ch <-chan T) T {
+	t.Helper()
+	var got T
+	waitFor(t, what, func() bool {
+		select {
+		case v := <-ch:
+			got = v
+			return true
+		default:
+			return false
+		}
+	})
+	return got
+}
+
 // botLandsLocked counts the lands a seat controls. Caller must hold
 // the game's read lock — the count is only worth anything when it is
 // read in the same snapshot as whatever else the assertion is about.

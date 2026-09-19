@@ -78,12 +78,15 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 		t.Errorf("broadcasts %d vs applied %d", broadcasts, applied)
 	}
 	// The runners exited on their own when the game ended …
+	//
+	// waitForRunner, which is what this package has for exactly this
+	// question. The env knob it replaces was still a deadline — 15s of
+	// patience is a claim about the machine, whoever set the number —
+	// and the shared backstop is both longer and, by construction, not
+	// an assertion (#1048; waitForRunner's own comment records why #635
+	// happened to every literal of this shape).
 	for _, r := range runners {
-		select {
-		case <-r.Done():
-		case <-time.After(envDuration("AISEAT_STALL", 15*time.Second)):
-			t.Fatal("runner still alive after game end")
-		}
+		waitForRunner(t, "the runner to exit after the game ended", r)
 	}
 	// … and Delete is still a clean stop.
 	if err := l.Delete(meta.ID); err != nil {
@@ -113,13 +116,19 @@ func TestManagerStopCancelsRunners(t *testing.T) {
 	if len(runners) != 2 {
 		t.Fatalf("runners: %d", len(runners))
 	}
+	// StopBots blocks on every runner's Done, so it runs on its own
+	// goroutine and is waited for through the package's backstop rather
+	// than against a literal 5s (#1048). Five seconds was a statement
+	// about how quickly a cancelled runner gets scheduled, which is the
+	// machine's business. What this test asserts is that StopBots
+	// RETURNS: that it does not sit forever on a runner that never
+	// exits, which is the only way a lobby Delete can wedge.
 	done := make(chan struct{})
-	go func() { host.StopBots(meta.ID); close(done) }()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("StopBots did not return")
-	}
+	go func() { defer close(done); host.StopBots(meta.ID) }()
+	waitForChan(t, "StopBots to return", done)
+	// And it returned only once every runner had gone: StopBots waits
+	// on each Done itself, so a non-blocking check here is an
+	// assertion about StopBots rather than a race with the runners.
 	for _, r := range runners {
 		select {
 		case <-r.Done():
