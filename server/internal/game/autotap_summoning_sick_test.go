@@ -2,8 +2,6 @@ package game
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 // autotap_summoning_sick_test.go pins issue #540: "the delighted
@@ -140,7 +138,7 @@ func TestMaterializePlanRefusesSummoningSickManaCreature(t *testing.T) {
 	setSummonedThisTurn(g, id, true)
 
 	g.WithWriteLock(func() {
-		g.materializePlanLocked(p, []uuid.UUID{id}, costFor(t, "{1}"))
+		g.materializePlanLocked(p, tapPlan{{CardID: id}}, costFor(t, "{1}"))
 	})
 	if cardTapped(g, id) {
 		t.Error("the executor tapped a creature that entered this turn")

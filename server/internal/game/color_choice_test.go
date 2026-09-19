@@ -317,16 +317,19 @@ func TestOneColorAmountIsOnePickMintingN(t *testing.T) {
 	}
 }
 
-// The planner's model is one slot, one mana, one colour per slot; a
-// one-colour-N-mana source would be booked for three different
-// colours at once. It plans around the source instead.
-func TestAutoTapperPlansAroundOneColorAmountSources(t *testing.T) {
+// #779 replaced #742's "the auto-tapper plans around a one-colour
+// source" with real planning; the full cover is in
+// autotap_one_color_test.go. This keeps the simplest shape of it
+// pinned next to the rest of the #742 tests: a lone Gilded Lotus
+// funds a generic cost.
+func TestAutoTapperPlansOneColorAmountSources(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	pushIntrinsicPermanent(g, me, "Gilded Lotus", "Artifact", oneColorShape("{W3|U3|B3|R3|G3}"), nil)
+	lotus := pushIntrinsicPermanent(g, me, "Gilded Lotus", "Artifact", oneColorShape("{W3|U3|B3|R3|G3}"), nil)
 	cost, _ := ParseCost("{1}")
-	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); ok {
-		t.Errorf("the auto-tapper planned %v off a one-colour-amount source", plan)
+	plan, ok := g.AutoTapForCost(me.ID, cost, 0)
+	if !ok || len(plan) != 1 || plan[0] != lotus {
+		t.Errorf("plan = %v (ok=%v), want the Gilded Lotus", plan, ok)
 	}
 }
 

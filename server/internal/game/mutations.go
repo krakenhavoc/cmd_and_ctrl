@@ -1463,13 +1463,20 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // picks an option that consumes one. When no requirement matches,
 // the slot drops its first option as generic-eligible mana.
 //
+// A "N mana of any one color" source (#779) is the one slot whose
+// colour the executor does NOT re-derive: the plan booked one colour
+// for all N tokens and plannedTap.OneColor carries it here, because
+// one activation of such a source is one pick and a second greedy
+// walk could reach a different answer than the solver did.
+//
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
-func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCost) {
+func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 	pending := append([]ColorRequirement(nil), cost.Required...)
 	identity := commanderIdentityFor(g, p)
-	for _, cardID := range plan {
+	for _, planned := range plan {
+		cardID := planned.CardID
 		var card *Card
 		for i := range g.Battlefield.Cards {
 			if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -1543,6 +1550,18 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		if len(slots) == 0 {
 			continue
 		}
+		// #779: the planned colour, checked BEFORE the tap for the
+		// same reason the CR 903.4f drop above is — a stale plan (the
+		// Nyx Lotus's devotion moved in response, the ability changed)
+		// must not tap the permanent and then find it has no colour to
+		// mint. Two one-colour slots on one ability is a shape the
+		// planner declines, so the executor declines it too rather
+		// than guessing which one the plan meant.
+		oneColorIdx := oneColorSlot(slots)
+		if oneColorIdx == oneColorSlotUnplannable ||
+			(oneColorIdx >= 0 && !colorOffered(slots[oneColorIdx].Options, planned.OneColor)) {
+			continue
+		}
 		// #789: the counters come off as part of the same payment as
 		// the tap, and first, so a refusal leaves the land untapped.
 		// applyCounterLocked for the same reason the activation path
@@ -1556,16 +1575,26 @@ func (g *Game) materializePlanLocked(p *Player, plan []uuid.UUID, cost ParsedCos
 		card.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: p.ID, CardID: cardID})
 		g.EmitEvent(Event{Kind: EventManaAbilityActivated, Actor: p.ID, Source: cardID})
-		for _, slot := range slots {
-			color := pickColorForSlot(slot.Options, &pending)
+		for si, slot := range slots {
+			var color string
+			if si == oneColorIdx {
+				// #779: the plan's pick, not a fresh one. Its
+				// requirements are booked here so a later slot — or a
+				// later source in the same plan — does not re-pay a
+				// pip these N tokens already cover, which is the #273
+				// rule applied to a multi-token pick.
+				color = planned.OneColor
+				for k := 0; k < slot.AmountFor(color); k++ {
+					bookColorRequirement(color, &pending)
+				}
+			} else {
+				color = pickColorForSlot(slot.Options, &pending)
+			}
 			if color == "" {
 				continue
 			}
 			// #742: a one-colour-N-mana slot adds all N of the picked
-			// colour. The planner never selects such a source
-			// (gatherTapSources skips it), so this is only reached if
-			// that changes — and then it must still mint the amount
-			// the printed card does, not one.
+			// colour, in one activation.
 			for k := 0; k < slot.AmountFor(color); k++ {
 				// Restrictions ride here too. autoTapAbilityFor
 				// already refuses restricted abilities, so this is
@@ -1608,24 +1637,47 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 	if len(options) == 0 {
 		return ""
 	}
+	if best, bestOpt := mostRestrictiveRequirement(options, *pending); best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+		return bestOpt
+	}
+	return options[0]
+}
+
+// bookColorRequirement ticks off one still-unsatisfied requirement
+// that `color` pays, if there is one. The half of pickColorForSlot
+// that runs when the colour is already decided: #779's one-colour
+// source mints N tokens of a colour the PLAN chose, and each of them
+// has to book its pip or the next slot re-pays it (#273).
+func bookColorRequirement(color string, pending *[]ColorRequirement) {
+	if color == "" {
+		return
+	}
+	if best, _ := mostRestrictiveRequirement([]string{color}, *pending); best >= 0 {
+		*pending = append((*pending)[:best], (*pending)[best+1:]...)
+	}
+}
+
+// mostRestrictiveRequirement finds the still-unsatisfied requirement
+// with the fewest legal colours that any of `options` can pay, and
+// returns its index plus the option that pays it. (-1, "") when none
+// matches. The one copy of the restriction-first instinct
+// pickColorForSlot and bookColorRequirement share.
+func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (int, string) {
 	best, bestOpt := -1, ""
-	for i := range *pending {
-		req := (*pending)[i]
+	for i := range pending {
+		req := pending[i]
 		for _, opt := range options {
 			if !matchColor(opt, req.Options) {
 				continue
 			}
-			if best < 0 || len(req.Options) < len((*pending)[best].Options) {
+			if best < 0 || len(req.Options) < len(pending[best].Options) {
 				best, bestOpt = i, opt
 			}
 			break
 		}
 	}
-	if best >= 0 {
-		*pending = append((*pending)[:best], (*pending)[best+1:]...)
-		return bestOpt
-	}
-	return options[0]
+	return best, bestOpt
 }
 
 // effectiveCostLocked parses the cost the cast actually owes — the

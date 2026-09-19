@@ -3407,9 +3407,12 @@ printed colours with the commander's identity listed first, like a mana
 ability; only printed "in your commander's color identity" text passes
 `game.AddManaOptions{NarrowToCommanderIdentity: true}` to
 `AddManaWithOptionsForEffect` (or sets `AddMana.NarrowToCommanderIdentity`),
-the effect-side twin of the mana ability's flag. The auto-tapper
-plans around such a source, so the player taps it by hand
-([ADR 0040](docs/decisions/0040-mana-pipeline.md) addendum).
+the effect-side twin of the mana ability's flag. **The auto-tapper plans
+such a source (#779)**: it offers the solver one candidate per colour,
+they are mutually exclusive, and the plan carries the colour through to
+the executor — so a Gilded Lotus funds `{3}{U}{U}` beside two Islands
+and never funds `{W}{U}` alone, and the surplus floats
+([ADR 0040](docs/decisions/0040-mana-pipeline.md) #779 addendum).
 
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
 [color_choice_cards_test.go](server/internal/cards/effects/color_choice_cards_test.go).

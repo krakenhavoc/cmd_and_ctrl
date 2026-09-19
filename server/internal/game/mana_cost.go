@@ -278,9 +278,10 @@ func (e ProducedManaEntry) AmountFor(color string) int {
 
 // OneColorAmounts reports whether the slot is a "N mana of any one
 // color" pick — several options, at least one adding more than one
-// mana. The auto-tapper plans around such a slot (see
-// gatherTapSources) because its tokens must all be one colour, which
-// the planner's one-slot-one-mana model cannot promise.
+// mana. Its tokens must all share one colour, which the planner's
+// one-slot-one-mana model cannot express in a single candidate, so
+// #779's appendTapSource expands such a slot into one candidate PER
+// COLOUR and the plan carries the chosen one to the executor.
 func (e ProducedManaEntry) OneColorAmounts() bool {
 	return len(e.Options) > 1 && len(e.Amounts) > 0
 }

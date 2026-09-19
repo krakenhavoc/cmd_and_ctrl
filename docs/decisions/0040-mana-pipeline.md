@@ -243,14 +243,48 @@ snapshot. Three rules keep the rest of the pipeline unchanged:
   primitive's field of the same name) is the effect-side twin of the
   mana ability's narrowing flag, for printed "in your commander's color
   identity" text. No effect in the catalog sets it.
-- **The auto-tapper plans around a one-colour-N-mana source.** Its model
+- ~~**The auto-tapper plans around a one-colour-N-mana source.** Its model
   is one slot, one mana, one colour choice per slot, and a Gilded Lotus
   planned as three any-colour slots could be booked for `{W}`, `{U}` and
-  `{B}` at once, a plan the one-colour activation cannot honour. It is
-  the restricted-output exclusion's shape: the player taps the source by
-  hand (one prompt) and the cast spends the floated mana. Planning such
-  a source inline, choosing the colour that pays the most of the
-  remaining requirements, is possible later if it turns out to matter.
+  `{B}` at once, a plan the one-colour activation cannot honour.~~
+  *Superseded 2026-09-18 by the #779 addendum below — it turned out to
+  matter within a day: the planner is what `legal`, the cast gate and
+  the lobby preview all ask, so "plans around it" read as "this board
+  cannot pay".*
+
+## Addendum (#779): the auto-tapper plans a one-colour-N-mana source
+
+The planner models a "N mana of any one color" permanent as **one
+candidate per offered colour**, each with the pick already flattened
+into that colour's amount — three `{U}` slots for a Gilded Lotus booked
+blue, four `{G}` slots for a Nyx Lotus with devotion G4. The solver then
+reasons about it with the model it already had (one slot, one mana, one
+colour), and nothing in the search had to learn a new shape.
+
+- **The candidates are alternatives.** They share a `CardID`, and
+  `tapPlan.hasCard` stops the solver taking two: a permanent taps once
+  and makes one pick, so a lone Gilded Lotus funds `{U}{U}{U}` and never
+  `{W}{U}`.
+- **The plan carries the colour.** `plannedTap.OneColor` reaches
+  `materializePlanLocked`, which mints that colour rather than
+  re-deriving one. The two halves of the tapper disagreeing about a
+  colour is the #273 failure, and a multi-token pick is where it would
+  do the most damage.
+- **Surplus floats.** A Lotus booked for `{U}{U}` leaves its third slot
+  in the spare tally, `recruitGeneric` spends it on the generic half of
+  the same cost, and anything still left sits in the pool until the step
+  ends (CR 106.4). It is never booked as payment for a requirement of a
+  different colour.
+- **A stale plan drops before the tap.** A colour the source no longer
+  offers (a Nyx Lotus whose devotion moved in response) drops the source
+  the way the CR 903.4f narrowing and the counter-cost re-check do:
+  tapping a permanent for no mana is worse than not tapping it.
+- **Two one-colour slots on one ability is still declined.** That would
+  be a cross product of candidates for a shape no printed card has.
+
+This closes the gap #779 reported: `legal.canPayExcluding`, the strict
+cast gate and the lobby's `writeAutoTapPreview` all ask the same
+planner, so all three said "cannot pay" about a board that pays.
 
 ## Addendum — 2026-09-17: "any color" offers all five, identity first
 
