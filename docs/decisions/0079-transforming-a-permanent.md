@@ -1,17 +1,26 @@
-# ADR 0078 — Transforming a permanent: turning a card over is not a zone change (CR 701.27, CR 712)
+# ADR 0079 — Transforming a permanent: turning a card over is not a zone change (CR 701.27, CR 712)
 
 **Status:** Accepted · 2026-09-19 · S46 — Permanents that change what they are
 **Issues:** [#343](https://github.com/krakenhavoc/cmd_and_ctrl/issues/343) (tracker —
 "Aang swift savior transform missing"), driven by
 [#1112](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1112) (Storm the Vault,
 Fable of the Mirror-Breaker, Brass's Tunnel-Grinder)
-**Numbering:** on 2026-09-19, after `git fetch --all --prune`, all 385 remote branch
-heads and all 259 local branch heads were listed with
+**Numbering:** originally written as 0078. On 2026-09-19, after `git fetch --all
+--prune`, all 385 remote branch heads and all 259 local branch heads were listed with
 `git ls-tree --name-only <ref> docs/decisions/`, every commit reachable from any ref
 was swept with `git log --all --name-only -- docs/decisions/`, and the ~90 sibling
 worktrees on this machine were listed for uncommitted ADR files. The highest number
-present anywhere is **0077** (`0077-opponent-board-summary.md`). Nothing holds a
-`0078-*` file. 0005, 0024, 0029 and 0030 stay permanently unused per AGENTS.md §4.
+present anywhere was **0077** (`0077-opponent-board-summary.md`), and nothing held a
+`0078-*` file.
+
+`docs/adr-0078-token-art` was pushed four minutes before this branch and took the
+same number — the collision AGENTS.md §4 describes, which no sweep can prevent
+because the other branch did not exist when this one looked. That PR was opened
+first, so per §4 it keeps 0078 and this file moved to **0079**; the filename and the
+H1 above were both changed, and nothing links to this ADR yet. 0005, 0024, 0029 and
+0030 stay permanently unused per the same section, and 0078 is now spoken for rather
+than free.
+
 **Related:** [ADR 0034](0034-multi-face-cards.md) (the face model this builds the verb
 on — `Card.Faces`, `Card.ActiveFace`, `Card.SetFace`, and the CR 712.8 reset in
 `MoveCard`), [ADR 0039](0039-layer-4-authoritative.md) (why a printed-characteristic
