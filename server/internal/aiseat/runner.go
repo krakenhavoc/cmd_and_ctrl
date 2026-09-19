@@ -344,17 +344,30 @@ func (r *Runner) step(ctx context.Context) bool {
 		if r.room.Game.CurrentState() != game.StateActive {
 			return false
 		}
-		moves := legal.EnumerateFor(r.room.Game, r.seat)
+		// #687: the policy may order the enumerator's target expansion,
+		// and its ordering is a read of the seat's own view — so for a
+		// TargetOrderer the view is built first and reused for the
+		// decision below. A policy without an opinion pays for
+		// nothing: targetOrder answers nil without touching the
+		// projection, and the enumeration is byte-identical to what it
+		// was.
+		started := time.Now()
+		order, ordering := r.targetOrder()
+		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, legal.Options{
+			OrderTargets: order,
+		})
 		if len(moves) == 0 {
 			return true
 		}
 		// The decision, with the policy's view built from the seat's
 		// filtered projection only.
-		started := time.Now()
 		in := Input{
-			View:  protocol.ViewOfGameFor(r.room.Game, r.seat.String()),
+			View:  ordering.View,
 			Seat:  r.seat,
 			Moves: moves,
+		}
+		if in.View.ID == "" {
+			in.View = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
 		}
 		if r.concede(ctx, in) {
 			return false
