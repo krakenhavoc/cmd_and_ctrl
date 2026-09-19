@@ -68,11 +68,26 @@ func TestGrantsFace(t *testing.T) {
 		},
 		{
 			"a back-face grant",
-			&CastPermission{Player: me, Face: 1}, me, 1, true,
+			&CastPermission{Player: me, Faces: []int{1}}, me, 1, true,
+		},
+		{
+			// #719: the case a bare `Face int` could not state. An
+			// adventure card's creature half IS face 0, so "opens face
+			// 0 and no other" and "says nothing about faces" were the
+			// same value until the field became a list.
+			"an Adventure grant, naming the creature face",
+			&CastPermission{Player: me, Faces: []int{0}}, me, 0, true,
+		},
+		{
+			// A grant naming SEVERAL faces answers no here: it is a
+			// choice, and faceForCastLocked is the one place that
+			// knows what to do with one.
+			"a grant naming two faces",
+			&CastPermission{Player: me, Faces: []int{0, 1}}, me, 0, false,
 		},
 		{
 			"a back-face grant, wrong player",
-			&CastPermission{Player: me, Face: 1}, you, 0, false,
+			&CastPermission{Player: me, Faces: []int{1}}, you, 0, false,
 		},
 	}
 	for _, tc := range cases {
@@ -97,7 +112,7 @@ func TestExpiredFaceGrantStopsNarrowing(t *testing.T) {
 	id := card.InstanceID
 	g.WithWriteLock(func() {
 		g.Exile.PushTop(card)
-		g.GrantCastPermissionOverCardForEffect(id, CastPermission{Player: me.ID, Face: 1})
+		g.GrantCastPermissionOverCardForEffect(id, CastPermission{Player: me.ID, Faces: []int{1}})
 	})
 
 	var live *CastPermission
@@ -138,7 +153,7 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 		t.Error("a transform card's back face is castable without a grant")
 	}
 
-	grant := &CastPermission{Player: me, Face: 1}
+	grant := &CastPermission{Player: me, Faces: []int{1}}
 	// The grant SETS the face: an unset request (the wire's default,
 	// and what every existing client sends from the exile pile) still
 	// announces the back.
@@ -185,7 +200,7 @@ func TestCastFromExileUnderAFaceGrant(t *testing.T) {
 			Player:   me.ID,
 			Cost:     "{0}",
 			CastOnly: true,
-			Face:     1,
+			Faces:    []int{1},
 		})
 		g.markCardKnownInZoneLocked(g.Exile, id)
 	})
@@ -339,7 +354,7 @@ func TestCastFromExileRefusesTheUngrantedFace(t *testing.T) {
 		g.GrantCastPermissionOverCardForEffect(id, CastPermission{
 			Player: me.ID,
 			Cost:   "{0}",
-			Face:   2,
+			Faces:  []int{2},
 		})
 	})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "exile"}); err != ErrInvalidFace {

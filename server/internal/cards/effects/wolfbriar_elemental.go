@@ -19,7 +19,7 @@ import (
 // looked up on the stack. A TriggeredAbility's Build receives the
 // game, the source card and the event — the spell's StackItem is out
 // of StackMeta before the ETB event is even emitted — so if the
-// resolution path did not stamp Card.PaidOptionalCosts before
+// resolution path did not stamp Card.Provenance.OptionalCosts before
 // emitting it, this trigger would have nothing to count and every
 // Wolfbriar would make zero Wolves.
 //

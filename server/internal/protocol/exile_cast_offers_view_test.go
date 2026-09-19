@@ -196,10 +196,11 @@ func TestExiledFaceGrantReadsTheGrantedFacesClauses(t *testing.T) {
 		{Name: "Test Elemental", TypeLine: "Creature — Elemental", Power: 4, Toughness: 4},
 	}
 	siege.SetFace(0)
-	id := exileWithGrant(t, g, siege, game.CastPermission{Player: me.ID, Cost: "{0}", Face: 1})
+	id := exileWithGrant(t, g, siege, game.CastPermission{Player: me.ID, Cost: "{0}", Faces: []int{1}})
 
 	mine := cardInZone(ViewOfGameFor(g, me.ID.String()).Exile, id)
-	if mine == nil || mine.ExilePlay == nil || mine.ExilePlay.Face != 1 {
+	if mine == nil || mine.ExilePlay == nil ||
+		len(mine.ExilePlay.Faces) != 1 || mine.ExilePlay.Faces[0] != 1 {
 		t.Fatalf("the grant names the back face: %+v", mine)
 	}
 	if mine.LegalTargets == nil || len(mine.LegalTargets.Cards) != 1 {

@@ -69,9 +69,16 @@ describe("needsFacePicker", () => {
     expect(needsFacePicker(jace)).toBe(false);
   });
 
-  it("is false for adventure and split, whose second halves are deferred", () => {
-    expect(needsFacePicker({ ...seaGate(), layout: "adventure" })).toBe(false);
+  it("is true for an adventure card — CR 715.3 offers the creature or the Adventure", () => {
+    expect(needsFacePicker({ ...seaGate(), layout: "adventure" })).toBe(true);
+  });
+
+  it("is false for split, whose fusing is deferred", () => {
     expect(needsFacePicker({ ...seaGate(), layout: "split" })).toBe(false);
+  });
+
+  it("is false for an adventure card that arrived without faces", () => {
+    expect(needsFacePicker({ ...seaGate(), layout: "adventure", faces: undefined })).toBe(false);
   });
 
   it("is false for a modal_dfc that somehow arrived without faces", () => {

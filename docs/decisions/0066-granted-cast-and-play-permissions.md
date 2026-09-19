@@ -515,3 +515,51 @@ It now leaves `castable_here` alone when `cant_cast` is set.
 
 Additive on the wire (`v` unchanged): a client that ignores the new fields on
 an exiled card behaves exactly as it did.
+
+---
+
+## Note (2026-09-18, #719): the face restriction is a list
+
+`CastPermission.Face int` is now `CastPermission.Faces []int`, and the
+reason is the one the amendment above gives for the window: a sentinel
+that has to carry two meanings carries neither.
+
+Face was documented as *"ZERO MEANS THIS PERMISSION DOES NOT SPEAK
+ABOUT FACES, not face 0"*, which was true and sufficient while the only
+face-naming grant was a defeated Siege's back face (S32). CR 715.4 is
+the second one, and it names the **creature** half of an adventure card
+— face 0. With one integer, "the grant opens face 0 and nothing else"
+and "the grant has no opinion" are the same value, and the second
+reading is the one that would let an Adventure half be cast a second
+time out of exile.
+
+It is the same defect #945 took out of `UntilTurn` one field up — 0 was
+both the zero value and a turn number — and it is fixed the same way,
+by giving the field a value that means "nothing to say" rather than by
+adding a companion boolean. Empty is "no opinion"; a non-empty list
+NARROWS to exactly those faces. It is also the shape
+`Card.CastableFaces` already returns, so `faceForCastLocked` composes
+the two rather than arbitrating between them, and it stays pure data
+like `Cards` — `cloneCastPermissions` reallocates it beside the card
+refs.
+
+Three readers, all thin, and none of them checks the window (#945's
+rule: the one liveness test is `CastPermissionActiveForEffect`, and
+every caller has already been through `CastPermissionForLocked`):
+
+- `GrantsFaces(playerID)` — the full set, read only by
+  `faceForCastLocked`.
+- `GrantsFace(playerID)` — the single face, for the enumerator and the
+  pricer.
+- `NamedFace()` — the single face with no PLAYER either, for the view,
+  which asks what a grant opens before it knows whose it is (the grant
+  is public information) and has to label a warp grant's greyed-out
+  button with the half it will open.
+
+A permission naming SEVERAL faces answers false to the last two and
+narrows the caller's request in the first — nothing declares one today,
+and a choice is the honest thing to do with one if anything ever does.
+
+The behaviour of a single-face grant is unchanged in every respect,
+including the deliberate departure ADR 0034's S32 addendum records: the
+named face is the ANSWER and the caller's requested face is ignored.

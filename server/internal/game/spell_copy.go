@@ -369,7 +369,7 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// in the first place. mintTokenLocked does not clear it, so the
 	// template is the right place to carry it.
 	if len(item.Paid.OptionalCosts) > 0 {
-		tmpl.PaidOptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
+		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,

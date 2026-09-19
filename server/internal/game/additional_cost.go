@@ -205,7 +205,7 @@ const (
 // OptionalCostTimesPaid counts how many times the optional cost whose
 // Key is `key` was paid, given the card it belongs to and a list of
 // paid indices — PaidCost.OptionalCosts for a spell on the stack,
-// Card.PaidOptionalCosts for a permanent that has already entered.
+// Card.Provenance.OptionalCosts for a permanent that has entered.
 //
 // Keyed rather than indexed so a card's own resolution never has to
 // know its declaration order, and so the two readers above share one
@@ -241,7 +241,7 @@ func KickedTimesPaid(card Card, paid []int) int {
 // by resolving a kicked spell — including one reanimated out of a
 // graveyard, whose record was cleared on the way out.
 func CardKickedTimes(c Card) int {
-	return KickedTimesPaid(c, c.PaidOptionalCosts)
+	return KickedTimesPaid(c, c.Provenance.OptionalCosts)
 }
 
 // costPayment is one component of a cast's CR 601.2f cost: the card's

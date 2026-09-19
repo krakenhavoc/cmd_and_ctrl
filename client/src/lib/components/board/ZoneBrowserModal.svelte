@@ -26,6 +26,7 @@
     cardsForZone,
     castableFromZone,
     grantedFace,
+    grantedFaceIndex,
     impulseActionLabel,
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
@@ -157,7 +158,7 @@
   function playFromExile(card: CardView): void {
     const grant = grantFor(card);
     if (!onCastCard || !grant) return;
-    onCastCard(card, "exile", grant.face);
+    onCastCard(card, "exile", grantedFaceIndex(grant));
     onClose();
   }
 

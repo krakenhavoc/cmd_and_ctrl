@@ -1161,17 +1161,22 @@ export interface ExilePlayView {
   // that is live as soon as it is made, which is all of impulse
   // exile and airbend.
   not_before_turn?: number;
-  // S32: the printed face this grant opens, when it opens one —
-  // a defeated Siege's "exile it, then cast it transformed", where
-  // the card sitting in the exile pile still shows the battle and
-  // the thing the button casts is `faces[face]`. Absent for every
-  // grant that does not speak about faces (impulse exile, airbend,
-  // warp, cascade), which is all of them before S32.
+  // S32: the printed faces this grant opens, when it opens any.
+  // Absent for every grant that does not speak about faces (impulse
+  // exile, airbend, warp, cascade), which is all of them before S32.
+  //
+  // Two grants name one face each, in opposite directions: a defeated
+  // Siege's "exile it, then cast it transformed" names the BACK face,
+  // where the card sitting in the exile pile still shows the battle
+  // and the thing the button casts is `faces[1]`; CR 715.4's
+  // Adventure grant names the CREATURE face, face 0. That second one
+  // is why this is a list rather than the number it was until #719 —
+  // "absent" and "face 0" are different facts.
   //
   // Advisory only: the server settles the face from the grant rather
   // than from the request, so a client that ignores this labels the
   // button with the wrong name but cannot cast the wrong half.
-  face?: number;
+  faces?: number[];
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this grant's price does not, so casting under it fixes X at 0 —
   // what a cascade hit carries. The cast flow skips the X picker.

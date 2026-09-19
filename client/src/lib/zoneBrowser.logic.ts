@@ -134,17 +134,38 @@ export function impulseActionLabel(
   return "cast";
 }
 
+// grantedFaceIndex is the ONE face a grant opens, or undefined when
+// it speaks about no faces (every impulse, airbend, warp and cascade
+// grant) or about several (a choice the caster has not made, which
+// nothing declares today).
+//
+// A list on the wire rather than a number, because zero had to mean
+// two things and could not: a defeated Siege's grant names the BACK
+// face and CR 715.4's Adventure grant names the CREATURE face, which
+// is face 0. `if (!grant.face)` read the second as "no opinion" and
+// re-opened the face picker on a cast with exactly one legal face.
+export function grantedFaceIndex(grant: ExilePlayView | null): number | undefined {
+  if (!grant || grant.faces?.length !== 1) return undefined;
+  return grant.faces[0];
+}
+
 // grantedFace returns the view of `card` that the grant actually
-// plays: `faces[grant.face]` materialised over the card when the
-// grant names a face, and the card unchanged when it does not.
+// plays: `faces[i]` materialised over the card when the grant names
+// one face, and the card unchanged when it does not.
 //
 // Exported because the button label and its aria-label both have to
 // name the half being cast — "cast Refraction Elemental from exile",
 // not "cast Invasion of Karsus from exile", which would name a card
 // the click cannot produce.
 export function grantedFace(card: CardView, grant: ExilePlayView | null): CardView {
-  if (!grant?.face) return card;
-  return cardAsFace(card, grant.face);
+  const i = grantedFaceIndex(grant);
+  // A grant naming the face that is ALREADY up returns the card
+  // untouched rather than round-tripping it through cardAsFace, which
+  // clears the announce-prompt fields the server computed for exactly
+  // that face. CR 715.4's Adventure grant is this case — face 0, on a
+  // card exile is already showing front-up (CR 712.8).
+  if (i === undefined || i === (card.active_face ?? 0)) return card;
+  return cardAsFace(card, i);
 }
 
 // --- S29: alternative cast paths from non-hand zones -------------

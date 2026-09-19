@@ -434,27 +434,38 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
-	// PaidOptionalCosts is CR 400.7d's narrow slice of cast
-	// provenance: the optional additional costs paid for the SPELL
-	// that became this permanent (ADR 0073 §5), as positions in the
-	// card's OptionalCosts slice, one entry per payment.
+	// Provenance is what this permanent remembers about the SPELL it
+	// came from — CR 400.7d, "an ability of a permanent can reference
+	// information about the spell that became that permanent as it
+	// resolved, including what costs were paid". Zero value means
+	// "this permanent did not come from a spell, or came from one cast
+	// for its mana cost and nothing else".
 	//
 	// It exists because an entering permanent's own trigger cannot
 	// reach the stack item. "When Gatekeeper of Malakir enters, IF IT
-	// WAS KICKED" is a TriggeredAbility whose AppliesTo receives the
-	// game, the source and the event — and by the time the ETB event
-	// is emitted the item is out of StackMeta. So the resolution path
+	// WAS KICKED" and "When Phlage enters, sacrifice it UNLESS IT
+	// ESCAPED" are both TriggeredAbilities whose Build receives the
+	// game, the source and the event — and by the time EventETB is
+	// emitted the item is out of StackMeta. So the entry finisher
 	// stamps the record here, in the one moment that holds both the
-	// landed permanent and the item: after MoveCard and before the
-	// EventZoneMove / EventETB pair.
+	// landed permanent and the item.
 	//
-	// Per-INSTANCE and cleared on the way out with NamedTribe,
-	// ChosenColor and ClassLevel (CR 400.7): a Gatekeeper that dies
-	// and is reanimated was not kicked, because the spell that
-	// reanimated it was not the spell that was kicked. Read with
-	// CardKickedTimes / CardPaidOptionalCost. Carried by clone and
-	// the snapshot.
-	PaidOptionalCosts []int
+	// ONE RECORD, not one per fact. #653 (the alternative cost) and
+	// #664 / ADR 0073 §5 (the optional costs) arrived a week apart and
+	// shipped as two fields with the same lifecycle, the same two
+	// clears, the same snapshot handling and the same stamp three
+	// lines apart. They are one question — "how was the spell that
+	// became this permanent cast?" — and CR 400.7d asks it once.
+	//
+	// Same lifecycle as NamedTribe and ChosenColor and for the same
+	// reason: it belongs to the ENTRY, not to the card. Stamped in
+	// executeEntryToBattlefieldLocked, cleared by MoveCard on the way
+	// off the battlefield (CR 400.7), carried by clone and the
+	// snapshot. Read through Escaped / CastProvenanceForEffect and,
+	// for the kicker half, CardKickedTimes / CardPaidOptionalCost.
+	//
+	// Added in S42 (#653, #664).
+	Provenance CastProvenance
 
 	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
 	// exactly when FaceDown is false; the two are written only by

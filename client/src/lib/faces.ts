@@ -14,24 +14,39 @@ import type { CardView } from "./protocol";
 /** Scryfall's layout for a modal double-faced card. */
 export const LAYOUT_MODAL_DFC = "modal_dfc";
 
+/** Scryfall's layout for a creature with an Adventure (CR 715). */
+export const LAYOUT_ADVENTURE = "adventure";
+
 /**
- * needsFacePicker reports whether playing this card from hand
- * requires asking which half first.
+ * needsFacePicker reports whether casting this card requires asking
+ * which half first.
  *
- * Only a modal DFC does (CR 712.12a — the faces are independently
- * playable). A transform card is always cast as its front face
- * (CR 712.4) and its back is reached by transforming the permanent;
- * adventure and split carry two faces on the wire but their second
- * halves are deferred. All three therefore report false, and so does
- * every single-faced card, which is why this gate opening the modal
- * costs nothing for the ~33,000 ordinary oracle IDs.
+ * Two layouts do. A modal DFC, because its faces are independently
+ * playable (CR 712.12a) — the reason the picker exists. And an
+ * adventure card, because CR 715.3 lets the caster choose between the
+ * creature and the Adventure, which is the same question with a
+ * different rules number.
+ *
+ * A transform card is always cast as its front face (CR 712.4) and
+ * its back is reached by transforming the permanent; split carries two
+ * faces on the wire but fusing is deferred. Both report false, and so
+ * does every single-faced card, which is why this gate opening the
+ * modal costs nothing for the ~33,000 ordinary oracle IDs.
+ *
+ * It does NOT take the source zone, and deliberately: which half a
+ * GRANTED cast opens belongs to the grant, not to the card. The exile
+ * button hands the settled face down with the cast (grantedFaceIndex),
+ * and the picker is only reached when nothing has settled it — which
+ * is an adventure card impulse-exiled by Ragavan, where both halves
+ * really are open.
  *
  * Mirrors game.Card.CastableFaces server-side. If the two ever
  * disagree, the server wins: it refuses a face it did not offer with
  * ErrInvalidFace rather than silently casting the wrong half.
  */
 export function needsFacePicker(card: CardView): boolean {
-  return card.layout === LAYOUT_MODAL_DFC && (card.faces?.length ?? 0) > 1;
+  if ((card.faces?.length ?? 0) < 2) return false;
+  return card.layout === LAYOUT_MODAL_DFC || card.layout === LAYOUT_ADVENTURE;
 }
 
 /**
@@ -53,6 +68,16 @@ export function needsFacePicker(card: CardView): boolean {
  * whose specs are not written yet. When they are, the server will
  * need to publish per-face prompt data and this is the function that
  * will consume it.
+ *
+ * #719 made that "when" concrete without changing it. An adventure
+ * card's Adventure half is a real castable face with a real Spec, and
+ * most printed ones target — Stomp, Petty Theft, Swift End. Casting
+ * such a half from this client would announce with no target picker,
+ * so the catalog ships the adventure half of Foulmire Knight (no
+ * target, no mode, no X) and a targeted one waits on the server
+ * publishing `target_mode` and `legal_targets` per castable face. An
+ * UNCATALOGUED adventure card is unaffected: it has no announce data
+ * on either face and resolves by hand, which is the sandbox promise.
  */
 export function cardAsFace(card: CardView, i: number): CardView {
   const face = card.faces?.[i];

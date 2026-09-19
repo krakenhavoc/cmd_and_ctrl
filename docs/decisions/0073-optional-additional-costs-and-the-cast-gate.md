@@ -369,3 +369,40 @@ the zone and the caster, which a bit on a battlefield card cannot. The
 
 **Making the gate return a bool.** Rejected: the client has to say *which*
 card refused the cast, and a bool would have meant a second call to find out.
+
+---
+
+## Note (2026-09-19, #719): the kicked record moved under `Card.Provenance`
+
+§5 put the optional costs a spell was paid with onto the permanent it
+becomes, as `Card.PaidOptionalCosts []int`, and gave the reason: an
+entering permanent's own trigger cannot reach the stack item, so "when
+this enters, **if it was kicked**" has nothing to read unless the
+resolution path writes the fact down.
+
+#653 reached the identical conclusion from the other direction a week
+later, for "sacrifice it **unless it escaped**" (CR 702.138b), and
+shipped `Card.Provenance CastProvenance{AltCost, FromZone}`. The two
+fields had the same lifecycle, the same two clears (`MoveCard` and
+`resetAsNewObjectLocked`), the same clone and snapshot handling, and
+their stamps landed three lines apart in the same entry finisher. They
+are one question — *how was the spell that became this permanent
+cast?* — and CR 400.7d asks it once.
+
+So #719's rebase folded the first into the second. `PaidOptionalCosts`
+is now `Provenance.OptionalCosts`; the snapshot key `paidOptionalCosts`
+is now `provenance.optionalCosts`. **Nothing else about §5 changes**:
+the stamp is still made in the one moment that holds both the landed
+permanent and the item, still before `EventETB` so the entry trigger
+finds it, and still cleared on the way out (CR 400.7) so a reanimated
+Gatekeeper of Malakir was not kicked.
+
+The readers are untouched in shape — `CardKickedTimes`,
+`CardPaidOptionalCost` and `OptionalCostTimesPaid` take the same
+arguments and answer the same questions, and `ctx.WasKicked()` /
+`ctx.KickedTimes()` still read the STACK ITEM for a resolving spell.
+Only where the permanent-side ones look has changed.
+
+A snapshot written before this note decodes `paidOptionalCosts` as an
+unknown key and the permanent comes back unkicked. That is a one-deploy
+window on a field that is a week old, and it errs weaker than printed.

@@ -93,7 +93,7 @@ const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast i
 // The battle leaves the battlefield for exile, and the exiled card is
 // stamped with a grant that opens its BACK face, for nothing, to the
 // player who controlled the battle. That is the S32 half of the seam
-// S27 named: CastPermission.Face says which face a per-instance
+// S27 named: CastPermission.Faces says which faces a per-instance
 // grant opens, CastSpell's exile branch reads it before the face gate
 // (faceForCastLocked), and faceOnResolve keeps a cast `transform`
 // face rather than forcing every permanent front-up. Without all
@@ -170,7 +170,7 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 			Player:   item.Controller,
 			Cost:     "{0}",
 			CastOnly: true,
-			Face:     SiegeBackFace,
+			Faces:    []int{SiegeBackFace},
 			Label:    "Cast it transformed, without paying its mana cost",
 		})
 	}

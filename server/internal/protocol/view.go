@@ -1568,20 +1568,26 @@ type ExilePlayView struct {
 	// it against `turn.number` and withholds the button until then;
 	// the server rejects an early cast regardless.
 	NotBeforeTurn int `json:"not_before_turn,omitempty"`
-	// Face is the printed face this grant opens, when it opens one
+	// Faces are the printed faces this grant opens, when it names any
 	// (S32). Absent — every impulse, airbend, warp and cascade grant
 	// — means the grant does not speak about faces and the card's own
 	// layout decides, which is what `faces` and `layout` already tell
 	// the client.
 	//
-	// Present means the grant opens THAT FACE AND NO OTHER, which is
-	// a defeated Siege's "cast it transformed": the card in the
-	// exile pile is still showing the battle, and the thing the
-	// button will actually cast is `faces[face]`. A client that
-	// ignores this labels the button with the wrong card name; it
-	// does not cast the wrong thing, because the server settles the
-	// face from the grant rather than from the request.
-	Face int `json:"face,omitempty"`
+	// Present means the grant opens THOSE FACES AND NO OTHER. Two
+	// grants name one each, in opposite directions: a defeated
+	// Siege's "cast it transformed" names the BACK face, where the
+	// card in the exile pile is still showing the battle and the
+	// thing the button will actually cast is `faces[1]`; and CR
+	// 715.4's Adventure grant names the CREATURE face, face 0, which
+	// is why this is a list rather than the bare integer it was until
+	// #719 — absent and "face 0" are different facts and one integer
+	// could not tell them apart.
+	//
+	// A client that ignores this labels the button with the wrong
+	// card name; it does not cast the wrong thing, because the server
+	// settles the face from the grant rather than from the request.
+	Faces []int `json:"faces,omitempty"`
 
 	// XLockedAtZero is CR 107.3b for a cast taken under this grant:
 	// the card prints an {X} in its mana cost and `cost_override`
@@ -4243,7 +4249,7 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
 			AnyColor:      perm.AnyColor,
 			CostOverride:  perm.Cost,
 			NotBeforeTurn: perm.NotBeforeTurn,
-			Face:          perm.Face,
+			Faces:         append([]int(nil), perm.Faces...),
 			// CR 107.3b (#831): a cascade hit is granted at {0}, so
 			// its printed {X} is not being paid and the only legal
 			// announcement is 0. Through CastCostFor rather than a
@@ -4394,12 +4400,22 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 // grantedFace materialises the face a permission opens on a copy of
 // the card, the way the cast path does before it prices anything
 // (ADR 0034). A permission that names no face — every impulse,
-// airbend, warp and cascade grant — gets the card back untouched.
+// airbend, warp and cascade grant — gets the card back untouched, and
+// so does one naming several, which is a choice the caster has not
+// made yet.
+//
+// Through NamedFace rather than a read of the slice, so a grant that
+// names face 0 (CR 715.4's Adventure creature) is a real answer here
+// and not the "no opinion" a bare integer made of it. SetFace(0) is a
+// no-op on a card already showing its front, which is every card in
+// exile (CR 712.8, MoveCard) — the call is what makes the code say
+// the rule rather than rely on the coincidence.
 func grantedFace(c game.Card, perm *game.CastPermission) game.Card {
-	if perm == nil || perm.Face <= 0 {
+	face, ok := perm.NamedFace()
+	if !ok {
 		return c
 	}
-	c.SetFace(perm.Face)
+	c.SetFace(face)
 	return c
 }
 

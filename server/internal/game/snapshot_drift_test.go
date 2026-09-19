@@ -267,12 +267,15 @@ var cardFields = plan(
 	// #742: the colour named as the permanent entered. A player's
 	// choice, so nothing can rebuild it.
 	"ChosenColor", carried, "",
-	// ADR 0073 (#664): CR 400.7d's kicked record, carried onto the
-	// permanent by the resolution path. A player's choice made on a
-	// spell that has already left the stack, so there is nothing left
-	// to rebuild it from — a restore that dropped it would bring back
-	// a kicked Gatekeeper of Malakir whose next entry is unkicked.
-	"PaidOptionalCosts", carried, "",
+	// #653 / #664, CR 400.7d: what the spell that became this
+	// permanent was cast for — the alternative cost and the optional
+	// additional costs, one record. Carried, and it is the field here
+	// with the least room to be anything else: it was copied off a
+	// StackItem that no longer exists, so a restore that dropped it
+	// could not rebuild it from any other part of the game. A Phlage
+	// that escaped would come back hard-cast and sacrifice itself; a
+	// kicked Gatekeeper of Malakir would come back unkicked.
+	"Provenance", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",

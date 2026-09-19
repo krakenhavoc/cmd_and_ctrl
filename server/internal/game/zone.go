@@ -231,13 +231,15 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
-		// ADR 0073 / CR 400.7d: the optional costs paid for the SPELL
-		// that became this permanent are a fact about that spell, and
-		// the object that leaves is not the one that comes back. A
-		// kicked Gatekeeper of Malakir that dies and is reanimated was
-		// not kicked — the spell that returned it was a different
-		// spell, and it was not even a spell.
-		c.PaidOptionalCosts = nil
+		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
+		// about the permanent that spell became, and CR 400.7d's
+		// licence to read it back ends with that permanent. A Phlage
+		// that escaped, died and was reanimated is a new object that
+		// did not escape — and is sacrificed, which is what the card
+		// says; a kicked Gatekeeper of Malakir that comes back was
+		// not kicked, because the spell that returned it was a
+		// different spell and was not even a spell.
+		c.Provenance = CastProvenance{}
 		// ADR 0071 / CR 400.7: the level and solved designations are
 		// battlefield state on a permanent, not characteristics of a
 		// card. A Wizard Class that is bounced and replayed is level 1
@@ -304,7 +306,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Live from S32, when a `transform` card could first be on the
 	// battlefield showing its back: a defeated Siege's back face is
 	// cast out of exile and resolves as the back face
-	// (CastPermission.Face, faceOnResolve). Without this, a
+	// (CastPermission.Faces, faceOnResolve). Without this, a
 	// Refraction Elemental that died would sit in the graveyard as a
 	// CREATURE card rather than as the battle card Invasion of
 	// Karsus, and "return target creature card from your graveyard"

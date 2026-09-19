@@ -2141,73 +2141,21 @@ func (g *Game) resolveTopOfStackLocked() error {
 		if out == nil || out.Canceled {
 			return nil
 		}
-
-		moved, err := MoveCard(g.Stack, g.Battlefield, top.InstanceID)
-		if err != nil {
-			return err
-		}
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == moved.InstanceID {
-				g.Battlefield.Cards[i].Controller = item.Controller
-				if out.EntersTapped {
-					g.Battlefield.Cards[i].Tapped = true
-				}
-				// CR 400.7d / ADR 0073 §5: the optional costs paid
-				// for the SPELL travel onto the permanent it becomes,
-				// because "when this enters, IF IT WAS KICKED" is a
-				// triggered ability whose AppliesTo sees only the
-				// game, the source and the event — and the item is
-				// already out of StackMeta. Stamped here, after the
-				// move and BEFORE the ZoneMove / ETB pair below, so
-				// the trigger harvester reads the right value at the
-				// moment it decides whether the trigger happened at
-				// all.
-				if len(item.Paid.OptionalCosts) > 0 {
-					g.Battlefield.Cards[i].PaidOptionalCosts =
-						append([]int(nil), item.Paid.OptionalCosts...)
-					moved.PaidOptionalCosts = g.Battlefield.Cards[i].PaidOptionalCosts
-				}
-				break
-			}
-		}
-		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		// CR 707.2: a permanent entering as a copy is that copy from
-		// the moment it enters, so the values land before the counters
-		// (Spark Double's extra +1/+1 goes on the copy) and before any
-		// event fires. `moved` is re-taken because it is a pre-copy
-		// snapshot and CatalogKey(moved) below would otherwise fire
-		// the Clone's own ETB hook rather than the copied card's.
-		if copied, ok := g.applyEntersAsCopyLocked(out, moved.InstanceID); ok {
-			moved = copied
-		}
-		for name, n := range out.EntersWithCounters {
-			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-		}
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   item.Controller,
-			CardID:  moved.InstanceID,
-			OldZone: ZoneStack,
-			NewZone: ZoneBattlefield,
-		})
-		// S24 / ADR 0036 decision 5: an Aura was cast targeting
-		// (CR 303.4a) and enters ATTACHED to what it targeted. This
-		// is the only place in the resolution path holding both the
-		// landed permanent and the StackItem whose target it was.
-		// Between the ZoneMove and the ETB so an ETB trigger already
-		// sees the attachment.
-		g.attachResolvedAuraLocked(moved.InstanceID, item)
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  item.Controller,
-			CardID: moved.InstanceID,
-		})
-		g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-		// S22: evoke's "it's sacrificed when it enters" (CR 702.74a).
-		// Queued here because this is the last moment the StackItem —
-		// and so the cost that was actually paid — is still reachable.
-		g.queueAltCostEntryTriggerLocked(moved, item)
-		return nil
+		// #653: THE push, rather than a second copy of it. This branch
+		// used to reproduce executeEntryToBattlefieldLocked inline —
+		// the move, the controller, the copy, the counters, the zone
+		// move, the Aura attach, the ETB and evoke's trigger — while
+		// the RESUME of the very same event went through the finisher.
+		// Two copies of "a spell becomes a permanent" is one too many
+		// for a fact that has to be written exactly once, and the two
+		// had already drifted twice: #478's land-drop tally, and then
+		// ADR 0073 §5's kicked stamp, which had to be written into
+		// both. The finisher does everything this did, off the same
+		// event: ev.Actor is item.Controller and ev.stackItem is item,
+		// which is what carries the Aura's target and the costs that
+		// were paid across a pause.
+		_, err = g.executeEntryToBattlefieldLocked(out)
+		return err
 	}
 	// CR 707.10 — a COPY is not a card, so it has no graveyard to go
 	// to and no flashback exile to be caught by either. It ceases to
@@ -2218,10 +2166,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 		return nil
 	}
 	// Instants / sorceries: resolve to the owner's graveyard — or to
-	// exile, when the flashback cost was paid (CR 702.34a), or to the
-	// owner's HAND, when the buyback cost was paid (CR 702.27b). This
-	// is the one call site that resolves, so it is the one that
-	// passes `true`.
+	// exile, when the flashback cost was paid (CR 702.34a) or the
+	// spell went on an Adventure (CR 715.3d), or to the owner's HAND,
+	// when the buyback cost was paid (CR 702.27b). This is the one
+	// call site that resolves, so it is the one that passes `true`.
 	return g.routeStackCardToGraveyardLocked(top, item, true)
 }
 
@@ -2419,8 +2367,11 @@ func (g *Game) resolveTopAbilityLocked() {
 // instants / sorceries and by the "countered by game rules" path
 // (sub-PR 3) when every target is illegal on resolve.
 //
-// `item` is the spell's stack item, because two costs replace this
-// destination and both are facts about what was paid:
+// THE ONE PLACE a spell leaving the stack chooses a destination.
+// Three rules replace the graveyard, and all three decide here rather
+// than in the resolution frame, because a spell has exactly one
+// destination and a reader should be able to see the whole contest in
+// one switch:
 //
 //   - FLASHBACK — "exile this card instead of putting it anywhere
 //     else any time it would leave the stack" (CR 702.34a). Every
@@ -2431,11 +2382,30 @@ func (g *Game) resolveTopAbilityLocked() {
 //     and no other exit, which is what `resolved` is for: a bought-back
 //     Capsize whose only target left in response is countered by game
 //     rules, does not resolve, and goes to the graveyard.
+//   - ADVENTURE — "exile that card instead of putting it into its
+//     owner's graveyard as that spell finishes resolving", CR 715.3d,
+//     with CR 715.4's cast permission landing on it there (#719,
+//     adventure.go). Resolution only, for the same reason buyback is:
+//     CR 715.3e leaves a countered, fizzled, discarded or milled
+//     adventure card an ordinary card in an ordinary graveyard, and
+//     `resolved` is the fact that tells them apart. Before #988 gave
+//     this helper that fact, the adventure leg had to live one frame
+//     up to get it.
 //
-// Flashback wins when a card somehow has both, because 702.34a
-// replaces every exit and buyback replaces one of them. No printed
-// card has both; the order is written down so it is a decision rather
-// than an accident.
+// `item` is the spell's stack item, because the first two are facts
+// about what was PAID; the third is a fact about the card and reads
+// the face instead.
+//
+// PRECEDENCE. Flashback wins over both, because CR 702.34a replaces
+// every exit and the other two replace one of them. Between buyback
+// and the Adventure exile the order is buyback, and that one is a
+// judgement call worth stating: both replace the same "put it into its
+// owner's graveyard as it resolves" event, so CR 616.1 would hand the
+// choice to the spell's controller, and taking buyback honours the
+// mana they actually spent to get the card back. No printed card has
+// any of these pairs — an adventure card prints no buyback and no
+// flashback — so every combination here is written down to be a
+// decision rather than an accident.
 //
 // Pass nil for the defensive no-StackMeta path, where there is no
 // cost to read, and `resolved` false with it.
@@ -2463,6 +2433,17 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// bought-back commander still gets its CR 903.9 choice and a
 		// replacement watching the stack exit still sees one.
 		r.Dst = ZoneHand
+	case resolved && castAsAdventure(c):
+		// CR 715.3d, and CR 715.4's permission rides the route's
+		// continuation rather than the next line: a route that paused
+		// on a CR 903.9 prompt finishes later, and the grant has to
+		// land when it does. See adventure.go.
+		cardID := c.InstanceID
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+		r.then = func(g *Game) error {
+			g.grantAdventureCastFromExileLocked(cardID)
+			return nil
+		}
 	}
 	_, err := g.routeCardToZoneLocked(r)
 	return err

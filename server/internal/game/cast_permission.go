@@ -335,15 +335,27 @@ type CastPermission struct {
 	// Breeches says "you may PLAY those cards" and leaves it false.
 	CastOnly bool `json:"castOnly,omitempty"`
 
-	// Face is the printed face this permission opens (ADR 0034) — a
+	// Faces are the printed faces this permission opens (ADR 0034) — a
 	// defeated Siege's "exile it, then cast it transformed"
-	// (CR 310.12b). It NARROWS rather than widens: a permission that
-	// names a face opens that face and no other.
+	// (CR 310.12b) is []int{1}, and an adventure card's "you may cast
+	// the creature from exile" (CR 715.4) is []int{0}. It NARROWS
+	// rather than widens: a permission that names faces opens those
+	// and no other.
 	//
-	// ZERO MEANS "THIS PERMISSION DOES NOT SPEAK ABOUT FACES", not
-	// "face 0", and every permission that does not name one leaves
-	// the card's own CastableFaces to decide.
-	Face int `json:"face,omitempty"`
+	// EMPTY means "this permission does not speak about faces", and
+	// every permission that names none leaves the card's own
+	// CastableFaces to decide.
+	//
+	// A SLICE rather than the `Face int` this started life as (S32),
+	// because zero had to carry both meanings and could not: an
+	// adventure's creature half IS face 0, so "face 0 and no other"
+	// was unsayable and CR 715.4 could not be expressed at all. It is
+	// the same defect #945 took out of the window one field up — 0 was
+	// both the zero value and a turn number — fixed the same way, by
+	// giving the field a value that means "nothing to say". Pure data,
+	// and the same shape Card.CastableFaces already returns, so the
+	// two compose in faceForCastLocked rather than arguing.
+	Faces []int `json:"faces,omitempty"`
 
 	// --- provenance ------------------------------------------------
 
@@ -416,8 +428,8 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 	return p.NamesCard(c)
 }
 
-// GrantsFace returns the single face this permission opens, when it
-// names one and it is playerID's permission.
+// GrantsFaces returns the faces this permission opens, when it names
+// any and it is playerID's permission.
 //
 // NO WINDOW CHECK, since #945, and that is a tightening rather than a
 // loosening: every caller reaches a permission through
@@ -428,11 +440,39 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 // A permission that is not live never reaches this function, so a
 // Siege back face left uncast still cannot narrow anything after its
 // window shuts.
+func (p *CastPermission) GrantsFaces(playerID uuid.UUID) ([]int, bool) {
+	if p == nil || len(p.Faces) == 0 || p.Player == uuid.Nil || p.Player != playerID {
+		return nil, false
+	}
+	return p.Faces, true
+}
+
+// GrantsFace is GrantsFaces for the callers that want THE face — the
+// enumerator materialising the half it is about to offer, and the
+// view pricing it. Every permission anything declares today names
+// exactly one, so a permission naming several answers false rather
+// than picking a half on the caller's behalf; faceForCastLocked is
+// the one place that knows what to do with a choice.
 func (p *CastPermission) GrantsFace(playerID uuid.UUID) (int, bool) {
-	if p == nil || p.Face == 0 || p.Player == uuid.Nil || p.Player != playerID {
+	faces, ok := p.GrantsFaces(playerID)
+	if !ok || len(faces) != 1 {
 		return 0, false
 	}
-	return p.Face, true
+	return faces[0], true
+}
+
+// NamedFace is GrantsFace without the PLAYER — the read the VIEW
+// wants, which asks what a grant opens before it knows whose it is
+// (CastPermissionOnCardForEffect answers for any seat, because the
+// grant is public information). A warp grant whose turn has not come
+// yet still has to label its greyed-out button with the half it will
+// open (CR 702.185a), and a client that showed the front face of a
+// defeated Siege there would name the wrong card.
+func (p *CastPermission) NamedFace() (int, bool) {
+	if p == nil || len(p.Faces) != 1 {
+		return 0, false
+	}
+	return p.Faces[0], true
 }
 
 // AlternativeCostFor synthesises the CR 118.9 offer this permission

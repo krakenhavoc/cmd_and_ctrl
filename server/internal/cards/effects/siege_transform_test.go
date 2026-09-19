@@ -180,8 +180,8 @@ func TestSiegeDefeatedGrantsItsBackFace(t *testing.T) {
 	if grant.Player != owner.ID {
 		t.Errorf("grant holder = %v, want the battle's controller %v", grant.Player, owner.ID)
 	}
-	if grant.Face != 1 {
-		t.Errorf("grant face = %d, want the back face 1", grant.Face)
+	if face, ok := grant.NamedFace(); !ok || face != 1 {
+		t.Errorf("grant faces = %v, want just the back face 1", grant.Faces)
 	}
 	if grant.Cost != "{0}" {
 		t.Errorf("grant cost = %q, want %q — the transformed cast is free", grant.Cost, "{0}")

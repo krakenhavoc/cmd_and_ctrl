@@ -2614,6 +2614,30 @@ is a *price* rather than a permission:
   and swapping the key would ship a card that exiles itself, which is
   not what any escape card does.
 
+**"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
+permanent remembers how the spell that became it was cast:
+`Card.Provenance` is a `CastProvenance{AltCost, FromZone}` written at
+the one place a spell becomes a permanent and cleared by `MoveCard`
+when it leaves the battlefield (`game/cast_provenance.go`). Card code
+reads `ctx.Escaped()` (CR 702.138b) or `ctx.CastProvenance()`, and
+`SacrificeThisUnlessItEscaped("Phlage")` is the Titan cycle's whole
+entry clause in one constructor.
+
+**Which object you are asking matters, and this is the trap.**
+`ctx.PaidAltCost("overload")` asks about the ITEM BEING RESOLVED —
+right for an overloaded Cyclonic Rift, wrong for anything a PERMANENT
+asks, because by then the item on the stack is the trigger and the
+spell that paid escape finished resolving two steps ago.
+`ctx.Escaped()` asks the source permanent. Get them the wrong way
+round and the card compiles, casts, and answers "no" forever.
+
+The record is per-ENTRY, exactly like `NamedTribe` and `ChosenColor`:
+a Phlage that escaped, died and was reanimated is a new object that
+did NOT escape (CR 400.7), which is the difference between the card
+and an infinite loop. It grows a field when a card needs a fact the
+permanent cannot re-derive — #664's "if it was kicked" is the next
+one — and never a second record.
+
 **Warp (S29)** is the other half of the same idea and the reason the
 zone and the price are separate fields. `Warp("{R}")` is paid from
 **hand**, so it needs no `CastableZones` at all — the discount is now,
@@ -2677,7 +2701,35 @@ library permission needs its visibility half too** (`LibraryTopVisible`
 — `LibraryTopOwner` for "you may look at the top card any time",
 `LibraryTopRevealed` for "play with the top card revealed"): a card you
 cannot see is a card you cannot play, and every printed card in the
-family carries both clauses.
+family carries both clauses. **A permission may name FACES**
+(`Faces []int`, ADR 0034): empty means it does not speak about faces
+and the card's own `CastableFaces` decides; a list NARROWS to those and
+no other, and a list of one is also the ANSWER — the caller's requested
+face is ignored, because there is exactly one legal cast. A defeated
+Siege's grant is `Faces: []int{1}` and CR 715.4's Adventure grant is
+`Faces: []int{0}`, which is why it is a list: zero cannot mean both
+"no opinion" and "the front face".
+
+**Adventure cards (CR 715, #719, ADR 0034 step 6).** A card file writes
+nothing for the lifecycle — the engine owns it
+([game/adventure.go](server/internal/game/adventure.go)). What a card
+file does is register **both faces**: the creature under the bare
+oracle ID and the Adventure half under `"<oracle_id>#1"`, the same
+composite keyspace a Siege's back face and the sixty MDFC land backs
+live in. See
+[foulmire_knight.go](server/internal/cards/effects/foulmire_knight.go).
+The creature's entry is usually a bare `Completeness` declaration plus
+its `PrintedKeywords` — without it the whole card wears the
+"unimplemented" badge in hand, because the Adventure's text makes
+`NeedsCatalogEffect` true for the card. **One thing is still missing,
+and it decides which adventure cards are worth writing:** the view
+publishes `target_mode` and `legal_targets` for the face that is UP, so
+a human client asked to cast face 1 has no target picker. An Adventure
+half that TARGETS (Stomp, Petty Theft, Swift End) is therefore blocked
+on per-face announce data, while one that does not (Profane Insight,
+Fertile Footsteps, Heart's Desire) ships today. The bot enumerator is
+already face-correct, and an uncatalogued adventure card is unaffected
+— it has no announce data on either face and resolves by hand.
 
 **The window is a `game.Duration`** (#945,
 [ADR 0063](docs/decisions/0063-durations-and-control.md)) — the same
