@@ -42,29 +42,50 @@ type castParams struct {
 	Face int `json:"face,omitempty"`
 }
 
-// castZones are the five places a cast or a land play can come out
-// of, in the order the moves are emitted. ONE walk since #673: the
-// zone a card is in decides which surfaces have to be checked, never
-// which kinds of cost are available, because "where may I cast this
-// from" and "what may I pay for it" are separate questions the engine
-// answers in separate functions (cast_zones.go).
-func (e *enumerator) castZones() []struct {
+// castZone is one pile the walk below looks in. `mine` says the pile
+// belongs to the seat being enumerated, which is what decides whether
+// the card's OWN text can open it: flashback, escape and Gravecrawler
+// all say "your graveyard", so in somebody else's a permission is the
+// only key (#1022).
+type castZone struct {
 	z    *game.Zone
 	kind game.ZoneKind
 	from string
-} {
+	mine bool
+}
+
+// castZones are the places a cast or a land play can come out of, in
+// the order the moves are emitted. ONE walk since #673: the zone a
+// card is in decides which surfaces have to be checked, never which
+// kinds of cost are available, because "where may I cast this from"
+// and "what may I pay for it" are separate questions the engine
+// answers in separate functions (cast_zones.go).
+//
+// Every seat's graveyard is walked rather than only this one's, and
+// only when something has granted something (`anyGrant`): ADR 0066
+// makes a permission a statement about an OBJECT, and CastSpell finds
+// the card in the pile it is actually in (#1022,
+// castSourceZoneLocked). A four-player table with no grants in play
+// walks exactly the piles it always did.
+func (e *enumerator) castZones(anyGrant bool) []castZone {
 	g, p := e.g, e.p
-	return []struct {
-		z    *game.Zone
-		kind game.ZoneKind
-		from string
-	}{
-		{p.Hand, game.ZoneHand, "hand"},
-		{p.Command, game.ZoneCommand, "command"},
-		{p.Graveyard, game.ZoneGraveyard, "graveyard"},
-		{g.Exile, game.ZoneExile, "exile"},
-		{p.Library, game.ZoneLibrary, "library"},
+	out := []castZone{
+		{p.Hand, game.ZoneHand, "hand", true},
+		{p.Command, game.ZoneCommand, "command", true},
+		{p.Graveyard, game.ZoneGraveyard, "graveyard", true},
+		{g.Exile, game.ZoneExile, "exile", true},
+		{p.Library, game.ZoneLibrary, "library", true},
 	}
+	if !anyGrant {
+		return out
+	}
+	for _, other := range g.Seats {
+		if other == nil || other.ID == e.seat {
+			continue
+		}
+		out = append(out, castZone{other.Graveyard, game.ZoneGraveyard, "graveyard", false})
+	}
+	return out
 }
 
 // castMoves enumerates land plays and spell casts from EVERY zone the
@@ -105,7 +126,7 @@ func (e *enumerator) castMoves() {
 	// them costs nothing and an enumeration runs on every decision.
 	anyGrant := g.AnyCastPermissionsForEffect()
 
-	for _, zone := range e.castZones() {
+	for _, zone := range e.castZones(anyGrant) {
 		if zone.z == nil {
 			continue
 		}
@@ -126,7 +147,7 @@ func (e *enumerator) castMoves() {
 			cards = cards[len(cards)-1:]
 		}
 		for _, c := range cards {
-			e.castMovesFromZone(c, zone.kind, zone.from, speed, landOwed, anyGrant)
+			e.castMovesFromZone(c, zone.kind, zone.from, speed, landOwed, anyGrant, zone.mine)
 		}
 	}
 }
@@ -134,7 +155,11 @@ func (e *enumerator) castMoves() {
 // castMovesFromZone expands ONE card sitting in ONE zone: its faces,
 // its land play, and one call into castMovesForCard per price the
 // engine would let this seat announce.
-func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from string, speed, landOwed, anyGrant bool) {
+//
+// `mine` is false for another seat's graveyard (#1022), where the
+// card's own declaration opens nothing and a permission is the only
+// way in.
+func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from string, speed, landOwed, anyGrant, mine bool) {
 	g := e.g
 	// CastPermissionForLocked answers nil unless the window is open
 	// for this seat, so there is no second liveness test here — one
@@ -149,7 +174,13 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// card in a thirty-card graveyard on every bot decision.
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary:
-		if perm == nil && !castableFromZoneAnyFace(c, kind) {
+		// A card's own declaration opens ITS OWNER's zone and nobody
+		// else's: flashback, escape and Gravecrawler all print "your
+		// graveyard" (#1022). In another seat's pile the permission is
+		// the whole answer, which is also what CastSpell's zone lookup
+		// enforces — castSourceZoneLocked finds the card there only
+		// under one.
+		if perm == nil && !(mine && castableFromZoneAnyFace(c, kind)) {
 			return
 		}
 	}

@@ -505,7 +505,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
-	src, err := g.castSourceZoneLocked(p, params.FromZone)
+	src, err := g.castSourceZoneLocked(p, cardID, params.FromZone)
 	if err != nil {
 		return err
 	}
@@ -1875,10 +1875,11 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 // half, and for exile the per-instance permission is checked in
 // CastSpell before anything moves.
 //
-// Graveyard and hand resolve to the CALLER's own zone, which is
-// most of what flashback's "from your graveyard" needs: a player
-// naming a card in someone else's graveyard simply won't find it.
-func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
+// Hand and the command zone resolve to the CALLER's own zone, which
+// is what CR 601.1 and CR 903.4 mean by them. The graveyard is the
+// caller's own too, UNLESS a permission the caller holds names this
+// card where it sits — see the branch for why (#1022).
+func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string) (*Zone, error) {
 	kind, ok := castZoneFromWire(fromZone)
 	if !ok {
 		return nil, ErrZoneNotFound
@@ -1890,9 +1891,30 @@ func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
 		return p.Command, nil
 	case ZoneGraveyard:
 		// S29: the graveyard became castable at all with flashback
-		// and escape. Per-player, so the zone lookup already scopes
-		// the cast to "your graveyard".
-		return p.Graveyard, nil
+		// and escape, both of which say "from YOUR graveyard", so the
+		// caller's own pile answers almost every cast.
+		if p.Graveyard != nil && p.Graveyard.Contains(cardID) {
+			return p.Graveyard, nil
+		}
+		// #1022, and the one exception. ADR 0066 makes a permission a
+		// statement about an OBJECT — "you may cast that card" — and
+		// nothing in CastPermission says the object has to be in the
+		// holder's own zone. Wrexial's "you may cast target instant or
+		// sorcery card from that player's graveyard" is the printed
+		// shape, and until this branch the permission was answerable
+		// by CastPermissionForLocked, invisible to the view (#1022)
+		// and unreachable by this lookup, which found no card and
+		// returned ErrCardNotFound.
+		//
+		// A PERMISSION is the only key: the card's own text is never
+		// one, because flashback, escape and Gravecrawler all say
+		// "your graveyard" and a printed declaration opening every
+		// copy in every graveyard would be a rules error in the
+		// caster's favour. So the scan asks CastPermissionForLocked —
+		// the same function CastSpell validates with and the view and
+		// the enumerator read — and a card no permission covers stays
+		// exactly as unreachable as it was.
+		return g.foreignGraveyardForCastLocked(p, cardID)
 	case ZoneLibrary:
 		// S42 / CR 401.5: "you may play lands and cast spells from the
 		// top of your library". Per-player like the graveyard, so a
@@ -1914,6 +1936,47 @@ func (g *Game) castSourceZoneLocked(p *Player, fromZone string) (*Zone, error) {
 	default:
 		return nil, ErrZoneNotFound
 	}
+}
+
+// foreignGraveyardForCastLocked finds the graveyard a card is sitting
+// in when it is not the caster's own, and only when the caster holds a
+// CastPermission over it there (#1022).
+//
+// The permission check is the whole point: without it this would open
+// every printed flashback card in every opponent's graveyard, which is
+// the one direction a sandbox must never err in. With it, the answer
+// is the same one CastPermissionForLocked gives the view and the bot
+// enumerator, so the three cannot disagree about whether the cast
+// exists.
+//
+// ErrCardNotFound when no graveyard holds the card, and when one does
+// but nothing lets this player cast it from there — the error the old
+// per-player lookup gave for both, so a client that names a card it
+// has no business naming sees no change.
+//
+// The LIBRARY has no equivalent branch and cannot have one today:
+// permissionPositionOKLocked reads CR 401.5's "the top card of YOUR
+// library" off the permission HOLDER's own library, so a cross-seat
+// library permission is refused before it is ever looked up. See
+// cast_permission.go.
+//
+// Caller must hold g.mu.
+func (g *Game) foreignGraveyardForCastLocked(p *Player, cardID uuid.UUID) (*Zone, error) {
+	for _, other := range g.Seats {
+		if other == nil || other == p || other.Graveyard == nil {
+			continue
+		}
+		for _, card := range other.Graveyard.Cards {
+			if card.InstanceID != cardID {
+				continue
+			}
+			if g.CastPermissionForLocked(p.ID, card, ZoneGraveyard) == nil {
+				return nil, ErrCardNotFound
+			}
+			return other.Graveyard, nil
+		}
+	}
+	return nil, ErrCardNotFound
 }
 
 // sorcerySpeedOpenLocked reports whether the sorcery-speed gate is
