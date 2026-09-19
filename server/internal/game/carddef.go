@@ -48,11 +48,17 @@ type CardDef struct {
 	Activated     []ActivatedAbilityShape
 	// Static includes the Layer 6 keyword static synthesised from
 	// PrintedKeywords, appended once at build time.
-	Static          []StaticAbility
-	Replacements    []ReplacementEffect
-	PrintedKeywords []string
-	Triggered       []TriggeredAbility
-	TriggerDoublers []TriggerDoubler
+	Static       []StaticAbility
+	Replacements []ReplacementEffect
+	// EntersWithCountersFromCast are the card's printed "this
+	// permanent enters with N counters on it" clauses whose N is read
+	// from the spell that became it (CR 614.1c) — Hangarback Walker's
+	// X, Etched Oracle's sunburst. Seeded onto the entry event before
+	// the CR 614 pipeline; see entry_counters.go.
+	EntersWithCountersFromCast []EntryCountersFromCast
+	PrintedKeywords            []string
+	Triggered                  []TriggeredAbility
+	TriggerDoublers            []TriggerDoubler
 	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities — the
 	// one trigger kind that never uses the stack (CR 605.4a). Kept
 	// apart from Triggered because nothing on TriggeredAbility applies
@@ -240,6 +246,12 @@ func init() {
 	CatalogReplacements = func(key string) []ReplacementEffect {
 		if d := catalogDef(key); d != nil {
 			return d.Replacements
+		}
+		return nil
+	}
+	CatalogEntersWithCountersFromCast = func(key string) []EntryCountersFromCast {
+		if d := catalogDef(key); d != nil {
+			return d.EntersWithCountersFromCast
 		}
 		return nil
 	}

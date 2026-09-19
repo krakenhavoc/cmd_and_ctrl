@@ -34,9 +34,11 @@ func init() {
 		OracleID:            "7ecfa47e-1165-46a6-884c-290b1c14d020",
 		Name:                "Etched Oracle",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"The +1/+1 counters go on as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them. With strict mana off, the game doesn't track which mana you spent, and it enters with no counters at all."},
+		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
-		OnResolve:           SunburstCounters(game.CounterPlusOne),
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{
+			SunburstCounters(game.CounterPlusOne),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{1}, Remove four +1/+1 counters from this creature: Target player draws three cards.",
 			Cost: Plus(

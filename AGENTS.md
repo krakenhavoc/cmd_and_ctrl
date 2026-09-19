@@ -853,7 +853,7 @@ Replacement effects ("enters tapped", "if that would place counters,
 place twice that many instead", "if a player would draw a card, that
 player mills instead") live on the same `Spec{}` struct via the
 optional `Replacements []game.ReplacementEffect` field. Used today by
-Doubling Season, Hardened Scales, Kismet, Stasis, Hangarback Walker,
+Doubling Season, Hardened Scales, Kismet, Stasis, Gemstone Mine,
 Fog, Stone of Erech.
 
 **A discard goes through the exit primitive** (#853). Every discard
@@ -999,7 +999,7 @@ Naming a kind that owes NOTHING is a written arm, not an omission.
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`
-- Self-replacement (Hangarback's X counters on own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `AsEnters` tap — see the "enters tapped" note below.
+- Self-replacement (Gemstone Mine's three mining counters on its own ETB; every "this land enters tapped") — `ev.CardID == src.InstanceID`. This works even though the entering card is not on the battlefield yet: `gatherActiveReplacementsLocked` has a dedicated block for a card that is NOT on the battlefield, which passes the entering card itself as `src` ([replacements.go](server/internal/game/replacements.go), the `!g.Battlefield.Contains(ev.CardID)` branch). Prefer `SelfEntersTapped()` over an `AsEnters` tap — see the "enters tapped" note below.
 - Opponents only (Kismet) — `controllerOf(ev.CardID) != src.Controller`
 
 **`Replace` patterns:**
@@ -1008,7 +1008,41 @@ Naming a kind that owes NOTHING is a written arm, not an omission.
 - Cancel — `ev.Cancel()` (Fog, Stasis)
 - Redirect move — `ev.NewZone = game.ZoneExile` plus `ev.NewZoneOwner = uuid.Nil` (Stone of Erech)
 - Enters-tapped — `ev.EntersTapped = true` (Kismet)
-- Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Hangarback Walker)
+- Enters-with-counters — `ev.AddCounterAtETB("+1/+1", n)` (Gemstone Mine, Kalonian Hydra). For a count read from the CAST rather than from the board, use the declaration below instead.
+
+**"Enters with N counters" where N comes from the CAST** (#1002,
+CR 614.1c). Three families of "enters with counters" live in the
+catalog and they are three slots, because they read three different
+things:
+
+| What N is | How to declare it |
+|---|---|
+| a printed number ("enters with three +1/+1 counters") | `Replacements: []game.ReplacementEffect{b10EntersWithCounters(kind, n, label)}` |
+| a count off the BOARD ("…for each Zombie card in your graveyard") | `Replacements: []game.ReplacementEffect{b19EntersWithCountersCounted(kind, count, label)}` |
+| a fact about the ANNOUNCEMENT (X, times kicked, colours spent) | `EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(kind)}` |
+
+The first two are ordinary CR 614 self-replacements: everything they
+need is reachable from `(g, src)` while the entry window is open. The
+third is not — a replacement is handed the game, the source and the
+event, and none of those carries the resolving stack item, which is
+why thirteen X-creatures and sunburst used to put their counters on in
+`OnResolve` a beat before the permanent existed and each declared a
+caveat saying so. The engine now seeds the clause onto the entry event
+from the `StackItem` that is right there
+([game/entry_counters.go](server/internal/game/entry_counters.go)), one
+line after escape's `applyAltCostEntryCountersLocked`, so a card file
+declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
+`ColorsSpent` — and nothing else. Constructors:
+`XCounters(kind)`, `CountersPerKick(kind, per)`,
+`SunburstCounters(kind)` in
+[cards/effects/entry_counters.go](server/internal/cards/effects/entry_counters.go).
+Never build a `game.EntryCountersFromCast` by hand, for the reason
+`mana_spent.go` gives: a card says what the card says and never
+reaches for the payment record itself.
+
+A permanent that did not come from a spell — reanimated, put onto the
+battlefield, a token — enters with none, because the seeding site is
+the spell's entry and nothing else (CR 107.3b).
 
 **A token creation is a replaceable event** (#762,
 [ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).

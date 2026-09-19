@@ -2155,6 +2155,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 		// doubles them — rather than an afterthought stapled on once
 		// the permanent has landed.
 		g.applyAltCostEntryCountersLocked(ev, top, item)
+		// #1002, CR 614.1c: the card's OWN "this permanent enters with
+		// X +1/+1 counters on it", read off the same still-reachable
+		// StackItem the line above reads. Two clauses, one entry
+		// event, one pipeline. See entry_counters.go.
+		g.applyCastEntryCountersLocked(ev, top, item)
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
 			return nil

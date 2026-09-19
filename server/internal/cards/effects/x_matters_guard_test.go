@@ -195,9 +195,20 @@ func functionsThatReadX(files map[string]*ast.File) map[string]bool {
 	return readers
 }
 
+// xHolders are the receiver names that carry the announced X in the
+// catalog's three spellings of the read. `ctx` is effects.Context
+// (`ctx.X()`), and `cast` is game.CastCounts, the value a CR 614.1c
+// "enters with N counters" clause is handed (`cast.X`, #1002) — the
+// declaration that replaced thirteen cards' OnResolve. The third
+// spelling, `item.XValue`, needs no name because the FIELD is unique.
+//
+// Named rather than matched on the bare selector because a field
+// called X on a point-like struct would match everything.
+var xHolders = map[string]bool{"ctx": true, "cast": true}
+
 // readsXDirectly reports whether the subtree reads the announced X in
-// either spelling the catalog uses: `ctx.X()` on an effect Context, or
-// `item.XValue` off the stack item.
+// any spelling the catalog uses: `ctx.X()` on an effect Context,
+// `cast.X` on a game.CastCounts, or `item.XValue` off the stack item.
 func readsXDirectly(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
@@ -212,10 +223,8 @@ func readsXDirectly(n ast.Node) bool {
 			found = true
 			return false
 		}
-		// ctx.X() — the selector alone is not enough, because a field
-		// called X on a point-like struct would match too.
 		if sel.Sel.Name == "X" {
-			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "ctx" {
+			if ident, ok := sel.X.(*ast.Ident); ok && xHolders[ident.Name] {
 				found = true
 				return false
 			}

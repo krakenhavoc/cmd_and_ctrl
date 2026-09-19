@@ -22,11 +22,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // only if it is still on the battlefield when the trigger resolves.
 // Its own X counters are placed on itself, so they never fire it.
 //
-// One declared simplification, weaker than printed: the X +1/+1
-// counters are placed as the spell resolves, a beat before the card
-// enters (an entry replacement cannot read the spell's X), so a
-// "whenever you put counters on a permanent" payoff does not see
-// them.
+// The X counters are the printed CR 614.1c entry clause and ride the
+// CR 614 pipeline as one — XCounters, seeded onto the entry event off
+// the resolving stack item while the spell is still there (#1002).
+// They land on the PERMANENT, after the move and before EventETB, so
+// Doubling Season and Hardened Scales apply, the card's own enters
+// trigger reads a finished creature, and a "whenever one or more
+// counters are put on a permanent you control" payoff sees them —
+// which it could not while they went onto a card still on the stack.
 //
 // A Scourge cast for X=0 is a printed 0/0 with no counters and dies
 // to the toughness check, as in paper. That sentence was written here
@@ -38,14 +41,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed_zero_body_test.go pins it.
 func init() {
 	Register(Spec{
-		OracleID:     "b9dec104-c636-4770-a7fc-7a3331face15",
-		Name:         "Wildwood Scourge",
-		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The X +1/+1 counters are put on the Scourge as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: ctx.X()}.Apply(ctx)
-		},
+		OracleID:                   "b9dec104-c636-4770-a7fc-7a3331face15",
+		Name:                       "Wildwood Scourge",
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
+		XMatters:                   true,
+		Completeness:               CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev, source, g)

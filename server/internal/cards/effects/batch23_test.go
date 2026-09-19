@@ -456,8 +456,10 @@ func TestB23PrimordialHydraEntersWithXAndDoublesEachUpkeep(t *testing.T) {
 	if hasEffectiveKeyword(t, g, hydra, "trample") {
 		t.Error("nine counters: no trample")
 	}
-	if spec, _ := Lookup(b23PrimordialHydraOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the X-as-the-spell-resolves gap must be declared")
+	// #1002: the X counters ride the CR 614 entry pipeline now, so the
+	// gap they used to declare is gone and the card is complete.
+	if spec, _ := Lookup(b23PrimordialHydraOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Primordial Hydra is complete: %v %v", spec.Completeness, spec.Caveats)
 	}
 }
 

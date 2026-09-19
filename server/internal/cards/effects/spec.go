@@ -178,6 +178,30 @@ type Spec struct {
 	// Evolution).
 	Replacements []game.ReplacementEffect
 
+	// EntersWithCountersFromCast is the card's printed "this permanent
+	// enters with N counters on it" where N is read from the SPELL
+	// that became it (CR 614.1c, #1002) — Hangarback Walker's X,
+	// Etched Oracle's sunburst. Build each clause with a constructor
+	// from entry_counters.go and never by hand:
+	//
+	//	EntersWithCountersFromCast: []game.EntryCountersFromCast{
+	//	    XCounters(game.CounterPlusOne),
+	//	},
+	//
+	// It is NOT the slot for "enters with three +1/+1 counters" or
+	// "enters with a counter for each Zombie card in your graveyard".
+	// Those read the board, not the announcement, and stay ordinary
+	// self-replacements in Replacements — b10EntersWithCounters and
+	// b19EntersWithCountersCounted. This slot exists only because the
+	// announcement is the one thing a replacement cannot reach on its
+	// own: the engine seeds it onto the entry event from the resolving
+	// StackItem (game/entry_counters.go).
+	//
+	// A permanent that did not come from a spell — reanimated, put
+	// onto the battlefield, a token — declares nothing and enters with
+	// none (CR 107.3b).
+	EntersWithCountersFromCast []game.EntryCountersFromCast
+
 	// PrintedKeywords is the list of combat keywords printed on the
 	// card — entries like "flying", "reach", "deathtouch", "lifelink",
 	// "trample", "vigilance", "first strike", "double strike",

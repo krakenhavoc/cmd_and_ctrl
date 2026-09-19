@@ -257,14 +257,14 @@ func TestMikaeusDiesPayingThePumpWithHisLastCounter(t *testing.T) {
 	if got := counterCount(g, bear, game.CounterPlusOne); got != 1 {
 		t.Errorf("the pump still resolves: the bear has %d counters, want 1", got)
 	}
-	// Neither the pump nor an X=0 cast is stronger than printed any
-	// more — #691 made a printed 0/0 with a printing behind it die at
-	// once, and the X=0 caveat went with the gap
-	// (TestMikaeusCastForXZeroDiesAtOnce). What is left is the
-	// X-counter timing, and nothing here may declare an X=0 gap again.
+	// Neither the pump, an X=0 cast nor the X-counter timing is
+	// stronger than printed any more: #691 made a printed 0/0 with a
+	// printing behind it die at once (TestMikaeusCastForXZeroDiesAtOnce)
+	// and #1002 moved the X counters onto the CR 614 entry pipeline, so
+	// the card declares nothing.
 	spec, _ := Lookup(ccMikaeusOracle)
-	if len(spec.Caveats) != 1 {
-		t.Errorf("want the X-counter timing caveat alone, got %v", spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Mikaeus is complete: %v %v", spec.Completeness, spec.Caveats)
 	}
 	for _, c := range spec.Caveats {
 		if strings.Contains(c, "X=0") {
