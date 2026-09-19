@@ -146,6 +146,16 @@ var canonicalKeywords = map[string]bool{
 	// token's job is the badge and the ADR 0037 coverage signal, and
 	// it must not arrive before the mechanic does.
 	"suspend": true,
+	// madness (CR 702.35) joins with #657, in the same change that
+	// teaches the engine to honour it: the discard replacement over
+	// #650's one discard event, the exile-zone trigger that offers
+	// the cast (#925's Zones dimension), and the per-instance
+	// CastPermission keyed "madness" with TimingFlash that carries
+	// CR 608.2g. Same reasoning as foretell and suspend above — the
+	// consumer is the card, not a table in this file, so the token's
+	// job is the badge and the ADR 0037 coverage signal, and it must
+	// not arrive before the mechanic does.
+	"madness": true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

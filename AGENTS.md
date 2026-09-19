@@ -909,6 +909,28 @@ settles without asking, so an `Optional` replacement on one is skipped
 un-applied — which is also the right answer, since costs are not
 effects.
 
+**Madness is one string** (#657, CR 702.35). Do not write either half
+of it on a card:
+
+```go
+Register(Spec{
+    Name:    "Fiery Temper",
+    Madness: "{R}",       // and nothing else about the keyword
+    ...
+})
+```
+
+`buildDef` grows the CR 702.35a discard replacement
+(`game.MadnessReplacement`) and the exile-zone trigger that offers the
+cast (`game.MadnessTrigger`) from that one field, and appends them to
+whatever the card declares itself — Big Game Hunter keeps its own ETB.
+The cast the trigger offers is a per-instance `game.CastPermission`
+priced at the madness cost, keyed `"madness"` and `TimingFlash`
+(CR 608.2g), and declining puts the card into its owner's graveyard
+(CR 702.35b). `Register` refuses an unparseable cost at boot. The
+engine side, and the two declared simplifications it shares with
+cascade, are in `server/internal/game/madness.go`.
+
 Unlike static abilities, replacements fire **before** the event
 happens — the pipeline constructs a `game.ReplacementEvent`, the
 engine offers each applicable replacement a chance to mutate or

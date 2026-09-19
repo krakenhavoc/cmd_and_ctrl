@@ -99,6 +99,17 @@ func buildDef(spec Spec) *game.CardDef {
 			break
 		}
 	}
+	// #657 / CR 702.35a: madness is a replacement and a trigger, and
+	// both belong to the KEYWORD. Grown here from the one-string
+	// declaration for the reason suspend's pair is, and appended to
+	// whatever the card declares itself — Big Game Hunter has an ETB
+	// trigger of its own and keeps it.
+	if spec.Madness != "" {
+		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
+			game.MadnessReplacement())
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+			game.MadnessTrigger(spec.Madness))
+	}
 	// S20: a structured TargetSpec is the source of truth for the
 	// client hint too.
 	if spec.Targets != nil {
