@@ -1688,6 +1688,20 @@ shows no button on it. Timing still applies on top — the grant says
 you *may* play the card, not *when*. See
 [ADR 0022](docs/decisions/0022-impulse-exile.md).
 
+**The client has ONE cast entry point** (#874), `handlePlayCard` in
+`Board.svelte`, and every surface that casts a card reaches it: the
+hand, the graveyard's flashback button, and the exile pile's impulse
+button, each passing the zone it came out of (and, for a grant that
+names a face, that face). The prompts a cast owes the player — the
+face picker, the alternative cost, the additional costs, X, the tap
+cost, the modes, the targets — all hang off that one chain, so a
+surface that dispatches `cast_spell` itself is not a shortcut, it is a
+cast with every one of those questions silently answered "none". That
+is exactly what the impulse button did until #874: a grant offering
+the PRINTED cost could only ever announce X = 0. When you add a new
+way to cast something, hand it to `handlePlayCard`; never build a
+payload.
+
 The same slot takes a **sacrifice** clause (S21):
 
 ```go
