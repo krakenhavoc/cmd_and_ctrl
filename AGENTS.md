@@ -3837,6 +3837,18 @@ build for a prompt whose first argument is not one of those constants,
 and for a card file that reaches `QueueColorChoiceForEffect` without
 going through a builder.
 
+The purpose has **three** readers, none of them the engine (#986): the
+bot's policy scores by it (`colorChoiceValue`), the enumerator ORDERS
+the answers by it, and the client's picker WORDS itself from it. The
+ordering is one function — `legal.OrderColorOptionsLocked`
+([color_order.go](server/internal/legal/color_order.go)) — called both
+by `enumerator.colorAnswers` and by the `choose_color` projection in
+`protocol.ViewOfGame`, so a bot's first offered answer and a human's
+first button are the same colour. It reads battlefield counts and
+nothing else (ADR 0033 §3), and it never narrows the list: an ordering
+that dropped an option would be a rules change. Pick the purpose that
+matches the card and all three follow.
+
 Until the controller answers, the colour is empty, and every reader
 must treat that as the weaker outcome: no mana, no anthem. Never read
 an empty colour as "any colour". "A color other than blue" is just a

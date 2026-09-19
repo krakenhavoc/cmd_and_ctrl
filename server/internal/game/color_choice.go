@@ -1,7 +1,9 @@
 package game
 
 import (
+	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -143,6 +145,18 @@ func ColorName(color string) string {
 // order with no duplicates; nil or empty means all five. A caller
 // that passes "C" (colorless is not a color, CR 105.4) or junk gets
 // it silently dropped rather than offered.
+//
+// Dropping EVERY entry is the case that is not silent. A prompt with no
+// options is not a narrow colour prompt, it is an unanswerable one: the
+// enumerator offers the seat no answers and the choice blocks the
+// table, which is the #499 / #618 wedge, and the client's
+// colorPromptAnswerable refuses to open a picker for it — so a
+// miswritten card ("C" alone, a typo'd letter) stalls the game instead
+// of asking a bad question. CR 105.4 says the answer is one of the
+// five, so the five are the honest fallback, exactly as they are for
+// the empty input above. The warning is the breadcrumb that says a card
+// file is wrong, in #844's posture: play continues, once per process.
+// Found by #986's ordering work.
 func normaliseColorOptions(options []string) []string {
 	if len(options) == 0 {
 		return append([]string(nil), AllColors...)
@@ -157,8 +171,20 @@ func normaliseColorOptions(options []string) []string {
 			out = append(out, c)
 		}
 	}
+	if len(out) == 0 {
+		emptyColorOptionsOnce.Do(func() {
+			slog.Warn("a choose_color prompt narrowed to no colours: offering all five",
+				"options", options, "rule", "CR 105.4", "issue", 986)
+		})
+		return append([]string(nil), AllColors...)
+	}
 	return out
 }
+
+// emptyColorOptionsOnce keeps the warning above to one line per
+// process. It names a CARD BUG, so it is the same line every time and
+// repeating it per prompt would bury the rest of the log.
+var emptyColorOptionsOnce sync.Once
 
 // chooseColorFrame is the continuation behind a resolution-time
 // PendingChoiceColor. `then` receives the chosen colour and runs with

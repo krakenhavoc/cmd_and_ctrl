@@ -644,6 +644,18 @@ export interface PendingChoiceView {
   // amount. A colour missing from the map adds one; absent on ordinary
   // picks. Also, choose_color reuses color_options above.
   color_amounts?: Record<string, number>;
+  // #780: on a "choose_color" prompt — the card's own declaration of
+  // what it will DO with the colour it is handed. Public (it is a
+  // reading of the printed text) and absent on every other kind, and
+  // on a prompt from a card nobody has annotated yet.
+  //
+  // It exists because CR 105.4 makes all five colours a legal answer,
+  // so nothing else on the prompt says which question is being asked:
+  // Coldsteel Heart and Wash Out send the identical five buttons. The
+  // picker reads it for its WORDING (colorPromptCopy in manaPick.ts);
+  // the ORDER of color_options is already the server's answer to the
+  // same question (#986), so nothing here re-sorts.
+  color_purpose?: "mana" | "benefit" | "harm" | "filter" | "protect" | string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it

@@ -2,6 +2,7 @@
 
 **Status:** Accepted · 2026-09-16 (proposed 2026-09-11 in [#286](https://github.com/krakenhavoc/cmd_and_ctrl/pull/286)) · Sprint S31 · Issue [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)
 **Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
+**Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -809,3 +810,60 @@ key and `TimingFlash`, which this walk already reads.
 Deliberately still not enumerated, each for a stated reason: two
 different optional costs at once (no card offers it), and two
 card-shaped sacrifice clauses on one cast (same).
+
+## Amendment (2026-09-19, #986): the enumerator orders a colour prompt by its purpose, and so does the wire
+
+§1 says the enumerator produces "a stable, ordered move list", and
+the #673 / #687 amendment above added `Options.OrderTargets` so that a
+seat's own policy could decide which candidate TARGETS survive the
+expansion cap. A colour prompt's answers needed the opposite shape and
+this records why.
+
+**The gap.** `enumerator.colorAnswers` ordered every `choose_color`
+prompt (CR 105.4) the same way — by how many permanents the enumerating
+seat controls of each colour, most first — whatever the prompt was for.
+#780 had already given every such prompt the card's own
+`game.ColorPurpose` and PR #985 had taught the `heuristic` policy to
+switch on it, so nothing played badly at the `heuristic` tier. Three
+things still read the raw order: the `random` tier, the `decideChoice`
+tie-break (which takes the first offered answer, and is the path a
+purpose-less prompt lands on), and the human's colour buttons, which
+render `color_options` in the order the server sends. All three got the
+Coldsteel Heart answer for a Wash Out.
+
+**The decision.** One exported ordering function in `legal`,
+`OrderColorOptionsLocked` (`server/internal/legal/color_order.go`),
+with one arm per purpose, called by BOTH readers: `colorAnswers` for
+the move list and the `choose_color` projection in
+`protocol.ViewOfGame` for the wire. So a bot's first offered answer and
+a human's first button are the same colour, and neither side holds a
+ranking rule of its own.
+
+- `harm` ranks by what the OTHER seats lose net of what the chooser
+  loses; `filter` by what the other seats have, with the chooser's own
+  board not a term at all; `protect` by the greatest POWER among the
+  creatures other seats control of that colour; `mana`, `benefit` and a
+  prompt that declares nothing keep the pre-#986 rule exactly.
+- Battlefield counts only. §3's hidden-information boundary is why: the
+  order rides the wire to every viewer, so every term in it has to be
+  something every viewer can already count.
+- An ORDERING, never a filter. CR 105.4 makes all five colours legal
+  and a narrowed printed list ("a color other than blue") stays exactly
+  as narrow as the card made it. The sort is stable, so ties keep
+  WUBRG.
+
+**Why a function and not an `Options` hook, unlike #687.** Ranking a
+board by what a spell is worth against it is a POLICY question, and
+`legal` may not import `aiseat`, so target ordering had to be injected
+by the seat. A colour prompt's order is a reading of the card's own
+printed text against public counts; it must be identical for a bot and
+for a human, because both read it off the same prompt; and `legal` is
+the layer both already go through. A hook would have left the human's
+buttons unordered — which is half of what #986 was filed for.
+
+**What it is not.** It is not a second scorer. The `heuristic` still
+prices each answer with its own `Weights` (`colorChoiceValue`), and
+this decides only what order it sees them in — and therefore what it
+does when it scores two of them the same. The arms are deliberately the
+same questions that function asks, answered with the crudest public
+proxy there is.

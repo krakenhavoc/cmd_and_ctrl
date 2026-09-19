@@ -218,6 +218,13 @@ type PendingChoiceView struct {
 	// whose printed text says "in your commander's color identity"
 	// (Command Tower, Arcane Signet) is narrowed to it. Render in the
 	// order given. Added in S15 sub-PR 2.
+	//
+	// A "choose_color" prompt reuses the field, and since #986 it is
+	// ordered too — by the prompt's ColorPurpose, through the same
+	// legal.OrderColorOptionsLocked the bot seat's move list is built
+	// with, so the first button and the first offered move are the
+	// same colour. Battlefield counts only, so the order is public and
+	// identical for every viewer.
 	ColorOptions []string `json:"color_options,omitempty"`
 
 	// ColorAmounts populates a "mana_pick" that adds more than one mana
@@ -3073,8 +3080,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceColor — #742 "choose a color" (CR 105.4). The
 		// legal colours ride in the same field a mana pick uses, so
 		// the client's colour buttons render both.
+		//
+		// #986: ordered by the prompt's own purpose, by the SAME
+		// function that orders a bot seat's answers
+		// (legal.OrderColorOptionsLocked) — so the button under the
+		// cursor and the first move in the bot's list are the same
+		// colour, and neither client nor policy needs a ranking rule
+		// of its own. The ordering is battlefield counts, which is
+		// public, so it is the chooser's order for every viewer. We
+		// are already inside ViewOfGame's ReadSnapshot, which is what
+		// the Locked suffix means.
 		if c.Kind == game.PendingChoiceColor && len(c.ColorOptions) > 0 {
-			v.ColorOptions = append([]string(nil), c.ColorOptions...)
+			v.ColorOptions = legal.OrderColorOptionsLocked(g, c.Chooser, c.ColorOptions, c.ColorPurpose)
 			v.ColorPurpose = string(c.ColorPurpose)
 		}
 		// PendingChoiceCreatureType — S26. The option set is the
