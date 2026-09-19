@@ -80,6 +80,20 @@ type Config struct {
 	// move, there is no index and no move list entry, and
 	// improvise.go already announces it to the table.
 	Observer DecisionObserver
+	// FollowTablePace makes the runner re-derive MinThink and MaxThink
+	// from the table's own game.Settings.BotPace before every
+	// decision, rather than using MinThink/MaxThink exactly as set on
+	// this Config (ADR 0075 §2.2, sub-PR 6). DefaultConfig — and so
+	// ConfigFor and every tier's RunnerConfig — turns it on.
+	//
+	// It is off in the zero value on purpose: a Config built by hand,
+	// including the one tests and NewManagerWithConfig use to strip
+	// MinThink to 0 so a whole game runs in milliseconds, must keep
+	// winning over whatever BotPace the game happens to carry. Without
+	// this flag every such test would start running at the table's
+	// "normal" preset the moment BotPace defaulted to
+	// game.BotPaceNormal, silently undoing the override.
+	FollowTablePace bool
 }
 
 const (
@@ -94,9 +108,24 @@ const (
 // DefaultConfig is the production pacing: 700ms minimum think, 2s
 // hard deadline, 64 actions per wake, 3 rejections before a forced
 // pass, 4s block grace, reasoning narrated to clients that asked for
-// it.
+// it, and the table's BotPace setting followed on every decision.
 func DefaultConfig() Config {
-	return Config{MinThink: defaultMinThink, BlockGrace: defaultBlockGrace, Narrate: true}.withDefaults()
+	return Config{
+		MinThink:        defaultMinThink,
+		BlockGrace:      defaultBlockGrace,
+		Narrate:         true,
+		FollowTablePace: true,
+	}.withDefaults()
+}
+
+// botPacePresets maps a table's game.BotPace to MinThink/MaxThink
+// (ADR 0075 §2.2, sub-PR 6). fast trades the "never feels
+// precognitive" floor (Config.MinThink's doc) for speed; slow is for
+// a table that wants to watch the bot think.
+var botPacePresets = map[game.BotPace]struct{ Min, Max time.Duration }{
+	game.BotPaceFast:   {Min: 0, Max: 2 * time.Second},
+	game.BotPaceNormal: {Min: defaultMinThink, Max: defaultMaxThink},
+	game.BotPaceSlow:   {Min: 2 * time.Second, Max: 8 * time.Second},
 }
 
 func (c Config) withDefaults() Config {
@@ -400,6 +429,12 @@ func (r *Runner) step(ctx context.Context) bool {
 		// projection, and the enumeration is byte-identical to what it
 		// was.
 		started := time.Now()
+		// Read once per decision window and reused by everything below
+		// that paces this window (improvise, decide, the post-decision
+		// hold) — see pacingNow. A table settings change mid-game is
+		// therefore live on this seat's very next window, not cached
+		// from Start.
+		minThink, maxThink := r.pacingNow()
 		opts, ordering := r.enumerationOrder()
 		moves := legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
 		if len(moves) == 0 {
@@ -424,10 +459,10 @@ func (r *Runner) step(ctx context.Context) bool {
 		// moved the board, so re-enumerate rather than deciding
 		// against a stale move list. Bounded by MaxActionsPerWake like
 		// everything else in this loop.
-		if r.improvise(ctx, in, started) {
+		if r.improvise(ctx, in, started, minThink, maxThink) {
 			continue
 		}
-		out := r.decide(ctx, in)
+		out := r.decide(ctx, in, maxThink)
 		idx, reason := out.index, out.reason
 		if idx == Decline {
 			// The policy wants nothing from this window and does not
@@ -513,7 +548,7 @@ func (r *Runner) step(ctx context.Context) bool {
 				return true
 			}
 		}
-		r.pace(ctx, started)
+		r.pace(ctx, started, minThink)
 		if mv.Kind == legal.KindPass && r.shouldHoldForBlockers(in.View) {
 			r.holdForBlockers(ctx)
 		}
@@ -589,11 +624,11 @@ type outcome struct {
 	latency time.Duration
 }
 
-// decide runs the policy under the MaxThink deadline and maps any
-// failure — error, timeout, out-of-range index — to the fallback
-// move.
-func (r *Runner) decide(ctx context.Context, in Input) outcome {
-	dctx, cancel := context.WithTimeout(ctx, r.cfg.MaxThink)
+// decide runs the policy under the maxThink deadline (this window's
+// pacingNow, not necessarily r.cfg.MaxThink) and maps any failure —
+// error, timeout, out-of-range index — to the fallback move.
+func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) outcome {
+	dctx, cancel := context.WithTimeout(ctx, maxThink)
 	defer cancel()
 
 	started := time.Now()
@@ -713,13 +748,49 @@ func (r *Runner) observe(in Input, out outcome, mv *legal.Move, seq uint64, appl
 	obs.Observe(ev)
 }
 
-// pace holds the runner so the decision takes at least MinThink of
-// wall-clock, measured from when enumeration began.
-func (r *Runner) pace(ctx context.Context, started time.Time) {
-	if r.cfg.MinThink <= 0 {
+// pacingNow is this decision window's MinThink and MaxThink: the
+// table's BotPace preset when Config.FollowTablePace is on and the
+// game has one, otherwise r.cfg's own values exactly as configured.
+//
+// It is read fresh on every call — via TableSettingsSnapshot, an
+// RLock-only read safe to take from the runner's own goroutine
+// without holding any lock this package must not hold — rather than
+// cached at Start, so a table settings change mid-game takes effect
+// on this seat's very next decision (ADR 0075 §2.2).
+//
+// An empty BotPace (a game whose settings were never defaulted, or a
+// value this package does not recognise) is "unset" and leaves
+// r.cfg's values untouched — today's behaviour. A recognised preset
+// never shortens the tier's own hard deadline: MaxThink is the
+// larger of the preset's and r.cfg.MaxThink, which is set at Start to
+// the tier's configured deadline (5s for strong). So a "fast" table
+// still gives a model-backed seat its full budget, and only "slow"
+// lengthens it further.
+func (r *Runner) pacingNow() (minThink, maxThink time.Duration) {
+	minThink, maxThink = r.cfg.MinThink, r.cfg.MaxThink
+	if !r.cfg.FollowTablePace {
 		return
 	}
-	r.hold(ctx, r.cfg.MinThink-time.Since(started))
+	pace := r.room.Game.TableSettingsSnapshot().BotPace
+	preset, ok := botPacePresets[pace]
+	if !ok {
+		return
+	}
+	minThink = preset.Min
+	maxThink = preset.Max
+	if r.cfg.MaxThink > maxThink {
+		maxThink = r.cfg.MaxThink
+	}
+	return
+}
+
+// pace holds the runner so the decision takes at least minThink of
+// wall-clock, measured from when enumeration began.
+func (r *Runner) pace(ctx context.Context, started time.Time, minThink time.Duration) {
+	if minThink <= 0 {
+		return
+	}
+	r.hold(ctx, minThink-time.Since(started))
 }
 
 func (r *Runner) hold(ctx context.Context, d time.Duration) {
