@@ -181,6 +181,25 @@ type ManaAbilityShape struct {
 	// Added in the S21 mana-cost pass.
 	SacrificeOther *TargetSpec
 
+	// TapOthers taps OTHER untapped permanents the activator
+	// controls as part of the cost — Springleaf Drum's "{T}, Tap an
+	// untapped creature you control", Jaspera Sentinel's "{T}, Tap
+	// another untapped creature you control", Heritage Druid's
+	// three Elves. Nil means no such component.
+	//
+	// The SAME component AbilityCost.TapOthers carries (#758), with
+	// the same validator and the same payer, because it is the same
+	// cost — a card that printed it on a mana ability and on a
+	// CR 602 ability would be paying one clause two ways otherwise.
+	// The activator names the permanents in
+	// ManaAbilityParams.TapIDs.
+	//
+	// The auto-tapper never plans a source whose mana ability
+	// carries one (autoTapAbilityFor): tapping a creature the
+	// player was keeping back to block is a decision the planner
+	// cannot weigh, the same bar a life cost fails.
+	TapOthers *TapOthersCost
+
 	// LifeCost is a life component in the activation cost (CR
 	// 119.4) — Mana Confluence's "{T}, Pay 1 life: Add one mana of
 	// any color". Mirrors AbilityCost.Life, which CR 602 activated

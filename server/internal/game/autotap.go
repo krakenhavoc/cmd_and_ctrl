@@ -484,6 +484,14 @@ func autoTapAbilityFor(abilities []ManaAbilityShape) *ManaAbilityShape {
 		if a.AddCounter != nil {
 			continue
 		}
+		// #758: a cost that taps OTHER permanents spends a resource
+		// the player was never asked about — auto-tapping Springleaf
+		// Drum would tap a creature that was being kept back to
+		// block. The same bar the life cost fails, and the planner
+		// has no way to weigh it.
+		if !a.TapOthers.Empty() {
+			continue
+		}
 		return &a
 	}
 	return nil
