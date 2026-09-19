@@ -181,6 +181,12 @@ var cardFields = plan(
 	"Name", carried, "",
 	"ScryfallID", carried, "",
 	"OracleID", carried, "",
+	// #521: the synthetic catalog key a TOKEN carries instead of an
+	// oracle ID. Carried for the same reason GrantedAbilities is — it
+	// is a catalog KEY, not a closure, and it is the whole of what
+	// makes a token's abilities findable on the other side of a
+	// restore. Drop it and a Treasure comes back a blank artifact.
+	"TokenKey", carried, "",
 	"TypeLine", carried, "",
 	"Power", carried, "",
 	"Toughness", carried, "",
@@ -305,7 +311,7 @@ var cardFields = plan(
 	"StartingDefense", carried, "",
 	"ProtectorPlayerID", carried, "",
 
-	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or censused when the card has none (a true token)",
+	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
 )

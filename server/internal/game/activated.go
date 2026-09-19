@@ -461,9 +461,15 @@ func ActivatedAbilitiesForCard(c Card) []ActivatedAbilityShape {
 	if len(c.ActivatedAbilities) > 0 {
 		return c.ActivatedAbilities
 	}
-	if CatalogActivatedAbilities == nil || c.OracleID == "" {
+	if CatalogActivatedAbilities == nil {
 		return nil
 	}
+	// #521: the guard used to be `c.OracleID == ""` as well, which
+	// made a token unreachable here by construction. A token now has
+	// a catalog key of its own, so the question is the one the key
+	// already answers — an object with no entry has the empty key,
+	// whether because it is uncatalogued or because CR 708.2a has
+	// silenced it.
 	key := CatalogAbilityKey(c)
 	if key == "" {
 		return nil

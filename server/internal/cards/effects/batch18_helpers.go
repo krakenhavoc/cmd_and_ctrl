@@ -33,7 +33,14 @@ import (
 // ability lives on the tokens the Parade makes and switches off when
 // the Parade leaves. See springleaf_parade.go for what that does and
 // does not cover.
-func b18SpringleafShapeshifterToken() game.Card {
+func b18SpringleafShapeshifterToken() game.Card { return tokenFromCatalog("springleaf-shapeshifter") }
+
+// printedB18SpringleafShapeshifterToken is the Springleaf Parade Shapeshifter as PRINTED —
+// the ability included. It is the catalog's entry for this token
+// (token_catalog.go, #521): the ability is registered from here at
+// boot, and the template that reaches the battlefield carries the
+// key that finds it rather than the closure itself.
+func printedB18SpringleafShapeshifterToken() game.Card {
 	return game.Card{
 		Name:      "Shapeshifter",
 		TypeLine:  "Token Creature — Shapeshifter",
