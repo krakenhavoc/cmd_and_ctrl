@@ -1333,19 +1333,13 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 			return false
 		}
 	case PendingChoiceChooseCards:
-		c.ChooseCards = keep(c.ChooseCards)
-		if len(c.ChooseCards) == 0 {
+		live := keep(c.ChooseCards)
+		if len(live) == 0 {
 			return false
 		}
-		if c.ChooseMax > len(c.ChooseCards) {
-			c.ChooseMax = len(c.ChooseCards)
-		}
-		if c.ChooseMin > c.ChooseMax {
-			c.ChooseMin = c.ChooseMax
-		}
-		if c.Count > c.ChooseMax {
-			c.Count = c.ChooseMax
-		}
+		// The bounds move with the list, through the one helper the
+		// zone prune uses (setCardSetCandidates, #1045).
+		setCardSetCandidates(c, live)
 	case PendingChoiceOptionPick:
 		// The branches are labelled sentences and survive on their own;
 		// only the piles they name, and the SEATS they name, can go.
@@ -3383,6 +3377,126 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 			continue
 		}
 		c.SacrificeOptions = live
+	}
+}
+
+// pruneCardSetChoicesLocked is the prune above for the other prompt
+// family that names CARDS: choose_cards. It trims every open pick to
+// the candidates still in the zone the pick is about, and DROPS one
+// whose candidates have all gone (#1045).
+//
+// ONE FUNCTION KEYED BY ZONE, not one per verb. A discard is a
+// choose_cards over the discarding player's own HAND, Thoughtseize's
+// pick is one over somebody else's hand, a graveyard pick names a
+// GRAVEYARD and a reveal-and-take names a LIBRARY — and the question
+// "is this candidate still there" has exactly one answer for all of
+// them, `chooseCardsFrame.zone`. Writing a pruneDiscardChoicesLocked
+// beside a pruneGraveyardChoicesLocked would be three copies of one
+// rule, which is the shape the catalog's clone gate exists to refuse.
+//
+// It asks the SUBMIT PATH's question (pickStillInPickZoneLocked,
+// shared with checkChooseCardsPicksLocked), so the candidate list the
+// client and the bot enumerator are shown can never offer a card the
+// resolver would refuse. That drift IS the bug: the list is frozen at
+// queue time and the zone is re-read on submit, so a prompt whose
+// candidates have all left the zone has no legal answer, and one with
+// a floor of one cannot be discharged at all — the #544 wedge, with
+// the whole table behind it (#791's gate) and, since #1027, a run leg
+// that never settles either.
+//
+// A prompt with no zone on its frame is left alone. Zero means "no
+// live re-check" (see chooseCardsFrame.zone): the continuation owns
+// what a pick means, the resolver refuses nothing, and there is
+// nothing for this to be right about.
+//
+// An emptied prompt is DROPPED rather than left unanswerable, through
+// dropChoiceLocked — which runs the departure table's action for the
+// kind, so a prompt that is one leg of a prompted RUN settles that leg
+// with "nothing discarded" (#1016's dropDefault, ADR 0013 §5y item 5)
+// and the rest of the printed instruction still happens. A pick that
+// is no run's leg has no continuation to run, exactly as it has none
+// when its chooser leaves the game; that is the departure table's
+// existing answer for the kind and this does not widen it.
+//
+// The bounds move with the list (setCardSetCandidates): a pick of two
+// from a hand that now holds one is CR 701.8a's "as many as you can",
+// and a floor left above the candidate count is the same wedge one
+// card later.
+//
+// The drop is announced (EventPendingChoiceDropped, #868) for
+// pruneDepartedSeatOptionsLocked's reason: this prompt was blocking
+// the table, and a stall dump has to say where it went.
+//
+// untap_choice carries the same payload (isCardSetPickKind) and is
+// deliberately NOT swept. Its continuation is the rest of the UNTAP
+// STEP (finishUntapStepLocked), its departure row is dropDiscard, so a
+// withdrawal here would end the question by stranding the step — and
+// it cannot need this: CR 502.3's determination is about the active
+// player's own permanents during their own untap step, where nothing
+// has priority to move them.
+//
+// Called where pruneSacrificeChoicesLocked is called, and for its
+// reason: a queued choice stops priority from passing, so the
+// state-check loop is exactly what does NOT run while one is open.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneCardSetChoicesLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || c.Kind != PendingChoiceChooseCards {
+			continue
+		}
+		frame := c.chooseCardsResume
+		if frame == nil || frame.zone == "" {
+			continue
+		}
+		live := make([]uuid.UUID, 0, len(c.ChooseCards))
+		for _, id := range c.ChooseCards {
+			if g.pickStillInPickZoneLocked(c, frame.zone, id) {
+				live = append(live, id)
+			}
+		}
+		if len(live) == len(c.ChooseCards) {
+			continue
+		}
+		if len(live) == 0 {
+			g.EmitEvent(Event{
+				Kind:   EventPendingChoiceDropped,
+				Actor:  c.Chooser,
+				Source: c.Source,
+				Label:  string(c.Kind),
+			})
+			g.dropChoiceLocked(i)
+			continue
+		}
+		setCardSetCandidates(c, live)
+	}
+}
+
+// setCardSetCandidates replaces a choose-cards prompt's candidate list
+// and re-clamps the bounds to it — THE one place a shortened list and
+// its Min / Max / Count are kept honest, shared by the zone prune
+// above and by reassignChoiceLocked's departure prune.
+//
+// Two callers, one rule: an enumerator that offers a bigger set than
+// the resolver accepts is the #544 wedge, and so is a floor no
+// remaining set can reach. Clamping down is CR 701.8a's "as many as
+// you can" for a discard and the same arithmetic for every other
+// pick.
+//
+// `live` must be non-empty; an emptied prompt is the caller's
+// decision, and the two callers make different ones (this prune drops
+// it, the reassignment refuses to move it).
+func setCardSetCandidates(c *PendingChoice, live []uuid.UUID) {
+	c.ChooseCards = live
+	if c.ChooseMax > len(live) {
+		c.ChooseMax = len(live)
+	}
+	if c.ChooseMin > c.ChooseMax {
+		c.ChooseMin = c.ChooseMax
+	}
+	if c.Count > c.ChooseMax {
+		c.Count = c.ChooseMax
 	}
 }
 

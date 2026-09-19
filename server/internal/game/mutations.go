@@ -3954,6 +3954,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// passing, so the state-check loop is exactly what does NOT run
 	// while such a prompt is outstanding. No-op when none is queued.
 	g.pruneSacrificeChoicesLocked()
+	// #1045: and any choose-cards prompt that still offers it — a
+	// "choose two permanents" whose candidates are leaving one at a
+	// time — for the same reason again.
+	g.pruneCardSetChoicesLocked()
 	// #605: and any sibling prompt still asking about a move of THIS
 	// card off the battlefield it has now left is unanswerable, for
 	// the same reason and at the same moment.
