@@ -76,6 +76,7 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 			PlayerID:  s.PlayerID,
 			UserID:    s.UserID,
 			GuestName: s.Name,
+			DeckID:    s.DeckID,
 			DeckName:  s.DeckName,
 		}
 		// A Discord seat with no users row yet (no database when it
@@ -386,6 +387,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 			PlayerID:  s.PlayerID,
 			Name:      s.GuestName,
 			Seat:      s.Seat,
+			DeckID:    s.DeckID,
 			DeckName:  s.DeckName,
 			UserID:    s.UserID,
 			DiscordID: s.PendingDiscordID,

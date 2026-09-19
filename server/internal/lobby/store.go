@@ -99,7 +99,9 @@ type SeatRecord struct {
 	// one until a signed-in seat can take its name from users.
 	GuestName string
 	BotTier   string // "" for a human seat
-	// DeckID is decks(id) once sub-PR 5 lands. Always "" today.
+	// DeckID is decks(id) — set when the seat's cards came from the
+	// player's library (ADR 0051 decision 7, S34 sub-PR 5), "" for a
+	// guest's upload, an ad-hoc paste, or a pre-built catalog deck.
 	DeckID   string
 	DeckName string
 	// PendingDiscordID is the snowflake of a seat claimed through

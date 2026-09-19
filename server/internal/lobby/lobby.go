@@ -158,6 +158,17 @@ type SeatInfo struct {
 	// behind "My games" and user seat reclaim, and it never goes on
 	// the wire — the other seats have no use for it.
 	UserID string `json:"-"`
+
+	// DeckID is the library deck (decks(id), ADR 0051 decision 7, S34
+	// sub-PR 5) this seat's cards came from, or "" when they did not:
+	// a guest's upload, a signed-in player's ad-hoc paste that wasn't
+	// saved (format "url"), or a pre-built catalog deck (which has its
+	// own id system — see uploadDeckResponse.DeckID — and is never a
+	// decks(id) row). Not exposed over JSON: nothing on the client
+	// reads it yet, and seats.deck_id existing as a real foreign key
+	// (migration 0005) is the reason it must never be set to anything
+	// other than a genuine decks(id) or "".
+	DeckID string `json:"-"`
 }
 
 // BotHost runs bot seats. Satisfied by *aiseat.Manager; an interface
@@ -857,6 +868,35 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 	seat.DeckUploaded = true
 	l.persistSeatsLocked(entry)
 	return copyMeta(entry.meta), nil
+}
+
+// SetSeatDeckID records which library deck (ADR 0051 decision 7, S34
+// sub-PR 5) a seat's cards came from, alongside the deck contents
+// SetDeck installs. Callers pass "" to clear it — an ad-hoc paste, a
+// guest's upload, or a switch to a pre-built catalog deck has no
+// library row behind it, and a stale id left over from a seat's
+// previous deck would be worse than none.
+//
+// Deliberately separate from SetDeck rather than a parameter on it:
+// SetDeck mutates the engine (ReplaceDeck) and is shared with every
+// deck-install caller; a library id is purely lobby bookkeeping that
+// only the HTTP layer's two deck-library routes know about.
+func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[gameID]
+	if !ok {
+		return ErrGameNotFound
+	}
+	for i := range entry.meta.Players {
+		if entry.meta.Players[i].PlayerID == playerID {
+			entry.meta.Players[i].DeckID = deckID
+			l.persistSeatsLocked(entry)
+			return nil
+		}
+	}
+	return ErrPlayerNotInGame
 }
 
 // SpawnCards inserts n copies of template into a zone for the
