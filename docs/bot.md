@@ -1490,3 +1490,15 @@ stands, a bot runner holds on an activation of that permanent exactly
 as it holds on a pass. The table comes to rest at the threshold with
 the notice naming the ability, which is [ADR 0055
 §5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.
+
+**A real loop stops a bot-only table outright — and that is unreachable
+today.** When a trigger or activation loop's shortcuts run out (the
+second ask offers only "stop here"), autopass stays suspended and no
+bot seat has a move that keeps the loop going, so the room's commit
+sequence simply stops with the notice naming the ability and count
+still in the game state — the table does not finish and it does not
+spin forever ([ADR 0055](decisions/0055-loop-breaker.md) §5). No pair
+of abilities in the catalog loops today, so no whole-game bot test
+exercises this path; it stays on this list because it is what the
+engine does the day a looping pair is added, and that is where it
+will first show up.
