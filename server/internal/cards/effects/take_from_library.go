@@ -95,6 +95,20 @@ type TakeFromLibraryToHand struct {
 	// the engine's reveals of library cards happen.
 	Reveal bool
 
+	// Validate is the clause's rule about the picked SET, as opposed
+	// to Match's rule about each card — "any number of cards with
+	// different names", "up to two cards with total mana value 4 or
+	// less". Nil means the bounds and Match are the whole rule,
+	// which is every card in the catalog that prints this sentence
+	// today.
+	//
+	// It is game.ChooseCardsPrompt.Validate forwarded verbatim, with
+	// that field's whole contract, and it is the same field
+	// PutFromLibraryOntoBattlefield carries — see there for the long
+	// version, including why it switches off the forced-answer
+	// shortcut below and why All ignores it.
+	Validate func([]game.Card) bool
+
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
@@ -194,8 +208,11 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 	if p.Optional {
 		lo = 0
 	}
-	if lo == len(candidates) {
-		// The only legal answer is every candidate.
+	if lo == len(candidates) && p.Validate == nil {
+		// The only legal answer is every candidate. Not so with a
+		// set rule: it is the rule, not the count, that decides
+		// which subsets are answers, and taking the shortcut would
+		// perform a set the prompt would have refused.
 		return finish(ctx.Game, candidates)
 	}
 	question := label
@@ -211,8 +228,9 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 		Max:      hi,
 		// Re-checked on submit: every pick must still be in a library
 		// when the answer arrives.
-		Zone: game.ZoneLibrary,
-		Then: finish,
+		Zone:     game.ZoneLibrary,
+		Validate: p.Validate,
+		Then:     finish,
 	})
 	return nil
 }
