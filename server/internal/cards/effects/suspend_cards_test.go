@@ -72,19 +72,29 @@ func TestSuspendCardsDeclareTheirPrintedNumbers(t *testing.T) {
 	}
 }
 
-// The countdown trigger belongs to the KEYWORD, not to the card file:
-// buildDef grows it from the declaration, so every suspend card has
-// exactly one and none of them wrote it out.
-func TestEverySuspendCardCarriesTheCountdownTrigger(t *testing.T) {
+// Both triggers belong to the KEYWORD, not to the card file: buildDef
+// grows them from the declaration, so every suspend card has exactly
+// the two CR 702.62b prints — the upkeep countdown and "when the last
+// time counter is removed" (#990) — and none of them wrote either out.
+func TestEverySuspendCardCarriesBothCountdownTriggers(t *testing.T) {
 	for _, oracle := range []string{riftBoltOracle, lotusBloomOracle, ancestralVisionOracle} {
-		got := 0
+		var upkeep, lastCounter int
 		for _, tr := range game.CatalogTriggers(oracle) {
-			if game.TriggerWatchesFromZone(tr, game.ZoneExile) {
-				got++
+			if !game.TriggerWatchesFromZone(tr, game.ZoneExile) {
+				continue
+			}
+			for _, kind := range tr.Watches {
+				switch kind {
+				case game.EventBeginUpkeep:
+					upkeep++
+				case game.EventCounterPlaced:
+					lastCounter++
+				}
 			}
 		}
-		if got != 1 {
-			t.Errorf("%s carries %d exile triggers, want exactly one (the suspend countdown)", oracle, got)
+		if upkeep != 1 || lastCounter != 1 {
+			t.Errorf("%s carries %d upkeep and %d last-counter exile triggers, want one of each (CR 702.62b)",
+				oracle, upkeep, lastCounter)
 		}
 	}
 }

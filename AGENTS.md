@@ -4069,8 +4069,11 @@ Both keywords ride models that already exist and neither adds a
 second one: the later cast is a per-instance `game.CastPermission`
 (ADR 0066) scoped to that one card object, foretell's exile is
 `Card.FaceDownKind = foretold` (ADR 0069, viewers = the owner), and
-suspend's countdown is a triggered ability that declares
-`Zones: {ZoneExile}` (#925). A card-level `CastableZones: exile`
+suspend's countdown is TWO triggered abilities that declare
+`Zones: {ZoneExile}` (#925) — the upkeep counter removal and, since
+#990, "when the last time counter is removed", which watches the
+counter event so Clockspinning and Vampire Hexmage end a countdown
+the same way an upkeep does. A card-level `CastableZones: exile`
 declaration is the WRONG shape for either and was retired on #659: it
 opens exile for every copy of the card, at any time, however the copy
 got there — so a Path to Exile'd Rift Bolt would be castable.

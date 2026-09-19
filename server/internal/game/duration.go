@@ -113,6 +113,36 @@ const (
 	// above, and Duration.Player must still be the source's
 	// controller.
 	WhileYouControlSource
+
+	// WhileYouControlSourceOnceItLands — "until that player loses
+	// control of it" (CR 702.62e, suspend's haste), said of an
+	// object that is still a SPELL ON THE STACK when the effect is
+	// created.
+	//
+	// The third condition, added by #990, and the only one with a
+	// GRACE PERIOD: it holds while the source sits on the stack,
+	// because the permanent the effect is about does not exist yet
+	// (CR 608.3 — a permanent spell becomes a permanent as it
+	// resolves). Without that, the two conditions above are both
+	// false for a spell mid-flight and the layer pass would sweep
+	// the grant away a priority round before the creature it is for
+	// ever arrives.
+	//
+	// It does NOT carry a battlefield-entry stamp, because there is
+	// none to read at registration. CR 400.7 is answered by the
+	// sweep instead, and answered strictly: a permanent that leaves
+	// the battlefield is neither on the stack nor controlled by
+	// anyone, so the condition is false at the next recompute and
+	// the effect is dropped for good. A creature that dies and is
+	// reanimated the same turn comes back without haste, which is
+	// the right answer for the same reason a flickered Sower of
+	// Temptation gives its creature back.
+	//
+	// Use it only for an effect created at ANNOUNCE about the
+	// permanent the spell will become. An effect created while its
+	// object is already on the battlefield wants
+	// WhileYouControlSource, which is strictly tighter.
+	WhileYouControlSourceOnceItLands
 )
 
 // Duration is how long one continuous effect lasts. The zero value is
@@ -269,6 +299,23 @@ func (g *Game) ForAsLongAsYouControlDuration(source, player uuid.UUID) (Duration
 	}, true
 }
 
+// UntilYouLoseControlOfDuration is "until that player loses control
+// of it" (CR 611.2b, and CR 702.62e's haste), for an effect created
+// while `source` is still a spell on the stack. See
+// WhileYouControlSourceOnceItLands for the grace period that makes
+// that legal and for the CR 400.7 reading of a permanent that leaves.
+//
+// Needs no game state — there is no entry stamp to read yet — so it
+// is a plain function rather than a method.
+func UntilYouLoseControlOfDuration(source, player uuid.UUID) Duration {
+	return Duration{
+		Kind:      ForAsLongAs,
+		Condition: WhileYouControlSourceOnceItLands,
+		Player:    player,
+		Source:    source,
+	}
+}
+
 // IndefiniteDuration is "no stated duration" — CR 611.2a, the effect
 // lasts until the game ends. Needs no game state, so it is a plain
 // function.
@@ -333,6 +380,19 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 // durationConditionHoldsLocked re-runs a ForAsLongAs condition against
 // the board as the previous layer pass left it. Caller must hold g.mu.
 func (g *Game) durationConditionHoldsLocked(d Duration) bool {
+	if d.Condition == WhileYouControlSourceOnceItLands {
+		// #990: the object may not be a permanent yet. On the stack
+		// the condition holds (the effect has not started applying to
+		// anything), on the battlefield it is the ordinary control
+		// test, and anywhere else it is over. No entry-stamp
+		// comparison, because the grant was made before there was one
+		// — see the condition's own comment for why that is the
+		// STRICTER reading of CR 400.7 rather than the looser one.
+		if c, ok := g.battlefieldCardLocked(d.Source); ok {
+			return c.Controller == d.Player
+		}
+		return g.Stack != nil && g.Stack.Contains(d.Source)
+	}
 	c, ok := g.battlefieldCardLocked(d.Source)
 	if !ok || c.EnteredBattlefieldAt != d.SourceEnteredAt {
 		return false
