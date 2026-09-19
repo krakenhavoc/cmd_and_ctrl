@@ -4119,18 +4119,24 @@ is gone. In its place:
 - **The gate.** `TestNoNewExactClonesInTheCatalog`
   (`server/internal/cards/coverage`) fails a PR that introduces a new
   byte-identical function or closure body of six or more lines, and
-  names both copies. Fix it by calling the one that exists, or by
-  naming one shared helper and calling it twice. The baseline
-  (`coverage/testdata/clone_baseline.txt`) records the duplicates that
-  predate the gate; regenerate it with
-  `go test ./internal/cards/coverage/ -update` when a PR removes some,
-  never add a line to it by hand. **It is keyed on the body hash and
-  the set of declaring files, never on a line number** (#895): each
-  row is `<hash> <lines> <copies> <files>`, where `<lines>` is the
-  body's LENGTH. So an edit above a listed closure does not rewrite
-  the file, and a baseline diff in your PR means the set of duplicates
-  really changed. The `file.go:closure@line` locations are still
-  printed in the failure report, where a human wants them.
+  names both copies. **It also fails a PR that grows a group the
+  baseline already knows about** — a third, fourth or tenth copy of a
+  body already listed there is not free (#786): the gate compares the
+  measured copy count against the baseline's `<copies>` column as a
+  floor, not just a hash lookup, so an already-known hash with more
+  members than recorded still fails. Fix either case by calling the
+  one that exists, or by naming one shared helper and calling it
+  twice. The baseline (`coverage/testdata/clone_baseline.txt`) records
+  the duplicates that predate the gate; regenerate it with
+  `go test ./internal/cards/coverage/ -update` when a PR removes some
+  or shrinks a group's count, never add or edit a line by hand. **It
+  is keyed on the body hash and the set of declaring files, never on a
+  line number** (#895): each row is `<hash> <lines> <copies> <files>`,
+  where `<lines>` is the body's LENGTH. So an edit above a listed
+  closure does not rewrite the file, and a baseline diff in your PR
+  means the set of duplicates — or a group's size — really changed.
+  The `file.go:closure@line` locations are still printed in the
+  failure report, where a human wants them.
 
 ### When NOT to add a catalog entry
 
