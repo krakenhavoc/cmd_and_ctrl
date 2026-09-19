@@ -427,6 +427,19 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, speed 
 	case "library":
 		fromZone = game.ZoneLibrary
 	}
+	// #760, ADR 0073 §7: the one announce-time cast gate, the twin of
+	// the split-second check at the top of castMoves and beside it
+	// for the same reason — a bot offered a move the engine will
+	// refuse keeps picking it and stalls. THE SAME FUNCTION CastSpell
+	// calls, so the two cannot disagree about what is banned.
+	//
+	// The announced optional costs ride along because the gate takes
+	// the announcement: CR 601.3a lets a choice made while proposing
+	// the spell lift a ban, and this is the choice that has been made
+	// by now.
+	if err := g.CastGateLocked(e.seat, card, fromZone, game.CastSpellParams{OptionalCosts: chosen}); err != nil {
+		return
+	}
 	// ADR 0048 addendum §14: when something on the board or the card
 	// itself prices by target (Fireball's surcharge, Price of Fame's
 	// discount), one price up front is not the price — and a

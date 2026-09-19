@@ -994,6 +994,21 @@ func classifyActionError(err error) (code, message string) {
 		// lands_played_this_turn on the wire carry the numbers.
 		return protocol.CodeBadRequest,
 			"you've already played all the lands you can this turn"
+	case errors.Is(err, game.ErrCantCast):
+		// #760, ADR 0073 §7: something SAID NO to this cast — a
+		// static on a permanent (Rule of Law, Grafdigger's Cage) or
+		// the spell's own "cast only if" condition. The refusal
+		// carries the printed clause, so the toast names the card
+		// rather than the rule, and stripping the "game: " prefix
+		// leaves exactly that sentence.
+		//
+		// The client should never reach this: `cant_cast` on the card
+		// view is the same gate's answer, and the cast button is
+		// greyed. Arriving here means the board changed between the
+		// snapshot and the click, which is the case worth wording
+		// properly.
+		return protocol.CodeBadRequest,
+			"you can't cast that right now — " + strings.TrimPrefix(err.Error(), "game: ")
 	case errors.Is(err, game.ErrChoiceSetRejected):
 		// #624: the picks were individually fine but the card's rule
 		// about them as a set refused them. The prompt stays open, so

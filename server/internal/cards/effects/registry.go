@@ -164,6 +164,21 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	// ADR 0073 §7: a cast condition with no printed clause produces a
+	// refusal the client cannot explain, and a clause with no
+	// condition refuses nothing while claiming to. Same for a
+	// restriction: the Label IS the message the player is shown.
+	if (spec.CastCondition == nil) != (spec.CastConditionLabel == "") {
+		panic(fmt.Sprintf("effects.Register: %q declares a CastCondition without its printed CastConditionLabel, or the label without the condition", spec.Name))
+	}
+	for i, r := range spec.CastRestrictions {
+		if r.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q cast restriction %d has no printed Label — the refusal carries it to the client", spec.Name, i))
+		}
+		if r.Forbids == nil {
+			panic(fmt.Sprintf("effects.Register: %q cast restriction %q forbids nothing", spec.Name, r.Label))
+		}
+	}
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only

@@ -255,6 +255,10 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Layout:        "modal_dfc",
 		Faces:         []CardFaceView{{Name: "Hidden Name"}, {Name: "Hidden Back"}},
 		ActiveFace:    1,
+		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
+		// of the cost surface — a legendary-sorcery clause says more
+		// about a face-down card than its mana cost does.
+		CantCast: "Each player can't cast more than one spell each turn.",
 	}
 }
 

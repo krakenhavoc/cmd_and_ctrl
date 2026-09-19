@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -1274,6 +1275,24 @@ type CardView struct {
 	// information, so present on every viewer's copy). Absent off
 	// the battlefield and for cards with none. Added in S21 sub-PR 2.
 	ActivatedAbilities []ActivatedAbilityView `json:"activated_abilities,omitempty"`
+	// CantCast is the printed clause that stops this card being cast
+	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
+	// "Each player can't cast more than one spell each turn", "Cast
+	// this spell only if you control a legendary creature or
+	// planeswalker". Absent, which is nearly always, means nothing
+	// refuses the cast.
+	//
+	// The STAMP of the one gate function CastSpell and the bot
+	// enumerator both call, so the client can grey the card and say
+	// why from server data rather than from a rule it reimplemented.
+	// A card carrying it is never castable: the client must not
+	// dispatch cast_spell for it, and the server would refuse.
+	//
+	// Public, like `castable_here`: a Rule of Law on the battlefield
+	// is visible to everyone, so the fact that it is stopping a cast
+	// is not hidden information. Cleared with the other announce
+	// hints on the non-knower redaction.
+	CantCast string `json:"cant_cast,omitempty"`
 	// HandAbilities are the CR 602 activated abilities this card
 	// offers while it is IN HAND — cycling and typecycling today
 	// (CR 702.29a/e), and whatever else declares
@@ -2206,6 +2225,22 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// #746: the printed clauses of a per-target price, for
 				// the X picker's note.
 				c.TargetCostNotes = game.TargetPricedCostClauses(c.oracleID)
+				// #760, ADR 0073 §7: the one cast gate's view stamp.
+				// The SAME function CastSpell and the bot enumerator
+				// call, so the client can never render a cast button
+				// the server would refuse.
+				//
+				// The zone the card sits in is the zone a cast would
+				// come out of, which is what makes Grafdigger's Cage
+				// answerable here at all.
+				if live, ok := liveCardForView(g, c); ok {
+					if err := g.CastGateLocked(caster, live, zone.kind, game.CastSpellParams{}); err != nil {
+						c.CantCast = cantCastReason(err)
+						// A card the gate refuses is not a cast
+						// surface, whatever opened the zone.
+						c.CastableHere = false
+					}
+				}
 				// #916: the ceiling on the cast's `phyrexian_life`.
 				// Read off the EFFECTIVE cost — the commander tax is
 				// generic and cost modifiers add generic, so the two
@@ -3718,6 +3753,12 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	// ADR 0073 §7: "Cast this spell only if you control a legendary
+	// creature or planeswalker" says the card is a legendary sorcery,
+	// which is more than its mana cost gives away. CR 708.2 also
+	// leaves a face-down object with no text for such a clause to be
+	// printed in.
+	out.CantCast = ""
 	// Weak evidence of identity, but evidence: it partitions the
 	// card into "prints rules we don't run" or not. Cleared for the
 	// same reason as the cost fields above rather than because
@@ -4122,6 +4163,35 @@ func stampGrantedPermissions(g *game.Game, zone *ZoneView, live *game.Zone) {
 			v.CastableHere = true
 		}
 	}
+}
+
+// liveCardForView resolves a CardView back to the engine's own Card,
+// which the cast gate needs because its predicates read a type line,
+// a controller and a zone rather than a projection.
+//
+// By instance ID through the game's own lookup rather than by index
+// into the live zone: a per-viewer projection may be redacted or
+// reordered relative to the zone it came from, and an off-by-one here
+// would grey the wrong card.
+func liveCardForView(g *game.Game, c *CardView) (game.Card, bool) {
+	id, err := uuid.Parse(c.InstanceID)
+	if err != nil {
+		return game.Card{}, false
+	}
+	return g.LookupCardForEffect(id)
+}
+
+// cantCastReason is the printed clause behind a refused cast, for the
+// client's grey-out tooltip. The generic fallback should be
+// unreachable — CastGateLocked only ever returns a *CantCastError and
+// Register refuses a restriction with no label — but a view that
+// rendered an empty tooltip would look like a bug in the client.
+func cantCastReason(err error) string {
+	var cant *game.CantCastError
+	if errors.As(err, &cant) && cant.Reason != "" {
+		return cant.Reason
+	}
+	return "An effect prevents casting this spell."
 }
 
 // grantedCastOffer returns the alternative cost a granted permission

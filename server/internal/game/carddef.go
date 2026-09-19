@@ -81,6 +81,20 @@ type CardDef struct {
 	UntapCaps             []UntapCap
 	UntapOptOuts          []UntapOptOut
 
+	// CastCondition is the card's own "you may cast this only if …"
+	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// checked by CastGateLocked at announce and never at resolution.
+	// Nil for every card that prints no such clause. ADR 0073 §7.
+	CastCondition func(g *Game, controller uuid.UUID, card Card) bool
+	// CastConditionLabel is that clause as printed, returned to the
+	// client when the gate refuses the cast.
+	CastConditionLabel string
+	// CastRestrictions are the "can't cast" statics this PERMANENT
+	// imposes on other players' casts (Rule of Law, Grafdigger's
+	// Cage, Rakdos). Read from the battlefield through
+	// CatalogAbilityKey, never from a card's own zone.
+	CastRestrictions []CastRestriction
+
 	CantBeCountered bool
 	NoMaxHandSize   bool
 	// Emblem is the presentation half of an EMBLEM's catalog entry
@@ -272,6 +286,12 @@ func init() {
 	CatalogSpecialActions = func(key string) []SpecialAction {
 		if d := catalogDef(key); d != nil {
 			return d.SpecialActions
+		}
+		return nil
+	}
+	CatalogCastRestrictions = func(key string) []CastRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.CastRestrictions
 		}
 		return nil
 	}

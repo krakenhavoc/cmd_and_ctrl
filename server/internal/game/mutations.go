@@ -804,6 +804,32 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			return ErrInvalidParam
 		}
 	}
+	// #760, ADR 0073 §7, CR 101.2: the one announce-time cast gate,
+	// at the point ADR 0066 named. Every CR 601.2b choice is settled
+	// by here — the face, the source zone, the permission, the
+	// claimed alternative cost, X, the modes and the optional costs —
+	// and nothing has been PAID, so a refused cast leaves the card
+	// exactly where it was and costs nothing. That is also what lets
+	// CR 601.3a work: a choice made while proposing the spell can
+	// lift a ban, and every such choice is on `params` by now.
+	//
+	// Before the CR 601.2c target check rather than after it, because
+	// a banned cast should be refused for the ban rather than for
+	// whatever the targeting gate would have said about a spell that
+	// was never going to be cast.
+	//
+	// "Can't beats may" needs no rule of its own here. Cascade, a
+	// granted permission and an impulse grant all reach CastSpell, so
+	// a free cast passes through this gate like any other.
+	if err := g.CastGateLocked(playerID, card, src.Kind, params); err != nil {
+		slog.Warn("cast_spell rejected: an effect prevents this cast",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"from_zone", src.Kind,
+			"err", err,
+		)
+		return err
+	}
 	// CR 702.16b: the source of a SPELL is the spell itself, so the
 	// quality protection is tested against is the card's own colour
 	// and type — not its caster's (#662).
