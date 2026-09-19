@@ -933,3 +933,113 @@ grant still opens nothing.
 
 Additive on the wire (`v` unchanged): the new stamps appear on a card
 that carried none, and only for the seat entitled to them.
+
+## Amendment (2026-09-19, #1035 / #1037): the position rule follows the card, and the stamps are per holder
+
+Two halves of the same sentence, and the amendment above is where both
+of them were written down as limitations: "a cross-seat LIBRARY grant
+still opens nothing" and "one holder per card".
+
+### The library a permission opens is the one the CARD is in (#1035)
+
+Decision 4 put CR 401.5's "the top card of your library" on the
+permission, and `permissionPositionOKLocked` enforced it against
+`p.Library` — where `p` is the permission HOLDER. That scoped every
+library permission anybody had written, because every printed library
+clause before Xanathar says "your library", and it did it by accident:
+for a permission over somebody ELSE's library the holder's own pile
+does not contain the card, so the check failed and the permission
+opened nothing, silently, before any of the three surfaces could ask.
+
+A position rule is about a position in a pile, and the pile is the card
+owner's (CR 401.1). The check reads the library the card is in. What
+that exposes is the same two questions #1022 answered for the
+graveyard, plus one the graveyard does not have:
+
+- **Whose pile may a STANDING permission reach.**
+  `permissionReachesPileLocked` (was `standingPermissionReachesCard`)
+  covers the library as well now. No seat named means the holder's own,
+  so two Coursers of Kruphix on one table do not play lands off each
+  other's revealed top card. `CastPermission.ZoneOwner` is the way out
+  and the only way out: a grant that names a seat reaches that seat's
+  pile and no other. It is checked for a STORED standing permission as
+  well as a derived one, because the cross-seat grant is stored —
+  Xanathar, Guild Kingpin's is made by an upkeep trigger over one
+  chosen opponent, until end of turn. A derived one can never name a
+  seat, and `standingCastPermissionsLocked` zeroes the field to keep
+  that true: the catalog is static, and "each opponent's library" would
+  be one stored permission per opponent granted at resolution.
+
+- **Which pile the cast path reaches into.** `castSourceZoneLocked`
+  resolves `from_zone: "library"` to the caller's own and, when the
+  card is not in it, to the pile it IS in — only under a permission the
+  caller holds. One `foreignPileForCastLocked` serves the graveyard and
+  the library, because it is one rule; splitting it per zone is how the
+  library came to be missing the branch. The bot enumerator walks every
+  seat's library TOP once anything has granted anything, with the same
+  `mine` flag the graveyard walk carries.
+
+- **The visibility, which is the new one.** Decision 5 keeps CR 401.5's
+  "you may look" on the POSITION and derives it from the permanents the
+  library's OWNER controls. That cannot express a look at somebody
+  else's library: the clause is granted by a resolution to one chosen
+  player rather than printed as a static ability, and
+  `LibraryTopVisibility` is per library where this is per (library,
+  viewer). So a cross-seat grant carries its own —
+  `CastPermission.SeesLibraryTop`, Xanathar's "you may look at the top
+  card of their library any time" — and `LibraryTopVisibleToLocked` is
+  the one place both spellings are read.
+  `LibraryTopKnowersLocked` is built out of it per seat, so the seat
+  that may cast the top card is a seat the projection has already made
+  a knower of it, by construction rather than by two functions
+  agreeing. A grant that opens another seat's library top WITHOUT the
+  look opens nothing, which is the same guard decision 5 put on a card
+  file that declares one half.
+
+No catalog card needs any of this yet; Xanathar is the printed shape
+and the fixtures name it. The hole is written down so the next card
+file does not fall into it, the way #1022 wrote the graveyard's down.
+
+### The stamps are per holder, and the wire does not change (#1037)
+
+The amendment above said a `CardView` is one struct, so the
+announce-time stamps were one seat's answer written into it: the
+graveyard took the first seat in seat order and exile the first live
+permission. The second holder got the public zone, the public
+`exile_play` and no picker, for a cast the engine would accept.
+
+The wire was never the problem — a frame is built per viewer already.
+The projection is now too:
+
+- `castStamps` is the announce-time surface as a value (the field list
+  `stripCastOffersNotFor` used to clear by hand), and
+  `CardView.castOffers` is a map of seat → `castStamps`, replacing
+  #978's single `castOffersFor`.
+- The exported fields carry the answer that is PUBLIC and nothing else.
+  For a graveyard or a library that is the pile owner's own cast out of
+  their own pile; for exile there is no owner, so nothing is public but
+  the grant. `stampLegalTargets` stamps that one;
+  `stampGrantedPermissions` files every other holder, for exile, every
+  graveyard and every library's top card.
+- `applyCastStampsFor`, in `FilterViewFor`, promotes this viewer's
+  entry and drops the rest — only for a knower, since the stamps name
+  the card as loudly as its mana cost does. Nothing needs stripping any
+  more, because the private answers were never in the exported fields.
+- **`exile_play` is resolved per viewer.** It stays public and still
+  names a seat, but a holder gets THEIR OWN grant rather than whichever
+  live permission came first: it carries the cost override, the faces
+  and the any-color clause the cast would actually use, and a client
+  reading somebody else's would render the wrong button.
+
+**`castable_here` is the pile owner's answer, or yours.** It stays
+public on a per-seat pile, because a flashback cost is printed on a
+card in a public zone, and #1022's per-viewer exception disappears with
+`castOffersFor`: a holder's private bit rides their `castStamps` and
+reaches their frame alone. The client reads the pair — the bit, and
+whether `exile_play` names this viewer — in both of its readers
+(`zoneBrowser.logic.castableFromZone`, `libraryTop.libraryTopPlayable`),
+which is what turns the server's per-holder stamp into a button at all.
+
+Additive on the wire (`v` unchanged), and in the direction the last two
+amendments already went: a card that carried one seat's stamps now
+carries each holder's own, on their own frame.
