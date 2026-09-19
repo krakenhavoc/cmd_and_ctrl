@@ -228,6 +228,28 @@ type Spec struct {
 	// Added in S19 sub-PR 1.
 	Triggered []game.TriggeredAbility
 
+	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities: a
+	// trigger that fires when a permanent is TAPPED FOR MANA, adds
+	// mana, and therefore does not use the stack at all (CR 605.4a).
+	// "Whenever enchanted land is tapped for mana, its controller adds
+	// an additional {G}" — Wild Growth, Overgrowth, Utopia Sprawl,
+	// Fertile Ground, Mana Flare, Mirari's Wake.
+	//
+	// NOT Triggered, and the test is one line: if the ability adds
+	// mana off a mana ability and does not target, it belongs here. A
+	// Triggered entry would go on the stack and give both players a
+	// priority window before the mana arrived, which is exactly what
+	// CR 605.4a forbids — and by then the spell it was meant to pay
+	// for has already been paid for. An "add mana" trigger that fires
+	// on a CAST or an ATTACK is an ordinary stack trigger (CR 605.5a)
+	// and stays in Triggered.
+	//
+	// Build them with the constructors in mana_triggers.go
+	// (WheneverEnchantedLandTapsForMana and friends). See
+	// [ADR 0074](../../../../docs/decisions/0074-triggered-mana-abilities.md)
+	// and AGENTS.md §7. Added by #763.
+	ManaTriggers []game.ManaTrigger
+
 	// TriggerDoublers are CR 603.2d effects that add one instance to
 	// a matching triggered ability when it is harvested. The game
 	// package owns the query and applies the predicates at trigger

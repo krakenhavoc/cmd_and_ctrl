@@ -2721,6 +2721,37 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if p == nil || p.Eliminated {
 		return nil
 	}
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, nil, addManaReason)
+}
+
+// addManaSlotsLocked is the one slot walk behind every "an effect adds
+// mana" path: AddManaWithOptionsForEffect above, and #763's triggered
+// mana abilities (addTriggeredManaLocked). One body rather than two,
+// so a pipe from a trigger queues exactly the pick a spell's pipe
+// queues and nothing has to be kept in step by hand.
+//
+// It has two modes, and they are the two the mana pipeline already
+// had for a multi-option slot:
+//
+//   - `pending` nil — queue a PendingChoiceMana, the way
+//     ActivateManaAbility and a resolving spell do. The player picks.
+//   - `pending` non-nil — the AUTO-TAP executor's remaining colour
+//     requirements: pick greedily against them with pickColorForSlot,
+//     the same function materializePlanLocked uses for a tapped
+//     source's own slots, and book the requirement the pick pays. The
+//     auto-tapper's contract is "no further player decisions", so it
+//     may not leave a prompt behind mid-cast.
+//
+// `reason` labels the queued prompt. Caller must hold g.mu in write
+// mode and have checked the player is seated and not eliminated.
+func (g *Game) addManaSlotsLocked(
+	p *Player,
+	source uuid.UUID,
+	produced string,
+	narrow bool,
+	pending *[]ColorRequirement,
+	reason func(ProducedManaEntry) string,
+) error {
 	slots, err := ParseProducedMana(produced)
 	if err != nil {
 		return err
@@ -2729,11 +2760,11 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	// walks every zone, and Dark Ritual's three "{B}" slots have
 	// nothing to narrow or order.
 	var identity commanderIdentity
-	if opts.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
+	if narrow || hasMultiOptionSlot(slots) {
 		identity = commanderIdentityFor(g, p)
 	}
 	for _, slot := range slots {
-		colorOptions := manaPickOptions(slot.Options, identity, opts.NarrowToCommanderIdentity)
+		colorOptions := manaPickOptions(slot.Options, identity, narrow)
 		if len(colorOptions) == 0 {
 			// CR 903.4f (#844): a "commander's color identity" effect
 			// with no identity adds nothing, and an empty picker is not
@@ -2743,16 +2774,35 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 		}
 		if len(slot.Options) == 1 {
 			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{colorOptions[0]}})
+			if pending != nil {
+				bookColorRequirement(colorOptions[0], pending)
+			}
+			continue
+		}
+		if pending != nil {
+			// The auto-tap mode: one greedy pick, minted now. A
+			// one-colour-N-mana slot mints all N of it (#742).
+			color := pickColorForSlot(colorOptions, pending)
+			if color == "" {
+				continue
+			}
+			for k := 1; k < slot.AmountFor(color); k++ {
+				bookColorRequirement(color, pending)
+			}
+			for k := 0; k < slot.AmountFor(color); k++ {
+				p.ManaPool.AddMana(ManaToken{Color: color, Source: source})
+				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
+			}
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
-			Chooser:      playerID,
-			FromPlayer:   playerID,
+			Chooser:      p.ID,
+			FromPlayer:   p.ID,
 			Count:        1,
 			Source:       source,
-			Reason:       addManaReason(slot),
+			Reason:       reason(slot),
 			ColorOptions: colorOptions,
 			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})

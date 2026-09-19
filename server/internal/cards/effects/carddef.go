@@ -54,6 +54,7 @@ func buildDef(spec Spec) *game.CardDef {
 		Replacements:          spec.Replacements,
 		PrintedKeywords:       spec.PrintedKeywords,
 		Triggered:             spec.Triggered,
+		ManaTriggers:          spec.ManaTriggers,
 		TriggerDoublers:       spec.TriggerDoublers,
 		AdditionalCost:        spec.AdditionalCost,
 		OptionalCosts:         spec.OptionalCosts,

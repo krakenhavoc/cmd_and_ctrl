@@ -468,6 +468,11 @@ var pendingChoiceFields = plan(
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
+	// #763: whether answering this pick is "a permanent was tapped for
+	// mana" (CR 106.12a), which is what fires the triggered mana
+	// abilities. A restored Birds pick that lost it would put the mana
+	// in the pool and skip Wild Growth's {G}.
+	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"NoLegalTarget", carried, "",
