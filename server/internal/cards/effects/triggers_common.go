@@ -574,3 +574,19 @@ func WheneverAnOpponentGainsControlOfAPermanentYouOwn(label string, effect Effec
 func selfEnteredUntapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return b27SelfEnteredUntapped(ev, source)
 }
+
+// SelfTargetedByASpell — "when this creature becomes the target of a
+// SPELL" (Departed Deckhand, Spiketail Drakeling's cousins).
+//
+// Not the same condition as `Self` on EventBecomesTarget, which is
+// "a spell or ability": the event is emitted for both and carries no
+// discriminator, so the spell half is read off the stack the way
+// Gargos reads it. Firing on abilities too would make a card with
+// this printed DRAWBACK strictly worse than printed, which is the
+// same #259 rule pointed the other way.
+func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventBecomesTarget || ev.CardID != source.InstanceID {
+		return false
+	}
+	return b40TargetedByASpell(ev, g)
+}
