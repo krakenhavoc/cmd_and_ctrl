@@ -2256,22 +2256,85 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// question, asked once: may this seat cast this card out
 					// of this zone.
 					var grant *game.CastPermission
+					holder := caster
 					if anyGrant && zone.live != nil && ci < len(zone.live.Cards) {
 						grant = grantedCast(g, caster, zone.live.Cards[ci], zone.kind)
+						if grant == nil && zone.kind == game.ZoneGraveyard &&
+							!game.CardCastableFromZone(c.oracleID, zone.kind) {
+							// #1022: the zone's OWNER may not cast this
+							// card — but a permission is a statement about
+							// an object, not about a pile, and somebody
+							// else may. Asked only once the owner's own
+							// answer is no, so a flashback card in its
+							// owner's graveyard is still the owner's
+							// surface and never somebody else's.
+							holder, grant = foreignCastHolder(g, seats, caster, zone.live.Cards[ci], zone.kind)
+						}
 					}
 					if grant == nil && !game.CardCastableFromZone(c.oracleID, zone.kind) {
 						continue
 					}
+					if holder != caster {
+						// The stamps below are THIS seat's answer — a
+						// legal target set is narrowed by hexproof and by
+						// who is asking — so they ride castOffersFor and
+						// FilterViewFor drops them for everybody else,
+						// exactly as exile's have since #978. The
+						// `castable_here` bit stampCastOffers derives
+						// travels with them, because a public bit with a
+						// per-viewer answer is the one thing this pass
+						// must not produce (#1022).
+						c.castOffersFor = holder.String()
+					}
 					// `castable_here` is NOT set here (#1015):
 					// stampCastOffers derives it from the price list and the
 					// cast gate, in the one place both are known.
-					stampCastOffers(g, caster, c, c.oracleID, zone.kind, grant)
+					stampCastOffers(g, holder, c, c.oracleID, zone.kind, grant)
 					continue
 				}
 				stampCastOffers(g, caster, c, c.oracleID, zone.kind, nil)
 			}
 		}
 	}
+}
+
+// foreignCastHolder answers "may somebody OTHER than this zone's owner
+// cast this card out of it", and with which permission (#1022).
+//
+// ADR 0066 makes a CastPermission a statement about an OBJECT — "you
+// may cast that card" — and nothing in it says the object has to be in
+// the holder's own zone. Wrexial's "you may cast target instant or
+// sorcery card from that player's graveyard" is the printed shape.
+// Before this, `stampLegalTargets` asked `grantedCast` for the ZONE's
+// owner and no other seat, so such a permission reached the wire as
+// nothing at all: no offers, no targets, no gate, for anybody.
+//
+// ONE holder per card, because a CardView is one struct and the stamps
+// are one seat's answer. The owner wins when the owner may cast it at
+// all (the caller only asks once their answer is no), and after that
+// it is the first seat in SEAT ORDER — deterministic, and the same
+// tie-break `CastPermissionOnCardForEffect` makes for exile's
+// `exile_play`. Two seats that may both cast one card is therefore a
+// card whose second holder sees the public zone and no stamps; the
+// same limitation exile has carried since #978, and it needs a wire
+// shape rather than a bug fix to lift.
+//
+// Returns the zone's owner and nil when nobody else holds one, so the
+// caller's existing "no grant and no printed declaration" skip still
+// reads as it did.
+//
+// Caller must hold g.mu.
+func foreignCastHolder(g *game.Game, seats []PlayerView, owner uuid.UUID, card game.Card, kind game.ZoneKind) (uuid.UUID, *game.CastPermission) {
+	for i := range seats {
+		id, err := uuid.Parse(seats[i].ID)
+		if err != nil || id == owner {
+			continue
+		}
+		if grant := grantedCast(g, id, card, kind); grant != nil {
+			return id, grant
+		}
+	}
+	return owner, nil
 }
 
 // stampCastOffers fills the announce-time clauses ONE card offers ONE
@@ -3667,7 +3730,12 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// pass below covers all visible zones uniformly.
 		out.Library = redactZone(p.Library, isKnower)
 		out.Hand = redactZone(p.Hand, isKnower)
-		out.Graveyard = redactZone(p.Graveyard, isKnower)
+		// #1022: a graveyard is public, but a cast permission over one
+		// of its cards held by ANOTHER seat is that seat's answer, so
+		// the stamps it produced come off for everybody else — the
+		// pass exile has ridden since #978, now on the one per-seat
+		// zone that can carry a foreign holder's stamps.
+		out.Graveyard = stripCastOffersNotFor(redactZone(p.Graveyard, isKnower), viewerID)
 		out.Command = redactZone(p.Command, isKnower)
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
@@ -3957,6 +4025,15 @@ func stripCastOffersNotFor(z ZoneView, viewerID string) ZoneView {
 		// ADR 0073 §7's grey-out reason is computed for the caster the
 		// gate was asked about, so it travels with the rest.
 		c.CantCast = ""
+		// #1022: and so does the cast-surface bit. `castable_here` is
+		// public everywhere else because everywhere else it is the same
+		// answer for every viewer — the zone's owner's. On a card whose
+		// stamps were computed for one seat it is that seat's answer,
+		// and a public bit with a per-viewer answer is exactly the
+		// thing #1015 removed from this surface. Exile never sets it
+		// (its button reads `exile_play`), so this line only ever fires
+		// on a graveyard card under somebody else's permission.
+		c.CastableHere = false
 	}
 	return z
 }
