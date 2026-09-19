@@ -513,3 +513,50 @@ func SetAttachedBasePTPer(value func(g *game.Game, source *game.Card) (power, to
 		},
 	}
 }
+
+// --- moving an EXISTING Equipment onto a creature (#1107) --------
+//
+// Brass Squire's activated ability and Magnetic Theft's spell say the
+// same sentence: "Attach target Equipment [...] to target creature
+// [...]". Neither is an equip ability — the Equipment being moved is
+// not the source, so AttachSourceToTarget doesn't apply — and both are
+// the ADR 0065 two-slot positional shape (Bite Down's shape, ported to
+// an attachment): clause 0 names the Equipment, clause 1 the creature
+// it lands on, read back positionally rather than by predicate, since
+// nothing else distinguishes the two slots once both narrow to "a
+// permanent".
+
+// TwoSlotAttachTargets builds that clause pair. `equipmentPreds` /
+// `creaturePreds` narrow each half exactly as printed — YouControl()
+// on both for Brass Squire's "Equipment you control" / "creature you
+// control", nothing for Magnetic Theft's unrestricted "target
+// Equipment" / "target creature", which is why control of the
+// Equipment never changes (AttachClauseTargets only ever writes the
+// AttachedTo link, never Controller).
+func TwoSlotAttachTargets(equipmentLabel string, equipmentPreds []CardPredicate, creatureLabel string, creaturePreds []CardPredicate) *game.TargetSpec {
+	return Clauses(
+		TargetPermanent(equipmentLabel, append([]CardPredicate{HasSubtype("Equipment")}, equipmentPreds...)...),
+		TargetCreature(creatureLabel, creaturePreds...),
+	)
+}
+
+// AttachClauseTargets is the resolution both cards share: attach
+// clause 0's Equipment to clause 1's creature. Each clause is
+// re-checked independently (CR 608.2b) — a target that left in
+// response leaves nothing to attach, which AttachForEffect already
+// treats as a quiet no-op (CR 701.3b) rather than an error, so this
+// does too: there is no such thing as attaching nothing to a creature
+// or an Equipment to nobody, so either miss is the whole ability
+// doing as much as it can, which here is nothing.
+func AttachClauseTargets(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	equip, ok := ctx.ClauseTarget(0)
+	if !ok {
+		return nil
+	}
+	host, ok := ctx.ClauseTarget(1)
+	if !ok {
+		return nil
+	}
+	return g.AttachForEffect(equip.ID, host)
+}
