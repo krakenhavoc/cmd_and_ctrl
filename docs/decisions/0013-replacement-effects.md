@@ -1967,6 +1967,159 @@ resolution today, so the regression test
 (`game/resolution_self_move_test.go`) drives a stub catalog card
 through the real priority loop.
 
+### 5u. Amendment, 2026-09-19: the mill amount is a quantity, and a kind cannot be forgotten
+
+*Amendment, 2026-09-19, branch
+`fix/982-569-replacement-affected-player-and-mill-amount`. Closes
+[#569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/569) and
+[#982](https://github.com/krakenhavoc/cmd_and_ctrl/issues/982). §5s's
+shape applied to a third verb, and the gate that stops the fourth from
+going in half-wired. §5t is [#995](https://github.com/krakenhavoc/cmd_and_ctrl/pull/995)'s.*
+
+**1. What was missing about the mill, precisely.** Not the per-card
+window. "`MillToZoneForEffect` skips the CR 614 pipeline" circulated on
+three status comments on #74 and one PR body, and it was never true:
+since #529 every milled card goes through `routeCardToZoneLocked`,
+which builds a `RepEventMove` and runs `applyReplacementsLocked`, so
+Leyline of the Void and Stone of Erech see each card and a milled
+commander is offered the command zone (CR 903.9, #539). §5l went
+further and chose the batch up front so one card's prompt does not
+shorten the rest of the run.
+
+What was missing is narrower. "If an opponent would mill one or more
+cards, they mill twice that many cards instead" is not a per-card zone
+move at all: it replaces the NUMBER, once, before anything leaves the
+library. So `RepEventMill` is the third member of the count-carrying
+family, built on exactly the shape ADR 0061 decision 1 gave the
+creation and §5s gave the keyword action:
+
+```go
+RepEventMill:
+    MillPlayer uuid.UUID  // whose library is read — the affected player
+    MillCount  int        // the one field a replacement rewrites
+```
+
+opened once per INSTRUCTION at `millThroughReplacementsLocked`
+(`mill.go`), the one body both `MillToZoneForEffect` and
+`MillToZoneThenForEffect` now go through, with the plan and the route
+run only once the window settles. A mill therefore opens two kinds of
+window in sequence: one for the amount, then the per-card `RepEventMove`
+the exit primitive has always opened.
+
+**2. The window opens only for a mill, which is narrower than the
+helper.** Two gates, and both are the rules' own:
+
+| Instruction | Window? |
+| --- | --- |
+| mill N into a graveyard | yes |
+| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.13a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
+| an unbounded `until` run (Helm of Obedience, `n <= 0` with a predicate) | no — it names no number to double |
+| a count of zero or less | no — "one or more cards" is the printed condition |
+
+Same posture §5s takes for a scry of zero: you would not scry, so there
+is nothing to replace, and the continuation still runs.
+
+**3. The count is the INSTRUCTION's, not the library's.** CR 701.13b
+makes a player told to mill more cards than they have mill as many as
+possible, and that clamp stays where it was, in `millPlanLocked`, AFTER
+the window. So Bruvac doubling a twenty-card mill against a twelve-card
+library mills twelve and doubles twenty — which is not a distinction
+without a difference the moment a "plus four" shares the window and the
+orderings have to compose over the same number.
+
+**4. Both forms can pause, earlier than either could before.** Two
+amount replacements in one window is a CR 616.1 ordering prompt, and it
+lands before a single card has been chosen. `millTail` is the mill's
+sibling of `zoneRoute`, `tokenTail`, `damageTail` and
+`keywordActionTail`: the destination, the `until` predicate and the
+caller's continuation, carried on the event so the resume plans and
+routes through the same `applyResolvedMillLocked` the inline path runs.
+`MillToZoneForEffect`'s slice is empty on such a pause — the contract
+`CreateTokensForEffect`'s empty ID slice already carries — and
+**Combustible Gearhulk**, the one catalog card that read that slice,
+moves to the continuation form, because "the total mana value of those
+cards" would otherwise be zero.
+
+A cancelled mill (CR 614.10), one replaced down to zero, and one whose
+prompt is taken away (§5j) all run the continuation with an empty list:
+#808's call for the life tail, #853's for the route, #762's for the
+tokens, #976's for the keyword action.
+
+**5. What is deliberately not here.** A surveil's graveyard leg is not
+a mill. `ResolveSurveil` routes those cards with `millRoute` so the
+per-card graveyard window and the mill PAYOFFS see them — a "whenever a
+card is put into your graveyard from your library" trigger must not
+care how it got there — but CR 701.14a is its own keyword action and no
+mill instruction was given, so Bruvac does not double it. The same
+reading keeps Tasha's Hideous Laughter out, and its card file has said
+so since it shipped.
+
+The event carries no `Source`. Nothing printed reads "if a source you
+control would mill", the mill helpers take no source parameter, and
+inventing one to fill a field would be a signature change with no
+reader.
+
+**6. #982: the affected player, and the five switches.** CR 616.1 gives
+the ordering choice to the affected player, never to whoever controls
+the replacements. `affectedPlayerForEvent` names that player per kind
+and falls through, when it has no case, to the FIRST GATHERED EFFECT's
+controller — the effect whose source happens to sit earliest in
+battlefield order. Two of the kinds ADR 0061 added had no case:
+`RepEventDiscard` (the answer is `ev.DiscardPlayer`, CR 701.8a) and
+`RepEventCreateTokens` (`ev.TokenController`, "create one or more
+tokens under your control").
+
+It was invisible because every catalog replacement of those two kinds
+is controller-scoped, which makes the fallback accidentally right.
+Bruvac is where it stops being invisible: the replacement is its
+controller's and the affected player is the OPPONENT, so Bruvac beside
+The Water Crystal is the first printed board where the fallback names
+the wrong player.
+
+The structural half is the point, and it is the reason this is one
+amendment rather than two. A kind has obligations at five switches and
+no compiler to enforce any of them:
+
+| Switch | What a missing arm costs |
+| --- | --- |
+| `eventKindMatches` | no `EventKind` maps to the kind, so `Watches` never matches and no replacement of it can fire |
+| `affectedPlayerForEvent` | the CR 616.1 prompt goes to the wrong player |
+| `applyResolvedReplacementEventLocked` | a paused event of that kind resumes into nothing |
+| `finishSettledReplacementLocked` | a cancelled one never tells its caller |
+| `abandonZoneRouteLocked` | one whose prompt is taken away never tells its caller |
+
+Every one of those failures is silent until the first card whose scope
+or continuation differs from the default. `TestEveryReplacementEventKindIsSwitchedOn`
+(`game/replacement_kind_gate_test.go`) reads the kinds and the switches
+straight out of the source and fails until a new kind has an arm in
+each — the mechanism `TestEveryChoiceKindIsClassifiedAndEnumerated`
+(`internal/legal`) has used for `PendingChoiceKind` since #794.
+
+It found a second gap on its first run: `abandonZoneRouteLocked` had no
+arm for `RepEventKeywordAction`, so a scry whose ordering prompt was
+dropped or pruned lost its "then draw a card" with the frame. §5s gave
+a CANCELLED keyword action its terminal outcome and never gave one to
+an ABANDONED one.
+
+Two of the five arrived as if-chains and are now switches, with no
+change to what they do — every condition on either chain was exclusive
+on `Kind` — so that "nothing is owed for this kind" is a written arm
+rather than the end of a chain. A switch that is deliberately PARTIAL
+(`gatherSelfReplacementsLocked`'s `ev.Kind != RepEventMove` guard, a
+card's `AppliesTo`) is not on the list and the test never looks at it.
+
+**7. What shipped on the cards.** Two new entries, both `full`:
+**Bruvac the Grandiloquent** (`OpponentsMillTwice`) and **The Water
+Crystal** (`OpponentsMillPlus(4)`, plus a blue-spell cost reduction on
+the new `ColoredSpell` predicate and a tap ability that mills each
+opponent for the controller's hand size). Two, deliberately: the kind
+is not shaped around one card, and ×2 against +4 is the pair CR 616.1's
+ordering question is actually about — Bruvac first is 10 cards from a
+base of 3, the Crystal first is 14. One conversion: Combustible
+Gearhulk to the continuation form. `MillBecomes{Count, Scope, Label}`
+carries the family, with `MillsByController` and `MillsByAnyone` beside
+`MillsByOpponents` so the first printing of either is a line.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

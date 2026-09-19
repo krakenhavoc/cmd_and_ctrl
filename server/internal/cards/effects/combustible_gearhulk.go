@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -20,10 +22,9 @@ import (
 // may" belongs to the trigger's controller.
 //
 // The damage is read off the three cards that were MILLED, not off the
-// library beforehand: MillToZoneForEffect hands back what actually
-// moved, so a short library mills what it has and the damage is the
-// total mana value of those cards (CR 701.13b — you mill as many as
-// you can).
+// library beforehand: the mill hands back what actually moved, so a
+// short library mills what it has and the damage is the total mana
+// value of those cards (CR 701.13b — you mill as many as you can).
 //
 // No simplification.
 func init() {
@@ -80,12 +81,31 @@ func combustibleGearhulkDrawThree(ctx *Context) error {
 // captured, so an undo that replays this branch reads the same ref the
 // trigger was put on the stack with.
 //
+// Through the CONTINUATION form, because the mill can pause twice over:
+// on a milled commander's CR 903.9 prompt (#893) and, since #569, on a
+// CR 616 ordering prompt between two mill-AMOUNT replacements before
+// any card has moved. Either way "those cards" is not knowable on the
+// next line, and reading the fire-and-forget slice there would burn
+// the opponent for zero. The item is carried by value and the context
+// rebuilt inside, the contract every other continuation follows: an
+// undo restores this game's fields in place, so a captured *Game would
+// be the wrong one.
+//
 // Caller holds g.mu.
 func combustibleGearhulkMillThenBurn(ctx *Context) error {
-	milled, err := ctx.Game.MillToZoneForEffect(ctx.Controller(), 3, game.ZoneGraveyard, nil)
-	if err != nil {
-		return err
-	}
+	item := ctx.Item
+	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), 3, game.ZoneGraveyard, nil,
+		func(g *game.Game, milled []uuid.UUID) error {
+			return combustibleGearhulkBurn(NewContext(g, item), milled)
+		})
+}
+
+// combustibleGearhulkBurn is the second half, run with the cards that
+// really reached the graveyard (CR 400.7): a commander whose owner took
+// the command zone was not milled and contributes nothing.
+//
+// Caller holds g.mu.
+func combustibleGearhulkBurn(ctx *Context, milled []uuid.UUID) error {
 	total := 0
 	for _, id := range milled {
 		if c, ok := ctx.Game.LookupCardForEffect(id); ok {

@@ -959,7 +959,20 @@ func init() {
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
 | Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
+| Mill amount (CR 701.13a) | `RepEventMill` | `MillPlayer`, `MillCount` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
+
+**Adding a kind to that table is five switches, not one** (#982). A
+`ReplacementEventKind` has to be named in `eventKindMatches` (the watch
+key), `affectedPlayerForEvent` (who CR 616.1 asks to order the
+window), `applyResolvedReplacementEventLocked` (the resume), and both
+terminal outcomes — `finishSettledReplacementLocked` for a cancelled
+event and `abandonZoneRouteLocked` for one whose prompt is taken away.
+Every one of those failures is silent, so
+`TestEveryReplacementEventKindIsSwitchedOn`
+([replacement_kind_gate_test.go](server/internal/game/replacement_kind_gate_test.go))
+reads the switches out of the source and fails until each has an arm.
+Naming a kind that owes NOTHING is a written arm, not an omission.
 
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
@@ -1040,6 +1053,37 @@ queued no prompt when the entry point returns;
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
+
+**The mill AMOUNT is a replaceable quantity too** (#569,
+[ADR 0013 §5u](docs/decisions/0013-replacement-effects.md)). "If an
+opponent would mill one or more cards, they mill twice that many cards
+instead" (Bruvac the Grandiloquent) replaces the NUMBER, once, before
+anything leaves the library, so `RepEventMill` is opened once per mill
+INSTRUCTION — the same shape as the creation and the keyword action.
+
+Do not confuse it with the per-card window, which is older and needs
+nothing from you: every milled card already goes through the shared
+exit primitive, so "if a card would be put into a graveyard from
+anywhere, exile it instead" and CR 903.9 both see each of them. That
+one is `graveyard_replacements.go`; this one is
+`cards/effects/mill_replacements.go` —
+`MillBecomes{Count, Scope, Label}`, with `OpponentsMillTwice(label)`
+and `OpponentsMillPlus(n, label)` as the named wrappers.
+
+The window opens only for something the rules call a mill: a
+GRAVEYARD destination (CR 701.13a defines the keyword action by where
+the cards go, so `MillToZone{To: game.ZoneExile}` is not a mill and
+opens none) and a POSITIVE count (an unbounded `until` run names no
+number to double). The count a replacement sees is the one the
+INSTRUCTION named, not what the library can supply — CR 701.13b's
+"mill as many as possible" clamp happens afterwards. A surveil's
+graveyard leg is NOT a mill (CR 701.14a) and no mill replacement
+touches it.
+
+It can PAUSE, before any card is chosen, so `MillToZoneForEffect`'s
+slice is empty when it did. If your card reads what was milled, use
+`MillToZone{…, Then: …}` / `g.MillToZoneThenForEffect` — which you
+should be doing anyway, for #893's reason.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog

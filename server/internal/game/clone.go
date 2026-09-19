@@ -704,6 +704,18 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			t.players = append([]uuid.UUID(nil), f.ev.keywordAction.players...)
 			ev.keywordAction = &t
 		}
+		if f.ev.mill != nil {
+			// #569, the same reason as the two above: the mill's
+			// continuation is cleared THROUGH the pointer as it runs,
+			// and the REST of what the tail carries — the destination
+			// and the `until` predicate — is what applyResolvedMillLocked
+			// is still reading. Its own copy, so a live run cannot
+			// consume the snapshot's continuation and an
+			// undone-then-redone answer mills the same cards and
+			// reports the same list.
+			t := *f.ev.mill
+			ev.mill = &t
+		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
 			if len(f.ev.zoneRoute.simultaneousExit) > 0 {

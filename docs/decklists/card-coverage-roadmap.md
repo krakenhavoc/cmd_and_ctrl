@@ -136,10 +136,10 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **2043** |
-| — whole cards (bare `oracle_id`) | **1977** |
+| Registry keys (`len(effects.All())`) | **2045** |
+| — whole cards (bare `oracle_id`) | **1979** |
 | — back faces (`<oracle_id>#1`) | 66 |
-| Declared `full` | 1566 |
+| Declared `full` | 1568 |
 | Declared `caveats` | 406 |
 | Declared `unreviewed` | 71 |
 
@@ -674,8 +674,8 @@ comments; a card can sit in two):
   Reflection).
 - Singles worth naming: attack- and block-count restrictions (Silent
   Arbiter, Crawlspace), a die roll over the seeded RNG (Ancient
-  Copper Dragon, Ancient Gold Dragon), a mill replacement (Bruvac), a
-  search replacement (Aven Mindcensor).
+  Copper Dragon, Ancient Gold Dragon) and a search replacement (Aven
+  Mindcensor). The mill replacement (Bruvac) closed with #569.
 
 **X on an activated ability is closed.** `game.AbilityCost` reads an
 `{X}` out of its mana component and carries a `MinX` floor for "X
@@ -692,13 +692,17 @@ Two neighbouring seams stayed open, and it is worth saying which:
 - **A variable-count sacrifice cost.** Ruthless Technomancer's
   "Sacrifice X artifacts" is an X that is not in the mana component;
   `AbilityCost.SacrificeOther` still names exactly one permanent.
-- **A mill replacement.** Bruvac still cannot be written, but the
-  reason moved: `MillToZoneForEffect` routes every card through the
-  CR 614 pipeline (so Leyline of the Void and the CR 903.9 commander
-  redirect both apply to a mill today). What is missing is a
-  replacement event kind for the mill AMOUNT — "if a player would
-  mill one or more cards, they mill twice that many instead" is not a
-  per-card zone move.
+- **A mill replacement.** ~~Bruvac still cannot be written~~
+  **Closed by #569, S39.** The reason had already moved once:
+  `MillToZoneForEffect` routes every card through the CR 614 pipeline
+  (so Leyline of the Void and the CR 903.9 commander redirect both
+  apply to a mill today), and what was missing was a replacement event
+  kind for the mill AMOUNT — "if a player would mill one or more
+  cards, they mill twice that many instead" is not a per-card zone
+  move. `game.RepEventMill` is that kind, opened once per mill
+  instruction before any card leaves the library
+  ([ADR 0013 §5u](../decisions/0013-replacement-effects.md)). Bruvac
+  the Grandiloquent and The Water Crystal both ship `full`.
 
 Three engine bugs the sweep found were filed rather than fixed on the
 spot: **#446** (mass destroy bypasses indestructible), **#478** (a
