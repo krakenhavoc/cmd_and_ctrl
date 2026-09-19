@@ -23,7 +23,10 @@ import (
 // resolved this turn — the raw per-turn tally, which no decision
 // resets, so it measures iterations rather than runs.
 func resolutionsOf(g *Game, source uuid.UUID, label string) int {
-	return g.TurnTally.Resolved[TallyKey(source, label)]
+	// Through the reader, not the map: since #936 Resolved is keyed
+	// per OBJECT (ObjectTallyKey) while the shortcut's own key stays
+	// per card (TallyKey), and this asks the card-facing question.
+	return g.ResolvedThisTurn(source, label)
 }
 
 // TestShortcutPromptAppearsWithTheNotice — the prompt is queued to the

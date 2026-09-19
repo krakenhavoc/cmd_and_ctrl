@@ -1513,7 +1513,14 @@ is read off `Game.TurnTally`, never by walking `g.Events`:
 `AttacksDeclared` and `CombatDamageToPlayers`; `g.TurnTally.CreaturesDied`
 is the table-wide count; `g.ResolvedThisTurn(source, label)` and
 `g.TriggeredThisTurn(source, label)` are the "once per turn" gates (an
-empty label sums the source's abilities);
+empty label sums the source's abilities) and are per **object**, not
+per card — a permanent that left the battlefield and came back this
+turn answers zero, because CR 400.7 makes it a new object and the key
+carries `Card.ObjectEpoch` (#936). The CR 726 loop breaker's
+`LoopRun` / `LoopAllowance` share the same (source, label) pair and
+stay per **card**, so a blink loop still trips the threshold; one key,
+two projections, and `TurnTally`'s field comments say which reader
+takes which;
 `g.EnteredWithSubtypeThisTurn(player, subtype)` counts permanents that
 entered under a player's control with a subtype, judged as they entered
 rather than as they are now (a changeling counts for every creature
@@ -1999,9 +2006,16 @@ takes the LKI snapshot and then forgets what the leaving OBJECT did —
 recast the same turn may activate again) and the combat announcement
 maps. All three battlefield exits call it, and a new per-object
 registry goes in it rather than growing a fourth clearing site. What
-deliberately stays is `TurnTally`'s per-ability counts: they are per
-object too, but clearing them would give ADR 0055's loop breaker's
-`LoopRun` an escape hatch on every blink loop.
+deliberately stays is `TurnTally`'s per-ability counts, and since #936
+for a better reason than "it would break the loop breaker": the
+card-facing gates (`Resolved`, `Triggered`) are keyed by
+`ObjectTallyKey(source, Card.ObjectEpoch, label)`, so the returning
+permanent reads a key nothing has written and its "only once each
+turn" clause fires again with nothing deleted. `LoopRun` /
+`LoopAllowance` keep the per-CARD `TallyKey`, because a blink loop
+leaves and re-enters on every iteration and clearing their count there
+would give ADR 0055's breaker an escape hatch. The epoch is bumped in
+`MoveCard` next to the rest of CR 400.7's forgetting.
 
 **Paying life is a cost, and a cost may not pause.** Use
 `g.PayLifeForEffect(source, player, n)` for "pay N life" — a ward, a
@@ -2417,6 +2431,9 @@ and still unimplemented: that is CR 613 layer 1, deferred to S16.5.
 | "Whenever **one or more** creatures you control deal combat damage to **a player**" / "whenever you attack **a player**" | the same kind as the per-creature wording | `OncePerBatchPerPlayer(...)`, or the ready-made `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature, label, effect)` — once per **player**, not once per step (#784, CR 603.2c). The clause names an object, so the guard keys on it: three creatures hitting three opponents are three triggers, two hitting one opponent are one. A card whose stack label is computed per player (Breena, Nature's Will) sets a static `Key` and lets the guard supply the player |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
+| "When you lose control of ~" (Khârn the Betrayer) | `EventControlChanged` | `ThisChangedController` — `WhenYouLoseControlOfThis`. The event names the permanent in `CardID`, the player who LOST control in `Target` and the one who GAINED it in `Actor`; the item goes on the stack for `ev.Target`, because by the time the event lands the permanent belongs to somebody else. Emitted from the one materialise step at the end of the layer pass (#930), so a theft, an exchange, an Aura being destroyed and a duration expiring all reach it |
+| "When you gain control of ~ from another player" (Risky Move) | `EventControlChanged` | `ThisChangedController` — `WhenYouGainControlOfThis`; the gaining player already controls the permanent, so the ordinary item is theirs |
+| "Whenever an opponent gains control of a permanent you own" | `EventControlChanged` | `AnOpponentGainedControlOfAPermanentYouOwn` — `WheneverAnOpponentGainsControlOfAPermanentYouOwn`. The watcher is one permanent and the permanent that moved is another, linked by OWNERSHIP (CR 108.3), which no theft changes |
 | "…its controller may draw" (Edric) | `EventDealDamage` | `ev.Actor` is the dealing creature's controller; use it for both `OptionalPrompt.Chooser` and the draw |
 
 **What a batch is** (#829, CR 603.2c) — **a batch is every event the
@@ -2636,7 +2653,9 @@ Three things to know if you touch priority, prompts or the tally:
 - **Detection is one function**, `loopSuspectedLocked`
   (`server/internal/game/loop_breaker.go`), over `TurnTally.LoopRun` —
   `Resolved` restarted at each decision, keyed by
-  `TallyKey(source, label)` like everything else in the tally. It
+  `TallyKey(source, label)`: the CARD, deliberately, where the
+  once-each-turn gates next to it are keyed per OBJECT (#936). A blink
+  loop mints a new object every iteration and is still one loop. It
   counts ONE ability of ONE permanent in ONE turn, which is why four
   upkeep triggers from four players never approach it. The threshold is
   `DefaultLoopThreshold`; `Game.LoopThreshold` overrides it per game for

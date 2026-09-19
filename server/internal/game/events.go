@@ -110,6 +110,22 @@ const (
 	// attached to. Added in S24.
 	EventUnattach EventKind = "unattach"
 
+	// EventControlChanged — CardID changed controller (CR 613.1b).
+	// Actor is the player who GAINED control, Target the player who
+	// LOST it; Source is the card whose effect took it, and is
+	// uuid.Nil when control REVERTED because the effect ended (the
+	// baseline is nobody's effect — Act of Treason's creature going
+	// home at cleanup).
+	//
+	// Emitted from the one materialise step at the end of the layer
+	// recompute (materialiseControlLocked), which is where the delta
+	// is known: control is layer 2's output, so a gain, an exchange,
+	// an expiry and a Mind Control being destroyed are all the same
+	// event from the same place. It rides the batch that was open
+	// when the pass ran, so an exchange (CR 701.12) is two events in
+	// one batch. Added for #930.
+	EventControlChanged EventKind = "control_changed"
+
 	EventCounterPlaced EventKind = "counter_placed"
 
 	// EventTokenCreated — a token was created under Actor's control.

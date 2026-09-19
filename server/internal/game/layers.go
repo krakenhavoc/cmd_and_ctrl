@@ -607,8 +607,19 @@ func (g *Game) recomputeLayersLocked() {
 	// looping.
 	g.ClearExpiredScopedStaticsLocked()
 	g.layerPassLocked()
-	g.materialiseControlLocked()
+	changed := g.materialiseControlLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
+	// #930: the control deltas are EMITTED here, after the store, and
+	// not from inside the walk that found them. EmitEvent dispatches
+	// to the listeners synchronously — the trigger harvester among
+	// them — and a harvested trigger reads the board, which can send
+	// it back through RecomputeLayersIfStaleLocked. Emitting before
+	// the store would make that a re-entrant recompute in the middle
+	// of a pass whose results are half-written; emitting after it
+	// finds the cache clean and returns, and anything a listener
+	// invalidates is picked up by the next pass exactly as any other
+	// mutation is. See emitControlChangesLocked.
+	g.emitControlChangesLocked(changed)
 }
 
 // layerPassLocked runs one complete CR 613 application over the
@@ -667,16 +678,23 @@ func (g *Game) layerPassLocked() {
 //     its next attack declaration fired no trigger (#871).
 //
 // Both fire only on an actual delta, so a recompute that changes
-// nothing touches nothing.
+// nothing touches nothing. The third consequence is the EVENT
+// (#930), and it is the one thing this step does not do itself: the
+// deltas are returned by value for `recomputeLayersLocked` to emit
+// once the pass is over, because emitting mid-walk would dispatch
+// listeners against a half-applied board and hand a *Card into a
+// harvester whose Build may reallocate the battlefield slice — the
+// hazard `commitAttackDeclarationLocked` collects by value to avoid.
 //
 // Caller holds g.mu in write mode. This is the step that made the
 // layer engine's lock contract load-bearing: Card.Controller is read
 // all over the engine under the READ lock, so writing it needs
 // exclusivity, not the shared lock the recompute used to run under.
-func (g *Game) materialiseControlLocked() {
+func (g *Game) materialiseControlLocked() []controlChange {
 	if g.Battlefield == nil {
-		return
+		return nil
 	}
+	var changed []controlChange
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.effective == nil || c.effective.Controller == uuid.Nil {
@@ -685,10 +703,17 @@ func (g *Game) materialiseControlLocked() {
 		if c.effective.Controller == c.Controller {
 			continue
 		}
+		changed = append(changed, controlChange{
+			card:   c.InstanceID,
+			from:   c.Controller,
+			to:     c.effective.Controller,
+			source: c.effective.ControlSource,
+		})
 		c.Controller = c.effective.Controller
 		c.SummonedThisTurn = true
 		g.removeFromCombatLocked(c)
 	}
+	return changed
 }
 
 // BumpLayerVersionForTest bumps the layer-engine invalidation

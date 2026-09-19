@@ -297,3 +297,42 @@ player who wants to keep going answers with a number and gets it.
 in the enumerator, which since #810 does not offer an {X} move at X=0 when X
 is the whole of what it does — so the Soothsaying table has no loop to
 break. See [ADR 0033](0033-ai-bot-seat.md)'s amendment of the same date.
+
+
+## Amendment (2026-09-18, #936): the breaker keeps the CARD key; the once-each-turn gates get the OBJECT
+
+`TurnTally.LoopRun` shares its key with `TurnTally.Resolved` —
+`TallyKey(source, label)` — and that sharing is why a real bug sat
+open for a sprint. `Resolved` and `Triggered` are also the catalog's
+"only once each turn" gates, and CR 400.7 says a permanent that leaves
+the battlefield and comes back is a NEW OBJECT whose clause may fire
+again. The obvious fix, dropping the entries at the one battlefield
+exit alongside the loyalty and combat registries (#630, #935), would
+have reset `LoopRun` on every iteration of a loop that blinks its own
+source: the detector would never have reached `DefaultLoopThreshold`,
+and the escape hatch would have been created by exactly the loops this
+ADR exists for.
+
+The key is split instead of cleared, and the detector keeps the half
+it had:
+
+- **`LoopRun` and `LoopAllowance` stay keyed by `TallyKey` — the
+  CARD.** A loop is a loop whichever object is running it, so the
+  count survives the permanent leaving and re-entering, and the
+  threshold means what §2 says it means. Nothing in `loop_breaker.go`
+  changed: `loopSuspectedLocked` is still the one detector over the
+  one count, and `notePlayerActivationLocked` and
+  `grantLoopShortcutLocked` still receive `TallyKey(source, label)`
+  from their callers.
+- **`Resolved` and `Triggered` are keyed by
+  `ObjectTallyKey(source, Card.ObjectEpoch, label)` — the OBJECT.**
+  The returning permanent reads a key nothing has written; the old
+  object's entries are left in the map, unreachable, until the turn
+  boundary flushes the whole tally.
+
+One (source, label) pair, two projections, and the reader's question
+picks the projection — `TurnTally`'s field comments say which is
+which, and ADR 0049's amendment of the same date carries the table.
+Pinned by `TestLoopBreakerStillTripsWhenTheSourceLeavesAndReturns`
+(turn_tally_object_test.go), which is the test the naive fix would
+have failed.

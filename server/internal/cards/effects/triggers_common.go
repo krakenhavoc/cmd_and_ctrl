@@ -295,6 +295,27 @@ func YouGainedLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *g
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
 }
 
+// ThisChangedController — the source permanent changed controller
+// (EventControlChanged, #930). ev.Target is the player who lost it
+// and ev.Actor the player who gained it; the engine emits the event
+// only on a real delta, so those two are never the same player.
+func ThisChangedController(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventControlChanged && ev.CardID == source.InstanceID &&
+		ev.Target != uuid.Nil && ev.Actor != uuid.Nil
+}
+
+// AnOpponentGainedControlOfAPermanentYouOwn — some permanent you OWN
+// (CR 108.3 — ownership does not move) came under an opponent's
+// control. The source is the watcher, not the permanent, so this
+// reads the event's card rather than the source's instance ID.
+func AnOpponentGainedControlOfAPermanentYouOwn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventControlChanged || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.Owner == source.Controller
+}
+
 // StepBegan — the named step began (EventStepBegan, #588). With
 // yours set, only on the source's controller's turn. This is the
 // condition for every step the older per-step kinds do not cover:
@@ -496,4 +517,50 @@ func ThisWasPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card
 func WhenThisIsPutIntoYourGraveyardFromYourLibrary(label string, effect Effect) game.TriggeredAbility {
 	return InGraveyard(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove},
 		ThisWasPutIntoYourGraveyardFromYourLibrary, label, effect))
+}
+
+// --- control changes (#930, CR 613.1b) ------------------------------
+//
+// One event, emitted from the one materialise step at the end of the
+// layer pass, covers every way control moves: a spell or ability
+// taking a permanent, an Aura's static, an exchange (CR 701.12), and
+// the permanent going home when the effect ends. So a card that
+// triggers on losing control fires on the revert as well as on the
+// theft, with nothing written per card.
+
+// WhenYouLoseControlOfThis — "When you lose control of ~" (Khârn the
+// Betrayer's Sigil of Corruption, Coffin Queen, Gustha's Scepter).
+//
+// "You" is the player who LOST control, and that is the one printed
+// shape whose ability is not controlled by the source's current
+// controller: by the time the event is emitted the permanent is
+// already the other player's, so an item built the ordinary way would
+// hand the thief the trigger. The item is built for ev.Target instead
+// — the only reading under which "you lose control of ~" can be true
+// of its own controller.
+func WhenYouLoseControlOfThis(label string, effect Effect) game.TriggeredAbility {
+	t := On(game.EventControlChanged, ThisChangedController, label, effect)
+	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label, effect)
+		item.Controller, item.Owner = ev.Target, ev.Target
+		return item
+	}
+	return t
+}
+
+// WhenYouGainControlOfThis — "When you gain control of ~ from another
+// player" (Risky Move). The gaining player is the permanent's
+// controller by the time the event lands, so the ordinary item is
+// already theirs.
+func WhenYouGainControlOfThis(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventControlChanged, ThisChangedController, label, effect)
+}
+
+// WheneverAnOpponentGainsControlOfAPermanentYouOwn — the Zedruu
+// shape: the watcher is one permanent and the permanent that moved is
+// another, matched by OWNERSHIP (CR 108.3), which no zone change or
+// theft alters. Fires once per permanent, as printed; two permanents
+// donated by one resolution are two triggers.
+func WheneverAnOpponentGainsControlOfAPermanentYouOwn(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventControlChanged, AnOpponentGainedControlOfAPermanentYouOwn, label, effect)
 }

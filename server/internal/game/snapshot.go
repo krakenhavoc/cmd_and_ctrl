@@ -376,6 +376,7 @@ type cardSnapshot struct {
 	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
 	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
 	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
+	ObjectEpoch              int                 `json:"objectEpoch,omitempty"`
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
@@ -917,6 +918,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		ObjectEpoch:              c.ObjectEpoch,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -1428,6 +1430,7 @@ func restoreCard(c *cardSnapshot) Card {
 		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		ObjectEpoch:              c.ObjectEpoch,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,

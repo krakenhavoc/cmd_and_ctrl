@@ -225,3 +225,60 @@ Hermes, Mavren Fein, The Earth King), "is attacked" (Curse of
 Opulence) and the zone-move family (Dour Port-Mage, Laelia, Teval,
 Tormod, Satoru, Sidisi, On Wings of Gold) name no second object and
 keep the plain guard.
+
+
+## Amendment (2026-09-18, #936): the tally's other dimension is the OBJECT (CR 400.7)
+
+Decision 1's `TurnTally` keys its two per-ability counts —
+`Resolved` and `Triggered`, the "only once each turn" gates — by
+`TallyKey(source, label)`, where `source` is an instance ID. An
+instance ID is the identity of the CARD and survives a zone change, so
+a permanent that left the battlefield and came back the same turn
+still counted the object before it: its "whenever …, if this is the
+first time this has happened this turn" clause could not fire again,
+where CR 400.7 says the returning permanent is a new object and it
+should.
+
+The sibling registries were fixed at the one battlefield exit in #630
+(`forgetPerObjectTurnStateLocked`). These could not be, and the reason
+is the one dependency this key has: **`TurnTally.LoopRun` and
+`TurnTally.LoopAllowance` share it**, and they are ADR 0055's loop
+detector. A blink loop leaves and re-enters on every iteration, so
+clearing the tally at the exit would have reset the run every
+iteration and the breaker would never have reached its threshold — the
+escape hatch created by exactly the loops it exists for.
+
+So the key gets a dimension rather than a cleanup, the same way #784's
+did:
+
+- **`Card.ObjectEpoch`**, bumped once per zone change in `MoveCard`,
+  next to the rest of CR 400.7's forgetting. It is a serial number for
+  the OBJECT; nothing reads its value, only whether two readings are
+  equal.
+- **`ObjectTallyKey(source, epoch, label)`** is the per-object
+  projection and **`TallyKey(source, label)`** stays the per-card one.
+  One (source, label) pair, two projections, and the reader's question
+  decides which:
+
+  | Reader | Projection | Why |
+  |---|---|---|
+  | `TurnTally.Resolved` / `Triggered`, through `Game.ResolvedThisTurn` / `TriggeredThisTurn` (and so `b15ResolvedThisTurn`, `b11TriggeredThisTurn` and every catalog gate behind them) | per OBJECT | CR 400.7 — the clause is about this permanent |
+  | `TurnTally.LoopRun` / `LoopAllowance` (`loopSuspectedLocked`, `grantLoopShortcutLocked`, `notePlayerActivationLocked`) | per CARD | a loop is a loop whichever object is running it |
+  | `Game.oncePerBatchFired` (`oncePerBatchAllowsLocked`) | per CARD | each entry is compared against the live batch, so a stale one cannot match |
+
+- **No catalog change.** The gates ask `Game.TriggeredThisTurn` /
+  `ResolvedThisTurn`, which take the epoch of whichever object the
+  source names now, so `batch16_helpers.go`, `exemplar_of_light.go`,
+  `nykthos_paragon.go`, `breena_the_demagogue.go` and the rest are
+  correct without being touched.
+- **Nothing is deleted at the exit.** The old object's entries stay in
+  the map, unreachable, until the turn boundary flushes the tally with
+  everything else — so #935's one battlefield-exit seam is unchanged
+  and gains no fourth clearing site.
+
+State: `ObjectEpoch` is `carried` (snapshot and clone), because
+nothing can re-derive how many times a card has moved. A game restored
+from a file written before this shipped reads every card at epoch
+zero, which merges the current turn's counts for a permanent that had
+already returned — one turn, in a game that was mid-turn when the
+server went down.

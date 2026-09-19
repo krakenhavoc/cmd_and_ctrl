@@ -110,6 +110,21 @@ type Characteristic struct {
 	// recomputeLayersLocked.
 	Controller uuid.UUID
 
+	// ControlSource names the card whose layer-2 effect last wrote
+	// Controller in this pass — the Act of Treason, the Mind Control,
+	// the Switcheroo. Zero when no layer-2 effect applied, which is
+	// the ordinary case AND the one that matters: a permanent going
+	// home because the effect that took it ended has no source, and
+	// the EventControlChanged materialiseControlLocked emits says so
+	// by leaving Event.Source nil (#930).
+	//
+	// Written by the layer-2 Apply closures themselves (the engine's
+	// controlStatic, the catalog's ControlAttachedBySource), so the
+	// last write in the bucket's timestamp order is the effect that
+	// won CR 613.7 — the same rule that decided Controller, read off
+	// the same assignment rather than re-derived.
+	ControlSource uuid.UUID
+
 	// Restrictions is the S24 declaration-time restriction set:
 	// "can't attack", "can't block", "can't be blocked", "its
 	// activated abilities can't be activated". Like Controller it is
