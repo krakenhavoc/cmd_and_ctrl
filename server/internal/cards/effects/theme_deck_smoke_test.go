@@ -176,6 +176,23 @@ func castThemeSpell(t *testing.T, g *game.Game, p *game.Player, id uuid.UUID) {
 	passPriorityAroundTable(t, g)
 }
 
+// castThemeSpellTargeting is castThemeSpell for the spells that
+// choose their targets at announce (CR 601.2c). Same strict gate,
+// same auto-tapper, same settle: split out rather than made variadic
+// on castThemeSpell so the untargeted call sites keep reading as one
+// line. Shared by the S30 theme deck (#678) and the S24 one (#726).
+func castThemeSpellTargeting(t *testing.T, g *game.Game, p *game.Player, id uuid.UUID, targets ...game.TargetRef) {
+	t.Helper()
+	if err := g.CastSpell(p.ID, id, game.CastSpellParams{
+		Targets: targets,
+		Strict:  true,
+		AutoTap: true,
+	}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+}
+
 // counterOn reads one counter kind off a battlefield permanent, or
 // -1 when the permanent has left the battlefield.
 func counterOn(g *game.Game, id uuid.UUID, kind string) int {
