@@ -25,21 +25,27 @@ import (
 // this deck wants it for; it deliberately does nothing for the
 // Pirates' combat damage.
 //
-// **The activated ability is not modelled**, and now for one reason
-// rather than two. The {R/P} half is answered: #917 gave an
-// activation the same announce a cast has
-// (ActivateAbilityParams.PhyrexianLife, CR 602.2b, 2 life each), so
-// "{1}{R/P}{R/P}" would be payable as {1} and four life the moment
-// the ability exists. What is still missing is the DISCARD component
-// — `AbilityCost` has no shape for "Discard two cards" (the same gap
-// the Blood token declared in S21 sub-PR 4) — so the ability cannot
-// be declared at all.
+// The activated ability's two gaps have both closed since this card
+// first shipped. The {R/P} half was answered by #917
+// (ActivateAbilityParams.PhyrexianLife, CR 602.2b, 2 life each per
+// pip); the DISCARD component landed with #660's AbilityCost.DiscardCards
+// (DiscardN). The counter it places is CR 122.1e: an indestructible
+// counter grants indestructible for as long as it's there, carried by
+// b24KeywordCounterGrant exactly as Tekuthal, Inquiry Dominus's own
+// indestructible counter is. The counter and the static live on the
+// same permanent, so there's no window where Solphim leaving the
+// battlefield could strand the grant on someone else.
 func init() {
 	Register(Spec{
 		OracleID:     "895f23a2-55b7-4cc0-8939-2efaaf097e6f",
 		Name:         "Solphim, Mayhem Dominus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"{1}{R/P}{R/P}, Discard two cards\" ability that puts an indestructible counter on Solphim can't be activated — an activation cost can't discard yet. The {R/P} half is supported."},
+		Completeness: CompletenessFull,
+		Static:       []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
+		Activated: []ActivatedAbility{{
+			Label:  "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
+			Cost:   Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
+			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
+		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

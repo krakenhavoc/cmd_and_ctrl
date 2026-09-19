@@ -571,6 +571,22 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
 // of the Moon, Blood Moon) and takes the land's own rules text with
 // it.
+// putCounterOnSourceWhileOnBattlefield is the ability effect body
+// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// killed the source before the ability resolves, otherwise a counter
+// on the source itself. Both cards pair it with b24KeywordCounterGrant
+// so the counter carries CR 122.1e's keyword.
+func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !b15OnBattlefield(g, item.SourceCardID) {
+			return nil
+		}
+		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+			Apply(NewContext(g, item))
+	}
+}
+
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer4Type,
