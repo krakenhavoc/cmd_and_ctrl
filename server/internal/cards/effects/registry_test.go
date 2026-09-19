@@ -6,13 +6,30 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// registerForTest registers spec and schedules its removal from the
+// registry when the test completes. Register's map write is the only
+// state a Spec leaves behind that a later pass of the same test can
+// collide with (#1070): init()-time registrations run once no matter
+// how many times `go test -count=N` re-executes the binary, but a
+// Register call inside a test function body runs on every pass, and
+// the package-level registry does not reset between them. A test that
+// registers a fixed OracleID through this helper instead of calling
+// Register directly cleans up after itself, so `-count=N` sees the
+// same empty starting registry on every pass. See registry.go's
+// package doc, which already names this helper.
+func registerForTest(t *testing.T, spec Spec) {
+	t.Helper()
+	Register(spec)
+	t.Cleanup(func() { delete(registry, spec.OracleID) })
+}
+
 // TestRegisterAndLookup covers the baseline registry contract:
 // Register adds an entry; Lookup retrieves it; Has reports
 // membership. The registry is process-lifetime, so each test uses
 // a unique ScryfallID to avoid collisions with sibling tests.
 func TestRegisterAndLookup(t *testing.T) {
 	const id = "test-registry-baseline"
-	Register(Spec{OracleID: id, Name: "Baseline"})
+	registerForTest(t, Spec{OracleID: id, Name: "Baseline"})
 	spec, ok := Lookup(id)
 	if !ok {
 		t.Fatalf("Lookup(%q): ok=false, want true", id)
@@ -43,7 +60,7 @@ func TestLookupMiss(t *testing.T) {
 // bug at server boot rather than silently letting one win.
 func TestRegisterDuplicatePanics(t *testing.T) {
 	const id = "test-registry-duplicate"
-	Register(Spec{OracleID: id, Name: "First"})
+	registerForTest(t, Spec{OracleID: id, Name: "First"})
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("duplicate Register did not panic")
@@ -85,7 +102,7 @@ func TestRegisterTooManyReplacementsPanics(t *testing.T) {
 // TestRegisterAtTheReplacementBudgetIsFine is the other side of the
 // bound: the budget is inclusive, so a Spec exactly at it registers.
 func TestRegisterAtTheReplacementBudgetIsFine(t *testing.T) {
-	Register(Spec{
+	registerForTest(t, Spec{
 		OracleID:     "test-registry-replacement-budget-exact",
 		Name:         "Slot Hog Jr",
 		Replacements: make([]game.ReplacementEffect, game.MaxCatalogReplacementSlots),
@@ -99,7 +116,7 @@ func TestRegisterAtTheReplacementBudgetIsFine(t *testing.T) {
 // mutating it does not leak back into the registry.
 func TestAllReturnsSnapshot(t *testing.T) {
 	const id = "test-registry-all-snapshot"
-	Register(Spec{OracleID: id, Name: "SnapshotProbe"})
+	registerForTest(t, Spec{OracleID: id, Name: "SnapshotProbe"})
 	snap := All()
 	found := false
 	for _, s := range snap {
