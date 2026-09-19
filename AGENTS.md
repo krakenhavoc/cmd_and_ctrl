@@ -1014,6 +1014,22 @@ that grows a line has to lose its excuse. It was written because
 each shipped with a card, a view field and a test, and none of the three
 ever reached the log.
 
+Reading that table back is what #1021 did: six of its rows were gaps
+rather than decisions, and a control change, a special action, a
+cycling, a counter landing, a scry or surveil, and a Saga chapter or
+Class level are lines now. Two rules came out of it and hold for the
+next arm. **A value that identifies the card is redacted with the
+card's name** — `choice`, `label` and a counter / chapter / level
+`amount` all go when `redactLogForViewer` drops the name, because
+`redactCardForViewer` already strips the same facts off the CardView
+and a line that kept them would hand them straight back. And **a kind
+whose changes are already a line somewhere else says so in a
+predicate, not in a second table**: `counterKindIsNarrated`
+([log.go](server/internal/protocol/log.go)) is why a loyalty tick and
+a lore counter produce nothing, and it is an allowlist of SILENCES so
+that a counter kind nobody has thought of yet gets a line rather than
+a hole.
+
 **`AppliesTo` patterns:**
 - "Counters go on a creature you control" — `target.Controller == src.Controller && target.IsCreature()`
 - "When a permanent enters the battlefield" — `ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield`

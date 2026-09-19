@@ -151,6 +151,42 @@ const (
 	// a SEAT, so it rides TargetSeat like every other player
 	// reference in this log and `Choice` is empty.
 	LogChoosePlayer LogKind = "choose_player"
+	// LogControl — a permanent changed controller (CR 613.1b).
+	// `Seat` is the player who GAINED control and `TargetSeat` the
+	// one who lost it, which is one sentence for a gain, an
+	// exchange (CR 701.12) and a duration expiring alike.
+	LogControl LogKind = "control"
+	// LogSpecialAction — a player took a CR 116.2 special action:
+	// foretell, suspend. `Label` is the action as the card prints
+	// it ("Foretell {2}"), and the entry is the only thing that
+	// says WHICH action a card leaving a hand for exile was.
+	LogSpecialAction LogKind = "special_action"
+	// LogCycle — a player cycled a card (CR 702.29b). It REPLACES
+	// the LogZone line for the discard that paid the cost, which is
+	// the same motion in words that do not say "cycled".
+	LogCycle LogKind = "cycle"
+	// LogCounters — the count of one counter kind on one card
+	// changed (CR 122). `Label` is the kind ("+1/+1") and `Amount`
+	// the count AFTER the change, which is what the engine's event
+	// carries; a placement and a removal are the same line with a
+	// different number. Not every kind gets one — see
+	// counterKindIsNarrated.
+	LogCounters LogKind = "counters"
+	// LogScry / LogSurveil — a player finished a scry (CR 701.22)
+	// or a surveil (CR 701.25). NEVER a card, for anyone: the cards
+	// are hidden at both ends and the entry carries no card
+	// reference at all. `Amount` is the public half — how many the
+	// table watched go to the bottom of the library, or into the
+	// graveyard.
+	LogScry    LogKind = "scry"
+	LogSurveil LogKind = "surveil"
+	// LogSagaChapter — a lore counter advanced a Saga onto a chapter
+	// (CR 714.2b); `Amount` is the chapter number.
+	LogSagaChapter LogKind = "saga_chapter"
+	// LogClassLevel — a Class permanent's level designation changed
+	// (CR 716.2); `Amount` is the new level. A level is not a
+	// counter, so LogCounters cannot say it.
+	LogClassLevel LogKind = "class_level"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -160,6 +196,14 @@ const (
 // reader. They share one field (`Choice`) and one sentence shape
 // ("<player> chose <value> for <card>"), which is the part worth
 // having in one place. #984.
+
+// The eight kinds after them are #1021: six of the silences #984 wrote
+// down read as gaps rather than decisions, and each one is now a line.
+// They are eight kinds for six decisions because scry and surveil are
+// two keywords with two payoffs (game.EventSurveil says why) and a
+// Saga chapter is not a Class level — a client tones and filters by
+// `kind`, so collapsing either pair would take a distinction away from
+// the reader to save a constant.
 
 // logRevealNamesMax bounds how many revealed card names one LogReveal
 // entry's text spells out. Five is Fact or Fiction, the largest
@@ -255,6 +299,19 @@ type LogEvent struct {
 	// alongside the name rather than leaving the same fact on the wire
 	// under a line that no longer says it.
 	Choice string `json:"choice,omitempty"`
+	// Label is the PRINTED NAME of the thing an entry is about, when
+	// the kind needs one that is not a card: the special action as
+	// the card prints it ("Foretell {2}") on a LogSpecialAction
+	// entry, the counter kind ("+1/+1") on a LogCounters one.
+	//
+	// Redacted with the card's name, exactly as Choice is and for the
+	// same reason (#781, #1021). "Foretell {2}" prices a card the
+	// viewer may not identify — redactCardForViewer already strips
+	// alternative_costs from a face-down card for precisely that leak
+	// — and redactCardForViewer strips `counters` too, so a line
+	// saying "+1/+1" under a card it no longer names would put back
+	// what the CardView filter took away.
+	Label string `json:"label,omitempty"`
 	// Text is the rendered, human-readable line. Always present.
 	Text string `json:"text"`
 
@@ -357,6 +414,19 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 		if prev := ring.last(); prev != nil && e.Kind == LogDraw && prev.Kind == LogDraw &&
 			prev.Seat == e.Seat && prev.Turn == e.Turn {
 			prev.Amount += e.Amount
+			continue
+		}
+		// CR 702.29b: a cycling's cost DISCARDED the card, and the
+		// LogZone line that motion already produced is the same fact
+		// this entry names with the word a player uses. Replace it
+		// in place — EventCycle is emitted immediately after the cost
+		// is paid, so the zone line is the last one pushed — and keep
+		// the zone line's seq, the convention a collapsed run follows
+		// everywhere else in this function.
+		if prev := ring.last(); prev != nil && e.Kind == LogCycle && prev.Kind == LogZone &&
+			prev.CardID == e.CardID && game.ZoneKind(prev.NewZone) == game.ZoneGraveyard {
+			e.Seq = prev.Seq
+			*prev = e
 			continue
 		}
 		// The mulligan window re-runs the untap hook once per keep,
@@ -584,9 +654,140 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventControlChanged:
+		// CR 613.1b, #930 / #1008. "Ian gained control of Grizzly
+		// Bears" is a thing a player says out loud, and until #1021
+		// the log said nothing: the card simply appeared under a
+		// different controller on the next frame.
+		//
+		// Actor GAINED control and Target LOST it, which is the one
+		// shape materialiseControlLocked emits for a gain, an
+		// exchange (CR 701.12) and an expiry alike — Act of Treason's
+		// creature going home at cleanup is this entry with the two
+		// seats the other way round.
+		base.Kind = LogControl
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
+	case game.EventSpecialAction:
+		// CR 116.2. The card's motion out of a hand is told by its
+		// LogZone line — and that line cannot say WHICH action it was,
+		// because a foretell, a suspend and a discard all read as "a
+		// card left a hand". The Label is the word, as the card prints
+		// it ("Foretell {2}"), which is also what the player said out
+		// loud when they paid for it.
+		base.Kind = LogSpecialAction
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
+	case game.EventCycle:
+		// CR 702.29b. The cost's discard already produced a LogZone
+		// line for the same motion; publicLogOf REPLACES it with this
+		// one rather than printing both, the way the sacrifice pair is
+		// one line. Without it a Drake Haven table cannot read why a
+		// token appeared.
+		base.Kind = LogCycle
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		return base, true
+
+	case game.EventCounterPlaced:
+		// The loudest kind the engine emits — a Commander turn moves
+		// dozens — so the log narrates the changes that are not
+		// already a line somewhere else. counterKindIsNarrated is that
+		// rule, in one place.
+		if !counterKindIsNarrated(ev.Label) {
+			return LogEvent{}, false
+		}
+		base.Kind = LogCounters
+		// applyCounterLocked names the card on Target and carries NO
+		// actor: a counter arrives from a resolved spell, a paid cost,
+		// a trigger and the CR 704.5q cancel, and "who did it" is not
+		// a fact those four share. The entry is card-shaped for the
+		// same reason LogResolve is.
+		base.CardID = uuidStringOrEmpty(ev.Target)
+		base.Label = ev.Label
+		// Amount is the count AFTER the change, which is what the
+		// event carries; zero or less means the last one came off.
+		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventScry, game.EventSurveil:
+		// CR 701.22 / CR 701.25, and the one arm in this switch that
+		// deliberately names NO card, for anyone — not the cards that
+		// were looked at (hidden at both ends, so the build-time rule
+		// at the top of this file applies) and not the spell that
+		// scried either, which the LogCast / LogResolve line above
+		// already named. An entry that carries no card reference
+		// cannot leak one.
+		//
+		// What is public is the MOTION the table watched: how many
+		// cards went to the bottom of the library, or into the
+		// graveyard. That is the count the engine's event carries —
+		// NOT the size of the scry, which is printed on the card and
+		// is not on the event (see game.EventScry).
+		base.Kind = LogScry
+		if ev.Kind == game.EventSurveil {
+			base.Kind = LogSurveil
+		}
+		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventSagaChapter:
+		// CR 714.2b. A chapter firing is a beat of the turn, and until
+		// #1021 only the chapter ability's own resolve line marked it
+		// — a line that names the Saga and not the chapter.
+		base.Kind = LogSagaChapter
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventClassLevel:
+		// CR 716.2. A level is not a counter (CR 716.2b), so there is
+		// no counter line for this one to be implied by.
+		base.Kind = LogClassLevel
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Amount = ev.Amount
+		return base, true
+
 	default:
 		return LogEvent{}, false
 	}
+}
+
+// counterKindIsNarrated is the RULE #1021 asked for before
+// EventCounterPlaced could have an arm: WHICH counter changes are
+// worth a line.
+//
+// Every kind is narrated except the two whose changes the log already
+// tells somewhere else. That direction — an allowlist of silences
+// rather than of lines — is deliberate: a homebrew or a newly printed
+// counter kind is a thing a player would announce ("it has two stun
+// counters now"), and the failure mode of the other direction is the
+// one #984 was filed about, a fact nothing says.
+//
+//   - loyalty (CR 606.5): it moves on every activation and on every
+//     point of damage a planeswalker takes, and BOTH of those are
+//     already lines — the resolve of the ability, the LogDamage entry
+//     — while the walker's CardView carries the total. A Commander
+//     turn would otherwise spend a dozen log lines counting loyalty.
+//   - lore (CR 714.2b): the LogSagaChapter line below says the same
+//     advance, in the words the card prints. One fact, one line — the
+//     rule the sacrifice pair follows.
+//
+// A lore counter that crosses NO chapter (a Saga past its final
+// chapter gaining another) is therefore silent in both places, which
+// is the right answer: nothing happened that a chapter ability or a
+// reader cares about.
+func counterKindIsNarrated(kind string) bool {
+	switch kind {
+	case game.CounterLoyalty, game.CounterLore:
+		return false
+	}
+	return true
 }
 
 // revealEntry projects one EventRevealCards. The caller collapses a
@@ -732,6 +933,23 @@ func seatIndexer(v *GameView) func(uuid.UUID) int {
 	}
 }
 
+// amountNamesTheCard reports whether this entry's Amount is a
+// CHARACTERISTIC of the card it names rather than a public quantity.
+//
+// Damage, life and a draw count are public whoever the card is; a
+// counter total, a Saga's chapter and a Class's level are all read off
+// the permanent, and redactCardForViewer strips every one of them from
+// a viewer who may not identify it (`counters` directly, the rest with
+// the type line and the abilities). So on a redacted entry they travel
+// with the name — see redactLogForViewer.
+func (e LogEvent) amountNamesTheCard() bool {
+	switch e.Kind {
+	case LogCounters, LogSagaChapter, LogClassLevel:
+		return true
+	}
+	return false
+}
+
 // setTarget routes an event's Target onto the right field: a seated
 // player becomes TargetSeat, anything else is treated as a card.
 func (e *LogEvent) setTarget(id uuid.UUID, seatOf func(uuid.UUID) int) {
@@ -788,6 +1006,18 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 			// a card" is the honest line for it.
 			if cardName == "" {
 				e.Choice = ""
+				// #1021: and so does the printed label, for the same
+				// reason — "Foretell {2}" prices the card the line no
+				// longer names, which is the leak redactCardForViewer
+				// clears alternative_costs to close.
+				e.Label = ""
+				if e.amountNamesTheCard() {
+					// And the number with it: redactCardForViewer
+					// strips CardView.counters from a non-knower, so a
+					// count under a line that says "a card" would hand
+					// back exactly what the card filter took away.
+					e.Amount = 0
+				}
 			}
 			e.Text = renderLogText(e, cardName, targetName)
 		}
@@ -875,9 +1105,85 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s chose a player for %s", actor, card)
 		}
 		return fmt.Sprintf("%s chose %s for %s", actor, target, card)
+	case LogControl:
+		// `target` is the seat that lost control, for the same reason.
+		if e.TargetSeat == nil {
+			return fmt.Sprintf("%s gained control of %s", actor, card)
+		}
+		return fmt.Sprintf("%s gained control of %s from %s", actor, card, target)
+	case LogSpecialAction:
+		// An empty label is a redacted one (see redactLogForViewer) or
+		// a special action a card declared without printing a name for;
+		// the line still says a special action happened, which is what
+		// the zone move on its own cannot.
+		if e.Label == "" {
+			return fmt.Sprintf("%s took a special action on %s", actor, card)
+		}
+		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogCycle:
+		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogCounters:
+		return renderCountersText(e, card)
+	case LogScry, LogSurveil:
+		return renderLookText(e, actor)
+	case LogSagaChapter:
+		if e.Amount <= 0 {
+			return fmt.Sprintf("%s advanced a chapter", card)
+		}
+		return fmt.Sprintf("%s reached chapter %d", card, e.Amount)
+	case LogClassLevel:
+		if e.Amount <= 0 {
+			return fmt.Sprintf("%s gained a level", card)
+		}
+		return fmt.Sprintf("%s became level %d", card, e.Amount)
 	default:
 		return card
 	}
+}
+
+// renderCountersText words a counter change the way a player reads the
+// card: the kind, and the count that is on it NOW. A placement and a
+// removal are the same sentence with a different number, because the
+// engine's event carries the post-change total and nothing else — see
+// game.EventCounterPlaced, and game.EventSagaChapter for what a rule
+// that needed the delta had to do instead.
+//
+// An empty kind is a redacted one (redactLogForViewer clears it with
+// the card's name), and the count goes with it, so the line says only
+// that something changed.
+func renderCountersText(e LogEvent, card string) string {
+	if e.Label == "" {
+		return fmt.Sprintf("%s's counters changed", card)
+	}
+	if e.Amount <= 0 {
+		return fmt.Sprintf("%s has no %s counters left", card, e.Label)
+	}
+	if e.Amount == 1 {
+		return fmt.Sprintf("%s now has 1 %s counter", card, e.Label)
+	}
+	return fmt.Sprintf("%s now has %d %s counters", card, e.Amount, e.Label)
+}
+
+// renderLookText words a finished scry or surveil. It says the keyword
+// and a COUNT and never a card — see the arm in projectEvent.
+//
+// The count is what the table watched happen: cards going to the
+// bottom of the library (CR 701.22b), or into the graveyard
+// (CR 701.25a). A scry that moved nothing still happened and still
+// says so, because "they kept what was on top" is the half of the
+// decision an opponent gets to read.
+func renderLookText(e LogEvent, actor string) string {
+	verb, where := "scried", "on the bottom"
+	if e.Kind == LogSurveil {
+		verb, where = "surveilled", "into their graveyard"
+	}
+	if e.Amount <= 0 {
+		return fmt.Sprintf("%s %s and kept every card on top", actor, verb)
+	}
+	if e.Amount == 1 {
+		return fmt.Sprintf("%s %s and put 1 card %s", actor, verb, where)
+	}
+	return fmt.Sprintf("%s %s and put %d cards %s", actor, verb, e.Amount, where)
 }
 
 // combatStepSuffix is the tail a tagged combat LogDamage line gets, so
