@@ -96,7 +96,7 @@ func TestRegisterRejectsEmptyCaveatText(t *testing.T) {
 // a green build, which is the outcome the whole field exists to
 // prevent — see completeness.go.
 func TestRegisterAcceptsAnUndeclaredSpec(t *testing.T) {
-	Register(Spec{
+	registerForTest(t, Spec{
 		OracleID: "completeness-test-undeclared",
 		Name:     "Undeclared",
 	})
