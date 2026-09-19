@@ -56,6 +56,31 @@ const protectionPrefix = KeywordProtection + " from "
 // (CR 702.16m) and so two tokens.
 const protectionAndFrom = " and from "
 
+// protectionChosenPlayer is the printed quality of CR 702.16k's one
+// catalogued shape, lowercased for the parser's comparison: "protection
+// from the chosen player" (True-Name Nemesis).
+//
+// A fixed phrase and not a pattern. "Protection from opponents" and
+// "protection from the player who chose it" are different qualities
+// with different answers, and the grammar stays closed by naming the
+// one it can enforce rather than by matching anything player-shaped.
+const protectionChosenPlayer = "the chosen player"
+
+// ProtectionFromChosenPlayer is the token for CR 702.16k's printed
+// ability, "protection from the chosen player" (True-Name Nemesis).
+//
+// Exported for the same reason ProtectionFromColor is: a card file
+// declaring it in PrintedKeywords must not spell it by hand. A typo in
+// a hand-written token mints NO protection at all — the grammar is
+// closed and refuses what it cannot parse — so the card would ship
+// looking finished and doing nothing. This is a constant the compiler
+// checks.
+//
+// The seat is not in the token. It is on the permanent
+// (Card.ChosenPlayer), put there by the CR 614.12 as-enters prompt, and
+// resolved by the reader; see ProtectionQuality.Player.
+const ProtectionFromChosenPlayer = protectionPrefix + protectionChosenPlayer
+
 // ProtectionQualityKind is which characteristic of the source a
 // quality is compared against.
 type ProtectionQualityKind uint8
@@ -74,6 +99,14 @@ const (
 	ProtectionQualitySubtype
 	// ProtectionQualityEverything is CR 702.16j: every source matches.
 	ProtectionQualityEverything
+	// ProtectionQualityPlayer is CR 702.16k: the quality is a PLAYER,
+	// and the source is tested by who CONTROLS it rather than by any
+	// characteristic of it — "protection from the chosen player"
+	// (True-Name Nemesis). The player is the one stored on the
+	// protected permanent by its CR 614.12 as-enters choice, so the
+	// token names no seat and Printed stays "the chosen player";
+	// ProtectionQuality.Player carries the resolved id. #980.
+	ProtectionQualityPlayer
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -91,6 +124,8 @@ func (k ProtectionQualityKind) String() string {
 		return "subtype"
 	case ProtectionQualityEverything:
 		return "everything"
+	case ProtectionQualityPlayer:
+		return "player"
 	}
 	return ""
 }
@@ -105,6 +140,24 @@ type ProtectionQuality struct {
 	Kind    ProtectionQualityKind
 	Value   string
 	Printed string
+
+	// Player is the seat a ProtectionQualityPlayer quality names, and
+	// uuid.Nil for every other kind (CR 702.16k, #980).
+	//
+	// It is RESOLVED BY THE READER, not by the parser: the token says
+	// "the chosen player" and nothing else, and which player that is
+	// lives on the protected permanent (Card.ChosenPlayer). So
+	// ParseProtectionQuality leaves this zero and ProtectionQualities /
+	// MatchedProtection fill it in from the card they were handed. A
+	// zero Player on a player quality means nobody has been chosen
+	// yet — the window between the Nemesis entering and its controller
+	// answering — and matches no source at all, which is the weaker
+	// direction.
+	//
+	// This is why no raw UUID ever reaches a display string: Printed
+	// stays the card's own words and the badge renders that, while the
+	// id sits here for the rules to compare.
+	Player uuid.UUID
 }
 
 // Token is the canonical wire token this quality was parsed from.
@@ -137,6 +190,13 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	// checked first because it is not a characteristic lookup at all.
 	if lower == "everything" {
 		return ProtectionQuality{Kind: ProtectionQualityEverything, Printed: printed}, true
+	}
+	// CR 702.16k, and the grammar's one PLAYER quality. Also not a
+	// characteristic lookup: the source is tested by its controller.
+	// The seat is not in the token — it is on the permanent — so the
+	// reader resolves it and the parser records only the kind.
+	if lower == protectionChosenPlayer {
+		return ProtectionQuality{Kind: ProtectionQualityPlayer, Printed: printed}, true
 	}
 	if col, ok := protectionColors[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityColor, Value: col, Printed: printed}, true
@@ -300,11 +360,31 @@ func ProtectionQualities(c *Card) []ProtectionQuality {
 	var out []ProtectionQuality
 	forEachAbilityToken(c, func(tok string) bool {
 		if q, ok := ParseProtectionQuality(tok); ok {
-			out = append(out, q)
+			out = append(out, bindProtectionQuality(c, q))
 		}
 		return true
 	})
 	return out
+}
+
+// bindProtectionQuality resolves the part of a quality that lives on
+// the PROTECTED card rather than in the token (CR 702.16k, #980).
+//
+// Only the player quality has one, and this is the single place it is
+// read: "the chosen player" is whoever the permanent's CR 614.12
+// as-enters choice named, so the reader that already holds the card
+// fills it in and every consumer downstream — Matches, the view, the
+// block sentence — works on a quality that is complete. Splitting it
+// the other way, with each consumer asking the card, would be four
+// copies of the one rule the grammar exists to keep in one place.
+//
+// A nil card, or one whose choice has not been made yet, leaves Player
+// zero and the quality then matches nothing.
+func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
+	if q.Kind == ProtectionQualityPlayer && c != nil {
+		q.Player = c.ChosenPlayer
+	}
+	return q
 }
 
 // HasProtection reports whether the card has any protection at all —
@@ -333,9 +413,12 @@ func HasProtection(c *Card) bool {
 // characteristic to look up.
 //
 // CR 702.16k's player quality ("protection from the chosen player")
-// compares Characteristic.Controller rather than a characteristic and
-// lands with #929 — which is why the snapshot carries a controller at
-// all. See ADR 0072 §7.
+// compares Characteristic.Controller rather than a characteristic —
+// which is why the snapshot carries a controller at all — and reads
+// the seat off ProtectionQuality.Player, which only the reader can
+// fill in. A quality parsed straight out of a token and matched by
+// hand therefore protects from nobody; get one from
+// ProtectionQualities. #980, ADR 0072 §7.
 func (q ProtectionQuality) Matches(src *Characteristic) bool {
 	if q.Kind == ProtectionQualityEverything {
 		return true
@@ -344,6 +427,13 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return false
 	}
 	switch q.Kind {
+	case ProtectionQualityPlayer:
+		// Nobody chosen (yet) is nobody, not everybody: the window
+		// between the permanent entering and the prompt being answered
+		// errs weaker, the way every unchosen value in this engine
+		// does. A source with no controller — a sandbox verb's
+		// source-less damage — matches nothing for the same reason.
+		return q.Player != uuid.Nil && src.Controller == q.Player
 	case ProtectionQualityColor:
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
@@ -384,6 +474,11 @@ func MatchedProtection(protected *Card, src *Characteristic) (ProtectionQuality,
 		if !ok {
 			return true
 		}
+		// Bound before it is asked, so the player quality reaches the
+		// matcher knowing which seat it means (#980). Every DEBT check
+		// comes through here, which is what makes this the one place
+		// that has to remember.
+		q = bindProtectionQuality(protected, q)
 		if q.Matches(src) {
 			out, found = q, true
 			return false

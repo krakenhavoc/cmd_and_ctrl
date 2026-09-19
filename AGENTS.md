@@ -1530,10 +1530,10 @@ owner (`server/internal/game/protection.go`):
    Demons and from Dragons" is two tokens (CR 702.16m), and each is
    checked on its own. Never write a joined one.
 2. **The closed grammar is colours (`red`), card types (`artifacts`),
-   creature subtypes (`Demons`) and `everything`.** Anything else —
-   "monocolored", "the chosen player" — parses as NOTHING, so the
-   permanent gets no protection at all and the card keeps its ADR 0037
-   unimplemented flag. That is the honest answer, not a bug: do not
+   creature subtypes (`Demons`), `everything` and `the chosen player`.**
+   Anything else — "monocolored", "opponents" — parses as NOTHING, so
+   the permanent gets no protection at all and the card keeps its ADR
+   0037 unimplemented flag. That is the honest answer, not a bug: do not
    route round it with a bespoke static, declare the caveat.
 3. **Never parse a token yourself.** `game.ProtectionQualities(card)`
    is the reader, `game.ProtectedFrom(card, chars)` is the predicate,
@@ -1541,6 +1541,13 @@ owner (`server/internal/game/protection.go`):
    (Mother of Runes, the `choose_color` prompt) becomes a token. The
    client and the bot read the parse off `CardView.Protection`
    instead, because the bot may not import `internal/game` at all.
+4. **The player quality is a constant, not a string you type.**
+   `game.ProtectionFromChosenPlayer` is the whole token for CR 702.16k
+   (#980, True-Name Nemesis); pair it with
+   `AsEnters: ChoosePlayerAsEnters(name, Players)` so something writes
+   `Card.ChosenPlayer`, which is what the reader resolves the quality
+   against. A hand-typed near-miss mints no token and the card ships
+   looking finished and doing nothing.
 
 The four checks are engine-side and a card opts into none of them:
 targeting (`CanBeTargetedBy`, CR 702.16b), attachment
@@ -1549,7 +1556,12 @@ targeting (`CanBeTargetedBy`, CR 702.16b), attachment
 blocking (`BlockPairRefusalLocked`, CR 702.16f). **The quality is
 tested against the SOURCE OBJECT, never its controller** — a white
 player's Lightning Bolt is red, and an Equipment's own ability is
-colourless however red the creature wearing it is. If you add a new
+colourless however red the creature wearing it is. The ONE exception is
+CR 702.16k's player quality, which is a claim about the source's
+controller precisely because it is not a claim about the source's
+characteristics; it reads `Card.ChosenPlayer` off the PROTECTED
+permanent, and an unanswered prompt leaves it protected from nobody.
+If you add a new
 targeting path, it has to name its source: pass a `game.TargetSource`
 built with `SourceObject` (a live spell or permanent),
 `SourceSnapshot` (a value copy, when the object may be gone by the
@@ -3270,11 +3282,29 @@ how "choose a SECOND player" is spelled, fed from
 `ctx.ChosenPlayer()`, and it runs even when no question could be
 asked — an empty pool or a chooser who has left — in which case
 `ctx.ChosenPlayer()` is `uuid.Nil`, so **every branch checks before it
-acts**. A chosen player is NOT a target: it is named mid-resolution,
-nothing may respond to it, and nothing re-checks it against the board.
-"As this enters, choose a player" (CR 614.12, True-Name Nemesis) is a
-different shape again and is designed but not built — see [ADR
-0018](docs/decisions/0018-triggers-on-the-stack.md)'s #929 amendment.
+acts**.
+
+**`ChoosePlayerAsEnters(label, pool)`** (same file) is the CR 614.12
+form — "As this enters, choose a player" (True-Name Nemesis, Sawhorn
+Nemesis), #980. It goes in `Spec.AsEnters`, and the difference from
+`ChoosePlayer` is where the answer lives: not on one stack item for one
+resolution, but on the permanent as `game.Card.ChosenPlayer`, read back
+with `ChosenPlayerOf(g, sourceID)` for the rest of that permanent's
+life. Same prompt underneath — the same `option_pick`, so the choice
+gate, the enumerator, the wire and the CR 800.4a seat pruning all apply
+unchanged.
+
+Three rules for reading a stored player, and they are `ChosenColor`'s
+verbatim: **read it LIVE on every check** (the answer arrives after the
+permanent does, and a bounced permanent chooses again); **treat
+`uuid.Nil` as nobody, never as everybody** (the window while the prompt
+is open must apply to nothing, not to the whole table); and **do not
+carry it into a copy** — CR 707.2, which you get for free because
+`CopiableValuesOf` never looks at the field.
+
+A chosen player is not a target in either form: it is named without
+the stack, nothing may respond to it, and nothing re-checks it against
+the board.
 
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for

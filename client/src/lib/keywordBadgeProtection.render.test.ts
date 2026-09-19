@@ -80,6 +80,27 @@ describe("the protection badge", () => {
     expect(badges(container)).toEqual([{ text: "ALL", title: "Protection from everything" }]);
   });
 
+  // CR 702.16k, #980 — True-Name Nemesis. The other quality that is
+  // not a characteristic of the source, and the other one whose first
+  // three letters say nothing ("THE"). The badge names it; the tooltip
+  // is the card's own words, never the seat id the server sends as
+  // `value`.
+  it("renders protection from the chosen player as PLR and never shows the id", () => {
+    const { container } = mount({
+      abilities: ["protection from the chosen player"],
+      protection: [
+        {
+          printed: "the chosen player",
+          kind: "player",
+          value: "3f1c9a52-0b1e-4c77-9d41-6a2b8e0f5c31",
+        },
+      ],
+    });
+    const got = badges(container);
+    expect(got).toEqual([{ text: "PLR", title: "Protection from the chosen player" }]);
+    expect(container.innerHTML).not.toContain("3f1c9a52");
+  });
+
   it("does not badge the raw token twice", () => {
     const { container } = mount({
       abilities: ["protection from red"],

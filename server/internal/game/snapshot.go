@@ -412,6 +412,14 @@ type cardSnapshot struct {
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
 	ChosenColor string `json:"chosenColor,omitempty"`
+	// ChosenPlayer is the CR 614.12 "as this enters, choose a player"
+	// answer (#980). Carried for NamedTribe's reason and one more: it
+	// is the whole of what True-Name Nemesis's protection reads, so a
+	// restore that lost it would bring the Nemesis back protected from
+	// nobody — a rules change, silently, with nothing in the state to
+	// say what went. Old snapshots have no key and their zero uuid
+	// reads correctly as "nobody chosen".
+	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
 	// Provenance is CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost (#653) and the
 	// optional additional costs (#664, ADR 0073 §5), in one record.
@@ -983,6 +991,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
+		ChosenPlayer:             c.ChosenPlayer,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
@@ -1505,6 +1514,7 @@ func restoreCard(c *cardSnapshot) Card {
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
+		ChosenPlayer:             c.ChosenPlayer,
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,

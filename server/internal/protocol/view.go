@@ -370,6 +370,16 @@ type PickOptionView struct {
 	Label    string     `json:"label"`
 	Cards    []CardView `json:"cards,omitempty"`
 	LifeCost int        `json:"life_cost,omitempty"`
+	// Player is the seat this option is about, for the prompts whose
+	// branches ARE players — "choose a player", "choose an opponent"
+	// (#929) and True-Name Nemesis's as-enters sibling (#980).
+	// Absent on every other option, which is all of them.
+	//
+	// Public by CR 400.2: who is seated is not hidden information, so
+	// this rides no redaction. The client may render a seat chip with
+	// it instead of only the rendered Label — and may do nothing with
+	// it, which is what it does today. #994.
+	Player string `json:"player,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -2352,13 +2362,25 @@ type ProtectionView struct {
 	// and plural instead of a canonical singular.
 	Printed string `json:"printed"`
 	// Kind is which characteristic of a source the quality is
-	// compared against: "color", "card_type", "subtype" or
-	// "everything". Stable tokens; see game.ProtectionQualityKind.
+	// compared against: "color", "card_type", "subtype",
+	// "everything" or "player". Stable tokens; see
+	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
 	// ("R"), the lowercase card type ("artifact"), the canonical
 	// singular subtype ("Demon"). Empty for "everything", which
 	// compares nothing.
+	//
+	// For "player" (CR 702.16k, #980) it is the chosen seat's id, and
+	// the comparison is against the SOURCE'S CONTROLLER rather than
+	// against any characteristic of it. An id and not a name: this is
+	// the rules value, the same shape CardView.controller carries, and
+	// the client resolves seats to names the way it already does.
+	// `printed` stays "the chosen player" — the display string never
+	// holds a UUID.
+	//
+	// Empty for a player quality whose permanent has not been answered
+	// yet, which reads correctly as "protected from nobody".
 	Value string `json:"value,omitempty"`
 }
 
@@ -2371,11 +2393,19 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	}
 	out := make([]ProtectionView, 0, len(qs))
 	for _, q := range qs {
-		out = append(out, ProtectionView{
+		v := ProtectionView{
 			Printed: q.Printed,
 			Kind:    q.Kind.String(),
 			Value:   q.Value,
-		})
+		}
+		// CR 702.16k: the player quality's rules value is a seat, and
+		// it lives on the quality rather than in the token because the
+		// token names no seat. ProtectionQualities has already
+		// resolved it off the permanent (#980).
+		if q.Player != uuid.Nil {
+			v.Value = q.Player.String()
+		}
+		out = append(out, v)
 	}
 	return out
 }
@@ -3004,6 +3034,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
+				if opt.Player != uuid.Nil {
+					out.Player = opt.Player.String()
+				}
 				for _, id := range opt.Cards {
 					if card, ok := g.LookupCardForEffect(id); ok {
 						out.Cards = append(out.Cards, viewOfCard(card))

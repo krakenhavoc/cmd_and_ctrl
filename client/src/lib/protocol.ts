@@ -752,6 +752,18 @@ export interface PickOptionView {
   label: string;
   cards?: CardView[];
   life_cost?: number;
+  /**
+   * The seat this option is about, for the prompts whose branches ARE
+   * players — "choose a player" / "choose an opponent" (#929) and
+   * True-Name Nemesis's as-enters sibling (#980). Absent on every
+   * other option, which is all of them.
+   *
+   * `label` is still what the player reads; this is the identity, so
+   * the client can render a seat chip rather than parse a name back
+   * out of the text. Public by CR 400.2 — who is seated is not hidden
+   * — so it is never redacted. #994.
+   */
+  player?: string;
 }
 
 export interface ReplacementOptionView {
@@ -1736,11 +1748,20 @@ export interface ProtectionView {
   // "artifacts", "everything". Badge tooltip text.
   printed: string;
   // Which characteristic of a source the quality is compared
-  // against: "color", "card_type", "subtype" or "everything".
+  // against: "color", "card_type", "subtype", "everything" or
+  // "player".
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
   // ("Demon"). Absent for "everything".
+  //
+  // For "player" (CR 702.16k, #980 — True-Name Nemesis) it is the
+  // chosen SEAT'S ID, and the comparison is against the source's
+  // controller rather than against any characteristic of it. An id,
+  // like `CardView.controller`; `printed` stays "the chosen player",
+  // so the display string never holds a UUID. Absent while the
+  // permanent's as-enters prompt is still open, which reads correctly
+  // as "protected from nobody".
   value?: string;
 }
 

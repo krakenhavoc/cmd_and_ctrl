@@ -100,10 +100,16 @@
     return `Protection from ${p.printed}`;
   }
 
-  // The badge face. "Everything" reads better as ALL than as EVE, and
-  // it is the only quality that is not a characteristic.
+  // The badge face. Three-letter abbreviations of the printed quality,
+  // except where the first three letters say nothing: "everything"
+  // reads better as ALL than as EVE, and "the chosen player" (CR
+  // 702.16k, #980) would abbreviate to THE. Both are the qualities that
+  // are not characteristics of the source at all, which is why they are
+  // the two that need naming rather than truncating.
   function protectionShort(p: ProtectionView): string {
-    return p.kind === "everything" ? "ALL" : fallbackShort(p.printed);
+    if (p.kind === "everything") return "ALL";
+    if (p.kind === "player") return "PLR";
+    return fallbackShort(p.printed);
   }
 </script>
 

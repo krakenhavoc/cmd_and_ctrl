@@ -98,6 +98,30 @@ type ChoiceOption struct {
 	//
 	// The engine does NOT deduct it. The branch does.
 	LifeCost int
+
+	// Player is the SEAT this option is about, for an option list
+	// whose branches are players rather than consequences — every
+	// prompt built by choose_player.go. uuid.Nil on every other
+	// option, which is all of them (a pile, a Torment branch): the
+	// zero value means "this option is not about a seat" and nothing
+	// reads it.
+	//
+	// It exists because an option has to be able to name its SUBJECT
+	// (#994). The engine re-checks an open prompt whenever the board
+	// moves under it — reassignChoiceLocked prunes the cards a
+	// departed player took with them — and it could do that only for
+	// options built out of cards. A seat option carried its seat as
+	// rendered TEXT in Label, so a departed seat was identifiable
+	// only by string-matching a player's name, and a prompt went on
+	// offering a player who was no longer a player (CR 800.4a).
+	// With the id here, seats prune exactly the way cards do:
+	// pruneDepartedSeatOptionsLocked and reassignChoiceLocked are
+	// the two paths, and both key on this field.
+	//
+	// Label is still what the chooser READS; this is what the engine
+	// checks. The two are set together by one function
+	// (seatChoiceOptionsLocked) so they cannot disagree.
+	Player uuid.UUID
 }
 
 // cloneChoiceOptions deep-copies an option list. Each option owns a
@@ -131,6 +155,22 @@ func cloneChoiceOptions(in []ChoiceOption) []ChoiceOption {
 // runs with g.mu held — so it may queue the next link of a chain.
 type optionPickFrame struct {
 	then func(g *Game, index int) error
+
+	// thenSeat is the continuation for an option list whose branches
+	// are SEATS (choose_player.go). It receives the chosen option's
+	// ChoiceOption.Player instead of its index, and exactly one of the
+	// two is ever set.
+	//
+	// It is a second continuation rather than a `then` that closes over
+	// the seat list because an INDEX into a captured slice is not a
+	// stable answer any more (#994). The option list of a player prompt
+	// is pruned while it is open — a seat that leaves the game comes off
+	// it (CR 800.4a) — so index 2 before the prune and index 2 after it
+	// are different players, and a closure holding the original slice
+	// would record the wrong one. Reading the seat off the option the
+	// chooser actually picked cannot drift from what they were shown,
+	// because it IS what they were shown.
+	thenSeat func(g *Game, seat uuid.UUID) error
 }
 
 // OptionPickPrompt is the queue-side description of a
@@ -159,6 +199,17 @@ type OptionPickPrompt struct {
 	// Then receives the index of the chosen option. Runs with g.mu
 	// held; may queue further choices, which is how a chain continues.
 	Then func(g *Game, index int) error
+
+	// ThenSeat is Then for an option list whose branches are SEATS:
+	// it receives the chosen option's Player rather than its index.
+	// Set by choose_player.go and by nothing else; a caller that sets
+	// both gets this one.
+	//
+	// Use it for any option list built out of players. An index is not
+	// a stable answer for one: a seat that leaves the game is pruned
+	// off an OPEN prompt (#994, CR 800.4a), which renumbers everything
+	// after it. See optionPickFrame.thenSeat.
+	ThenSeat func(g *Game, seat uuid.UUID) error
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -192,7 +243,8 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		Reason:      p.Question,
 		PickOptions: cloneChoiceOptions(p.Options),
 		optionPickResume: &optionPickFrame{
-			then: p.Then,
+			then:     p.Then,
+			thenSeat: p.ThenSeat,
 		},
 	})
 }
@@ -233,14 +285,24 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	}
 	frame := choice.optionPickResume
 	source := choice.Source
+	// Read off the option the chooser actually picked, BEFORE the
+	// dequeue takes the list away. A seat continuation is answered with
+	// this rather than with the index (#994): the list can have been
+	// pruned since it was built, so the index is only meaningful
+	// against the list the chooser was shown, which is this one.
+	seat := choice.PickOptions[index].Player
 	g.dequeueChoiceLocked(idx)
-	if frame == nil || frame.then == nil {
+	if frame == nil || (frame.then == nil && frame.thenSeat == nil) {
 		// Nothing to run. The prompt is gone either way rather than
 		// stuck: an option pick with no frame is a bug in whoever
 		// queued it, and refusing the answer would wedge the seat.
 		return nil
 	}
-	if err := frame.then(g, index); err != nil {
+	run := frame.then
+	if frame.thenSeat != nil {
+		run = func(g *Game, _ int) error { return frame.thenSeat(g, seat) }
+	}
+	if err := run(g, index); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooserID,

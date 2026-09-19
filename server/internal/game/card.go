@@ -440,6 +440,32 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// ChosenPlayer is the player chosen for this permanent by an "as
+	// this enters, choose a player" instruction (CR 614.12) —
+	// True-Name Nemesis. uuid.Nil when none has been chosen, which is
+	// both "this card has no such instruction" and the window between
+	// the permanent entering and its controller answering the prompt.
+	//
+	// Same lifecycle as NamedTribe and ChosenColor: per INSTANCE (two
+	// Nemeses name two different players), carried by the snapshot and
+	// by clone, and cleared when the permanent leaves the battlefield
+	// (CR 400.7) — a Nemesis that is bounced and recast chooses again,
+	// and one in a graveyard is protected from nobody.
+	//
+	// NOT a copiable value (CR 707.2), and that falls out of where it
+	// lives rather than out of a rule anybody has to remember:
+	// CopiableValuesOf projects printed characteristics and never looks
+	// here, so a Clone of a Nemesis chooses its own player as IT enters.
+	//
+	// The one reader is protection.go: "protection from the chosen
+	// player" (CR 702.16k) resolves against this field, comparing the
+	// SOURCE'S CONTROLLER rather than any characteristic of it — the
+	// one quality in the grammar that does. Read it with
+	// ChosenPlayerOf; written by ResolveOptionPick through the
+	// as-enters prompt in choose_player.go and by nothing else.
+	// Added for #980; see ADR 0072 §7.
+	ChosenPlayer uuid.UUID
+
 	// Provenance is what this permanent remembers about the SPELL it
 	// came from — CR 400.7d, "an ability of a permanent can reference
 	// information about the spell that became that permanent as it
