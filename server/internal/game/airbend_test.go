@@ -256,6 +256,16 @@ func TestCastEventCarriesTheSourceZone(t *testing.T) {
 // not asserted here. What pins them is the helper itself: one call per
 // site, so a site either announces or does not, which is exactly the
 // shape of the bug this row was added for.
+//
+// Every row also DRAINS (#968 for the activation, #974 for the trigger
+// announce): the announcer receives priority right after announcing,
+// so CR 603.3b puts whatever the announcement triggered on the stack
+// at that boundary rather than leaving it queued until something else
+// happens to drain it — by which time the announced object has
+// resolved and a ward trigger counters nothing. Nothing left in
+// PendingTriggers is that drain, asserted from this package; the ward
+// itself is a catalog card and is asserted in
+// cards/effects/sandbox_announce_target_test.go.
 func TestBecomesTargetFiresAtAnnounce(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -336,6 +346,11 @@ func TestBecomesTargetFiresAtAnnounce(t *testing.T) {
 			}
 			if players != 1 {
 				t.Errorf("player target events = %d, want 1", players)
+			}
+			if len(g.PendingTriggers) != 0 {
+				t.Errorf("%d triggers still queued after the announce — a became-target "+
+					"trigger harvested here reaches the stack only after the announced "+
+					"object has resolved", len(g.PendingTriggers))
 			}
 		})
 	}

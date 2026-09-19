@@ -52,6 +52,7 @@ import (
 //	"life"         — RepEventLife    — LifePlayer, LifeDelta
 //	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
 //	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
+//	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
@@ -89,6 +90,24 @@ const (
 	// enters-tapped, enters-with-counters and the ETB hook reach a
 	// token exactly as they reach every other permanent.
 	RepEventCreateTokens ReplacementEventKind = "create_tokens"
+
+	// RepEventKeywordAction is one KEYWORD ACTION with a count —
+	// proliferate (CR 701.34), scry (CR 701.22) or surveil
+	// (CR 701.25) — opened once per INSTRUCTION at the one entry point
+	// of each, the way RepEventCreateTokens is opened once per
+	// creation instruction. "If you would proliferate, proliferate
+	// twice instead" (Tekuthal, Inquiry Dominus) and "if you would
+	// scry, scry that many plus one instead" are replacements of the
+	// action, not of the counters it places or the cards it looks at.
+	// See #976 and keyword_action.go.
+	//
+	// ONE kind with an Action discriminator rather than one kind per
+	// verb: everything downstream of the count is the same code for
+	// all three, so a fourth counted keyword action is a constant and
+	// an arm of one switch. What the count MEANS is per action —
+	// times for proliferate, cards for scry and surveil — and is
+	// written on the KeywordAction constants.
+	RepEventKeywordAction ReplacementEventKind = "keyword_action"
 
 	RepEventStepTransition ReplacementEventKind = "step"
 )
@@ -431,6 +450,37 @@ type ReplacementEvent struct {
 	// Unexported engine plumbing — the catalog never sets or reads it.
 	// See token_create.go.
 	tokenTail *tokenTail
+
+	// --- RepEventKeywordAction fields ---
+
+	// KeywordAction is WHICH keyword action this is — proliferate,
+	// scry or surveil. A replacement narrows on it in AppliesTo, the
+	// way a discard replacement narrows on DiscardCause; Actor is the
+	// player taking the action ("if YOU would proliferate") and
+	// Source the card whose effect asked for it.
+	KeywordAction KeywordAction
+
+	// KeywordActionCount is the count the action is taken with, and
+	// the one field a keyword-action replacement rewrites: "twice
+	// instead" is `ev.KeywordActionCount *= 2`, "that many plus one"
+	// is `+= 1`.
+	//
+	// What it counts is per action and is written on the
+	// KeywordAction constants: for proliferate it is the number of
+	// TIMES the whole action is taken (base 1), for scry and surveil
+	// the number of CARDS looked at (base N).
+	KeywordActionCount int
+
+	// keywordAction is the keyword-action sibling of zoneRoute,
+	// damageTail and tokenTail: what the entry point still owes once
+	// the window settles — a proliferate's chosen permanents and
+	// players, and a scry's prompt kind and "then" continuation. Set
+	// by the entry points in keyword_action.go and read only by
+	// applyResolvedKeywordActionLocked, which both the inline path and
+	// the CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	keywordAction *keywordActionTail
 
 	// --- RepEventCounter fields ---
 
@@ -1565,6 +1615,13 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		want = EventDiscardCard
 	case RepEventCreateTokens:
 		want = EventTokenCreated
+	case RepEventKeywordAction:
+		// CR 701.22 / 701.25 / 701.34. One watch key for all three
+		// counted keyword actions, because the action is a field on
+		// the event and the card-side helper narrows on it — see
+		// EventKeywordAction, which is a replacement-watch sentinel
+		// like EventStepTransition rather than a logged event.
+		want = EventKeywordAction
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:

@@ -956,6 +956,7 @@ func init() {
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
+| Keyword action with a count — proliferate (CR 701.34), scry (CR 701.22), surveil (CR 701.25) | `RepEventKeywordAction` | `KeywordAction`, `KeywordActionCount`, `Actor`, `Source` |
 | Step entry (skip-step) | `RepEventStepTransition` | `StepTransitionStep`, `StepTransitionSeat` |
 
 **`AppliesTo` patterns:**
@@ -999,6 +1000,44 @@ your card's sentence continues past the tokens ("create a Treasure,
 then sacrifice it"), hand that over as
 `CreateTokensThenForEffect(spec, then)` rather than reading the slice
 on the next line.
+
+**A keyword action with a count is a replaceable event** (#976,
+[ADR 0013 §5s](docs/decisions/0013-replacement-effects.md)).
+"If you would proliferate, proliferate twice instead" (Tekuthal,
+Inquiry Dominus) and "if you would scry, scry that many plus one
+instead" replace the ACTION, not the counters it places or the cards
+it looks at, so `RepEventKeywordAction` is opened once per
+INSTRUCTION at the one entry point of each action — exactly the way
+`RepEventCreateTokens` is opened once per creation instruction.
+
+Write one with `KeywordActionBecomes(action, count, label)`
+(`cards/effects/keyword_action_replacements.go`), or one of its named
+wrappers — `ProliferateTwice(label)`, `ScryPlusOne(label)`,
+`SurveilPlusOne(label)`. The
+`count` function is applied to the count the EVENT carries, not the
+printed one, which is what makes two of them compose the way CR 616.1
+composes them. Declare nothing else: the helper writes
+`Watches: []game.EventKind{game.EventKeywordAction}` (an
+engine-internal watch sentinel, like `EventStepTransition` — nothing
+logs it), narrows on the action, and scopes itself to the source's
+controller, because every printed one says "if YOU would".
+
+What the count MEANS is per action, and getting it wrong is the one
+way to write this badly: for **proliferate** it is the number of
+TIMES the whole action is taken (base 1 — the choice and all of it,
+twice), for **scry** and **surveil** the number of CARDS (base N).
+"Look at the top N cards of your library, then put them back in any
+order" is NOT a keyword action and opens no window.
+
+The window can PAUSE — a doubler and a "plus one" is a CR 616
+ordering prompt, and ×2 then +1 differs from +1 then ×2 — so a
+paused proliferate has placed no counters and a paused scry has
+queued no prompt when the entry point returns;
+`ScryThenForEffect`'s returned count is 0, the contract
+`CreateTokensForEffect`'s empty ID slice already carries. Anything
+after "then" still goes in the continuation (`Scry{Then: …}`), and it
+runs on every terminal outcome, a cancelled action included: "scry 2,
+then draw a card" draws whether or not the scry happened.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog
