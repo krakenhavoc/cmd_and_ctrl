@@ -326,6 +326,15 @@ func Handler(c Config) http.Handler {
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
+	// ADR 0075 §2.3: change the table's settings. Host or admin,
+	// authorised inside the handler with CanManageTable. PATCH
+	// because the body is a partial — an absent field is "leave it
+	// alone", which is the difference between turning spawning on and
+	// resetting the undo limit as a side effect. Accepted in the
+	// lobby and on a live game alike; the per-field timing rules
+	// (starting life is fixed once the game is active) are the
+	// engine's, not the route's.
+	mux.Handle("PATCH /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, updateTableSettings)))
 	mux.Handle("GET /games/{id}/replay", auth.Middleware(c.Auth)(handlerFunc(c, downloadReplay)))
 	// S15 sub-PR 4 — read-only auto-tap preview. The client polls
 	// this just before firing cast_spell with auto_tap=true; the
@@ -472,6 +481,15 @@ type transferHostRequest struct {
 	PlayerID uuid.UUID `json:"player_id"`
 }
 
+// tableSettingsResponse is the body of PATCH /games/{id}/settings:
+// the table's settings AFTER the patch, whole. Wrapped in an object
+// rather than returned bare so the route has somewhere to grow (the
+// ADR's §2.3 timing notes are a natural second field) without
+// breaking a client that already reads `settings`.
+type tableSettingsResponse struct {
+	Settings protocol.TableSettingsView `json:"settings"`
+}
+
 // reclaimRequest is the body of POST /games/{id}/reclaim. Ticket is
 // the whole credential; there is deliberately no name field.
 type reclaimRequest struct {
@@ -577,6 +595,50 @@ func transferHost(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, redactMetaFor(p, id, meta))
+}
+
+// updateTableSettings handles PATCH /games/{id}/settings: change the
+// table's rules (ADR 0075 §2.3). Host or admin only.
+//
+// The body IS a game.SettingsPatch — {"undo_limit": 3} changes the
+// undo limit and nothing else. Decoding straight into the engine's
+// patch type is deliberate: a lobby-side mirror of six pointer fields
+// would be six chances for the wire name and the engine's to drift,
+// and the wire names are already pinned by the JSON tags the game view
+// publishes (protocol.TableSettingsView).
+//
+// The caller's own seat rides onto the event as the actor, so the log
+// names them. An admin session has no seat and passes uuid.Nil, which
+// the log renders as "The admin".
+func updateTableSettings(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	var patch game.SettingsPatch
+	if err := decodeJSON(w, r, &patch); err != nil {
+		return err
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if !CanManageTable(p, meta) {
+		return ErrNotTableManager
+	}
+	// An admin session carries no PlayerID, which is exactly the
+	// uuid.Nil the engine records for "the server admin".
+	settings, err := c.Lobby.UpdateSettings(id, p.PlayerID, patch)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, tableSettingsResponse{
+		Settings: protocol.ViewOfTableSettings(settings),
+	})
 }
 
 // joinGame is the primary onboarding path: a player clicks an invite
@@ -2579,6 +2641,16 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrNotTableManager):
 		status = http.StatusForbidden
 	case errors.Is(err, ErrHostIneligible):
+		status = http.StatusUnprocessableEntity
+	// ADR 0075 §2.3, the two halves of a refused settings patch. A
+	// value outside its range is a malformed request (400); a
+	// starting-life change after Start is a well-formed request the
+	// game's state cannot satisfy (422), which is the documented
+	// rejection and the one a client is expected to pre-empt by
+	// disabling the control.
+	case errors.Is(err, game.ErrInvalidSetting):
+		status = http.StatusBadRequest
+	case errors.Is(err, game.ErrStartingLifeLocked):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict

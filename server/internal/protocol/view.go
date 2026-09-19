@@ -5327,6 +5327,16 @@ type TableSettingsView struct {
 	AllowSpawn bool `json:"allow_spawn"`
 }
 
+// ViewOfTableSettings projects one table's settings for a caller
+// outside this package — today the lobby's PATCH
+// /games/{id}/settings, which answers with the settings it just wrote
+// so the client learns whether its patch landed without waiting for
+// the WebSocket broadcast. One projection, so the HTTP answer and the
+// `settings` object on the game view can never disagree about a key.
+func ViewOfTableSettings(s game.TableSettings) TableSettingsView {
+	return *viewOfTableSettings(s)
+}
+
 func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 	return &TableSettingsView{
 		UndoLimit:       s.UndoLimit,

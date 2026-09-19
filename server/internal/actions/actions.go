@@ -64,7 +64,22 @@ const (
 	TypeCastVote      Type = "cast_vote"
 	TypeEndVote       Type = "end_vote"
 	// S11.
+	//
+	// TypeSetUndoLimit is DEPRECATED since S35 (ADR 0075 §2.3): it is
+	// a one-field alias for TypeSetTableSettings and, like it, is now
+	// host-or-admin only. The gate lives at the WebSocket edge, not
+	// here — see ws.Client.handleAction and Room.CanManageTable.
 	TypeSetUndoLimit Type = "set_undo_limit"
+	// S35 — table settings (ADR 0075 §2.3). TypeSetTableSettings
+	// carries a partial game.SettingsPatch: only the fields present in
+	// the JSON are applied. Host or admin only, gated at the
+	// WebSocket edge, and NOT undoable — the ws layer routes it
+	// through Room.ApplyExternal so lowering the undo limit cannot be
+	// taken back with the undo it was meant to stop.
+	//
+	// Deliberately absent from internal/legal: a bot never hosts and
+	// never changes a table's rules (ADR 0075 §3).
+	TypeSetTableSettings Type = "set_table_settings"
 	// S13.1 — stack actions. cast_spell is the canonical "play a card
 	// from hand" verb (CR 601). Lands route to the battlefield;
 	// every other type goes to the stack with a fresh StackMeta
@@ -890,11 +905,27 @@ func Dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		// Sandbox — any seated player or admin may raise/lower the
-		// limit. The table self-polices abuse. (ADR 0075 sub-PR 3
-		// narrows this to host-or-admin.) A negative limit clamps to
-		// 0; this legacy action cannot select UndoUnlimited.
+		// Deprecated alias for set_table_settings (ADR 0075 §2.3).
+		// Host or admin only since S35 — the gate is at the WebSocket
+		// edge (ws.Client.handleAction), which is the only layer that
+		// knows whether the connection is the admin's. A negative
+		// limit clamps to 0; this legacy action cannot select
+		// UndoUnlimited.
 		return g.SetUndoLimit(a.Caller, p.Limit)
+
+	case TypeSetTableSettings:
+		// The patch IS the params object: {"undo_limit": 3,
+		// "allow_spawn": true}. Absent fields stay nil and are left
+		// alone; UpdateSettings validates the whole patch before it
+		// applies any of it, so one bad field changes nothing.
+		var p game.SettingsPatch
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		// a.Caller is uuid.Nil for the admin, which is exactly what
+		// UpdateSettings records on the event. WHO may send this is
+		// decided before Dispatch (ADR 0075 §2.1).
+		return g.UpdateSettings(a.Caller, p)
 
 	case TypeCounterSpell:
 		if err := requirePriorityHolder(g, a.Caller); err != nil {

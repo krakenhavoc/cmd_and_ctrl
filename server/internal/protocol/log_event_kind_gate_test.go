@@ -90,7 +90,6 @@ var silentEventKinds = map[string]string{
 	"EventEffectError":             silentServerDiagnostic,
 	"EventCostWarning":             silentServerDiagnostic,
 	"EventLoopSuspected":           "GameView.loop_notice is the table's copy of this one, and it is a live control rather than history (#628)",
-	"EventSettingsChanged":         "TEMPORARY: ADR 0075 sub-PR 3 (#1032) gives it a LogKind and the \"Luke (host) set undos to 3\" line; until then GameView.settings shows every viewer the current value",
 	"EventPendingChoiceDropped":    silentServerDiagnostic,
 	"EventPendingChoiceReassigned": silentServerDiagnostic,
 	// #1017 / #812 declared this silence when it added the kind, and

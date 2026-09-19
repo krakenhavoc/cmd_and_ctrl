@@ -40,6 +40,7 @@ package protocol
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -188,6 +189,17 @@ const (
 	// (CR 716.2); `Amount` is the new level. A level is not a
 	// counter, so LogCounters cannot say it.
 	LogClassLevel LogKind = "class_level"
+	// LogSettings — a table setting changed (ADR 0075 §2.3). `Label`
+	// is the setting's key ("undo_limit", "allow_spawn") and `Choice`
+	// its NEW value as text; the old value is deliberately not on the
+	// wire, because the sentence the table needs is "undos are 3 now",
+	// not a diff.
+	//
+	// The one log kind that is not about the game: it is about the
+	// rules the game is being played under, which is exactly why it
+	// has to be written down. A budget that quietly halved mid-game is
+	// the argument this line exists to prevent.
+	LogSettings LogKind = "settings"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -680,6 +692,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventSettingsChanged:
+		// ADR 0075 §2.3: every change is logged, because the settings
+		// are the rules the table agreed to play under and a change to
+		// them is a thing announced out loud. One event per field that
+		// actually moved, so one line per field.
+		//
+		// Actor is uuid.Nil for the server admin — Seat is NoSeat and
+		// the sentence says "The admin" rather than naming a seat.
+		base.Kind = LogSettings
+		base.Label = ev.Label
+		base.Choice = ev.SettingNew
+		return base, true
+
 	case game.EventSpecialAction:
 		// CR 116.2. The card's motion out of a hand is told by its
 		// LogZone line — and that line cannot say WHICH action it was,
@@ -1150,9 +1175,68 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s gained a level", card)
 		}
 		return fmt.Sprintf("%s became level %d", card, e.Amount)
+	case LogSettings:
+		return renderSettingsText(e)
 	default:
 		return card
 	}
+}
+
+// renderSettingsText words a table-settings change the way the host
+// would say it out loud (ADR 0075 §2.3): "Luke (host) set undos to 3
+// per turn", "Luke (host) allowed spawning".
+//
+// The "(host)" is not read off the view — the log is projected inside
+// ViewOfGame, before Room.stampHostLocked decides which seat wears the
+// crown, so it is not available here. It is instead true BY
+// CONSTRUCTION: the only two paths to EventSettingsChanged are the
+// PATCH route and the set_table_settings action, and both refuse
+// anyone who is not the host or the admin. An admin change has no seat
+// at all (Actor is uuid.Nil), and says so.
+//
+// A key the table does not know about renders generically rather than
+// being dropped: a setting nobody can name still changed, and a line
+// that says so is better than a silence. The default arm is what a
+// future field gets for free until someone gives it a sentence.
+func renderSettingsText(e LogEvent) string {
+	who := nameOr(e.actorName, "someone")
+	if e.Seat == NoSeat {
+		who = "The admin"
+	} else {
+		who += " (host)"
+	}
+	switch e.Label {
+	case game.SettingUndoLimit:
+		switch e.Choice {
+		case strconv.Itoa(game.UndoUnlimited):
+			return fmt.Sprintf("%s made undos unlimited", who)
+		case "0":
+			return fmt.Sprintf("%s turned undos off", who)
+		case "1":
+			return fmt.Sprintf("%s set undos to 1 per turn", who)
+		}
+		return fmt.Sprintf("%s set undos to %s per turn", who, e.Choice)
+	case game.SettingUndoScope:
+		if e.Choice == string(game.UndoScopeHostAny) {
+			return fmt.Sprintf("%s may now undo anyone's action", who)
+		}
+		return fmt.Sprintf("%s limited undo to each player's own actions", who)
+	case game.SettingStartingLife:
+		return fmt.Sprintf("%s set starting life to %s", who, e.Choice)
+	case game.SettingCommanderDamage:
+		return fmt.Sprintf("%s set lethal commander damage to %s", who, e.Choice)
+	case game.SettingBotPace:
+		return fmt.Sprintf("%s set the bots' pace to %s", who, e.Choice)
+	case game.SettingAllowSpawn:
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s allowed spawning", who)
+		}
+		return fmt.Sprintf("%s disallowed spawning", who)
+	}
+	if e.Label == "" {
+		return fmt.Sprintf("%s changed a table setting", who)
+	}
+	return fmt.Sprintf("%s set %s to %s", who, e.Label, nameOr(e.Choice, "its default"))
 }
 
 // renderCountersText words a counter change the way a player reads the
