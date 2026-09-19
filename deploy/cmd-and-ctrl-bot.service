@@ -23,6 +23,20 @@ Wants=network-online.target
 # "server unreachable" on each invocation until the server is
 # back.
 
+# Bound the restart loop (#598): with Restart=on-failure and no
+# StartLimit*, a crash on every start (e.g. 203/EXEC from a bad
+# binary path) restarts forever with nothing to alarm on — the
+# cmd-and-ctrl.service incident this issue is named for ran ~540k
+# times over a month before anyone noticed. 5 starts within 5
+# minutes — one every RestartSec=5 with no gap — flips the unit to
+# `failed` and stops it there, which IS a state something can watch
+# for (systemctl is-failed, an external prober). StartLimitIntervalSec
+# / StartLimitBurst belong on [Unit], not [Service]: they bound the
+# unit's start attempts as such, independent of which Restart= policy
+# triggered them (systemd.unit(5)).
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
 [Service]
 Type=simple
 User=cmdctrl-bot
