@@ -278,38 +278,29 @@ func b41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.Rep
 
 // b41RevealTopThenTakeMatching is the "reveal the top N cards of your
 // library, put all [Match] cards revealed this way into your hand and
-// the rest on the bottom of your library" family — Goblin Ringleader,
-// and the shape Horn of the Mark's look-at half shares.
+// the rest on the bottom of your library" family — Goblin Ringleader.
 //
-// The take is BounceToHand on a card that is still in a library,
-// which is the move b21RevealUntilBasicLandToHand already uses: the
-// zone router does not care where a card starts. It is deliberately
-// not a library SEARCH — a search shuffles, prompts over the whole
-// library, and would let the player pick a Goblin the reveal never
-// showed them.
+// It is RevealTopThenTakeToHand (take_from_library.go) with the
+// batch's own `func(game.Card) bool` predicate shape, kept so the
+// cards written against it do not all have to change.
+//
+// #952 is why the body moved. The take used to be one BounceToHand
+// per card, which worked by accident: the zone router finds a card's
+// zone by scan, so "return it to its owner's hand" happens to move a
+// card that was never on the battlefield. That accident dropped a
+// paused CR 903.9 leg from the accounting and made the rest of the
+// sentence run before the move settled. The engine now has a named
+// library-to-hand door and this goes through it.
 //
 // The rest go to the bottom in a RANDOM order. Ringleader prints "in
 // any order", which is the player's choice; the engine has no
 // ordering prompt for a pile headed to the bottom of a library, and
 // random is the strictly-less-informed version of that choice. Every
-// card that uses this must declare the caveat.
+// card that uses this must declare the caveat. (Horn of the Mark
+// prints "in a random order" and so carries none.)
 func b41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match func(game.Card) bool, reason string) error {
-	revealed := ctx.Game.RevealTopOfLibraryForEffect(player, ctx.Source(), n, reason)
-	var rest []uuid.UUID
-	for _, id := range revealed {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		// A token in a library is not a card (CR 108.2) and cannot be
-		// put into a hand; it is left for the bottom sweep, which
-		// leaves it where it is for the same reason.
-		if !ok || c.IsToken() || !match(c) {
-			rest = append(rest, id)
-			continue
-		}
-		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return ctx.Game.PutOnBottomInRandomOrderForEffect(player, game.ZoneLibrary, rest)
+	return RevealTopThenTakeToHand(ctx, player, n,
+		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return match(c) }, reason)
 }
 
 // b41OssificationExileLabel is the stack label Ossification's entry

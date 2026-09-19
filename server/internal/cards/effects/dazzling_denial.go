@@ -49,18 +49,14 @@ func init() {
 			if target == nil {
 				return nil
 			}
-			victim := target.Controller
 			cost := "{2}"
 			if b40ControlsA(ctx.Game, ctx.Controller(), And(Creature(), HasSubtype("Bird"))) {
 				cost = "{4}"
 			}
-			return PayUnless{
-				Chooser:  victim,
+			return CounterUnlessPaid{
+				StackID:  stackID,
 				Cost:     cost,
 				Question: "Dazzling Denial — pay " + cost + " or your spell is countered",
-				OnDecline: func(ctx *Context) error {
-					return CounterTarget{StackID: stackID}.Apply(ctx)
-				},
 			}.Apply(ctx)
 		},
 	})

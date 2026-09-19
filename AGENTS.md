@@ -2481,8 +2481,24 @@ only place that knows which cards were not chosen. Several picks enter
 as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
 so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
-`RevealUntilThenPutOntoBattlefield` (The Regalia). "Put the rest on the
-bottom in a random order" anywhere else is
+`RevealUntilThenPutOntoBattlefield` (The Regalia).
+
+**"Put it into your HAND" is the twin, and it is a different door
+(#952).** `effects.TakeFromLibraryToHand` — same fields, same `Then`,
+with a `Reveal` flag for "you may REVEAL a creature card from among
+them" (only the TAKEN cards become public; the rest of a private look
+stays private) — over the engine's
+`Game.TakeFromLibraryToHandThenForEffect`. Whole sentences:
+`LookAtTopThenMayTakeToHand` (Horn of the Mark) and
+`RevealTopThenTakeToHand` (Goblin Ringleader). **Never `BounceToHand`
+for this.** It appears to work only because the zone router finds a
+card's zone by scan; "return it to its owner's hand" is not "put it
+into your hand off the top of your library", the fire-and-forget form
+drops a paused CR 903.9 leg from the accounting, and nothing watching a
+bounce should see a library take. `TakeRestOnBottomInRandomOrder` and
+`TakeRestIntoGraveyard` are the two rests.
+
+"Put the rest on the bottom in a random order" anywhere else is
 `g.PutOnBottomInRandomOrderForEffect(actor, from, ids)`, which draws
 from the game's keyed RNG (`random_order` stream, ADR 0054) — never
 `math/rand` — and repositions cards already in the library without a
@@ -3194,7 +3210,14 @@ that question — the gated verbs ask it and so does `internal/legal`,
 which is what keeps the bots and the engine from disagreeing the way
 they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
-that does not (ADR 0018 §6). **Two:** a case in `choiceMoves`
+that does not (ADR 0018 §6). That row answers for the KIND; a live
+PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
+adds two one-way narrowings on top of it — `PendingChoice.ForceBlocks`,
+a prompt that asks to block anyway (#567), and
+`PendingChoice.GuardsStackItem`, a prompt whose decline counters an
+object still on the stack (#951, `counter_unless_paid.go`). Both can
+only make a prompt block, never let one through. **Two:** a case in
+`choiceMoves`
 (`server/internal/legal/choices.go`), or every seat owing one is
 offered no answer *and* no pass — the #499 / #618 wedge that stopped
 real tables on Door of Destinies and Cavern of Souls.

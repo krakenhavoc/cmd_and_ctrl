@@ -489,6 +489,70 @@ moment — a chooser who is already gone when the question would be
 asked — and there the prompt is simply not queued and the absence is
 recorded.
 
+**Amendment (2026-09-19, #951): the latitude is Rhystic Study's SHAPE,
+not the word `pay_unless` — a prompt whose decline counters an object
+on the stack blocks while that object is there.**
+
+Ward borrows this section's prompt (CR 702.21a is a triggered ability
+whose resolution is "counter that spell or ability unless its
+controller pays"), and so do Daze, Dazzling Denial, Izzet Charm, Mystic
+Confluence and Spell Stutter. Every reason §6 gives for letting the
+table walk past a pay-unless is Rhystic Study's, and not one of them
+survives the move: the question is not background bookkeeping, it is
+*whether the spell underneath it resolves*. A table that resolves that
+spell has ANSWERED the question by doing it — for free, against the
+payer, with the ward tax skipped. #951 reproduced it with Diffusion
+Sliver: any third seat passing priority before the payer answered
+killed a warded permanent for nothing. CR 117.4 does not let the top of
+the stack resolve while a required action is outstanding, and CR 608.2
+makes the counter part of the resolution that asked the question.
+
+So the halt is **derived, not declared**. `PendingChoice.GuardsStackItem`
+records what the decline is about — the "that spell" — and
+`Game.ChoicePromptBlocksTable` (now a method, because the answer is a
+question about the board rather than about the prompt) blocks while
+that object is still on the stack. The alternative, a second per-card
+"please block" switch beside `ForceBlocks`, was rejected for the reason
+the six cards above are the evidence for: every one of them was written
+after §6 and every one of them got it wrong the same way. A card says
+what its text says; the engine works out what that means for the
+cursor.
+
+One door, `Game.QueueCounterUnlessPaidForEffect`
+(`server/internal/game/counter_unless_paid.go`), with
+`effects.CounterUnlessPaid` as its card-side primitive. It also absorbs
+the two checks all six cards had been spelling out for themselves: an
+object that has already left the stack raises no prompt at all (there
+is nothing to counter and so nothing to charge for, CR 118.12), and the
+decline re-checks before countering.
+
+**The halt cannot outlive its question, which is what keeps it from
+being a wedge.** The block is a live read, so a guarded spell that
+leaves the stack some other way — countered underneath the trigger,
+fizzled — takes the halt with it and the table plays on without anybody
+answering. The prompt's own chooser is never gated by it; a chooser who
+leaves the game is settled by the departure table's `dropDecline`
+column (CR 800.4f, the 2026-09-18 #961 amendment to
+[ADR 0060](0060-leaving-the-game.md)), which counters the spell and
+frees the table; and `internal/legal` reads the same predicate, so a
+bot seat is offered the answer and answers it.
+
+**What is unchanged.** `pay_unless` is still the one kind classified
+non-blocking, `ChoiceBlocksTable(kind)` is still the answer for a KIND
+and still what `TestEveryChoiceKindIsClassifiedAndEnumerated` checks,
+and Rhystic Study, Smothering Tithe, Esper Sentinel, Mystic Remora and
+Kazuul play exactly as they did — their declines guard nothing. Both
+per-prompt narrowings remain **one-way**: they can only make a prompt
+block, never let one through.
+
+**Noticed and not changed here.** Stasis ("at the beginning of your
+upkeep, sacrifice Stasis unless you pay {U}") and Pact of Negation
+("pay {3}{U}{U} … if you don't, you lose the game") are the #567 shape
+rather than this one — the active player, their own upkeep, a
+consequence that is not a stack object — and neither sets
+`PayUnless.Blocking` today. They are a separate judgement about the
+same section and are left for one.
+
 ## Out of scope (explicit deferrals)
 
 - **Treasure's sac-for-mana** is inert until S21 ships sacrifice

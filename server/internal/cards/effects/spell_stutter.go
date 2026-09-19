@@ -42,9 +42,9 @@ import (
 // (CR 701.6a), which is observably different from the Stutter
 // fizzling.
 //
-// The payer is read off the stack BEFORE anything touches it, because
-// countering deletes the stack entry the prompt would otherwise have
-// to look the payer up from.
+// The payer is the spell's controller, read off the guarded stack item
+// by CounterUnlessPaid (#951), which also holds the stack while the
+// tax is unanswered — the Stuttered spell must not resolve first.
 //
 // No simplification.
 func init() {
@@ -58,20 +58,12 @@ func init() {
 				return nil
 			}
 			stackID := item.Targets[0].ID
-			target := ctx.Game.StackItemForEffect(stackID)
-			if target == nil {
-				return nil
-			}
-			victim := target.Controller
 			tax := 2 + b38FaeriesYouControl(ctx.Game, item.Controller)
 			cost := "{" + strconv.Itoa(tax) + "}"
-			return PayUnless{
-				Chooser:  victim,
+			return CounterUnlessPaid{
+				StackID:  stackID,
 				Cost:     cost,
 				Question: "Spell Stutter — pay " + cost + " or your spell is countered",
-				OnDecline: func(ctx *Context) error {
-					return CounterTarget{StackID: stackID}.Apply(ctx)
-				},
 			}.Apply(ctx)
 		},
 	})

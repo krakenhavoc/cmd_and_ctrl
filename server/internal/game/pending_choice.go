@@ -620,6 +620,25 @@ type PendingChoice struct {
 	// difference between two prompts rather than between two kinds.
 	ForceBlocks bool
 
+	// GuardsStackItem is the object on the stack whose fate THIS prompt
+	// decides: the "that spell" of CR 118.12's "counter that spell
+	// unless its controller pays {N}" — ward, Daze, Mana Leak.
+	//
+	// While that object is still on the stack the prompt blocks the
+	// table, whatever its kind's classification says
+	// (Game.ChoicePromptBlocksTable, choice_gate.go). It is not a
+	// second ForceBlocks: ForceBlocks is a fact about the prompt, fixed
+	// when it was queued, and this is a fact about the GAME, re-read
+	// every time the gate is asked. The difference is the whole point —
+	// once the guarded object has left the stack there is nothing left
+	// to counter, the question is background again, and the halt lifts
+	// itself rather than needing somebody to notice.
+	//
+	// Set only by QueueCounterUnlessPaidForEffect
+	// (counter_unless_paid.go), which is the one door into this shape.
+	// See #951.
+	GuardsStackItem uuid.UUID
+
 	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
 	// in the order the client should render them. Wire-serialised via
 	// PendingChoiceView.Options and redacted per viewer like every
@@ -2564,7 +2583,7 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, false)
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, false, uuid.Nil)
 }
 
 // QueueBlockingPayUnlessForEffect is QueuePayUnlessForEffect for a
@@ -2586,14 +2605,22 @@ func (g *Game) QueueBlockingPayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, true)
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, true, uuid.Nil)
 }
 
+// queuePayUnlessLocked is the one body behind every pay-unless.
+// `blocks` is the per-prompt ForceBlocks override (#567); `guards` is
+// the stack object whose fate the decline decides, or uuid.Nil for the
+// detached Rhystic shape (#951, counter_unless_paid.go). They are
+// separate because they answer different questions — one is a fact
+// about the prompt, the other a fact about the game — and no caller
+// sets both.
 func (g *Game) queuePayUnlessLocked(
 	chooser, source uuid.UUID,
 	cost, question string,
 	onDecline func(g *Game) error,
 	blocks bool,
+	guards uuid.UUID,
 ) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
@@ -2614,13 +2641,14 @@ func (g *Game) queuePayUnlessLocked(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoicePayUnless,
-		Chooser:     chooser,
-		Count:       1,
-		Source:      source,
-		Reason:      question,
-		PayCost:     cost,
-		ForceBlocks: blocks,
+		Kind:            PendingChoicePayUnless,
+		Chooser:         chooser,
+		Count:           1,
+		Source:          source,
+		Reason:          question,
+		PayCost:         cost,
+		ForceBlocks:     blocks,
+		GuardsStackItem: guards,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,

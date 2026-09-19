@@ -127,7 +127,7 @@ func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	if !choice.ForceBlocks {
 		t.Fatal("the cumulative-upkeep prompt did not ask to block the table")
 	}
-	if !game.ChoicePromptBlocksTable(choice) {
+	if !g.ChoicePromptBlocksTable(choice) {
 		t.Fatal("ChoicePromptBlocksTable says the cumulative-upkeep prompt does not block")
 	}
 	if _, err := g.AdvanceStep(); !errors.Is(err, game.ErrChoicePending) {

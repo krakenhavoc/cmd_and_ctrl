@@ -265,8 +265,13 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem, counter)
 	}
-	return g.QueuePayUnlessForEffect(payer, item.SourceCardID, cost.Mana,
-		"Ward — pay "+cost.Mana+" or the spell is countered", counter)
+	return g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+		StackItem: targetingItem,
+		Chooser:   payer,
+		Source:    item.SourceCardID,
+		Cost:      cost.Mana,
+		Question:  "Ward — pay " + cost.Mana + " or the spell is countered",
+	})
 }
 
 // wardPayLifeOrCounter is "counter it unless that player pays N life".

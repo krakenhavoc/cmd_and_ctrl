@@ -562,9 +562,15 @@ type pendingChoiceSnapshot struct {
 	// not (#567). Carried so a restored game gates the same way,
 	// cheap and honest even though every prompt that sets it today
 	// also holds a continuation and so blocks the restore point.
-	ForceBlocks bool        `json:"forceBlocks,omitempty"`
-	ChooseCards []uuid.UUID `json:"chooseCards,omitempty"`
-	ChooseMin   int         `json:"chooseMin,omitempty"`
+	ForceBlocks bool `json:"forceBlocks,omitempty"`
+	// GuardsStackItem: the object on the stack whose fate a
+	// counter-unless-pays prompt decides (#951). Carried for
+	// ForceBlocks' reason — a restored game gates the same way —
+	// and because the ID is the only route back to what the
+	// question was about.
+	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
+	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
+	ChooseMin       int         `json:"chooseMin,omitempty"`
 	// #568: the branches of an option pick. Carried for the reason
 	// ChooseCards is — the prompt is the options, and a restored game
 	// that forgot them would render a question with no answers.
@@ -1187,6 +1193,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
 		ForceBlocks:          c.ForceBlocks,
+		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
@@ -1717,6 +1724,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
 		ForceBlocks:          c.ForceBlocks,
+		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,

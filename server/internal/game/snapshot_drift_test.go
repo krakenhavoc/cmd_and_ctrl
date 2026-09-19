@@ -503,6 +503,11 @@ var pendingChoiceFields = plan(
 	// so a restored game gates exactly as the live one did; clone.go
 	// gets it from the value copy every PendingChoice starts from.
 	"ForceBlocks", carried, "",
+	// #951: the object on the stack a counter-unless-pays prompt is
+	// about. Carried for the same reason — the gate re-reads it, so a
+	// restored game that forgot it would let the guarded spell resolve
+	// for free, which is the bug the field exists to stop.
+	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
 	// S28 cascade: which card the "you may cast it without paying

@@ -35,20 +35,10 @@ func init() {
 					if !ok {
 						return nil
 					}
-					stackID := t.ID
-					// Read the victim's controller BEFORE anything
-					// touches the stack — the Daze posture.
-					target := ctx.Game.StackItemForEffect(stackID)
-					if target == nil {
-						return nil
-					}
-					return PayUnless{
-						Chooser:  target.Controller,
+					return CounterUnlessPaid{
+						StackID:  t.ID,
 						Cost:     "{3}",
 						Question: "Mystic Confluence — pay {3} or your spell is countered",
-						OnDecline: func(ctx *Context) error {
-							return CounterTarget{StackID: stackID}.Apply(ctx)
-						},
 					}.Apply(ctx)
 				}),
 			ModeDoing("Return target creature to its owner's hand.",
