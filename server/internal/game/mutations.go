@@ -2052,12 +2052,26 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
 	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
+	// #489, CR 608.2m: the spell may have MOVED ITSELF. Everything
+	// below this line routes the object that is still on the stack —
+	// to the battlefield, out of existence, or to a graveyard — and a
+	// spell whose own effect put it somewhere else has no such object
+	// left. See spellMovedItselfLocked for why that is a return and
+	// not an error.
+	if g.spellMovedItselfLocked(top.InstanceID) {
+		return nil
+	}
 	// CR 608.3f / CR 111.13 (also CR 707.10f): a resolving copy of a
 	// PERMANENT spell does not put a permanent card onto the
 	// battlefield — it becomes a TOKEN that is a copy of the spell,
 	// and the copy ceases to exist. The branch below is for cards;
 	// this one is for the object that is not one. See
 	// resolvePermanentSpellCopyLocked (#666).
+	//
+	// BELOW the #489 check above, and the order is the rule: CR 707.10a
+	// says a copy in any zone other than the stack has already ceased
+	// to exist, so a copy that moved ITSELF never resolves and never
+	// becomes a token.
 	if item.IsCopy && top.IsPermanent() {
 		return g.resolvePermanentSpellCopyLocked(top, item)
 	}
@@ -2209,6 +2223,66 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// is the one call site that resolves, so it is the one that
 	// passes `true`.
 	return g.routeStackCardToGraveyardLocked(top, item, true)
+}
+
+// spellMovedItselfLocked reports that the spell this resolution is
+// about is no longer on the stack, because its own effect moved it
+// there and then somewhere else.
+//
+// #489. "Exile Ascend from Avernus", "shuffle this card into its
+// owner's library", Genesis Ultimatum's "exile Genesis Ultimatum" —
+// the instruction is part of the spell's own text, so it runs inside
+// `OnResolve`, which is BEFORE the resolution frame decides where the
+// spell goes next. Everything after that decision point is about an
+// object on the stack: the battlefield entry for a permanent, the
+// token a resolving copy of a permanent spell becomes (CR 608.3f,
+// #967), and CR 608.2m's "as the final part of an instant or sorcery
+// spell's resolution, the spell is put into its owner's graveyard". A
+// spell that has already left has none of those left to do, and
+// CR 608.2m is the rule that says so: the thing it puts into a
+// graveyard is the spell ON THE STACK. For the copy the rule is
+// CR 707.10a — a copy in any zone other than the stack has already
+// ceased to exist, so it never resolves and never becomes a token.
+//
+// What happens without this check is not an error, which is why the
+// check is worth writing down. It used to be one — the frame called
+// `MoveCard(g.Stack, …)` and got `ErrCardNotFound`, which
+// `PassPriority` returned to the caller with the post-resolution
+// state checks and the priority reset skipped, the shape #489 was
+// filed for. #529 then put the stack exit on the shared exit
+// primitive (`routeStackCardToGraveyardLocked` → `routeCardToZoneLocked`),
+// which finds a card's zone BY SCAN rather than assuming the stack.
+// So the error went away and took the symptom with it, and the defect
+// got quieter and worse: the frame found the card in exile, saw a
+// destination that was not exile, and dutifully moved the spell OUT
+// of the exile its own effect had just put it in and into the
+// graveyard. Ascend from Avernus would have exiled itself and landed
+// in the graveyard a microsecond later, with no error anywhere.
+//
+// ONE CHECK, EVERY EXIT. It sits in the resolution frame rather than
+// in `routeStackCardToGraveyardLocked` because all three of the
+// frame's post-effect exits share the assumption, not just the
+// graveyard one: a PERMANENT spell that moved itself would otherwise
+// take `MoveCard(g.Stack, g.Battlefield, …)` and reintroduce the
+// original error verbatim. The two exits ABOVE this point — the
+// "countered by game rules" fizzle (CR 608.2b) and the no-StackMeta
+// fallback — run before any card code and cannot be in this state, so
+// `routeStackCardToGraveyardLocked` needs no guard of its own and
+// keeps its single responsibility.
+//
+// NOT COVERED, deliberately: a self-move that PAUSED. The card is
+// still on the stack while a CR 614 prompt about its own move is
+// open, so this returns false and the frame routes it to the
+// graveyard, which prunes the stale prompt (#605). Skipping the route
+// instead would leave the spell on the stack with nobody left to
+// finish it — a wedge, which is worse than the misordering. It is
+// also out of reach in practice: an instant or sorcery is never a
+// commander, so the only pause available to one is a CR 616 ordering
+// prompt between two replacements that both apply to its own exit.
+//
+// Caller must hold g.mu.
+func (g *Game) spellMovedItselfLocked(cardID uuid.UUID) bool {
+	return g.Stack == nil || !g.Stack.Contains(cardID)
 }
 
 // spellAllTargetsIllegalLocked reports whether a resolved stack item
@@ -5651,8 +5725,21 @@ func (g *Game) passPriorityLocked() error {
 	// combat-clear all fire regardless of whether the step changed
 	// via a priority-wrap or an explicit advance_step click.
 	if g.stackHasItemsLocked() {
+		// #489: a resolution that FAILED is still a resolution that
+		// happened. The old `return err` here skipped both of the
+		// lines below, so one bad resolution left the game half
+		// resolved — the item off the stack, its effect run, and the
+		// table still waiting on a priority holder that had already
+		// passed, with no state-based actions and no triggers. The
+		// error is reported the way every other resolution-time error
+		// is (fireEffectResolverLocked, CR 608.2's "the game
+		// continues"), and the two post-resolution jobs run either
+		// way.
 		if err := g.resolveTopOfStackLocked(); err != nil {
-			return err
+			// No Actor: the failure belongs to the resolution, not to
+			// the player who happened to pass last — the same shape
+			// fireEffectResolverLocked emits.
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 		}
 		// Drain any pending APNAP triggers onto the stack now that
 		// we've crossed a priority-grant boundary (CR 603.3b).

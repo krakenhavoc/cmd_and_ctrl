@@ -235,6 +235,96 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	})
 }
 
+// ExileThenIfItWas is "Exile target card from a graveyard. If it was
+// a creature card, <clause>" — Cling to Dust, Scavenging Ooze and
+// Deluge of the Dead, and the ONE body all three now share (#911).
+//
+// # Two facts, two moments
+//
+// The clause reads WHAT THE CARD WAS, which is a question about the
+// past: after the move the card is in exile with none of its
+// battlefield-era layers, so `Was` is answered BEFORE anything moves
+// (CR 608.2h / last-known information). That much the three cards
+// already did by hand.
+//
+// What they did NOT do is wait for the move. `ExileTarget` without a
+// `Then` is fire-and-forget: it returns nil when the CR 614 window
+// CANCELLED the exile ("cards in graveyards can't be exiled"), when a
+// replacement sent the card somewhere else, and when the move merely
+// PAUSED on a commander card's CR 903.9 prompt. All three paid out
+// anyway — life, a +1/+1 counter, a Zombie — for a card that was still
+// sitting in its graveyard. So the clause hangs off `ExileTarget.Then`
+// and is gated on `exiled`, CR 400.7's reading: the card that ARRIVED
+// in exile is the one the effect exiled.
+//
+// # Why no exile means no clause at all
+//
+// ADR 0013 §5m left this as a rules question and §5t answers it. "If
+// it WAS a creature card" has no referent when nothing was exiled:
+// "it" is the card the first sentence moved, and CR 614.10 says an
+// event replaced with nothing never happened. So neither branch runs —
+// Cling to Dust's `Otherwise` ("you draw a card") is the other half of
+// the same conditional, not a separate sentence, and a Cling to Dust
+// whose exile was cancelled draws nothing.
+//
+// That is the line between this primitive and the exile-then-an-
+// unconditional-clause family (Swords to Plowshares, Solitude, Path to
+// Exile's search), which §5m declared ungated and which stays ungated:
+// there the second sentence is about a player, makes no claim about the
+// card, and happens either way.
+//
+// A commander card that takes CR 903.9's offer left the graveyard but
+// did not reach exile, so it pays out nothing either — the same answer
+// the batch gives "for each card exiled this way".
+type ExileThenIfItWas struct {
+	Target uuid.UUID
+
+	// Was is the question the clause asks about the card, answered
+	// against the card as it was BEFORE the exile. Nil means "any
+	// card", which turns this into a plain "exile it; if you do, …".
+	// WasCreatureCard is the printed phrase all three cards use.
+	Was func(c game.Card) bool
+
+	// Then is the clause. It runs only when the card actually reached
+	// exile AND Was said yes.
+	Then func(ctx *Context) error
+
+	// Otherwise is Cling to Dust's "Otherwise, you draw a card": the
+	// same conditional's other branch, so it runs only when the card
+	// reached exile and Was said no. Optional.
+	Otherwise func(ctx *Context) error
+}
+
+// WasCreatureCard is the predicate behind the printed phrase "if it
+// was a creature card". Named so the three cards read like their own
+// oracle text and so a fourth does not re-derive it.
+func WasCreatureCard(c game.Card) bool { return c.IsCreature() }
+
+func (e ExileThenIfItWas) Apply(ctx *Context) error {
+	was := false
+	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok {
+		was = e.Was == nil || e.Was(c)
+	}
+	return ExileTarget{
+		Target: e.Target,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				// Nothing was exiled, so there is no "it" for the
+				// clause to be about. Neither branch.
+				return nil
+			}
+			clause := e.Then
+			if !was {
+				clause = e.Otherwise
+			}
+			if clause == nil {
+				return nil
+			}
+			return clause(ctx)
+		},
+	}.Apply(ctx)
+}
+
 // ReturnFromExile puts a card that is currently in exile back onto
 // the battlefield — the other half of a flicker, and the primitive
 // the catalog was missing entirely before S22 (ExileTarget could

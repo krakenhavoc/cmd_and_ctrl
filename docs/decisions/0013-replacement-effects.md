@@ -1820,6 +1820,153 @@ slice. No catalog card prints the scry or surveil side yet;
 `KeywordActionBecomes` so the first one that does is a line, and they
 are exercised through probe entries registered in the test file.
 
+### 5t. Amendment, 2026-09-19: an "if it was" clause is gated on the exile, and a spell that moves itself is not routed
+
+*Amendment, 2026-09-19, branch
+`fix/911-489-cancelled-exile-payouts-and-self-exile`. Closes
+[#911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/911) and
+[#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489). §5m
+item 5 deferred the first of these as "a rules question rather than a
+plumbing one"; this is the answer. The second is here because the
+reason it changed shape is §5f's exit primitive.*
+
+## 1. "If it was a creature card" needs a card that was exiled
+
+§5m converted the exile's callers and listed three it deliberately did
+not: Cling to Dust, Scavenging Ooze and Deluge of the Dead, all of
+which print "Exile target card from a graveyard. If it was a creature
+card, …". The reasoning there was that the condition reads the card's
+TYPE, which is known before the move, so nothing about it needs the
+answer. That is half true and the half it misses is the subject.
+
+The type is indeed read before the move — it has to be, because after
+the move the card is in exile with none of its battlefield-era layers,
+so "it WAS a creature card" is a question about the past (CR 608.2h).
+But "it" is a reference to the card the FIRST SENTENCE MOVED. When no
+card moved there is no "it", and the clause has nothing to be about.
+CR 614.10 is what makes that concrete: an event replaced with nothing
+never happened, so a Scavenging Ooze whose meal a graveyard static kept
+in place ate nothing, and a clause that begins "if it was" cannot be
+asking about a card that is still in its owner's graveyard.
+
+**Decision: the clause runs only when the card ARRIVED in exile**, which
+is §5k's CR 400.7 reading and the one every other "this way" clause in
+the engine already uses. Three outcomes pay out nothing:
+
+- the CR 614 window CANCELLED the exile ("cards in graveyards can't be
+  exiled");
+- a replacement REDIRECTED it — the card left the graveyard, but not for
+  exile;
+- a commander card took CR 903.9's offer. It left, and it did not reach
+  exile, so it is not "it" either — the same answer §5k gives "for each
+  card exiled this way" and §5m gives `Flicker`.
+
+**Cling to Dust's `Otherwise` goes with it.** "Exile target card from a
+graveyard. If it was a creature card, you gain 3 life. Otherwise, you
+draw a card" is ONE conditional with two branches, both about the same
+"it". A cancelled exile therefore draws no card either. Writing it the
+other way — no life, but still a draw — would make "otherwise" mean
+"or if nothing happened", which is not what the word does.
+
+**The line this does NOT cross** is the one §5m drew in the same list
+and it stays where it is: exile-then-an-unconditional-clause. Swords to
+Plowshares' "its controller gains life equal to its power", Solitude's
+copy of it, Path to Exile's search, Anguished Unmaking's life loss. The
+second sentence there is about a PLAYER, makes no claim about the card
+and is not introduced by a condition, so it happens either way. The
+distinction is grammatical and it is checkable: a clause GATED on a
+pre-exile fact is about the card; a clause that merely USES one as a
+value is not.
+
+**One body, and a lint to keep it the only one.** The three cards share
+`effects.ExileThenIfItWas{Target, Was, Then, Otherwise}` with
+`WasCreatureCard` as the printed predicate (`cards/effects/primitives.go`).
+It holds both halves — the `Was` question answered before anything
+moves, the clause hung off `ExileTarget.Then` and gated on `exiled` —
+so a fourth card with the same text gets the rule rather than
+re-deriving it. `cards/effects/exile_payout_guard_test.go` is the lint,
+the #911 half of what `life_continuation_guard_test.go` is for §5b and
+§5c: a source scan that fails on a CONDITION, after a fire-and-forget
+exile, reading a local the function assigned before it. It carries its
+own self-test so it cannot rot into a pass-everything, and one
+allowlist entry, Solitude's `if power <= 0` — a guard against gaining
+zero life, not a gate on the exile.
+
+**Not converted, and why.** The other exits have the same shape
+available and no known caller in the wrong: the lint is deliberately
+scoped to exile, because widening it to destroy, bounce, tuck, mill and
+sacrifice flags six more sites that each need their own rules answer
+(#993). Nothing new is snapshotted: `ExileThenIfItWas` rides
+`ExileCardThenForEffect` → `zoneRoute.then` and §5k's undo contract,
+pinned on a card by
+`cards/effects/exile_payout_cards_test.go`'s replay.
+
+## 2. A spell that moves itself as it resolves has nothing left to route
+
+A spell's own text can move the spell out of the stack: "exile Ascend
+from Avernus", Genesis Ultimatum's "exile Genesis Ultimatum", and by
+the same shape any "shuffle this into your library" rider. The
+instruction is the card's, so it runs inside the catalog's `OnResolve`,
+which is BEFORE the resolution frame decides where the spell goes next.
+All three of that frame's post-effect exits assume the spell is still
+on the stack: the battlefield entry for a permanent, CR 707.10's
+cease-to-exist for a copy, and CR 608.2m's "as the final part of an
+instant or sorcery spell's resolution, the spell is put into its
+owner's graveyard".
+
+#489 was filed against the ERROR that produced: `MoveCard(g.Stack, …)`
+returned `ErrCardNotFound` and `PassPriority` handed it to the caller
+with the post-resolution state checks and the priority reset skipped.
+§5f then put the stack exit on the shared exit primitive, which finds a
+card's zone BY SCAN rather than assuming the stack — and that changed
+the defect rather than fixing it. The frame found the spell in exile,
+saw a destination that was not exile, and moved the spell OUT of the
+exile its own effect had just put it in and into the graveyard. No
+error anywhere. **A move primitive that tolerates any source zone makes
+"is this object still where I left it" a question the caller has to ask
+out loud**, and that is the general lesson worth recording beside §5f.
+
+**Decision: one check, in the resolution frame** —
+`spellMovedItselfLocked` (`game/mutations.go`), immediately after the
+card's own body and its chosen modes have run, before the three exits
+branch. CR 608.2m is the rule that licenses it: the thing put into a
+graveyard is the spell ON THE STACK, and there is none.
+
+It sits in the frame rather than in `routeStackCardToGraveyardLocked`
+for two reasons. All three exits share the assumption, and the
+permanent one does not go through that function — it would reproduce
+the original error verbatim. And the two exits ABOVE the check, the
+CR 608.2b fizzle and the no-`StackMeta` fallback, run before any card
+code and cannot be in this state, so that function keeps one
+responsibility and one destination decision.
+
+**A resolution that FAILS still owes the table its bookkeeping.** The
+second half of the report, and it is not about self-moves: the
+state-based actions and the CR 117.3b priority reset belong to the
+PASS, not to the resolution, so `passPriorityLocked` runs both whatever
+`resolveTopOfStackLocked` returned. The error is reported as an
+`EventEffectError` — the posture `fireEffectResolverLocked` and
+`applyFirstGatheredLocked` already take for a resolution-time failure —
+rather than returned as a failed pass, because the pass succeeded: the
+item left the stack, its effect ran and the game moved on.
+
+**Deliberately not covered: a self-move that PAUSED.** The card is
+still on the stack while a CR 614 prompt about its own move is open, so
+the check says no and the frame routes it to the graveyard, which
+prunes the stale prompt (#605). Skipping the route instead would leave
+the spell on the stack with nobody left to finish it, which is a wedge
+and worse than the misordering. It is also out of reach in practice: an
+instant or sorcery is never a commander, so the only pause available to
+one is a CR 616 ordering prompt between two replacements that both
+apply to its own exit.
+
+**What this unblocks.** Ascend from Avernus (batch 24) and Genesis
+Ultimatum, which `docs/engine-seams.md` listed as waiting on "a spell
+that exiles itself as it resolves". No catalog card moves itself on
+resolution today, so the regression test
+(`game/resolution_self_move_test.go`) drives a stub catalog card
+through the real priority loop.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

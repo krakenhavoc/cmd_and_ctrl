@@ -16,7 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The "if it was a creature card" clause reads the type BEFORE the
 // exile — same shape as Scavenging Ooze — because after the move the
-// card is in exile and the question is about what it was.
+// card is in exile and the question is about what it was. It also
+// WAITS for the exile (#911, ADR 0013 §5t): the clause is about the
+// card the first sentence moved, so a card the CR 614 window kept in
+// its graveyard gains nobody life and draws nobody a card. Both
+// halves live in ExileThenIfItWas.
 //
 // No simplification.
 func init() {
@@ -32,18 +36,17 @@ func init() {
 				if t.Kind != game.TargetCard {
 					continue
 				}
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					continue
-				}
-				wasCreature := c.IsCreature()
-				if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-				if wasCreature {
-					return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				controller := item.Controller
+				return ExileThenIfItWas{
+					Target: t.ID,
+					Was:    WasCreatureCard,
+					Then: func(ctx *Context) error {
+						return GainLife{Player: controller, Amount: 3}.Apply(ctx)
+					},
+					Otherwise: func(ctx *Context) error {
+						return DrawCards{Player: controller, N: 1}.Apply(ctx)
+					},
+				}.Apply(ctx)
 			}
 			return nil
 		},
