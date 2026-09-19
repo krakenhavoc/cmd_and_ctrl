@@ -31,9 +31,10 @@ const (
 	// fileName is the live database's filename inside dirName.
 	fileName = "cmdctrl.sqlite"
 	// BackupFileName is the VACUUM INTO backup's filename, written
-	// beside the live file so a disk-level backup sweep (HomeLab,
-	// nightly, off-node — outside this package) picks up a consistent
-	// copy of both from the same directory.
+	// beside the live file so the nightly off-node backup
+	// (scripts/backup-offsite.sh, restic to R2, #1031 — outside this
+	// package) picks up a consistent copy. It backs up this file, never
+	// the live one.
 	BackupFileName = "cmdctrl.backup.sqlite"
 )
 

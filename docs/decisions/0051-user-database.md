@@ -94,6 +94,18 @@ below merges, and one restore is rehearsed. SQLite's online backup API
 the sweep that produces it belongs to the server, on a timer, writing
 beside the live file so the disk-level backup picks up a clean copy.
 
+**Amended (2026-09-19): how the off-node copy is done** ([#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031)).
+The off-node copy is not a HomeLab job. HomeLab has a single Proxmox
+node and no target off it, so each VM backs itself up nightly with
+restic to its own Cloudflare R2 bucket. It backs up the `VACUUM INTO`
+copy, never the live file, along with `restore/`, `replays/`,
+`lobby/`, `bugreports/` and `games/`. The job, its credentials and the
+restore runbook ship from this repo's CD, as the Caddyfile and the bot
+unit do. HomeLab owns only the buckets
+([krakenhavoc/HomeLab#58](https://github.com/krakenhavoc/HomeLab/issues/58)).
+It costs $0 within R2's free tier. See
+[docs/environments.md](../environments.md#backups).
+
 ## Decision 2 — A user is our ID; a Discord account is one identity attached to it
 
 ```sql
