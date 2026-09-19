@@ -282,6 +282,14 @@ It is true for `RoleAdmin`, or for a `RolePlayer` session bound to this game
 whose `player_id` is `host_player_id`. It is false for spectators, unseated
 Discord sign-ins, other seats, and the host of a different table.
 
+**Not the same thing as the game's creator.** `games.created_by` (ADR
+0051 decision 2) is whoever called `POST /games` while signed in, and
+is a *different* predicate, `lobby.CanRotateInvites` — used only by
+`POST /games/{id}/invites/rotate` and the Discord bot's `/cc-end` host
+check, below. A table's creator need not ever sit down (no seat, no
+`is_host`), and a seated host need not be the creator — the first
+human to join hosts by default regardless of who created the table.
+
 ### `POST /games/{id}/host`
 
 Transfer hosting to another seat. Host or admin only.
@@ -399,11 +407,22 @@ games pile up.
       "created_at": "2026-04-13T20:00:00Z",
       "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "is_host": true }],
       "state": "lobby",
-      "host_player_id": "<uuid>"
+      "host_player_id": "<uuid>",
+      "is_creator": true
     }
   ]
 }
 ```
+
+`is_creator` ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098))
+is computed per **viewer**, not stored: `true` only when the
+requesting principal's `UserID` equals this game's `created_by`, and
+omitted (`false`) otherwise — including for every other caller
+looking at the same game. The raw `created_by` never reaches the
+wire. It is what the lobby UI's rotate-invite buttons check (see
+`POST /games/{id}/invites/rotate` above); a table's creator need not
+even be seated at it, so this can be `true` on a game where `mySeat`
+finds nothing.
 
 ### `GET /games/{id}`
 
@@ -972,7 +991,7 @@ The client turns `ticket` into `#/games/{id}/reclaim?t=<ticket>`.
 | 422 | that seat is a bot, not a disconnected player |
 | 429 | too many outstanding tickets |
 
-### `POST /games/{id}/invites/rotate` *(admin only)*
+### `POST /games/{id}/invites/rotate` *(creator or admin)*
 
 Revoke a game's current invite of one **kind** and mint its
 replacement, atomically. This is the fix for the gap `GET
@@ -988,11 +1007,20 @@ revokes every still-live invite of the requested kind for the game by
 transaction — which is exactly what makes this work when the old
 plaintext is gone from every process's memory, restart or not.
 
-**Admin-only for now.** The issue that will let a game's own creator
-rotate their invites (not just an admin) is
-[#1044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1044),
-which populates `games.created_by`; there is a `TODO(#1044)` on the
-route registration in `server/internal/lobby/http.go`.
+**Creator or admin** ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098),
+closing out the `TODO(#1044)` this used to carry, now that
+`games.created_by` exists). The route itself is session-gated for any
+authenticated role; `lobby.CanRotateInvites(principal, meta)` decides
+inside the handler — true for `RoleAdmin`, or for a principal whose
+`UserID` equals `meta.CreatedBy`. A guest (no `UserID`), a different
+signed-in user, or the creator of a *different* game is refused. This
+"creator" is `games.created_by` — whoever called `POST /games` while
+signed in — which is a different concept from [the table
+host](#the-table-host): the creator need not ever sit down, and a
+seated host need not be the creator. The lobby UI's rotate buttons
+follow the server's `is_creator` field on `GameMeta` (below), the
+same "computed per-viewer, never the raw identity" pattern
+`redactMetaFor` already uses for invite tokens.
 
 **Request**
 
@@ -1024,7 +1052,7 @@ usable link — until the next restart, same as any other invite.
 
 Rate-limited in the same bucket as `/join`, `/spectate` and
 `/games/{id}/preview`: it mints and revokes the exact credential
-those routes brute-force, even though the admin gate already keeps a
+those routes brute-force, even though the auth gate already keeps a
 stranger from calling it at all.
 
 **Errors**
@@ -1033,7 +1061,7 @@ stranger from calling it at all.
 |---|---|
 | 400 | `kind` is neither `"player"` nor `"spectator"` |
 | 401 | unauthenticated |
-| 403 | caller is not an admin |
+| 403 | caller is neither the game's creator nor the admin |
 | 404 | game not found |
 | 429 | rate-limited |
 
@@ -1130,6 +1158,53 @@ link the table has already shared, which is a startling side effect of
 | 429 | rate-limited, by us or by Discord |
 | 502 | Discord rejected this server's bot credentials, or failed for another reason |
 | 503 | `CMDCTRL_DISCORD_BOT_TOKEN` or the invite origin is not configured |
+
+### `GET /games/{id}/creator` *(admin only)*
+
+The Discord bot's `/cc-end` host check ([#1098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1098)):
+does the Discord user named by `?discord_id=<snowflake>` match this
+game's creator. The bot calls the server with its own admin
+credentials (same as every other bot call — see
+[AGENTS.md](../AGENTS.md)), so the server has to tell it *whether*
+the Discord user who ran the slash command created the table; this
+route answers exactly that and nothing more.
+
+It deliberately never says who the creator actually is — only
+whether one named snowflake matches — so an admin token that guesses
+wrong (or is compromised) never learns a game's creator identity from
+this route, and nobody who isn't already an admin can call it at all.
+`GET /games/{id}` does not carry the creator's raw identity either
+(see `is_creator` below); this endpoint exists so the bot's one
+actual question can be answered without that identity ever leaving
+the server.
+
+**Request**: `?discord_id=<snowflake>`, required.
+
+**Response 200**
+
+```json
+{ "is_creator": true }
+```
+
+A game with no creator (`games.created_by` is `NULL` — admin-created,
+or restored from a pre-ADR-0051 file import) always answers
+`is_creator: false`, for every `discord_id` — there is nothing to
+match, so the bot's `CMDCTRL_DISCORD_ADMIN_USER_IDS` /
+`CMDCTRL_DISCORD_ADMIN_ROLE_IDS` allowlists stay the only route for
+those games. An unresolvable `discord_id` (no linked `identities` row
+— including every deployment with no user database) answers `false`
+the same way rather than erroring, for the same "never fail open, and
+never fail closed with something other than a clean refusal" reason
+the allowlists already follow.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | missing `discord_id` |
+| 401 | unauthenticated |
+| 403 | caller is not an admin |
+| 404 | game not found |
 
 ### `GET /me`
 

@@ -47,6 +47,16 @@ export interface GameMeta {
   // alongside the admin. The zero UUID when nobody hosts. Mirrored per
   // seat by SeatInfo.is_host.
   host_player_id?: string;
+  // True when the signed-in caller viewing this response is the one
+  // who created the table (games.created_by — ADR 0051 decision 2,
+  // #1098). Computed per-viewer server-side; the raw creator identity
+  // is never sent, so this is the only way the client learns "is this
+  // my table" and it can never learn who created someone else's.
+  // Distinct from is_host (SeatInfo) and host_player_id above — the
+  // creator need not be seated, and a seated host need not be the
+  // creator. Lets the creator rotate their own table's invites, same
+  // as the admin.
+  is_creator?: boolean;
 }
 
 export interface SeatInfo {
@@ -387,9 +397,9 @@ export interface RotateInviteResponse {
   token: string;
 }
 
-// rotateInvite (admin-only, for now — see #1044) revokes a game's
-// current invite of one kind and mints its replacement. Use when the
-// link that was already shared is lost — most often because the
+// rotateInvite (the game's creator or the admin — #1098) revokes a
+// game's current invite of one kind and mints its replacement. Use
+// when the link that was already shared is lost — most often because the
 // process that could still show it in plaintext has restarted (ADR
 // 0051 decision 4) — or when it should simply stop working. The old
 // link of that kind is dead as soon as this resolves.

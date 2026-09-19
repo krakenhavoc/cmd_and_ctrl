@@ -78,6 +78,13 @@ type Store interface {
 	// It is never part of a response body: a tablemate is offered by
 	// OUR id, and the snowflake is resolved server-side.
 	DiscordSubject(ctx context.Context, id uuid.UUID) (string, error)
+	// UserIDForDiscord looks up the user linked to a Discord
+	// snowflake (identities.provider = "discord", .subject =
+	// discordID). ErrNotFound if no identity row matches — an unknown
+	// snowflake, or one that never signed in. Added for #1098's
+	// /cc-end host check: given the Discord user who ran the command,
+	// which users(id) — if any — does games.created_by need to equal.
+	UserIDForDiscord(ctx context.Context, discordID string) (uuid.UUID, error)
 }
 
 // NoStore is the Store for a deployment with no database. Every
@@ -99,6 +106,13 @@ func (NoStore) Get(context.Context, uuid.UUID) (User, error) {
 // does: with no database there are no users to resolve.
 func (NoStore) DiscordSubject(context.Context, uuid.UUID) (string, error) {
 	return "", ErrNotFound
+}
+
+// UserIDForDiscord always reports ErrNotFound: there is nothing to
+// look up without a store. Callers (the #1098 host check) treat that
+// as "no", not as an error — see gameCreator's doc comment.
+func (NoStore) UserIDForDiscord(context.Context, string) (uuid.UUID, error) {
+	return uuid.Nil, ErrNotFound
 }
 
 // AvatarPath is the same-origin path the client loads a Discord

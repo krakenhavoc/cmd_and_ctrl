@@ -115,21 +115,19 @@ func interactionInvoker(i *discordgo.Interaction) (userID string, roles []string
 }
 
 // handleEnd runs /cc-end: authorize, resolve the game, and (if it's
-// not already archived) show a Confirm/Cancel prompt. Authorization
-// is checked first and touches nothing else — no game lookup, no
-// HTTP call — so an unauthorized caller learns nothing about what
-// games exist.
+// not already archived) show a Confirm/Cancel prompt.
 //
-// TODO(#1044): this is the admin-only fallback issue #614 names for
-// its "host or admin" design point. Once games.created_by exists,
-// resolveGame's result should also let the game's own host past
-// this gate, not just a configured admin.
+// Authorization is "host or admin" (#1098, closing out #1044 and
+// #614): a configured admin per Config.IsAdmin, or the Discord user
+// who created the table, per the server's GET /games/{id}/creator.
+// The creator check is necessarily PER-GAME, so resolveGame now runs
+// before authorization rather than after it — an unauthorized caller
+// costs one HTTP call it didn't before. That is not a new leak: the
+// same active/lobby listing this resolves against is already public
+// to anyone in the guild via /cc-games and this command's own
+// autocomplete (see dispatchAutocomplete), so nothing is learned here
+// that a rejected caller couldn't already see.
 func (h *Handler) handleEnd(ctx context.Context, s *discordgo.Session, i *discordgo.InteractionCreate, data discordgo.ApplicationCommandInteractionData) {
-	if !h.cfg.IsAdmin(i.Interaction) {
-		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(adminRefusalMessage(h.cfg)))
-		return
-	}
-
 	raw := stringOption(data.Options, "game")
 	meta, err := h.resolveGame(ctx, raw)
 	if err != nil {
@@ -137,6 +135,18 @@ func (h *Handler) handleEnd(ctx context.Context, s *discordgo.Session, i *discor
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(resolveGameErrorMessage(err)))
 		return
 	}
+
+	allowed, err := h.mayEnd(ctx, meta.ID, i.Interaction)
+	if err != nil {
+		h.log.Warn("cc-end host check failed", "game_id", meta.ID.String(), "error", err.Error())
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(resolveGameErrorMessage(err)))
+		return
+	}
+	if !allowed {
+		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(adminRefusalMessage(h.cfg)))
+		return
+	}
+
 	if meta.Archived() {
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse(fmt.Sprintf(
 			"**%s** is already archived — nothing to do. Undo with an admin `DELETE /games/%s/archive` if that wasn't intended.",
@@ -156,6 +166,26 @@ func (h *Handler) handleEnd(ctx context.Context, s *discordgo.Session, i *discor
 	}, now)
 
 	_ = s.InteractionRespond(i.Interaction, endConfirmResponse(meta, token))
+}
+
+// mayEnd reports whether i's invoker may run /cc-end against game id:
+// a configured admin (cheap, no HTTP call), or — only when they are
+// not — the Discord user the server says created that table (#1098).
+// A game with no creator (an admin session created it, or it was
+// restored from a pre-ADR-0051 file import) has the server answer
+// false for every Discord user, so the two allowlists remain the only
+// route for those games; empty allowlists and no creator therefore
+// still refuse everyone, the same "never fail open" rule #614
+// established for the allowlists alone.
+func (h *Handler) mayEnd(ctx context.Context, id uuid.UUID, i *discordgo.Interaction) (bool, error) {
+	if h.cfg.IsAdmin(i) {
+		return true, nil
+	}
+	uid, _ := interactionInvoker(i)
+	if uid == "" {
+		return false, nil
+	}
+	return h.client.IsCreator(ctx, id, uid)
 }
 
 // dispatchAutocomplete answers the /cc-end "game" option's

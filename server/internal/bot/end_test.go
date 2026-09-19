@@ -449,6 +449,129 @@ func TestHandleEnd_AlreadyArchived_NoConfirmation(t *testing.T) {
 	}
 }
 
+// --- Handler.mayEnd / handleEnd host check (#1098) ---
+
+func TestMayEnd_Admin_NoHostCheckCall(t *testing.T) {
+	fs, c := newFakeServer(t)
+	h := NewHandler(Config{AdminUserIDs: []string{"u1"}}, c, discardLogger())
+
+	allowed, err := h.mayEnd(context.Background(), uuid.New(), guildInteraction("u1", nil))
+	if err != nil {
+		t.Fatalf("mayEnd: %v", err)
+	}
+	if !allowed {
+		t.Error("configured admin should be allowed")
+	}
+	if len(fs.gotCreatorDiscordIDs) != 0 {
+		t.Error("an admin caller should never need the host check — it costs an extra HTTP call for nothing")
+	}
+}
+
+func TestMayEnd_Creator(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorIsCreator = true
+	h := NewHandler(Config{}, c, discardLogger()) // no admins configured
+
+	allowed, err := h.mayEnd(context.Background(), uuid.New(), guildInteraction("u2", nil))
+	if err != nil {
+		t.Fatalf("mayEnd: %v", err)
+	}
+	if !allowed {
+		t.Error("the game's creator should be allowed even with no admins configured")
+	}
+	if len(fs.gotCreatorDiscordIDs) != 1 || fs.gotCreatorDiscordIDs[0] != "u2" {
+		t.Errorf("host check should have asked about u2: got %v", fs.gotCreatorDiscordIDs)
+	}
+}
+
+func TestMayEnd_NeitherAdminNorCreator(t *testing.T) {
+	_, c := newFakeServer(t) // creatorIsCreator defaults false
+	h := NewHandler(Config{AdminUserIDs: []string{"u1"}}, c, discardLogger())
+
+	allowed, err := h.mayEnd(context.Background(), uuid.New(), guildInteraction("u2", nil))
+	if err != nil {
+		t.Fatalf("mayEnd: %v", err)
+	}
+	if allowed {
+		t.Error("a caller who is neither admin nor creator must be refused")
+	}
+}
+
+func TestMayEnd_NoCreator_NeverFailsOpen(t *testing.T) {
+	// No admins configured AND the game has no creator (the server
+	// answers is_creator:false for everyone in that case) must still
+	// refuse every caller — the #614 invariant carried forward by
+	// #1098, never "nobody set anything up, so let it through".
+	_, c := newFakeServer(t) // creatorIsCreator defaults false
+	h := NewHandler(Config{}, c, discardLogger())
+
+	allowed, err := h.mayEnd(context.Background(), uuid.New(), guildInteraction("u2", nil))
+	if err != nil {
+		t.Fatalf("mayEnd: %v", err)
+	}
+	if allowed {
+		t.Error("empty admin config + no creator must refuse, never fail open")
+	}
+}
+
+func TestHandleEnd_Creator_CreatesConfirmation(t *testing.T) {
+	fs, c := newFakeServer(t)
+	id := uuid.New()
+	fs.listMeta = []lobby.GameMeta{{ID: id, Name: "friday-commander", State: "lobby"}}
+	fs.creatorIsCreator = true
+	h := NewHandler(Config{GuildIDs: []string{"g1"}}, c, discardLogger()) // no admins configured
+
+	i := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		GuildID: "g1",
+		Type:    discordgo.InteractionApplicationCommand,
+		Member:  &discordgo.Member{User: discordUser("creator-1")},
+		Data: discordgo.ApplicationCommandInteractionData{
+			Name: CmdEnd,
+			Options: []*discordgo.ApplicationCommandInteractionDataOption{
+				{Name: "game", Type: discordgo.ApplicationCommandOptionString, Value: "friday"},
+			},
+		},
+	}}
+	dispatchRecover(t, h, i)
+
+	if len(h.confirmations.pending) != 1 {
+		t.Fatalf("the game's creator should get a confirmation prompt, got %d pending", len(h.confirmations.pending))
+	}
+	for _, p := range h.confirmations.pending {
+		if p.GameID != id || p.InvokerID != "creator-1" {
+			t.Errorf("pending confirmation: got %+v", p)
+		}
+	}
+}
+
+func TestHandleEnd_NeitherAdminNorCreator_NoConfirmationCreated(t *testing.T) {
+	fs, c := newFakeServer(t)
+	id := uuid.New()
+	fs.listMeta = []lobby.GameMeta{{ID: id, Name: "friday-commander", State: "lobby"}}
+	fs.creatorIsCreator = false
+	h := NewHandler(Config{GuildIDs: []string{"g1"}, AdminUserIDs: []string{"the-real-admin"}}, c, discardLogger())
+
+	i := &discordgo.InteractionCreate{Interaction: &discordgo.Interaction{
+		GuildID: "g1",
+		Type:    discordgo.InteractionApplicationCommand,
+		Member:  &discordgo.Member{User: discordUser("rando")},
+		Data: discordgo.ApplicationCommandInteractionData{
+			Name: CmdEnd,
+			Options: []*discordgo.ApplicationCommandInteractionDataOption{
+				{Name: "game", Type: discordgo.ApplicationCommandOptionString, Value: "friday"},
+			},
+		},
+	}}
+	dispatchRecover(t, h, i)
+
+	if len(h.confirmations.pending) != 0 {
+		t.Error("a caller who is neither admin nor creator must not get a confirmation prompt")
+	}
+	if len(fs.gotCreatorDiscordIDs) != 1 || fs.gotCreatorDiscordIDs[0] != "rando" {
+		t.Errorf("host check should have run for the resolved game: got %v", fs.gotCreatorDiscordIDs)
+	}
+}
+
 func TestDispatchComponent_Confirm_CallsArchive(t *testing.T) {
 	fs, c := newFakeServer(t)
 	id := uuid.New()

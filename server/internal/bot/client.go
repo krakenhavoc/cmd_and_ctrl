@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -303,6 +304,50 @@ func (c *ServerClient) GetGame(ctx context.Context, id uuid.UUID) (lobby.GameMet
 		return lobby.GameMeta{}, fmt.Errorf("decode game: %w", err)
 	}
 	return meta, nil
+}
+
+// IsCreator calls GET /games/{id}/creator?discord_id=<discordID> with
+// the cached admin session (re-logging in once on a 401) — the
+// server-side half of #1098's /cc-end host check: does discordID
+// match the Discord user who created this game. The server never
+// says who the creator actually is; only whether this one snowflake
+// matches. ErrGameNotFound on a 404, same as GetGame and ArchiveGame.
+func (c *ServerClient) IsCreator(ctx context.Context, id uuid.UUID, discordID string) (bool, error) {
+	resp, err := c.doAuthorized(ctx, func(token string) (*http.Response, error) {
+		u := c.baseURL + "/games/" + id.String() + "/creator?discord_id=" + url.QueryEscape(discordID)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrServerUnreachable, err)
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return false, ErrUnauthorized
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, ErrGameNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, statusErr(resp)
+	}
+
+	var body struct {
+		IsCreator bool `json:"is_creator"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return false, fmt.Errorf("decode creator check: %w", err)
+	}
+	return body.IsCreator, nil
 }
 
 // ArchiveGame calls POST /games/{id}/archive with the cached admin
