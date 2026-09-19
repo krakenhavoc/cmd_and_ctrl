@@ -73,14 +73,14 @@ func TestFreeCastOffersShipXLockedAtZero(t *testing.T) {
 func TestExileGrantShipsXLockedAtZero(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		grant    game.ExilePlayPermission
+		grant    game.CastPermission
 		manaCost string
 		want     bool
 	}{
-		{"cascade hit", game.ExilePlayPermission{CostOverride: "{0}", CastOnly: true}, "{X}{U}", true},
-		{"impulse exile, printed cost", game.ExilePlayPermission{}, "{X}{U}", false},
-		{"airbend {2} on a spell with no X", game.ExilePlayPermission{CostOverride: "{2}"}, "{3}{U}", false},
-		{"free cast of a spell with no X", game.ExilePlayPermission{CostOverride: "{0}"}, "{3}{U}", false},
+		{"cascade hit", game.CastPermission{Cost: "{0}", CastOnly: true}, "{X}{U}", true},
+		{"impulse exile, printed cost", game.CastPermission{}, "{X}{U}", false},
+		{"airbend {2} on a spell with no X", game.CastPermission{Cost: "{2}"}, "{3}{U}", false},
+		{"free cast of a spell with no X", game.CastPermission{Cost: "{0}"}, "{3}{U}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := buildActiveGame(t)
@@ -92,8 +92,8 @@ func TestExileGrantShipsXLockedAtZero(t *testing.T) {
 			grant := tc.grant
 			grant.Player = me.ID
 			grant.UntilTurn = g.Turn.Number
-			c.ExilePlay = grant
 			g.Exile.PushTop(c)
+			g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 
 			v := ViewOfGameFor(g, me.ID.String())
 			var got *ExilePlayView

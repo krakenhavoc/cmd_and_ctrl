@@ -53,14 +53,14 @@ func HasNoManaCost(card Card) bool {
 
 // castPaysPrintedCost reports whether this cast would pay the card's
 // printed mana cost, which is the only way CR 118.6 can bite. A
-// claimed alternative cost, or a live exile grant that names its own
-// price, replaces the printed cost in printedCostLocked, so neither
-// is a cast "by paying its mana cost".
-func castPaysPrintedCost(alt *AlternativeCost, exileGrant ExilePlayPermission, hasExileGrant bool) bool {
+// claimed alternative cost, or a live granted permission that names
+// its own price, replaces the printed cost in printedCostLocked, so
+// neither is a cast "by paying its mana cost".
+func castPaysPrintedCost(alt *AlternativeCost, grant *CastPermission) bool {
 	if alt != nil {
 		return false
 	}
-	if hasExileGrant && exileGrant.CostOverride != "" {
+	if grant != nil && grant.Cost != "" {
 		return false
 	}
 	return true

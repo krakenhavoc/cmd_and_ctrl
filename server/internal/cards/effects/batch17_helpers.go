@@ -444,7 +444,7 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, player, cardID uuid.UUID) err
 	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
-	return g.ExileCardWithPermissionForEffect(cardID, game.ExilePlayPermission{
+	return g.ExileCardWithPermissionForEffect(cardID, game.CastPermission{
 		Player:    player,
 		UntilTurn: g.Turn.Number,
 	})

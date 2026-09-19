@@ -18,7 +18,7 @@ import (
 //
 // The two halves of airbend that were missing from the permission
 // itself — no expiry, and a cost paid instead of the printed one —
-// live on game.ExilePlayPermission as WhileExiled and CostOverride.
+// live on game.CastPermission as WhileInZone and Cost.
 // See server/internal/game/exile_play.go for both, including the
 // declared simplification on CostOverride.
 
@@ -69,12 +69,12 @@ type ExileWithPermission struct {
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
-	return ctx.Game.ExileCardWithPermissionForEffect(e.Target, game.ExilePlayPermission{
-		Player:       e.GrantTo,
-		CastOnly:     e.CastOnly,
-		AnyColor:     e.AnyColor,
-		WhileExiled:  e.WhileExiled,
-		CostOverride: e.CostOverride,
+	return ctx.Game.ExileCardWithPermissionForEffect(e.Target, game.CastPermission{
+		Player:      e.GrantTo,
+		CastOnly:    e.CastOnly,
+		AnyColor:    e.AnyColor,
+		WhileInZone: e.WhileExiled,
+		Cost:        e.CostOverride,
 	})
 }
 

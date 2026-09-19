@@ -39,17 +39,17 @@ func xSorcery(owner uuid.UUID, oracle string) Card {
 // freeCastGrant is the permission cascade stamps on its hit, and the
 // shape a Siege's "you may cast it without paying its mana cost"
 // reaches this engine as.
-func freeCastGrant(me uuid.UUID, turn int) ExilePlayPermission {
-	return ExilePlayPermission{Player: me, UntilTurn: turn, CostOverride: "{0}", CastOnly: true}
+func freeCastGrant(me uuid.UUID, turn int) CastPermission {
+	return CastPermission{Player: me, UntilTurn: turn, Cost: "{0}", CastOnly: true}
 }
 
 // exileWithGrant drops `c` into exile carrying `grant` and walks the
 // turn to a main phase, so a sorcery is castable from there.
-func exileWithGrant(t *testing.T, g *Game, c Card, grant ExilePlayPermission) uuid.UUID {
+func exileWithGrant(t *testing.T, g *Game, c Card, grant CastPermission) uuid.UUID {
 	t.Helper()
 	advanceTo(t, g, StepPrecombatMain)
-	c.ExilePlay = grant
 	g.Exile.PushTop(c)
+	g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 	return c.InstanceID
 }
 
@@ -348,22 +348,25 @@ func TestCastCostForPrecedence(t *testing.T) {
 		Key: "test-alt", Label: "Pay {R}", ManaCost: "{R}",
 	}))
 	card := xSorcery(uuid.New(), oracle)
-	grant := ExilePlayPermission{CostOverride: "{2}"}
+	grant := &CastPermission{Cost: "{2}"}
+	alt := AlternativeCostByKey(oracle, "test-alt")
 
 	for _, tc := range []struct {
-		name     string
-		altKey   string
-		grant    ExilePlayPermission
-		hasGrant bool
-		want     string
+		name  string
+		alt   *AlternativeCost
+		grant *CastPermission
+		want  string
 	}{
-		{"printed", "", ExilePlayPermission{}, false, "{X}{G}"},
-		{"alternative cost", "test-alt", ExilePlayPermission{}, false, "{R}"},
-		{"exile grant", "", grant, true, "{2}"},
-		{"expired exile grant", "", grant, false, "{X}{G}"},
-		{"grant beats the alternative cost", "test-alt", grant, true, "{2}"},
+		{"printed", nil, nil, "{X}{G}"},
+		{"alternative cost", alt, nil, "{R}"},
+		{"exile grant", nil, grant, "{2}"},
+		// An expired or absent permission is nil by the time it
+		// reaches here — CastPermissionForLocked is what decides
+		// whether the window is open, and this function only prices.
+		{"no live grant", nil, nil, "{X}{G}"},
+		{"grant beats the alternative cost", alt, grant, "{2}"},
 	} {
-		if got := CastCostFor(card, tc.altKey, tc.grant, tc.hasGrant).Paid; got != tc.want {
+		if got := CastCostFor(card, tc.alt, tc.grant).Paid; got != tc.want {
 			t.Errorf("%s: Paid = %q, want %q", tc.name, got, tc.want)
 		}
 	}

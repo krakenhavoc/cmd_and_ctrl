@@ -17,7 +17,7 @@ import (
 //  2. The take-back is real — it is gone at the end step, and gone
 //     to EXILE rather than to a graveyard, so it can come back.
 //  3. "On a later turn" is real. This is the one a naive
-//     implementation gets wrong, because an unbounded WhileExiled
+//     implementation gets wrong, because an unbounded WhileInZone
 //     grant is live the instant it is stamped — and it is stamped
 //     during the end step of the turn the creature was warped in.
 
@@ -142,7 +142,7 @@ func TestWarpExilesAtTheNextEndStep(t *testing.T) {
 	}
 }
 
-// "On a later turn", and the reason ExilePlayPermission grew a
+// "On a later turn", and the reason CastPermission grew a
 // floor. The grant is stamped during the end step of the turn the
 // creature was warped in, so an unbounded grant with no floor would
 // be live immediately.
@@ -152,10 +152,12 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	warpTurn := g.Turn.Number
 	advanceThroughEndStep(t, g)
 
-	var grant game.ExilePlayPermission
+	var grant game.CastPermission
 	for _, c := range g.Exile.Cards {
 		if c.InstanceID == id {
-			grant = c.ExilePlay
+			if perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID); perm != nil {
+				grant = *perm
+			}
 		}
 	}
 	if !grant.Granted() {
@@ -164,7 +166,7 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	if grant.Player != active.ID {
 		t.Errorf("grant names %v, want the warping player %v", grant.Player, active.ID)
 	}
-	if !grant.WhileExiled {
+	if !grant.WhileInZone {
 		t.Errorf("warp's grant is not unbounded — it lasts as long as the card is exiled")
 	}
 	if grant.NotBeforeTurn != warpTurn+1 {

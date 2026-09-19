@@ -102,15 +102,19 @@ func enrich(t *testing.T, g *Game) {
 		}
 
 		// --- exile, carrying a play permission --------------------
+		exiledID := uuid.New()
 		g.Exile.PushTop(Card{
-			InstanceID: uuid.New(),
+			InstanceID: exiledID,
 			Name:       "Exiled Card",
 			OracleID:   "oracle-exiled",
 			Owner:      p1.ID,
 			Controller: p0.ID,
-			ExilePlay:  ExilePlayPermission{Player: p0.ID, UntilTurn: 3},
 			KnownBy:    map[uuid.UUID]bool{p0.ID: true},
 		})
+		// ADR 0066: the permission is the PLAYER's, pinned to the
+		// card's CR 400.7 object epoch, so it has to be granted
+		// through the one write path rather than stamped on the card.
+		g.GrantCastPermissionOverCardForEffect(exiledID, CastPermission{Player: p0.ID, UntilTurn: 3})
 
 		// --- exile, face down and known to its owner (ADR 0069) ---
 		// Foretell's shape. Here so the exact round-trip covers

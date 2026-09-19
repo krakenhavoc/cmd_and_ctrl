@@ -195,9 +195,9 @@ type AlternativeCost struct {
 	// clause uses the ordinary machinery rather than a bespoke one.
 	// Evoke queues a triggered ability; warp schedules a CR 603.7
 	// delayed trigger, and the grant it leaves behind is the same
-	// ExilePlayPermission airbend uses — unbounded (the window is
-	// "for as long as it remains exiled") with a NotBeforeTurn floor
-	// for the "on a later turn" clause.
+	// CastPermission airbend uses — unbounded (the window is "for as
+	// long as it remains exiled") with a NotBeforeTurn floor for the
+	// "on a later turn" clause.
 	//
 	// A warped creature is therefore a two-for-one paid in tempo:
 	// the cheap body now, the real body later. Nothing about the
@@ -323,6 +323,35 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 		return nil, ErrInvalidParam
 	}
 	return alt, nil
+}
+
+// resolveAlternativeCostLocked is validateAlternativeCost widened by
+// ADR 0066: the claim is judged against the card's own offers FIRST
+// and against the offer a granted permission synthesises second.
+//
+// The order is the decision, not an implementation detail. A card
+// that both prints and is granted the same key keeps its PRINTED
+// cost: Deep Analysis flashed back under Past in Flames costs {1}{U}
+// and 3 life, not {3}{U}. A grant that overrode the printed offer
+// would make the card cheaper than it is, and the one direction a
+// sandbox must never err in is the player's favour (#259).
+//
+// Caller must hold g.mu.
+func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, key string, targets []TargetRef) (*AlternativeCost, error) {
+	if key == "" {
+		return nil, nil
+	}
+	if alt, err := validateAlternativeCost(CatalogKey(card), key, targets); err == nil {
+		return alt, nil
+	}
+	granted := grant.AlternativeCostFor(card)
+	if granted == nil || granted.Key != key {
+		return nil, ErrInvalidParam
+	}
+	if granted.ClearsTargets && len(targets) > 0 {
+		return nil, ErrInvalidParam
+	}
+	return granted, nil
 }
 
 // PaysCards reports whether this cost has a component the caster
@@ -488,24 +517,27 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	return nil
 }
 
-// alternativeCostString is the "pay" half: the mana cost a cast
-// actually owes. The swap is total — nothing adds the printed cost
-// back, which is the difference between this file and
-// additional_cost.go.
-func alternativeCostString(card Card, key string) string {
-	if alt := AlternativeCostByKey(CatalogKey(card), key); alt != nil {
-		return alt.ManaCost
-	}
-	return card.ManaCost
-}
-
 // altCostExilesFromStack reports whether the cost this spell was
 // cast for replaces every stack-exit destination with exile — CR
-// 702.34a's flashback clause. Reads the key off the StackItem, so a
-// spell cast for its printed cost always answers false even on a
-// card that offers flashback.
-func altCostExilesFromStack(card Card, altCostKey string) bool {
-	alt := AlternativeCostByKey(CatalogKey(card), altCostKey)
+// 702.34a's flashback clause. A spell cast for its printed cost
+// always answers false, even on a card that offers flashback.
+//
+// The StackItem is the authority, not the catalog (ADR 0066, CR
+// 400.7g): a Snapcaster'd Brainstorm was cast for a flashback cost
+// the catalog has never heard of, and by the time it leaves the stack
+// the permission that granted it may well be gone. So the announce
+// path stamps the fact on the item and this reads it back, falling
+// back to the catalog for a printed keyword — which is also what
+// makes a game restored from a snapshot written before this field
+// behave exactly as it did.
+func altCostExilesFromStack(card Card, item *StackItem) bool {
+	if item == nil {
+		return false
+	}
+	if item.AltCostExiles {
+		return true
+	}
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
 	return alt != nil && alt.ExileOnLeavingStack
 }
 
@@ -640,12 +672,13 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 				if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
 					continue
 				}
-				if err := g.ExileCardWithPermissionForEffect(t.ID, ExilePlayPermission{
+				if err := g.ExileCardWithPermissionForEffect(t.ID, CastPermission{
 					// Zero Player means "the card's owner", which is
 					// what warp says: YOU cast it later, and the
 					// warping player owns the card.
-					WhileExiled:   true,
+					WhileInZone:   true,
 					NotBeforeTurn: notBefore,
+					Label:         "Warp — cast it from exile",
 				}); err != nil {
 					return err
 				}

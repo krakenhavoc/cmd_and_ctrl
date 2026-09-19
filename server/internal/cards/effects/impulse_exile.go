@@ -40,7 +40,7 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if n <= 0 {
 		n = 1
 	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, game.ExilePlayPermission{
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, game.CastPermission{
 		CastOnly: e.CastOnly,
 		AnyColor: e.AnyColor,
 	})

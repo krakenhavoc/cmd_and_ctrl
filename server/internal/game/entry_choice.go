@@ -370,9 +370,6 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 		if ev.EntersTapped {
 			g.Battlefield.Cards[i].Tapped = true
 		}
-		// Mirrors the land branch in CastSpell: the impulse grant is
-		// spent by the play, prompt or no prompt.
-		g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 		break
 	}
 	g.markCardKnownInZoneLocked(g.Battlefield, entered)

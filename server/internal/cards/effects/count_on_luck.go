@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "PLAY that card", not "cast" it — a land exiled this way can be
 // played as that turn's land drop, which is the difference between
 // this and an impulse-draw that says "cast". The permission is the
-// same ExilePlayPermission every impulse card rides, so the client's
+// same game.CastPermission every impulse card rides, so the client's
 // existing exile-zone button renders it with no new code.
 //
 // It is the CONTROLLER's upkeep, so once a turn cycle rather than

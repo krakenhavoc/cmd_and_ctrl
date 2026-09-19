@@ -124,13 +124,14 @@ func TestCascadeAcceptGrantsFreeCastAndBottomsTheRest(t *testing.T) {
 	if !ok {
 		t.Fatalf("hit left exile")
 	}
-	if !c.ExilePlay.Active(me.ID, g.Turn.Number) {
-		t.Errorf("no live play permission on the cascade hit: %+v", c.ExilePlay)
+	perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID)
+	if !perm.Active(me.ID, g.Turn.Number) {
+		t.Errorf("no live play permission on the cascade hit: %+v", perm)
 	}
-	if c.ExilePlay.CostOverride != "{0}" {
-		t.Errorf("cascade hit is not free: CostOverride = %q", c.ExilePlay.CostOverride)
+	if perm.Cost != "{0}" {
+		t.Errorf("cascade hit is not free: Cost = %q", perm.Cost)
 	}
-	if !c.ExilePlay.CastOnly {
+	if !perm.CastOnly {
 		t.Errorf("cascade grants a CAST, not a play")
 	}
 

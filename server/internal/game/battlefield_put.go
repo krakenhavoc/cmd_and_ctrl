@@ -369,9 +369,6 @@ func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, 
 			if p.out.EntersTapped {
 				g.Battlefield.Cards[i].Tapped = true
 			}
-			// The impulse grant is spent by the entry, exactly as it
-			// is on the land-play and cast branches.
-			g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 			// Whatever a hidden zone had recorded about who could see
 			// this card (a scry, a look) is superseded: the
 			// battlefield is public, and markCardKnownInZoneLocked

@@ -314,6 +314,14 @@ type playerSnapshot struct {
 	// a non-positive value back to DefaultLandDropsPerTurn.
 	LandDropsPerTurn int      `json:"landDropsPerTurn,omitempty"`
 	ManaPool         ManaPool `json:"manaPool,omitempty"`
+	// CastPermissions are the granted cast and play permissions this
+	// player holds (ADR 0066). Carried: who may cast what is not
+	// derivable from the board, and a restore that dropped them would
+	// silently revoke a cascade hit or a Snapcaster'd card that had
+	// not been cast yet. Pure data by construction — the type holds no
+	// closures, which is what lets it be mirrored rather than
+	// rebuilt.
+	CastPermissions []CastPermission `json:"castPermissions,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -380,7 +388,6 @@ type cardSnapshot struct {
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
-	ExilePlay                ExilePlayPermission `json:"exilePlay"`
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
@@ -436,6 +443,7 @@ type stackItemSnapshot struct {
 	HoldPriority  bool              `json:"holdPriority"`
 	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost       string            `json:"altCost,omitempty"`
+	AltCostExiles bool              `json:"altCostExiles,omitempty"`
 	SplitSecond   bool              `json:"splitSecond"`
 	IsCopy        bool              `json:"isCopy,omitempty"`
 	Seq           uint64            `json:"seq"`
@@ -934,7 +942,6 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
@@ -1002,6 +1009,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 			out.ManaPool[i] = cloned
 		}
 	}
+	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
 	return out
 }
 
@@ -1026,6 +1034,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
@@ -1448,7 +1457,6 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
@@ -1564,6 +1572,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 			out.ManaPool[i] = cloned
 		}
 	}
+	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
 	return out
 }
 
@@ -1585,6 +1594,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,

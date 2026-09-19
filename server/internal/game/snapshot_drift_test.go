@@ -233,12 +233,11 @@ var cardFields = plan(
 	// from the printing when a file written before #683 has no key
 	// (snapshot_backfill.go); every file this binary writes has it.
 	"VariableToughness", carried, "",
-	// Embedded BY VALUE in CardSnapshot rather than mirrored, so
-	// every field it grows — S29's NotBeforeTurn, S32's Face — is
-	// carried automatically and none of them appear in this plan.
-	// That shortcut is only safe while the type stays pure data,
-	// which TestEmbeddedDomainTypesStayPureData now proves.
-	"ExilePlay", carried, "",
+	// ADR 0066: the CR 400.7 object identity a granted cast permission
+	// names. Carried, and it has to be — a restore that reset it to
+	// zero would revive every permission ever granted against the
+	// card, which is the one direction this field must not fail in.
+	"ObjectEpoch", carried, "",
 	// S24 attachments (ADR 0036). Carried, not rebuilt: which sword
 	// is on which creature is not derivable from anything else, and
 	// a restore that dropped it would silently un-equip the board.
@@ -324,6 +323,13 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
+	// ADR 0066 granted cast and play permissions. Carried, not
+	// rebuilt: who may cast what is not derivable from the board, and
+	// a restore that dropped them would silently revoke a cascade hit
+	// or a Snapcaster'd card nobody had cast yet. STANDING permissions
+	// (Underworld Breach, Bolas's Citadel) are not in this slice at
+	// all — they are re-derived from the battlefield on every query.
+	"CastPermissions", carried, "",
 )
 
 // scopedStaticFields classifies game.ScopedStatic — the floating
@@ -369,6 +375,11 @@ var stackItemFields = plan(
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
+	// CR 702.34a / CR 400.7g (ADR 0066). Carried for the reason
+	// IsCopy is: a restore that lost it would route a flashed-back
+	// spell to a graveyard instead of exile, and a card Snapcaster
+	// gave flashback to could then be flashed back again forever.
+	"AltCostExiles", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -641,13 +652,16 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		// value "" is right for a file written before them, so no
 		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
-		// Card.ExilePlay is one of these: CardSnapshot holds an
-		// ExilePlayPermission by value, so the type's fields never
-		// reach cardFields and a func or an unexported field added to
-		// it would vanish across a restart with nothing complaining.
-		// Listed from S32, when the permission started carrying a
-		// face and stopped being a type nobody ever extends.
-		ExilePlayPermission{},
+		// Player.CastPermissions is one of these: PlayerSnapshot holds
+		// []CastPermission by value, so the type's fields never reach
+		// playerFields and a func or an unexported field added to it
+		// would vanish across a restart with nothing complaining.
+		// Listed from S32, when the permission started carrying a face
+		// and stopped being a type nobody ever extends; ADR 0066 made
+		// the guard load-bearing, because the whole reason a granted
+		// permission is a struct of flags rather than a predicate is
+		// that it has to survive this check.
+		CastPermission{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

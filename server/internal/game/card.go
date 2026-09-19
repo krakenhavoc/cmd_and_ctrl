@@ -292,14 +292,6 @@ type Card struct {
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.
 
-	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
-	// "exile the top card of your library — you may play it this
-	// turn". Meaningful only while the card is in exile, and only
-	// for the player it names, who is usually not the owner. Zero
-	// value means the card is inert exile like any other. Cleared
-	// as the card leaves exile and swept at cleanup.
-	ExilePlay ExilePlayPermission
-
 	// Layout is Scryfall's printing layout, copied verbatim at deck
 	// import: "normal", "transform", "modal_dfc", "adventure",
 	// "split", "prepare", … The cast path branches on it to decide

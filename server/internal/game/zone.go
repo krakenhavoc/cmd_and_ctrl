@@ -258,22 +258,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.EnteredBattlefieldAt = 0
 		c.SummonedThisTurn = false
 	}
-	// CR 400.7: a card that leaves exile is a new object with no
-	// memory of its previous one. Two exile-only fields go with it:
-	//
-	//   - ExilePlay, the per-instance "you may cast/play it" grant.
-	//     The cast and land-play paths already zeroed it once the
-	//     card reached the stack or the battlefield, but every other
-	//     exit (a sandbox move to hand, an effect returning it to a
-	//     library or graveyard) kept it. An airbended card moved to
-	//     hand then still paid airbend's {2} for a hand cast, and a
-	//     second exile later revived a permission nobody granted.
-	//   - Counters. Nothing in the engine puts counters on an exiled
-	//     card yet, but a player can by hand, and suspend's time
-	//     counters will. A suspended creature must not enter the
-	//     battlefield still carrying them.
+	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
+	// Counters go with the exile exit specifically. Nothing in the
+	// engine puts counters on an exiled card yet, but a player can by
+	// hand, and suspend's time counters will. A suspended creature
+	// must not enter the battlefield still carrying them.
 	if src.Kind == ZoneExile {
-		c.ExilePlay = ExilePlayPermission{}
 		c.Counters = nil
 	}
 	// CR 400.7 / CR 708: "face down" is a property of an OBJECT in a
@@ -307,7 +297,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Live from S32, when a `transform` card could first be on the
 	// battlefield showing its back: a defeated Siege's back face is
 	// cast out of exile and resolves as the back face
-	// (ExilePlayPermission.Face, faceOnResolve). Without this, a
+	// (CastPermission.Face, faceOnResolve). Without this, a
 	// Refraction Elemental that died would sit in the graveyard as a
 	// CREATURE card rather than as the battle card Invasion of
 	// Karsus, and "return target creature card from your graveyard"

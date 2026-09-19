@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // makes it safe to write. Warp is paid FROM HAND, unlike flashback, so
 // the Spec declares no CastableZones: the exile leg and the later
 // permission to cast from exile ride the AlternativeCost itself
-// (WarpExile), through the same ExilePlayPermission the impulse-exile
+// (WarpExile), through the same game.CastPermission the impulse-exile
 // family uses. Writing the price by hand as a bare AlternativeCost
 // would ship a 9/9 for {3} that never leaves — not a discount but a
 // different, and much better, card.

@@ -311,7 +311,7 @@ func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 // what came off. "Play", not "cast", so a land exiled this way can be
 // played as the turn's land drop.
 func b12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.UUID, error) {
-	return g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, n, game.ExilePlayPermission{})
+	return g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, n, game.CastPermission{})
 }
 
 // b12Victim pairs a permanent Terastodon is about to destroy with

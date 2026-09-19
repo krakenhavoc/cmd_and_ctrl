@@ -218,7 +218,7 @@ func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.Trigger
 // your next turn" for every seat.
 func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem, n int, label string) error {
 	controller := item.Controller
-	exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, n, game.ExilePlayPermission{
+	exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, n, game.CastPermission{
 		UntilTurn: g.Turn.Number + 2,
 	})
 	if err != nil {

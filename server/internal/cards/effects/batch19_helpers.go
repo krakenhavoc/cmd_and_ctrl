@@ -117,7 +117,7 @@ func b19EntersWithCountersCounted(kind string, count func(g *game.Game, src *gam
 func b19ExileTopTwoUntilEndOfNextTurn(label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		controller := item.Controller
-		exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, 2, game.ExilePlayPermission{
+		exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, 2, game.CastPermission{
 			UntilTurn: g.Turn.Number + 2,
 		})
 		if err != nil {
@@ -153,15 +153,10 @@ func b19EndImpulseGrantWithThisTurn(g *game.Game, item *game.StackItem) error {
 		if z == nil || z.Kind != game.ZoneExile {
 			continue
 		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || c.ExilePlay.Player != item.Controller || c.ExilePlay.WhileExiled {
+		if _, ok := g.LookupCardForEffect(t.ID); !ok {
 			continue
 		}
-		perm := c.ExilePlay
-		perm.UntilTurn = g.Turn.Number
-		if err := g.ExileCardWithPermissionForEffect(t.ID, perm); err != nil {
-			return err
-		}
+		g.EndCastPermissionAtTurnForEffect(item.Controller, t.ID, g.Turn.Number)
 	}
 	return nil
 }

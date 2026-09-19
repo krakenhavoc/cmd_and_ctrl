@@ -22,7 +22,7 @@ func TestAirbendGrantDoesNotSurviveLeavingExile(t *testing.T) {
 			t.Fatalf("ExileCardWithPermissionForEffect: %v", err)
 		}
 	})
-	if !exilePlayOf(g, id).WhileExiled {
+	if !exilePlayOf(g, id).WhileInZone {
 		t.Fatalf("setup: airbend grant missing on the exiled card")
 	}
 
@@ -38,8 +38,13 @@ func TestAirbendGrantDoesNotSurviveLeavingExile(t *testing.T) {
 	if inHand.InstanceID != id {
 		t.Fatalf("card did not reach hand")
 	}
-	if inHand.ExilePlay != (ExilePlayPermission{}) {
-		t.Errorf("exile grant survived leaving exile: %+v", inHand.ExilePlay)
+	// CR 400.7: the move made it a new object, so the permission the
+	// old one carried names nobody now. ADR 0066 enforces that with
+	// Card.ObjectEpoch rather than by zeroing a field, so the check is
+	// "does any permission still cover this card", not "is the field
+	// empty".
+	if perm := g.CastPermissionOnCardByIDForEffect(inHand.InstanceID); perm.Granted() {
+		t.Errorf("exile grant survived leaving exile: %+v", perm)
 	}
 
 	me.ManaPool.AddMana(ManaToken{Color: "C"}, ManaToken{Color: "C"})
@@ -63,8 +68,12 @@ func TestExileGrantPricesOnlyAnExileCast(t *testing.T) {
 	grant := airbendGrant()
 	grant.Player = me.ID
 	grant.AnyColor = true
-	c.ExilePlay = grant
 	me.Hand.PushTop(c)
+	// Stale on purpose: the permission names the card as it sits in
+	// HAND, which is a zone no permission may open, so nothing about
+	// the hand cast may read it.
+	grant.Zone = ZoneHand
+	g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 
 	got := priceOf(t, g, me, c.InstanceID, CastSpellParams{FromZone: "hand"})
 	if got.Generic != 3 || len(got.Required) != 1 {

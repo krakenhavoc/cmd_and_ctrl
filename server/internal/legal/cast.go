@@ -12,26 +12,35 @@ import (
 // cast is sent strict + auto_tap: the bot pays for what it casts, and
 // affordability is decided here so the engine never has to reject.
 type castParams struct {
-	InstanceID   string       `json:"instance_id"`
-	FromZone     string       `json:"from_zone,omitempty"`
-	Targets      []targetWire `json:"targets,omitempty"`
-	Modes        []int        `json:"modes,omitempty"`
-	XValue       int          `json:"x_value,omitempty"`
-	DiscardIDs   []string     `json:"discard_ids,omitempty"`
-	SacrificeIDs []string     `json:"sacrifice_ids,omitempty"`
-	Strict       bool         `json:"strict,omitempty"`
-	AutoTap      bool         `json:"auto_tap,omitempty"`
+	InstanceID string `json:"instance_id"`
+	FromZone   string `json:"from_zone,omitempty"`
+	// AlternativeCost is the key the cast claims (CR 118.9) — the
+	// offer a granted permission synthesises for a non-hand cast
+	// (ADR 0066), since a zone a permission prices cannot be cast
+	// from without paying that price.
+	AlternativeCost string       `json:"alternative_cost,omitempty"`
+	Targets         []targetWire `json:"targets,omitempty"`
+	Modes           []int        `json:"modes,omitempty"`
+	XValue          int          `json:"x_value,omitempty"`
+	DiscardIDs      []string     `json:"discard_ids,omitempty"`
+	SacrificeIDs    []string     `json:"sacrifice_ids,omitempty"`
+	Strict          bool         `json:"strict,omitempty"`
+	AutoTap         bool         `json:"auto_tap,omitempty"`
 	// Face is the printed face being cast or played (ADR 0034).
 	// Omitted — the front — for every single-faced card.
 	Face int `json:"face,omitempty"`
 }
 
 // castMoves enumerates land drops and spell casts from the seat's
-// hand and command zone. Requires priority (checked by the caller).
+// hand and command zone, plus every card a granted permission opens
+// in a graveyard, in exile, or on top of a library (ADR 0066).
 //
-// Sources: hand and command only. Exile (impulse permissions) is a
-// follow-up — the permission check is per-card and the catalog's
-// impulse cards are not in the curated bot decks yet.
+// The granted half goes through game.Game.CastPermissionForLocked —
+// the same function CastSpell validates with — so a bot can never be
+// offered a cast the engine will refuse, and never be offered one at
+// the wrong price. That is the enumerator half of #673 for GRANTED
+// permissions; the printed ones (a card whose own text declares
+// flashback, escape or warp) are still not enumerated.
 func (e *enumerator) castMoves() {
 	g, p := e.g, e.p
 	if g.SplitSecondActive {
@@ -43,6 +52,8 @@ func (e *enumerator) castMoves() {
 	// helper the engine's own refusal reads, so the enumerator can
 	// never offer a land play CastSpell will reject.
 	landOwed := g.LandDropsRemainingLocked(e.seat) > 0
+
+	e.grantedCastMoves(speed, landOwed)
 
 	for _, zone := range []struct {
 		z    *game.Zone
@@ -88,8 +99,102 @@ func (e *enumerator) castMoves() {
 					}
 					continue
 				}
-				e.castMovesForCard(card, zone.from, speed)
+				e.castMovesForCard(card, zone.from, speed, nil)
 			}
+		}
+	}
+}
+
+// grantedCastMoves enumerates the casts and land plays a granted
+// permission opens out of a graveyard, exile or the top of a library.
+//
+// One shape per zone and no expansion beyond what castMovesForCard
+// already does: the permission decides whether the card may be cast
+// at all, and the price it names becomes the alternative cost the
+// move claims.
+//
+// NOT enumerated, deliberately: a permission whose price has a CARD
+// component — escape's "exile three other cards from your graveyard"
+// (Underworld Breach, The Grim Captain's Locker). Those need a
+// combination search over the graveyard and an alt_cost_ids payload,
+// which is the same machinery the printed escape costs want and
+// belongs with the rest of #673 rather than bolted on here. A bot
+// simply does not take those lines yet; it is never offered one it
+// cannot pay for.
+func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
+	g, p := e.g, e.p
+	// The fast negative, and the same one the view takes: in almost
+	// every game nothing grants anything, and the three walks below
+	// are pure cost. An enumeration runs on every bot decision.
+	if !g.AnyCastPermissionsForEffect() {
+		return
+	}
+	zones := []struct {
+		z    *game.Zone
+		from string
+	}{
+		{p.Graveyard, "graveyard"},
+		{g.Exile, "exile"},
+		{p.Library, "library"},
+	}
+	for _, zone := range zones {
+		if zone.z == nil {
+			continue
+		}
+		cards := zone.z.Cards
+		if zone.from == "library" {
+			// CR 401.5: only the top card is ever open, and the top is
+			// the LAST element. Checking one card rather than walking
+			// the library also keeps this loop from touching hidden
+			// information it has no business reading.
+			if len(cards) == 0 {
+				continue
+			}
+			cards = cards[len(cards)-1:]
+		}
+		for _, c := range cards {
+			perm := g.CastPermissionForLocked(e.seat, c, zone.z.Kind)
+			if !perm.Active(e.seat, g.Turn.Number) {
+				continue
+			}
+			card := c
+			if face, ok := perm.GrantsFace(e.seat, g.Turn.Number); ok {
+				card.SetFace(face)
+			}
+			offer := perm.AlternativeCostFor(card)
+			if offer != nil && offer.PaysCards() {
+				continue
+			}
+			if card.IsLand() {
+				// CR 305.1: playing a land is not casting, so a
+				// cast-only permission strands it, and CR 305.2's
+				// allowance still has to be there.
+				if perm.CastOnly || !speed || !landOwed {
+					continue
+				}
+				e.add(Move{
+					Type:   TypeCastSpell,
+					Player: e.seat,
+					Kind:   KindLand,
+					Label:  "Play " + card.Name + " from " + zone.from,
+					Source: card.InstanceID,
+					Params: mustJSON(castParams{
+						InstanceID: card.InstanceID.String(),
+						FromZone:   zone.from,
+						Face:       card.ActiveFace,
+					}),
+				})
+				continue
+			}
+			if offer != nil && offer.Life > 0 && p.Life <= offer.Life {
+				// CR 119.4 / CR 118.4: life is a cost, so a player who
+				// cannot pay it cannot claim the offer. Strictly below,
+				// not at — paying down to exactly zero is legal but
+				// loses the game to the next state-based check, and a
+				// bot offered that line would take it.
+				continue
+			}
+			e.castMovesForCard(card, zone.from, speed, perm)
 		}
 	}
 }
@@ -97,12 +202,22 @@ func (e *enumerator) castMoves() {
 // castMovesForCard expands one non-land card into concrete casts:
 // every legal (modes × targets × additional-cost payment) combination
 // the seat can afford, capped at MaxExpansionPerSource.
-func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
+func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool, perm *game.CastPermission) {
 	g, p := e.g, e.p
 
 	// Timing (CR 307.1 / 702.8): instants and flash any time the seat
 	// holds priority; everything else needs the sorcery-speed window.
+	// ADR 0066: a granted permission may say otherwise, and the engine
+	// reads the same field in the same order, so the two cannot drift.
 	requiresSorcerySpeed := !card.IsInstant() && !game.HasKeyword(&card, "flash")
+	if perm != nil {
+		switch perm.Timing {
+		case game.TimingFlash:
+			requiresSorcerySpeed = false
+		case game.TimingSorcery:
+			requiresSorcerySpeed = true
+		}
+	}
 	if requiresSorcerySpeed && !speed {
 		return
 	}
@@ -121,7 +236,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// guaranteed to fail. Enumerating it free — what this used to
 	// do, mirroring the engine's old silent downgrade — is worse:
 	// it advertises a free spell that isn't one.
-	cost, err := game.ParseCost(card.ManaCost)
+	// ADR 0066: the permission's price, when it has one, IS the cost
+	// this cast pays (CR 118.9). Read through the same CastCostFor the
+	// engine prices with.
+	offer := perm.AlternativeCostFor(card)
+	cost, err := game.ParseCost(game.CastCostFor(card, offer, perm).Paid)
 	if err != nil {
 		return
 	}
@@ -130,7 +249,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// string as a free {0}. Every move this function builds pays the
 	// printed cost, so none of them is legal; the engine refuses the
 	// cast with ErrNoManaCost.
-	if game.HasNoManaCost(card) {
+	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
 		return
 	}
 	if from == "command" {
@@ -151,8 +270,15 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 	// reading and can only narrow the X it offers. Conservative in
 	// the direction that never advertises an unaffordable move.
 	fromZone := game.ZoneHand
-	if from == "command" {
+	switch from {
+	case "command":
 		fromZone = game.ZoneCommand
+	case "graveyard":
+		fromZone = game.ZoneGraveyard
+	case "exile":
+		fromZone = game.ZoneExile
+	case "library":
+		fromZone = game.ZoneLibrary
 	}
 	// ADR 0048 addendum §14: when something on the board or the card
 	// itself prices by target (Fireball's surcharge, Price of Fame's
@@ -336,8 +462,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 					}
 					budget--
 					label := "Cast " + card.Name
-					if from == "command" {
+					switch from {
+					case "command":
 						label += " from the command zone"
+					case "graveyard", "exile", "library":
+						label += " from " + from
 					}
 					if setX > 0 {
 						label += fmt.Sprintf(" for X=%d", setX)
@@ -350,15 +479,16 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, speed bool) {
 						Label:  label,
 						Source: card.InstanceID,
 						Params: mustJSON(castParams{
-							InstanceID:   card.InstanceID.String(),
-							FromZone:     from,
-							Targets:      wireTargets(targets),
-							Modes:        modes,
-							XValue:       setX,
-							DiscardIDs:   idStrings(discards),
-							SacrificeIDs: idStrings(sacs),
-							Strict:       true,
-							AutoTap:      true,
+							InstanceID:      card.InstanceID.String(),
+							FromZone:        from,
+							AlternativeCost: offerKey(offer),
+							Targets:         wireTargets(targets),
+							Modes:           modes,
+							XValue:          setX,
+							DiscardIDs:      idStrings(discards),
+							SacrificeIDs:    idStrings(sacs),
+							Strict:          true,
+							AutoTap:         true,
 							// ADR 0034: `card` has already had
 							// SetFace applied by the caller, so
 							// ActiveFace IS the face this move casts.
@@ -699,4 +829,14 @@ func combinations(pool []uuid.UUID, lo, hi, limit int) [][]uuid.UUID {
 		rec(0, nil)
 	}
 	return out
+}
+
+// offerKey is the wire key of a resolved alternative cost, or "" when
+// the cast pays the printed price. Nil-safe so the emit site needs no
+// guard.
+func offerKey(offer *game.AlternativeCost) string {
+	if offer == nil {
+		return ""
+	}
+	return offer.Key
 }

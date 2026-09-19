@@ -196,7 +196,7 @@ func numberWord(n int) string {
 // exchange for the real card later, which is why it needs no
 // CastableZones declaration. The later cast is an ordinary cast from
 // exile for the printed mana cost, riding the same
-// ExilePlayPermission impulse exile and airbend already use — so
+// CastPermission impulse exile and airbend already use — so
 // the client's existing exile button renders it with no new code.
 //
 // The constructor bundles the exile clause for the same reason
