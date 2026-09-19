@@ -218,8 +218,7 @@ func TestBotRunnersRelaunchOnRestore(t *testing.T) {
 	dir := t.TempDir()
 	log := quietLogger()
 
-	mgr := ws.NewRoomManager(log, dir)
-	l := NewLobby(mgr)
+	l, _ := newDurableLobby(t, dir)
 	l.SetBotHost(newFakeBotHost())
 	meta, err := l.Create("Survives a deploy")
 	if err != nil {
@@ -238,8 +237,7 @@ func TestBotRunnersRelaunchOnRestore(t *testing.T) {
 	}
 
 	// --- the deploy ------------------------------------------------
-	mgr2 := ws.NewRoomManager(log, dir)
-	l2 := NewLobby(mgr2)
+	l2, _ := newDurableLobby(t, dir)
 	host2 := newFakeBotHost()
 	l2.SetBotHost(host2)
 	if n := l2.RestoreFromDisk(log); n != 1 {
@@ -277,18 +275,18 @@ func TestBotRunnersRelaunchOnRestore(t *testing.T) {
 func TestBotRunnersAreNotRelaunchedForAnUnstartedTable(t *testing.T) {
 	dir := t.TempDir()
 	log := quietLogger()
-	mgr := ws.NewRoomManager(log, dir)
-	l := NewLobby(mgr)
+	l, _ := newDurableLobby(t, dir)
 	meta, _ := l.Create("Still in the lobby")
 	if _, _, err := l.AddBot(meta.ID, "Bot 1", "random", "", "d", botDeck(20)); err != nil {
 		t.Fatal(err)
 	}
 
-	mgr2 := ws.NewRoomManager(log, dir)
-	l2 := NewLobby(mgr2)
+	l2, _ := newDurableLobby(t, dir)
 	host2 := newFakeBotHost()
 	l2.SetBotHost(host2)
-	l2.RestoreFromDisk(log)
+	if n := l2.RestoreFromDisk(log); n != 1 {
+		t.Fatalf("restored %d games, want 1", n)
+	}
 	host2.mu.Lock()
 	defer host2.mu.Unlock()
 	if len(host2.started) != 0 {

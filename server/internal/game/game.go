@@ -1510,6 +1510,35 @@ func (g *Game) CurrentState() State {
 	return g.State
 }
 
+// WinnerSeat returns the seat of the one player left standing in an
+// ended game. ok is false while the game is not over, and for an
+// ended game with no single survivor (a draw, or an ended table with
+// nobody seated). The engine keeps no winner field — the game ends
+// when exactly one seat is not Eliminated — so this derives it the
+// same way, under the read lock. Read by the lobby to fill
+// games.winner_seat (ADR 0051 decision 4).
+func (g *Game) WinnerSeat() (seat int, ok bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.State != StateEnded {
+		return 0, false
+	}
+	found := -1
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if found >= 0 {
+			return 0, false
+		}
+		found = p.Seat
+	}
+	if found < 0 {
+		return 0, false
+	}
+	return found, true
+}
+
 // ActivePlayer returns the player whose turn it currently is, or nil
 // if the game has not yet started.
 func (g *Game) ActivePlayer() *Player {

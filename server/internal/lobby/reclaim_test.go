@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 // The headline: a player who lost their session gets their OWN seat
@@ -332,8 +332,7 @@ func TestMintReclaimIsAdminOnly(t *testing.T) {
 func TestReclaimTicketIsNeverPersistedOrEchoedInMetadata(t *testing.T) {
 	dir := t.TempDir()
 	log := quietLogger()
-	mgr := ws.NewRoomManager(log, dir)
-	l := NewLobby(mgr)
+	l, _ := newDurableLobby(t, dir)
 
 	meta, alice, _ := startTwoSeatGame(t, l, "FNM")
 	ticket, err := l.MintReclaim(meta.ID, alice)
@@ -349,19 +348,23 @@ func TestReclaimTicketIsNeverPersistedOrEchoedInMetadata(t *testing.T) {
 	if strings.Contains(string(blob), ticket.Token) {
 		t.Error("GameMeta carries the reclaim ticket")
 	}
-	raw, err := os.ReadFile(metaPath(dir, meta.ID))
-	if err != nil {
-		t.Fatalf("read persisted meta: %v", err)
-	}
-	if strings.Contains(string(raw), ticket.Token) {
-		t.Error("reclaim ticket was written to disk")
+	// Nor the database: the rows the lobby persists never carry it.
+	for _, name := range []string{"cmdctrl.sqlite", "cmdctrl.sqlite-wal"} {
+		raw, err := os.ReadFile(filepath.Join(dir, "db", name))
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(raw), ticket.Token) {
+			t.Errorf("reclaim ticket was written to %s", name)
+		}
 	}
 
 	// It also dies with the process: the store is in memory on
 	// purpose (see reclaim.go — deploy survival is #517's job).
-	mgr2 := ws.NewRoomManager(log, dir)
-	l2 := NewLobby(mgr2)
-	l2.RestoreFromDisk(log)
+	l2, _ := newDurableLobby(t, dir)
+	if n := l2.RestoreFromDisk(log); n != 1 {
+		t.Fatalf("restored %d games, want 1", n)
+	}
 	if _, _, err := l2.RedeemReclaim(meta.ID, ticket.Token); err != ErrInvalidReclaim {
 		t.Errorf("ticket survived a restart: %v", err)
 	}

@@ -271,6 +271,29 @@ sudo systemctl start cmd-and-ctrl
 Check `hostname` first. The command is identical on both boxes, which
 is convenient right up until it isn't.
 
+**Rolling back past the lobby database.** Since S34 sub-PR 3
+([ADR 0051](decisions/0051-user-database.md) decision 4) the lobby's
+half of a game is rows in `db/cmdctrl.sqlite`. The first boot of that
+binary imported every `lobby/<id>.json` and renamed it
+`<id>.json.imported`. It deleted none of them. An older binary reads
+only `lobby/*.json`, so rename them back before you start it:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo find /var/lib/cmd_and_ctrl/data/lobby -name '*.json.imported' -exec sh -c 'mv -n "$1" "${1%.imported}"' _ {} \;
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+`mv -n` never overwrites a `.json` that is already there. Two things
+the rollback cannot bring back. A game **created** after the upgrade has
+no file, so the older binary drops it. The invite tokens in each file
+are the originals, and every old link works again. When you roll
+forward again, the importer renames the files once more. For a game
+that already has a row, the row wins, so a change the older binary made
+to that game's seats in the meantime is not carried forward. A game
+created during the rollback is imported as new.
+
 **A deploy failed at "Verify reported environment".** The service is
 running but reports the wrong `CMDCTRL_ENV`. Check the env file on that
 host. This failing on `main` is the serious direction — production came

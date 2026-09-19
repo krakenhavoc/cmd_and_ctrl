@@ -12,8 +12,8 @@ package lobby
 
 import (
 	"crypto/sha256"
-	"crypto/subtle"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +182,11 @@ type Lobby struct {
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
 	reclaims map[[sha256.Size]byte]reclaimEntry
+	// store is where the lobby's half of a game survives the process:
+	// games, seats and invites rows (ADR 0051 decision 4). Also the
+	// only place an invite is validated against — see resolveInvite.
+	// Fixed at construction.
+	store Store
 }
 
 // SetBotHost wires the bot runner host in after construction.
@@ -227,17 +232,71 @@ func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (fu
 type gameEntry struct {
 	meta GameMeta
 	room *ws.Room
+
+	// The games-row columns GameMeta does not carry on the wire.
+	createdBy  string
+	startedAt  *time.Time
+	endedAt    *time.Time
+	winnerSeat *int
+	// startedKnown is false for a game that was already running when
+	// it came into this lobby with no start time on record (imported
+	// from lobby/*.json). syncStateLocked will not invent one.
+	startedKnown bool
+
+	// watching is set once watchEnd runs for this entry; stop is
+	// closed when the entry leaves l.games, which ends the watcher.
+	watching bool
+	stop     chan struct{}
 }
 
-// NewLobby constructs an empty Lobby backed by mgr. New games go
-// into both stores; mgr owns the in-process lifetime of the
-// game.Game, and Lobby owns the metadata + invite layer over it.
+// NewLobby constructs an empty Lobby backed by mgr and an in-memory
+// Store: nothing the lobby knows survives the process. That is the
+// no-database configuration (CMDCTRL_DATA_DIR="") and what tests get
+// unless they opt in to a database with NewLobbyWithStore.
 func NewLobby(mgr *ws.RoomManager) *Lobby {
+	return NewLobbyWithStore(mgr, NewMemoryStore())
+}
+
+// NewLobbyWithStore constructs an empty Lobby over mgr and store. New
+// games go into both: mgr owns the in-process lifetime of the
+// game.Game, and the Lobby owns the metadata + invite layer over it,
+// persisted through store.
+func NewLobbyWithStore(mgr *ws.RoomManager, store Store) *Lobby {
 	return &Lobby{
 		games:    make(map[uuid.UUID]*gameEntry),
 		mgr:      mgr,
 		reclaims: make(map[[sha256.Size]byte]reclaimEntry),
+		store:    store,
 	}
+}
+
+// resolveInvite looks a submitted invite up by its hash. It returns
+// ErrInvalidInvite for a malformed, unknown, revoked or expired token,
+// and for one that belongs to a different game than want (uuid.Nil
+// accepts any game). Any other error is the store failing.
+//
+// This is a primary-key lookup on SHA-256(token bytes). There is no
+// comparison against a secret here for a timing side channel to
+// measure: the hash is computed from what the caller sent, and the
+// index finds it or does not.
+func (l *Lobby) resolveInvite(want uuid.UUID, invite string) (InviteRecord, error) {
+	h, ok := hashInvite(invite)
+	if !ok {
+		return InviteRecord{}, ErrInvalidInvite
+	}
+	ctx, cancel := storeCtx()
+	defer cancel()
+	rec, err := l.store.Invite(ctx, h)
+	if errors.Is(err, ErrStoreNotFound) {
+		return InviteRecord{}, ErrInvalidInvite
+	}
+	if err != nil {
+		return InviteRecord{}, err
+	}
+	if (want != uuid.Nil && rec.GameID != want) || !rec.Usable(time.Now()) {
+		return InviteRecord{}, ErrInvalidInvite
+	}
+	return rec, nil
 }
 
 // Create stands up a new game with the given display name, registers
@@ -260,6 +319,9 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 		return GameMeta{}, err
 	}
 
+	playerHash, _ := hashInvite(invite)
+	specHash, _ := hashInvite(specInvite)
+
 	g := game.NewGame()
 	room := l.mgr.Create(g)
 
@@ -273,15 +335,35 @@ func (l *Lobby) Create(name string) (GameMeta, error) {
 		State:           string(g.State),
 	}
 
-	entry := &gameEntry{meta: meta, room: room}
+	// The invites are minted here and nowhere else, and they are
+	// validated only against the store, so a failed write is a failed
+	// Create: the game would be unjoinable even in this process.
+	created := g.CreatedAt.UTC()
+	ctx, cancel := storeCtx()
+	err = l.store.CreateGame(ctx, GameRecord{
+		ID:        g.ID,
+		Name:      name,
+		State:     string(g.State),
+		CreatedAt: created,
+	}, []InviteRecord{
+		{Hash: playerHash, GameID: g.ID, Kind: InvitePlayer, CreatedAt: created},
+		{Hash: specHash, GameID: g.ID, Kind: InviteSpectator, CreatedAt: created},
+	})
+	cancel()
+	if err != nil {
+		l.mgr.Delete(g.ID)
+		return GameMeta{}, err
+	}
+
+	// The plaintext tokens stay on this entry for the life of the
+	// process, so GET /games/{id} can still show them to the admin and
+	// seated players. Only their hashes are persisted.
+	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true}
 	l.mu.Lock()
 	l.games[g.ID] = entry
-	// The invite tokens are minted here and nowhere else, so this
-	// write is what makes the game reachable after a restart.
-	l.persistMetaLocked(entry)
 	l.mu.Unlock()
 
-	return meta, nil
+	return copyMeta(meta), nil
 }
 
 // Join claims a seat in game `id` on behalf of `playerName`, guarded
@@ -355,9 +437,11 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 	if !ok {
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
 	}
-	// Constant-time compare: the invite token IS the credential for
-	// this endpoint, so don't leak a prefix-match timing signal.
-	if subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) != 1 {
+	// The invite IS the credential for this endpoint. A spectator
+	// invite must not seat anyone.
+	if rec, err := l.resolveInvite(id, invite); err != nil {
+		return GameMeta{}, uuid.Nil, err
+	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
@@ -423,11 +507,7 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 		seat.DisplayName = identity.DisplayName()
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
-	// The game's State flips to active on Start — the lobby drives
-	// Start only when an explicit POST /games/:id/start lands. Until
-	// then meta.State stays "lobby".
-	entry.meta.State = string(entry.room.Game.CurrentState())
-	l.persistMetaLocked(entry)
+	l.persistSeatsLocked(entry)
 
 	// Return a copy so callers can't mutate internal state via the
 	// returned meta. (json.Marshal would copy anyway, but defense in
@@ -453,10 +533,11 @@ func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	// Same constant-time discipline as the player invite. The empty-
-	// invite guard stays: an unset SpectatorInvite must never match
-	// an empty submission.
-	if invite == "" || subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.SpectatorInvite)) != 1 {
+	// Spectator invites only: a player invite is a different
+	// credential and has its own route.
+	if rec, err := l.resolveInvite(id, invite); err != nil {
+		return GameMeta{}, err
+	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
 	}
 	return copyMeta(entry.meta), nil
@@ -473,8 +554,8 @@ const (
 // Preview is what an invite link may show BEFORE the holder joins:
 // the table's name, state and seats, so the invite page can present
 // the pod instead of a bare name field. Either invite (player or
-// spectator) unlocks it; the invite is the credential, compared in
-// constant time like Join / Spectate. The returned meta is scrubbed
+// spectator) unlocks it; the invite is the credential, resolved by
+// hash like Join / Spectate. The returned meta is scrubbed
 // for an unauthenticated reader: both invite tokens, every seat's
 // player ID and Discord identity are blanked (the avatar endpoint
 // needs a session anyway); names, display names and deck names
@@ -487,15 +568,15 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 	if !ok {
 		return GameMeta{}, "", ErrGameNotFound
 	}
-	if invite == "" {
-		return GameMeta{}, "", ErrInvalidInvite
+	rec, err := l.resolveInvite(id, invite)
+	if err != nil {
+		return GameMeta{}, "", err
 	}
 	var kind PreviewKind
-	switch {
-	case subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) == 1:
+	switch rec.Kind {
+	case InvitePlayer:
 		kind = PreviewPlayer
-	case entry.meta.SpectatorInvite != "" &&
-		subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.SpectatorInvite)) == 1:
+	case InviteSpectator:
 		kind = PreviewSpectator
 	default:
 		return GameMeta{}, "", ErrInvalidInvite
@@ -517,37 +598,33 @@ func (l *Lobby) Preview(id uuid.UUID, invite string) (GameMeta, PreviewKind, err
 // instead of a full link: somebody typing a code out of a Discord
 // message has no game id to put in the path.
 //
-// Two deliberate properties:
+// It is a primary-key lookup on the token's hash (ADR 0051 decision
+// 4), not a scan, so it takes the same time whichever table the code
+// belongs to.
 //
-//   - The scan does NOT short-circuit on the first match. Returning
-//     early would make response time a function of where the table
-//     sits in the map — a weak oracle, but one that costs nothing
-//     to close at this scale (a handful of games).
-//   - Player invites only. A spectator code resolving here would
-//     let a read-only link start a seat-claiming flow, which is
-//     precisely the distinction the two tokens exist to draw.
+// Player invites only. A spectator code resolving here would let a
+// read-only link start a seat-claiming flow, which is precisely the
+// distinction the two tokens exist to draw.
 //
 // Archived tables are skipped: they are retired from the listing,
 // and a stale code in an old chat message should read as expired
-// rather than quietly reopen one.
+// rather than quietly reopen one. So is a game whose row outlived its
+// room (it did not come back from a restart).
 func (l *Lobby) FindByInvite(invite string) (uuid.UUID, error) {
-	if invite == "" {
+	rec, err := l.resolveInvite(uuid.Nil, invite)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if rec.Kind != InvitePlayer {
 		return uuid.Nil, ErrInvalidInvite
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
-	var found uuid.UUID
-	for id, entry := range l.games {
-		match := subtle.ConstantTimeCompare([]byte(invite), []byte(entry.meta.InviteToken)) == 1
-		if match && entry.meta.ArchivedAt == nil {
-			found = id
-		}
-	}
-	if found == uuid.Nil {
+	entry, ok := l.games[rec.GameID]
+	if !ok || entry.meta.Archived() {
 		return uuid.Nil, ErrInvalidInvite
 	}
-	return found, nil
+	return rec.GameID, nil
 }
 
 // ErrDeckNotUploaded is returned by Start when one or more seats
@@ -609,7 +686,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 
 	seat.DeckName = deckName
 	seat.DeckUploaded = true
-	l.persistMetaLocked(entry)
+	l.persistSeatsLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -704,8 +781,8 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		// handler turns it into 409.
 		return GameMeta{}, err
 	}
-	entry.meta.State = string(entry.room.Game.CurrentState())
-	l.persistMetaLocked(entry)
+	l.syncStateLocked(entry)
+	l.startWatchLocked(entry)
 	// Chained onto the broadcast thunk so it runs after l.mu is
 	// released: StartBots spawns goroutines that begin committing to
 	// the room immediately, and holding the lobby-wide mutex across
@@ -821,8 +898,7 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 		BotTier:      tier,
 		BotDeck:      deckID,
 	})
-	entry.meta.State = string(entry.room.Game.CurrentState())
-	l.persistMetaLocked(entry)
+	l.persistSeatsLocked(entry)
 	return copyMeta(entry.meta), p.ID, nil
 }
 
@@ -872,7 +948,7 @@ func (l *Lobby) RemoveBot(id, playerID uuid.UUID) (GameMeta, error) {
 	for i := range entry.meta.Players {
 		entry.meta.Players[i].Seat = i
 	}
-	l.persistMetaLocked(entry)
+	l.persistSeatsLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -886,10 +962,9 @@ func (l *Lobby) Get(id uuid.UUID) (GameMeta, error) {
 	if !ok {
 		return GameMeta{}, ErrGameNotFound
 	}
-	m := copyMeta(entry.meta)
 	// Live-state read — see the note in List.
-	m.State = string(entry.room.Game.CurrentState())
-	return m, nil
+	l.syncStateLocked(entry)
+	return copyMeta(entry.meta), nil
 }
 
 // LookupGame returns the live *game.Game pointer for id, or
@@ -931,12 +1006,13 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		if e.meta.Archived() != archived {
 			continue
 		}
+		// A game that ended via WS (concede → StateEnded) would
+		// otherwise report "active" here until watchEnd catches up.
+		// Read the live state so the lobby UI can gate ended-only
+		// affordances (replay download); a transition seen here is
+		// also written to the games row.
+		l.syncStateLocked(e)
 		m := copyMeta(e.meta)
-		// meta.State is only rewritten on join/start; a game that
-		// ended via WS (concede → StateEnded) would otherwise report
-		// "active" here forever. Read the live state so the lobby UI
-		// can gate ended-only affordances (replay download).
-		m.State = string(e.room.Game.CurrentState())
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
 		out = append(out, m)
@@ -998,8 +1074,8 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 			after = l.botStartLocked(entry)
 		}
 	}
-	entry.meta.State = string(entry.room.Game.CurrentState())
-	l.persistMetaLocked(entry)
+	l.syncStateLocked(entry)
+	l.persistGameLocked(entry)
 	return copyMeta(entry.meta), nil
 }
 
@@ -1024,13 +1100,21 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	if _, ok := l.games[id]; !ok {
 		return ErrGameNotFound
 	}
-	delete(l.games, id)
+	l.dropEntryLocked(id)
 	l.mgr.Delete(id)
 	// Any reclaim link minted for this table dies with it.
 	l.dropReclaimsLocked(id)
-	// Drop the metadata too, or the next boot would try to restore a
-	// game the operator deleted.
-	l.removeMeta(id)
+	// Drop the rows too — the game, its seats and its invites — or
+	// the next boot would pair the operator's deleted game with
+	// metadata again, and its invite links would still resolve. The
+	// room manager has already reaped the files; the ADR 0041 file,
+	// if the importer left one, goes as well.
+	ctx, cancel := storeCtx()
+	if err := l.store.DeleteGame(ctx, id); err != nil {
+		slog.Default().Warn("deleting lobby rows failed", "game_id", id, "err", err)
+	}
+	cancel()
+	l.removeLegacyMeta(id)
 	stopBots = l.bots
 	return nil
 }
