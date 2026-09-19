@@ -875,7 +875,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 	tapCost := TapPermanentsCostFor(CatalogKey(card))
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
-		if base, berr := g.printedCostLocked(p, card, params); berr == nil {
+		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
 			budget = tapPermanentsBudget(tapCost, base, params.XValue)
 		}
 		if err := g.validateTapPermanentsCostLocked(playerID, tapCost, params.TapIDs, budget); err != nil {
@@ -1714,11 +1714,29 @@ func mostRestrictiveRequirement(options []string, pending []ColorRequirement) (i
 // count: first cast pays cost+0, second pays cost+2, third pays
 // cost+4. Non-command casts return the raw parsed cost. Errors on
 // an unparseable ManaCost.
+//
+// #696: THE one pricer. Every consumer that has to agree with what
+// the payment charges — the auto-tapper, the read-only preview
+// endpoint and the bot enumerator — reaches this function through
+// PriceCast rather than re-deriving any part of it. See cast_cost.go.
 func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
-	cost, err := g.printedCostLocked(p, card, params)
+	cost, _, err := g.printedCostLocked(p, card, params)
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	return g.costAfterModifiersLocked(cost, p, card, params)
+}
+
+// costAfterModifiersLocked is effectiveCostLocked's tail: the board's
+// cost modifiers (CR 601.2f) and then the convoke / waterbend
+// subtraction (CR 601.2h), applied to a cost printedCostLocked has
+// already settled.
+//
+// Split out for PriceCast, which needs BOTH numbers out of one walk —
+// the pre-tapping total the announce-time tap budget is measured
+// against, and the total the payment charges — without pricing the
+// cast twice. Caller must hold g.mu.
+func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
 	// S28: cost modifiers (CR 601.2f) — increases, then reductions,
 	// then Trinisphere-style cost-setting effects. Layered AFTER the
 	// alternative-cost swap and the commander tax because both of
@@ -1748,7 +1766,7 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	// 601.2f totals the cost, and CastSpell has validated them by now.
 	// Only a modifier that declares ReadsTargets ever sees them
 	// (ADR 0048 addendum §13).
-	cost, err = g.applyCostModifiersLocked(cost, CostQuery{
+	cost, err := g.applyCostModifiersLocked(cost, CostQuery{
 		Game:       g,
 		Card:       card,
 		Controller: p.ID,
@@ -1780,8 +1798,15 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 // how many permanents may be tapped, and the tapping is what
 // effectiveCostLocked subtracts.
 //
+// The second return is the pair of cost STRINGS the swap chose
+// between — what the card prints, and what this cast pays instead.
+// Returned rather than recomputed by the callers that need to SHOW a
+// price (the preview endpoint's `cost` field) or ask CR 107.3b about
+// it, because a second walk of the same precedence is a second chance
+// to disagree about which cost this cast is paying.
+//
 // Caller must hold g.mu.
-func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, error) {
+func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (ParsedCost, CastCost, error) {
 	// S22: an alternative cost replaces the printed one outright
 	// (CR 118.9). The commander tax below is layered on top of
 	// whichever cost was chosen, because CR 903.8 taxes the cost
@@ -1809,11 +1834,12 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	grant := g.CastPermissionForLocked(p.ID, card, srcKind)
 	alt, err := g.resolveAlternativeCostLocked(card, grant, params.AlternativeCost, nil)
 	if err != nil {
-		return ParsedCost{}, err
+		return ParsedCost{}, CastCost{}, err
 	}
-	cost, err := ParseCost(CastCostFor(card, alt, grant).Paid)
+	chosen := CastCostFor(card, alt, grant)
+	cost, err := ParseCost(chosen.Paid)
 	if err != nil {
-		return ParsedCost{}, err
+		return ParsedCost{}, chosen, err
 	}
 	if params.FromZone == "command" {
 		tax := p.CommanderCasts[card.InstanceID]
@@ -1830,7 +1856,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	// cannot drift (#544).
 	cost, err = AddOptionalCostMana(cost, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
 	if err != nil {
-		return ParsedCost{}, err
+		return ParsedCost{}, chosen, err
 	}
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Folds
@@ -1839,7 +1865,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if grant != nil && grant.AnyColor {
 		cost = asAnyColorCost(cost)
 	}
-	return cost, nil
+	return cost, chosen, nil
 }
 
 // castSourceZoneLocked resolves the FromZone string to the zone

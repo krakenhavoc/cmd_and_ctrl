@@ -583,17 +583,37 @@ bump unless they turn out to be wire-breaking:
 
 ### Auto-tap preview (S15)
 
-`GET /games/{id}/auto-tap-preview?card=<uuid>&x=<int>&phyrexian=<int>&exclude=<uuid>,<uuid>...`
+`GET /games/{id}/auto-tap-preview?card=<uuid>&from_zone=<zone>&alternative_cost=<key>&optional_costs=<i>,<i>&tap_ids=<uuid>,<uuid>&face=<int>&x=<int>&phyrexian=<int>&exclude=<uuid>,<uuid>...`
 returns a read-only projection of what the auto-tapper would do for
 a given cast — the client uses it to render the `AutoTapPreviewModal`
 before committing a `cast_spell` with `auto_tap: true`. No game state
 mutates. Authorization: any seated player at the named game; spectators
 and non-seated callers receive 403.
 
+**The endpoint prices the ANNOUNCEMENT, not the card (#696).** Every
+cast-shaped param below is passed straight into `game.CastSpellParams`
+and handed to `game.Game.PriceCast`, the engine's one cast pricer, so
+the preview and `CastSpell` charge the same thing. The client builds
+them from the cast payload it is about to send (`castPreviewParams` in
+`client/src/lib/castPreview.ts`); omitting one asks about a different
+cast. The endpoint used to parse the card's printed cost and re-apply
+the commander tax and the cost modifiers itself, which knew nothing
+about the alternative cost claimed at announce, a granted permission's
+flat override, the "spend mana as though any colour" fold, the optional
+additional costs or the face — so it disabled "Auto-tap & cast" on
+casts that would have gone through, and planned taps for casts that
+would fail.
+
 | Query param | Required | Notes |
 |---|---|---|
-| `card` | yes | Instance UUID of the card to plan for. The server reads its `ManaCost` (plus commander tax for command-zone casts) to derive the effective cost. |
+| `card` | yes | Instance UUID of the card to plan for. |
+| `from_zone` | no | The zone the cast comes out of — `hand` (the default), `command`, `graveyard`, `exile`, `library`. Decides the commander tax, which cost modifiers see the cast, and which granted permission prices it. Must match the `cast_spell` payload the confirm button will send. |
+| `alternative_cost` | no | The CR 118.9 cost the cast claims (`flashback`, `overload`, `evoke`). Empty means the printed cost. A key the card does not offer from that zone is a 400 — the same refusal the cast itself gets. |
+| `optional_costs` | no | Comma-separated positions in the card's `optional_costs` (ADR 0073), repeated once per payment for a multikicker, so a kicked cast is previewed at the kicked price. |
+| `tap_ids` | no | Comma-separated permanent UUIDs being tapped for convoke or waterbend. They pay part of the cost, and the plan must not tap them again for mana. |
+| `face` | no | The printed face being cast (ADR 0034). A modal DFC's back face has its own mana cost. Defaults to 0, the front. |
 | `x` | no | Caller-supplied X value for spells with `{X}` in their cost. Defaults to 0. |
+| `ability` | no | Price the card's CR 602 activated ability at this index instead of its cast cost. Every cast-shaped param above is ignored on this branch — an ability is not a cast. |
 | `exclude` | no | Comma-separated permanent UUIDs the auto-tapper must NOT consider — the lock-tap UI's reservation list. |
 | `phyrexian` | no | #916 — how many of the cost's Phyrexian symbols the announcement will pay with 2 life each (CR 107.4f). Those symbols are struck before planning, exactly as the engine strikes them, so the plan and the `missing` breakdown describe the MANA the announcement still owes. Defaults to 0. Clamped to the number the cost prints rather than rejected: refusing a malformed announce is the announce gate's job, not a read-only preview's. |
 
@@ -612,9 +632,16 @@ Response shape:
 the ordered list of permanent IDs to tap. When `ok` is false, `plan`
 is omitted and `missing` carries the unpaid mana symbols (same shape
 as the `insufficient_mana` error frame's `missing` list). `cost` is
-always the parsed printed cost — the modal renders it next to the
-plan for context. Errors: 400 on missing / malformed query params;
-404 when the game or card doesn't exist.
+the cost string this cast PAYS — the claimed alternative cost, a
+granted permission's override, or the card's printed cost when neither
+applies — and the modal renders it next to the plan for context. The
+commander tax and the cost modifiers are not folded into that string
+(they are generic, and the string is Scryfall brace notation); `plan`
+and `missing` are the authority on the total and are computed with
+both. Errors: 400 on missing / malformed query params, and on a cast
+the engine cannot price (an unclaimable `alternative_cost`, an unknown
+`from_zone`, a face the card does not offer); 404 when the game or
+card doesn't exist.
 
 ### Replay log (S11)
 
