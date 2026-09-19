@@ -2,6 +2,7 @@ import { type Writable } from "svelte/store";
 import { recordClientError } from "./clientErrors";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
+import { currentSession } from "./session";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -113,6 +114,62 @@ export function reconnectDelayMs(attempt: number, rand: () => number = Math.rand
   return Math.floor(nominal / 2 + rand() * (nominal / 2));
 }
 
+// Close codes the server sends on purpose. They used to share one
+// terminal branch, which is the whole of #518: hub.Shutdown writes
+// CLOSE_GOING_AWAY on every `systemctl restart`, the game outlives the
+// process (ADR 0041), and the client hung up on it for good.
+export const CLOSE_NORMAL = 1000;
+export const CLOSE_GOING_AWAY = 1001;
+
+// isTerminalClose reports whether a server-initiated close means "stop
+// dialling" (ADR 0044 decision 2).
+//
+// Only 1000 does. hub.EvictGame sends it when the game is deleted, and
+// a session revocation sends it when the credential the socket
+// authenticated with is gone — redialling either one is dialling for
+// something that is not there any more.
+//
+// 1001 "server shutting down" is a deploy, and a deploy is exactly the
+// case the backoff ladder below was written for: the process goes away
+// for 15-60s and the table comes back with it. Everything else — a
+// network blip, a crash, a rejected upgrade that surfaces as 1006 —
+// keeps retrying as it always did.
+//
+// Deliberate teardown from THIS side does not reach here at all:
+// disconnect() nulls the socket first, so its close event is ignored.
+export function isTerminalClose(code: number): boolean {
+  return code === CLOSE_NORMAL;
+}
+
+// SESSION_TOKEN_PARAM is the query parameter that carries the session
+// token on a WS upgrade — browsers cannot set headers on a WebSocket
+// handshake, so gameURL.ts bakes it into the URL.
+export const SESSION_TOKEN_PARAM = "token";
+
+// withSessionToken returns `url` with the session token parameter set
+// to `token`, which is how a dial picks up a session that changed
+// after the URL was built (#518).
+//
+// A missing token leaves the URL untouched: the captured string is
+// still the best guess available, and a spectator dial legitimately
+// carries no credential. So does a URL the platform will not parse —
+// dialling a stale token 401s and retries, while dialling a mangled
+// URL fails forever.
+export function withSessionToken(url: string, token: string | null | undefined): string {
+  if (!token) return url;
+  try {
+    const parsed = new URL(url);
+    // The common case: the captured URL already carries this exact
+    // token. Returned verbatim rather than re-serialised, so a dial
+    // that changes nothing cannot change the string either.
+    if (parsed.searchParams.get(SESSION_TOKEN_PARAM) === token) return url;
+    parsed.searchParams.set(SESSION_TOKEN_PARAM, token);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 // guardedWritable / describeThrown moved to guardedStore.ts (#720).
 // svelte/store's `subscriber_queue` is module-GLOBAL, so guarding only
 // GameClient's stores — which is all #284 did — protects nothing: a
@@ -158,6 +215,13 @@ export class GameClient {
     missing?: string[];
     cardID?: string;
   } | null> = guardedWritable(null, "lastError");
+  // reconnectAttempt is how many automatic reconnects have been
+  // scheduled since the last successful open, and 0 whenever the
+  // socket is up or the client was torn down deliberately. The ladder
+  // used to count privately and retry forever in silence; this is the
+  // number a "reconnecting (attempt 3)" banner reads (#518, rendered
+  // by #519).
+  readonly reconnectAttempt: Writable<number> = guardedWritable(0, "reconnectAttempt");
   private errorClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
@@ -243,7 +307,7 @@ export class GameClient {
     // A deliberate connect supersedes any scheduled auto-reconnect
     // and restarts the backoff ladder and seq watermark fresh.
     this.cancelReconnect();
-    this.reconnectAttempts = 0;
+    this.resetReconnectAttempts();
     this.resetSnapshotTracking();
     this.status.set("connecting");
     this.open();
@@ -253,7 +317,16 @@ export class GameClient {
   // deliberate connect() path and the automatic-reconnect timer;
   // status is set by the caller ("connecting" vs "reconnecting").
   private open(): void {
-    const socket = new WebSocket(this.url);
+    // Resolved per dial, not per mount. `this.url` was built when the
+    // route mounted and gameURL.ts baked the session token of that
+    // moment into it; the reconnect ladder can easily outlive that
+    // token. Re-reading the session store here is what lets a retry
+    // after a deploy present the credential the new process will
+    // actually accept, and picks up a session refreshed in another
+    // tab (#518). The URL is captured in this closure so the log line
+    // and the socket can never disagree about what was dialled.
+    const url = this.dialURL();
+    const socket = new WebSocket(url);
     this.socket = socket;
 
     // Each listener captures `socket` in its closure and ignores events
@@ -266,7 +339,7 @@ export class GameClient {
     socket.addEventListener("open", () => {
       if (!isCurrent()) return;
       this.status.set("connected");
-      this.reconnectAttempts = 0;
+      this.resetReconnectAttempts();
       // Reset the seq watermark on every open, including automatic
       // reconnects to the same URL: a server restart restarts seq from
       // scratch, and keeping the old watermark would silently drop
@@ -274,7 +347,7 @@ export class GameClient {
       // full states, so re-accepting one duplicate frame after a
       // same-incarnation reconnect is harmless — a frozen board is not.
       this.highestSeq = 0;
-      this.append("info", connectLogLine(this.url));
+      this.append("info", connectLogLine(url));
     });
 
     socket.addEventListener("message", (ev: MessageEvent<unknown>) => {
@@ -286,15 +359,12 @@ export class GameClient {
       if (!isCurrent()) return;
       // Deliberate teardown (disconnect()) nulls this.socket before
       // closing, so a close event that reaches this point was not
-      // requested by this client. But the SERVER's deliberate closes
-      // are terminal, not retryable: hub.EvictGame sends 1000 "game
-      // deleted" and shutdown sends 1001 "server shutting down"
-      // precisely so the peer renders an ended state instead of
-      // redialling a game that is gone. Anything else (network blip,
-      // crash, rejected upgrade surfacing as 1006) gets the retry
-      // loop.
+      // requested by this client. Of the server's own deliberate
+      // closes only 1000 is terminal — see isTerminalClose. 1001 is a
+      // deploy, and ADR 0041 persists and restores the game across
+      // one, so it takes the retry ladder like any other drop.
       this.socket = null;
-      if (ev.code === 1000 || ev.code === 1001) {
+      if (isTerminalClose(ev.code)) {
         this.append(
           "info",
           `socket closed by server (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`,
@@ -302,7 +372,7 @@ export class GameClient {
         this.status.set("disconnected");
         return;
       }
-      this.append("info", "socket closed");
+      this.append("info", `socket closed (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`);
       this.scheduleReconnect();
     });
 
@@ -317,6 +387,7 @@ export class GameClient {
     this.status.set("reconnecting");
     const delay = reconnectDelayMs(this.reconnectAttempts);
     this.reconnectAttempts += 1;
+    this.reconnectAttempt.set(this.reconnectAttempts);
     this.append("info", `reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -325,6 +396,21 @@ export class GameClient {
       if (this.socket) return;
       this.open();
     }, delay);
+  }
+
+  // resetReconnectAttempts zeroes the backoff exponent and the store
+  // the UI reads off it. The two must move together — a stale attempt
+  // count on a healthy connection is a banner that lies.
+  private resetReconnectAttempts(): void {
+    this.reconnectAttempts = 0;
+    this.reconnectAttempt.set(0);
+  }
+
+  // dialURL is the URL to dial right now: the target this client was
+  // pointed at, carrying the session token as the store holds it at
+  // this instant.
+  private dialURL(): string {
+    return withSessionToken(this.url, currentSession()?.token);
   }
 
   private cancelReconnect(): void {
@@ -347,7 +433,7 @@ export class GameClient {
 
   disconnect(): void {
     this.cancelReconnect();
-    this.reconnectAttempts = 0;
+    this.resetReconnectAttempts();
     const socket = this.socket;
     this.socket = null;
     // Explicitly flip status before closing: the close listener on the
