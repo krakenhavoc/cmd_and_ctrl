@@ -420,6 +420,55 @@ func TestALibraryPickIsPrunedWhenACandidateLeavesTheLibrary(t *testing.T) {
 	assertTableIsFree(t, g)
 }
 
+// TestASeatLeavingEmptiesEveryPickAtItsHandInOnePass covers the third
+// call site — the departure sweep — and the reason the sweep examines
+// the whole queue before it drops anything.
+//
+// removeObjectsOwnedByLocked takes the departed player's cards out of
+// every zone DIRECTLY (leaving the game is not a zone change), so the
+// exit prune never sees them, and it empties two survivors' prompts in
+// the same breath. Dropping the first runs its drop action, which may
+// rewrite the queue the loop is standing in; the second must still go.
+func TestASeatLeavingEmptiesEveryPickAtItsHandInOnePass(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	leaver := g.Seats[1]
+	theirHand := handCardOf(t, leaver, 2)
+
+	ids := make([]uuid.UUID, 0, 2)
+	for _, chooser := range []*Player{g.Seats[0], g.Seats[2]} {
+		source := departureTestSource(g, chooser.ID, "Thoughtseize")
+		var id uuid.UUID
+		g.WithWriteLock(func() {
+			id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+				Chooser:    chooser.ID,
+				FromPlayer: leaver.ID,
+				Source:     source,
+				Question:   "Choose a card from that player's hand",
+				Cards:      theirHand,
+				Min:        1,
+				Max:        1,
+				Zone:       ZoneHand,
+				Then:       func(*Game, []uuid.UUID) error { return nil },
+			})
+		})
+		if id == uuid.Nil {
+			t.Fatal("setup: the pick was not queued")
+		}
+		ids = append(ids, id)
+	}
+
+	if err := g.Concede(leaver.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+
+	for i, id := range ids {
+		if findChoice(g, id) != nil {
+			t.Errorf("pick %d survives a hand that left the game with its owner", i)
+		}
+	}
+	assertTableIsFree(t, g)
+}
+
 // TestAPickWithNoZoneOnItsFrameIsLeftAlone — the prune's boundary. A
 // choose-cards prompt with no Zone re-checks nothing on submit (the
 // continuation owns what a pick means), so there is no live list for
