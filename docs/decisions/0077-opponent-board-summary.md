@@ -72,6 +72,13 @@ Every derivation feeding it is pure and lives in `client/src/lib/seatSummary.ts`
 unit-tested without rendering Svelte. A rule about what the player sees is
 covered by a test, not buried in a template.
 
+**A summary is smaller, not lossier.** Anything the full panel lets a player DO,
+the summary still lets them do: creature pips are hit-testable (§3), and the
+graveyard and exile piles stay openable, because both have been public
+information reachable by every viewer since S18.5. Replacing an affordance with
+a number you cannot click is the failure mode this section exists to forbid —
+see §7 for the one time it happened anyway.
+
 ## 3. Decision — expansion is driven by interaction requirement, never relevance
 
 The constraint that shapes this: **summary panels still have to be clickable at
@@ -101,6 +108,9 @@ a pip is a legal target and a legal block. `CombatArrows` resolves an endpoint b
 measuring the element that carries the card; if the arrow layer keys off a
 different attribute, the pip matches it rather than introducing a second
 contract.
+
+The decision itself lives in `client/src/lib/expansion.ts`, pure and unit-tested
+for the same reason the derivations are.
 
 ## 4. Decision — the summary is deterministic, and never ranks
 
@@ -138,7 +148,7 @@ the card menu cannot disagree about whether a source is live.
 
 ## 6. Undecided — which expansion mechanism wins
 
-Two are implemented, selected by `display.expandStyle`:
+Two are planned, selected by `display.expandStyle`:
 
 - **`"reflow"` (default)** — the expanded seat takes a larger grid share and the
   summaries shrink. Everything stays in one plane, so `CombatArrows` keeps
@@ -147,10 +157,15 @@ Two are implemented, selected by `display.expandStyle`:
   seat. Much easier to animate, but it covers other boards and puts one arrow
   endpoint across a z-index boundary.
 
-Shipping both is deliberate: the difference is a feel judgement a prototype
-cannot settle, and switching mid-game is the only way to compare them on the same
-board. **One of the two, and the setting, will be deleted** once a few games have
-answered it. Nothing else should be built on `expandStyle`.
+**Neither is implemented yet.** The wiring shipped with an expanded panel taking
+exactly the grid area it already had, which is the pre-existing behaviour and
+therefore safe; `expandStyle` is inert and flagged `experimental` in the UI until
+one of these lands.
+
+Shipping both, when they land, is deliberate: the difference is a feel judgement
+a prototype cannot settle, and switching mid-game is the only way to compare them
+on the same board. **One of the two, and the setting, will be deleted** once a
+few games have answered it. Nothing else should be built on `expandStyle`.
 
 ## 7. Consequences
 
@@ -175,10 +190,22 @@ that setting is a candidate for retirement. Deliberately not decided here.
 the default. `--card-scale-opponent` may stop earning its complexity; same note,
 same "revisit later".
 
-**e2e breaks when the default flips.** `game.spec.ts` and `players.ts` assert
-opponent board selectors that a summary does not have. They need either updating
-or forcing to `opponentDetail: "full"` — probably both, so the summary path gets
-its own spec.
+**e2e: one spec, and it was a real gap rather than a test artifact.** This section
+first claimed `game.spec.ts` and `players.ts` assert opponent-board selectors. That
+was wrong, and written without reading them: `game.spec.ts` is transport-level (the
+WS handshake, the session, the router) and `players.ts` is the join helper — neither
+touches a board selector, and `board-layout.spec.ts` scopes every assertion to
+"your board", which is never a summary.
+
+The spec that did break is `zone-browser.spec.ts`'s "an opponent's graveyard is
+browsable but read-only", and it broke because the first draft of the panel had
+dropped a real affordance: it rendered the graveyard as an unclickable count.
+Fixed in the panel rather than in the spec — the piles are buttons carrying
+PileButton's own aria-label — so the assertion passes unchanged and no player
+loses the ability to see what an opponent binned. See §2.
+
+The lesson worth keeping is the process one: a predicted breakage is not a
+finding. Read the suite.
 
 ## 8. Alternatives considered
 
@@ -213,8 +240,8 @@ The missing fix was width, not height.
 
 ## 9. Status note
 
-Proposed rather than Accepted: the derivations, the component and the settings
-have landed, but nothing is wired into `Board.svelte` yet (that waits for the
-#956 layout fix to merge, since both touch the same file), so no game has been
-played against this. It becomes Accepted when the wiring lands and §6 has an
-answer.
+Proposed rather than Accepted. The derivations, the panel, the settings and the
+Board wiring have all landed, so the table does render summaries — but §6 is
+still open, neither expansion mechanism exists, and no game has been played
+against any of it. It becomes Accepted when reflow or overlay lands and a few
+real games have answered §6.

@@ -34,6 +34,7 @@
   import { buildSeatSummary, manaLabel, MANA_ORDER } from "../../seatSummary";
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
+  import { openZoneBrowser } from "../../zoneBrowser";
   import PlayerIdentity from "./PlayerIdentity.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -96,6 +97,11 @@
     return null;
   });
 
+  // The seat's slice of the shared exile zone. Derived here rather
+  // than passed in so Board needs no new prop — the same reason
+  // commanderScryfallID is derived from `view` above.
+  const exileCount = $derived((view.exile?.cards ?? []).filter((c) => c.owner === seat.id).length);
+
   const attackTargetable = $derived(
     !seat.eliminated && combatMode === "attack" && !!selectedCombatCardID,
   );
@@ -141,6 +147,32 @@
     if (c.attacking_target) bits.push("attacking");
     if (kw.length > 0) bits.push(kw.join(", "));
     return bits.join(" — ");
+  }
+
+  // Graveyard and exile are PUBLIC information — PileBar has opened
+  // them to every viewer since S18.5 — so the summary keeps them
+  // openable rather than reducing them to a number. A count you
+  // cannot click is a worse answer to "what did they bin" than a pile
+  // you can, and it would make the summary lossy in a way the rest of
+  // this panel is careful not to be.
+  //
+  // Library is deliberately NOT a button. PileBar keeps it owner-only
+  // (it is a draw affordance, not a browser), and this panel only ever
+  // draws an opponent.
+  function openGraveyard(): void {
+    openZoneBrowser({ zoneKind: "graveyard", ownerID: seat.id, ownerName: seat.name });
+  }
+
+  function openExile(): void {
+    openZoneBrowser({ zoneKind: "exile", ownerID: seat.id, ownerName: seat.name });
+  }
+
+  // PileButton's exact aria-label. Not a coincidence and not worth
+  // "improving": tests-e2e/tests/zone-browser.spec.ts finds an
+  // opponent's graveyard by `/^grave: /`, and two spellings of one
+  // affordance is how a contract rots.
+  function pileLabel(label: string, n: number): string {
+    return `${label}: ${n} card${n === 1 ? "" : "s"}`;
   }
 
   // Click routing mirrors PlayerPanel's: a live targeting prompt wins,
@@ -229,12 +261,25 @@
         of {summary.creatures.total} · {summary.creatures.untappedPower} power
       </span>
       <span class="stat quiet">{summary.handCount} in hand</span>
-      <!-- Piles as numbers, not thumbnails. A graveyard's contents
-           matter at summary size only as a count; the browser is one
-           expansion away. -->
-      <span class="stat quiet" title="library / graveyard">
-        {summary.libraryCount} · {summary.graveyardCount}
-      </span>
+      <span class="stat quiet" title="library">{summary.libraryCount} deck</span>
+      <button
+        class="pile"
+        type="button"
+        aria-label={pileLabel("grave", summary.graveyardCount)}
+        title={`grave · ${summary.graveyardCount}`}
+        onclick={openGraveyard}
+      >
+        gy {summary.graveyardCount}
+      </button>
+      <button
+        class="pile"
+        type="button"
+        aria-label={pileLabel("exile", exileCount)}
+        title={`exile · ${exileCount}`}
+        onclick={openExile}
+      >
+        ex {exileCount}
+      </button>
     </div>
 
     {#if summary.creatureCards.length > 0}
@@ -414,6 +459,27 @@
   }
   .stat strong {
     font-variant-numeric: tabular-nums;
+  }
+  /* The two openable piles. Styled as quiet text rather than as
+     PileButton's tile, because at summary size a tile would compete
+     with the creature pips for the eye — but it is a real button with
+     PileButton's aria-label, so screen readers and the e2e suite see
+     the same affordance the full panel offers. */
+  .pile {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--fg-dim);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pile:hover {
+    color: var(--fg);
   }
   .quiet {
     color: var(--fg-dim);
