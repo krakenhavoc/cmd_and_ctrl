@@ -242,54 +242,101 @@ func TestCastEventCarriesTheSourceZone(t *testing.T) {
 }
 
 // "Becomes the target of a spell or ability" (CR 115.7) fires at
-// announce, once per slot, for spells and for abilities alike.
+// announce, once per slot, for spells and for abilities alike — and
+// for every VERB that announces one.
+//
+// Six sites finish choosing targets and all six call the one fan-out
+// helper (emitBecameTargetLocked, events.go). The three rows below are
+// the ones this package can announce with nothing but the sandbox
+// verbs: the cast path, the manual activation (#968 — it stamped
+// Targets onto the item and announced nothing) and the manual trigger
+// announce. The other three — the catalog activation (activated.go), a
+// trigger's CR 603.3d target pick (pending_choice.go) and a copy's
+// re-target (spell_copy.go) — need a catalog card to announce and are
+// not asserted here. What pins them is the helper itself: one call per
+// site, so a site either announces or does not, which is exactly the
+// shape of the bug this row was added for.
 func TestBecomesTargetFiresAtAnnounce(t *testing.T) {
-	g := newActiveGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	toMainPhase(t, g)
-	one := permanentFor(g, opp, "Bear One", "Creature — Bear", "{1}{G}")
-	two := permanentFor(g, opp, "Bear Two", "Creature — Bear", "{1}{G}")
-
-	bolt := NewCard("Two-Target Bolt", me.ID)
-	bolt.TypeLine = "Instant"
-	me.Hand.PushTop(bolt)
-	before := len(g.Events)
-	if err := g.CastSpell(me.ID, bolt.InstanceID, CastSpellParams{
-		Targets: []TargetRef{
-			{Kind: TargetCard, ID: one},
-			{Kind: TargetCard, ID: two},
-			{Kind: TargetPlayer, ID: opp.ID},
-		},
-	}); err != nil {
-		t.Fatalf("cast: %v", err)
-	}
-
-	var cards []uuid.UUID
-	var players int
-	for _, ev := range g.Events[before:] {
-		if ev.Kind != EventBecomesTarget {
-			continue
-		}
-		if ev.Actor != me.ID || ev.Source != bolt.InstanceID {
-			t.Errorf("event attribution = actor %v source %v, want %v / %v",
-				ev.Actor, ev.Source, me.ID, bolt.InstanceID)
-		}
-		if ev.CardID != uuid.Nil {
-			cards = append(cards, ev.CardID)
-			if ev.Target != ev.CardID {
-				t.Errorf("card target: Target %v != CardID %v", ev.Target, ev.CardID)
+	for _, tc := range []struct {
+		name string
+		// announce announces something at `targets` and returns the
+		// Source the events must carry.
+		announce func(t *testing.T, g *Game, me *Player, targets []TargetRef) uuid.UUID
+	}{
+		{"cast", func(t *testing.T, g *Game, me *Player, targets []TargetRef) uuid.UUID {
+			bolt := NewCard("Two-Target Bolt", me.ID)
+			bolt.TypeLine = "Instant"
+			me.Hand.PushTop(bolt)
+			if err := g.CastSpell(me.ID, bolt.InstanceID, CastSpellParams{Targets: targets}); err != nil {
+				t.Fatalf("cast: %v", err)
 			}
-			continue
-		}
-		players++
-		if ev.Target != opp.ID {
-			t.Errorf("player target = %v, want %v", ev.Target, opp.ID)
-		}
-	}
-	if len(cards) != 2 || cards[0] != one || cards[1] != two {
-		t.Errorf("card target events = %v, want [%v %v] in slot order", cards, one, two)
-	}
-	if players != 1 {
-		t.Errorf("player target events = %d, want 1", players)
+			return bolt.InstanceID
+		}},
+		{"sandbox activation", func(t *testing.T, g *Game, me *Player, targets []TargetRef) uuid.UUID {
+			src := permanentFor(g, me, "Hand-Read Rock", "Artifact", "{2}")
+			if err := g.ActivateAbility(me.ID, src, AbilityParams{
+				Label: "{T}: point at three things", Targets: targets,
+			}); err != nil {
+				t.Fatalf("activate: %v", err)
+			}
+			return src
+		}},
+		{"sandbox trigger announce", func(t *testing.T, g *Game, me *Player, targets []TargetRef) uuid.UUID {
+			src := permanentFor(g, me, "Hand-Read Enchantment", "Enchantment", "{2}")
+			if err := g.AnnounceTrigger(me.ID, src, AbilityParams{
+				Label: "when this triggers, point at three things", Targets: targets,
+			}); err != nil {
+				t.Fatalf("announce: %v", err)
+			}
+			return src
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newActiveGame(t)
+			me, opp := g.Seats[0], g.Seats[1]
+			toMainPhase(t, g)
+			one := permanentFor(g, opp, "Bear One", "Creature — Bear", "{1}{G}")
+			two := permanentFor(g, opp, "Bear Two", "Creature — Bear", "{1}{G}")
+			targets := []TargetRef{
+				{Kind: TargetCard, ID: one},
+				{Kind: TargetCard, ID: two},
+				{Kind: TargetPlayer, ID: opp.ID},
+			}
+
+			before := len(g.Events)
+			source := tc.announce(t, g, me, targets)
+
+			var cards []uuid.UUID
+			var players int
+			for _, ev := range g.Events[before:] {
+				if ev.Kind != EventBecomesTarget {
+					continue
+				}
+				if ev.Actor != me.ID || ev.Source != source {
+					t.Errorf("event attribution = actor %v source %v, want %v / %v",
+						ev.Actor, ev.Source, me.ID, source)
+				}
+				if ev.StackItemID == uuid.Nil {
+					t.Errorf("no StackItemID on the event; ward reads it to counter the right object")
+				}
+				if ev.CardID != uuid.Nil {
+					cards = append(cards, ev.CardID)
+					if ev.Target != ev.CardID {
+						t.Errorf("card target: Target %v != CardID %v", ev.Target, ev.CardID)
+					}
+					continue
+				}
+				players++
+				if ev.Target != opp.ID {
+					t.Errorf("player target = %v, want %v", ev.Target, opp.ID)
+				}
+			}
+			if len(cards) != 2 || cards[0] != one || cards[1] != two {
+				t.Errorf("card target events = %v, want [%v %v] in slot order", cards, one, two)
+			}
+			if players != 1 {
+				t.Errorf("player target events = %d, want 1", players)
+			}
+		})
 	}
 }

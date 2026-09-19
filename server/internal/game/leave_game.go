@@ -340,37 +340,79 @@ func (g *Game) dropPendingTriggersForLocked(playerID uuid.UUID) {
 //
 // Three pieces, and no fourth:
 //
-//   - choiceReassignDecisions — one row per PendingChoiceKind, the
-//     never-reassign table ADR 0060's amendment prints.
+//   - choiceDepartureDecisions — one row per PendingChoiceKind, the
+//     table ADR 0060's amendment prints: is the prompt reassigned, and
+//     when it is dropped instead, is there still something the drop has
+//     to DO (#961, CR 800.4f)?
 //   - choiceInheritorLocked — one inheritor policy: 800.4g's second
 //     sentence, walked in turn order from the departed seat.
 //     800.4h's "a rule requires" arm reassigns nothing today, because
 //     every rule-required prompt the engine has is about the asked
-//     player's own material and is `false` in the table.
+//     player's own material and is never reassigned by the table.
 //   - reassignDepartedChoiceLocked — the predicate the departure sweep
 //     calls, which puts the two together and hands the winner to
 //     reassignChoiceLocked (pending_choice.go) to perform.
 //
 // No kind is special-cased by card, and nothing here reads a card name.
 
-// choiceReassignDecisions classifies every PendingChoiceKind against
-// CR 800.4g: does the choice still mean something when somebody else
-// makes it?
+// choiceDepartureRule is one row of the departure table: what becomes
+// of a prompt of this kind when the seat that owes it leaves the game.
+// Two columns, because the two questions are independent — a
+// reassignment can still fail for want of an object or an inheritor,
+// and the drop that follows is the same drop this row describes.
+type choiceDepartureRule struct {
+	// reassign — CR 800.4g: somebody else makes this choice.
+	reassign bool
+	// onDrop — what the DROP does, past forgetting the question.
+	onDrop choiceDropAction
+}
+
+// choiceDropAction is the departure table's second column: the default
+// action a dropped prompt of this kind still has to take, because the
+// rule that stops it being asked says what happens instead (#961).
 //
-// DENY BY DEFAULT, and deliberately the opposite default from
-// choiceGateDecisions (choice_gate.go). An unclassified kind is
-// DROPPED, which is exactly the pre-#902 behaviour — safe, already
-// shipped, and not a wedge. The failure mode of the wrong default here
-// is a prompt that ends instead of moving, not a prompt handed to a
-// seat it makes no sense for.
+// The zero value is "nothing more to do", which is what a dropped
+// prompt has always done. A kind with a real default action declares it
+// HERE, in the table, so the departure sweep stays one loop over one
+// table rather than growing a per-kind branch.
+type choiceDropAction uint8
+
+const (
+	// dropDiscard — the question is simply forgotten. Every kind whose
+	// material left with the player it was asked of.
+	dropDiscard choiceDropAction = iota
+	// dropDecline — CR 800.4f: "if an object requires a player who has
+	// left the game to pay a cost or choose whether to pay a cost, that
+	// cost is not paid". Not paying is an ANSWER, and the prompt's
+	// "unless" branch is what happens when it is given — Rhystic Study
+	// still draws, Smothering Tithe still makes its Treasure. The drop
+	// runs the frame's decline continuation
+	// (declineDepartedChoiceLocked, pending_choice.go).
+	dropDecline
+)
+
+// choiceDepartureDecisions classifies every PendingChoiceKind against
+// CR 800.4f/g: does the choice still mean something when somebody else
+// makes it — and if it does not, does the rule that ends it say what
+// happens instead?
+//
+// DENY BY DEFAULT in both columns, and deliberately the opposite
+// default from choiceGateDecisions (choice_gate.go). An unclassified
+// kind is DROPPED and its drop does nothing, which is exactly the
+// pre-#902 behaviour — safe, already shipped, and not a wedge. The
+// failure mode of the wrong default here is a prompt that ends instead
+// of moving, not a prompt handed to a seat it makes no sense for.
 // TestEveryChoiceKindHasAReassignmentDecision fails until a new kind
 // gets a row anyway.
 //
-// `true` is only for kinds that can be about ANOTHER player's object.
-// Everything else is one of three shapes:
+// A `{}` row is that default spelled out: dropped, and the drop does
+// nothing. `{reassign: true}` is only for kinds that can be about
+// ANOTHER player's object. Everything else is one of three shapes:
 //
 //   - CR 800.4f — the choice is a cost, or whether to pay one. The
 //     rule says the cost is simply not paid, so there is nobody to ask.
+//     Not paying is still an ANSWER, though, and what it answers is in
+//     the second column: pay_unless declares dropDecline (#961).
 //   - The material is the departed player's own, and CR 800.4a has
 //     already taken it out of the game: their library, their hand,
 //     their permanents, their mana pool, their loop.
@@ -378,68 +420,92 @@ func (g *Game) dropPendingTriggersForLocked(playerID uuid.UUID) {
 //     outcome for a chooser who left — the CR 616 replacement pair,
 //     whose drop settles the paused event through
 //     finishDroppedReplacementLocked (#808).
-var choiceReassignDecisions = map[PendingChoiceKind]bool{
+var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// --- CR 800.4g reassigns these -------------------------------
 	//
 	// pick_target: a triggered ability's CR 603.3d target pick. The
 	// legal set is the whole board, and the trigger's source can be a
 	// permanent a survivor controls.
-	PendingChoicePickTarget: true,
+	PendingChoicePickTarget: {reassign: true},
 	// trigger_prompt: a CR 603.5 "you may" whose chooser was pointed
 	// at somebody other than the source's controller
 	// (TriggerOptionalPrompt.Chooser).
-	PendingChoiceTriggerPrompt: true,
+	PendingChoiceTriggerPrompt: {reassign: true},
 	// choose_cards / discard_from_hand: Thoughtseize-shaped — the
 	// chooser picks out of FromPlayer's pool, and when that is not
 	// their own the question survives them.
-	PendingChoiceChooseCards:     true,
-	PendingChoiceDiscardFromHand: true,
+	PendingChoiceChooseCards:     {reassign: true},
+	PendingChoiceDiscardFromHand: {reassign: true},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in
 	// reassignDepartedChoiceLocked, not by this row.
-	PendingChoiceOptionPick: true,
+	PendingChoiceOptionPick: {reassign: true},
+	// confirm is trigger_prompt's resolution-time twin — a CR 603.5
+	// "you may" a card can address to any seat (Combustible Gearhulk
+	// asks its target) — and it is reassigned for the same reason.
+	// #902 dropped it because the prompt carried no record of whose
+	// material it was about; ConfirmPrompt.FromPlayer (#961, the one
+	// field that amendment's Consequences named) now carries it, so
+	// gate 3 can tell a self-question from one asked across the table
+	// and this row no longer has to be the safe answer. Every confirm
+	// the engine queues today leaves FromPlayer defaulted to the
+	// chooser, so every one of them is still dropped by the material
+	// gate.
+	PendingChoiceConfirm: {reassign: true},
 
 	// --- CR 800.4f: a cost, or whether to pay one ----------------
-	PendingChoicePayUnless:    false,
-	PendingChoiceEntryPayLife: false,
+	//
+	// pay_unless is never reassigned — nobody else is asked to settle
+	// a departed player's Rhystic tax — but the rule does not end
+	// there: the cost is not paid, and "unless that player pays" is
+	// exactly the branch that happens when it is not. The drop runs
+	// the decline (#961).
+	PendingChoicePayUnless: {onDrop: dropDecline},
+	// entry_pay_life is 800.4f too, and its "unless" branch — the
+	// permanent enters tapped — is about the departed player's OWN
+	// permanent, which CR 800.4a takes out of the game in the same
+	// breath. There is nothing for a drop action to do, so it keeps
+	// the default rather than declaring one that could never fire.
+	PendingChoiceEntryPayLife: {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
-	PendingChoiceMana: false,
+	PendingChoiceMana: {},
 
 	// --- their own material, already gone (CR 800.4a) ------------
-	PendingChoiceSacrifice:     false,
-	PendingChoiceLegendRule:    false,
-	PendingChoiceScry:          false,
-	PendingChoiceSurveil:       false,
-	PendingChoiceLookAtTop:     false,
-	PendingChoiceSearchLibrary: false,
-	PendingChoiceMayCast:       false,
-	PendingChoiceCopyTarget:    false,
-	PendingChoiceCreatureType:  false,
-	PendingChoiceColor:         false,
+	PendingChoiceSacrifice:     {},
+	PendingChoiceLegendRule:    {},
+	PendingChoiceScry:          {},
+	PendingChoiceSurveil:       {},
+	PendingChoiceLookAtTop:     {},
+	PendingChoiceSearchLibrary: {},
+	PendingChoiceMayCast:       {},
+	PendingChoiceCopyTarget:    {},
+	PendingChoiceCreatureType:  {},
+	PendingChoiceColor:         {},
 	// The attacker whose damage is being assigned was theirs, and it
 	// left with them.
-	PendingChoiceDamageAssignment: false,
+	PendingChoiceDamageAssignment: {},
 	// Their triggers are dropped outright (CR 800.4d,
 	// dropPendingTriggersForLocked), so there is nothing left to order
 	// and nothing left to pick a mode for. mode_pick (#764, CR 603.3c)
 	// looks like pick_target's twin — an object's choice that is not a
-	// cost — and is `false` for the rule one number earlier: "if a
+	// cost — and is never reassigned for the rule one number
+	// earlier: "if a
 	// triggered ability that would be controlled by a player who has
 	// left the game would be put onto the stack, it isn't put on the
 	// stack". Choosing a mode for an ability that will never be
 	// announced is choosing nothing.
-	PendingChoiceTriggerOrder: false,
-	PendingChoiceModePick:     false,
+	PendingChoiceTriggerOrder: {},
+	PendingChoiceModePick:     {},
 	// CR 310.9's protector is chosen by the battle's controller as it
 	// enters; the battle left with them.
-	PendingChoiceChooseProtector: false,
+	PendingChoiceChooseProtector: {},
 	// The flip belongs to its flipper, who is named by the frame the
 	// reassignment deliberately does not touch.
-	PendingChoiceCoinCall: false,
+	PendingChoiceCoinCall: {},
 	// CR 726: the allowance is on THEIR loop's tally key.
-	PendingChoiceLoopShortcut: false,
+	PendingChoiceLoopShortcut: {},
 	// untap_choice is CR 502.3's determination, and it is doubly
 	// theirs: the permanents in question are the ones they control
 	// (ADR 0070 Decision 4 scopes the caps and opt-outs to the active
@@ -452,27 +518,20 @@ var choiceReassignDecisions = map[PendingChoiceKind]bool{
 	// wedge the cursor: the departure sweep ends the turn and the
 	// rotation re-enters the next seat's untap step, which makes its
 	// own determination.
-	PendingChoiceUntapChoice: false,
-	// confirm carries no record of whose material it is about —
-	// QueueConfirmForEffect sets FromPlayer to the chooser
-	// unconditionally — so the engine cannot tell a self-question from
-	// one asked across the table. Dropped, as before #902. See the
-	// ADR 0060 amendment's Consequences for the one-field change that
-	// would lift this.
-	PendingChoiceConfirm: false,
+	PendingChoiceUntapChoice: {},
 
 	// --- the CR 616 pair, which settles its own drop (#808) ------
-	PendingChoiceReplacementOrder:    false,
-	PendingChoiceOptionalReplacement: false,
+	PendingChoiceReplacementOrder:    {},
+	PendingChoiceOptionalReplacement: {},
 }
 
-// ReassignableChoiceKinds lists every kind choiceReassignDecisions has
+// ReassignableChoiceKinds lists every kind choiceDepartureDecisions has
 // a row for, so a test can hold that list against the kinds the gate
 // classifies and fail on one that was never decided. Order is
 // unspecified. Mirrors ClassifiedChoiceKinds (choice_gate.go).
 func ReassignableChoiceKinds() []PendingChoiceKind {
-	out := make([]PendingChoiceKind, 0, len(choiceReassignDecisions))
-	for kind := range choiceReassignDecisions {
+	out := make([]PendingChoiceKind, 0, len(choiceDepartureDecisions))
+	for kind := range choiceDepartureDecisions {
 		out = append(out, kind)
 	}
 	return out
@@ -486,7 +545,7 @@ func ReassignableChoiceKinds() []PendingChoiceKind {
 //
 // Two gates, in this order:
 //
-//  1. The KIND. choiceReassignDecisions above.
+//  1. The KIND. choiceDepartureDecisions above.
 //  2. The OBJECT. CR 800.4g reassigns a choice an OBJECT requires, so
 //     there has to still be one: the prompt's Source must be findable
 //     and controlled by a player still in the game. A prompt whose
@@ -497,7 +556,7 @@ func ReassignableChoiceKinds() []PendingChoiceKind {
 //     that is a statement about the engine rather than about the rule:
 //     every rule-required prompt it has (the legend rule, a cleanup
 //     discard, a mulligan) is a choice about the asked player's own
-//     permanents or hand, so all of them are `false` above anyway.
+//     permanents or hand, so none of them is reassigned above anyway.
 //  3. The MATERIAL. A prompt about the departed player's OWN pool has
 //     no answer that does anything: CR 800.4a took that pool out of the
 //     game a moment ago, so every branch of Torment of Hailfire's "lose
@@ -508,19 +567,18 @@ func ReassignableChoiceKinds() []PendingChoiceKind {
 //     An unset FromPlayer makes no claim about material and falls
 //     through to the other two gates.
 //
+// Gates 2 and 3 are departedChoiceObjectLocked, because the drop
+// action (#961) has to pass exactly the same two: CR 800.4f's "an
+// OBJECT requires a player who has left the game to pay a cost" is
+// 800.4g's opening clause, one rule earlier.
+//
 // Caller must hold g.mu.
 func (g *Game) reassignDepartedChoiceLocked(c *PendingChoice) bool {
-	if c == nil || !choiceReassignDecisions[c.Kind] {
+	if c == nil || !choiceDepartureDecisions[c.Kind].reassign {
 		return false
 	}
-	if c.FromPlayer == c.Chooser {
-		return false
-	}
-	controller := g.choiceObjectControllerLocked(c)
-	if controller == uuid.Nil || controller == c.Chooser {
-		return false
-	}
-	if p := g.playerByIDLocked(controller); p == nil || p.Eliminated {
+	controller, ok := g.departedChoiceObjectLocked(c)
+	if !ok {
 		return false
 	}
 	to := g.choiceInheritorLocked(c, controller)
@@ -528,6 +586,33 @@ func (g *Game) reassignDepartedChoiceLocked(c *PendingChoice) bool {
 		return false
 	}
 	return g.reassignChoiceLocked(c, to)
+}
+
+// departedChoiceObjectLocked is gates 2 and 3 above, and the answer to
+// "is there still an object, in the game and somebody else's, that
+// requires this prompt?". Returns that object's controller.
+//
+// Both callers need it and neither may skip it. A reassignment without
+// gate 2 hands a prompt to a seat for an object nobody controls; a drop
+// action without it runs a departed player's own card's consequence on
+// material CR 800.4a has already taken — cumulative upkeep's "sacrifice
+// this permanent unless you pay" would sacrifice a permanent that is
+// leaving the game anyway, and the sacrifice is observable (it is a
+// death, and other players' triggers watch for one).
+//
+// Caller must hold g.mu.
+func (g *Game) departedChoiceObjectLocked(c *PendingChoice) (uuid.UUID, bool) {
+	if c == nil || c.FromPlayer == c.Chooser {
+		return uuid.Nil, false
+	}
+	controller := g.choiceObjectControllerLocked(c)
+	if controller == uuid.Nil || controller == c.Chooser {
+		return uuid.Nil, false
+	}
+	if p := g.playerByIDLocked(controller); p == nil || p.Eliminated {
+		return uuid.Nil, false
+	}
+	return controller, true
 }
 
 // choiceInheritorLocked is CR 800.4g's "who makes it instead", and the

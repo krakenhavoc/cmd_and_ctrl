@@ -758,9 +758,13 @@ const (
 
 // emitBecameTargetLocked fans one EventBecomesTarget out per target
 // slot in `targets`. Called from every site that finishes choosing
-// targets for a spell or ability: the cast path, the activated-
-// ability announce, the triggered-ability target pick, and the
-// manual sandbox announce.
+// targets for a spell or ability, and there are six: the cast path,
+// the catalog activation (activated.go), the manual sandbox
+// activation and the manual trigger announce (mutations.go), a
+// trigger's CR 603.3d target pick (pending_choice.go) and a copy's
+// re-target (spell_copy.go). One helper, so a card watching for
+// "becomes the target" cannot see a different board depending on
+// which verb announced (#968 was the sandbox activation missing).
 //
 // `actor` is the controller of the spell or ability, `source` is its
 // source card and `itemID` is its stack item. TargetSelf /
@@ -768,9 +772,10 @@ const (
 // chose.
 //
 // `source` and `itemID` are equal for a cast spell and differ for an
-// ability; see Event.StackItemID for why both are carried. A caller
-// with no item to name (the manual sandbox announce, before the item
-// exists) may pass uuid.Nil.
+// ability; see Event.StackItemID for why both are carried. Every
+// caller names an item: ward reads StackItemID to counter the object
+// that targeted, and Source would be the permanent the ability came
+// from.
 //
 // Emitted AFTER the item exists, so a trigger harvested off this
 // event lands on PendingTriggers above the thing that targeted.

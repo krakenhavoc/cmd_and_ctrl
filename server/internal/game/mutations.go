@@ -2182,6 +2182,20 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		Distribution: cloneDistributionLocked(params.Distribution),
 		Seq:          g.nextStackSeqLocked(),
 	}
+	// CR 115.7: the targets are chosen as the ability goes on the
+	// stack, and becoming a target is an event whether the ability
+	// came out of the catalog or off a player's own reading of the
+	// card (#968). Same call, same place as the catalog activation
+	// (activated.go) and the manual trigger announce below: after the
+	// item exists, so a ward or "becomes the target" trigger harvested
+	// off it lands on the stack above the thing that targeted.
+	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
+	// And the drain the catalog path runs for the same reason: the
+	// activator receives priority right after activating (CR 117.3c),
+	// so a trigger harvested off the announce goes on the stack at
+	// that boundary (CR 603.3b) — above the ability, where a ward
+	// trigger has to be to counter it.
+	g.runStateChecksLocked()
 	return nil
 }
 
@@ -2969,12 +2983,24 @@ func (g *Game) cleanupStackForEliminatedLocked(playerID uuid.UUID) {
 // — which kinds move, and who inherits — and reports false for
 // everything else, which is the pre-#902 drop, event and all.
 //
+// #961 / CR 800.4f: a drop is not always the end of the question. The
+// departure table's second column names the DEFAULT ACTION a dropped
+// prompt of that kind still has to take — for pay_unless, the cost is
+// not paid, so the "unless" branch runs. The actions run at the bottom
+// of this function, after the queue has been rewritten, for the reason
+// #808's replacement frames do: a continuation may queue the next
+// prompt, and it must not land in a slice this loop is still writing
+// over. A continuation that queues to the DEPARTED seat is refused by
+// QueueChoiceForEffect's own guard (#864); one that queues to a
+// survivor is a prompt that seat really does owe.
+//
 // Caller must hold g.mu.
 func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResumeFrame {
 	if len(g.PendingChoices) == 0 {
 		return nil
 	}
 	var dropped []*replacementResumeFrame
+	var settle []*PendingChoice
 	kept := g.PendingChoices[:0]
 	for _, c := range g.PendingChoices {
 		if c == nil || c.Chooser != playerID {
@@ -2994,6 +3020,9 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 			Source: c.Source,
 			Label:  string(c.Kind),
 		})
+		if choiceDepartureDecisions[c.Kind].onDrop != dropDiscard {
+			settle = append(settle, c)
+		}
 		if c.replacementResume != nil && c.replacementResume.ev != nil {
 			dropped = append(dropped, c.replacementResume)
 		}
@@ -3001,6 +3030,18 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 	g.PendingChoices = kept
 	if len(g.PendingChoices) == 0 {
 		g.PendingChoices = nil
+	}
+	for _, c := range settle {
+		// The object gate is re-read here rather than in the loop
+		// above: an earlier action may have been the thing that took
+		// the next one's object off the table.
+		if _, ok := g.departedChoiceObjectLocked(c); !ok {
+			continue
+		}
+		switch choiceDepartureDecisions[c.Kind].onDrop {
+		case dropDecline:
+			g.declineDepartedChoiceLocked(c)
+		}
 	}
 	return dropped
 }

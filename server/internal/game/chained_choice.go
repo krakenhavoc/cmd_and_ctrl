@@ -160,6 +160,17 @@ type chooseCardsFrame struct {
 type ConfirmPrompt struct {
 	// Chooser answers the prompt. Required.
 	Chooser uuid.UUID
+	// FromPlayer names whose material the question is ABOUT, the way
+	// it already does on a ChooseCardsPrompt. Defaults to Chooser,
+	// which is what almost every confirm is — "you may shuffle", "pay
+	// 2 life?" — and a cross-table yes/no (Combustible Gearhulk asks
+	// its target whether to mill) sets it to the player it is asked
+	// of. The difference is invisible until the chooser leaves the
+	// game: CR 800.4g reassigns a question about somebody else's
+	// material and drops one about the asker's own, and this field is
+	// how the departure sweep tells them apart (#961, the one field
+	// ADR 0060's amendment named).
+	FromPlayer uuid.UUID
 	// Source is the card asking. Empty is legal (test harnesses).
 	Source uuid.UUID
 	// Question is the prompt's header — the card's own sentence.
@@ -180,10 +191,14 @@ type ConfirmPrompt struct {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueConfirmForEffect(p ConfirmPrompt) uuid.UUID {
+	from := p.FromPlayer
+	if from == uuid.Nil {
+		from = p.Chooser
+	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:         PendingChoiceConfirm,
 		Chooser:      p.Chooser,
-		FromPlayer:   p.Chooser,
+		FromPlayer:   from,
 		Count:        1,
 		Source:       p.Source,
 		Reason:       p.Question,
