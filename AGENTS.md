@@ -2994,7 +2994,13 @@ is gone. In its place:
   (`coverage/testdata/clone_baseline.txt`) records the duplicates that
   predate the gate; regenerate it with
   `go test ./internal/cards/coverage/ -update` when a PR removes some,
-  never add a line to it by hand.
+  never add a line to it by hand. **It is keyed on the body hash and
+  the set of declaring files, never on a line number** (#895): each
+  row is `<hash> <lines> <copies> <files>`, where `<lines>` is the
+  body's LENGTH. So an edit above a listed closure does not rewrite
+  the file, and a baseline diff in your PR means the set of duplicates
+  really changed. The `file.go:closure@line` locations are still
+  printed in the failure report, where a human wants them.
 
 ### When NOT to add a catalog entry
 
