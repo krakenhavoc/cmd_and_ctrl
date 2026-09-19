@@ -197,6 +197,14 @@ func ManaTriggersForCard(c Card) []ManaTrigger {
 // Order is battlefield order: deterministic, and the only thing the
 // rules require of simultaneous mana abilities that all simply resolve.
 //
+// TWO PASSES, and the split is the CR 603.2 one: every condition is
+// judged against the board as it was WHEN THE MANA WAS PRODUCED (pass
+// one), and only then does anything resolve (pass two). It is also
+// what makes the walk safe — adding mana emits events, an event runs
+// listeners, and a listener that ever put a permanent on the
+// battlefield would reallocate the slice the first pass is holding
+// pointers into.
+//
 // A production that added nothing fires nothing: a land that was
 // tapped for no mana was not "tapped for mana".
 //
@@ -208,12 +216,13 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 	if len(prod.Colors) == 0 || prod.Controller == uuid.Nil {
 		return
 	}
-	// The length is taken ONCE. A Produced callback is read-only by
-	// contract, but if one ever broke that and put a permanent on the
-	// battlefield, a live re-read would turn this walk into a loop
-	// that adds mana forever.
-	n := len(g.Battlefield.Cards)
-	for i := 0; i < n && i < len(g.Battlefield.Cards); i++ {
+	type firing struct {
+		source   uuid.UUID
+		label    string
+		produced string
+	}
+	var fired []firing
+	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
 		triggers := ManaTriggersForCard(*source)
 		if len(triggers) == 0 {
@@ -228,10 +237,16 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 				produced = t.Produced(prod, source, g)
 			}
 			if produced == "" {
+				// "Could add mana" is part of what makes this a mana
+				// ability at all (CR 605.1b); one that would add
+				// nothing does nothing.
 				continue
 			}
-			g.addTriggeredManaLocked(prod.Controller, source.InstanceID, t.Label, produced, pending)
+			fired = append(fired, firing{source: source.InstanceID, label: t.Label, produced: produced})
 		}
+	}
+	for _, f := range fired {
+		g.addTriggeredManaLocked(prod.Controller, f.source, f.label, f.produced, pending)
 	}
 }
 

@@ -125,8 +125,12 @@ able to ask what it was.
 
 `(*Game).fireManaTriggersLocked(prod, pending)` is the one function. It walks
 the battlefield in order, asks `ManaTriggersForCard` for each permanent,
-applies `AppliesTo`, and hands `Produced`'s string to the shared adder. It is
-called from exactly three places and never anywhere else:
+applies `AppliesTo`, and hands `Produced`'s string to the shared adder — in
+**two passes**: every condition is judged against the board as it was when the
+mana was produced, and only then does anything resolve. That is the CR 603.2
+split, and it is also what keeps the walk safe, since adding mana emits events
+and an event runs listeners. It is called from exactly three places and never
+anywhere else:
 
 | Site | When it fires | `pending` |
 |---|---|---|
