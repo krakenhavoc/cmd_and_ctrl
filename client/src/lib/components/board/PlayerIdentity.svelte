@@ -18,6 +18,7 @@
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import { settings } from "../../settings";
   import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
+  import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
 
@@ -101,10 +102,19 @@
   // on.
   const isBot = $derived(seat.is_bot === true);
   const botLabel = $derived(seat.bot_tier ? `bot · ${seat.bot_tier}` : "bot");
+  // #688: PlayerView only carries the curated deck's ID (e.g.
+  // "esper-control"); the display name comes from GET /bot/options,
+  // resolved and cached client-side by botDeckNames.ts. An ID the
+  // catalog doesn't recognize (a pasted custom decklist, or a deck
+  // retired since the seat was made) falls back to the raw ID rather
+  // than rendering nothing.
+  $effect(() => {
+    if (isBot) void ensureBotDeckNamesLoaded();
+  });
   const botTitle = $derived(
     [
       seat.bot_tier ? `${seat.bot_tier} tier` : null,
-      seat.bot_deck ? `deck: ${seat.bot_deck}` : null,
+      seat.bot_deck ? `deck: ${botDeckLabel(seat.bot_deck, $botDeckNames)}` : null,
     ]
       .filter(Boolean)
       .join(" — ") || "a bot plays this seat",
