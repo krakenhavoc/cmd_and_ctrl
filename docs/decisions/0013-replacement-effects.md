@@ -1506,6 +1506,135 @@ the only reason it is not in that list. Totem armor (CR 702.111) and
 CR 701.19b's static "if this would be destroyed, regenerate it"
 remain unmodelled; no catalog card needs either yet.
 
+### 5s. Amendment, 2026-09-18: a keyword action with a count is a replaceable event
+
+*Amendment, 2026-09-18, branch
+`feat/976-974-keyword-action-replacements-and-announce-drain`. Closes
+[#976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/976). Follows
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+decision 1, which is the shape this reuses.*
+
+A keyword action is a verb the rules define once and cards print by
+name. Three of them carry a COUNT — proliferate (CR 701.34), scry
+(CR 701.22), surveil (CR 701.25) — and printed cards replace that
+count: Tekuthal, Inquiry Dominus's "if you would proliferate,
+proliferate twice instead", the Crystal Ball family's "if you would
+scry, scry that many plus one instead". None of them had a seam.
+`ProliferateForEffect` applied its choice directly and
+`lookAtTopForEffect` queued its prompt directly, so nothing in the
+CR 614 pipeline saw either, and Tekuthal shipped with the clause as a
+declared caveat (#943).
+
+**1. One event kind, opened once per INSTRUCTION.**
+`RepEventKeywordAction` carries
+
+```go
+RepEventKeywordAction:
+    KeywordAction      KeywordAction  // proliferate | scry | surveil
+    KeywordActionCount int            // the one field a replacement rewrites
+    Actor              uuid.UUID      // the player taking the action
+    Source             uuid.UUID      // the card whose effect asked
+```
+
+opened at the one entry point of each action —
+`ProliferateForEffect` (`keyword_action.go`) and
+`keywordLookAtTopForEffect` (`effect_api.go`, in front of the
+prompt-queueing body scry, surveil and look-at-top share) — and the
+action is taken only once the window settles. That is ADR 0061
+decision 1 applied to a verb instead of to a creation: "proliferate"
+is one keyword action however many permanents its choice names, so a
+doubler modifies the instruction, not the counters.
+
+ONE kind with an `Action` discriminator rather than one kind per verb.
+Everything downstream of the count is the same code for all three —
+the gather, the CR 616.1 apply-loop, #792's identical-window skip, the
+resume — so a fourth counted keyword action (investigate, explore) is
+a constant and an arm of one switch rather than a new event. The
+card-side helper narrows on the action, so a scry replacement is never
+woken by a proliferate.
+
+**2. What the count means is per action, and it is the rules' own
+distinction.** For proliferate the count is the number of TIMES the
+whole action is taken (base 1): CR 701.34 makes the choice part of the
+action, so "proliferate twice" is the action twice, not two counters.
+For scry and surveil it is the number of CARDS (base N), which is what
+"scry that many plus one" adds to. Collapsing the two into "a count of
+things" would have made "proliferate twice" place two counters on one
+permanent, which is not what the card says.
+
+**3. `EventKeywordAction` is a watch sentinel, not a logged event.**
+`ReplacementEffect.Watches` keys on `EventKind`, and the family has no
+single post-event twin: `EventScry` and `EventSurveil` fire AFTER the
+player has put the cards back (with the count this window settled on),
+and there is no proliferate event at all. So the watch key is one
+engine-internal sentinel, exactly as `EventStepTransition` has been
+since S17, and the ACTION lives on the event where a predicate can
+read it.
+
+**4. Identity and order are inherited, not declared.** Two Tekuthals
+are two objects contributing one declared effect, so #792's
+identical-window skip applies and nobody is asked to order ×2 against
+×2 — four proliferates. A doubler beside a "plus one" is two different
+declared effects and the affected player really is asked, because
+CR 616.1's orderings differ (×2 then +1 is 3 proliferates from a base
+of 1; +1 then ×2 is 4). The affected player of a keyword action is the
+player TAKING it, so `affectedPlayerForEvent` returns `Actor` rather
+than falling through to the first gathered effect's controller.
+
+**5. Both entry points can pause, and the tail carries what they
+owe.** `keywordActionTail` is the keyword-action sibling of
+`zoneRoute`, `damageTail`, `lifeTail` and `tokenTail`: the
+proliferate's chosen lists, and the scry's prompt kind and its "then"
+continuation. A paused proliferate has placed NO counters and a paused
+scry has queued NO prompt when the entry point returns — the resume
+does both, through the same `applyResolvedKeywordActionLocked` the
+unpaused path runs, so the two cannot drift apart.
+`ScryThenForEffect`'s returned count is 0 on a pause, which is the
+contract `CreateTokensForEffect`'s empty ID slice already carries and
+no production caller reads. `cloneReplacementResume` gives an undo
+snapshot its own copy of the tail and its own slices, for the reason
+the token tail gets one: the continuation is cleared through the
+pointer.
+
+A CANCELLED keyword action — a CR 614.10 null replacement, or a count
+replaced down to zero — still runs the continuation. "Scry 2, then
+draw a card" draws whether or not the scry happened, and a caller
+sequenced behind the action has to be told either way (#808's call for
+the life tail, #853's for the route, #762's for the tokens).
+
+**6. What is deliberately not here.**
+
+- **Look at the top N cards** is not a keyword action — Ponder and
+  Sensei's Divining Top print the sentence in full — so
+  `LookAtTopThenForEffect` opens no window. Routing it through one
+  would invent an "if you would look at the top" the rules do not
+  have.
+- **A scry of zero or less opens no window either.** You would not
+  scry, so there is nothing to replace; the continuation still runs.
+- **The counted actions only.** Sacrifice, tap, exile and the rest are
+  already ordinary mutations with events of their own; a count is what
+  a replacement of this family rewrites.
+- **Each proliferate of a doubled one is not re-chosen.** The choice
+  is made before the window opens and applied each time. Under the
+  catalog's deterministic beneficial pick (`cards/effects/proliferate.go`)
+  a second pick over the board the first one left returns the same two
+  lists, because proliferate only ever adds a counter of a kind
+  already there; a real picker, when one lands, is where this becomes
+  a choice per iteration.
+- **A repeat cap.** `maxKeywordActionRepeats` is 64. The apply-loop is
+  bounded at 32 iterations and a doubler is multiplicative, so a buggy
+  card could ask for 2^32 proliferates; over the cap the action is
+  taken 64 times and the overflow is logged, which is
+  `ErrReplacementIterationExceeded`'s posture.
+
+**7. What shipped on the cards.** One conversion: Tekuthal, Inquiry
+Dominus goes from `CompletenessCaveats` to `CompletenessFull`, its one
+caveat replaced by `ProliferateTwice(...)` in its `Replacements`
+slice. No catalog card prints the scry or surveil side yet;
+`ScryPlusOne` and `SurveilPlusOne` exist beside the generic
+`KeywordActionBecomes` so the first one that does is a line, and they
+are exercised through probe entries registered in the test file.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

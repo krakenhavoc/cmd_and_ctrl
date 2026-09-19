@@ -2206,7 +2206,9 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 // Returns the number of cards actually looked at, which is fewer than n
 // when the library is short and zero when it is empty — a scry with an
 // empty library is not an error, it simply does nothing, and no choice
-// is queued.
+// is queued. It is also zero when the CR 614 keyword-action window
+// PAUSED on an ordering prompt, in which case nothing has been queued
+// yet and the resume queues it; see ScryThenForEffect.
 //
 // Scry is LOOK AT, not reveal. Only the scrying player becomes a knower
 // of the cards, so the per-viewer wire filter redacts them for everyone
@@ -2237,11 +2239,21 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // `after` still runs when the scry looked at nothing (an empty
 // library): the instruction after "then" is not conditional on the
-// scry having had cards to look at.
+// scry having had cards to look at. It runs on every other terminal
+// outcome too — a scry replaced away entirely still leaves Preordain's
+// draw to happen.
+//
+// A scry is a KEYWORD ACTION (CR 701.22), so this opens the CR 614
+// window on it before the prompt is queued: "if you would scry, scry
+// that many plus one instead" rewrites the count, and the prompt is
+// queued with what the window settled on. A window with two different
+// replacements in it PAUSES on a CR 616 ordering prompt, and then
+// nothing is queued and the returned count is 0 — the resume queues
+// the scry when the order is answered. See keyword_action.go and #976.
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after)
 }
 
 // SurveilThenForEffect is surveil N with a continuation (CR 701.25):
@@ -2256,9 +2268,53 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 // does: it must not run until the library is in the order the player
 // chose.
 //
+// A surveil is a keyword action (CR 701.25) on the same CR 614 window
+// scry opens — same count, same "that many plus one" shape, same
+// pause. See ScryThenForEffect.
+//
 // Caller must hold g.mu.
 func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceSurveil, playerID, source, n, surveilReason, after)
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after)
+}
+
+// keywordLookAtTopForEffect is the scry / surveil entry point: it
+// opens the CR 614 keyword-action window on the count and, once the
+// window settles, queues the prompt through the same
+// lookAtTopForEffect body every member of the family uses.
+//
+// LookAtTopThenForEffect deliberately does NOT come through here.
+// "Look at the top N cards of your library, then put them back in any
+// order" is not a keyword action — it is a sentence Ponder and
+// Sensei's Divining Top print in full — so there is no "if you would
+// look at the top" to replace, and routing it through a keyword-action
+// window would invent one.
+//
+// A count of zero or less opens no window either: you would not scry,
+// so there is nothing for a replacement to replace. The `after`
+// continuation still runs, in lookAtTopForEffect, exactly as it did.
+//
+// Caller must hold g.mu.
+func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	if n <= 0 {
+		return g.lookAtTopForEffect(kind, playerID, source, n, after)
+	}
+	looked, err := g.runKeywordActionLocked(&ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              playerID,
+		Source:             source,
+		KeywordAction:      action,
+		KeywordActionCount: n,
+		keywordAction:      &keywordActionTail{choice: kind, then: after},
+	})
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    playerID,
+			Source:   source,
+			ErrorMsg: err.Error(),
+		})
+	}
+	return looked
 }
 
 // LookAtTopThenForEffect is "look at the top N cards of your library,
@@ -2273,7 +2329,7 @@ func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after fun
 //
 // Caller must hold g.mu.
 func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, lookAtTopReason, after)
+	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, after)
 }
 
 // lookAtTopForEffect queues the "look at the top N cards of your
@@ -2288,8 +2344,13 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 // there is nothing to look at: the instruction after "then" is not
 // conditional on the library having had cards in it.
 //
+// The banner copy comes from the prompt kind (lookAtTopReasonFor), so
+// the keyword-action window that may have rewritten `n` cannot leave
+// the prompt saying "Scry 2" over three cards.
+//
 // Caller must hold g.mu.
-func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, reason func(int) string, after func(g *Game) error) int {
+func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
 		if after != nil {
 			if err := after(g); err != nil {
@@ -2401,6 +2462,23 @@ func surveilReason(n int) string {
 // the instruction.
 func lookAtTopReason(n int) string {
 	return "Look at the top " + strconv.Itoa(n) + " cards of your library"
+}
+
+// lookAtTopReasonFor picks the banner copy for a prompt kind. The
+// three prompts differ only in where the cards that leave the top go,
+// so the copy is the one thing that has to say which keyword the
+// player is answering — and it is chosen from the KIND rather than
+// passed in beside it, so the count the prompt is queued with is
+// always the count the banner names. An unknown kind gets the neutral
+// phrasing rather than a blank banner.
+func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
+	switch kind {
+	case PendingChoiceScry:
+		return scryReason
+	case PendingChoiceSurveil:
+		return surveilReason
+	}
+	return lookAtTopReason
 }
 
 // ReturnFromExileToBattlefieldForEffect is the other half of a

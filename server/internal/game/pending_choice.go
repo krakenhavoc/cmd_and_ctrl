@@ -1421,6 +1421,15 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventKeywordAction:
+		// #976. The affected player of a keyword action is the player
+		// TAKING it — the one who proliferates, the one who scrys —
+		// which is Actor. Naming it here rather than falling through
+		// to the first gathered effect's controller matters for the
+		// same reason it does for a draw: the two are the same player
+		// for every printed card today, and CR 616.1 gives the choice
+		// to the affected one whoever controls the replacements.
+		return ev.Actor
 	}
 	if len(applicable) > 0 && applicable[0].effect.Controller != nil {
 		return applicable[0].effect.Controller(ev, g, applicable[0].source)
@@ -1774,6 +1783,23 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// drift apart — and each token then takes the ordinary
 		// battlefield entry, which may pause again on its own.
 		return g.applyResolvedTokenCreationLocked(ev)
+	case RepEventKeywordAction:
+		// #976: the CR 614 window has settled on how many times this
+		// proliferate happens, or how many cards this scry looks at.
+		// Taking the action is the same function the unpaused path
+		// runs, so a keyword action that paused on an ordering prompt
+		// and one that did not cannot drift apart.
+		_, err := g.applyResolvedKeywordActionLocked(ev)
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the effect-time helpers
+		// deliberately skip happens here — a proliferated tenth poison
+		// counter is a CR 704.5c loss, and the unpaused path gets its
+		// sweep from the resolution bookend it runs inside.
+		g.runStateChecksLocked()
+		return nil
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is
@@ -1856,6 +1882,14 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	// never arrive.
 	if ev.Kind == RepEventCreateTokens {
 		return g.abandonTokenCreationLocked(ev)
+	}
+	// #976: and a cancelled KEYWORD ACTION. "Scry 2, then draw a card"
+	// still draws when the scry was replaced away — the sentence after
+	// "then" is not conditional on the action having happened — so the
+	// continuation has to be told rather than left waiting on a prompt
+	// that will never be queued.
+	if ev.Kind == RepEventKeywordAction {
+		return g.abandonKeywordActionLocked(ev)
 	}
 	// #853: and the same for a cancelled EXIT that carries a route.
 	// The card stays where it is, but a multi-card discard sequenced

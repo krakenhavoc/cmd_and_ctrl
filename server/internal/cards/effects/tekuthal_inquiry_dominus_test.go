@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -128,21 +127,23 @@ func TestTekuthalPaysItsPhyrexianSymbolsWithLife(t *testing.T) {
 	}
 }
 
-// The one declared gap is declared, and nothing else is: the card
-// ships with a caveat naming the proliferate replacement, and nothing
-// about the cost shape or the Phyrexian symbols.
-func TestTekuthalDeclaresItsRemainingGap(t *testing.T) {
+// Nothing is declared any more. #943 shipped the card with one caveat
+// — the proliferate replacement, which had no seam — and #976 built
+// the seam, so every printed clause is modelled: the cost shape, the
+// Phyrexian symbols (#971), the indestructible counter and the
+// replacement.
+func TestTekuthalDeclaresNoGap(t *testing.T) {
 	spec, ok := Lookup(tekuthalOracle)
 	if !ok {
 		t.Fatal("Tekuthal is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Errorf("completeness = %s, want caveats", spec.Completeness)
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("completeness = %s, want full", spec.Completeness)
 	}
-	if len(spec.Caveats) != 1 {
-		t.Fatalf("caveats = %v, want only the proliferate replacement", spec.Caveats)
+	if len(spec.Caveats) != 0 {
+		t.Errorf("caveats = %v, want none", spec.Caveats)
 	}
-	if strings.Contains(spec.Caveats[0], "Phyrexian") {
-		t.Errorf("the Phyrexian caveat outlived #971: %q", spec.Caveats[0])
+	if len(spec.Replacements) != 1 {
+		t.Fatalf("replacements = %d, want the one proliferate doubler", len(spec.Replacements))
 	}
 }

@@ -668,6 +668,21 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// the snapshot's copy of the event.
 			ev.TokenGroups = append([]TokenGroup(nil), f.ev.TokenGroups...)
 		}
+		if f.ev.keywordAction != nil {
+			// #976, the same reason as the token tail above: the
+			// keyword action's continuation is cleared THROUGH the
+			// pointer when the action is abandoned, and the REST of
+			// what the struct carries — the proliferate's chosen
+			// lists, the prompt kind a settled scry queues — is what
+			// applyResolvedKeywordActionLocked is still reading. Its
+			// own copy, with its own slices, so a live run cannot
+			// consume the snapshot's continuation or scribble into the
+			// choice an undone answer would replay.
+			t := *f.ev.keywordAction
+			t.cards = append([]uuid.UUID(nil), f.ev.keywordAction.cards...)
+			t.players = append([]uuid.UUID(nil), f.ev.keywordAction.players...)
+			ev.keywordAction = &t
+		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
 			if len(f.ev.zoneRoute.simultaneousExit) > 0 {

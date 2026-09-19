@@ -13,8 +13,11 @@ import (
 //	 there."
 //
 // The rule is one choice and one application. game.ProliferateForEffect
-// is the application and takes the chosen lists verbatim; this file is
-// the choice.
+// is the application — and, since #976, the CR 614 window on the
+// keyword ACTION, so "if you would proliferate, proliferate twice
+// instead" (Tekuthal, Inquiry Dominus) is a replacement the primitive
+// needs to know nothing about. It takes the chosen lists verbatim;
+// this file is the choice.
 //
 // Sandbox simplification — the choice is made FOR the proliferating
 // player, by a deterministic beneficial pick (BeneficialProliferateChoice
@@ -63,7 +66,7 @@ func (p Proliferate) Apply(ctx *Context) error {
 	if cards == nil && players == nil {
 		cards, players = BeneficialProliferateChoice(ctx.Game, controller)
 	}
-	return ctx.Game.ProliferateForEffect(cards, players)
+	return ctx.Game.ProliferateForEffect(controller, ctx.Source(), cards, players)
 }
 
 // harmfulCardCounters are the counter kinds a permanent's controller

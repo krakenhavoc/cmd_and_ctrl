@@ -374,6 +374,23 @@ const (
 	// Added in S17 sub-PR 2.
 	EventStepTransition EventKind = "step_transition"
 
+	// EventKeywordAction is the second engine-internal sentinel of
+	// the same shape, and the replacement-watch key for a KEYWORD
+	// ACTION with a count: proliferate (CR 701.34), scry (CR 701.22),
+	// surveil (CR 701.25). Cards read it only via
+	// ReplacementEffect.Watches; nothing emits it to the public log.
+	//
+	// One key for all three because RepEventKeywordAction is one
+	// kind: which action it is lives on the event
+	// (ReplacementEvent.KeywordAction) and the card-side helper
+	// narrows on it, so a "if you would scry" replacement is not
+	// woken by a proliferate. Reusing EventScry and EventSurveil here
+	// would key a PRE-event window on the names of two POST-event
+	// facts — those fire after the player has put the cards back,
+	// with the count this window settled on — and there is no
+	// EventProliferate at all. #976.
+	EventKeywordAction EventKind = "keyword_action"
+
 	// EventBeginUpkeep — the active player's upkeep step began.
 	// Actor is the active player (whose upkeep it is). The S19
 	// harvester fans this out to "at the beginning of your upkeep"

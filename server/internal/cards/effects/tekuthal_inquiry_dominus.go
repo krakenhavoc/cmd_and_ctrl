@@ -43,24 +43,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // activation-time Phyrexian announcement on ActivateAbilityParams
 // (CR 107.4f): blue mana, or 2 life each.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: "If you would
-// proliferate, proliferate twice instead" is a replacement of a
-// keyword ACTION (CR 701.34), and the engine has no seam for one —
-// ProliferateForEffect applies a choice, it does not run through the
-// CR 614 pipeline. Tekuthal's proliferates therefore happen once.
-// #943's issue names this as one of the two things Tekuthal was
-// blocked on besides the cost shape; the other, indestructible
-// counters, is handled above.
+// "If you would proliferate, proliferate twice instead" is a
+// replacement of a keyword ACTION (CR 701.34), which the engine had no
+// seam for when #943 shipped the card — ProliferateForEffect applied a
+// choice and never entered the CR 614 pipeline, so the clause was a
+// declared caveat and Tekuthal's proliferates happened once. #976
+// built the seam: a proliferate is now RepEventKeywordAction, opened
+// once per instruction with a count of TIMES, and the clause is
+// ProliferateTwice — one line, no per-card machinery.
+//
+// Two Tekuthals are four proliferates and nobody is asked to order
+// them: two objects contributing one declared effect is #792's
+// identical-window skip, and ×2 then ×2 is ×4 either way.
 func init() {
 	Register(Spec{
 		OracleID:        "4716ab91-30e6-4c63-8389-a9db8f9414d8",
 		Name:            "Tekuthal, Inquiry Dominus",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Caveats: []string{
-			"\"If you would proliferate, proliferate twice instead\" does nothing — a proliferate Tekuthal's controller runs happens once.",
+		Static:          []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
+		Replacements: []game.ReplacementEffect{
+			ProliferateTwice("Tekuthal, Inquiry Dominus — proliferate twice"),
 		},
-		Static: []game.StaticAbility{b24KeywordCounterGrant("indestructible")},
 		Activated: []ActivatedAbility{{
 			Label: "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.",
 			Cost: Plus(
