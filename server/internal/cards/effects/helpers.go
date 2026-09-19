@@ -363,6 +363,23 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
 
+// destroyFirstLegalCardTarget is the whole Effect of an activated
+// ability whose printed text is "Destroy target [permanent]." — it
+// re-checks legality through ctx.LegalTargets() (CR 608.2b) rather
+// than trusting item.Targets[0] blindly, which matters for an
+// activation whose target could leave the battlefield in response.
+// Hopeful Initiate's and Staff of Compleation's destroy activations
+// share this exact shape.
+func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return DestroyTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only
