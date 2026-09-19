@@ -1270,3 +1270,57 @@ to take the measurement and what to record with it. Exit criterion 4
 stays open on
 [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735) until
 somebody runs it against a key.
+
+## Amendment (2026-09-19, #685): S31's bot-table criteria are nightly jobs, and their budgets are one pair of knobs
+
+Two of S31's exit criteria — four `heuristic` bots to a winner within
+50 turns over 20 consecutive runs, and zero engine-rejected actions
+across a 100-game randomised run — were recorded in `docs/sprints.md`
+as met. Neither was running anywhere. The nightly played the heuristic
+test's default 3 seeds, and no workflow had ever set
+`AISEAT_SOAK_GAMES`, so `TestRandomBotSoak` had executed in CI exactly
+zero times. Both numbers were true on the afternoon somebody typed
+them and unverified every day since.
+
+They are now the `bot-soak` job in `.github/workflows/e2e-nightly.yml`,
+on the same nightly schedule and the same self-hosted runner as
+`bot-games`, and both tests are `-skip`ped out of that job's `-race`
+step so nothing is played twice.
+
+**No `-race` on this job**, on the argument §5's measurement already
+rests on and the random-table step already records: what these 120
+tables buy is the *engine* states they reach, and the runner-goroutine
+concurrency the detector would watch is the same code every whole-game
+test in `bot-games` drives under `-race`, on the same rooms, with the
+same observers. `-race` costs roughly 8x here, which is the difference
+between a 15-minute job and a two-hour one on a runner shared with CI.
+
+**No network and no model key.** The seats are `heuristic.New()` and
+`aiseat.NewRandomPolicy`. §5's funnel, the model tiers and the
+improviser are all out of scope for this job by construction, which is
+what lets it be a standing gate at all: §5's update already records
+that there is no key in CI.
+
+**Every game is seeded and every seed is printed, including on a green
+night.** The heuristic gate's seeds are fixed in the test (101..120),
+so it plays the same twenty tables every night and a regression there
+is unambiguous. The soak's base seed is derived from the UTC date, the
+way `TestCatalogSoak`'s is: a fixed soak seed would fuzz the same
+hundred tables for ever and stop finding anything after the first
+green night.
+
+**The budgets.** Every bot-table test in `internal/aiseat` used to
+carry a literal stall detector and a literal wall clock, tuned on an
+idle machine. That shape failed three PRs that had touched nothing
+near the bot seat (#418, #431, #434) and then the nightly itself
+(#600). `AISEAT_STALL` and `AISEAT_WALLCLOCK` now reach all of them —
+`playGame` / `playGameIn`, and `TestRandomBotSoak` — alongside the
+three tests that already read them. `AISEAT_WALLCLOCK` is a **floor**
+on the harness's per-test wall clock rather than a replacement,
+because those numbers describe the game being played (120s for a
+50-turn table) and an environment variable may raise patience and must
+never cut it. A loaded runner should make this job slow, not red.
+
+**A red night opens or comments on one standing issue** (`bug`,
+`tech-debt`), scheduled runs only. One issue per night trains everyone
+to close them unread; no issue at all is a gate nobody is told about.
