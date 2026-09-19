@@ -1059,6 +1059,19 @@ A permanent that did not come from a spell — reanimated, put onto the
 battlefield, a token — enters with none, because the seeding site is
 the spell's entry and nothing else (CR 107.3b).
 
+Whatever seeds them, the settled map is **drained by one helper**,
+`(*Game).applyEntryCountersLocked`
+([game/entry_counters.go](server/internal/game/entry_counters.go)) —
+never with a bare `range` over `ev.EntersWithCounters` (#1010). Each
+kind opens its own `RepEventCounter` window, so with two KINDS on one
+entry the drain order is the order those windows open, the order a
+CR 616 prompt inside them is asked in, and the order the events land in
+the log; Go randomises map iteration, so a bare range made all three
+differ run to run. The order is canonical — counter name, ascending —
+and is not a CR 616 choice: the window that produced the map has
+already closed, and two kinds on one entry are one settled event with
+two components.
+
 **A token creation is a replaceable event** (#762,
 [ADR 0061](docs/decisions/0061-token-creation-and-discard-are-replaceable-events.md)).
 `RepEventCreateTokens` is opened once per creation **instruction**
@@ -1861,12 +1874,35 @@ takes which;
 entered under a player's control with a subtype, judged as they entered
 rather than as they are now (a changeling counts for every creature
 type; a type granted by another permanent's static at that moment is
-not seen, so a card reading it declares that weaker gap). A filtered question the tally
+not seen, so a card reading it declares that weaker gap);
+`g.EnteredThisTurn(cardID)` is the same record's per-**object** cell —
+"each green creature that **entered this turn**" (Oran-Rief), and the
+"is the source itself one of them" half of an "another X entered this
+turn" clause (Éowyn);
+`g.PlayersDealtCombatDamageThisTurnByName(controller, name)` and
+`g.PlayersDealtCombatDamageThisTurnBySubtype(controller, subtype)` are
+the set of players a creature of yours hit in combat this turn, for the
+target predicate of a "whenever … deals combat damage to a player …
+**that player**" trigger, which is not handed the trigger's event
+(Trygon Predator, Alela). Those three and the two subtype tallies are
+recorded **as the event happens**, not read back later: the permanent
+being asked about is usually gone by the time anything asks, and a
+token is gone from every zone (CR 704.5d). A filtered question the tally
 does not carry ("you sacrificed a *Food* this turn") ranges over
 `g.EventsThisTurn()`, which is bounded at the real turn boundary — the
-old upkeep-bounded scans missed the untap step. A counter the tally
+old upkeep-bounded scans missed the untap step, which is where #1009
+finally bit. A counter the tally
 should carry and does not is a field on `PlayerTurnTally` plus one case
 in `turnTallyListener`, not a new scan.
+
+**Never anchor a "this turn" question on `EventBeginUpkeep`.** The turn
+begins at `onTurnBeganLocked`, which resets the tally *before* the untap
+step; the upkeep event comes after it, and an untap-step trigger or
+choice (ADR 0070) can put a permanent onto the battlefield or otherwise
+act in between. Every such walk in the catalog is gone (#1009); the two
+shapes that remain legitimate are a **cursor-bounded** walk (`ev.Seq`,
+"what happened after this point") and a **most-recent-X** walk, neither
+of which is a "this turn" question.
 
 **Adding an activated ability (S21+):** put it in
 `Spec.Activated`, one entry per printed ability, with the cost built
