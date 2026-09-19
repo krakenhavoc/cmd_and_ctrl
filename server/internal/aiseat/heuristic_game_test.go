@@ -160,6 +160,27 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 	if len(g.Seats) != len(policies) {
 		t.Fatalf("room has %d seats, got %d policies", len(g.Seats), len(policies))
 	}
+
+	// #685: both budgets in this loop were literals, and every
+	// whole-game test in the package runs through here. They are now
+	// the same two knobs TestFourRandomBotsPlay and TestCatalogSoak
+	// already read, so a loaded runner is told to be patient once
+	// rather than test by test.
+	//
+	// The stall detector reads AISEAT_STALL directly: 5s of no
+	// sequence movement is a deadlock by any reading, and the only
+	// question is how long to wait to be sure.
+	//
+	// The wall clock is a FLOOR, not a replacement. Each caller picks
+	// its own — 120s for a 50-turn heuristic table, 25 turns in the
+	// decision-log replay — and those numbers say something about the
+	// game being played, so the environment may raise them and must
+	// never cut them. Unset (the default, and PR CI) changes nothing.
+	stall := envDuration("AISEAT_STALL", 5*time.Second)
+	if env := envDuration("AISEAT_WALLCLOCK", 0); env > wall {
+		wall = env
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), wall)
 	defer cancel()
 
@@ -192,9 +213,9 @@ func playGameIn(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Poli
 		}
 		if seq := room.Seq(); seq != lastSeq {
 			lastSeq, lastMove = seq, time.Now()
-		} else if time.Since(lastMove) > 5*time.Second {
-			t.Fatalf("table stalled (seed %d) at turn %d step %s priority=%d pending=%d\n%s",
-				seed, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+		} else if time.Since(lastMove) > stall {
+			t.Fatalf("table stalled (seed %d, no seq movement in %s) at turn %d step %s priority=%d pending=%d\n%s",
+				seed, stall, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
 		}
 		if ctx.Err() != nil {
 			t.Fatalf("wall clock exhausted (seed %d) at turn %d", seed, snap.Turn.Number)
@@ -261,10 +282,16 @@ func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
 	requireGameTests(t)
 	const (
 		turnBudget = 50
-		wall       = 120 * time.Second
+		// The default wall clock, not the wall clock. playGameIn takes
+		// AISEAT_WALLCLOCK as a floor over this, so the nightly's
+		// twenty-game gate can be patient on a contended runner without
+		// this number — which is about a 50-turn table, not about the
+		// machine — being edited (#685, #600, #606).
+		wall = 120 * time.Second
 	)
 	// Three seeds in the ordinary run; AISEAT_HEURISTIC_GAMES=N for a
-	// wider sample when tuning the weights.
+	// wider sample when tuning the weights, and 20 on the nightly,
+	// which is S31 exit criterion 2's number.
 	games := 3
 	if n, err := strconv.Atoi(os.Getenv("AISEAT_HEURISTIC_GAMES")); err == nil && n > 0 {
 		games = n
@@ -273,6 +300,12 @@ func TestFourHeuristicBotsPlayToAWinner(t *testing.T) {
 	for i := 0; i < games; i++ {
 		seeds = append(seeds, uint64(101+i))
 	}
+	// Logged before the games rather than only per game, so a nightly
+	// artifact names the whole sample even when every game passes: the
+	// seeds are fixed, so "which twenty" is reproducible from the log
+	// alone.
+	t.Logf("heuristic gate: %d games, seeds %d..%d, turn budget %d, wall %s (AISEAT_WALLCLOCK raises it)",
+		games, seeds[0], seeds[len(seeds)-1], turnBudget, wall)
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
 			res := playGame(t, seed, heuristicSeats(4), turnBudget, wall)
