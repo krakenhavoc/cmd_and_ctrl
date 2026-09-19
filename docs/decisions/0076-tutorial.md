@@ -1,6 +1,6 @@
 # ADR 0076 — The tutorial: a scripted practice game that teaches the client, not the rules
 
-**Status:** Accepted · 2026-09-19 · unscheduled (no onboarding sprint exists; see
+**Status:** Accepted · 2026-09-19 · its own sprint, number unassigned (see
 [#1073](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1073))
 **Issues:** [#1073](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1073) (tracker)
 **Numbering:** on 2026-09-19 `docs/decisions/` on `develop` was listed and the
@@ -66,6 +66,7 @@ The owner decided the following on 2026-09-19:
 | Does it teach the rules | **No.** No phases, no stack, no priority as a concept, no commander tax, no 40 life or 21 commander damage. |
 | Form | **A scripted game against a practice bot.** |
 | First artefact | **A design canvas**, before implementation. |
+| Scheduling | **Its own sprint, all six sub-PRs together** rather than landing the event bus early into S35. |
 
 The canvas is *CMD CTRL Tutorial*: the table mid-tutorial, the coach card in all
 six states, the spotlight and anchoring mechanics, the entry points, and the
@@ -95,12 +96,25 @@ as a list up front.
 
 Step 7 is the one that earns the feature.
 
+**Step 7 teaches the default gesture only.** With `gameplay.adminOverrides` on
+(ADR 0028) right-click opens a different and larger menu, but that setting is
+off by default, and a player who turned it on went looking in Settings and
+already knows what it does. Attaching a caveat about an unmet setting to the
+step that already carries the most new information is the kind of completeness
+that makes a tutorial worse.
+
 ### 2.2 The practice table
 
 A private game with one human seat and one `random`-tier bot, both on a fixed
 prebuilt deck, created by a dedicated route rather than the ordinary lobby flow
 and **not listed in the lobby**.
 
+- **The bot stays on the `random` tier.** A dedicated `tutorial` tier that never
+  attacks would be more predictable, but it is a new policy surface in `aiseat`
+  maintained for exactly one caller, and it would diverge from what a real
+  opponent does — the player's second game should not contradict their first.
+  The decklist carries the difficulty instead. Revisit only if playtesting the
+  walking skeleton shows the bot doing something a new player misreads.
 - **The bot's deck is deliberately slow** — lands and small bodies, no removal,
   no evasion. A practice bot that kills the player during the tutorial is a
   bug, and the cheapest place to fix it is the decklist rather than the policy.
@@ -160,6 +174,10 @@ analytics bus, and it must not grow into one: anything that can be read from
 the snapshot is read from the snapshot. When the tutorial is not running the
 emits are a no-op store write.
 
+The bus is independently mergeable but **ships with its consumer** rather than
+early into another sprint (§1, scheduling). Landing a bus with no caller invites
+exactly the unrelated uses §2.5 exists to prevent.
+
 ### 2.6 Entry
 
 An **offer, not a gate**. A card in the lobby for an account with no finished
@@ -168,10 +186,17 @@ tutorial they did not ask for, they stop reading the lobby. Replay lives in
 Settings → Advanced.
 
 "Has this account finished a game" properly belongs in a user row (ADR 0051,
-S34). Before that lands, it is a field in the settings store, which means a
-`SETTINGS_VERSION` bump and a migration, and it means the offer reappears on a
-new browser. That is acceptable for a first release and should be moved to the
-user row when S34 arrives rather than left behind — see §6.
+S34). It does not exist yet. **Decided 2026-09-19: ship the settings-store
+field now**, with a `SETTINGS_VERSION` bump and migration, and move it to the
+user row when S34 lands. The cost is that the offer reappears on a new browser
+and that there is a migration to remember; both are cheap next to the
+alternative, which was to hold the entry point and ship sub-PRs 1–4 with no way
+to discover the tutorial. A tutorial nobody can find does nothing, and S34 is a
+full sprint cycle away.
+
+The migration is a **tracked obligation, not a nice-to-have**: when ADR 0051's
+rows land, the field moves and the settings entry is retired. Sub-PR 5 records
+it.
 
 ## 3. Consequences
 
@@ -218,8 +243,8 @@ user row when S34 arrives rather than left behind — see §6.
 ## 5. Implementation plan (sub-PRs)
 
 1. **The event bus.** `tutorialBus.ts` plus the three emits in `Card.svelte`,
-   `Hand.svelte` and `BattlefieldRow.svelte`, with unit tests. Independent of
-   everything else and mergeable on its own.
+   `Hand.svelte` and `BattlefieldRow.svelte`, with unit tests. Technically
+   independent, but it ships in this sprint with the rest (§2.5).
 2. **The practice table.** The create route, the fixed tutorial decks, and
    forced-settings capture and restore across every exit path.
 3. **Walking skeleton.** Coach card, scrim, the anchoring resolver and its
@@ -227,7 +252,8 @@ user row when S34 arrives rather than left behind — see §6.
    start and finish that teaches nothing yet.
 4. **The nine middle steps**, their copy, and the predicates.
 5. **Entry.** Lobby offer, permanent dismiss, Settings → Advanced replay, the
-   settings field and migration.
+   settings field and migration, and the tracked obligation to move it to the
+   user row at S34.
 6. **e2e.** A Playwright spec that walks all eleven steps, which is also the
    regression test for the anchor contract in §2.4.
 
@@ -235,14 +261,18 @@ user row when S34 arrives rather than left behind — see §6.
 
 ## 6. Open questions
 
-- **The "finished a game" signal before S34.** Settings-store field now and
-  migrate to the user row later, or hold the entry point until ADR 0051's rows
-  exist and ship 1–4 without a lobby offer? The second is tidier and delays the
-  feature reaching anyone.
-- **Does the practice bot need its own tier?** A `tutorial` tier that never
-  attacks is more predictable than `random` plus a slow deck, but it is a new
-  policy to maintain for one consumer.
-- **Should step 7 also teach `adminOverrides`?** Right-click means two
-  different things depending on that setting, and the tutorial currently
-  teaches only the default. Mentioning both in one step is the kind of
-  completeness that makes a tutorial worse.
+The three questions this ADR was drafted with were put to the owner on
+2026-09-19 and answered the same day. They are folded into §2 above and
+recorded here for the trail:
+
+- **The "finished a game" signal before S34** → the settings-store field now,
+  migrated to ADR 0051's user row when S34 lands. §2.6.
+- **A dedicated `tutorial` bot tier** → no. `random` plus the slow decklist,
+  revisited only if the walking skeleton shows the bot doing something a new
+  player misreads. §2.2.
+- **`adminOverrides` in step 7** → no. The tutorial teaches the default gesture
+  only. §2.1.
+
+**Still open:** which sprint. The owner chose a dedicated sprint carrying all
+six sub-PRs rather than landing the bus early, but the number and the slot are
+not assigned. The tracker is #1073.
