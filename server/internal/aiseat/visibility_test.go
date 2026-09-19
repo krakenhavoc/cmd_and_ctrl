@@ -317,13 +317,12 @@ func captureBotInput(t *testing.T, room *ws.Room, seat uuid.UUID) aiseat.Input {
 		cancel()
 		<-r.Done()
 	})
-	select {
-	case in := <-pol.got:
-		return in
-	case <-time.After(10 * time.Second):
-		t.Fatal("the runner never asked the policy to decide")
-		return aiseat.Input{}
-	}
+	// waitForChan, not a `select` on a `time.After`: the runner is on a
+	// goroutine this test does not schedule, so "it got there within
+	// 10s" is a claim about the machine, not about the runner (#1048).
+	// The backstop is the package's shared one and the assertion is
+	// that the input arrives at all.
+	return waitForChan(t, "the runner to ask the policy to decide", pol.got)
 }
 
 // secret is one thing the bot must not be able to read out of its

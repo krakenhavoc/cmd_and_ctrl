@@ -64,13 +64,25 @@ func TestRandomBotSoak(t *testing.T) {
 	if policy == "" {
 		policy = "random"
 	}
-	t.Logf("soak: %d %s games from seed %d", n, policy, base)
+	// #685: the per-game budgets were literals tuned on an idle
+	// machine, which is the shape that took the nightly red in #600.
+	// They are the same two knobs every other bot-table test reads, so
+	// the nightly raises them once for the whole job. The defaults are
+	// unchanged, so a local `AISEAT_SOAK_GAMES=200 go test` behaves
+	// exactly as it did.
+	stall := envDuration("AISEAT_STALL", 3*time.Second)
+	wall := envDuration("AISEAT_WALLCLOCK", 60*time.Second)
+	// One line naming everything a failure needs to be reproduced,
+	// printed before the first game so it survives in the artifact of
+	// a green run too.
+	t.Logf("soak: %d %s games from seed %d (stall %s, wall %s); reproduce one with AISEAT_SOAK_GAMES=1 AISEAT_SOAK_SEED=<seed> AISEAT_SOAK_POLICY=%s",
+		n, policy, base, stall, wall, policy)
 	for i := 0; i < n; i++ {
 		seed := base + uint64(i)
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
 			room := newRoom(t, 4, seed)
 			g := room.Game
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), wall)
 			defer cancel()
 			var runners []*aiseat.Runner
 			for i, p := range g.Seats {
@@ -84,9 +96,9 @@ func TestRandomBotSoak(t *testing.T) {
 				}
 				if seq := room.Seq(); seq != lastSeq {
 					lastSeq, lastMove = seq, time.Now()
-				} else if time.Since(lastMove) > 3*time.Second {
-					t.Fatalf("STALL (reproduce with AISEAT_SOAK_SEED=%d AISEAT_SOAK_GAMES=1) turn %d step %s prio=%d pending=%d\n%s",
-						seed, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
+				} else if time.Since(lastMove) > stall {
+					t.Fatalf("STALL (no seq movement in %s; reproduce with AISEAT_SOAK_SEED=%d AISEAT_SOAK_GAMES=1) turn %d step %s prio=%d pending=%d\n%s",
+						stall, seed, snap.Turn.Number, snap.Turn.Step, snap.Turn.PriorityHolder, len(g.PendingChoices), describeSeats(g))
 				}
 				if ctx.Err() != nil {
 					t.Fatalf("wall clock exhausted at turn %d (seed %d)", snap.Turn.Number, seed)
