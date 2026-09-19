@@ -133,7 +133,7 @@ without them still deploys green, with no bot; once the
 | this repo | `CMDCTRL_PUBLIC_BASE_URL`, `CMDCTRL_DEV_PUBLIC_BASE_URL` | variables; default to the two fqdns |
 | this repo | `CMDCTRL_DISCORD_REDIRECT_URI`, `CMDCTRL_DEV_DISCORD_REDIRECT_URI` | variables; no default — unset means sign-in stays off on that host |
 | this repo | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts |
-| this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to `bot.env`. Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
+| this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo | `CMDCTRL_DISCORD_ADMIN_USER_IDS`, `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variables; **production only**, written to `bot.env` only when set. Comma-separated snowflakes — who may run `/cc-end` (#614). Unset is supported: `/cc-end` refuses every caller rather than failing open |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
@@ -165,6 +165,32 @@ works and the user row is still written, but the refresh token is
 dropped and the boot log warns. Rotating it (delete the line, redeploy)
 makes the stored refresh tokens unreadable; nothing reads them yet, and
 no one is logged out.
+
+`CMDCTRL_DISCORD_BOT_TOKEN` is the one Discord value **both** units
+need. The gateway bot has always read it from `/etc/cmd_and_ctrl/bot.env`
+(`root:cmdctrl-bot`, mode `0640`); since S34 sub-PR 6 the *server*
+reads it too, from its own `/etc/cmd_and_ctrl/env`, for ADR 0051
+decision 5's direct-message invites (`POST /games/{id}/invites/dm`,
+[#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613)). Two
+files rather than one shared file, because the two units run as
+different users off different `EnvironmentFile=`s and the server cannot
+read the bot's copy. Both are written from the same Actions secret on
+the same deploy — "Sync server env (Discord DM invites)" and "Sync bot
+env" — so rotating the secret in the Developer Portal and re-running
+main updates both.
+
+**Production only**, like every other bot value: there is one Discord
+application, and a preview box DMing real people from the same bot
+identity is the double-send the bot's prod-only rule already exists to
+prevent. The develop deployment therefore has no token, which is a
+supported state and not a failure: the DM route answers `503` naming
+the variable, every other route is unchanged, and the boot log says
+which state the process is in, once. It never falls open. The route
+also needs an origin to build the invite link against
+(`CMDCTRL_PUBLIC_BASE_URL`, falling back to `CMDCTRL_CLIENT_BASE_URL`);
+missing that is the same 503, for the same reason bug-report
+attachments have no default origin — a wrong one produces a DM full of
+dead links.
 
 ## Dev-only features
 

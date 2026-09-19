@@ -746,6 +746,83 @@ something differently from how it reads.
   this sub-PR changed, just the first place it needed to be handled
   correctly.
 
+### Implementation notes — sub-PR 6 (tablemates, invite picker, DM invites)
+
+Recorded where the code settled a detail decisions 5 and 8 left open,
+or did something differently from how they read.
+
+- **The tablemates query lives on the lobby store, not the users
+  store.** It is a self-join of `seats` (decision 8's SQL, verbatim,
+  plus the display columns the picker needs) and `seats` is the lobby's
+  table, so `Store.Tablemates` sits beside `SeatsOfUser`. Both
+  implementations exist, as for every other `Store` method: the memory
+  store has no `users` table, so a tablemate's label there is the name
+  stored on the seat, the same compromise `SeatsOfUser` already makes.
+- **Recency is `games.created_at` of the most recent shared table.**
+  Not `started_at` or `ended_at`: both are NULL on a table that never
+  started, and a lobby you both sat in yesterday is a better
+  suggestion than a game you finished a year ago. The join onto
+  `users` is an INNER join — `seats.user_id` is a foreign key
+  (migration 0003), so a non-NULL value always has a row, and an inner
+  join keeps a corrupted id out of the picker rather than offering a
+  nameless entry the DM route could not resolve.
+- **`GET /me/tablemates` never puts a Discord snowflake on the wire.**
+  A tablemate is offered by *our* user id; `POST
+  /games/{id}/invites/dm` takes that id and resolves the snowflake
+  server-side through a new `users.Store.DiscordSubject`. (The
+  `avatar_url` path contains one, but that is the path the client
+  already loads every seat's avatar from.)
+- **A Discord snowflake IS accepted in the DM route's body, for an
+  admin session only.** Decision 5 says the route takes a `user_id`
+  and stops there. `/cc-invite-dm @user` (#613) holds a mention and
+  nothing else, and its target may never have signed in here, so there
+  would be no user id to send. Accepting `discord_id` from every
+  caller would make this "DM any Discord user who shares a server with
+  the bot", which is a spam primitive; restricted to the admin
+  credential the bot already holds, it is the bot's own path and
+  nothing more. A non-admin who sends it gets 403.
+- **A missing invite plaintext is a 409, not a rotation.** Only the
+  process that minted an invite holds its plaintext, so a table
+  recovered from the database after a restart has a hash and no link.
+  The route could call `Lobby.RotateInvite` (#1038) and always
+  succeed; it does not. Rotating silently revokes the link the table
+  has already pasted into a channel, which is a startling side effect
+  of "DM this to Alice". The 409 names `POST /games/{id}/invites/rotate`
+  and says what rotating costs, so the replacement is minted
+  deliberately.
+- **The route is rate-limited twice, and per CALLER is the new half.**
+  `ratelimit.Limiter.Middleware` keys on the client IP, which is right
+  for a credential being brute-forced and wrong for a route whose cost
+  is per person: without `CMDCTRL_TRUST_FORWARDED` every caller behind
+  the reverse proxy shares one bucket, so one tab could spend the
+  whole table's allowance. A new `perCallerLimit` middleware (inside
+  `auth.Middleware`, which is what puts the principal in context) adds
+  a bucket keyed on the caller's user, seat or admin role: ~1 DM / 10 s
+  with a burst of 3. Both have to allow the request.
+- **The bot token needs an origin as well.** The DM carries a link,
+  and the server had no notion of its own public URL outside the
+  bug-report store. `Config.InviteBaseURL` reuses the same pair
+  (`CMDCTRL_PUBLIC_BASE_URL`, falling back to `CMDCTRL_CLIENT_BASE_URL`)
+  and the same no-default rule, for the same reason: a wrong origin
+  produces a DM full of dead links. Either value missing is the 503.
+  The URL shape is the bot's `buildInviteURL` shape exactly, so a
+  player who has clicked one has clicked both.
+- **Discord's own error text is never forwarded, and the token never
+  leaves the Authorization header.** `discord.Bot.SendDM` maps 401 /
+  403 / 404 / 429 onto sentinels with our own wording (403 is "shares
+  no server with the bot, or has DMs closed" — the API does not
+  distinguish the two), reads `retry_after` out of a 429 and nothing
+  else out of any body. Messages are sent with `allowed_mentions:
+  {parse: []}` and the inviter's and table's names are flattened, so a
+  display name cannot forge a second line or ping anybody.
+- **The client picker is mounted on the lobby's game card**, beside
+  the deck panel and wearing its disclosure, and only for a session
+  that would pass the server's gate. `tablemates.canInviteTablemates`
+  is deliberately *more conservative* than `lobby.canInviteDM` in one
+  case: `games.created_by` is not on the wire, so an unseated creator
+  is not offered the button even though the route would serve them.
+  Showing a button that 403s is the worse failure.
+
 ## Consequences
 
 - The server gains its first stateful dependency beyond the

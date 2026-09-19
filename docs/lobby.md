@@ -965,6 +965,100 @@ stranger from calling it at all.
 | 404 | game not found |
 | 429 | rate-limited |
 
+### `POST /games/{id}/invites/dm`
+
+Send one person this table's invite link as a Discord direct message
+([ADR 0051](decisions/0051-user-database.md) decision 5, S34 sub-PR
+6). The server opens the DM itself, with a bot token and two plain
+REST calls — `POST /users/@me/channels` then `POST
+/channels/{id}/messages`. The gateway bot binary is not involved. The
+`/cc-invite-dm` slash command ([#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613))
+is a thin client of this route, so there is exactly one place that
+builds and sends an invite DM.
+
+**Nothing is minted.** The DM carries the game's *current* player
+invite, the same link `GET /games/{id}` shows. A link already pasted
+into a channel keeps working, and sending a DM does not rotate
+anything.
+
+**Who may call it:** someone seated at this table, the person who
+created it (`games.created_by`), or the admin. Everyone else gets
+**403** — a spectator, a player at a different table, and a signed-in
+stranger alike. "Seated" is satisfied by a `player` session bound to
+this game, or by any session whose `user_id` holds a seat here (the
+same person signed in in another tab).
+
+**Request**
+
+```json
+{ "user_id": "<uuid from GET /me/tablemates>" }
+```
+
+`user_id` is **our** user id, never a Discord snowflake. The server
+resolves the Discord account from `identities` itself, so a snowflake
+appears on the wire in neither direction.
+
+`discord_id` is accepted as an alternative — a raw Discord snowflake,
+exactly one of the two fields — but **only for an admin session**. It
+exists for #613's `/cc-invite-dm @user`, which holds a mention and
+nothing else: its target may never have signed in here, so there is no
+user id to send. Letting every caller pass one would turn this route
+into "DM any Discord user who shares a server with the bot", which is
+a spam primitive; restricted to the admin credential the bot already
+holds, it is the bot's own path and nothing more. A non-admin who
+sends `discord_id` gets **403**.
+
+**Response 200**
+
+```json
+{ "sent": true, "user_id": "<uuid>", "display_name": "Bob" }
+```
+
+The response carries no snowflake and no invite token: the caller
+learns that the DM was sent, not what was in it.
+
+**Rate-limited twice**, and a request has to satisfy both: the client-IP
+bucket every invite-adjacent route rides (`/join`, `/spectate`,
+`/games/{id}/preview`, `/invites/rotate`), and a **per-caller** bucket
+of ~1 DM / 10 s with a burst of 3, keyed on the caller's user (or
+their seat, or the admin credential). The per-caller bucket is the one
+decision 5 asks for: every accepted call costs two outbound Discord
+writes and lands an unsolicited DM in somebody's inbox, and behind a
+reverse proxy the IP bucket is shared by the whole table.
+
+**Configuration.** The route needs `CMDCTRL_DISCORD_BOT_TOKEN` on the
+**server's** env file (`/etc/cmd_and_ctrl/env`), not only the bot's,
+and an origin to build the link against (`CMDCTRL_PUBLIC_BASE_URL`,
+falling back to `CMDCTRL_CLIENT_BASE_URL`). Either one missing is a
+**503 naming the variable**; it never falls open, every other route is
+unaffected, and the server says which state it is in once at boot. CD
+writes the token on **production only** — one Discord application, and
+a preview box DMing real people from the same identity is the
+double-send the bot's prod-only rule already exists to prevent.
+
+**The invite plaintext can be missing.** Only the process that minted
+an invite holds its plaintext (see `GET /games/{id}`), so a table
+recovered from the database after a restart has a hash and no link.
+This route then answers **409** and points at
+[`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate)
+rather than rotating by itself: rotating would silently revoke the
+link the table has already shared, which is a startling side effect of
+"DM this to Alice". Mint the replacement deliberately, then send it.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | neither or both of `user_id` / `discord_id`, or `user_id` is not a uuid |
+| 401 | unauthenticated |
+| 403 | not seated here, not the creator, not the admin — or `discord_id` from a non-admin |
+| 404 | no such game, no such user, or Discord has no user with that id |
+| 409 | this process no longer holds the table's invite plaintext (rotate first) |
+| 422 | the target has no Discord identity here, or Discord refused the DM (no shared server / DMs closed) |
+| 429 | rate-limited, by us or by Discord |
+| 502 | Discord rejected this server's bot credentials, or failed for another reason |
+| 503 | `CMDCTRL_DISCORD_BOT_TOKEN` or the invite origin is not configured |
+
 ### `GET /me`
 
 Echo the principal attached to the request. Used by the client for
@@ -1048,6 +1142,52 @@ Both invite tokens are stripped from the embedded `game`.
 | 409 | the table has been archived |
 
 ---
+
+### `GET /me/tablemates` (ADR 0051 decision 8, S34 sub-PR 6)
+
+The people the caller has shared a table with, **most recently shared
+table first** — the list the invite picker offers. Decision 8's whole
+design: a self-join of `seats`, not a `friendships` table. There are
+no friend requests and no acceptance; if an explicit list is ever
+wanted it is one table on top of this and changes nothing here.
+
+Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
+person — an `identified` session, or a `player` session with a
+non-nil `user_id`. Everyone else is **401**, including a guest's seat
+session, an admin (a credential, not a person) and everyone on a
+deployment with no database.
+
+Excluded, always: the caller themselves, and any seat with no user — a
+guest, a bot, or a Discord seat still waiting on its `users` row.
+
+**Response 200**
+
+```json
+{
+  "tablemates": [
+    {
+      "user_id": "<uuid>",
+      "display_name": "Bob",
+      "avatar_url": "/avatars/<snowflake>/<hash>.png",
+      "last_played_at": 1789820000000
+    }
+  ]
+}
+```
+
+- `user_id` is **our** id. A Discord snowflake is never an identifier
+  here: `POST /games/{id}/invites/dm` takes this id and resolves the
+  Discord account server-side.
+- `display_name` is the tablemate's *current* name, so a friend who
+  renamed themselves on Discord reads correctly on old games too.
+- `avatar_url` is the same-origin path the client already loads every
+  seat's avatar from, and is absent for an account with no avatar.
+- `last_played_at` is Unix milliseconds (the unit the tables store, as
+  `GET /me/games` uses): when the most recent shared table was
+  **created**. Deliberately `created_at` rather than `started_at` or
+  `ended_at` — those are null on a table that never started, and a
+  lobby you both sat in yesterday is a better suggestion than a game
+  you finished a year ago.
 
 ### `GET /me/decks` (ADR 0051 decision 7, S34 sub-PR 5)
 
