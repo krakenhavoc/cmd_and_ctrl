@@ -228,6 +228,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		AlternativeCosts:    []AlternativeCostView{{Key: "overload", Label: "Overload {6}{U}"}},
 		TapCost:             &TapCostView{Key: "convoke", Options: lt},
 		TargetCostNotes:     []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PhyrexianSymbols:    1,
 		CastableHere:        true,
 		ExilePlay:           &ExilePlayView{Player: owner, CostOverride: "{1}{U}"},
 		ActivatedAbilities:  []ActivatedAbilityView{{Index: 0, Label: "{T}: Draw", LoyaltyCost: &one}},

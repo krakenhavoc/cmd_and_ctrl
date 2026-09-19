@@ -532,8 +532,11 @@ func TestB19BirthingPodChainsUpOneManaValue(t *testing.T) {
 	if wurm == uuid.Nil || b16Tapped(t, g, wurm) {
 		t.Error("the pick enters the battlefield untapped")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the Phyrexian mana gap must be declared")
+	// #917 / #916 closed both halves of the Phyrexian gap this card
+	// declared: the activation announces the life payment and the
+	// board offers it, so nothing about {G/P} is simplified any more.
+	if spec.Completeness != CompletenessFull {
+		t.Error("the Phyrexian mana gap is closed; Birthing Pod is complete")
 	}
 }
 

@@ -31,8 +31,12 @@ type activateParams struct {
 	CounterCounts []int  `json:"counter_counts,omitempty"`
 	CounterKind   string `json:"counter_kind,omitempty"`
 	XValue        int    `json:"x_value,omitempty"`
-	Strict        bool   `json:"strict,omitempty"`
-	AutoTap       bool   `json:"auto_tap,omitempty"`
+	// #917, CR 107.4f: how many of the mana component's Phyrexian
+	// symbols this activation pays with 2 life each. Omitted for
+	// every ability that prints none, which is nearly all of them.
+	PhyrexianLife int  `json:"phyrexian_life,omitempty"`
+	Strict        bool `json:"strict,omitempty"`
+	AutoTap       bool `json:"auto_tap,omitempty"`
 }
 
 // activatedMoves enumerates catalog activated abilities on the
@@ -121,6 +125,7 @@ func (e *enumerator) activatedMoves() {
 			// repeatable no-op. Neither is a move worth offering, so
 			// both are answered by the same floor.
 			xValue := 0
+			phyrexianLife := 0
 			if ab.Cost.Mana != "" {
 				cost, err := game.ParseCost(ab.Cost.Mana)
 				if err != nil {
@@ -137,11 +142,16 @@ func (e *enumerator) activatedMoves() {
 					excluded = map[uuid.UUID]bool{source.InstanceID: true}
 				}
 				floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
-				x, ok := e.affordableXExcluding(cost, game.ManaSpendForAbility(*source), floor, excluded)
+				// #917, CR 107.4f: the announcement has TWO numbers
+				// when the cost prints a Phyrexian symbol — the X and
+				// how many symbols are paid with 2 life each — and
+				// they are solved together, because striking a symbol
+				// changes what X the pool can afford.
+				x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, ab.Cost.Life, excluded)
 				if !ok {
 					continue
 				}
-				xValue = x
+				xValue, phyrexianLife = x, life
 			} else if ab.Cost.DemandsX() {
 				// Unreachable — DemandsX reads the same string — but
 				// a cost that demanded X with no mana component
@@ -244,9 +254,18 @@ func (e *enumerator) activatedMoves() {
 						if xValue > 0 {
 							label += fmt.Sprintf(" for X=%d", xValue)
 						}
+						if phyrexianLife > 0 {
+							label += fmt.Sprintf(" paying %d life for Phyrexian mana",
+								phyrexianLife*game.PhyrexianLifePerSymbol)
+						}
 						label += cc.label(g)
 						label += targetLabel(g, targets)
-						cost := moveCost(ab.Cost.Life, loyalty)
+						// #74: the life on the Move is what the
+						// controller pays at announce, so the
+						// Phyrexian half counts — a policy that saw
+						// only the printed component would read a
+						// four-life activation as free.
+						cost := moveCost(ab.Cost.Life+phyrexianLife*game.PhyrexianLifePerSymbol, loyalty)
 						for _, price := range cc.prices() {
 							cost = withCounterPrice(cost, price)
 						}
@@ -268,6 +287,7 @@ func (e *enumerator) activatedMoves() {
 								CounterCounts:    cc.wireCounts(),
 								CounterKind:      cc.wireKind,
 								XValue:           xValue,
+								PhyrexianLife:    phyrexianLife,
 								Strict:           true,
 								AutoTap:          true,
 							}),
@@ -277,6 +297,55 @@ func (e *enumerator) activatedMoves() {
 			}
 		}
 	}
+}
+
+// affordablePayment solves an activated ability's mana component for
+// the pair CR 602.2b makes the activator announce: the X, and how
+// many of the cost's Phyrexian symbols are paid with 2 life each
+// (CR 107.4f, #917). Returns false when nothing the activator can
+// announce pays for it, which is what stops the ability being offered
+// at all (#544).
+//
+// MANA FIRST, always. A life payment is a real cost, so the
+// enumerator never spends a life total to save mana the board could
+// have produced — it reaches for life only when the mana half alone
+// cannot pay, and then takes the FIRST count that works, which is the
+// cheapest in life. Without this Birthing Pod would simply not be
+// offered to a seat holding {1} and no green source, which is the
+// gap #917 names.
+//
+// Bounded twice, and both bounds are the ones the engine validates
+// against, so an offered payment is one ActivateCatalogAbility
+// accepts: by the symbols the cost actually prints, and by CR 119.4 —
+// a player may pay life only down to 0. `reservedLife` is the
+// ability's own printed Life component, held back so the two
+// together can never claim more than the seat has.
+//
+// The strike itself is game.PhyrexianLifePlan — the same function the
+// engine reduces the cost with, reading the same pool — so the
+// enumerator and the payment cannot disagree about which symbol the
+// life buys.
+func (e *enumerator) affordablePayment(
+	cost game.ParsedCost,
+	spend game.ManaSpendContext,
+	floor int,
+	reservedLife int,
+	excluded map[uuid.UUID]bool,
+) (int, int, bool) {
+	if x, ok := e.affordableXExcluding(cost, spend, floor, excluded); ok {
+		return x, 0, true
+	}
+	budget := e.p.Life - reservedLife
+	for n := 1; n <= cost.PhyrexianSymbols(); n++ {
+		reduced, life := game.PhyrexianLifePlan(cost, e.p.ManaPool, spend, n)
+		if life > budget {
+			break
+		}
+		if x, ok := e.affordableXExcluding(reduced, spend, floor, excluded); ok {
+			return x, n, true
+		}
+	}
+	return 0, 0, false
 }
 
 // counterPart is one permanent's share of a counter payment.

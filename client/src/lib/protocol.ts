@@ -1049,6 +1049,13 @@ export interface AlternativeCostView {
   // skips the X picker and sends nothing. Absent for nearly every
   // offer, including one priced with an {X} of its own.
   x_locked_at_zero?: boolean;
+  // CR 107.4 (#916): how many symbols in THIS offer's cost carry the
+  // "or 2 life" option. Claiming the offer replaces the mana cost, so
+  // it replaces the ceiling on `phyrexian_life` too — a picker that
+  // read the printed count while paying an alternative cost would
+  // offer a payment the announce gate rejects. Absent for every offer
+  // that prints none, which is all of them today.
+  phyrexian_symbols?: number;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -1223,6 +1230,13 @@ export interface ActivatedAbilityView {
   demands_x?: boolean;
   min_x?: number;
   x_slots?: number;
+  // CR 107.4f (#917, #916): how many symbols in the ability's mana
+  // component carry the "or 2 life" option — 1 for Birthing Pod's
+  // "{1}{G/P}", 2 for Solphim's "{1}{R/P}{R/P}". It is the ceiling on
+  // the `phyrexian_life` the activation may claim, and the reason the
+  // menu knows to open the stepper at all. A COUNT rather than
+  // something the client derives, for the reason demands_x is one.
+  phyrexian_symbols?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -1483,6 +1497,15 @@ export interface CardView {
   // clauses under the readout. Absent for nearly every card and on
   // opponents' cards the viewer cannot read.
   target_cost_notes?: string[];
+  // CR 107.4 (#916): how many symbols in the printed cost carry the
+  // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
+  // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The
+  // cast flow opens a "pay N with life" stepper bounded by it and by
+  // the caster's life total, and sends the answer as `phyrexian_life`.
+  // Stamped with the other cast clauses on the viewer's own castable
+  // cards and absent everywhere else, so its presence IS the question
+  // "is there a life half to offer here".
+  phyrexian_symbols?: number;
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its

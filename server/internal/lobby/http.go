@@ -933,6 +933,21 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		xValue = v
 	}
+	// #916: ?phyrexian=<n> is the announce-time claim the cost
+	// prompt is collecting — how many of the cost's Phyrexian
+	// symbols are being paid with 2 life each (CR 107.4f). The
+	// preview plans the MANA HALF ONLY, exactly as the engine's
+	// auto-tapper does, so the stepper's readout answers "what will
+	// this still cost me in mana" rather than tapping a land for a
+	// pip the player just said they would pay with life.
+	phyrexian := 0
+	if ps := r.URL.Query().Get("phyrexian"); ps != "" {
+		v, err := strconv.Atoi(ps)
+		if err != nil || v < 0 {
+			return httpError(http.StatusBadRequest, "phyrexian must be a non-negative integer")
+		}
+		phyrexian = v
+	}
 	excluded := map[uuid.UUID]bool{}
 	if ex := r.URL.Query().Get("exclude"); ex != "" {
 		for _, raw := range strings.Split(ex, ",") {
@@ -988,8 +1003,10 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return httpError(http.StatusBadRequest, "ability's cost cannot be parsed: "+err.Error())
 		}
+		spend := game.ManaSpendForAbility(card)
+		cost = strikePhyrexianForPreview(g, p.PlayerID, cost, spend, phyrexian)
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			ab.Cost.Mana, game.ManaSpendForAbility(card), w)
+			ab.Cost.Mana, spend, w)
 	}
 	cost, err := game.ParseCost(card.ManaCost)
 	if err != nil {
@@ -1034,8 +1051,41 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return httpError(http.StatusBadRequest, err.Error())
 	}
+	spend := game.ManaSpendForCast(card)
+	cost = strikePhyrexianForPreview(g, p.PlayerID, cost, spend, phyrexian)
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		card.ManaCost, game.ManaSpendForCast(card), w)
+		card.ManaCost, spend, w)
+}
+
+// strikePhyrexianForPreview removes the Phyrexian symbols the caller
+// says they are paying with life, so the preview plans only the mana
+// the announcement still owes (#916).
+//
+// game.PhyrexianLifePlan is the SAME strike the engine makes, reading
+// the same pool, so the preview and the payment pick the same
+// symbols. It clamps rather than rejects: the preview is advisory,
+// and an over-claim is the announce gate's refusal to make
+// (strikePhyrexianLifeLocked, CR 601.2b / CR 119.4), not a reason to
+// answer a read-only question with a 400.
+func strikePhyrexianForPreview(
+	g *game.Game,
+	playerID uuid.UUID,
+	cost game.ParsedCost,
+	spend game.ManaSpendContext,
+	claimed int,
+) game.ParsedCost {
+	if claimed <= 0 {
+		return cost
+	}
+	if have := cost.PhyrexianSymbols(); claimed > have {
+		claimed = have
+	}
+	seat := g.PlayerByIDForEffect(playerID)
+	if seat == nil {
+		return cost
+	}
+	reduced, _ := game.PhyrexianLifePlan(cost, seat.ManaPool, spend, claimed)
+	return reduced
 }
 
 // writeAutoTapPreview renders the auto-tap preview body for an

@@ -16,15 +16,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The PHYREXIAN mana's 2-life half landed in the cost engine with
 // #787 (CastSpellParams.PhyrexianLife, CR 107.4c) and this card
-// needed no change for it, exactly as predicted. The board is the
-// half still missing: no button asks, so a cast from hand pays {U} —
-// strictly fewer ways to pay than printed, never more.
+// needed no change for it, exactly as predicted. #916 gave the cast
+// prompt the stepper that asks, so the free counterspell is castable
+// for 2 life from the board.
 func init() {
 	Register(Spec{
 		OracleID:     "1a0770e6-b093-4439-baff-6889a50ba12e",
 		Name:         "Mental Misstep",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The board has no button for the Phyrexian symbol yet — casting it from hand pays {U}, not 2 life. The engine accepts the life payment."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell with mana value 1", b03ManaValueIs(1)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {

@@ -419,6 +419,28 @@ type ActivateAbilityParams struct {
 	// floor.
 	XValue int
 
+	// PhyrexianLife is how many of the mana component's Phyrexian
+	// symbols the activator is paying with 2 life each instead of
+	// mana (CR 107.4c, and CR 107.4f for the ten hybrid Phyrexian
+	// symbols) — Birthing Pod's "{1}{G/P}", Solphim's
+	// "{1}{R/P}{R/P}".
+	//
+	// A COUNT, not a list: the engine strikes the symbols a life
+	// payment can actually save first (PhyrexianLifePlan), and
+	// choosing between two symbols the pool can both pay changes
+	// nothing but which colour is left floating.
+	//
+	// CR 602.2b makes "how do you intend to pay each hybrid and
+	// Phyrexian symbol" part of activating the ability, in the same
+	// indivisible announcement as the modes, the targets and X — so
+	// it is a parameter here rather than a PendingChoice, exactly as
+	// CastSpellParams.PhyrexianLife is on the cast path (#917). It is
+	// the same field name, the same wire name (`phyrexian_life`) and
+	// the same strike-and-pay helper; only the announcement differs.
+	// More than the cost prints, or more life than CR 119.4 allows,
+	// is refused before anything is paid.
+	PhyrexianLife int
+
 	// Strict / AutoTap mirror CastSpellParams: they gate the mana
 	// component of the cost the same way a cast is gated.
 	Strict  bool
@@ -519,6 +541,19 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		// "X can't be 0" (Helm of Obedience). A floor is part of the
 		// cost, so announcing under it is an illegal announcement,
 		// not a cheap one.
+		return ErrInvalidParam
+	}
+	// CR 107.4f / CR 602.2b (#917): the Phyrexian half of the
+	// announcement. How many symbols the cost prints, and whether
+	// CR 119.4 allows the life, are checked against the PARSED cost
+	// in the payment step below — by the one strike-and-pay helper
+	// the cast path also runs, before a point or a token is spent.
+	// What belongs here is the case that step never reaches: an
+	// ability with no mana component at all. A claim against it is a
+	// client firing the wrong ability rather than a cheap
+	// activation, so it is refused rather than dropped, exactly as
+	// an X on a costless ability is.
+	if params.PhyrexianLife != 0 && ab.Cost.Mana == "" {
 		return ErrInvalidParam
 	}
 	if ab.Cost.Loyalty != nil {
@@ -628,12 +663,19 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if ab.Cost.Tap {
 			excluded = map[uuid.UUID]bool{cardID: true}
 		}
-		spent, err := g.payAbilityManaCostLocked(p, cardID, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded)
+		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, ab.Cost.Mana, params, ManaSpendForAbility(*source), excluded)
 		if err != nil {
 			return err
 		}
 		paid.Mana = spent.Mana
 		paid.OnPaper = spent.OnPaper
+		// CR 107.4f (#917): the life the activator announced for the
+		// cost's Phyrexian symbols. It is already paid — the helper
+		// pays it with the mana half, in one indivisible step — and
+		// the record carries it beside the printed Life component
+		// below, because LifePaid is every point this announcement
+		// paid.
+		paid.LifePaid = spent.LifePaid
 	}
 	if ab.Cost.Tap {
 		source.Tapped = true
@@ -655,7 +697,7 @@ func (g *Game) ActivateCatalogAbility(playerID, cardID uuid.UUID, index int, par
 		if err := g.PayLifeForEffect(cardID, playerID, ab.Cost.Life); err != nil {
 			return err
 		}
-		paid.LifePaid = ab.Cost.Life
+		paid.LifePaid += ab.Cost.Life
 	}
 	if ab.Cost.Loyalty != nil {
 		// applyCounterLocked, not AddCounterForEffect: paying a cost
@@ -895,17 +937,37 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // `spendCtx` describes the ability's SOURCE permanent, which is what
 // a restricted token is matched against when the restriction says
 // "activate abilities of …" (#352).
+// `sourceName` is the permanent the ability is printed on, read only
+// for the error message a malformed Phyrexian claim returns.
+//
 // It returns the PaidCost's mana half (#761): the tokens that left
-// the pool, or OnPaper when permissive mode waived the charge. An
+// the pool, or OnPaper when permissive mode waived the charge, plus
+// LifePaid for the Phyrexian symbols paid with life (#917). An
 // ability item records the same fact a spell does, so a "for each
 // colour of mana spent" ability would read it the same way — and
 // Jeweled Amulet's "spend this mana only to cast" rider will, when
 // the rider half lands.
-func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
+func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceName, costStr string, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
 	var paid PaidCost
 	cost, err := ParseCost(costStr)
 	if err != nil {
 		return paid, ErrInvalidParam
+	}
+	// CR 107.4f / CR 602.2b (#917): the Phyrexian symbols the
+	// activator announced they are paying with life leave the mana
+	// cost here, through the SAME helper the cast path runs, and the
+	// life is paid below — after the mana half is known to be
+	// payable, so a refused activation never costs a point. Validated
+	// in every mode, because an over-claim is a malformed announce
+	// rather than a mana-gate failure.
+	//
+	// It happens before the auto-tap branch for the reason
+	// applyAutoTapLocked strikes before planning: tapping a land for
+	// a pip the activator said they would pay with 2 life is
+	// stranding it.
+	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, sourceName, cost, spendCtx, params.PhyrexianLife, &paid)
+	if err != nil {
+		return paid, err
 	}
 	// The announced X multiplies into the generic demand exactly as
 	// it does for a cast: cost.Generic + cost.XSlots*x. Treasure
@@ -919,9 +981,15 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr s
 				Source: sourceID,
 			})
 			// #761: the charge was waived, and the record says so
-			// rather than reading as "nothing was spent".
+			// rather than reading as "nothing was spent". The LIFE
+			// half is still paid — a life total is engine state in
+			// every mode, and permissive mode's bargain is only about
+			// the mana the player tracks on paper.
 			paid.OnPaper = true
-			return paid, nil
+			return paid, g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife)
+		}
+		if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
+			return paid, err
 		}
 		spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
 		paid.Mana = spent
@@ -937,6 +1005,16 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, costStr s
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
+	}
+	// CR 602.2b pays every component of an activation together, so
+	// the order is an engine-safety choice, not a rules one: the
+	// FALLIBLE half goes first. PayLifeForEffect can still refuse
+	// after the life total was checked (a replacement that stops the
+	// player losing life at all, CR 119.8), and refusing after the
+	// pool was emptied would charge for an activation that did not
+	// happen.
+	if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
+		return paid, err
 	}
 	spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
 	paid.Mana = spent

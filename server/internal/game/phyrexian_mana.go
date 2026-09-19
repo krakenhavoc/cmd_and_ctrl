@@ -29,9 +29,19 @@ import (
 // decision rides the cast_spell action, and the PendingChoice
 // machinery has no frame for a half-validated cast.
 //
+// CR 602.2b asks the same question of an ACTIVATED ability, in the
+// same indivisible announcement, so the answer has the same shape:
+// ActivateAbilityParams.PhyrexianLife, wire `phyrexian_life` — one
+// field name for both paths (#917). What follows is ONE strike-and-pay
+// helper with two callers: strikePhyrexianLifeLocked reduces the cost
+// and prices the claim, payPhyrexianLifeLocked hands the life to
+// PayLifeForEffect. applyCastCostLocked and payAbilityManaCostLocked
+// call them in that order, with the pool spend between, and nothing
+// about a Phyrexian symbol is decided anywhere else.
+//
 // The engine, not the caster, decides WHICH symbols those are, because
 // the count is the only part a player cares about: the symbols a
-// life payment can save go first (see phyrexianLifePlan). Choosing
+// life payment can save go first (see PhyrexianLifePlan). Choosing
 // between two symbols the pool can both pay changes nothing but which
 // colour of mana is left floating.
 //
@@ -40,8 +50,9 @@ import (
 // 2 life per symbol, and it is paid through PayLifeForEffect — the
 // one cost-shaped life path (#806): a real life LOSS that runs the
 // CR 614 window and cannot pause on a CR 616 prompt, because CR
-// 601.2h pays a spell's costs as one indivisible step. Nothing here
-// touches a life total directly.
+// 601.2h pays a spell's costs as one indivisible step, and CR 602.2b
+// says the same of an activation. Nothing here touches a life total
+// directly.
 
 // PhyrexianLifePerSymbol is CR 107.4c's price for one Phyrexian
 // symbol, hybrid Phyrexian included (CR 107.4f).
@@ -49,7 +60,10 @@ const PhyrexianLifePerSymbol = 2
 
 // PhyrexianSymbols counts the symbols in the cost that carry the
 // Phyrexian "or 2 life" option — {W/P} and {W/U/P} alike. It is the
-// ceiling on CastSpellParams.PhyrexianLife.
+// ceiling on CastSpellParams.PhyrexianLife and on
+// ActivateAbilityParams.PhyrexianLife, and the count the view ships
+// to the client as `phyrexian_symbols` so no client parses a mana
+// string to find out (#916).
 func (c ParsedCost) PhyrexianSymbols() int {
 	n := 0
 	for _, req := range c.Required {
@@ -60,7 +74,7 @@ func (c ParsedCost) PhyrexianSymbols() int {
 	return n
 }
 
-// phyrexianLifePlan returns `cost` with `n` of its Phyrexian symbols
+// PhyrexianLifePlan returns `cost` with `n` of its Phyrexian symbols
 // struck out — the ones the caster announced they are paying with
 // life — and the life that costs (CR 107.4f: 2 each).
 //
@@ -72,10 +86,12 @@ func (c ParsedCost) PhyrexianSymbols() int {
 // Probe with an Island untapped) still gets it, because the second
 // pass takes a payable symbol once the first has nothing to offer.
 //
-// Pure: `cost` is not mutated, and neither is the pool. An n outside
-// [0, PhyrexianSymbols()] is the caller's error, not this function's
-// — validatePhyrexianLifeLocked rejects it before anything is paid.
-func phyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n int) (ParsedCost, int) {
+// Pure: `cost` is not mutated, and neither is the pool, and it takes
+// no lock — which is why the read-only auto-tap preview can call it
+// too (#916). An n outside [0, PhyrexianSymbols()] is the caller's
+// error, not this function's — strikePhyrexianLifeLocked rejects it
+// before anything is paid.
+func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n int) (ParsedCost, int) {
 	if n <= 0 {
 		return cost, 0
 	}
@@ -115,32 +131,50 @@ func phyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n i
 	return out, len(struck) * PhyrexianLifePerSymbol
 }
 
-// validatePhyrexianLifeLocked is CR 601.2b's half of the announce: the
-// caster may only claim a life payment for a symbol the cost actually
-// prints, and only down to a life total of 0 (CR 119.4).
+// strikePhyrexianLifeLocked is the announce half of the one
+// strike-and-pay helper, and it has exactly two callers: a cast
+// (CR 601.2b, applyCastCostLocked) and an activation (CR 602.2b,
+// payAbilityManaCostLocked). The announcer may only claim a life
+// payment for a symbol the cost actually prints, and only down to a
+// life total of 0 (CR 119.4).
 //
-// Returns the reduced cost and the life owed. Both are zero-work when
-// the caster claimed nothing, which is every cast of every card
-// without a Phyrexian symbol in its cost.
+// `sourceName` is the card the cost is printed on — the spell being
+// cast, or the permanent whose ability is being activated — and is
+// read for the error message only. `spendCtx` is the context the
+// remaining mana will be spent under, because which symbols the
+// strike saves depends on what the pool can legally pay for THIS
+// announcement (#352).
+//
+// Returns the reduced cost and the life owed, and adds that life to
+// `paid` (ADR 0020's #958 addendum: PaidCost.LifePaid is every point
+// this announcement paid, so an ability that ALSO prints a life
+// component sums the two). `paid` may be nil for a caller that is
+// only pricing — the auto-tap planner, which pays nothing.
+//
+// All of it is zero-work when the announcer claimed nothing, which is
+// every cast and every activation of everything without a Phyrexian
+// symbol in its cost.
 //
 // Caller must hold g.mu.
-func (g *Game) validatePhyrexianLifeLocked(p *Player, card Card, cost ParsedCost, params CastSpellParams) (ParsedCost, int, error) {
-	n := params.PhyrexianLife
-	if n == 0 {
+func (g *Game) strikePhyrexianLifeLocked(p *Player, sourceName string, cost ParsedCost, spendCtx ManaSpendContext, claimed int, paid *PaidCost) (ParsedCost, int, error) {
+	if claimed == 0 {
 		return cost, 0, nil
 	}
-	if n < 0 {
+	if claimed < 0 {
 		return cost, 0, fmt.Errorf("%w: phyrexian_life must not be negative", ErrInvalidParam)
 	}
-	if have := cost.PhyrexianSymbols(); n > have {
-		return cost, 0, fmt.Errorf("%w: phyrexian_life %d, but %s prints %d Phyrexian symbol(s)", ErrInvalidParam, n, card.Name, have)
+	if have := cost.PhyrexianSymbols(); claimed > have {
+		return cost, 0, fmt.Errorf("%w: phyrexian_life %d, but %s prints %d Phyrexian symbol(s)", ErrInvalidParam, claimed, sourceName, have)
 	}
-	reduced, life := phyrexianLifePlan(cost, p.ManaPool, ManaSpendForCast(card), n)
+	reduced, life := PhyrexianLifePlan(cost, p.ManaPool, spendCtx, claimed)
 	// CR 119.4: a player may pay life only down to 0. Checked before
-	// anything is paid, so an over-claim rejects the cast without
-	// costing the caster a single point.
+	// anything is paid, so an over-claim rejects the announcement
+	// without costing the announcer a single point.
 	if p.Life < life {
-		return cost, 0, fmt.Errorf("%w: paying %d life for %d Phyrexian symbol(s) would take %s below 0 (CR 119.4)", ErrInvalidParam, life, n, p.Name)
+		return cost, 0, fmt.Errorf("%w: paying %d life for %d Phyrexian symbol(s) would take %s below 0 (CR 119.4)", ErrInvalidParam, life, claimed, p.Name)
+	}
+	if paid != nil {
+		paid.LifePaid += life
 	}
 	return reduced, life, nil
 }
@@ -151,8 +185,13 @@ func (g *Game) validatePhyrexianLifeLocked(p *Player, card Card, cost ParsedCost
 // 601.2h pays a spell's costs as one indivisible step. Nothing here
 // writes a life total.
 //
-// A no-op for the zero the overwhelming majority of casts announce.
-// Caller must hold g.mu.
+// The pay half of the one strike-and-pay helper, with the same two
+// callers strikePhyrexianLifeLocked has. Both run it after the mana
+// half is known to be payable and before the pool is spent, because
+// the fallible payment goes first.
+//
+// A no-op for the zero the overwhelming majority of announcements
+// make. Caller must hold g.mu.
 func (g *Game) payPhyrexianLifeLocked(cardID, playerID uuid.UUID, life int) error {
 	if life <= 0 {
 		return nil

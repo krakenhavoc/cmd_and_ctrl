@@ -664,11 +664,17 @@ export interface AutoTapPreview {
 // tapper would tap to cast `cardID` right now. Read-only — calling
 // it does not mutate game state. `excluded` lets the caller pass
 // the lock-tap UI's reservation list. `xValue` is the announced
-// X for spells with {X} in their cost (defaults to 0).
+// X for spells with {X} in their cost (defaults to 0), and
+// `phyrexianLife` the announced Phyrexian-symbol count (#916).
 export async function fetchAutoTapPreview(
   gameID: string,
   cardID: string,
-  opts: { xValue?: number; excluded?: string[]; abilityIndex?: number } = {},
+  opts: {
+    xValue?: number;
+    excluded?: string[];
+    abilityIndex?: number;
+    phyrexianLife?: number;
+  } = {},
 ): Promise<AutoTapPreview> {
   const params = new URLSearchParams({ card: cardID });
   if (opts.xValue && opts.xValue > 0) {
@@ -680,6 +686,13 @@ export async function fetchAutoTapPreview(
   // Obedience's corner rather than on the {X} being announced.
   if (opts.abilityIndex !== undefined) {
     params.set("ability", String(opts.abilityIndex));
+  }
+  // #916: the Phyrexian symbols the announcement will pay with 2 life
+  // each. The server strikes them before planning, so the preview
+  // reports on the MANA the cast or activation still owes rather than
+  // tapping a land for a pip the player just said they would buy.
+  if (opts.phyrexianLife && opts.phyrexianLife > 0) {
+    params.set("phyrexian", String(opts.phyrexianLife));
   }
   if (opts.excluded && opts.excluded.length > 0) {
     params.set("exclude", opts.excluded.join(","));

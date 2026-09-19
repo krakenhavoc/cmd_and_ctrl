@@ -380,6 +380,10 @@ type CastSpellParams struct {
 	// REJECTED rather than clamped — silently casting for a different
 	// price than the player asked for is the worst available failure.
 	// Added in S44 (#787).
+	//
+	// CR 602.2b asks the same question of an activated ability, and
+	// ActivateAbilityParams.PhyrexianLife is the same field under the
+	// same wire name — one strike-and-pay helper serves both (#917).
 	PhyrexianLife int
 
 	// Strict enables the S15 mana-cost gate. When set, the server
@@ -1164,11 +1168,10 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// rejected cast never costs a point. Validated in every mode,
 	// because an over-claim is a malformed announce rather than a
 	// mana-gate failure.
-	cost, phyrexianLife, err := g.validatePhyrexianLifeLocked(p, card, cost, params)
+	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCast(card), params.PhyrexianLife, &paid)
 	if err != nil {
 		return paid, err
 	}
-	paid.LifePaid = phyrexianLife
 	if !params.Strict || params.ForceCast {
 		// Permissive default OR strict-mode override. Don't touch
 		// the pool; just emit a warning so the client can render
@@ -1290,7 +1293,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// can reach it today. Once the plan exists the two agree: it funds
 	// every symbol it did not strike, so the payment's own pass ranks
 	// the struck one unpayable and strikes it again.
-	cost, _, err = g.validatePhyrexianLifeLocked(p, card, cost, params)
+	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCast(card), params.PhyrexianLife, nil)
 	if err != nil {
 		return nil
 	}
