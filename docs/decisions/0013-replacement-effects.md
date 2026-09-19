@@ -2410,7 +2410,8 @@ Deliberately NOT migrated: Archon of Cruelty
 lose life, and the discard prompt has no continuation of its own — the
 `discardVerb` row of the lint says so — so the sequence cannot be made
 right by this change alone, and moving half of it would trade one wrong
-order for another.
+order for another. Filed as
+[#1027](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1027).
 
 **7. The lint's tables, and a second scan.** Both entry points are in
 `exitStartsTheClock` with `sacrificePromptVerb`, and
@@ -2436,7 +2437,8 @@ through a resolution-time prompt precisely because the prompt had no
 continuation; it does now, so that caveat is closable. It is left alone
 here because moving the choice from trigger time to resolution time
 changes WHICH land can be sacrificed, not the ordering the comment was
-about, and that is a card decision rather than this mechanic's.
+about, and that is a card decision rather than this mechanic's. Filed
+as [#1026](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1026).
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 
