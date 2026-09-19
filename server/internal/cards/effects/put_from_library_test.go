@@ -69,7 +69,11 @@ func TestLibraryToBattlefieldCardsAreRegistered(t *testing.T) {
 		name         string
 		completeness Completeness
 	}{
-		plChaosWarpOracle:                {"Chaos Warp", CompletenessCaveats},
+		// #783 took Chaos Warp to `full`: the shuffle and the reveal
+		// are the tuck's continuation now, so a commander's owner who
+		// declines the command zone has it shuffled IN rather than
+		// landing on top of an already-shuffled library.
+		plChaosWarpOracle:                {"Chaos Warp", CompletenessFull},
 		plCoilingOracleOracle:            {"Coiling Oracle", CompletenessFull},
 		plGenesisWaveOracle:              {"Genesis Wave", CompletenessFull},
 		plRisenReefOracle:                {"Risen Reef", CompletenessFull},

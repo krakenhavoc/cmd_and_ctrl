@@ -1,0 +1,182 @@
+package protocol
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// cast_gate_view_test.go — the VIEW half of #664 and #760 (ADR 0073
+// §7 and §9). The client greys a card and names the clause from
+// server data, so the stamp has to be the same gate's answer and the
+// offers have to be the same catalog's.
+//
+// Both tests stub the catalog hooks rather than registering real
+// cards: this package must not import the effects catalog, and the
+// question being asked is about the projection, not about any card.
+
+const (
+	viewKickerOracle      = "test-view-kicker"
+	viewRestrictionOracle = "test-view-restriction"
+)
+
+func stubViewOptionalCosts(t *testing.T, oracleID string, costs []game.AdditionalCost) {
+	t.Helper()
+	prev := game.CatalogOptionalCosts
+	game.CatalogOptionalCosts = func(id string) []game.AdditionalCost {
+		if id == oracleID {
+			return costs
+		}
+		if prev != nil {
+			return prev(id)
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogOptionalCosts = prev })
+}
+
+func stubViewCastRestrictions(t *testing.T, oracleID string, rules []game.CastRestriction) {
+	t.Helper()
+	prev := game.CatalogCastRestrictions
+	game.CatalogCastRestrictions = func(id string) []game.CastRestriction {
+		if id == oracleID {
+			return rules
+		}
+		if prev != nil {
+			return prev(id)
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogCastRestrictions = prev })
+}
+
+func handCardIn(t *testing.T, v GameView, seat, instanceID string) CardView {
+	t.Helper()
+	for _, s := range v.Seats {
+		if s.ID != seat {
+			continue
+		}
+		for _, c := range s.Hand.Cards {
+			if c.InstanceID == instanceID {
+				return c
+			}
+		}
+	}
+	t.Fatalf("card %s not found in %s's hand view", instanceID, seat)
+	return CardView{}
+}
+
+// TestOptionalCostsAreOfferedOnTheCard is #664's view half: the
+// client cannot render a kicker toggle it was never told about.
+func TestOptionalCostsAreOfferedOnTheCard(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	stubViewOptionalCosts(t, viewKickerOracle, []game.AdditionalCost{
+		{Optional: true, Key: game.KickerKey, ManaCost: "{4}", Label: "Kicker {4}"},
+		{Optional: true, Key: game.MultikickerKey, ManaCost: "{G}", Repeat: 7, Label: "Multikicker {G}"},
+	})
+
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{
+			InstanceID: id,
+			Name:       "Kickable",
+			TypeLine:   "Instant",
+			OracleID:   viewKickerOracle,
+			ManaCost:   "{R}",
+			Owner:      me.ID,
+			Controller: me.ID,
+			// The owner knows their own hand card. Without it the
+			// per-viewer filter redacts the whole cost surface, which
+			// is correct behaviour and would make this test vacuous.
+			KnownBy: map[uuid.UUID]bool{me.ID: true},
+		})
+	})
+
+	c := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
+	if len(c.OptionalCosts) != 2 {
+		t.Fatalf("optional_costs = %+v, want two offers", c.OptionalCosts)
+	}
+	if c.OptionalCosts[0].Index != 0 || c.OptionalCosts[0].Key != game.KickerKey {
+		t.Errorf("first offer = %+v, want index 0 keyed kicker", c.OptionalCosts[0])
+	}
+	if c.OptionalCosts[0].MaxTimes != 1 {
+		t.Errorf("kicker max_times = %d, want 1", c.OptionalCosts[0].MaxTimes)
+	}
+	// The multikicker's cap is what turns the client's checkbox into
+	// a stepper, so it is the one number this projection must not
+	// drop.
+	if c.OptionalCosts[1].MaxTimes != 7 {
+		t.Errorf("multikicker max_times = %d, want 7", c.OptionalCosts[1].MaxTimes)
+	}
+	if c.CantCast != "" {
+		t.Errorf("nothing restricts casting, but cant_cast = %q", c.CantCast)
+	}
+}
+
+// TestCantCastIsStampedFromTheSameGate is #760's view half: the
+// refusal the engine would give, on the card, before the click.
+func TestCantCastIsStampedFromTheSameGate(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	const clause = "Test Warden — each player can't cast more than one spell each turn."
+	stubViewCastRestrictions(t, viewRestrictionOracle, []game.CastRestriction{{
+		Label: clause,
+		Forbids: func(q game.CastQuery) bool {
+			return q.Game.CastTallyFor(q.Controller).Total >= 1
+		},
+	}})
+
+	id := uuid.New()
+	warden := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{
+			InstanceID: id,
+			Name:       "Second Spell",
+			TypeLine:   "Instant",
+			ManaCost:   "{R}",
+			Owner:      me.ID,
+			Controller: me.ID,
+			KnownBy:    map[uuid.UUID]bool{me.ID: true},
+		})
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: warden,
+			Name:       "Test Warden",
+			TypeLine:   "Enchantment",
+			OracleID:   viewRestrictionOracle,
+			Owner:      me.ID,
+			Controller: me.ID,
+		})
+	})
+
+	// Nothing cast yet: the card is clean.
+	if got := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String()).CantCast; got != "" {
+		t.Errorf("before any cast, cant_cast = %q, want empty", got)
+	}
+
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[me.ID] = game.CastTally{Total: 1}
+	})
+
+	c := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
+	if c.CantCast == "" {
+		t.Fatalf("a restricted card carries no cant_cast")
+	}
+	if !strings.Contains(c.CantCast, "more than one spell") {
+		t.Errorf("cant_cast = %q, want the printed clause", c.CantCast)
+	}
+	if c.CastableHere {
+		t.Errorf("a card the gate refuses is still marked castable_here")
+	}
+	// And the engine agrees, which is the whole point of the stamp
+	// being the same function's answer.
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
+		t.Errorf("the engine allowed a cast the view greyed out")
+	}
+}

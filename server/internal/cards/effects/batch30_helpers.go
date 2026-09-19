@@ -193,11 +193,13 @@ func b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.C
 // b30YouDiscardedCardWhere reports whether the source's controller
 // discarded a card that passes `match` — Surly Badgersaur's three
 // discard triggers, one predicate each. The card is read from where
-// it landed, where its printed type line is intact. Today that is
-// always the graveyard, because no discard can be replaced (#650).
-// Once madness can exile a discarded card, exile works the same way.
-// A card Library of Leng puts on top of a library isn't revealed, so
-// #650 has to decide what this predicate may read there.
+// it landed, where its printed type line is intact — since #650 a
+// discard can be replaced, so that is the graveyard, or exile, or the
+// top of a library. Reading the card wherever it went is deliberate
+// and slightly generous in one case: a card Library of Leng puts on
+// top of a library is NOT revealed, so a strict reading would let the
+// trigger see only what a public zone shows. Nothing in the catalog
+// depends on the difference today.
 func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
 	if !discardedByYou(ev, source) {
 		return false
@@ -206,16 +208,13 @@ func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, ma
 	return ok && match(c)
 }
 
-// b30NonHumanCreatureYouControlDealtCombatDamageToPlayer is Keeper
-// of Fables' condition: combat damage to a player by a creature the
-// source's controller controls that is not a Human. Effective
-// subtypes, so a changeling is a Human and does not count.
-func b30NonHumanCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && !c.HasSubtype("Human")
+// b30NonHuman is Keeper of Fables' narrowing of the creatures that
+// count — the ones that are not Humans. Effective subtypes, so a
+// changeling is a Human and does not count. The rest of the printed
+// condition (combat damage to a player, by a creature you control,
+// once per player) is the constructor's, #784.
+func b30NonHuman() CardPredicate {
+	return Not(Subtype("Human"))
 }
 
 // b30EndStepAndTotalToughnessAtLeast is Betor's intervening-if at

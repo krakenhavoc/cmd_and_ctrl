@@ -541,7 +541,7 @@ func TestCombatUnblockedCommanderDamageEliminatesAt21(t *testing.T) {
 	if def.Life != StartingLife-21 {
 		t.Errorf("defender life = %d, want %d", def.Life, StartingLife-21)
 	}
-	if !def.IsDeadByCommanderDamage() {
+	if !def.IsDeadByCommanderDamage(CommanderDamageLethal) {
 		t.Error("IsDeadByCommanderDamage = false after 21 commander damage")
 	}
 	if !def.Eliminated {

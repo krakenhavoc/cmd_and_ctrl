@@ -116,11 +116,29 @@ type TriggeredAbility struct {
 	// captured event + LKI and queues the StackItem. On `apply:
 	// false`, the trigger drops without effect.
 	//
-	// Nil means mandatory — Build runs unconditionally. Modal-choice
-	// triggers ("draw a card OR gain 3 life") aren't represented
-	// here; they need a separate ModePrompt slot when the first
-	// modal catalog card ships. Added in S19 sub-PR 2.
+	// Nil means mandatory — Build runs unconditionally. Added in S19
+	// sub-PR 2.
 	OptionalPrompt *TriggerOptionalPrompt
+
+	// Modes is the CR 700.2 mode clause of a modal triggered ability
+	// ("choose one — put a +1/+1 counter on this creature; create a
+	// Treasure token; you gain 2 life"). The same game.ModeSpec a
+	// modal spell and a modal activated ability declare — one struct,
+	// three owners (#764, ADR 0065 §3).
+	//
+	// The choice is made as the ability is put on the stack (CR
+	// 603.3c): after the OptionalPrompt's "yes", before the CR
+	// 603.3d target pick, through a mode_pick prompt to the source's
+	// controller. An option whose target clause has no legal target
+	// is not offered, and if that leaves fewer than Min the trigger
+	// is removed without any prompt at all.
+	//
+	// The chosen occurrences land on the built item's Modes and each
+	// bullet's ModeOption.Effect runs at resolution in announce
+	// order; a card that would rather branch by hand reads
+	// effects.Context.HasMode in the Build closure's effect instead.
+	// Added by #764.
+	Modes *ModeSpec
 
 	// Targets is the S20 structured target clause for a targeted
 	// trigger ("destroy target artifact or enchantment"). When set,
@@ -174,6 +192,21 @@ type TriggeredAbility struct {
 	// Added in S28.
 	FromStack bool
 
+	// Zones is WHERE this ability watches from (CR 113.6, #925). Nil
+	// — the answer for all but a handful of cards — means the
+	// battlefield, which is where abilities live. {ZoneGraveyard} is
+	// "when you cycle this card" (CR 702.29c) and Bloodghast's
+	// landfall; {ZoneExile} is suspend's upkeep countdown (CR
+	// 702.62b).
+	//
+	// A declared zone list IS the list: an ability that names the
+	// graveyard does not also fire from the battlefield. The same
+	// default and the same rule as ActivatedAbilityShape.Zones (ADR
+	// 0062 Decision 1) and CastableZones, read through TriggerZones /
+	// TriggerWatchesFromZone in trigger_zones.go, which is also where
+	// the per-zone index and the one extra harvest live.
+	Zones []ZoneKind
+
 	// Key names this ability for the OncePerBatch check: the stack
 	// label it announces with. The effects constructors stamp it from
 	// the label they are given; a hand-written ability may set it, or
@@ -202,6 +235,31 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// BatchKey is the SECOND dimension of the OncePerBatch key: the
+	// distinct object the printed clause quantifies over, read off
+	// the event (#784).
+	//
+	// CR 603.2c fires one trigger per occurrence, and a clause that
+	// names an object counts one occurrence per object — "whenever
+	// one or more creatures you control deal combat damage to A
+	// PLAYER" is once per player dealt damage, not once per damage
+	// step (Keeper of Fables, ruling 2019-10-04), and "whenever you
+	// attack A PLAYER" is once per player attacked (Horizon
+	// Explorer, Neyali). Key alone cannot say that: it is static
+	// catalog data and the player is only known from the event.
+	//
+	// With this set the guard becomes "(source, key, this player)
+	// once per batch": three creatures hitting three opponents in
+	// one damage step are three triggers, and two creatures hitting
+	// one opponent are one. Nil — the usual case — leaves the guard
+	// keyed on (source, key) alone.
+	//
+	// Runs under g.mu in write mode, from the harvest path. MUST NOT
+	// call public locking mutators. Not persisted; catalog data, like
+	// Key. See effects.OncePerBatchPerPlayer for the one reading the
+	// catalog uses.
+	BatchKey func(ev Event, source *Card, g *Game) string
+
 	// Chapter is the Saga chapter number this ability is printed
 	// against — 1 for "I —", 3 for "III —" (CR 714.2b). Zero for
 	// every ability that is not a chapter, which is every ability on
@@ -217,6 +275,19 @@ type TriggeredAbility struct {
 	//
 	// Added in S27.
 	Chapter int
+
+	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
+	// this trigger exists only while its source permanent has the
+	// designation named. A Case's "Solved — whenever …" is
+	// CaseSolved(); a Class's level-3 trigger is ClassLevel(3). The
+	// zero value is "no gate".
+	//
+	// Evaluated in TriggersForCard / TriggersForKey and nowhere else,
+	// so a gated-off trigger is never matched, never prompted and
+	// never queued. Distinct from Chapter, which is declarative data
+	// about a Saga rather than a condition. See designations.go and
+	// ADR 0071.
+	ActiveWhen Designation
 }
 
 // TriggerOptionalPrompt is the declarative payload for the "ask
@@ -263,6 +334,15 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	}
 	pass := g.newHarvestPassLocked(ev)
 	g.harvestFromZone(&pass, g.Battlefield)
+	// #623 / CR 114.3: an emblem's triggered abilities function in the
+	// command zone. One more zone into the same walk — see emblem.go.
+	g.harvestFromEmblemsLocked(&pass)
+	// #925: abilities that declared another zone (CR 113.6) — a
+	// graveyard card's "when you cycle this card", suspend's exile
+	// countdown. Indexed at Register, so an event kind nothing
+	// watches from another zone costs one map lookup and no walk.
+	// See trigger_zones.go.
+	g.harvestFromDeclaredZones(&pass)
 	// S28: "When you cast this spell, ..." — cascade. The source is
 	// the spell that was just announced, which is on the stack and
 	// invisible to the battlefield scan above. Narrow on purpose:
@@ -286,6 +366,13 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// card whose death is being reported, so a wipe needs its own
 	// pass. No-op unless a simultaneous batch is open.
 	g.harvestSimultaneousExitLocked(&pass)
+	// #663: event-conditioned delayed triggers — "when you next cast
+	// an instant or sorcery spell this turn, copy that spell" (CR
+	// 603.7b). Checked LAST, after every zone walk, so the delayed
+	// list sees the event exactly once and the first match fires it
+	// and removes it. One hook, one place, no per-card case. See
+	// delayed.go and the 2026-09-18 amendment to ADR 0026.
+	g.fireEventDelayedTriggersLocked(ev)
 }
 
 // harvestFromZone is the per-zone scan used for "live" triggers (ETB,
@@ -309,19 +396,23 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 				source = &batch
 			}
 		}
-		// CatalogAbilityKey: a permanent under a CR 613.1f
+		// TriggersForCard: a permanent under a CR 613.1f
 		// ability-removing effect has no triggered abilities to
-		// harvest. Off the battlefield this is CatalogKey exactly.
-		oracle := CatalogAbilityKey(*source)
-		if oracle == "" {
-			continue
-		}
-		triggers := CatalogTriggers(oracle)
+		// harvest, and neither has one whose designation gate is
+		// unsatisfied — an unsolved Case's "Solved — whenever …" is
+		// not a trigger that exists (ADR 0071). Off the battlefield
+		// the key degrades to CatalogKey exactly.
+		triggers := TriggersForCard(*source)
 		if len(triggers) == 0 {
 			continue
 		}
 		lki := source.Effective()
 		for _, t := range triggers {
+			// #925: an ability that declared another zone does not
+			// fire from the battlefield as well.
+			if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+				continue
+			}
 			if !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
@@ -352,12 +443,8 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 		if card.InstanceID != ev.CardID {
 			continue
 		}
-		oracle := CatalogAbilityKey(*card)
-		if oracle == "" {
-			return
-		}
 		lki := card.Effective()
-		for _, t := range CatalogTriggers(oracle) {
+		for _, t := range TriggersForCard(*card) {
 			if !t.FromStack || !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
@@ -378,13 +465,17 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 //     the trigger is removed without any prompt (CR 603.3d).
 //  2. OptionalPrompt → the yes/no prompt; on "yes" the flow re-enters
 //     here at step 3 via ResolveTriggerPrompt.
-//  3. Targeted → pick_target prompt; on the pick, Build runs and the
-//     chosen ref is stamped onto the item.
-//  4. Otherwise Build → queue.
+//  3. Modal (Modes != nil) → mode_pick prompt (CR 603.3c); on the
+//     answer the flow re-enters at step 4 via ResolveModePick.
+//  4. Targeted → the pick_target walk, one prompt per clause of the
+//     announcement; on the last pick, Build runs and the chosen refs
+//     are stamped onto the item.
+//  5. Otherwise Build → queue.
 //
-// Caller must hold g.mu. Added in S20 sub-PR 2 (steps 1 and 3).
+// Caller must hold g.mu. Added in S20 sub-PR 2; step 3 and the
+// multi-clause walk in step 4 by #764.
 func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility) {
-	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, t.Key) {
+	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, ev, &source, g)) {
 		return
 	}
 	g.dispatchTriggerInstanceLocked(ev, source, lki, t, doublerRef{})
@@ -393,7 +484,7 @@ func (g *Game) dispatchTriggerLocked(ev Event, source Card, lki Characteristic, 
 // harvestMatchLocked fixes the additional-instance count at the moment this
 // ability triggered, before prompts or items are queued.
 func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteristic, t TriggeredAbility, fromSpell bool) {
-	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, t.Key) {
+	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {
 		return
 	}
 	extra := g.triggerDoublersLocked(pass, source, lki, t, fromSpell)
@@ -404,34 +495,65 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 }
 
 func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
-	if t.Targets != nil {
-		lt := g.legalTargetsLocked(source.Controller, t.Targets)
-		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
-			return
-		}
+	// CR 603.3d, checked before any prompt: an ability whose target
+	// clause cannot be filled is never put on the stack, so nobody is
+	// asked a question whose only answer is "nothing happens".
+	// #764: every REQUIRED clause of the statement, not just the
+	// first, and for a modal ability the question is instead whether
+	// Min options remain choosable (choosableModeOptionsLocked).
+	// #662: `source` is the value copy of the permanent whose ability
+	// this is, which is the object CR 702.16b tests the quality
+	// against — not its controller.
+	src := SourceObject(source.Controller, &source)
+	if t.Modes == nil && t.Targets != nil &&
+		g.anyClauseUnfillableLocked(src, AnnouncedClauses(t.Targets, nil, nil)) {
+		return
+	}
+	if t.Modes != nil &&
+		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(src, t.Modes)), t.Modes) {
+		return
 	}
 	if t.OptionalPrompt != nil {
 		g.queueTriggerPromptLocked(ev, source, lki, t, doubledBy)
 		return
 	}
-	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy)
+	g.buildOrPickTriggerLocked(ev, source, lki, t, doubledBy, nil)
 }
 
 // buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
-// queue the target picker for a targeted trigger, or Build and queue
-// the item directly. Caller must hold g.mu.
-func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
+// the mode prompt for a modal trigger, then the target walk for a
+// targeted one, then Build.
+//
+// `modes` is nil on the way in and carries the CR 603.3c answer on
+// the way back through ResolveModePick — which is what makes the
+// mode choice happen exactly once, before targets, and never for an
+// ability that has none. Caller must hold g.mu.
+func (g *Game) buildOrPickTriggerLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int) {
 	if t.Build == nil {
 		return
 	}
-	if t.Targets != nil {
-		g.queuePickTargetLocked(ev, source, lki, t, doubledBy)
+	// CR 603.3c: modes first. An untargeted modal trigger (Black
+	// Mark, Gala Greeters) takes this path too — the prompt is the
+	// only thing between the harvest and the stack.
+	if t.Modes != nil && modes == nil {
+		if !g.queueModePickLocked(ev, source, lki, t, doubledBy) {
+			// Fewer choosable options than Min: CR 603.3d removes the
+			// ability rather than asking an unanswerable question.
+			return
+		}
+		return
+	}
+	steps := AnnouncedClauses(t.Targets, t.Modes, modes)
+	if len(steps) > 0 {
+		g.queuePickTargetLocked(ev, source, lki, t, doubledBy, modes, steps)
 		return
 	}
 	item := t.Build(ev, &source, lki, g)
 	if item == nil {
 		return
 	}
+	item.Modes = append([]int(nil), modes...)
+	item.modeSpec = t.Modes
 	item.DoubledBy, item.DoubledByName = doubledBy.id, doubledBy.name
 	g.queueHarvestedTriggerLocked(item)
 }
@@ -457,7 +579,13 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 	if oracle == "" {
 		return
 	}
-	triggers := CatalogTriggers(oracle)
+	// TriggersForKey, not TriggersForCard: this path has already
+	// chosen its key (CatalogKey plus the AbilitiesRemoved read off
+	// the LKI snapshot below), and the designation gate is evaluated
+	// against the SNAPSHOT for the same CR 603.10 reason — a Case
+	// that was solved when it died has its solved dies-trigger, one
+	// that was not does not. ADR 0071.
+	triggers := TriggersForKey(oracle, source)
 	if len(triggers) == 0 {
 		return
 	}
@@ -489,6 +617,15 @@ func (g *Game) harvestLTB(pass *harvestPass) {
 		})
 	}
 	for _, t := range triggers {
+		// #925: an LTB trigger is a BATTLEFIELD ability read off the
+		// permanent that just left (CR 603.10). An ability that
+		// declared the graveyard is a graveyard ability, and the
+		// declared-zone walk is the one that fires it — from the same
+		// card, one event later in the same harvest, without the
+		// battlefield LKI.
+		if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+			continue
+		}
 		if !triggerWatches(t.Watches, ev.Kind) {
 			continue
 		}
@@ -597,56 +734,6 @@ func (g *Game) findCardByIDLocked(cardID uuid.UUID) *Card {
 		}
 	}
 	return nil
-}
-
-// TriggerInFlightForEffect reports whether an instance of the ability
-// identified by (source, key) is between "fired" and "resolved": on
-// PendingTriggers, on the stack, or waiting on a trigger prompt or a
-// target pick. An empty key matches any trigger from the source.
-//
-// This is NOT the "whenever one or more …" guard. That is
-// OncePerBatch, and since #829 it keys on Event.Batch
-// (event_batch.go) rather than on what is in flight. What is left
-// here is the narrower case OncePerBatch cannot express: a card whose
-// dedup key is computed PER EVENT and so cannot ride the static
-// TriggeredAbility.Key — Breena's per-opponent label and Nature's
-// Will's per-damaged-player label, which are its only two callers.
-// Those two still carry #829's failure in their own dimension (a
-// second batch aimed at the same player, while the first batch's
-// trigger is on the stack, is declined); #784 is the issue that gives
-// a per-event key a real batch identity and retires this helper.
-//
-// Runs under the lock the caller already holds; caller must hold
-// g.mu.
-func (g *Game) TriggerInFlightForEffect(source uuid.UUID, key string) bool {
-	match := func(item *StackItem) bool {
-		return item != nil && item.Kind == StackItemTriggered && item.SourceCardID == source && (key == "" || item.Label == key)
-	}
-	for _, item := range g.PendingTriggers {
-		if match(item) {
-			return true
-		}
-	}
-	for _, item := range g.StackMeta {
-		if match(item) {
-			return true
-		}
-	}
-	for _, c := range g.PendingChoices {
-		if c == nil || c.Source != source {
-			continue
-		}
-		if c.Kind != PendingChoiceTriggerPrompt && c.Kind != PendingChoicePickTarget {
-			continue
-		}
-		// A prompt from an ability with no Key (a hand-written literal)
-		// blocks every key of its source: that is the source-wide check
-		// the old helpers made, and the conservative direction.
-		if key == "" || c.triggerResume == nil || c.triggerResume.ability.Key == "" || c.triggerResume.ability.Key == key {
-			return true
-		}
-	}
-	return false
 }
 
 // triggerWatches reports whether kinds contains kind. Linear scan;

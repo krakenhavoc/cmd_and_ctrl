@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { colorButtons, colorPromptAnswerable } from "./manaPick";
+import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "./manaPick";
 
 // Owner decision (2026-09-17): "any color" mana offers all five colours
 // with the commander's identity listed first. The picker renders what
@@ -51,5 +51,45 @@ describe("colorPromptAnswerable", () => {
 
   it("leaves every other prompt kind alone", () => {
     expect(colorPromptAnswerable({ kind: "discard_from_hand" })).toBe(true);
+  });
+});
+
+// #986: five legal colours (CR 105.4) and five identical buttons say
+// nothing about which question is being asked. The card declares what
+// it will do with the answer and the picker says it back.
+describe("colorPromptCopy", () => {
+  const purposes = ["mana", "benefit", "harm", "filter", "protect"] as const;
+
+  it("has its own words for every declared purpose", () => {
+    const titles = new Set<string>();
+    const hints = new Set<string>();
+    for (const p of purposes) {
+      const copy = colorPromptCopy(p);
+      expect(copy.title.length).toBeGreaterThan(0);
+      expect(copy.hint.length).toBeGreaterThan(0);
+      titles.add(copy.title);
+      hints.add(copy.hint);
+    }
+    // Two purposes sharing a line would be worse than no line at all:
+    // it would tell a player the two questions are the same one.
+    expect(titles.size).toBe(purposes.length);
+    expect(hints.size).toBe(purposes.length);
+  });
+
+  it("warns that a harm colour hits the chooser too", () => {
+    expect(colorPromptCopy("harm").hint).toMatch(/your own/i);
+  });
+
+  it("says a filter colour costs the chooser nothing", () => {
+    expect(colorPromptCopy("filter").hint).toMatch(/nothing of yours/i);
+  });
+
+  it("falls back to neutral copy for a prompt that declares nothing", () => {
+    const neutral = colorPromptCopy(undefined);
+    expect(neutral.title).toBe("Choose a color");
+    expect(colorPromptCopy("")).toEqual(neutral);
+    // A purpose a newer server knows and this client does not must read
+    // as vague, never as the wrong question.
+    expect(colorPromptCopy("sacrifice-your-firstborn")).toEqual(neutral);
   });
 });

@@ -70,6 +70,78 @@ func (c *Context) X() int {
 	return c.Item.XValue
 }
 
+// Paid is what the announcement that put this item on the stack
+// actually cost (#789 / #761): the mana tokens that left the pool,
+// the counters removed or added, the life paid — and whether the
+// engine charged at all (PaidCost.OnPaper).
+//
+// The accessors below are the readable half; this is here for a card
+// that needs more than one fact about the payment.
+func (c *Context) Paid() game.PaidCost {
+	if c.Item == nil {
+		return game.PaidCost{}
+	}
+	return c.Item.Paid
+}
+
+// CountersRemoved is how many counters the ability's cost removed —
+// "for each counter removed this way". A fact about the ANNOUNCEMENT,
+// read back the way X is: the counters are off the board by
+// resolution, so nothing here could recompute it. Added in #789.
+func (c *Context) CountersRemoved() int {
+	return c.Paid().CountersRemoved
+}
+
+// ManaSpent is the tokens that paid for this spell, in the order the
+// solver spent them. Empty for an ability item, for a copy (CR
+// 707.10) and for a payment the engine waived — use ManaSpentKnown
+// to tell the last case apart. Added in #761.
+func (c *Context) ManaSpent() []game.ManaToken {
+	return c.Paid().ManaSpent()
+}
+
+// ColorsSpent is the distinct COLOURS of mana spent to cast this
+// spell, in WUBRG order — converge's X (CR 702.86) and sunburst's
+// counter count (CR 702.44). Colourless is not a colour, so {C} never
+// appears. Empty when the payment was not recorded, which is the
+// weaker-than-printed answer. Added in #761.
+func (c *Context) ColorsSpent() []string {
+	return c.Paid().ColorsSpent()
+}
+
+// ColorsSpentCount is len(ColorsSpent) — the number converge and
+// sunburst actually want. Added in #761.
+func (c *Context) ColorsSpentCount() int {
+	return c.Paid().ColorsSpentCount()
+}
+
+// ManaSpentOfColor is how many mana of one colour paid for this
+// spell: adamant's "if at least three red mana was spent to cast
+// this spell" is ManaSpentOfColor("R") >= 3. Added in #761.
+func (c *Context) ManaSpentOfColor(color string) int {
+	return c.Paid().SpentOfColor(color)
+}
+
+// NoManaSpent reports "if no mana was spent to cast it" (Vexing
+// Bauble, Satoru, the Infiltrator).
+//
+// True only when the engine KNOWS nothing was spent — a free cast, a
+// {0} alternative cost, a copy of a spell. A payment the engine
+// waived (permissive mode, ForceCast) answers false: the player paid
+// something we did not see, and a punisher that fired on it would
+// counter half the spells cast at a permissive table. Added in #761.
+func (c *Context) NoManaSpent() bool {
+	return c.Paid().NoManaSpent()
+}
+
+// ManaSpentKnown reports whether the mana half of the record is a
+// fact rather than a waived charge. For a card that wants to say
+// "unknown" out loud instead of folding it into the weaker answer.
+// Added in #761.
+func (c *Context) ManaSpentKnown() bool {
+	return c.Paid().Known()
+}
+
 // Opponents returns the IDs of every seated, non-eliminated player
 // other than the current item's controller, in seat order. "Each
 // opponent" effects (Exsanguinate) iterate this. Added in S20
@@ -86,8 +158,10 @@ func (c *Context) Opponents() []uuid.UUID {
 	return out
 }
 
-// Modes returns the announce-time mode indexes of a modal spell
-// (empty for non-modal cards). Added in S20 sub-PR 4.
+// Modes returns the announce-time mode indexes of a modal spell or
+// ability (empty for non-modal cards), in announce order and with
+// repeats when the card allows them (CR 700.2d). Added in S20 sub-PR
+// 4; a multiset since #764.
 func (c *Context) Modes() []int {
 	if c.Item == nil {
 		return nil
@@ -108,6 +182,70 @@ func (c *Context) HasMode(i int) bool {
 	return false
 }
 
+// ModeCount is how many times option i was chosen (CR 700.2d). 0
+// when the option was not chosen, 1 for the ordinary modal card, and
+// more only for a Repeatable ModeSpec — Mystic Confluence's draw
+// mode taken three times is 3. Added by #764.
+func (c *Context) ModeCount(i int) int {
+	return game.ModeCount(c.Modes(), i)
+}
+
+// Mode is the OPTION index chosen at occurrence `n` of the announced
+// mode list, or -1 when there is no such occurrence. Modes resolve in
+// announce order (CR 700.2c), so a card that walks its occurrences
+// walks this. Added by #764.
+func (c *Context) Mode(n int) int {
+	modes := c.Modes()
+	if n < 0 || n >= len(modes) {
+		return -1
+	}
+	return modes[n]
+}
+
+// ModeTargets is the target group announced for occurrence `n` — the
+// picks that answered THAT occurrence's clauses, in clause order.
+// A repeated mode's two occurrences have two groups, which is what
+// makes CR 700.2d work. Added by #764.
+func (c *Context) ModeTargets(n int) []game.TargetRef {
+	var out []game.TargetRef
+	for _, t := range c.Targets() {
+		if t.Mode == n {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ClauseTargets is the picks that answered clause `slot` of the
+// announcement — slot 0 is "target creature you control", slot 1 is
+// "target creature or planeswalker you don't control". For a modal
+// item, narrow to one occurrence with ModeTargets first. Added by
+// #764.
+func (c *Context) ClauseTargets(slot int) []game.TargetRef {
+	var out []game.TargetRef
+	for _, t := range c.Targets() {
+		if t.Slot == slot {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ClauseTarget is the single pick that answered clause `slot`, and
+// whether there is one and it is still legal (CR 608.2b). The read a
+// two-slot positional card wants: "the creature I control" is
+// ClauseTarget(0), "the thing it hits" is ClauseTarget(1). Added by
+// #764.
+func (c *Context) ClauseTarget(slot int) (game.TargetRef, bool) {
+	for _, t := range c.Targets() {
+		if t.Slot != slot {
+			continue
+		}
+		return t, c.IsTargetLegal(t)
+	}
+	return game.TargetRef{}, false
+}
+
 // PaidAltCost reports whether the spell was cast for the named
 // alternative cost (CR 118.9) — "overload", "evoke", "cleave". False
 // for an ordinary cast and for every ability item. Added in S22.
@@ -119,6 +257,74 @@ func (c *Context) HasMode(i int) bool {
 // resolution just reads it back.
 func (c *Context) PaidAltCost(key string) bool {
 	return c.Item != nil && c.Item.AltCost == key && key != ""
+}
+
+// OptionalCostTimes is how many times the optional additional cost
+// keyed `key` was paid when this spell was announced (CR 601.2b,
+// ADR 0073). Zero when it was declined, when the card offers no such
+// cost, and for every ability item.
+//
+// Keyed rather than indexed so a card's resolution never has to know
+// its own declaration order, exactly as PaidAltCost is keyed.
+func (c *Context) OptionalCostTimes(key string) int {
+	if c.Item == nil || len(c.Item.Paid.OptionalCosts) == 0 {
+		return 0
+	}
+	card, ok := c.Game.LookupCardForEffect(c.Item.ID)
+	if !ok {
+		return 0
+	}
+	return game.OptionalCostTimesPaid(card, c.Item.Paid.OptionalCosts, key)
+}
+
+// WasKicked is CR 702.33's "if this spell was kicked" — the read a
+// kicked spell's own resolution branches on, the same shape
+// PaidAltCost gives an overloaded one:
+//
+//	if ctx.WasKicked() { … 4 damage … } else { … 2 damage … }
+//
+// True for kicker and multikicker alike: no rules text tells them
+// apart, and no card prints both.
+func (c *Context) WasKicked() bool { return c.KickedTimes() > 0 }
+
+// KickedTimes is CR 702.33d's "the number of times it was kicked" —
+// Wolfbriar Elemental's Wolf count. 1 for an ordinary kicked spell,
+// 0 for an unkicked one.
+func (c *Context) KickedTimes() int {
+	return c.OptionalCostTimes(game.KickerKey) + c.OptionalCostTimes(game.MultikickerKey)
+}
+
+// CastProvenance is what the permanent this effect is running for
+// remembers about the SPELL it came from — CR 400.7d, "an ability of
+// a permanent can reference information about the spell that became
+// that permanent as it resolved, including what costs were paid".
+//
+// The SOURCE's record, not the item's. PaidAltCost above answers "what
+// paid for the spell I am resolving", which is the right question for
+// an overloaded Cyclonic Rift and the wrong one for Phlage: by the
+// time "sacrifice it unless it escaped" resolves, the item on the
+// stack is the TRIGGER, and the spell that paid escape finished
+// resolving two steps ago. The fact lives on the permanent from #653.
+//
+// The zero record for an ability whose source is not on the
+// battlefield, which is also the honest answer: CR 400.7d is written
+// about a permanent.
+func (c *Context) CastProvenance() game.CastProvenance {
+	if c.Game == nil || c.Item == nil {
+		return game.CastProvenance{}
+	}
+	return c.Game.CastProvenanceForEffect(c.Item.SourceCardID)
+}
+
+// Escaped is CR 702.138b for the permanent this effect is running for:
+// it was cast for its escape cost and is still the permanent that
+// spell became. The whole of "sacrifice it unless it escaped".
+//
+// False for a reanimated, hard-cast, blinked or put-onto-the-
+// battlefield copy of the same card, and false is the
+// weaker-than-printed answer in every one of those cases.
+func (c *Context) Escaped() bool {
+	return c.CastProvenance().Escaped()
 }
 
 // Targets returns the announce-time target slots. Callers that
@@ -156,6 +362,26 @@ func (c *Context) PayloadCards() []uuid.UUID {
 		}
 	}
 	return out
+}
+
+// ChosenPlayer is the player most recently named by a
+// ChoosePlayer on this item (#929, choose_player.go), or uuid.Nil
+// when the last question could not be asked and when none was asked
+// at all.
+//
+// A chosen player is NOT a target: it is picked while the effect
+// resolves, nothing may respond to it, and nothing re-checks it
+// against the board. A branch that acts on a seat which may since
+// have left checks for itself, exactly as Payload's readers do.
+func (c *Context) ChosenPlayer() uuid.UUID {
+	return game.ChosenPlayerOn(c.Item)
+}
+
+// ChosenPlayers is every player named by a ChoosePlayer on this item,
+// in the order the card asked. The read behind "choose a SECOND
+// player": pass it back as ChoosePlayer.Except.
+func (c *Context) ChosenPlayers() []uuid.UUID {
+	return game.ChosenPlayersOn(c.Item)
 }
 
 // PlayerByID is a read-through to the live game. Returns nil if

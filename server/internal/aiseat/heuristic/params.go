@@ -23,8 +23,18 @@ type targetRef struct {
 }
 
 type castParams struct {
-	InstanceID   string      `json:"instance_id"`
-	FromZone     string      `json:"from_zone"`
+	InstanceID string `json:"instance_id"`
+	FromZone   string `json:"from_zone"`
+	// AlternativeCost is the CR 118.9 price this cast claims —
+	// "flashback", "escape", "overload", "pitch" — or "" for the
+	// printed mana cost (#673). The policy reads it to tell a
+	// flashed-back Faithless Looting from a hard-cast one, which are
+	// the same card at two prices with two different consequences.
+	AlternativeCost string `json:"alternative_cost"`
+	// AltCostIDs are the cards paid to the NON-MANA half of that
+	// price: escape's exiled graveyard, Force of Will's pitched blue
+	// card, Daze's returned Island. Real resources, priced below.
+	AltCostIDs   []string    `json:"alt_cost_ids"`
 	Targets      []targetRef `json:"targets"`
 	Modes        []int       `json:"modes"`
 	XValue       int         `json:"x_value"`
@@ -39,6 +49,11 @@ type activateParams struct {
 	SacrificeIDs []string    `json:"sacrifice_ids"`
 	CrewIDs      []string    `json:"crew_ids"`
 	XValue       int         `json:"x_value"`
+}
+
+type specialActionParams struct {
+	CardID string `json:"card_id"`
+	Kind   string `json:"kind"`
 }
 
 type attackParams struct {

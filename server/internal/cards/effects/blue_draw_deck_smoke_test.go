@@ -85,8 +85,11 @@ import (
 // is, and it is left out on purpose — its per-draw trigger targets,
 // so four draws in one step is four target prompts, and the deck
 // already has two payoffs reading the same event. Mystic Remora
-// (cumulative upkeep) and Bruvac (no replacement kind for a mill
-// amount) are the two S22 cards that are still unwritable.
+// (cumulative upkeep) is the one S22 card still unwritable; Bruvac was
+// the other until #569 built the mill-amount replacement kind, and it
+// is left out of this deck for the reason Niv-Mizzet is — the deck is
+// a mana-and-timing smoke test, not a mill test, and Bruvac's own
+// proof lives in mill_replacements_test.go.
 
 // --- the deck -------------------------------------------------------
 

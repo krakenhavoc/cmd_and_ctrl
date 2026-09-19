@@ -2,6 +2,7 @@
 
 **Status:** Accepted · 2026-09-14 · follows [ADR 0012](0012-layer-system.md) and [ADR 0039](0039-layer-4-authoritative.md)
 **Amended:** 2026-09-16 (the [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) closeout). Dated notes at the end of §4 and §5: the application pass silences more than CR 613.6 allows, and Song of the Dryads removes more than CR 305.7 does. [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) tracks the fix, which needs [#675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/675) (CR 704.5p) first.
+**Amended:** 2026-09-18 ([ADR 0067](0067-layer-dependency-ordering.md), [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669)). §4's fixed point is **withdrawn** — the recompute is one pass again and the gather silences nothing — and §5's CR 305.7 gap is closed. Dated notes at the end of each.
 
 ## Context
 
@@ -195,6 +196,23 @@ Dryads, Maskwood Nexus + a crewed Vehicle, and others) are listed in
 [ADR 0043](0043-copy-effects.md) §5's amendment and tracked in
 [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668).
 
+**Withdrawn 2026-09-18 ([ADR 0067](0067-layer-dependency-ordering.md) §2).**
+There is no fixed point any more. The iteration existed only so the
+GATHER could learn which permanents to exclude, and excluding them was
+the bug: a removal is applied in the layer it happens in, it cannot
+reach back into the layers that already ran, and an effect that has
+already started applying carries on into the later ones (CR 613.6). A
+single walk of `layerOrder` resolves all of that, so `maxLayerPasses`,
+`sameCardSet` and `silencedSetLocked` are gone. Within layer 6 the
+timestamp skip described above is unchanged and still settles two
+Song of the Dryads enchanting each other.
+
+The Mind Control example is now handled by the rule it was always
+about: `attachmentLegalLocked` implements CR 704.5p, so a Control
+Magic that became a Forest becomes unattached and "enchanted creature"
+names nothing. CR 613.8 dependency ordering for layer 4 landed in the
+same change.
+
 ### 5. What survives ability removal
 
 CR 613.1f removes abilities. Stated once, because the boundary is the
@@ -237,6 +255,15 @@ change and should remove only the permanent's own rules text.
 [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) tracks
 the fix, and [#644](https://github.com/krakenhavoc/cmd_and_ctrl/pull/644)
 declares the gap on the card until then.
+
+**Closed 2026-09-18 ([ADR 0067](0067-layer-dependency-ordering.md) §3).**
+CR 305.7's loss is now one layer-4 static, `effects.SetsBasicLandType`,
+declaring `RemovesAbilities` in layer 4 alongside the type set — so a
+grant that lands in layer 6 survives it whenever it was made, which is
+the rule's last sentence. `RemovesAbilities` is therefore no longer a
+layer-6-only declaration; `LoseAllAbilities` stays layer 6, for the
+cards that print "loses all abilities". Magus of the Moon ships on the
+same helper.
 
 ### 6. `internal/legal` needed no change, and that is the point
 

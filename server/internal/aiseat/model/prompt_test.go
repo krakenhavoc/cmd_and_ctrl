@@ -296,3 +296,65 @@ func TestIndexFromPromptFindsTheMarker(t *testing.T) {
 		t.Error("indexFromPrompt invented a move list")
 	}
 }
+
+// A face-down PERMANENT is not "a card the seat cannot read": CR 708.2
+// makes it a public 2/2 creature with no name, and the prompt has to
+// say that, because the model is being asked to attack into it and
+// block it. ADR 0069 decision 6.
+func TestDeltaDescribesAFaceDownPermanentAsTheObjectItIs(t *testing.T) {
+	fake := AlwaysIndex(0)
+	p := testPolicy(t, fake, &stubB{index: 0}, nil)
+	in := castWindow()
+	in.View.Battlefield.Cards = []protocol.CardView{{
+		InstanceID: "morph", Controller: oppSeat.String(),
+		FaceDown: true, FaceDownKind: "morphed",
+		TypeLine: "Creature", Power: 2, Toughness: 2,
+	}}
+	decide(t, p, in, 2*time.Second)
+	user := fake.Requests()[0].User
+	if !strings.Contains(user, "a face-down 2/2 creature") {
+		t.Errorf("a face-down permanent was not described as the CR 708.2 object:\n%s", user)
+	}
+}
+
+// The seat's OWN face-down permanent is described the same way. The
+// controller may look at the card (CR 708.5) and their client shows
+// it, but the object on the battlefield still has no name, and a
+// prompt that named it would have the model reason about text the
+// object does not have.
+func TestDeltaDoesNotNameTheSeatsOwnFaceDownPermanent(t *testing.T) {
+	fake := AlwaysIndex(0)
+	p := testPolicy(t, fake, &stubB{index: 0}, nil)
+	in := castWindow()
+	in.View.Battlefield.Cards = []protocol.CardView{{
+		InstanceID: "mine", Controller: in.Seat.String(), Owner: in.Seat.String(),
+		FaceDown: true, FaceDownKind: "manifested", FaceVisible: true, KnownByYou: true,
+		ScryfallID: "art", TypeLine: "Creature", Power: 2, Toughness: 2,
+	}}
+	decide(t, p, in, 2*time.Second)
+	user := fake.Requests()[0].User
+	if !strings.Contains(user, "a face-down 2/2 creature") {
+		t.Errorf("the seat's own face-down permanent was not described as the CR 708.2 object:\n%s", user)
+	}
+}
+
+// A card the seat may NOT look at is never named, and `face_visible`
+// is the field that says so — the rules permission, not the knowledge
+// set. A wire frame that set known_by_you without the permission must
+// not leak the name.
+func TestDeltaKeysTheRedactionOnTheLookPermission(t *testing.T) {
+	fake := AlwaysIndex(0)
+	p := testPolicy(t, fake, &stubB{index: 0}, nil)
+	in := castWindow()
+	in.View.Seats[0].Graveyard = protocol.ZoneView{
+		Kind: "graveyard", Owner: in.Seat.String(), Count: 1,
+		Cards: []protocol.CardView{{
+			InstanceID: "secret", Name: "Griselbrand", Owner: in.Seat.String(),
+			FaceDown: true, FaceDownKind: "exiled", KnownByYou: true,
+		}},
+	}
+	decide(t, p, in, 2*time.Second)
+	if user := fake.Requests()[0].User; strings.Contains(user, "Griselbrand") {
+		t.Errorf("a face the seat may not look at was named in the prompt:\n%s", user)
+	}
+}

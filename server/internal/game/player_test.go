@@ -47,12 +47,12 @@ func TestRecordCommanderDamage(t *testing.T) {
 	if got := p.RecordCommanderDamage(commander, 8); got != 15 {
 		t.Errorf("cumulative: got %d, want 15", got)
 	}
-	if p.IsDeadByCommanderDamage() {
+	if p.IsDeadByCommanderDamage(CommanderDamageLethal) {
 		t.Error("15 damage should not be lethal")
 	}
 
 	p.RecordCommanderDamage(commander, 6)
-	if !p.IsDeadByCommanderDamage() {
+	if !p.IsDeadByCommanderDamage(CommanderDamageLethal) {
 		t.Error("21 damage from one commander should be lethal")
 	}
 }
@@ -69,12 +69,12 @@ func TestCommanderDamageFromMultipleCommandersNotCombined(t *testing.T) {
 
 	p.RecordCommanderDamage(a, 15)
 	p.RecordCommanderDamage(b, 15)
-	if p.IsDeadByCommanderDamage() {
+	if p.IsDeadByCommanderDamage(CommanderDamageLethal) {
 		t.Error("15+15 from different commanders should not be lethal (21 is per-commander)")
 	}
 
 	p.RecordCommanderDamage(a, 6)
-	if !p.IsDeadByCommanderDamage() {
+	if !p.IsDeadByCommanderDamage(CommanderDamageLethal) {
 		t.Error("21 from a single commander should be lethal even split across hits")
 	}
 }

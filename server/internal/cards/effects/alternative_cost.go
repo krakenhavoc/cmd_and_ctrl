@@ -175,6 +175,39 @@ func EscapeWithCounters(cost string, n, counters int) game.AlternativeCost {
 	return ac
 }
 
+// SacrificeThisUnlessItEscaped is the Titan cycle's entry clause:
+// "When ~ enters, sacrifice it unless it escaped." Phlage, Uro and
+// Kroxa all print it word for word, and it is the clause #653 exists
+// for — the permanent has to remember how the spell that became it
+// was cast (CR 400.7d), and "escaped" is CR 702.138b.
+//
+// A constructor rather than three copies, because the body is subtle
+// in two places that are easy to get wrong separately:
+//
+//   - it asks the SOURCE PERMANENT (ctx.Escaped), not the item being
+//     resolved. By the time this trigger resolves the item on the
+//     stack IS this trigger, and the spell that paid escape finished
+//     two steps ago — so ctx.PaidAltCost, the reader an overloaded
+//     Cyclonic Rift uses, answers the wrong question here.
+//   - it checks the battlefield first. The trigger sat on the stack
+//     and anybody could answer it; a Titan already bounced or exiled
+//     is not there to sacrifice, and CR 608.2c says the ability does
+//     as much as it can.
+//
+// It pairs with Escape on the same card but is deliberately separate
+// from it: the sacrifice is a printed TRIGGERED ABILITY, not part of
+// the cost, and a Titan put onto the battlefield without being cast
+// at all is sacrificed too.
+func SacrificeThisUnlessItEscaped(cardName string) game.TriggeredAbility {
+	return WhenThisEnters(cardName+" — sacrifice it unless it escaped", func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if !onBattlefield(g, item.SourceCardID) || ctx.Escaped() {
+			return nil
+		}
+		return SacrificePermanent{Target: item.SourceCardID}.Apply(ctx)
+	})
+}
+
 // numberWord spells a small count the way an oracle line does —
 // "five other cards", not "5 other cards". Falls back to digits past
 // the range any printed escape cost uses.
@@ -196,7 +229,7 @@ func numberWord(n int) string {
 // exchange for the real card later, which is why it needs no
 // CastableZones declaration. The later cast is an ordinary cast from
 // exile for the printed mana cost, riding the same
-// ExilePlayPermission impulse exile and airbend already use — so
+// CastPermission impulse exile and airbend already use — so
 // the client's existing exile button renders it with no new code.
 //
 // The constructor bundles the exile clause for the same reason

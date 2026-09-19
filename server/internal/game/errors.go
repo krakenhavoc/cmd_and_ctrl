@@ -91,6 +91,19 @@ var (
 	// the cursor enters that player's untap step. Added in S11.
 	ErrNoUndosRemaining = errors.New("game: no undos remaining this turn")
 
+	// ErrInvalidSetting is returned by UpdateSettings (wrapped, with
+	// the offending field and value) when a patch value is out of
+	// range or not a known enum value. Nothing in the patch is applied.
+	// Added in S35 (#1032).
+	ErrInvalidSetting = errors.New("game: invalid table setting")
+
+	// ErrStartingLifeLocked is returned by UpdateSettings when a patch
+	// changes StartingLife after Start. The value has already been
+	// applied to every seat, and rewriting life totals mid-game would
+	// be a different feature (ADR 0075 §2.3). Nothing in the patch is
+	// applied. Added in S35 (#1032).
+	ErrStartingLifeLocked = errors.New("game: starting life cannot change once the game has started")
+
 	// ErrNoPriority is returned by PassPriority when called during a
 	// step that does not grant priority (currently Untap and Cleanup
 	// per CR 502.4 / 514.3). Added in S13.
@@ -274,6 +287,24 @@ var (
 	// strictly better.
 	ErrInvalidFace = errors.New("game: invalid card face")
 
+	// ErrCantCast is the sentinel for a cast refused by the
+	// announce-time gate (CR 101.2, ADR 0073 §7): a "can't cast"
+	// static on a permanent (Rule of Law, Grafdigger's Cage, Rakdos)
+	// or the spell's own "cast only if" condition (CR 307.6's
+	// legendary sorcery).
+	//
+	// The error actually returned is a *CantCastError carrying the
+	// printed clause that refused the cast, so the client's toast
+	// names the card rather than the rule; callers doing
+	// errors.Is(err, ErrCantCast) still match. Same shape
+	// InsufficientManaError has, for the same reason.
+	//
+	// Distinct from ErrNoPlayPermission (no effect OPENED this zone)
+	// and ErrCastZoneNotAllowed (the card does not offer this zone):
+	// those two are "nobody said yes", and this one is "something
+	// said no", which CR 101.2 makes the stronger answer.
+	ErrCantCast = errors.New("game: an effect prevents casting this spell")
+
 	// ErrSummoningSick is returned when a creature that entered
 	// the battlefield this turn is asked to attack or activate a
 	// tap-cost ability without haste (CR 302.6, 702.10). Added in
@@ -307,6 +338,18 @@ var (
 	// an Arrested Birds of Paradise is being told the same thing.
 	// Added in S24.
 	ErrCantActivate = errors.New("game: an effect prevents activating this permanent's abilities")
+
+	// ErrActivationZoneNotAllowed is returned by
+	// ActivateCatalogAbility when the ability does not function from
+	// the zone its source is actually in (CR 113.6): a sacrifice
+	// outlet fired at a card in hand, or a cycling ability fired at
+	// a permanent on the battlefield.
+	//
+	// Distinct from ErrCantActivate, which is a continuous effect
+	// taking a permanent's abilities away. This one is the card
+	// never having offered the ability there at all. #660 /
+	// ADR 0062 Decision 1.
+	ErrActivationZoneNotAllowed = errors.New("game: this ability cannot be activated from that zone")
 
 	// ErrIllegalBlock is what DeclareBlocker's refusal wraps when an
 	// evasion keyword on the attacker (flying, landwalk) or a CR
@@ -354,4 +397,32 @@ var (
 	// ErrInvalidParam so the client can say what is missing. Added
 	// for #625.
 	ErrInsufficientCounters = errors.New("game: not enough counters to pay that cost")
+	// ErrCantPayCounterCost is returned when a cost that PUTS a
+	// counter on the source cannot be paid — CR 118.3's other
+	// direction, where the trouble is not a shortage but a
+	// prohibition. Devoted Druid cannot untap itself while something
+	// stops it having counters put on it, and the refusal has to
+	// happen before anything else is paid. Added for #789.
+	ErrCantPayCounterCost = errors.New("game: that permanent can't have those counters put on it")
+
+	// ErrSpecialActionNotOffered is returned by PerformSpecialAction
+	// when the named card does not offer that CR 116.2 special action
+	// — a foretell on a card that prints no foretell, a suspend on a
+	// card that prints no suspend, or a kind the engine does not
+	// carry out. Refused before the cost is paid. ADR 0062
+	// Decision 4, #658 / #659.
+	ErrSpecialActionNotOffered = errors.New("game: this card offers no such special action")
+
+	// ErrSpecialActionTiming is returned by PerformSpecialAction when
+	// the special action's window is shut: foretell outside its
+	// owner's own turn (CR 702.143a, 116.2h), or suspend at a moment
+	// the card could not begin to be cast — sorcery timing for a
+	// sorcery, and under split second for either (CR 702.62c,
+	// 116.2f).
+	//
+	// Its own sentinel rather than ErrSorcerySpeedRequired: the
+	// window is the KIND's, not the card's, and a client that says
+	// "it isn't your turn" for foretell is saying something
+	// ErrSorcerySpeedRequired would have got wrong.
+	ErrSpecialActionTiming = errors.New("game: that special action cannot be taken right now")
 )

@@ -3,7 +3,7 @@ import { guardedWritable } from "./guardedStore";
 import { setMuted, setVolumeMultiplier } from "./sounds";
 import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
-import { STEP_IDS, NO_PRIORITY_STEPS, type StepID } from "./turn";
+import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
 
 // Settings is the client-wide preferences schema. Every toggle the
@@ -194,7 +194,10 @@ const LEGACY_MUTED_KEY = "cmdctrl.muted";
 // through routine begin/end-step priority unless they opt in.
 // Untap and Cleanup are excluded because they don't grant priority
 // (CR 502.4 / 514.3); the server's NoPriority sentinel makes any
-// attempt to pass during them a no-op anyway.
+// attempt to pass during them a no-op anyway. The first-strike combat
+// damage step is excluded too, for a different reason: it shares the
+// combat_damage stop (turn.ts `stopKeyFor`), so the map keeps the same
+// keys it always had and no stored blob needs migrating.
 export function defaultStepStops(): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   const opted: ReadonlySet<StepID> = new Set([
@@ -205,7 +208,7 @@ export function defaultStepStops(): Record<string, boolean> {
     "end",
   ]);
   for (const id of STEP_IDS) {
-    if (NO_PRIORITY_STEPS.has(id)) continue;
+    if (!hasOwnStop(id)) continue;
     out[id] = opted.has(id);
   }
   return out;

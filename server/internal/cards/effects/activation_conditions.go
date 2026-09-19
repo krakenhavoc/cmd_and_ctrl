@@ -53,6 +53,21 @@ func DuringYourTurn() ActivationCondition {
 	}
 }
 
+// DuringStep — "Activate only during the end of combat step"
+// (Desert). Any player's such step, since the printed clause names a
+// step and not a turn; pair it with DuringYourTurn when a card wants
+// both.
+//
+// Deliberately NOT SorcerySpeed: a sorcery-speed gate means "your
+// main phase with an empty stack", which would forbid exactly the
+// window this clause OPENS. The two are different instructions and
+// #743 exists because the engine used to conflate them.
+func DuringStep(step game.Step) ActivationCondition {
+	return func(g *game.Game, _, _ uuid.UUID) bool {
+		return g.Turn.Step == step
+	}
+}
+
 // countControlled counts the battlefield permanents `player` controls
 // that match.
 func countControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool) int {

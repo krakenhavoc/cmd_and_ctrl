@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // cast_zones.go — S29: which zone a card may be cast FROM.
 //
 // Until this file, the answer was a hard-coded whitelist inside
@@ -23,14 +25,25 @@ package game
 //     belongs to the format, not the card.
 //   - EXILE. Impulse exile, airbend, warp and cascade grant
 //     permission to one INSTANCE rather than to every copy of the
-//     card, so they ride ExilePlayPermission on the card instance.
-//     Madness, foretell and suspend, none of them built yet, are the
-//     same kind of permission (CR 702.35a, 702.143, 702.62a) and
-//     belong on the instance too. A card may additionally declare
-//     ZoneExile, but that is a CARD-level permission: it opens exile
-//     for every copy of the card, at any time, however the copy got
-//     there. It fits only a card whose printed text says exactly
-//     that, and no catalog card declares it today.
+//     card, so they ride a granted CastPermission (cast_permission.go,
+//     ADR 0066). Foretell (CR 702.143) and suspend (CR 702.62a) are
+//     the same kind of permission and shipped as one on #658 / #659;
+//     madness (CR 702.35a) will be a third.
+//
+//     A card may NOT declare ZoneExile. S29 allowed it "for the shape
+//     suspend and foretell will use" and #659 retired it, because it
+//     is not that shape and could not be: a card-level declaration
+//     opens exile for every copy of the card, at any time, however
+//     the copy got there, so a Path to Exile'd Rift Bolt would be
+//     castable. No catalog card ever declared it, and
+//     CastableZonesFor refuses it now so none can.
+//
+//   - THE LIBRARY (S42, CR 401.5). Bolas's Citadel and the Future
+//     Sight family open the top card of a library, which is a
+//     POSITION rather than a card: no oracle ID can declare it,
+//     because the card on top changes every draw. Those are standing
+//     CastPermissions derived from the battlefield, and a library is
+//     deliberately not declarable in CastableZones.
 //
 // The PRICE of a non-hand cast is not modelled here. It rides
 // AlternativeCost.FromZone, which binds an offer to one zone:
@@ -107,6 +120,13 @@ func castZoneFromWire(fromZone string) (ZoneKind, bool) {
 		return ZoneExile, true
 	case string(ZoneGraveyard):
 		return ZoneGraveyard, true
+	case string(ZoneLibrary):
+		// S42, CR 401.5. The wire says "library"; the TOP-CARD half of
+		// the rule is enforced by the permission (CastPermission.
+		// TopOfLibraryOnly), not by the zone name, because "which
+		// pile" and "may you" are separate questions everywhere else
+		// in this file too.
+		return ZoneLibrary, true
 	default:
 		return "", false
 	}
@@ -149,32 +169,97 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 	return zoneBoundAlternativeCosts(oracleID, zone)
 }
 
-// validateCastPathLocked is the S29 gate: may this player cast this
-// card out of this zone, under the alternative cost they claimed?
+// CastOffersForLocked lists every CR 118.9 cost choice `playerID` may
+// announce for `card` out of `zone` right now — the ONE answer to
+// "which prices is this cast available at", and the list the bot
+// enumerator walks (#673).
 //
-// It runs after validateAlternativeCost (so `alt` is already known
-// to be an offer the card makes) and after the ExilePlay check (so
-// an exile cast has already proved it holds a grant, or is relying
-// on a printed declaration). Three rules, in the order they fail
-// most often:
+// A nil entry means the printed mana cost. It is present only when
+// the cast path allows a cast that claims nothing, which is what
+// keeps a Faithless Looting in the graveyard from being offered at
+// the {R} in its corner: a zone the card itself prices must be paid
+// for (rule 3 of validateCastPathLocked), and so must a zone a
+// permission prices (rule 4).
+//
+// The rest are offers, in announce precedence: the card's own first,
+// then the one a granted permission synthesises, and a granted key
+// the card also prints is dropped rather than listed twice — the
+// same order resolveAlternativeCostLocked judges a claim in, so a
+// Deep Analysis flashed back under Past in Flames is listed at its
+// printed price and not at the grant's.
+//
+// Every entry is filtered through the two gates the announce path
+// applies: validateCastPathLocked (is this offer claimable from this
+// zone at all) and AlternativeCostPayableLocked (#695 — can its
+// condition, CR 119.4's life and CR 601.2b's card component be paid
+// right now), which is the same predicate the view's offer stamp
+// reads. So a move built on any entry is a move CastSpell accepts,
+// which is the enumerator's whole contract — and an EMPTY result is a
+// real answer rather than a degenerate one: this card is not castable
+// from this zone.
+//
+// Each entry points at a freshly copied value, so a caller may hold
+// one past the call. Caller must hold g.mu.
+func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind, grant *CastPermission) []*AlternativeCost {
+	var out []*AlternativeCost
+	if g.validateCastPathLocked(card, zone, nil, grant) == nil {
+		out = append(out, nil)
+	}
+	seen := make(map[string]bool, 2)
+	add := func(ac *AlternativeCost) {
+		if ac == nil || ac.Key == "" || seen[ac.Key] {
+			return
+		}
+		seen[ac.Key] = true
+		if g.validateCastPathLocked(card, zone, ac, grant) != nil {
+			return
+		}
+		if !g.AlternativeCostPayableLocked(playerID, card.InstanceID, ac) {
+			return
+		}
+		out = append(out, ac)
+	}
+	for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), zone) {
+		offer := ac
+		add(&offer)
+	}
+	add(grant.AlternativeCostFor(card))
+	return out
+}
+
+// validateCastPathLocked is the S29 gate, widened by ADR 0066: may
+// this player cast this card out of this zone, under the alternative
+// cost they claimed?
+//
+// It runs after the alternative cost is resolved (so `alt` is already
+// known to be an offer the card makes or the permission synthesises)
+// and after the exile permission check. Four rules, in the order they
+// fail most often:
 //
 //  1. A zone-bound offer may only be claimed from its zone. Claiming
 //     flashback on a card in hand is a client bug, and charging the
 //     flashback cost for a hand cast would be a real rules error in
 //     the player's favour.
-//  2. A zone the card does not declare is not castable — except
-//     hand, the command zone, and an exile cast riding a live
-//     instance grant, all of which are handled by their callers.
-//  3. A zone the card declares AND prices must be paid for. If
+//  2. A zone neither the card nor a permission opens is not
+//     castable — except hand and the command zone, whose permissions
+//     come from CR 601.1 and CR 903.4.
+//  3. A zone the CARD declares and prices must be paid for. If
 //     Faithless Looting offers a graveyard-bound flashback cost, a
 //     graveyard cast that claims nothing would otherwise get the
 //     printed {R} — strictly better than the card, which is the one
 //     direction a sandbox must never err in. Gravecrawler, whose
 //     graveyard permission carries no price, declares no bound cost
 //     and so is unaffected.
+//  4. A PERMISSION that prices its zone must be paid for too, for
+//     exactly the same reason: a card Snapcaster gave flashback to
+//     is not castable out of the graveyard for its printed cost, and
+//     a card on top of the library under Bolas's Citadel is not
+//     castable without the life. A permission whose price is a flat
+//     Cost (airbend's {2}, cascade's {0}) names no claimable offer
+//     and charges itself.
 //
 // Caller must hold g.mu.
-func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *AlternativeCost, hasExileGrant bool) error {
+func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *AlternativeCost, grant *CastPermission) error {
 	key := CatalogKey(card)
 	if alt != nil && alt.FromZone != "" && alt.FromZone != srcKind {
 		return ErrCastZoneNotAllowed
@@ -183,23 +268,36 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	case ZoneHand, ZoneCommand:
 		return nil
 	case ZoneExile:
-		// The instance grant is the usual permission and has already
-		// been checked. A card-level ZoneExile declaration is the
-		// other way in; it covers every copy in exile, so it is not
-		// the shape for suspend or foretell (see the file header).
-		if !hasExileGrant && !CardCastableFromZone(key, ZoneExile) {
+		// A per-instance permission is the ONLY way in, and CastSpell
+		// has already checked it. #659 retired the card-level
+		// ZoneExile declaration that used to be a second door: it
+		// covers every copy in exile, at any time, however the copy
+		// got there, which is the wrong shape for suspend, for
+		// foretell and for every other exile cast this engine has.
+		if grant == nil {
 			return ErrNoPlayPermission
 		}
 	default:
-		if !CardCastableFromZone(key, srcKind) {
+		if grant == nil && !CardCastableFromZone(key, srcKind) {
 			return ErrCastZoneNotAllowed
 		}
 	}
-	// Rule 3. An instance grant carries its own price (airbend's
-	// CostOverride) and is not obliged to name a card-level offer.
-	if hasExileGrant {
+	// Rule 4, and it applies only when the permission is the REASON
+	// this cast is legal. A permission must never take away a path the
+	// card already prints: Gravecrawler under an Underworld Breach is
+	// castable out of the graveyard for free, as it always was, AND
+	// for Breach's escape cost, and the caster picks. Demanding the
+	// granted price on a card that opens the zone itself would have
+	// made a Breach on the table strictly WORSE for its controller,
+	// which is the wrong direction twice over.
+	if grant != nil && !CardCastableFromZone(key, srcKind) {
+		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
+			return ErrCastCostRequired
+		}
 		return nil
 	}
+	// Rule 3. Reached for a card that opens the zone itself, whether or
+	// not a permission also does: the card's own price is still owed.
 	if bound := zoneBoundAlternativeCosts(key, srcKind); len(bound) > 0 && alt == nil {
 		return ErrCastCostRequired
 	}

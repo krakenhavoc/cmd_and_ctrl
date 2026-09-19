@@ -827,17 +827,25 @@ func TestB34CrosswayTroublemakersAttackingVampiresAndTheLifeDraw(t *testing.T) {
 	// A Vampire dies: pay 2 life, draw a card.
 	life, hand := me.Life, me.Hand.Size()
 	b27Kill(g, vamp)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	// #796: the question is asked as the ability RESOLVES, not as the
+	// trigger goes on the stack, so there is no CR 603.5 prompt.
+	if latestTriggerPrompt(g, me.ID) != nil {
+		t.Error("the pay-2-life decision is made at resolution, not on announce")
+	}
+	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Life != life-2 || me.Hand.Size() != hand+1 {
 		t.Errorf("paid 2 and drew 1: life %d → %d, hand %d → %d", life, me.Life, hand, me.Hand.Size())
 	}
 	b27Kill(g, bear)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKind(g, game.PendingChoiceConfirm) != nil {
 		t.Error("a Bear is not a Vampire")
 	}
 	b27Kill(g, home)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if me.Life != life-2 || me.Hand.Size() != hand+1 {
 		t.Error("declining pays and draws nothing")
@@ -1188,22 +1196,21 @@ func TestB34CoriMountainMonasteryChecksAndImpulses(t *testing.T) {
 		t.Fatal("the top card is exiled")
 	}
 	perm := exiledPermission(g, ids[0])
-	if perm.Player != me.ID || perm.CastOnly || !perm.Active(me.ID, g.Turn.Number) {
+	if perm.Player != me.ID || perm.CastOnly || !permissionLive(g, perm, me.ID) {
 		t.Errorf("%+v: the controller may PLAY it, a land included", perm)
 	}
 	// Through the opponents' turns and the controller's next turn the
 	// grant holds; it lapses after that turn.
 	advanceToMainOf(t, g, 2)
-	if !exiledPermission(g, ids[0]).Active(me.ID, g.Turn.Number) {
+	if !permissionLive(g, exiledPermission(g, ids[0]), me.ID) {
 		t.Error("the grant survives the opponents' turns")
 	}
-	advanceToUpkeepOf(t, g, 0)
-	passPriorityAroundTable(t, g)
-	if p := exiledPermission(g, ids[0]); p.UntilTurn != g.Turn.Number || !p.Active(me.ID, g.Turn.Number) {
-		t.Errorf("after your upkeep the grant is %+v, want live through this turn only", p)
+	advanceToMainOf(t, g, 0)
+	if p := exiledPermission(g, ids[0]); !permissionLive(g, p, me.ID) {
+		t.Errorf("on your next turn the grant is %+v, want live", p)
 	}
 	advanceToMainOf(t, g, 1)
-	if exiledPermission(g, ids[0]).Active(me.ID, g.Turn.Number) {
+	if permissionLive(g, exiledPermission(g, ids[0]), me.ID) {
 		t.Error("the grant ends with your next turn")
 	}
 }

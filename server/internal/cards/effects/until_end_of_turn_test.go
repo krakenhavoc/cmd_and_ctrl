@@ -59,13 +59,13 @@ func TestGiantGrowthPumpsUntilCleanup(t *testing.T) {
 	if p, tough := effectivePower(t, g, bear), effectiveToughness(t, g, bear); p != 5 || tough != 5 {
 		t.Fatalf("post-resolution P/T = %d/%d, want 5/5", p, tough)
 	}
-	if n := len(g.TurnScopedStatics); n != 1 {
+	if n := len(g.ScopedStatics); n != 1 {
 		t.Fatalf("TurnScopedStatics = %d, want 1", n)
 	}
 
 	advanceToNextSeatsTurn(t, g)
 
-	if n := len(g.TurnScopedStatics); n != 0 {
+	if n := len(g.ScopedStatics); n != 0 {
 		t.Errorf("TurnScopedStatics = %d after cleanup, want 0", n)
 	}
 	if p, tough := effectivePower(t, g, bear), effectiveToughness(t, g, bear); p != 2 || tough != 2 {
@@ -304,7 +304,7 @@ func TestAangIgnoresNonLessonCasts(t *testing.T) {
 	if hasEffectiveKeyword(t, g, aang, "lifelink") {
 		t.Error("a non-Lesson sorcery granted lifelink")
 	}
-	if n := len(g.TurnScopedStatics); n != 0 {
+	if n := len(g.ScopedStatics); n != 0 {
 		t.Errorf("TurnScopedStatics = %d, want 0", n)
 	}
 }

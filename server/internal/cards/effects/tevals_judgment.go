@@ -26,7 +26,7 @@ const b16TevalsJudgmentLabel = "Teval's Judgment — cards left your graveyard"
 // Gala Greeters' posture exactly. The modal machinery is cast-time
 // only, so a resolution-time pick for a trigger has no prompt;
 // "hasn't been chosen this turn" is a count of this trigger's
-// resolutions since the turn's upkeep began (b15ResolvedThisTurn).
+// resolutions this turn (b15ResolvedThisTurn, off the per-turn tally).
 // The fourth batch and later do nothing, as printed. Weaker than
 // printed — the controller cannot take the Zombie before the card —
 // never stronger.

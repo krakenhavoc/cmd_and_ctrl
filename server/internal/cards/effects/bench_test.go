@@ -133,3 +133,44 @@ func BenchmarkTallyScan_3000events(b *testing.B) {
 		_ = b15LifeGainedThisTurn(g, p)
 	}
 }
+
+// BenchmarkLayerRecomputeLayer4Dependencies_80perms is the CR 613.8
+// cost (ADR 0067 §1): the same saturated board, plus the layer-4
+// sources that make a dependency bucket — Urborg, Tomb of Yawgmoth
+// and Maskwood Nexus, whose "each land" and "creatures you control"
+// read types that Song of the Dryads and Arixmethes write, and two
+// Songs attached to permanents on the board.
+//
+// Read it against BenchmarkLayerRecompute_80perms, which has an empty
+// layer-4 bucket and therefore never runs a trial application. The
+// difference is what dependency ordering costs on a board that
+// actually has one.
+func BenchmarkLayerRecomputeLayer4Dependencies_80perms(b *testing.B) {
+	g := benchGame(b)
+	ids := seedBoard(g, 80)
+	owner := g.Seats[0].ID
+	push := func(name, oracle, typeLine string) uuid.UUID {
+		c := game.NewCard(name, owner)
+		c.OracleID = oracle
+		c.TypeLine = typeLine
+		c.Controller = owner
+		return pushBattlefieldCardWithTimestamp(g, c)
+	}
+	push("Urborg, Tomb of Yawgmoth", urborgOracle, "Legendary Land")
+	push("Maskwood Nexus", maskwoodNexusOracle, "Artifact")
+	for i := 0; i < 2; i++ {
+		song := push("Song of the Dryads", songOfTheDryadsOracle, "Enchantment — Aura")
+		host := ids[i]
+		g.WithWriteLock(func() {
+			_ = g.AttachForEffect(song, game.TargetRef{Kind: game.TargetCard, ID: host})
+		})
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		g.WithWriteLock(func() {
+			g.BumpLayerVersionForTest()
+			g.RecomputeLayersIfStaleLocked()
+		})
+	}
+}

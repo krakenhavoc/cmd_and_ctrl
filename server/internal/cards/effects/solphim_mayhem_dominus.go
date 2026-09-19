@@ -25,17 +25,21 @@ import (
 // this deck wants it for; it deliberately does nothing for the
 // Pirates' combat damage.
 //
-// **The activated ability is not modelled.** `AbilityCost` has no
-// discard component (the same gap the Blood token declared in S21
-// sub-PR 4), and the {R/P} Phyrexian mana would need a pay-2-life
-// alternative the cost parser records but doesn't offer. Both are
-// one piece of work; this card is now the third asking for it.
+// **The activated ability is not modelled**, and now for one reason
+// rather than two. The {R/P} half is answered: #917 gave an
+// activation the same announce a cast has
+// (ActivateAbilityParams.PhyrexianLife, CR 602.2b, 2 life each), so
+// "{1}{R/P}{R/P}" would be payable as {1} and four life the moment
+// the ability exists. What is still missing is the DISCARD component
+// — `AbilityCost` has no shape for "Discard two cards" (the same gap
+// the Blood token declared in S21 sub-PR 4) — so the ability cannot
+// be declared at all.
 func init() {
 	Register(Spec{
 		OracleID:     "895f23a2-55b7-4cc0-8939-2efaaf097e6f",
 		Name:         "Solphim, Mayhem Dominus",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"{1}{R/P}{R/P}, Discard two cards\" ability that puts an indestructible counter on Solphim can't be activated."},
+		Caveats:      []string{"The \"{1}{R/P}{R/P}, Discard two cards\" ability that puts an indestructible counter on Solphim can't be activated — an activation cost can't discard yet. The {R/P} half is supported."},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

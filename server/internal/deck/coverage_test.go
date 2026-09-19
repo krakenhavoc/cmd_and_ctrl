@@ -5,13 +5,14 @@ package deck
 // importer, starting from the Scryfall record as the dump actually
 // ships it?
 //
-// The five records below are the five cards behind the 2026-09-10
-// reports — #321 Enduring Curiosity, #324 Anticausal Vestige, #325
-// Aang Swift Savior, #332 Lotus Field, #333 Fortune Teller's Talent.
-// All five are absent from the effect catalog, all five did nothing
-// when cast, and all five were reported as bugs by a player the game
-// gave no way to tell that apart from a defect. Oracle text is
-// verbatim from the 629 MB default-cards dump.
+// The records below are the cards behind real reports. First the
+// 2026-09-10 playtest — #321 Enduring Curiosity, #324 Anticausal
+// Vestige, #325 Aang Swift Savior, #332 Lotus Field, #333 Fortune
+// Teller's Talent — then the in-app "my trigger didn't fire" set,
+// #366, #369, #373 and #508. Every one of them is absent from the
+// effect catalog, every one did nothing when cast, and every one was
+// reported as a bug by a player the game gave no way to tell that
+// apart from a defect. Oracle text is verbatim from the dump.
 //
 // Same reasoning as printed_keywords_test.go for living here rather
 // than in game: asserting on a game.Card whose NeedsEffect the test
@@ -86,7 +87,14 @@ func lotusField() cards.Card {
 
 // fortuneTellersTalent — #333. The reporter called it a saga; it is
 // a Class, Scryfall layout "class", single-faced in all (one) of its
-// printings. Levels are the gap either way.
+// printings.
+//
+// Registered since S46 (#757, ADR 0071): levels are a designation
+// with one gate on printed abilities. It stays in this table because
+// NeedsEffect is the SCRYFALL half of the predicate — "this text
+// needs a Spec" — and that is as true after the Spec exists as
+// before. The catalog join is game.Unimplemented's job, and it now
+// answers false for this card.
 func fortuneTellersTalent() cards.Card {
 	return cards.Card{
 		ID:       uuid.New(),
@@ -129,11 +137,16 @@ func clone() cards.Card {
 	}
 }
 
-// theSeriema — #337. Four printed lines and only the first is cheap:
-// SearchLibrary takes an arbitrary predicate, so "a legendary
-// creature card" is three lines of Go. Station, the 7+ threshold,
-// the type change it implies and the indestructible grant are all
-// absent from the engine.
+// theSeriema — #337. Four printed lines. Since S46 (#759, ADR 0071)
+// three of them work: the ETB tutor (SearchLibrary takes an arbitrary
+// predicate), the 7+ threshold and the artifact-creature type change
+// it implies (a charge-counter gate over layers 4, 6 and 7b), and the
+// indestructible grant. Station itself is still a caveat — its cost
+// taps another creature, which is #758.
+//
+// It stays in this table for fortuneTellersTalent's reason: this
+// fixture pins the Scryfall half of the predicate, which does not
+// change when a Spec is written.
 func theSeriema() cards.Card {
 	return cards.Card{
 		ID:        uuid.New(),
@@ -181,6 +194,143 @@ func tyLeeChiBlocker() cards.Card {
 			"+1/+1 until end of turn.)\n" +
 			"When Ty Lee enters, tap up to one target creature. It doesn't untap " +
 			"during its controller's untap step for as long as you control Ty Lee.",
+	}
+}
+
+// --- the in-app "my trigger didn't fire" set ----------------------
+//
+// #366, #369, #373 and #508 were filed from the client over four
+// playtest days, name four unrelated cards and four unrelated
+// triggers, and are one fact: none of the four is in the effect
+// catalog, so none of them has a TriggeredAbility, so there was
+// never a trigger to fire. The value of pinning them here is that
+// the signal is the ONLY thing standing between a player and that
+// same report — see the note on TestImporterStampsNeedsEffect.
+
+// brassTunnelGrinder — #366, "enters an artifact but no prompt or
+// resolution works for its ETB". A transform DFC, so Scryfall leaves
+// the top-level oracle text empty and puts both halves on the faces:
+// this record is the one in the file that fails if oracleTexts ever
+// stops unioning the faces, because the top level alone reads as a
+// complete card with nothing to say.
+//
+// Note the name: the catalog and two of the docs spell it "Tunnel
+// Grinder", the dump spells it "Tunnel-Grinder", and a hyphen is why
+// a repo-wide grep for the reported name comes back empty twice over.
+func brassTunnelGrinder() cards.Card {
+	return cards.Card{
+		ID:            uuid.MustParse("d61d8895-7f2e-4c77-951f-4f1a49e96f57"),
+		OracleID:      uuid.MustParse("af1553eb-4f9f-4335-9078-56649bd8d8fc"),
+		Name:          "Brass's Tunnel-Grinder // Tecutlan, the Searing Rift",
+		Layout:        "transform",
+		TypeLine:      "Legendary Artifact // Legendary Land — Cave",
+		ColorIdentity: []string{"R"},
+		Keywords:      []string{"Transform", "Discover"},
+		CardFaces: []cards.CardFace{
+			{
+				Name:     "Brass's Tunnel-Grinder",
+				TypeLine: "Legendary Artifact",
+				ManaCost: "{2}{R}",
+				OracleText: "When Brass's Tunnel-Grinder enters, discard any number of cards, " +
+					"then draw that many cards plus one.\n" +
+					"At the beginning of your end step, if you descended this turn, put a " +
+					"bore counter on Brass's Tunnel-Grinder. Then if there are three or more " +
+					"bore counters on it, remove those counters and transform it. (You " +
+					"descended if a permanent card was put into your graveyard from anywhere.)",
+			},
+			{
+				Name:     "Tecutlan, the Searing Rift",
+				TypeLine: "Legendary Land — Cave",
+				OracleText: "(Transforms from Brass's Tunnel-Grinder.)\n{T}: Add {R}.\n" +
+					"Whenever you cast a permanent spell using mana produced by Tecutlan, " +
+					"discover X, where X is that spell's mana value.",
+			},
+		},
+	}
+}
+
+// monumentToEndurance — #369, "discarding a card does not trigger it
+// with selection". The discard half of what the card wants exists and
+// works: EventDiscardCard is emitted by the one discard path and Mary
+// Read and Anne Bonny consumes it in the same game. What is missing is
+// the card file, and behind it the per-source "choose one that hasn't
+// been chosen this turn" tally (#764, ADR 0065 §5).
+//
+// The bullets are the interesting shape for the scanner: a modal line
+// starts with "•", which is not a keyword, so each one reads as a
+// rule — correctly.
+func monumentToEndurance() cards.Card {
+	return cards.Card{
+		ID:       uuid.MustParse("d21433ba-0a14-42bc-ad0b-a4ef823a3295"),
+		OracleID: uuid.MustParse("e69e8de4-b521-4888-8074-17f1efe2f345"),
+		Name:     "Monument to Endurance",
+		Layout:   "normal",
+		TypeLine: "Artifact",
+		ManaCost: "{3}",
+		Keywords: []string{"Treasure"},
+		OracleText: "Whenever you discard a card, choose one that hasn't been chosen this turn —\n" +
+			"• Draw a card.\n" +
+			"• Create a Treasure token.\n" +
+			"• Each opponent loses 3 life.",
+	}
+}
+
+// theMightyThorJaneFoster — #373, "her triggered ability did not
+// trigger for choosing a creature and exile and then return". Flying
+// is printed and genuinely works; the two trigger lines under it are
+// the report. ADR 0027:150 deferred this card on one word — "flicker"
+// — and that deferral has since expired (the flicker helpers and
+// ReturnFromExile{Tapped: true} both exist, and attack triggers are
+// routine), so the card is no longer blocked, only unwritten.
+func theMightyThorJaneFoster() cards.Card {
+	return cards.Card{
+		ID:            uuid.MustParse("082cc8cc-bbea-4ca7-a0e8-da1f865d6626"),
+		OracleID:      uuid.MustParse("57d02dc8-e22e-4874-9f02-490a2528a28f"),
+		Name:          "The Mighty Thor, Jane Foster",
+		Layout:        "normal",
+		TypeLine:      "Legendary Creature — Human God Hero",
+		ManaCost:      "{1}{W}{U}",
+		Power:         "3",
+		Toughness:     "3",
+		Colors:        []string{"U", "W"},
+		ColorIdentity: []string{"U", "W"},
+		Keywords:      []string{"Flying"},
+		OracleText: "Flying\n" +
+			"Whenever The Mighty Thor attacks, exile up to one target nontoken artifact " +
+			"or creature, then return that card to the battlefield tapped under its " +
+			"owner's control.\n" +
+			"Whenever an Equipment you control enters, draw a card.",
+	}
+}
+
+// ambrosiaWhiteheart — #508, "entering the battlefield did not
+// trigger its ability to return target permanent". Flash works. The
+// ETB bounce is expressible today and the landfall pump is not — it
+// wants an until-end-of-turn continuous effect (#279), which is why
+// the deck triage filed the whole card as blocked rather than
+// shipping half of it (ADR 0037 §5).
+//
+// "Landfall —" is an ability word: printed in italics, rules-free by
+// CR 207.2c. It shares a line with the trigger it labels, so the line
+// is a rule either way and the scanner never has to know that.
+func ambrosiaWhiteheart() cards.Card {
+	return cards.Card{
+		ID:            uuid.MustParse("f2596767-7d19-4110-86ed-3cfc93ac7483"),
+		OracleID:      uuid.MustParse("2bcc9f11-5b12-433e-9680-0f4b18aa521c"),
+		Name:          "Ambrosia Whiteheart",
+		Layout:        "normal",
+		TypeLine:      "Legendary Creature — Bird",
+		ManaCost:      "{1}{W}",
+		Power:         "2",
+		Toughness:     "2",
+		Colors:        []string{"W"},
+		ColorIdentity: []string{"W"},
+		Keywords:      []string{"Flash", "Landfall"},
+		OracleText: "Flash\n" +
+			"When Ambrosia Whiteheart enters, you may return another permanent you " +
+			"control to its owner's hand.\n" +
+			"Landfall — Whenever a land you control enters, Ambrosia Whiteheart gets " +
+			"+1/+0 until end of turn.",
 	}
 }
 
@@ -251,6 +401,10 @@ func TestImporterStampsNeedsEffect(t *testing.T) {
 		{"#335 Clone", clone(), true},
 		{"#337 The Seriema", theSeriema(), true},
 		{"#339/#340 Ty Lee, Chi Blocker", tyLeeChiBlocker(), true},
+		{"#366 Brass's Tunnel-Grinder", brassTunnelGrinder(), true},
+		{"#369 Monument to Endurance", monumentToEndurance(), true},
+		{"#373 The Mighty Thor, Jane Foster", theMightyThorJaneFoster(), true},
+		{"#508 Ambrosia Whiteheart", ambrosiaWhiteheart(), true},
 		{"vanilla creature", grizzlyBears(), false},
 		{"keywords only", serraAngel(), false},
 		{"basic land", island(), false},

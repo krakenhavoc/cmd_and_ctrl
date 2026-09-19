@@ -61,7 +61,11 @@
     // where activations aren't meaningful).
     onActivateManaAbility?: (abilityIndex: number) => void;
     // S21 sub-PR 2: same menu, CR 602 activated abilities. Set by
-    // parents for battlefield permanents the viewer controls.
+    // parents for battlefield permanents the viewer controls, and
+    // since #660 by Hand.svelte for the viewer's own hand — a card in
+    // hand offers the abilities that function THERE (cycling), which
+    // ride `hand_abilities` rather than `activated_abilities`. One
+    // callback for both: the index means the same thing on the wire.
     onActivateAbility?: (abilityIndex: number) => void;
     // S31: why the CR 307.1 sorcery-speed window is shut, or "" when
     // it is open. Passed straight through to ManaAbilityMenu, which
@@ -121,9 +125,13 @@
   // Dismissed on selection, Escape (handled inside the menu), or
   // click elsewhere (the window-level onclick handler below).
   let manaMenuOpen = $state(false);
+  // #660: a card projects EITHER list, never both — the server
+  // filters by the zone the card is in (CR 113.6) — so one menu reads
+  // whichever is present and the indices stay the card's own.
+  const menuAbilities = $derived(card.activated_abilities ?? card.hand_abilities ?? []);
   const hasManaAbilities = $derived(
     (!!onActivateManaAbility && !!card.mana_abilities && card.mana_abilities.length > 0) ||
-      (!!onActivateAbility && !!card.activated_abilities && card.activated_abilities.length > 0),
+      (!!onActivateAbility && menuAbilities.length > 0),
   );
 
   // cardImageURL defaults to the card's ACTIVE face, so a modal DFC
@@ -145,6 +153,22 @@
   // in cardBack.ts.
   const showBack = $derived(showsCardBack(card, faceDown));
 
+  // ADR 0069 — a face-down object the viewer IS allowed to look at:
+  // the controller of their own morph or manifest (CR 708.5), the
+  // owner of their own foretold card (CR 702.143d). They see the real
+  // face, because hiding their own card from them helps nobody, plus
+  // a badge saying the table sees a back. `face_visible` is the
+  // server's answer to that permission; the `face_down` fallback keeps
+  // the badge on a locally-built CardView that predates the field.
+  const showFaceDownBadge = $derived(
+    !showBack && (card.face_visible === true || card.face_down === true),
+  );
+  // The kind is public, so a card back can say WHAT it is rather than
+  // just that something is there.
+  const faceDownLabel = $derived(
+    card.face_down_kind ? card.face_down_kind.toUpperCase() : "FACE DOWN",
+  );
+
   // Type-aware P/T overlay (S16): every creature card on the table
   // gets a small bottom-right pip showing its current power/toughness
   // — these are the post-layer effective values from the wire, so an
@@ -159,6 +183,23 @@
   const loyaltyValue = $derived(card.counters?.loyalty ?? 0);
   const showPT = $derived(!showBack && (isCreature || isPlaneswalker));
   const showNoUntap = $derived(noUntapAppliesToController(card));
+
+  // ADR 0071 — the designation badge. A Class's level (CR 716.2) and
+  // a Case's solved marker (CR 719.3) say WHICH of the printed lines
+  // on the card are live right now, which is the one thing a player
+  // cannot read off the art. Both are public, and the server sends
+  // `class_level` only for a Class on the battlefield, so presence is
+  // the whole test.
+  //
+  // One badge slot, not two: no printed permanent is both a Class and
+  // a Case, so they cannot collide, and giving them one slot keeps
+  // the top edge of the card readable next to CMD and GOAD.
+  const designationBadge = $derived(
+    card.solved ? "SOLVED" : (card.class_level ?? 0) > 0 ? `LVL ${card.class_level}` : "",
+  );
+  const designationTitle = $derived(
+    card.solved ? "this Case is solved" : `Class level ${card.class_level ?? 1}`,
+  );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
   // the hoveredCard store until the user has rested on the card for
@@ -296,6 +337,12 @@
       decoding="async"
       draggable="false"
     />
+    {#if card.face_down_kind}
+      <!-- The kind is public (ADR 0069): the table can see that a
+           permanent is a morph and that an exiled card is foretold,
+           even though nobody may look at the face. -->
+      <span class="badge face-down">{faceDownLabel}</span>
+    {/if}
   {:else if imgSrc}
     <!-- use:cardArt (#33): retry once, then a click-to-retry pip.
          Front face only — the back above is a bundled asset. -->
@@ -308,6 +355,19 @@
       fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
+    {#if showFaceDownBadge}
+      <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
+           permanent they control, CR 702.143d for their own foretold
+           card), so they get the real art — and the badge, because
+           everyone else is looking at a card back. -->
+      <span
+        class="badge face-down"
+        title="face down — only you may look at this card"
+        aria-label={`face down: ${faceDownLabel}`}
+      >
+        {faceDownLabel}
+      </span>
+    {/if}
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
@@ -338,10 +398,24 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
-    <KeywordBadgeRow abilities={card.abilities} />
+    <KeywordBadgeRow
+      abilities={card.abilities}
+      chosenColor={card.chosen_color}
+      namedTribe={card.named_tribe}
+      protection={card.protection}
+    />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
+      </span>
+    {/if}
+    {#if (card.regeneration_shields ?? 0) > 0}
+      <span
+        class="badge regen"
+        title={`${card.regeneration_shields} regeneration shield${(card.regeneration_shields ?? 0) === 1 ? "" : "s"} — replaces the next destruction this turn`}
+        aria-label="regeneration shield"
+      >
+        REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
     {/if}
     {#if showPT}
@@ -361,6 +435,19 @@
     {/if}
   {:else}
     <span class="name-fallback">{card.name}</span>
+    {#if showFaceDownBadge}
+      <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
+           permanent they control, CR 702.143d for their own foretold
+           card), so they get the real art — and the badge, because
+           everyone else is looking at a card back. -->
+      <span
+        class="badge face-down"
+        title="face down — only you may look at this card"
+        aria-label={`face down: ${faceDownLabel}`}
+      >
+        {faceDownLabel}
+      </span>
+    {/if}
     {#if card.goaded_by}
       <span class="badge goad" title="goaded" aria-label="goaded">GOAD</span>
     {/if}
@@ -383,10 +470,24 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
-    <KeywordBadgeRow abilities={card.abilities} />
+    <KeywordBadgeRow
+      abilities={card.abilities}
+      chosenColor={card.chosen_color}
+      namedTribe={card.named_tribe}
+      protection={card.protection}
+    />
     {#if (card.damage_marked ?? 0) > 0}
       <span class="badge damage" title={`${card.damage_marked} damage marked`} aria-label="damage">
         {card.damage_marked}
+      </span>
+    {/if}
+    {#if (card.regeneration_shields ?? 0) > 0}
+      <span
+        class="badge regen"
+        title={`${card.regeneration_shields} regeneration shield${(card.regeneration_shields ?? 0) === 1 ? "" : "s"} — replaces the next destruction this turn`}
+        aria-label="regeneration shield"
+      >
+        REGEN{(card.regeneration_shields ?? 0) > 1 ? ` x${card.regeneration_shields}` : ""}
       </span>
     {/if}
     {#if showPT}
@@ -408,13 +509,21 @@
   {#if showNoUntap}
     <span class="badge no-untap" title="won't untap" aria-label="won't untap">WON'T UNTAP</span>
   {/if}
+  {#if designationBadge}
+    <!-- ADR 0071: outside the art / name-fallback branches on
+         purpose — a Class or a Case says the same thing whether or
+         not its art loaded. -->
+    <span class="badge designation" title={designationTitle} aria-label={designationTitle}>
+      {designationBadge}
+    </span>
+  {/if}
   {#if manaMenuOpen && hasManaAbilities}
     <div class="mana-menu-anchor">
       <ManaAbilityMenu
         abilities={onActivateManaAbility ? (card.mana_abilities ?? []) : []}
         tapped={!!card.tapped}
         onActivate={(idx) => onActivateManaAbility?.(idx)}
-        activated={onActivateAbility ? (card.activated_abilities ?? []) : []}
+        activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
         summoningSick={!!card.summoning_sick}
         {sorcerySpeedBlocked}
@@ -541,6 +650,22 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
   }
+  .badge.face-down {
+    /* ADR 0069. Top-right like GOAD, and the two never co-occur: a
+       face-down permanent has no text, so nothing can goad it. Cool
+       slate rather than gold so it reads as "hidden state", not as a
+       property of the card. */
+    left: auto;
+    right: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 22, 44, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
+    font-size: 7px;
+  }
   .badge.goad {
     /* Top-right so it doesn't collide with the CMD badge on legendary
        commanders that get goaded back at their owner. */
@@ -563,6 +688,25 @@
     background: rgba(12, 35, 70, 0.9);
     border-color: rgba(145, 195, 255, 0.55);
     letter-spacing: 0.01em;
+    font-size: 7px;
+  }
+  .badge.designation {
+    /* ADR 0071 — top-centre, between the CMD pip (top-left) and the
+       GOAD / face-down pip (top-right), so a levelled Class that is
+       also somebody's commander reads cleanly. Cool blue rather than
+       gold: like WON'T UNTAP, it is a state the card is IN, not a
+       property printed on it. */
+    top: 3px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 44px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #b9d8ff;
+    background: rgba(12, 35, 70, 0.9);
+    border-color: rgba(145, 195, 255, 0.55);
     font-size: 7px;
   }
   .badge.curse {
@@ -607,6 +751,19 @@
     background: rgba(60, 0, 0, 0.9);
     border-color: rgba(255, 122, 122, 0.5);
     font-size: 11px;
+  }
+  .badge.regen {
+    /* Top-right, clear of the bottom-right damage / P-T stack: a
+       shield is a fact about the NEXT destruction, not about the
+       creature's current numbers. */
+    top: 3px;
+    left: auto;
+    right: 3px;
+    color: #9fe8a8;
+    background: rgba(0, 48, 16, 0.9);
+    border-color: rgba(120, 220, 140, 0.5);
+    font-size: 9px;
+    letter-spacing: 0.04em;
   }
   .badge.pt,
   .badge.loyalty {

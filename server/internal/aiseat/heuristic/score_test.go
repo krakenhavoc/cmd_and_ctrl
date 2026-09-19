@@ -57,11 +57,25 @@ func TestUntappedManaBeatsTapped(t *testing.T) {
 func TestKeywordTableIsApplied(t *testing.T) {
 	w := heuristic.DefaultWeights()
 	vanilla := creature(cardID(1), 0, "Bear", 2, 2)
-	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}", "protection from red"} {
+	for _, kw := range []string{"flying", "deathtouch", "lifelink", "trample", "double strike", "indestructible", "ward {2}"} {
 		flashy := creature(cardID(1), 0, "Bear", 2, 2, keywords(kw))
 		if w.CreatureValue(&flashy) <= w.CreatureValue(&vanilla) {
 			t.Errorf("%q did not raise the creature's value", kw)
 		}
+	}
+	// #662: protection is counted off the PARSED projection, not off
+	// the raw token — the policy package may not parse one. A token
+	// with no projection behind it is a quality the engine's grammar
+	// refused, and scoring it would price the creature above what it
+	// does.
+	pro := creature(cardID(1), 0, "Bear", 2, 2,
+		keywords("protection from red"), protection(proColor("R", "red")))
+	if w.CreatureValue(&pro) <= w.CreatureValue(&vanilla) {
+		t.Error("protection from red did not raise the creature's value")
+	}
+	unparsed := creature(cardID(1), 0, "Bear", 2, 2, keywords("protection from monocolored"))
+	if w.CreatureValue(&unparsed) != w.CreatureValue(&vanilla) {
+		t.Error("a protection the engine does not enforce must not raise the creature's value")
 	}
 	wall := creature(cardID(1), 0, "Wall", 0, 4, keywords("defender"))
 	plain := creature(cardID(1), 0, "Plain", 0, 4)

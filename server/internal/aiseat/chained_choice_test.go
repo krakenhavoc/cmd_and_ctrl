@@ -428,7 +428,7 @@ func TestHeuristicRummageDiscardsTheWorstCardThenDraws(t *testing.T) {
 			Player:   seat.ID,
 			N:        1,
 			Question: "Syphon Mind — discard a card",
-			Then:     func(g *game.Game) error { return g.DrawNForEffect(seat.ID, 1) },
+			Then:     func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error { return g.DrawNForEffect(seat.ID, 1) },
 		})
 	})
 

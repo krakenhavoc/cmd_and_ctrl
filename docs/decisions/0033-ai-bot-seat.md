@@ -1,7 +1,9 @@
 # ADR 0033 — AI bot seat: legal-move enumeration, virtual seats, tiered policies
 
 **Status:** Accepted · 2026-09-16 (proposed 2026-09-11 in [#286](https://github.com/krakenhavoc/cmd_and_ctrl/pull/286)) · Sprint S31 · Issue [#89](https://github.com/krakenhavoc/cmd_and_ctrl/issues/89)
-**Amended:** 2026-09-16 · S31 closeout: accepted as built. §1's threat ordering is not built (#687), §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end)
+**Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
+**Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
+**Amended:** 2026-09-19 · #1013: a bot chooses WHICH cards an alternative cost eats — the payments are priced through a second injected hook and the cap rises to three (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
 
@@ -115,6 +117,11 @@ threat heuristics, with the remainder reachable through an explicit
 > [#687](https://github.com/krakenhavoc/cmd_and_ctrl/issues/687). Until
 > it lands, which targets a bot is offered past the cap depends on
 > enumeration order.
+>
+> **Update, 2026-09-19 (#687).** Built, as an ordering hook
+> (`legal.Options.OrderTargets`) the policy supplies rather than a
+> scorer inside `legal`, and the "choose target" move is refused rather
+> than deferred. See the amendment at the end of this file.
 
 A corollary learned the hard way in #544, and applied since to every
 new cost component: **a variable in a cost must not become an arity of
@@ -602,3 +609,372 @@ sections above:
   the funnel depends on which one is used. The objection recorded
   there still applies to any deployed server pointed at a model on a
   home network.
+
+## Amendment (2026-09-18, #810, #619): the enumerator's X rule
+
+§1's contract is that every enumerated move is one `actions.Dispatch`
+accepts. Two bugs from the catalog soak sit either side of it: one where a
+move was legal, accepted, and still not worth offering, and one where the
+contract was simply broken.
+
+**1. A zero-effect X=0 move is not a move (#810).** CR 601.2b / 602.2b make
+X a number the caster announces and CR 107.3 leaves 0 legal wherever the
+printed text sets no floor, so the engine accepts Soothsaying's "{X}: Look
+at the top X cards of your library" at X=0 and is right to. It costs
+nothing, does nothing, and is back on the move list the moment it resolves —
+CR 732.2a's repeatable sequence of optional actions, which no player is ever
+made to keep repeating. A table of bots applied 79,519 actions in five
+minutes on turn 18 without the turn advancing.
+
+The rule is **one function**, `enumeratedXFloor` in
+`internal/legal/x.go`, shared by casts and activations because the mistake
+was identical on both sides: the smallest X the enumerator will announce for
+a cost carrying an {X} slot is 1 when the whole effect scales with X, and
+where that cannot be paid the move is not offered at all — the treatment
+Helm of Obedience's printed "X can't be 0" already got. Nothing about
+legality changes, and no card is special-cased.
+
+*"The whole effect scales with X" is declared, not guessed.*
+`effects.Spec.XMatters`, read through `game.XMattersFor`, is the catalog's
+one-bit answer to a question nothing else can derive. A card with a fixed
+RIDER — The Goose Mother's 2/2 flying body, Springleaf Parade's mana static
+— leaves it unset and keeps its X=0 offer, which is then made exactly when
+nothing larger is affordable, because the search takes the largest payable
+X. A source scan in `effects/x_matters_guard_test.go` fails the build on a
+Spec that reads `ctx.X()` without declaring, with an allowlist for riders.
+Thirty-four of the catalog's forty-two X cards declare; eight are riders.
+
+*Two gaps, both "the enumerator is not choosing X here".* An X announced by
+a cost that is not the mana cost is still announced as 0, because nothing in
+`internal/legal` prices such a cost: Toxic Deluge is offered at X=0 and
+sweeps for -0/-0. (Waterbender's Restoration is the same shape and lands on
+the other side of it — its clause counts FROM X, so rule 2 below declines to
+enumerate it at all.) And `CountFromX` on an activated ability has no engine
+support to mirror.
+
+**2. An X-defined target count ties X to the targets (#619).** Crackle with
+Power's target count *is* X, and the enumerator offered one target with X=0
+— a cast `cast_spell` refuses outright, which is a soundness break, not a
+quality one.
+
+An announcement is a list of target STEPS since #937
+(`game.AnnouncedClauses`), so the rule is written over those: a step whose
+clause has `CountFromX` is opened to 1..(largest payable X) rather than to
+its printed count, and the X the move announces is read back off the set —
+how many refs carry that step's (Mode, Slot). Two X-counted steps that
+disagree are not a set any announcement could cover, so they are dropped.
+The expansion is bounded by `MaxExpansionPerSource` like every other. It is
+the mirror image of the engine's own `resolveStepCountsFromX`, which pins
+the same clauses to an X already announced — the difference between
+validating an announcement and building one.
+
+The floor is 1, not 0: X=0 means zero targets and a spell that does nothing,
+so rule 1 covers it and no separate case is needed. A `CountFromX` clause
+whose X comes from a cost this package cannot price (Waterbender's
+Restoration's waterbend) is not enumerated at all, because the only
+announcement it could make is the one the engine refuses.
+
+**The bot's threat ordering (§1) is still not built** (#687). Unchanged.
+_(Built on 2026-09-19; see the last amendment in this file.)_
+
+## Amendment (2026-09-18, #957): a pay-life X is priced like a mana X
+
+The first of the two gaps above is closed for the "pay X life" half.
+X is ONE announced number (CR 601.2b) and the mana cost is not the only
+thing that can charge for it: Toxic Deluge prints `{2}{B}` with no `{X}`
+anywhere in it and announces X by paying X life
+(`game.AdditionalCost.PayLifeX`). The affordable-X search reads `{X}`
+slots, so it answered 0 for the card and always would — the enumerator
+offered the cast at X=0 and the board was swept for -0/-0, a zero-effect
+move of rule 1's exact shape arriving through a different seam.
+
+**One more line in the one X rule**, `xCeilingFromCost` in
+`internal/legal/x.go`, and it is keyed on the COST COMPONENT rather than
+on the card: any future "as an additional cost to cast this spell, pay X
+life" is priced by it the day the card is registered, with no catalog
+entry and no per-card branch.
+
+- The **floor** is `enumeratedXFloor`'s, unchanged. Toxic Deluge declares
+  `XMatters`, so it is 1, and a seat that cannot reach 1 is offered no
+  cast at all — the Soothsaying treatment, one cost component over.
+- The **ceiling** is `life - 1`. CR 119.4 permits paying exactly your life
+  total and the engine accepts that (`xValue > p.Life` is the announce
+  check); this package will not OFFER it, on rule 1's own footing of what
+  is worth putting in front of a player. A sweep that kills its own caster
+  is not the pricing to hand a bot as the card's only offer.
+- `Options.MaxX` caps it like every other X search, and the announcement
+  is still exactly one number, so X never enters an expansion cross
+  product. (The issue said `MaxExpansionPerSource`; that one caps the
+  cross product, which an X that is a single value never joins.)
+
+A cost with BOTH an `{X}` in its mana cost and a pay-X-life would take the
+smaller of the two ceilings — `announcedX` is written that way — though no
+such card is registered. Waterbender's Restoration's waterbend
+`TapPermanentsCost` is still unpriced and still not enumerated, for the
+reason rule 2 gives.
+
+## Amendment (2026-09-19, #673 / #687): the enumerator's zones, its prices, and §1's threat ordering
+
+Two of §1's promises come good at once, and they share a paragraph
+because they share a function: `legal.castMoves` and the cap it spends.
+
+### §1's threat ordering is BUILT, and it is a hook
+
+The 2026-09-16 update above recorded the ordering as not built and
+named #687. It is built now, as an **injected hook** rather than as a
+scorer inside `internal/legal`:
+
+```go
+// legal
+type TargetCandidate struct { ID uuid.UUID; Player bool }
+type TargetOrder func(c TargetCandidate) float64
+type Options struct { …; OrderTargets TargetOrder }
+
+// aiseat — an optional Policy extension
+type TargetOrderer interface { TargetOrder(in Input) legal.TargetOrder }
+```
+
+The issue offered two shapes: move a neutral scorer down into `legal`,
+or take an ordering through `Options`. The hook wins for a layering
+reason and a correctness one. **Layering:** `aiseat/heuristic` imports
+`legal`, so `legal` can never import it back; a scorer moved down would
+have to be a second one, and two scorers that are supposed to agree
+about a board eventually will not. **Correctness:** the heuristic's
+scoring reads `protocol.GameView`, the seat's own FILTERED projection,
+which is where the hidden-information guarantee (§3) lives. A scorer
+inside `legal` would read the authoritative game, and the first fact it
+wanted that the view redacts would be a leak.
+
+So `legal` states the rule and asks for an order; the policy supplies
+one built from the same `Weights` it prices every other decision with —
+`Threat` for a seat, `boardValue` for a permanent. `Options.OrderTargets`
+nil is the whole of the old behaviour, which is what every non-bot
+caller (the view's move stamp included) gets.
+
+**Ordering is by importance, not by desirability.** The hook does not
+know which spell is being cast, so the biggest objects on the table
+survive the cap whoever controls them, and choosing among the survivors
+stays the policy's job. That is the right split: the hook's only power
+is to stop a target being dropped, and dropping the board's biggest
+permanent is wrong for every spell.
+
+**The "choose target" move for the remainder is REFUSED, not deferred.**
+§1 offered it as the alternative to a documented guarantee. It cannot be
+built without breaking the package's contract: every `legal.Move` is a
+wire `ActionPayload` that `actions.Dispatch` accepts as-is, and "open a
+target picker" is not an action the dispatcher has — it is a client
+affordance. A move kind the dispatcher refuses would put a permanently
+rejected entry in every bot's move list, which is the #544 stall the
+contract exists to prevent. The guarantee instead: **the top
+`MaxExpansionPerSource` candidates by the seat's own ordering are
+enough**, because the ordering is the seat's own scorer and a target it
+ranks below twelve others is a target it would not have chosen.
+
+### Casting from a zone that is not the hand (#673)
+
+The enumerator walks all five cast surfaces (hand, command, graveyard,
+exile, the top of the library) and offers **one move per price the
+engine would accept**, through one new engine function:
+
+```go
+func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card,
+        zone ZoneKind, grant *CastPermission) []*AlternativeCost
+```
+
+A nil entry is the printed mana cost, present only when
+`validateCastPathLocked` allows a claim of nothing; the rest are the
+card's own zone-bound offers and the one a grant synthesises, in
+announce precedence, filtered by the same path gate the cast uses and by
+`AlternativeCostPayableLocked`, the #695 predicate the view's offer
+stamp and `CastSpell`'s validator also read: the offer's Condition, CR
+119.4's life, CR 601.2b's card component — mana deliberately not
+asked, because CR 601.2g lets the caster tap afterwards.
+
+The card component is the combination search the issue is about, and it
+is **capped at one payment** (`legal.maxEnumeratedCostPayments`). That is
+this section's own corollary applied to a new kind of variable: a
+variable in a COST must not become an arity of the target cross product.
+Escape-five over a twenty-card graveyard is 15,504 payments, all of them
+the same spell with the same targets, and the policy cannot tell them
+apart because it does not price a card in a graveyard at all. The policy
+is written down beside `maxEnumeratedRepeats` in `docs/bot.md`.
+
+> **Update, 2026-09-19 (#1013).** The cap is THREE, the payments are
+> priced rather than indistinguishable, and the extra ones spend no
+> target budget. See the amendment below.
+
+The faces of the cast come from the same pair of engine functions:
+`Card.CastableFaces` (CR 715.3's adventure choice since #719, and a
+modal DFC's two halves), NARROWED by `CastPermission.Faces` when a
+grant names any — CR 715.4's "cast the creature from exile", a
+defeated Siege's back. That is `faceForCastLocked`'s own rule, so the
+enumerator cannot offer a half the announce path refuses, and madness
+(#657) needed no enumerator code at all: it is an exile grant with a
+key and `TimingFlash`, which this walk already reads.
+
+Deliberately still not enumerated, each for a stated reason: two
+different optional costs at once (no card offers it), and two
+card-shaped sacrifice clauses on one cast (same).
+
+## Amendment (2026-09-19, #986): the enumerator orders a colour prompt by its purpose, and so does the wire
+
+§1 says the enumerator produces "a stable, ordered move list", and
+the #673 / #687 amendment above added `Options.OrderTargets` so that a
+seat's own policy could decide which candidate TARGETS survive the
+expansion cap. A colour prompt's answers needed the opposite shape and
+this records why.
+
+**The gap.** `enumerator.colorAnswers` ordered every `choose_color`
+prompt (CR 105.4) the same way — by how many permanents the enumerating
+seat controls of each colour, most first — whatever the prompt was for.
+#780 had already given every such prompt the card's own
+`game.ColorPurpose` and PR #985 had taught the `heuristic` policy to
+switch on it, so nothing played badly at the `heuristic` tier. Three
+things still read the raw order: the `random` tier, the `decideChoice`
+tie-break (which takes the first offered answer, and is the path a
+purpose-less prompt lands on), and the human's colour buttons, which
+render `color_options` in the order the server sends. All three got the
+Coldsteel Heart answer for a Wash Out.
+
+**The decision.** One exported ordering function in `legal`,
+`OrderColorOptionsLocked` (`server/internal/legal/color_order.go`),
+with one arm per purpose, called by BOTH readers: `colorAnswers` for
+the move list and the `choose_color` projection in
+`protocol.ViewOfGame` for the wire. So a bot's first offered answer and
+a human's first button are the same colour, and neither side holds a
+ranking rule of its own.
+
+- `harm` ranks by what the OTHER seats lose net of what the chooser
+  loses; `filter` by what the other seats have, with the chooser's own
+  board not a term at all; `protect` by the greatest POWER among the
+  creatures other seats control of that colour; `mana`, `benefit` and a
+  prompt that declares nothing keep the pre-#986 rule exactly.
+- Battlefield counts only. §3's hidden-information boundary is why: the
+  order rides the wire to every viewer, so every term in it has to be
+  something every viewer can already count.
+- An ORDERING, never a filter. CR 105.4 makes all five colours legal
+  and a narrowed printed list ("a color other than blue") stays exactly
+  as narrow as the card made it. The sort is stable, so ties keep
+  WUBRG.
+
+**Why a function and not an `Options` hook, unlike #687.** Ranking a
+board by what a spell is worth against it is a POLICY question, and
+`legal` may not import `aiseat`, so target ordering had to be injected
+by the seat. A colour prompt's order is a reading of the card's own
+printed text against public counts; it must be identical for a bot and
+for a human, because both read it off the same prompt; and `legal` is
+the layer both already go through. A hook would have left the human's
+buttons unordered — which is half of what #986 was filed for.
+
+**What it is not.** It is not a second scorer. The `heuristic` still
+prices each answer with its own `Weights` (`colorChoiceValue`), and
+this decides only what order it sees them in — and therefore what it
+does when it scores two of them the same. The arms are deliberately the
+same questions that function asks, answered with the crudest public
+proxy there is.
+
+## Amendment (2026-09-19, #1013): a bot chooses WHICH cards an alternative cost eats
+
+*Amends §1's corollary and the 2026-09-19 (#673 / #687) amendment above.
+Closes [#1013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1013).*
+
+**1. The cap was never the constraint; the missing evaluation was.**
+`maxEnumeratedCostPayments = 1` was justified by §1's corollary — a
+variable in a cost must not become an arity of the target cross product
+— and the corollary is right. But the sentence that made it
+UNAVOIDABLE was the next one: "the policy cannot tell them apart
+because it does not price a card in a graveyard at all". Widening the
+search without an evaluation would have spent the budget ranking
+payments by index. So the order of work was fixed, and the issue said
+so: price the cards first, then widen the search.
+
+**2. The price: `aiseat.CostFuelPricer`, and `TargetOrderer`'s shape.**
+An optional Policy extension, asked once per decision, threaded into
+the enumerator as `legal.Options.OrderCostFuel`. A policy with no
+opinion gets `AltCostCandidatesLocked`'s zone order and the enumeration
+is byte-identical to what it was, which is what every non-bot caller
+gets.
+
+It is a SECOND hook rather than a second meaning for `OrderTargets`,
+and `legal.CostFuelOrder` is a second type despite the identical
+signature, because the two ask **opposite** questions about different
+objects: a target order ranks the board by importance and the
+enumerator keeps the top of it; a fuel price ranks a seat's own cards
+by what it would LOSE and the enumerator spends the bottom. One
+interface with one method would let a policy answer one with the other,
+and neither mistake — pitching your best card, targeting your worst —
+would fail to compile.
+
+**3. One function, two readers.** `heuristic.fuelValue`
+(`aiseat/heuristic/fuel.go`) is read by the enumerator to decide which
+payment to OFFER and by `valueOfCast` to price the payment it was
+offered. That is the whole reason the ordering is injected from up here
+rather than written in `legal`: a second scorer would eventually
+disagree with the first about what an escape costs, and the bot would
+choose a payment it then priced as a mistake. It also closes #673's
+declared gap — a non-hand cast still costs no card in HAND, and what it
+really spends is now priced rather than free.
+
+The three cases, and the tunings, are tabulated in `docs/bot.md`. The
+one judgement worth recording here is the split inside a graveyard: a
+card the seat can still CAST from there (escape, flashback, a granted
+impulse) is a discounted card in hand, and an idle one is a floor —
+`FuelFloor` for a land, `FuelIdle` for anything else. Neither floor is
+zero, because a card nobody can use today is still one tomorrow's delve
+might want, and zero would make every unreadable card the first thing a
+cost ate. "Is this a cast surface" is read off the view's own stamps
+(`castable_here`, the offer list) rather than re-derived, because §3
+says a policy may not import `internal/game` and a second reader of the
+cast gate is exactly what that rule is for.
+
+**4. The corollary is enforced, not restated.** The extra payments are
+offered in a SECOND PASS, out of whatever `MaxExpansionPerSource` the
+target walk did not use, against the first announcement it made — the
+same spell with the same targets at a different price, which is what
+they all are. An Uro with no targets has eleven unspent and gets its
+alternatives; a removal spell with an escape cost over a wide board
+spends its budget on targets and gets none. So a cost variable still
+cannot displace a target, which is the corollary's actual content, and
+the cap can rise without weakening it.
+
+`maxEnumeratedCostPayments` is THREE. A policy gets a small choice
+rather than a decree, the number does not depend on the size of the
+graveyard, and the enumeration stays deterministic and stable — the
+sort is stable, so equal prices keep zone order and two enumerations of
+one board agree.
+
+**Deliberately still not done.** The fuel price does not know what the
+SPELL being cast is, the same limit `TargetOrder` declares: it cannot
+prefer to pitch a card the spell would rather have in the graveyard,
+and it cannot see a graveyard synergy the wire does not carry (a
+Crucible on the board makes a land in the graveyard worth keeping, and
+`FuelFloor` does not know). Ranking by what the seat LOSES is the whole
+of its power, and losing least is right for every cost.
+
+## Amendment (2026-09-19, #938): §2's subscription is taken by `Start`, not by the loop
+
+§2 says the runner is notified through an edge-triggered, capacity-1
+channel and re-reads the room on wake. It did not say **when** the seat
+joins that observer list, and the answer was "whenever the runner
+goroutine is first scheduled" — which nothing orders, because the
+caller does not schedule it.
+
+`aiseat.Start` now calls `room.Subscribe()` itself, before it returns,
+and hands the channel to the loop. "Start returned" therefore means
+"this seat is listening from now on", which is the only ordering a
+caller can establish at all.
+
+The gap it closes is a wake, not a decision. The runner's first look is
+at the live game rather than at a notification payload, so it still sees
+the *effect* of a commit it was never told about — §2's "no payload
+ordering" is what makes that true, and it is why this was latent for a
+sprint. What a lost wake costs is the seat's next turn to act: a runner
+that wants nothing from a window returns and parks until the next
+commit, so a commit that landed inside the window is one it will never
+be woken for. At a table where the last seat is bot-seated while another
+seat's move is in flight, that bot can park for good.
+
+No change to the notification model, the channel, or `Room`. The
+edge-trigger, the non-blocking send and the "re-read, trust no payload"
+rule are all exactly as decided. The only thing that moved is which
+goroutine registers.

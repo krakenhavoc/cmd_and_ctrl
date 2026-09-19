@@ -273,35 +273,23 @@ func b22DestroyFirstArtifactAndFirstEnchantment(ctx *Context) error {
 
 // b22TuckThirdFromTop is God-Eternal Oketra's return: the card goes
 // into its owner's library third from the top — under the top two
-// cards, or on the bottom when the library holds fewer than two. The
-// engine's tuck puts a card on top; the reorder is the slice edit
-// scry's answer makes, done here.
+// cards, or on the bottom when the library holds fewer than two.
+//
+// #783: this used to tuck to the TOP and then reorder the library by
+// hand, on the line after. A library is a CR 903.9 destination, so the
+// tuck can PAUSE — and a God-Eternal is commonly a commander, so it
+// routinely did. With the prompt open the card was still in the
+// graveyard or in exile, so the reorder's `lib.Remove` returned
+// ErrCardNotFound and the trigger logged an effect error; when the
+// owner then declined, the God-Eternal landed on TOP of the library
+// rather than third from the top.
+//
+// The position is now a POSITIONED LANDING rather than a
+// remove-and-reinsert: Depth rides the route, so the card is placed
+// once, where the card says, on whichever side of the prompt the move
+// settles. No continuation is needed — nothing follows the tuck.
 func b22TuckThirdFromTop(g *game.Game, cardID uuid.UUID) error {
-	if err := g.TuckToLibraryForEffect(cardID, false); err != nil {
-		return err
-	}
-	c, ok := g.LookupCardForEffect(cardID)
-	if !ok {
-		return nil
-	}
-	owner := g.PlayerByIDForEffect(c.Owner)
-	if owner == nil || owner.Library == nil {
-		return nil
-	}
-	lib := owner.Library
-	card, err := lib.Remove(cardID)
-	if err != nil {
-		return err
-	}
-	// Top is the last element; "third from the top" is two below it.
-	at := len(lib.Cards) - 2
-	if at < 0 {
-		at = 0
-	}
-	lib.Cards = append(lib.Cards, game.Card{})
-	copy(lib.Cards[at+1:], lib.Cards[at:])
-	lib.Cards[at] = card
-	return nil
+	return g.TuckToLibraryAtDepthForEffect(cardID, 3)
 }
 
 // b22UntapEachLegalTarget untaps every card target that is still

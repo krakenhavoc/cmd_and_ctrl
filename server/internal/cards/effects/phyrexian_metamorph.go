@@ -21,16 +21,16 @@ import (
 //     creature, and a copy of a Sol Ring is just an artifact, so the
 //     clause cannot simply set the type line.
 //
-// Declared simplification: the Phyrexian mana symbol in the cost
-// parses (mana_cost.go reads {U/P} and flags HasPhyrexian) but the
-// "or 2 life" half of the payment is the cost engine's business,
-// not this card's. Paying {U} works today.
+// The Phyrexian mana symbol's "or 2 life" half is the cost engine's
+// business, not this card's: #787 landed the announce
+// (CastSpellParams.PhyrexianLife, CR 107.4c) and #916 gave the cast
+// prompt a stepper for it, so a cast from hand can pay {3} and two
+// life.
 func init() {
 	Register(Spec{
 		OracleID:     "340bbe8b-e987-4c3e-ab4e-9dee63e57d4f",
 		Name:         "Phyrexian Metamorph",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Phyrexian mana isn't supported — you must pay the {U}, you can't pay 2 life instead."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Phyrexian Metamorph",

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // concede asks a Conceder policy whether the seat is done, and scoops
@@ -14,6 +16,36 @@ import (
 // (ADR 0033 §2 — zero protocol forking), so it lands in the replay,
 // the undo history and the broadcast exactly as a human's concede
 // does.
+// targetOrder is the policy's answer to "which targets matter", or
+// nil when it has no opinion — the ordering hook #687 threads into
+// the enumerator. Nil is the whole of the old behaviour, so a policy
+// that does not implement TargetOrderer (random, and any policy
+// written before this) is untouched.
+// It also hands back the Input it built, so the decision below reuses
+// that one projection instead of building a second: the ordering and
+// the decision describe the same instant, and a bot seat still costs
+// exactly one view per decision.
+// #1013 added the second hook, and it shares the one projection for
+// the same reason the decision does: the ordering, the fuel price and
+// the decision must describe the same instant, and a bot seat still
+// costs exactly one view per decision.
+func (r *Runner) enumerationOrder() (legal.Options, Input) {
+	orderer, wantsOrder := r.policy.(TargetOrderer)
+	pricer, wantsFuel := r.policy.(CostFuelPricer)
+	if !wantsOrder && !wantsFuel {
+		return legal.Options{}, Input{}
+	}
+	in := Input{View: protocol.ViewOfGameFor(r.room.Game, r.seat.String()), Seat: r.seat}
+	var opts legal.Options
+	if wantsOrder {
+		opts.OrderTargets = orderer.TargetOrder(in)
+	}
+	if wantsFuel {
+		opts.OrderCostFuel = pricer.CostFuelPrice(in)
+	}
+	return opts, in
+}
+
 func (r *Runner) concede(ctx context.Context, in Input) bool {
 	c, ok := r.policy.(Conceder)
 	if !ok || !c.ShouldConcede(in) {

@@ -137,9 +137,14 @@ func TestLootDrawsBeforeItAsksAndAsksBeforeItFinishes(t *testing.T) {
 }
 
 // TestRummageDiscardsBeforeItDraws is the other order: Syphon Mind's
-// "you draw a card for each card discarded this way" rides the
-// prompt's continuation, so the caster draws nothing until an opponent
-// has actually pitched, and draws exactly one per opponent who did.
+// "you draw a card for each card discarded this way" is the prompted-
+// discard RUN's continuation (#1027), so the caster draws nothing
+// until the WHOLE table has pitched, and then draws exactly one per
+// card that was really discarded.
+//
+// It used to ride each prompt's own Then and draw one card per answer,
+// spread across the table's decisions. That was this card's declared
+// cosmetic simplification and it is gone.
 func TestRummageDiscardsBeforeItDraws(t *testing.T) {
 	g := newCatalogGame(t)
 	me, a, b, c := g.Seats[0], g.Seats[1], g.Seats[2], g.Seats[3]
@@ -168,9 +173,15 @@ func TestRummageDiscardsBeforeItDraws(t *testing.T) {
 		if opp.Hand.Size() != hand-1 {
 			t.Errorf("%s pitched %d cards, want 1", opp.Name, hand-opp.Hand.Size())
 		}
-		if me.Hand.Size() != before+i+1 {
-			t.Errorf("after %d discards the caster holds %d, want %d",
-				i+1, me.Hand.Size(), before+i+1)
+		// The draw is the RUN's, so it lands once — after the LAST
+		// opponent, not one card per answer.
+		want := before
+		if i == 1 {
+			want = before + 2
+		}
+		if me.Hand.Size() != want {
+			t.Errorf("after %d of two discards the caster holds %d, want %d",
+				i+1, me.Hand.Size(), want)
 		}
 	}
 	if err := g.PassPriority(); err != nil {

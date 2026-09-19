@@ -155,9 +155,9 @@ func cascadeHit(c Card, lessThan int) bool {
 // permission on an exiled card.
 //
 // The price is spelled "{0}" rather than left empty because
-// ExilePlayPermission.CostOverride treats the empty string as "no
-// override, pay the printed cost" — which for a cascade hit would be
-// the exact opposite of what the keyword grants. "{0}" parses to the
+// CastPermission.Cost treats the empty string as "no override, pay
+// the printed cost" — which for a cascade hit would be the exact
+// opposite of what the keyword grants. "{0}" parses to the
 // zero cost, so the cast is free and the parser never sees the
 // printed cost at all (which is what lets a card the engine can't
 // price still be cast, should one ever get here).
@@ -176,12 +176,14 @@ func (g *Game) grantFreeCastLocked(controller, cardID uuid.UUID) {
 		if g.Exile.Cards[i].InstanceID != cardID {
 			continue
 		}
-		g.Exile.Cards[i].ExilePlay = ExilePlayPermission{
-			Player:       controller,
-			UntilTurn:    g.Turn.Number,
-			CostOverride: "{0}",
-			CastOnly:     true,
-		}
+		g.GrantCastPermissionToCardsForEffect(CastPermission{
+			Player:   controller,
+			Zone:     ZoneExile,
+			Duration: g.UntilEndOfTurnDuration(),
+			Cost:     "{0}",
+			CastOnly: true,
+			Label:    "Cascade — cast it without paying its mana cost",
+		}, []Card{g.Exile.Cards[i]})
 		return
 	}
 }
@@ -212,7 +214,11 @@ func (g *Game) scheduleCascadeBottomLocked(controller, source, cardID uuid.UUID,
 		Cards:        []uuid.UUID{cardID},
 		Effect: func(g *Game, _ *StackItem) error {
 			c, ok := g.cardInZoneLocked(g.Exile, cardID)
-			if !ok || !c.ExilePlay.Active(controller, g.Turn.Number) || c.ExilePlay.CostOverride != "{0}" {
+			if !ok {
+				return nil
+			}
+			perm := g.CastPermissionForLocked(controller, c, ZoneExile)
+			if perm == nil || perm.Cost != "{0}" {
 				return nil
 			}
 			// The shared random bottom (random_bottom.go) with a pile

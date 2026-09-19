@@ -35,10 +35,19 @@ func newTestHTTPStack(t *testing.T) (*httptest.Server, *Lobby, auth.Authenticato
 // resolve fixture names.
 func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server, *Lobby, auth.Authenticator, *cards.Index) {
 	t.Helper()
+	a := auth.NewMemoryAuthenticator()
+	srv, l := newTestHTTPStackWithAuth(t, idx, a)
+	return srv, l, a, idx
+}
+
+// newTestHTTPStackWithAuth is newTestHTTPStackWithCards with the
+// authenticator chosen by the caller — the HMAC-session tests run the
+// real handlers against auth.HMACAuthenticator.
+func newTestHTTPStackWithAuth(t *testing.T, idx *cards.Index, a auth.Authenticator) (*httptest.Server, *Lobby) {
+	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
-	a := auth.NewMemoryAuthenticator()
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
 	hub.SetAuthorizer(&WSAuthorizer{Auth: a})
@@ -57,7 +66,7 @@ func newTestHTTPStackWithCards(t *testing.T, idx *cards.Index) (*httptest.Server
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv, l, a, idx
+	return srv, l
 }
 
 // postJSON is a small helper for testing POSTs that take JSON bodies.

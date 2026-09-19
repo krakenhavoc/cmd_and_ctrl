@@ -42,6 +42,27 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 	return g.StackMeta[id]
 }
 
+// StackItemPaidForEffect is what the announcement that put `id` on
+// the stack actually paid (#761), and whether the engine charged at
+// all. The zero PaidCost for an item that is not on the stack — which
+// reads as "nothing was spent, and that is known", the right answer
+// for an object that was never cast.
+//
+// The read a CAST TRIGGER needs: for a spell, the stack item's ID IS
+// the card's instance ID, so EventCast.CardID is already the key.
+// Vexing Bauble's "whenever a player casts a spell, if no mana was
+// spent to cast it" is this accessor and PaidCost.NoManaSpent, and
+// nothing else.
+//
+// A value, not the item, deliberately: a trigger has no business
+// mutating the spell it is watching, and the record is small.
+func (g *Game) StackItemPaidForEffect(id uuid.UUID) PaidCost {
+	if item := g.StackItemForEffect(id); item != nil {
+		return item.Paid
+	}
+	return PaidCost{}
+}
+
 // LookupCardForEffect returns a value copy of the card with the
 // given instance ID from whichever zone holds it, plus ok=true.
 // Empty Card and ok=false when the card isn't in any tracked zone.
@@ -52,7 +73,12 @@ func (g *Game) StackItemForEffect(id uuid.UUID) *StackItem {
 func (g *Game) LookupCardForEffect(cardID uuid.UUID) (Card, bool) {
 	z := g.findCardZoneLocked(cardID)
 	if z == nil {
-		return Card{}, false
+		// #762: a token whose entry window is open is in no zone at
+		// all — it is minted and not yet pushed. An entry replacement
+		// reads the entering permanent through this function
+		// (Urabrask the Hidden, Kismet, Thalia), so it has to be able
+		// to see one. See Game.enteringTokens.
+		return g.enteringTokenLocked(cardID)
 	}
 	for _, c := range z.Cards {
 		if c.InstanceID == cardID {
@@ -99,6 +125,21 @@ type DiscardPrompt struct {
 	// to two cards"), which is the difference between a floor of N
 	// and a floor of zero on the underlying pick.
 	UpTo bool
+	// Min is the floor on the pick for the one shape where the
+	// COUNT is not the whole rule: "discard two cards UNLESS you
+	// discard a creature card" (Teferi Akosa of Zhalfir) accepts a
+	// single card when that card is a creature, so its floor is one
+	// and Validate refuses the one-card sets that are not.
+	//
+	// Zero — the usual case — leaves the floor at N, or at zero with
+	// UpTo. A Min above N is clamped to N, because the hand may be
+	// smaller than the printed count (CR 701.8a). Min and UpTo do
+	// not compose; Min wins, and no printed clause wants both.
+	//
+	// It exists only alongside Validate. A floor below N with
+	// nothing judging the SET would simply be a weaker discard, and
+	// that is what UpTo is for.
+	Min int
 	// Question is the prompt's header. Empty composes one from the
 	// source card's name, so an ordinary "discard a card" caller
 	// stays a one-liner.
@@ -122,7 +163,25 @@ type DiscardPrompt struct {
 	// instruction after "then" is not conditional on there having
 	// been cards to pitch. Same contract Scry's Then has for an
 	// empty library.
-	Then func(g *Game) error
+	//
+	// IT IS THIS PROMPT'S OWN "then", one leg of the instruction —
+	// Vicious Rumors' "…discards a card, THEN mills a card" per
+	// opponent. The rest of the printed INSTRUCTION, the clause that
+	// runs once after every seat has answered and is told what was
+	// really discarded, is the RUN's continuation instead
+	// (PlayerDiscardsThenForEffect and its two siblings, #1027).
+	// Reaching for this one to write a fan-out's payoff gives a card
+	// that pays out per answer, which is what Syphon Mind did.
+	//
+	// `seat` is the player who was asked and `discarded` is what they
+	// really discarded (discardedThisWayLocked), both because a
+	// fan-out copies ONE template per seat: a closure that captured
+	// the player would mill the wrong one, and a leg that read the
+	// hand back would count a card a replacement left there. `seat`
+	// is p.Player for a single-seat prompt, where the caller knew it
+	// already; `discarded` is nil for an empty hand, which is the
+	// case this still fires for.
+	Then func(g *Game, seat uuid.UUID, discarded []uuid.UUID) error
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -157,13 +216,38 @@ type DiscardPrompt struct {
 // with no candidates and a floor of one is a prompt nobody can
 // answer, holding the whole table (#544).
 //
+// THE FIRE-AND-FORGET FORM since #1027, and what it returns is the
+// prompt's ID rather than an outcome: nothing has left the hand when
+// it returns, and a clause on the next line pays out for a discard
+// nobody has chosen yet. A card with anything hanging off the answer —
+// "you draw a card for each card discarded this way", or simply a
+// clause printed AFTER the discard, which is Archon of Cruelty's bug —
+// uses PlayerDiscardsThenForEffect and its two siblings
+// (discard_run.go, ADR 0013 §5y).
+//
 // Caller must hold g.mu.
 func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
+	return g.queueDiscardPromptLocked(p, uuid.Nil)
+}
+
+// queueDiscardPromptLocked queues ONE discard prompt and returns its
+// ID (uuid.Nil when nothing went up). `run` is the prompted-discard
+// run the prompt is one leg of (prompt_run.go), or uuid.Nil for a
+// prompt nothing is waiting on.
+//
+// THE one place a discard prompt is created, so the run link cannot be
+// forgotten by a new caller — queueSacrificePromptLocked's shape, and
+// for the same reason.
+//
+// Caller must hold g.mu.
+func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUID {
 	// A prompt addressed to a seat that has left the game can never
 	// be answered. Unlike the empty-hand case, Then does NOT run:
 	// "each other player discards a card, then you draw a card for
 	// each card discarded this way" draws nothing for a player who is
-	// no longer there.
+	// no longer there. The RUN is not told about the seat either — it
+	// was never asked — which reads the same as a seat that was asked
+	// and discarded nothing, and is the right answer for both.
 	if p.Player == uuid.Nil || g.chooserGoneLocked(p.Player) {
 		return uuid.Nil
 	}
@@ -175,8 +259,15 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 	}
 	if n <= 0 {
 		// Nothing to pitch, but "then draw three" still happens.
+		//
+		// The RUN is not told, and the seat gets no entry in the
+		// answer: no prompt went up, so there is no leg to settle and
+		// nothing was owed. That reads the same to a continuation as a
+		// seat that was asked and discarded nothing — both discarded
+		// nothing — which is the rule PromptedSacrifices states for a
+		// seat CR 701.21a excused.
 		if p.Then != nil {
-			if err := p.Then(g); err != nil {
+			if err := p.Then(g, p.Player, nil); err != nil {
 				g.EmitEvent(Event{
 					Kind:     EventEffectError,
 					Actor:    p.Player,
@@ -195,12 +286,32 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 	if p.UpTo {
 		lo = 0
 	}
+	if p.Min > 0 {
+		lo = min(p.Min, n)
+	}
 	question := p.Question
 	if question == "" {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
 	}
-	discarder := p.Player
-	opts := discardOptions{cause: discardCauseEffect, source: p.Source, then: p.Then}
+	discarder, source := p.Player, p.Source
+	legThen := p.Then
+	opts := discardOptions{
+		cause:  DiscardCauseEffect,
+		source: p.Source,
+		// Reached once the whole batch has landed. This prompt's own
+		// "then" is the rest of ITS sentence and goes first; the RUN's
+		// leg settle follows, because the run's continuation is the
+		// rest of the printed instruction and must be the last thing
+		// on the far side of the last leg (#1027).
+		then: func(g *Game, landed []uuid.UUID) error {
+			if legThen != nil {
+				if err := legThen(g, discarder, landed); err != nil {
+					g.emitChoiceEffectErrorLocked(discarder, source, err)
+				}
+			}
+			return g.settleRunLegLocked(run, discarder, landed)
+		},
+	}
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -211,6 +322,7 @@ func (g *Game) QueueDiscardChoiceForEffect(p DiscardPrompt) uuid.UUID {
 		Max:        n,
 		Zone:       ZoneHand,
 		Validate:   p.Validate,
+		promptRun:  run,
 		Then: func(g *Game, picked []uuid.UUID) error {
 			return g.discardCardsLocked(discarder, picked, opts)
 		},
@@ -757,20 +869,45 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 // (ADR 0054 Decision 5), so an undone random discard redoes with the
 // same cards. There is no "first card when the game has no RNG"
 // branch any more: every game draws from a key (rng.go).
+//
+// THE FIRE-AND-FORGET FORM. A discard is an exit (ADR 0013 §5g) and a
+// discarded commander's CR 903.9 prompt pauses the batch, so nil means
+// "no error", never "the cards are in the graveyard". A card with a
+// clause hanging off the discard uses DiscardRandomThenForEffect.
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
+	return g.DiscardRandomThenForEffect(playerID, n, nil)
+}
+
+// DiscardRandomThenForEffect is DiscardRandomForEffect with the rest
+// of the card attached — "discard a card at random. If it was a land
+// card, …" — run once the whole batch has reached a terminal outcome
+// and handed the cards that were really discarded
+// (discardedThisWayLocked).
+//
+// It is the random discard's answer to the payout lint's `discardVerb`
+// row (#1027, ADR 0013 §5y). `then` runs even when nothing was
+// discarded, including for an empty hand: a continuation is the rest
+// of a card, and one that is silently never called is a card that
+// stops halfway (#544, #1006).
+//
+// Caller must hold g.mu.
+func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g *Game, discarded []uuid.UUID) error) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
 	}
 	if n <= 0 || p.Hand.Size() == 0 {
-		return nil
+		if then == nil {
+			return nil
+		}
+		return then(g, nil)
 	}
 	ids := make([]uuid.UUID, len(p.Hand.Cards))
 	for i, c := range p.Hand.Cards {
 		ids[i] = c.InstanceID
 	}
 	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
-	return g.discardCardsLocked(playerID, picked, discardOptions{cause: discardCauseEffect})
+	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect, then: then})
 }
 
 // LoseTheGameForEffect marks a player as losing the game — the
@@ -857,13 +994,18 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // that is neither a graveyard nor exile. A leg that cannot move is
 // skipped by the batch body rather than failing the mill.
 //
+// #569: the AMOUNT is replaceable. A mill into a graveyard opens a
+// RepEventMill window on n before any card moves, so Bruvac the
+// Grandiloquent doubles the instruction; an exile of the top N is not a
+// mill (CR 701.13a) and opens none. That window can PAUSE, on a CR 616
+// ordering prompt between two amount replacements, and then this
+// returns an EMPTY slice with the mill still owed — the contract
+// CreateTokensForEffect's empty ID slice already carries, and the
+// reason a caller that reads the list should use the Then form.
+//
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, until func(Card) bool) ([]uuid.UUID, error) {
-	ids, err := g.millPlanLocked(playerID, n, dest, until)
-	if err != nil {
-		return nil, err
-	}
-	return g.routeAllLandedLocked(millRoute(playerID, dest), ids), nil
+	return g.millThroughReplacementsLocked(playerID, n, dest, until, nil)
 }
 
 // MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
@@ -891,6 +1033,13 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind, unt
 // report a true list — the same trade DestroyPermanentsThenForEffect
 // and the discard batch already make.
 //
+// #569 adds a second thing that can pause, and it pauses EARLIER: the
+// CR 614 window on the amount, before any card is chosen. `then` runs
+// from wherever the mill ends either way — inline, from the CR 903.9
+// resume of one leg, or from the amount window's resume — and it runs
+// with an empty list when the mill was replaced away entirely, because
+// a caller sequencing work behind it has to be told even then.
+//
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) MillToZoneThenForEffect(
 	playerID uuid.UUID,
@@ -899,11 +1048,15 @@ func (g *Game) MillToZoneThenForEffect(
 	until func(Card) bool,
 	then func(g *Game, milled []uuid.UUID) error,
 ) error {
-	ids, err := g.millPlanLocked(playerID, n, dest, until)
-	if err != nil {
-		return err
+	if then == nil {
+		// The tail's nil-ness is what picks the form inside, so a caller
+		// that passes nil here would silently get the fire-and-forget
+		// one. Refusing is not an option — a mill of nothing is still a
+		// legal mill — so give it a continuation that does nothing.
+		then = func(*Game, []uuid.UUID) error { return nil }
 	}
-	return g.routeAllThenLocked(millRoute(playerID, dest), ids, then)
+	_, err := g.millThroughReplacementsLocked(playerID, n, dest, until, then)
+	return err
 }
 
 // millPlanLocked validates a mill and chooses the cards it will move,
@@ -972,8 +1125,16 @@ func (g *Game) millPlanLocked(playerID uuid.UUID, n int, dest ZoneKind, until fu
 // indestructible.go for why the check cannot live one level down in
 // routeBattlefieldCardToOwnerGraveyardLocked, which sacrifice and
 // the zero-counter SBAs share.
-func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID) error {
-	return g.destroyBattlefieldPermanentLocked(cardID)
+//
+// #667: it is also where "it can't be regenerated" (CR 701.19c) goes.
+// Pass DestroyOptions{CantBeRegenerated: true} — Damnation, Day of
+// Judgment, Mortify, Putrefy, Pongify and the rest of the family — and
+// the flag rides the destroy route onto the CR 614 event, where the
+// regeneration built-in reads it and declines (regeneration.go). The
+// rider is variadic so the hundred-odd plain "destroy this" calls stay
+// as they were; at most one is meaningful.
+func (g *Game) DestroyPermanentForEffect(cardID uuid.UUID, opts ...DestroyOptions) error {
+	return g.destroyBattlefieldPermanentLocked(cardID, firstDestroyOptions(opts))
 }
 
 // SacrificePermanentForEffect sacrifices a battlefield permanent on
@@ -1023,8 +1184,12 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 // Exile is a public zone, so the ordinary path marks every seat a
 // knower and the wire ships the card's name to the whole table. A
 // card exiled face down is one no player may look at — including
-// the player who exiled it — so its knowledge set is CLEARED on the
-// way in and Card.FaceDown is set. An empty knowledge set is what
+// the player who exiled it — so its knowledge set is set to the
+// FaceDownExiled row of ADR 0069's viewers table, which is nobody,
+// and Card.FaceDown is set. (FaceDownForetold is the row foretell
+// uses, and its answer is the owner; the route takes the kind so the
+// two cannot be told apart by anything but the rule.) An empty
+// knowledge set is what
 // the wire keys on: protocol.redactCardForViewer strips every
 // identifying field (name, costs, abilities, catalog flags) for a
 // non-knower. Card.FaceDown is what the client keys on to draw a
@@ -1070,7 +1235,7 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 			CardID:   top,
 			Dst:      ZoneExile,
 			Actor:    playerID,
-			FaceDown: true,
+			FaceDown: FaceDownExiled,
 		})
 		if err != nil {
 			return out, err
@@ -1097,6 +1262,31 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 	return err
 }
 
+// TuckOptions is WHERE on the library a tuck lands. The zero value is
+// the top, which is what "put it on top of its owner's library" and the
+// bare "shuffles it into their library" (tuck, then shuffle) both want.
+//
+// It is one struct rather than two positional arguments because the
+// position is a property of the ROUTE — it rides across a CR 903.9
+// pause and is applied against the SETTLED destination — and because a
+// third position (Depth) already existed on its own entry point. The
+// `Then` forms take it once and the fire-and-forget forms build it from
+// their older positional arguments, so there is one description of a
+// tuck and two ways to ask for one.
+//
+// ToBottom wins if both are set, matching zoneRoute.
+type TuckOptions struct {
+	// ToBottom sends the card to the BOTTOM of the library
+	// (Condemn, Mistveil Plains).
+	ToBottom bool
+
+	// Depth places the card N cards down from the top — the
+	// God-Eternals' and Teferi's "third from the top" is 3. Zero and
+	// 1 both mean the top. A library shorter than the depth takes the
+	// card on the bottom.
+	Depth int
+}
+
 // TuckToLibraryForEffect moves a card from wherever it is onto its
 // owner's library — the top (`toBottom` false) or the bottom.
 //
@@ -1121,12 +1311,19 @@ func (g *Game) BounceToHandForEffect(cardID uuid.UUID) error {
 // `toBottom` rides along on the route rather than being applied here,
 // which is what lets it survive a queued prompt: a commander tucked
 // to the bottom whose owner declines still lands on the bottom.
+//
+// #783: this is the FIRE-AND-FORGET half of the pair, on the same
+// route template (tuckRoute) as TuckToLibraryThenForEffect. It returns
+// nil whether the card moved or a prompt was queued, which is fine for
+// a caller with nothing left to do — Sensei's Divining Top putting
+// itself back is the last instruction on its ability — and wrong for
+// any caller that reads the card's zone, counts what arrived or asks
+// the next question. Those use the `Then` form. The same split the
+// mill has, for the same reason.
 func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:   cardID,
-		Dst:      ZoneLibrary,
-		ToBottom: toBottom,
-	})
+	r := tuckRoute(TuckOptions{ToBottom: toBottom})
+	r.CardID = cardID
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 
@@ -1145,11 +1342,9 @@ func (g *Game) TuckToLibraryForEffect(cardID uuid.UUID, toBottom bool) error {
 //
 // Caller must hold g.mu.
 func (g *Game) TuckToLibraryAtDepthForEffect(cardID uuid.UUID, depth int) error {
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID: cardID,
-		Dst:    ZoneLibrary,
-		Depth:  depth,
-	})
+	r := tuckRoute(TuckOptions{Depth: depth})
+	r.CardID = cardID
+	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
 
@@ -1275,7 +1470,7 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 	// exile bolted onto the resolution, and the only place in the
 	// engine where it is observable.
 	for _, c := range g.Stack.Cards {
-		if c.InstanceID == spellID && altCostExilesFromStack(c, item.AltCost) {
+		if c.InstanceID == spellID && altCostExilesFromStack(c, item) {
 			destKind, destOwner = ZoneExile, uuid.Nil
 			break
 		}
@@ -1411,9 +1606,6 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 	default:
 		return ErrZoneNotFound
 	}
-	actor := ownerID
-	var entersTapped bool
-	var enterCounters map[string]int
 	if destZone.Kind == ZoneBattlefield {
 		newController := controller
 		if newController == uuid.Nil {
@@ -1434,76 +1626,41 @@ func (g *Game) ReturnFromGraveyardUnderControlForEffect(cardID uuid.UUID, dest Z
 				break
 			}
 		}
-		actor = newController
 		// #263: a reanimated permanent enters the battlefield like
 		// any other, so the CR 614 entry pipeline has to run on it.
 		// Skipping it meant a reanimated shockland ignored its own
 		// enters-tapped clause and a creature reanimated under an
 		// opponent's nose dodged Authority of the Consuls.
-		ev := &ReplacementEvent{
-			Kind:    RepEventMove,
-			Actor:   newController,
-			CardID:  cardID,
-			OldZone: ZoneGraveyard,
-			NewZone: ZoneBattlefield,
-		}
-		out, err := g.applyReplacementsLocked(ev)
-		if errors.Is(err, errReplacementPending) {
-			// A CR 616 ordering prompt is open. Nothing has moved —
-			// the card is still in the graveyard — so the return is
-			// dropped rather than stranded mid-zone. Same posture the
-			// land-play and exile-return paths take.
-			return nil
-		}
-		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-			g.clearReplacementEventLocked(ev.ID)
-			return err
-		}
-		defer g.clearReplacementEventLocked(ev.ID)
-		if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-			return nil
-		}
-		entersTapped = out.EntersTapped
-		enterCounters = out.EntersWithCounters
+		//
+		// #478: and the entry can PAUSE — a reanimated shockland is
+		// asked to pay, two entry replacements queue the CR 616
+		// ordering prompt. It used to be dropped on that pause; it is
+		// resumable now, through the same finisher the unpaused path
+		// runs, so nothing moves until the answer arrives and then the
+		// permanent enters exactly as it would have.
+		_, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+			Kind:           RepEventMove,
+			Actor:          newController,
+			CardID:         cardID,
+			OldZone:        ZoneGraveyard,
+			NewZone:        ZoneBattlefield,
+			entryResumable: true,
+		})
+		return err
 	}
+	// A hand or library destination is not an entry: no pipeline, no
+	// ETB, nothing to pause on.
 	if _, err := MoveCard(src, destZone, cardID); err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
-	var oracleID string
-	if destZone.Kind == ZoneBattlefield {
-		for i := range destZone.Cards {
-			if destZone.Cards[i].InstanceID == cardID {
-				destZone.Cards[i].Controller = actor
-				if entersTapped {
-					destZone.Cards[i].Tapped = true
-				}
-				oracleID = CatalogKey(destZone.Cards[i])
-				break
-			}
-		}
-		for name, n := range enterCounters {
-			_ = g.AddCounterForEffect(cardID, name, n)
-		}
-	}
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
-		Actor:   actor,
+		Actor:   ownerID,
 		CardID:  cardID,
 		OldZone: ZoneGraveyard,
 		NewZone: destZone.Kind,
 	})
-	if destZone.Kind == ZoneBattlefield {
-		g.EmitEvent(Event{Kind: EventETB, Actor: actor, CardID: cardID})
-		// A reanimated permanent enters the battlefield like any
-		// other, so the catalog's AsEnters / StartingLoyalty hook has to
-		// run — otherwise reanimating Solemn Simulacrum fetches
-		// nothing and reanimating a planeswalker gives it no loyalty.
-		// Every other path onto the battlefield already fires this;
-		// this one was the omission. A no-op for a card with no
-		// oracle ID (tokens, fixtures) or no catalog entry.
-		g.fireETBHookLocked(cardID, oracleID)
-	}
 	return nil
 }
 
@@ -1707,9 +1864,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	}
 	if !spec.Optional && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
-		// No decision to make — take them all.
-		found := g.executeSearchTakeLocked(spec, p, matches)
-		return g.finishSearchLocked(spec, p, found)
+		// No decision to make — take them all. The take finishes the
+		// search itself (#478): a battlefield destination is an entry
+		// and an entry can pause, so "then shuffle" is the last link of
+		// a chain rather than the line after the loop.
+		return g.executeSearchTakeLocked(spec, p, matches)
 	}
 	g.queueSearchChoiceLocked(spec, p, matches)
 	return nil
@@ -1774,29 +1933,34 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 }
 
 // executeSearchTakeLocked moves the chosen cards out of the library
-// and returns the IDs that actually made it. Shared by the
-// no-decision path and by ResolveSearchLibrary, so a fetched
-// permanent enters identically either way.
+// and finishes the search with the ones that actually got there.
+// Shared by the no-decision path and by ResolveSearchLibrary, so a
+// fetched permanent enters identically either way.
+//
+// It does not return the found list, because it cannot: both the
+// battlefield branch (#478) and the hand / graveyard branch (#931) can
+// PAUSE on a player prompt, so the search finishes from a
+// continuation. finishSearchLocked is the single place it ends.
 //
 // Caller must hold g.mu.
-func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) []uuid.UUID {
+func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
 		// ZoneLibrary means the card does not leave the library.
 		// With ToTop set it will be moved to the top AFTER the
-		// shuffle, in finishSearchLocked — so the IDs are returned
-		// as found, and nothing is moved here. Without it the clause
-		// is "leave it where it is" and only the reveal applies.
+		// shuffle, in finishSearchLocked — so the IDs are carried
+		// through as found, and nothing is moved here. Without it the
+		// clause is "leave it where it is" and only the reveal applies.
 		if err != nil {
-			return nil
+			return g.finishSearchLocked(spec, p, nil)
 		}
 		if spec.Reveal {
 			g.revealLibraryCardsLocked(spec, p, ids)
 		}
 		if spec.ToTop {
-			return ids
+			return g.finishSearchLocked(spec, p, ids)
 		}
-		return nil
+		return g.finishSearchLocked(spec, p, nil)
 	}
 	// S22: the reveal happens ONCE, before anything moves, and names
 	// every card the search took. Cultivate's "reveal those cards" is
@@ -1806,33 +1970,83 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	if spec.Reveal {
 		g.revealLibraryCardsLocked(spec, p, ids)
 	}
-	found := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if !p.Library.Contains(id) {
-			continue
-		}
-		if destZone.Kind == ZoneBattlefield {
-			moved, ok := g.searchEnterBattlefieldLocked(spec, p, id)
-			if !ok {
-				continue
-			}
-			found = append(found, moved)
-			continue
-		}
-		if _, err := MoveCard(p.Library, destZone, id); err != nil {
-			continue
-		}
-		g.markCardKnownInZoneLocked(destZone, id)
-		g.EmitEvent(Event{
-			Kind:    EventZoneMove,
-			Actor:   spec.Player,
-			CardID:  id,
-			OldZone: ZoneLibrary,
-			NewZone: destZone.Kind,
-		})
-		found = append(found, id)
+	if destZone.Kind == ZoneBattlefield {
+		// #478: a battlefield destination is an ENTRY, and an entry can
+		// pause. The takes are therefore SEQUENCED through the entry's
+		// continuation rather than looped — each card's entry starts the
+		// next one and the last one finishes the search — so a Skyshroud
+		// Claim whose first Forest stops for a prompt does not fetch the
+		// second one over the top of the open question. The same idiom
+		// the discard batch and the exit sweeps use, and the same reason:
+		// the found list is carried forward BY VALUE, which is what makes
+		// an undo across the prompt replay identically.
+		return g.searchEnterEachThenFinishLocked(spec, ids, nil)
 	}
-	return found
+	// #931: a hand or graveyard destination is an EXIT, and every exit
+	// in the engine goes through the one primitive. This used to be a
+	// raw MoveCard loop, which is exactly the shape zone_route.go was
+	// written to delete: no CR 614 window, so "if a card would be put
+	// into a graveyard from anywhere, exile it instead" (Rest in Peace,
+	// Leyline of the Void) could not see an Entomb, and no CR 903.9
+	// offer for a tutored commander.
+	//
+	// It is the shared batch body (routeAllThenLocked), not a loop,
+	// because a leg can now PAUSE: the takes are sequenced, each from
+	// the previous one's continuation, and the search finishes — the
+	// EventSearchLibrary, the shuffle, spec.Then — only once they have
+	// all settled. The same sequencing the battlefield branch above got
+	// in #478, for the same reason.
+	//
+	// `found` is what the batch reports: the cards that ARRIVED where
+	// the search asked (CR 400.7, landedInZoneLocked). A card an
+	// "exile it instead" replacement took, and a commander that took
+	// CR 903.9's offer, are not in it — the same reading the
+	// battlefield branch has used since #478, where a fetched permanent
+	// whose entry was replaced away is not "found" either.
+	return g.routeAllThenLocked(searchRoute(spec.Player, spec.Dest), ids, func(g *Game, found []uuid.UUID) error {
+		p := g.playerByIDLocked(spec.Player)
+		if p == nil {
+			return ErrPlayerNotFound
+		}
+		return g.finishSearchLocked(spec, p, found)
+	})
+}
+
+// searchEnterEachThenFinishLocked puts the head of `ids` onto the
+// battlefield and continues with the tail from that entry's
+// continuation. The empty list is the base case: the search is finished
+// (EventSearchLibrary, the shuffle, spec.Then) with the cards that
+// actually entered.
+//
+// The player is re-looked-up from the live *Game on every step rather
+// than captured, on the undo-safety contract every continuation in the
+// engine follows.
+//
+// Caller must hold g.mu.
+func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, found []uuid.UUID) error {
+	p := g.playerByIDLocked(spec.Player)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	// A card that is no longer in the library is skipped rather than
+	// fetched: it left while an earlier card's entry prompt was open.
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) {
+		ids = ids[1:]
+	}
+	if len(ids) == 0 {
+		return g.finishSearchLocked(spec, p, found)
+	}
+	head, rest := ids[0], ids[1:]
+	return g.searchEnterBattlefieldLocked(spec, p, head, func(g *Game, entered uuid.UUID) error {
+		out := found
+		if entered != uuid.Nil {
+			// A fresh slice rather than an append in place: two runs of
+			// the same continuation (an undo, then the same answer
+			// again) must not see each other's entry.
+			out = append(append(make([]uuid.UUID, 0, len(found)+1), found...), entered)
+		}
+		return g.searchEnterEachThenFinishLocked(spec, rest, out)
+	})
 }
 
 // searchEnterBattlefieldLocked puts one fetched card onto the
@@ -1848,40 +2062,36 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 // express a conditional one.
 //
 // The pipeline is consulted BEFORE the card leaves the library, for
-// the same reason the exile-return path does it: a CR 616 ordering
-// prompt means bailing, and bailing with the card already lifted out
-// of its zone would strand it. On that bail this card is simply not
-// found — the same posture the land-play path takes when its own
-// pipeline call pauses.
+// the same reason the exile-return path does it: a paused entry moves
+// nothing, and pausing with the card already lifted out of its zone
+// would strand it.
 //
-// DECLARED SIMPLIFICATION — this event is NOT entryResumable, so a
-// fetched permanent never gets an entry prompt.
+// #478: the entry is RESUMABLE, so a fetched permanent gets its entry
+// prompt. A fetchland cracking for a shockland asks "pay 2 life so it
+// enters untapped?" exactly as the play path does, and two entry
+// replacements on one fetched land (Kismet plus Thalia, Heretic
+// Cathar) queue the CR 616 ordering prompt and then finish the fetch
+// when it is answered.
 //
-// The concrete case is a fetchland cracking for a shockland. On the
-// play path the controller is asked "pay 2 life so it enters
-// untapped?"; fetched, they are not asked, and the land enters
-// tapped. Weaker than printed, never stronger — which is exactly the
-// posture ReplacementEvent.entryResumable exists to enforce, and a
-// strict improvement on the old behaviour, where a fetched shockland
-// ignored its entry clause altogether and arrived untapped for free.
+// That used to be a declared simplification, and the argument against
+// closing it was that executeEntryToBattlefieldLocked could finish the
+// MOVE but knew nothing about the search that started it — the library
+// would never be shuffled, EventSearchLibrary would never fire, and the
+// Then continuation (Fabled Passage's "untap that land", Gamble's
+// random discard) would never run. All three of those now ride across
+// the pause on ev.entryTail, so the resume finishes the search rather
+// than only the move; see entry_tail.go. With two applicable
+// replacements the OLD behaviour was not a graceful degradation at all:
+// the prompt was still queued, the player still answered it, and the
+// card was still in the library afterwards.
 //
-// Setting entryResumable here would be actively worse, not better.
-// executeEntryToBattlefieldLocked can finish the MOVE, but it knows
-// nothing about the search that started it: the library would never
-// be shuffled, EventSearchLibrary would never fire, and the Then
-// continuation — Fabled Passage's "untap that land", Gamble's random
-// discard — would never run. A missing shuffle is worse than a
-// missing prompt, because it silently leaks library order.
-//
-// A faithful version needs the search's own continuation to survive
-// the entry prompt: a second frame stacked under the replacement
-// one, plus a hook in the entry resume to run it. That is its own
-// change, not a rider on this one.
-//
-// Returns the moved card's ID and whether it moved.
+// `then` is handed the entering permanent's ID, or uuid.Nil when
+// nothing entered — cancelled, redirected, or its prompt taken away. It
+// runs from every terminal outcome, which is what lets the search
+// sequence its remaining takes through it.
 //
 // Caller must hold g.mu.
-func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID) (uuid.UUID, bool) {
+func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, then func(g *Game, entered uuid.UUID) error) error {
 	// The controller has to be stamped before the pipeline runs:
 	// Authority of the Consuls asks whose permanent is entering, and
 	// a self-replacement's condition ("unless you control two or
@@ -1892,7 +2102,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 			break
 		}
 	}
-	ev := &ReplacementEvent{
+	_, err := g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
 		Kind:    RepEventMove,
 		Actor:   spec.Player,
 		CardID:  id,
@@ -1901,57 +2111,15 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// The fetching effect's own "put it onto the battlefield
 		// TAPPED" clause is seeded onto the event rather than OR-ed
 		// in after the pipeline. Same result for the inline path, and
-		// it is the difference between right and wrong for any resume
+		// it is the difference between right and wrong for the resume
 		// path: a resume reads ev.EntersTapped and has no idea what
 		// spell sent the card, so a Cultivate-fetched land that
 		// paused for a prompt would otherwise come back untapped.
-		EntersTapped: spec.TappedOnEntry,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		return uuid.Nil, false
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return uuid.Nil, false
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		return uuid.Nil, false
-	}
-	moved, err := MoveCard(p.Library, g.Battlefield, id)
-	if err != nil {
-		return uuid.Nil, false
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
-			continue
-		}
-		g.Battlefield.Cards[i].Controller = spec.Player
-		// out.EntersTapped carries both inputs: the fetching effect's
-		// printed "tapped" clause, seeded onto the event above, and
-		// whatever the CR 614 pipeline added on top.
-		if out.EntersTapped {
-			g.Battlefield.Cards[i].Tapped = true
-		}
-		break
-	}
-	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-	for name, n := range out.EntersWithCounters {
-		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   spec.Player,
-		CardID:  moved.InstanceID,
-		OldZone: ZoneLibrary,
-		NewZone: ZoneBattlefield,
+		EntersTapped:   spec.TappedOnEntry,
+		entryResumable: true,
+		entryTail:      &entryTail{then: then},
 	})
-	g.EmitEvent(Event{Kind: EventETB, Actor: spec.Player, CardID: moved.InstanceID})
-	// Same omission as the reanimation path had: a fetched permanent
-	// enters like any other, so its catalog AsEnters hook runs.
-	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
-	return moved.InstanceID, true
+	return err
 }
 
 // revealLibraryCardsLocked reveals the named library cards to the
@@ -2042,13 +2210,16 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 	return nil
 }
 
-// CreateTokenForEffect puts n freshly-minted tokens onto the
-// battlefield under `controller`'s control. Each token has a new
-// InstanceID, empty ScryfallID (tokens aren't in the Scryfall-
-// printing index), and KnownBy pre-populated with every seated
-// player (tokens are always public). The emitted EventTokenCreated
-// references the first token ID — callers loop for the others via
-// the event stream.
+// CreateTokenForEffect creates n tokens under `controller`'s control
+// from `template` (CR 701.7b). The common shape, and the one nearly
+// every catalog card wants: no entry clause, nothing to do
+// afterwards.
+//
+// Since #762 it is one call on the shared creation path — the CR
+// 701.7b replacement window, then an ordinary battlefield entry per
+// token. See token_create.go.
+//
+// Caller must hold g.mu.
 func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) error {
 	_, err := g.CreateTokensForEffect(controller, template, n, TokenEntryOptions{})
 	return err
@@ -2067,154 +2238,88 @@ func (g *Game) CreateTokenForEffect(controller uuid.UUID, template Card, n int) 
 type TokenEntryOptions struct {
 	// Tapped enters the tokens tapped — "create a TAPPED Powerstone
 	// token" (Stern Lesson), "create a 1/1 Goblin tapped and
-	// attacking" minus the attacking half, which needs combat state
-	// this struct deliberately does not touch.
+	// attacking" minus the attacking half, which the creation's own
+	// Attacking field carries.
+	//
+	// Since #762 it is SEEDED onto the entry event rather than
+	// stamped and forgotten, the way ZoneEntryOptions.Tapped is: the
+	// creation's clause and whatever an enters-tapped replacement
+	// (Urabrask, Kismet, Thalia) adds on top settle in one field, and
+	// no reader downstream can lose one of the two.
 	Tapped bool
 
 	// Counters are the counters each token enters with, keyed by
 	// counter name. Applied before EventETB fires, so an ETB watcher
 	// and the P/T recompute both see the finished object.
 	//
-	// Declared gap: these do NOT run the CR 614 counter replacement
-	// pipeline, so a Doubling Season does not double them. Token
-	// creation does not go through the zone-move pipeline at all
-	// (the token has no previous zone to move from), which is the
-	// same reason Tapped is a field here rather than the
-	// RepEventMove.EntersTapped an ordinary permanent uses.
+	// They ride the entry event as EntersWithCounters (#762), which
+	// is what puts them through the CR 614 counter pipeline: a
+	// Doubling Season doubles them, Renata and Arwen add to them, and
+	// All Will Be One sees them placed.
 	Counters map[string]int
 
 	// Keywords are granted on top of the template's printed ones —
-	// the "…with haste" half of a card that pumps the token it
-	// makes. Additive: the template's own keywords are kept.
+	// the "…with haste" half of a card that pumps the token it makes.
+	// Additive: the template's own keywords are kept.
 	Keywords []string
 }
 
 // CreateTokensForEffect is CreateTokenForEffect with entry options,
-// returning the instance IDs of the tokens it made in creation
-// order. The IDs are what a card needs when the token is not the end
-// of the sentence — "create a token, then sacrifice it", "…then put
-// a counter on it".
+// returning the instance IDs of the tokens it made in creation order.
+// The IDs are what a card needs when the token is not the end of the
+// sentence — "create a token, then sacrifice it", "…then put a
+// counter on it".
+//
+// THE RETURNED SLICE IS EMPTY WHEN THE CREATION PAUSED. Since #762 a
+// creation goes through the CR 701.7b replacement window, and a
+// window with two DIFFERENT applicable effects in it (a Doubling
+// Season and an Academy Manufactor) queues a CR 616 ordering prompt;
+// the tokens are made when it is answered, an action later, and there
+// is nothing to return here. A caller whose sentence continues past
+// the tokens must hand that continuation to
+// CreateTokensThenForEffect rather than read this slice on the next
+// line — the same contract MillToZoneThenForEffect and
+// discardCardsLocked carry.
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
-	if n <= 0 {
-		return nil, nil
-	}
-	ids := make([]uuid.UUID, 0, n)
-	for i := 0; i < n; i++ {
-		tok := template
-		tok.InstanceID = uuid.New()
-		tok.Owner = controller
-		tok.Controller = controller
-		tok.Counters = nil
-		tok.LostLastCounter = false
-		tok.KnownBy = nil
-		if opts.Tapped {
-			// Additive, not an assignment: a caller that pre-stamped
-			// Tapped on the template (the older idiom — Mary Read's
-			// Treasure, Hashaton's Zombie) must keep entering tapped.
-			tok.Tapped = true
-		}
-		if len(opts.Counters) > 0 {
-			tok.Counters = make(map[string]int, len(opts.Counters))
-			for name, count := range opts.Counters {
-				if count > 0 {
-					tok.Counters[name] = count
-				}
-			}
-		}
-		if len(opts.Keywords) > 0 {
-			// Fresh slice: the template's Keywords slice is shared by
-			// every token minted from it, so appending in place would
-			// leak the grant onto the next one.
-			kw := make([]string, 0, len(template.Keywords)+len(opts.Keywords))
-			kw = append(kw, template.Keywords...)
-			kw = append(kw, opts.Keywords...)
-			tok.Keywords = kw
-		}
-		for _, seat := range g.Seats {
-			tok.AddKnower(seat.ID)
-		}
-		// CR 506.3c / #859: a template that arrives already attacking
-		// (Adeline's "tapped and attacking Human") was PUT onto the
-		// battlefield attacking, not declared, so it announces no
-		// EventAttack — and the attack declaration's lock-in must not
-		// mistake its AttackingTarget for a staged declaration.
-		if tok.AttackingTarget != uuid.Nil {
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
-		}
-		g.Battlefield.PushTop(tok)
-		ids = append(ids, tok.InstanceID)
-		g.EmitEvent(Event{
-			Kind:   EventTokenCreated,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-	}
-	return ids, nil
+	var made []uuid.UUID
+	err := g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n, Entry: opts}},
+	}, func(_ *Game, created []uuid.UUID) error {
+		made = created
+		return nil
+	})
+	return made, err
 }
 
-// CreateTokensAttackingForEffect is CreateTokenForEffect for
-// "create N tokens … that are attacking" (Parhelion II, Hanweir
-// Garrison): the tokens are put onto the battlefield already
-// attacking `defender`.
+// CreateTokensAttackingForEffect is CreateTokenForEffect for "create
+// N tokens … that are attacking" (Parhelion II, Hanweir Garrison):
+// the tokens are put onto the battlefield already attacking
+// `defender`.
 //
-// CR 506.3c is the reason this is a separate entry point rather than
-// a flag: a permanent PUT onto the battlefield attacking was never
-// DECLARED as an attacker, so it fires no "whenever ~ attacks"
-// trigger and nothing that watches attack declarations sees it.
-// Setting AttackingTarget directly and emitting no EventAttack is
-// exactly that rule, and routing through DeclareAttacker — which
-// emits the event, checks summoning sickness and taps — would be
-// wrong on all four counts.
+// CR 506.3c is why the attacking-ness is part of the CREATION rather
+// than something done to the tokens afterwards: a permanent PUT onto
+// the battlefield attacking was never DECLARED as an attacker, so it
+// fires no "whenever ~ attacks" trigger and nothing that watches
+// attack declarations sees it. Setting AttackingTarget as the token
+// is minted and emitting no EventAttack is exactly that rule, and
+// routing through DeclareAttacker — which emits the event, checks
+// summoning sickness and taps — would be wrong on all four counts.
 //
 // A zero `defender`, or a defender that is not a seated player,
-// creates the tokens untapped and not attacking rather than
-// erroring: the ability that called this has already resolved, and
-// the tokens are the part of it that can still be delivered.
+// creates the tokens untapped and not attacking rather than erroring:
+// the ability that called this has already resolved, and the tokens
+// are the part of it that can still be delivered.
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Card, n int, defender uuid.UUID) error {
-	if n <= 0 {
-		return nil
-	}
-	attacking := defender != uuid.Nil && g.playerByIDLocked(defender) != nil
-	for i := 0; i < n; i++ {
-		tok := template
-		tok.InstanceID = uuid.New()
-		tok.Owner = controller
-		tok.Controller = controller
-		tok.Counters = nil
-		tok.LostLastCounter = false
-		tok.KnownBy = nil
-		if attacking {
-			tok.AttackingTarget = defender
-			// CR 506.3c, again: never declared, so the lock-in
-			// (attackers.go) skips it rather than announcing it at
-			// the next priority boundary.
-			g.noteAttackAnnouncedLocked(tok.InstanceID)
-		}
-		for _, seat := range g.Seats {
-			tok.AddKnower(seat.ID)
-		}
-		g.Battlefield.PushTop(tok)
-		g.EmitEvent(Event{
-			Kind:   EventTokenCreated,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-		g.EmitEvent(Event{
-			Kind:   EventETB,
-			Actor:  controller,
-			CardID: tok.InstanceID,
-		})
-	}
-	return nil
+	return g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n}},
+		Attacking:  defender,
+	}, nil)
 }
 
 // ScryForEffect performs a scry N (CR 701.22): the player looks at the
@@ -2224,7 +2329,9 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 // Returns the number of cards actually looked at, which is fewer than n
 // when the library is short and zero when it is empty — a scry with an
 // empty library is not an error, it simply does nothing, and no choice
-// is queued.
+// is queued. It is also zero when the CR 614 keyword-action window
+// PAUSED on an ordering prompt, in which case nothing has been queued
+// yet and the resume queues it; see ScryThenForEffect.
 //
 // Scry is LOOK AT, not reveal. Only the scrying player becomes a knower
 // of the cards, so the per-viewer wire filter redacts them for everyone
@@ -2255,11 +2362,21 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // `after` still runs when the scry looked at nothing (an empty
 // library): the instruction after "then" is not conditional on the
-// scry having had cards to look at.
+// scry having had cards to look at. It runs on every other terminal
+// outcome too — a scry replaced away entirely still leaves Preordain's
+// draw to happen.
+//
+// A scry is a KEYWORD ACTION (CR 701.22), so this opens the CR 614
+// window on it before the prompt is queued: "if you would scry, scry
+// that many plus one instead" rewrites the count, and the prompt is
+// queued with what the window settled on. A window with two different
+// replacements in it PAUSES on a CR 616 ordering prompt, and then
+// nothing is queued and the returned count is 0 — the resume queues
+// the scry when the order is answered. See keyword_action.go and #976.
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceScry, playerID, source, n, scryReason, after)
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after)
 }
 
 // SurveilThenForEffect is surveil N with a continuation (CR 701.25):
@@ -2274,9 +2391,53 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 // does: it must not run until the library is in the order the player
 // chose.
 //
+// A surveil is a keyword action (CR 701.25) on the same CR 614 window
+// scry opens — same count, same "that many plus one" shape, same
+// pause. See ScryThenForEffect.
+//
 // Caller must hold g.mu.
 func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceSurveil, playerID, source, n, surveilReason, after)
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after)
+}
+
+// keywordLookAtTopForEffect is the scry / surveil entry point: it
+// opens the CR 614 keyword-action window on the count and, once the
+// window settles, queues the prompt through the same
+// lookAtTopForEffect body every member of the family uses.
+//
+// LookAtTopThenForEffect deliberately does NOT come through here.
+// "Look at the top N cards of your library, then put them back in any
+// order" is not a keyword action — it is a sentence Ponder and
+// Sensei's Divining Top print in full — so there is no "if you would
+// look at the top" to replace, and routing it through a keyword-action
+// window would invent one.
+//
+// A count of zero or less opens no window either: you would not scry,
+// so there is nothing for a replacement to replace. The `after`
+// continuation still runs, in lookAtTopForEffect, exactly as it did.
+//
+// Caller must hold g.mu.
+func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	if n <= 0 {
+		return g.lookAtTopForEffect(kind, playerID, source, n, after)
+	}
+	looked, err := g.runKeywordActionLocked(&ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              playerID,
+		Source:             source,
+		KeywordAction:      action,
+		KeywordActionCount: n,
+		keywordAction:      &keywordActionTail{choice: kind, then: after},
+	})
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    playerID,
+			Source:   source,
+			ErrorMsg: err.Error(),
+		})
+	}
+	return looked
 }
 
 // LookAtTopThenForEffect is "look at the top N cards of your library,
@@ -2291,7 +2452,7 @@ func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after fun
 //
 // Caller must hold g.mu.
 func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, lookAtTopReason, after)
+	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, after)
 }
 
 // lookAtTopForEffect queues the "look at the top N cards of your
@@ -2306,8 +2467,13 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 // there is nothing to look at: the instruction after "then" is not
 // conditional on the library having had cards in it.
 //
+// The banner copy comes from the prompt kind (lookAtTopReasonFor), so
+// the keyword-action window that may have rewritten `n` cannot leave
+// the prompt saying "Scry 2" over three cards.
+//
 // Caller must hold g.mu.
-func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, reason func(int) string, after func(g *Game) error) int {
+func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
 		if after != nil {
 			if err := after(g); err != nil {
@@ -2421,6 +2587,23 @@ func lookAtTopReason(n int) string {
 	return "Look at the top " + strconv.Itoa(n) + " cards of your library"
 }
 
+// lookAtTopReasonFor picks the banner copy for a prompt kind. The
+// three prompts differ only in where the cards that leave the top go,
+// so the copy is the one thing that has to say which keyword the
+// player is answering — and it is chosen from the KIND rather than
+// passed in beside it, so the count the prompt is queued with is
+// always the count the banner names. An unknown kind gets the neutral
+// phrasing rather than a blank banner.
+func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
+	switch kind {
+	case PendingChoiceScry:
+		return scryReason
+	case PendingChoiceSurveil:
+		return surveilReason
+	}
+	return lookAtTopReason
+}
+
 // ReturnFromExileToBattlefieldForEffect is the other half of a
 // flicker: it takes a card sitting in exile and puts it back onto the
 // battlefield. ExileCardForEffect could already send a permanent
@@ -2447,11 +2630,17 @@ func lookAtTopReason(n int) string {
 // an ordinary battlefield entry does, so Authority of the Consuls
 // taps the blinked creature and a self "enters tapped" replacement
 // still applies. The pipeline is consulted BEFORE the card is lifted
-// out of exile: if it queues a CR 616 ordering prompt the card has
-// not moved yet, so the return simply doesn't happen rather than
-// stranding the card between zones. (That path needs two competing
-// replacements on one entry; no card in the catalog produces it
-// today.)
+// out of exile, so nothing is stranded between zones.
+//
+// #478: the entry can PAUSE. Two entry replacements on one returning
+// permanent queue the CR 616 ordering prompt, and a shockland blinked
+// back is asked to pay. Until now the return was DROPPED on that pause
+// — the reason #909's Living Death could hang both of its remaining
+// passes off one continuation. It is now resumable like every other
+// entry: nothing has moved while the question is open, and the return
+// completes, with its new object identity, when the answer arrives.
+// The call returns uuid.Nil with a nil error in the meantime, which is
+// the same "nothing entered" the cancel and redirect branches return.
 //
 // Both EventETB and the catalog's AsEnters hook fire, so the permanent
 // re-triggers everything a fresh entry would.
@@ -2477,76 +2666,27 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 		g.Exile.Cards[i].Controller = newController
 		break
 	}
-	ev := &ReplacementEvent{
-		Kind:    RepEventMove,
-		Actor:   newController,
-		CardID:  cardID,
-		OldZone: ZoneExile,
-		NewZone: ZoneBattlefield,
-	}
-	out, err := g.applyReplacementsLocked(ev)
-	if errors.Is(err, errReplacementPending) {
-		// A CR 616 ordering prompt is open. Nothing has moved; the
-		// card stays in exile and the return is dropped.
-		return uuid.Nil, nil
-	}
-	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-		g.clearReplacementEventLocked(ev.ID)
-		return uuid.Nil, err
-	}
-	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled || out.NewZone != ZoneBattlefield {
-		// Canceled, or redirected elsewhere by a replacement. There
-		// is no generic "put it wherever the pipeline said" helper
-		// for an exile source, so a redirect is treated as a cancel
-		// rather than guessed at.
-		return uuid.Nil, nil
-	}
-	card, err := g.Exile.Remove(cardID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	newID := uuid.New()
-	// A blink gets a new instance ID but remains the same random source.
-	if ordinal, ok := g.sourceOrdinals[cardID]; ok {
-		g.sourceOrdinals[newID] = ordinal
-	}
-	card.InstanceID = newID
-	card.Controller = newController
-	card.Tapped = tapped || out.EntersTapped
-	card.NextUntapSkips = nil
-	card.Counters = nil
-	card.LostLastCounter = false
-	card.KnownBy = nil
-	card.ExilePlay = ExilePlayPermission{}
-	card.DamageMarked = 0
-	card.MarkedLethalByDeathtouch = false
-	card.AttackingTarget = uuid.Nil
-	card.BlockingTarget = uuid.Nil
-	card.GoadedBy = uuid.Nil
-	card.FaceDown = false
-	card.BattleX = 0
-	card.BattleY = 0
-	card.EnteredBattlefieldAt = 0
-	card.SummonedThisTurn = false
-	card.NamedTribe = ""
-	card.ChosenColor = ""
-	card.effective = nil
-	g.Battlefield.PushTop(card)
-	g.markCardKnownInZoneLocked(g.Battlefield, newID)
-	for name, n := range out.EntersWithCounters {
-		_ = g.AddCounterForEffect(newID, name, n)
-	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   newController,
-		CardID:  newID,
-		OldZone: ZoneExile,
-		NewZone: ZoneBattlefield,
+	// The effect's own "return it TAPPED" clause is seeded onto the
+	// event rather than OR-ed in after the pipeline, the way
+	// SearchLibrarySpec.TappedOnEntry and ZoneEntryOptions.Tapped are:
+	// a resume reads ev.EntersTapped and has no idea what effect sent
+	// the card, so a Thassa blink that paused would otherwise come back
+	// untapped.
+	return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
+		Kind:           RepEventMove,
+		Actor:          newController,
+		CardID:         cardID,
+		OldZone:        ZoneExile,
+		NewZone:        ZoneBattlefield,
+		EntersTapped:   tapped,
+		entryResumable: true,
+		// CR 400.7: the returning permanent is a NEW OBJECT. The
+		// finisher mints the ID and strips the old object's
+		// battlefield state, on the inline path and the resumed one
+		// alike — which is what the old "an exile return cannot be
+		// resumed generically" note was about.
+		entryTail: &entryTail{newObject: true},
 	})
-	g.EmitEvent(Event{Kind: EventETB, Actor: newController, CardID: newID})
-	g.fireETBHookLocked(newID, CatalogKey(card))
-	return newID, nil
 }
 
 // HandEntryOptions are the modifiers a "put a card from your hand
@@ -2690,6 +2830,37 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	if p == nil || p.Eliminated {
 		return nil
 	}
+	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, nil, addManaReason)
+}
+
+// addManaSlotsLocked is the one slot walk behind every "an effect adds
+// mana" path: AddManaWithOptionsForEffect above, and #763's triggered
+// mana abilities (addTriggeredManaLocked). One body rather than two,
+// so a pipe from a trigger queues exactly the pick a spell's pipe
+// queues and nothing has to be kept in step by hand.
+//
+// It has two modes, and they are the two the mana pipeline already
+// had for a multi-option slot:
+//
+//   - `pending` nil — queue a PendingChoiceMana, the way
+//     ActivateManaAbility and a resolving spell do. The player picks.
+//   - `pending` non-nil — the AUTO-TAP executor's remaining colour
+//     requirements: pick greedily against them with pickColorForSlot,
+//     the same function materializePlanLocked uses for a tapped
+//     source's own slots, and book the requirement the pick pays. The
+//     auto-tapper's contract is "no further player decisions", so it
+//     may not leave a prompt behind mid-cast.
+//
+// `reason` labels the queued prompt. Caller must hold g.mu in write
+// mode and have checked the player is seated and not eliminated.
+func (g *Game) addManaSlotsLocked(
+	p *Player,
+	source uuid.UUID,
+	produced string,
+	narrow bool,
+	pending *[]ColorRequirement,
+	reason func(ProducedManaEntry) string,
+) error {
 	slots, err := ParseProducedMana(produced)
 	if err != nil {
 		return err
@@ -2698,11 +2869,11 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	// walks every zone, and Dark Ritual's three "{B}" slots have
 	// nothing to narrow or order.
 	var identity commanderIdentity
-	if opts.NarrowToCommanderIdentity || hasMultiOptionSlot(slots) {
+	if narrow || hasMultiOptionSlot(slots) {
 		identity = commanderIdentityFor(g, p)
 	}
 	for _, slot := range slots {
-		colorOptions := manaPickOptions(slot.Options, identity, opts.NarrowToCommanderIdentity)
+		colorOptions := manaPickOptions(slot.Options, identity, narrow)
 		if len(colorOptions) == 0 {
 			// CR 903.4f (#844): a "commander's color identity" effect
 			// with no identity adds nothing, and an empty picker is not
@@ -2712,16 +2883,35 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 		}
 		if len(slot.Options) == 1 {
 			p.ManaPool.AddMana(ManaToken{Color: colorOptions[0], Source: source})
-			g.EmitEvent(Event{Kind: EventManaAdded, Actor: playerID, Source: source})
+			g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{colorOptions[0]}})
+			if pending != nil {
+				bookColorRequirement(colorOptions[0], pending)
+			}
+			continue
+		}
+		if pending != nil {
+			// The auto-tap mode: one greedy pick, minted now. A
+			// one-colour-N-mana slot mints all N of it (#742).
+			color := pickColorForSlot(colorOptions, pending)
+			if color == "" {
+				continue
+			}
+			for k := 1; k < slot.AmountFor(color); k++ {
+				bookColorRequirement(color, pending)
+			}
+			for k := 0; k < slot.AmountFor(color); k++ {
+				p.ManaPool.AddMana(ManaToken{Color: color, Source: source})
+				g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
+			}
 			continue
 		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:         PendingChoiceMana,
-			Chooser:      playerID,
-			FromPlayer:   playerID,
+			Chooser:      p.ID,
+			FromPlayer:   p.ID,
 			Count:        1,
 			Source:       source,
-			Reason:       addManaReason(slot),
+			Reason:       reason(slot),
 			ColorOptions: colorOptions,
 			ManaAmounts:  copyManaAmounts(slot.Amounts),
 		})

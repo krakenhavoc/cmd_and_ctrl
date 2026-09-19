@@ -15,9 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The impulse-exile commander. Deathtouch rides PrintedKeywords.
 // Mystic Arcanum is an end-step trigger on the controller's own end
 // step that exiles the top card with a play grant lasting until the
-// end of the controller's NEXT turn — the grant is stamped two rounds
-// out as a backstop and a delayed trigger at the next upkeep pins it
-// to that turn (b20ExileTopUntilEndOfNextTurn). Pact Boon watches
+// end of the controller's NEXT turn — ADR 0063's seat-turn duration,
+// through b20ExileTopUntilEndOfNextTurn. Pact Boon watches
 // two kinds on one ability: a spell cast from exile (EventCast
 // carries the origin — the Appa shape) and a land played from exile
 // (the EventZoneMove b20LandPlayed reads). Any grant counts, not
@@ -40,8 +39,7 @@ func init() {
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Prosper, Tome-Bound — exile the top card of your library; you may play it until the end of your next turn", func(g *game.Game, item *game.StackItem) error {
-				return b20ExileTopUntilEndOfNextTurn(g, item, 1,
-					"Prosper, Tome-Bound — the exiled card may be played until end of turn")
+				return b20ExileTopUntilEndOfNextTurn(g, item, 1)
 			}),
 			OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b20PlayedACardFromExile(ev, source, g)

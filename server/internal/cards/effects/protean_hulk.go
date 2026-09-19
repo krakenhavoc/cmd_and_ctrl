@@ -19,9 +19,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // enters through the search path, so its own enters-tapped clause
 // and every ETB trigger fire, and the library shuffles either way.
 //
-// No simplification. The known engine gap on a fetched permanent
-// whose own entry queues a prompt (#478 — a Clone fetched this way
-// is stranded) is the search path's, not the card's.
+// No simplification. A fetched permanent whose own entry queues a
+// prompt waits for the answer and then arrives (#478), so a Clone
+// fetched this way is asked what to copy rather than stranded.
 func init() {
 	Register(Spec{
 		OracleID:     "10180e2f-90c5-4d41-ba44-16b14948f923",

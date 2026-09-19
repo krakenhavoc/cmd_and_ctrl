@@ -4,6 +4,7 @@
 |---|---|---|
 | `Caddyfile` | both hosts | CD, every deploy of `main` and `develop` ("Deploy Caddy config") |
 | `cmd-and-ctrl-bot.service` | production only | CD, every deploy of `main` ("Install bot systemd unit"); **enabling** it is an operator step, repeated after every rebuild, below |
+| `cmd-and-ctrl-backup.service`, `cmd-and-ctrl-backup.timer` | both hosts | CD, every deploy of `main` and `develop` ("Ensure off-site backup"), which also enables the timer, or disables it and warns when a backup secret or variable is unset. Nightly restic backup to R2; runbook in [docs/environments.md](../docs/environments.md#backups) |
 
 ## The game server's unit is not here
 

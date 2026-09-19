@@ -25,12 +25,17 @@ import (
 //	            supplies the XValue announce-time; the auto-tapper solves
 //	            for Generic + XSlots * XValue generic mana.
 //	{W/U}     — hybrid. Parsed into a ColorRequirement whose Options set
-//	            has both halves. Two-mana hybrids ({2/W}) and Phyrexian
-//	            ({W/P}) share the same shape:
+//	            has both halves. Two-mana hybrids ({2/W}), Phyrexian
+//	            ({W/P}) and hybrid Phyrexian ({W/U/P} — the ten symbols
+//	            of CR 107.4) share the same shape:
 //	                - {N/W}:   Options = {"W"}, NumericAlt = N (pay-N-or-W).
 //	                - {W/P}:   Options = {"W"}, Phyrexian = true (pay-W-or-2-life).
-//	              S15 doesn't implement the life self-pay or the numeric-alt
-//	              payment — auto-tapper treats these as the color half.
+//	                - {W/U/P}: Options = {"W","U"}, Phyrexian = true
+//	                           (pay-W-or-U-or-2-life, CR 107.4f).
+//	              The numeric-alt payment is still unimplemented — the
+//	              auto-tapper treats it as the colour half. The life half
+//	              of a Phyrexian symbol is announced on the cast
+//	              (CastSpellParams.PhyrexianLife, CR 601.2b).
 //	{S}       — snow. Parses but ParsedCost.HasSnow is informational only;
 //	            S15 does not enforce "must be paid with snow sources."
 //
@@ -54,9 +59,11 @@ type ParsedCost struct {
 	// XValue to produce the total generic-mana demand.
 	XSlots int
 
-	// HasPhyrexian is true if any {W/P}-style token was parsed. The
-	// cost validator records this for the "pay 2 life instead"
-	// affordance S17 will wire; S15 always pays the mana half.
+	// HasPhyrexian is true if any Phyrexian token was parsed — {W/P}
+	// or a hybrid Phyrexian {W/U/P} (CR 107.4). The "pay 2 life
+	// instead" half is announced on the cast
+	// (CastSpellParams.PhyrexianLife, CR 601.2b); see
+	// phyrexian_mana.go. PhyrexianSymbols() counts them.
 	HasPhyrexian bool
 
 	// HasSnow is true if any {S} token was parsed. S15 treats snow
@@ -65,13 +72,24 @@ type ParsedCost struct {
 	HasSnow bool
 }
 
-// ColorRequirement is one colored-mana slot. Options is the set of
-// colors that may satisfy it; a monocolored {R} has Options = {"R"},
-// a hybrid {W/U} has Options = {"W", "U"}. Phyrexian flags the
-// "or 2 life" alternative; NumericAlt flags the "{N/COLOR}" two-mana
-// hybrid alternative (Reaper King). The validator and auto-tapper do
-// not read NumericAlt — they pay the coloured half — but the mana
-// value does (CR 202.3f, ColorRequirement.ManaValue).
+// ColorRequirement is one colored-mana slot — ONE symbol, whatever
+// its printed shape. Options is the set of colors that may satisfy
+// it; a monocolored {R} has Options = {"R"}, a hybrid {W/U} has
+// Options = {"W", "U"}. Phyrexian flags the "or 2 life" alternative
+// (CR 107.4f); NumericAlt flags the "{N/COLOR}" two-mana hybrid
+// alternative (Reaper King). The two flags COMPOSE rather than naming
+// separate symbol kinds, and that is what makes CR 107.4's ten hybrid
+// Phyrexian symbols expressible without a fourth kind:
+//
+//	{W}      Options {"W"}
+//	{W/U}    Options {"W","U"}
+//	{W/P}    Options {"W"}      Phyrexian
+//	{W/U/P}  Options {"W","U"}  Phyrexian
+//	{2/W}    Options {"W"}      NumericAlt 2
+//
+// The validator and auto-tapper do not read NumericAlt — they pay the
+// coloured half — but the mana value does (CR 202.3f,
+// ColorRequirement.ManaValue).
 type ColorRequirement struct {
 	Options       []string
 	Phyrexian     bool
@@ -165,6 +183,20 @@ func absorbToken(token string, out *ParsedCost) error {
 		return nil
 	}
 
+	// Hybrid Phyrexian — "{W/U/P}" and the other nine symbols of CR
+	// 107.4. One symbol carrying two colour options AND the life
+	// option, which is the two existing flags composed rather than a
+	// third symbol kind.
+	if len(u) == 5 && u[1] == '/' && u[3] == '/' && u[4] == 'P' &&
+		isColor(u[0]) && isColor(u[2]) {
+		out.Required = append(out.Required, ColorRequirement{
+			Options:   []string{string(u[0]), string(u[2])},
+			Phyrexian: true,
+		})
+		out.HasPhyrexian = true
+		return nil
+	}
+
 	// Hybrid forms — "{W/U}", "{2/W}", "{W/P}".
 	if len(u) == 3 && u[1] == '/' {
 		left, right := u[0], u[2]
@@ -246,9 +278,10 @@ func (e ProducedManaEntry) AmountFor(color string) int {
 
 // OneColorAmounts reports whether the slot is a "N mana of any one
 // color" pick — several options, at least one adding more than one
-// mana. The auto-tapper plans around such a slot (see
-// gatherTapSources) because its tokens must all be one colour, which
-// the planner's one-slot-one-mana model cannot promise.
+// mana. Its tokens must all share one colour, which the planner's
+// one-slot-one-mana model cannot express in a single candidate, so
+// #779's appendTapSource expands such a slot into one candidate PER
+// COLOUR and the plan carries the chosen one to the executor.
 func (e ProducedManaEntry) OneColorAmounts() bool {
 	return len(e.Options) > 1 && len(e.Amounts) > 0
 }

@@ -40,11 +40,13 @@ import (
 // # The entry prompt actually works here
 //
 // The pay-life prompt only fires where ReplacementEvent.entryResumable
-// is set, which is exactly and only CastSpell's land branch — the
-// path an MDFC back takes when a player plays it as a land. A land
-// put onto the battlefield by an EFFECT takes the un-paid branch and
-// enters tapped, inheriting the shockland cycle's declared limitation
-// (see shocklands.go): weaker than printed, never stronger.
+// is set. That is CastSpell's land branch — the path an MDFC back
+// takes when a player plays it as a land — and, since #478, stack
+// resolution, the library search, the exile return and the
+// reanimation, so a fetched or blinked MDFC land back is asked too.
+// The one entry that still takes the un-paid branch is
+// putOntoBattlefieldFromZoneLocked's batch (see shocklands.go):
+// weaker than printed, never stronger.
 
 // mdfcLandLifeCost is what every pay-life MDFC land back charges.
 // All fifteen ask for the same number; naming it keeps the prompt

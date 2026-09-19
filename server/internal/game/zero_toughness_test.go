@@ -97,9 +97,15 @@ func TestZeroZeroLosingItsLastCounterDies(t *testing.T) {
 	}
 }
 
-// The placeholder convention itself is untouched: a Toughness 0
-// creature that never had a counter is still skipped, and so is one
-// that still has counters left after losing one.
+// The stand-in convention itself is untouched: a Toughness 0 creature
+// with no printing behind it that never had a counter is still
+// skipped, and so is one that still has counters left after losing
+// one.
+//
+// pushZeroZero seats no ScryfallID, which is what keeps it skipped
+// since #691 — the same body WITH a printing is a printed 0/0 and dies
+// (toughness_known_test.go). That is the Hangarback-cast-for-X=0 case,
+// and it is no longer this test's subject.
 func TestPrintedZeroSkipStillCoversCreaturesThatNeverLostCounters(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]

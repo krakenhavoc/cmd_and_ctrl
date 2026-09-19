@@ -94,6 +94,32 @@ type PutFromLibraryOntoBattlefield struct {
 	// Tapped is the clause's own "onto the battlefield tapped".
 	Tapped bool
 
+	// Validate is the clause's rule about the picked SET, as opposed
+	// to Match's rule about each card: "any number of nonland
+	// permanent cards with TOTAL MANA VALUE 4 OR LESS from among
+	// them" (Ao, the Dawn Sky). Nil means the bounds and Match are
+	// the whole rule, which is every other card that prints this
+	// sentence.
+	//
+	// It is game.ChooseCardsPrompt.Validate, forwarded verbatim, and
+	// it carries that field's whole contract: it is called with the
+	// picks in submitted order as live value copies, never for an
+	// empty pick (so "put none of them" stays the answer nothing can
+	// refuse), it receives no *game.Game and must not write through
+	// the cards it is handed, and it runs BOTH on the submit path and
+	// inside legal.EnumerateFor — so a set the resolver would refuse
+	// is never offered to a bot seat, and a set a client submits
+	// anyway comes back as ErrChoiceSetRejected with the prompt still
+	// open. effects.b23TotalManaValueAtMost is the first validator
+	// written for it.
+	//
+	// It also switches OFF the "the only legal answer is every
+	// candidate" shortcut below: with a set rule, the legal answers
+	// are the SUBSETS that pass it, so a mandatory clause that would
+	// otherwise be answered for the player becomes a real prompt.
+	// It is ignored by All, which is not a choice at all.
+	Validate func([]game.Card) bool
+
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
@@ -169,8 +195,11 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	if p.Optional {
 		lo = 0
 	}
-	if lo == len(candidates) {
-		// The only legal answer is every candidate.
+	if lo == len(candidates) && p.Validate == nil {
+		// The only legal answer is every candidate. Not so with a
+		// set rule: it is the rule, not the count, that decides
+		// which subsets are answers, and taking the shortcut would
+		// perform a set the prompt would have refused.
 		return finish(ctx.Game, candidates)
 	}
 	label := p.Label
@@ -187,8 +216,9 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 		// Re-checked on submit: every pick must still be in a
 		// library when the answer arrives. The zone's owner is the
 		// FromPlayer, which defaults to the chooser.
-		Zone: game.ZoneLibrary,
-		Then: finish,
+		Zone:     game.ZoneLibrary,
+		Validate: p.Validate,
+		Then:     finish,
 	})
 	return nil
 }
@@ -264,8 +294,24 @@ func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error 
 // loop carries on and the first error is returned, as the random-order
 // bottom does.
 func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
+	return restIntoGraveyard(g, res.Rest)
+}
+
+// restIntoGraveyard is the body PutRestIntoGraveyard and
+// TakeRestIntoGraveyard share: "the rest" into their owners'
+// graveyards, one routed move each.
+//
+// game.PutIntoGraveyardForEffect routes, so Rest in Peace, Leyline of
+// the Void and CR 903.9 all see the arrival; it is not a mill (CR
+// 701.17a counts off the TOP of a library), so it emits an ordinary
+// zone move.
+//
+// A token stays where it is (CR 111.8), and an error on one card does
+// not keep the others out: the loop carries on and the first error is
+// returned.
+func restIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
 	var firstErr error
-	for _, id := range res.Rest {
+	for _, id := range ids {
 		if c, ok := g.LookupCardForEffect(id); ok && c.IsToken() {
 			continue
 		}
@@ -386,6 +432,12 @@ func revealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(
 // library in a random order" — Ureni of the Unwritten, Gilgamesh.
 //
 // Max is 1 for "a" and 0 for "any number".
+//
+// No Validate parameter: a clause that also rules on the picked SET
+// ("with total mana value 4 or less", Ao, the Dawn Sky) states
+// PutFromLibraryOntoBattlefield directly, the way Armored Skyhunter
+// does for its own rider. Widening this signature for a field two of
+// its three callers would pass nil to buys nothing.
 func LookAtTopThenMayPutOntoBattlefield(n int, match CardPredicate, max int, label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)

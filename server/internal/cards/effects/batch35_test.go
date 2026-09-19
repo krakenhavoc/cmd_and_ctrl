@@ -631,6 +631,17 @@ func TestB35GarnaDrawsForAnAttackerDyingAndPingsForAnyOtherDeath(t *testing.T) {
 	}
 }
 
+// TestB35EdenTapsForColorlessMillsTwoAndSacrificesToRegrowAPermanent
+// covers the #796 shape end to end: one activation, the mill, the
+// free yes/no asked AFTER the mill, and the CR 603.12 reflexive
+// trigger on the "if you do" branch.
+//
+// The two things that used to be caveats are the two assertions that
+// matter here: the decline leaves the land on the battlefield with
+// the mana already spent (the decision is made after the cards are
+// seen, so declining has to be a real answer and not a no-op), and
+// the target is picked after the sacrifice, so a permanent card the
+// mill itself just put in the graveyard is a legal pick.
 func TestB35EdenTapsForColorlessMillsTwoAndSacrificesToRegrowAPermanent(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -643,34 +654,69 @@ func TestB35EdenTapsForColorlessMillsTwoAndSacrificesToRegrowAPermanent(t *testi
 	}
 	b08Untap(g, eden)
 	me.ManaPool = nil
-	// The plain mill.
+
+	// Declining: the mill happens, the question is asked, and the
+	// land stays.
 	lib := me.Library.Size()
 	b09AddColorless(me, 5)
 	b16Activate(t, g, me.ID, eden, 0, game.ActivateAbilityParams{})
-	if me.Library.Size() != lib-2 || !g.Battlefield.Contains(eden) {
-		t.Errorf("mill two and keep the land: library %d → %d", lib, me.Library.Size())
+	if me.Library.Size() != lib-2 {
+		t.Errorf("mill two: library %d → %d", lib, me.Library.Size())
 	}
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != me.ID {
+		t.Fatalf("no sacrifice question for the controller: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(ask.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolveConfirm(keep): %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(eden) {
+		t.Error("declining keeps the land")
+	}
+
+	// Accepting: the land is sacrificed and the reflexive trigger
+	// picks a permanent card from the graveyard.
 	b08Untap(g, eden)
-	// The sacrifice: a permanent card comes back, an instant is not
-	// offered, and Eden goes to the graveyard as a cost.
 	rock := b17GraveyardCard(me, "Dead Rock", "Artifact", "{1}")
 	bolt := b17GraveyardCard(me, "Dead Bolt", "Instant", "{R}")
 	b09AddColorless(me, 5)
-	if err := g.ActivateCatalogAbility(me.ID, eden, 1, game.ActivateAbilityParams{Targets: cardRefs(bolt)}); err == nil {
-		t.Fatal("an instant is not a permanent card")
-	}
-	b16Activate(t, g, me.ID, eden, 1, game.ActivateAbilityParams{Targets: cardRefs(rock)})
+	b16Activate(t, g, me.ID, eden, 0, game.ActivateAbilityParams{})
 	if me.Library.Size() != lib-4 {
-		t.Errorf("the sacrifice half mills two too: library %d, want %d", me.Library.Size(), lib-4)
+		t.Errorf("the second activation mills two too: library %d, want %d", me.Library.Size(), lib-4)
 	}
+	ask = latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil {
+		t.Fatalf("no sacrifice question: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm(sacrifice): %v", err)
+	}
+	if g.Battlefield.Contains(eden) || !me.Graveyard.Contains(eden) {
+		t.Error("accepting sacrifices the land")
+	}
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("the reflexive trigger did not ask for a target: %+v", g.PendingChoices)
+	}
+	// "another target PERMANENT card": the instant is not offered,
+	// and neither is Eden, which is in the graveyard by now.
+	if hasID(pick.PickTargetCards, bolt) {
+		t.Error("an instant is not a permanent card")
+	}
+	if hasID(pick.PickTargetCards, eden) {
+		t.Error(`"another" excludes Eden itself`)
+	}
+	if !hasID(pick.PickTargetCards, rock) {
+		t.Fatalf("the artifact is not offered: %v", pick.PickTargetCards)
+	}
+	pickCard(t, g, me.ID, rock)
+	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(rock) {
 		t.Error("the permanent card did not come back to hand")
 	}
-	if g.Battlefield.Contains(eden) || !me.Graveyard.Contains(eden) {
-		t.Error("Eden is sacrificed as a cost")
-	}
-	if spec, _ := Lookup(b35EdenOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 2 {
-		t.Error("the split activation is a declared gap")
+	if spec, _ := Lookup(b35EdenOracle); spec.Completeness != CompletenessFull || len(spec.Activated) != 1 {
+		t.Error("#796 closed the split: one activation, no caveats")
 	}
 }
 

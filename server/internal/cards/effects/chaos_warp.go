@@ -21,19 +21,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not a land drop (CR 305.4) and the entry runs through the CR 614
 // pipeline.
 //
-// DECLARED SIMPLIFICATION, weaker for the caster: a commander's owner
-// is asked about the command zone (CR 903.9), and that prompt pauses
-// the tuck while the shuffle and the reveal carry on. An owner who
-// then keeps the commander in the library has it land on TOP of the
-// already-shuffled library rather than shuffled in: the shuffle cannot
-// wait for an answer without a continuation frame the tuck does not
-// have. The victim knows their next draw, which only ever helps them.
+// #783: the shuffle and the reveal are the tuck's CONTINUATION, not the
+// next two lines. CR 608.2c runs the instructions in order and the tuck
+// can PAUSE — a commander's owner is asked about the command zone —
+// so writing them on the next line shuffled and revealed while the
+// permanent was still on the battlefield, and an owner who then
+// declined had their commander land on TOP of the already-shuffled
+// library instead of shuffled in. Now nothing happens until the
+// question is answered.
+//
+// The answer is deliberately IGNORED. "Shuffles it into their library,
+// THEN reveals the top card" is one sentence about the library, not an
+// "if you do": a commander that goes to the command zone instead still
+// leaves its owner shuffling and revealing, because the shuffle is not
+// conditional on where the permanent ended up.
 func init() {
 	Register(Spec{
 		OracleID:     "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
 		Name:         "Chaos Warp",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If a commander is warped and its owner chooses not to put it into the command zone, it goes on top of their library instead of being shuffled in."},
+		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target permanent", Permanent()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
@@ -45,15 +51,19 @@ func init() {
 				return nil
 			}
 			owner := c.Owner
-			if err := ctx.Game.TuckToLibraryForEffect(id, false); err != nil {
+			source := ctx.Source()
+			// The continuation takes the live *Game rather than
+			// capturing one, the contract every continuation in the
+			// engine follows: an undo restores this game's fields in
+			// place, so a captured *Game would be the wrong one.
+			return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
+				if err := g.ShuffleLibraryForEffect(owner); err != nil {
+					return err
+				}
+				_, err := revealTopThenPutIfMatch(g, source, owner, chaosWarpAnyPermanent,
+					false, "Chaos Warp — revealed from the top of the library")
 				return err
-			}
-			if err := ctx.Game.ShuffleLibraryForEffect(owner); err != nil {
-				return err
-			}
-			_, err := revealTopThenPutIfMatch(ctx.Game, ctx.Source(), owner, chaosWarpAnyPermanent,
-				false, "Chaos Warp — revealed from the top of the library")
-			return err
+			})
 		},
 	})
 }

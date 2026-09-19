@@ -52,6 +52,12 @@ type Card struct {
 	// (e.g. "*" for cards like Mortivore — handled manually until
 	// rules enforcement grows). Used by ResolveCombatDamage to
 	// auto-apply unblocked attacker damage. Added in S08.
+	//
+	// A Toughness of 0 is therefore ambiguous on its own: it is a
+	// printed 0/0 on a Hangarback Walker and "no number here" on a
+	// Mortivore, a token template or a test fixture. VariableToughness
+	// records which, and ToughnessIsKnown is the one place that
+	// decides — do not re-derive the answer from this field.
 	Power     int
 	Toughness int
 
@@ -144,6 +150,26 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
+	// GrantedAbilities are the catalog keys of ability bundles a
+	// CR 707.9a copy effect granted to this object — Phantasmal
+	// Image's "and it has 'when this creature becomes the target of a
+	// spell or ability, sacrifice it'", Sakashima's "{2}{U}{U}:
+	// return it".
+	//
+	// It sits here, in the flat printed fields, for the same reason
+	// Keywords and TypeLine do: a granted ability is part of the
+	// COPIABLE VALUES (CR 707.9a's second sentence), and
+	// PrintedValues is the portable snapshot of exactly these
+	// fields. CopiableValuesOf reads it, applyCopy writes it, and a
+	// copy of a copy therefore inherits the grant with no code of its
+	// own. CatalogKey folds it into the composite catalog key that
+	// makes the abilities findable (copy_grants.go).
+	//
+	// Names, never closures, so the snapshot carries it and an undo
+	// deep-copies it. Nil for every card that was never granted
+	// anything, which is all of them but a handful.
+	GrantedAbilities []string
+
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
 
 	// ManaAbilities are mana abilities carried on the card object,
@@ -218,6 +244,30 @@ type Card struct {
 	// Only meaningful for creatures on the battlefield. Added in S13.1.
 	DamageMarked int
 
+	// RegenerationShields is how many regeneration shields (CR
+	// 701.19a) this permanent is carrying. Each one replaces the next
+	// destruction of this permanent THIS TURN — tap it, remove all
+	// damage from it, remove it from combat — and is used up doing so.
+	// Cleared by the cleanup step alongside DamageMarked, and by the
+	// battlefield exit, because a shield belongs to the permanent that
+	// was given one and the card in the next zone is a new object
+	// (CR 400.7).
+	//
+	// A COUNT rather than a flag because "regenerate it twice" is two
+	// shields and survives two destructions (CR 701.19a's "the next
+	// time"), and a count rather than a Duration-scoped entry
+	// (ADR 0063) because a shield is not a continuous effect: it
+	// changes no characteristic, it is consumed rather than expiring
+	// when it applies, and it belongs to ONE object — which is exactly
+	// what a per-object integer says. The engine reads it from one
+	// place, the CR 701.19 built-in replacement in
+	// builtin_replacements.go. See regeneration.go.
+	//
+	// It is NOT a counter (CR 122): nothing that reads, removes,
+	// doubles or proliferates counters may see it, so it deliberately
+	// does not live in Card.Counters. Added in #667.
+	RegenerationShields int
+
 	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's
@@ -240,16 +290,33 @@ type Card struct {
 	// game's lifetime. Added in S16 sub-PR 3.
 	EnteredBattlefieldAt int64
 
+	// ObjectEpoch counts how many times this card has changed zones,
+	// and so is the identity of the OBJECT rather than of the card
+	// (CR 400.7: "an object that moves from one zone to another
+	// becomes a new object with no memory of its previous
+	// existence"). Bumped once per move in MoveCard — every zone
+	// change, in both directions, because the rule has no exceptions
+	// — and it never resets: an epoch is a serial number, not a
+	// count of anything a player can see.
+	//
+	// The engine keeps several per-object registries keyed by
+	// instance ID, which is the CARD's identity and survives a zone
+	// change. Those that must forget are dropped at the one
+	// battlefield exit (battlefield_exit.go). TurnTally's per-ability
+	// counts could not be, because the CR 726 loop breaker shares
+	// their key and a blink loop would reset its own run every
+	// iteration (#936) — so they are keyed by (instance, epoch)
+	// instead: the returning object reads a key nothing has written,
+	// while the breaker keeps counting the card. See
+	// ObjectTallyKey in turn_tally.go.
+	//
+	// Not a characteristic and not on the wire: nothing renders it
+	// and no rule reads the number itself, only whether two readings
+	// of it are equal.
+	ObjectEpoch int
+
 	// SummonedThisTurn and MarkedLethalByDeathtouch live in the bool
 	// block at the end of Card, for alignment.
-
-	// ExilePlay is the impulse-exile permission (S21 sub-PR 6):
-	// "exile the top card of your library — you may play it this
-	// turn". Meaningful only while the card is in exile, and only
-	// for the player it names, who is usually not the owner. Zero
-	// value means the card is inert exile like any other. Cleared
-	// as the card leaves exile and swept at cleanup.
-	ExilePlay ExilePlayPermission
 
 	// Layout is Scryfall's printing layout, copied verbatim at deck
 	// import: "normal", "transform", "modal_dfc", "adventure",
@@ -373,6 +440,83 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// ChosenPlayer is the player chosen for this permanent by an "as
+	// this enters, choose a player" instruction (CR 614.12) —
+	// True-Name Nemesis. uuid.Nil when none has been chosen, which is
+	// both "this card has no such instruction" and the window between
+	// the permanent entering and its controller answering the prompt.
+	//
+	// Same lifecycle as NamedTribe and ChosenColor: per INSTANCE (two
+	// Nemeses name two different players), carried by the snapshot and
+	// by clone, and cleared when the permanent leaves the battlefield
+	// (CR 400.7) — a Nemesis that is bounced and recast chooses again,
+	// and one in a graveyard is protected from nobody.
+	//
+	// NOT a copiable value (CR 707.2), and that falls out of where it
+	// lives rather than out of a rule anybody has to remember:
+	// CopiableValuesOf projects printed characteristics and never looks
+	// here, so a Clone of a Nemesis chooses its own player as IT enters.
+	//
+	// The one reader is protection.go: "protection from the chosen
+	// player" (CR 702.16k) resolves against this field, comparing the
+	// SOURCE'S CONTROLLER rather than any characteristic of it — the
+	// one quality in the grammar that does. Read it with
+	// ChosenPlayerOf; written by ResolveOptionPick through the
+	// as-enters prompt in choose_player.go and by nothing else.
+	// Added for #980; see ADR 0072 §7.
+	ChosenPlayer uuid.UUID
+
+	// Provenance is what this permanent remembers about the SPELL it
+	// came from — CR 400.7d, "an ability of a permanent can reference
+	// information about the spell that became that permanent as it
+	// resolved, including what costs were paid". Zero value means
+	// "this permanent did not come from a spell, or came from one cast
+	// for its mana cost and nothing else".
+	//
+	// It exists because an entering permanent's own trigger cannot
+	// reach the stack item. "When Gatekeeper of Malakir enters, IF IT
+	// WAS KICKED" and "When Phlage enters, sacrifice it UNLESS IT
+	// ESCAPED" are both TriggeredAbilities whose Build receives the
+	// game, the source and the event — and by the time EventETB is
+	// emitted the item is out of StackMeta. So the entry finisher
+	// stamps the record here, in the one moment that holds both the
+	// landed permanent and the item.
+	//
+	// ONE RECORD, not one per fact. #653 (the alternative cost) and
+	// #664 / ADR 0073 §5 (the optional costs) arrived a week apart and
+	// shipped as two fields with the same lifecycle, the same two
+	// clears, the same snapshot handling and the same stamp three
+	// lines apart. They are one question — "how was the spell that
+	// became this permanent cast?" — and CR 400.7d asks it once.
+	//
+	// Same lifecycle as NamedTribe and ChosenColor and for the same
+	// reason: it belongs to the ENTRY, not to the card. Stamped in
+	// executeEntryToBattlefieldLocked, cleared by MoveCard on the way
+	// off the battlefield (CR 400.7), carried by clone and the
+	// snapshot. Read through Escaped / CastProvenanceForEffect and,
+	// for the kicker half, CardKickedTimes / CardPaidOptionalCost.
+	//
+	// Added in S42 (#653, #664).
+	Provenance CastProvenance
+
+	// FaceDownKind is WHY this object is face down (ADR 0069). Empty
+	// exactly when FaceDown is false; the two are written only by
+	// SetFaceDown / ClearFaceDown, so "face down with no rule
+	// attached" is unrepresentable.
+	//
+	// It sits here with the other strings rather than beside FaceDown
+	// in the bool block: a 16-byte string dropped into that block
+	// strands a bool and fails TestCardHasNoInteriorPadding (#620 /
+	// #633).
+	//
+	// The kind, not the zone, is what every face-down question is
+	// answered from — who may look (faceDownViewersLocked), whether
+	// there is a CR 708.2 body (FaceDownIsPermanent), whether the
+	// catalog is silent (CatalogKey). A Card knows nothing about
+	// where it is, and keeping the answers on the kind is what lets
+	// them live on Card methods with no *Game in reach.
+	FaceDownKind FaceDownKind
+
 	// PrintedSelf is this card's OWN printed values, stashed when a
 	// CR 707 copy effect overwrote the flat printed fields above.
 	// nil — which is every card that is not a Clone-class permanent
@@ -432,6 +576,34 @@ type Card struct {
 	// permanent. It is battlefield state, not a copiable value.
 	NextUntapSkips []UntapSkip
 
+	// ClassLevel is the CR 716.2 level designation on a Class
+	// permanent — the marker that switches its printed "Level N"
+	// abilities on (ADR 0071).
+	//
+	// ZERO READS AS LEVEL 1. CR 716.2b: a Class permanent with no
+	// level designation is level 1, so the zero value is the correct
+	// reading for a Class nobody has levelled and for every card that
+	// is not a Class at all. Always go through ClassLevelOf, never
+	// the field.
+	//
+	// A DESIGNATION, not a counter, and that is the whole reason it
+	// is a field rather than an entry in Counters: nothing
+	// proliferates it, nothing doubles it, and no counter-removal
+	// cost can spend it (CR 716.4 keeps level counters — the CR
+	// 702.87 leveler mechanic — a separate thing).
+	//
+	// Not copiable (CR 716.2c): a copy of a level-3 Class is level 1.
+	// That falls out of where it lives — CopiableValuesOf projects
+	// printed characteristics and never looks here.
+	//
+	// Cleared when the permanent leaves the battlefield (CR 400.7),
+	// alongside NamedTribe and ChosenColor. Carried by the snapshot.
+	// Written by SetClassLevelForEffect and by nothing else. Added in
+	// S46 (#757).
+	ClassLevel int
+
+	// Solved lives in the bool block at the end of Card, for alignment.
+
 	// effective is the cached post-layer-resolution characteristic
 	// for this card on the battlefield. Populated by the layer
 	// engine's recompute pass; nil ⇒ "no recompute has run since
@@ -481,13 +653,19 @@ type Card struct {
 	// Commanders live in the command zone at game start.
 	IsCommander bool
 
-	// FaceDown is the visual face-down flag (CR 708) — morph,
-	// manifest, mutate-bottom, set face-down by an effect. Distinct
-	// from the KnownBy knowledge set: a face-down creature is
-	// face-down to everyone visually, but the morph caster (and
-	// anyone who saw it via Frantic Search-style reveal) still has
-	// the card in their KnownBy set so the hover-reveal works on
-	// their client. Added in S13.5.
+	// FaceDown is the visual face-down flag (CR 406.3a / CR 708) —
+	// "is there a back showing". Distinct from the KnownBy knowledge
+	// set: a face-down creature is face-down to everyone visually,
+	// but the player the rules let look at it (its controller for a
+	// CR 708.5 permanent, its owner for a foretold card) is still in
+	// its KnownBy set, so the hover-reveal works on their client.
+	//
+	// WHY it is face down is FaceDownKind, up with the other strings.
+	// Set only through SetFaceDown / ClearFaceDown, never directly;
+	// cleared by MoveCard on every zone change (CR 400.7, ADR 0069
+	// decision 5) and set again by the destination if the
+	// destination is itself a face-down state. Added in S13.5;
+	// given a kind by ADR 0069.
 	FaceDown bool
 
 	// SummonedThisTurn is the summoning-sickness flag (CR 302.6).
@@ -510,44 +688,64 @@ type Card struct {
 	MarkedLethalByDeathtouch bool
 
 	// VariableToughness records that the printed toughness is not a
-	// number ("*", "1+*", "?"), so Toughness is the importer's 0
-	// stand-in rather than a printed 0. The toughness state-based
-	// action's placeholder skip reads it: a `*` creature whose
-	// characteristic-defining ability is handled manually stays
-	// skipped even after it loses its last counter, where a real
-	// printed 0/0 does not (LostLastCounter, #683).
+	// number the engine can use — "*", "1+*", "?", or missing from a
+	// creature's record altogether — so Toughness is the importer's 0
+	// stand-in rather than a printed 0. ToughnessIsKnown reads it: a
+	// `*` creature whose characteristic-defining ability this engine
+	// does not compute stays out of CR 704.5f even after it loses its
+	// last counter, where a real printed 0/0 does not (#683). A `*`
+	// the engine DOES compute is back in, because the layer pass
+	// answers the question the stand-in was standing in for
+	// (Characteristic.PTDefined, #690).
 	//
-	// Stamped by the deck importer, per face on Faces, and carried by
-	// copy effects with the rest of the printed values: Clone-style
-	// copies (CopiableValuesOf) and token copies (TokenCopyTemplate).
-	// A copy whose exception sets a numeric toughness clears it. False
-	// for an empty printed toughness (non-creatures) and for cards
-	// that never went through import (tokens, fixtures, the demo
-	// seed).
+	// Stamped by the deck importer (deck.variableToughness), per face
+	// on Faces, and carried by copy effects with the rest of the
+	// printed values: Clone-style copies (CopiableValuesOf) and token
+	// copies (TokenCopyTemplate). A copy whose exception sets a
+	// numeric toughness clears it. False for a card that prints no
+	// toughness (lands, instants, artifacts), for the joined top-level
+	// type line of a multi-face printing — SetFace(0) overwrites it
+	// from the face — and for cards that never went through import
+	// (tokens, fixtures, the demo seed).
 	VariableToughness bool
 
 	// LostLastCounter records that this object's counters went from
 	// some to none: its last counter was removed (an effect, the
 	// add_counter action) or cancelled (CR 704.5q). Removing a counter
-	// from a card that has none does not set it. It exists for the
-	// toughness state-based action's printed-0 skip — "Toughness == 0
-	// and no counters" is the placeholder / unparseable-stats
-	// convention documented on Power, and a 0/0 that just LOST its
-	// last +1/+1 counter looks exactly like one. A card that has lost
-	// its counters is not a placeholder: its 0 toughness is real, and
-	// CR 704.5f puts it into its owner's graveyard. The exception is
-	// a card whose printed toughness is not a number
-	// (VariableToughness): its 0 is still the import stand-in, so the
-	// skip keeps covering it. Without the flag a Hangarback Walker
-	// whose one +1/+1 counter cancels against a -1/-1 counter, or is
-	// removed by an effect, would stay on the battlefield as a 0/0 no
-	// damage could kill (#683).
+	// from a card that has none does not set it. It is one of the ways
+	// ToughnessIsKnown learns that a 0 is real — the engine WATCHED
+	// the number arrive — and without it a Hangarback Walker whose one
+	// +1/+1 counter cancels against a -1/-1 counter, or is removed by
+	// an effect, would stay on the battlefield as a 0/0 no damage
+	// could kill (#683).
+	//
+	// It is not the only way, and since #691 it is not the way that
+	// covers a printed card: a printing behind the object answers the
+	// same question for every object that has one, counter history or
+	// none, so what this flag still earns its keep for is the objects
+	// with NO printing — a token, a test fixture — whose counters have
+	// come and gone.
 	//
 	// Per object, like Counters: cleared wherever Counters is reset
 	// for a new object (leaving the battlefield, a token, a spell
-	// copy). A card cast for X=0 never had counters, so it is not
-	// flagged — that separate gap is noted on the X cards.
+	// copy).
 	LostLastCounter bool
+
+	// Solved is the CR 719.3 designation on a Case permanent — the
+	// marker that switches its printed "Solved — [ability]" clauses
+	// on (ADR 0071).
+	//
+	// Set by SolveCaseForEffect, from the "To solve" trigger's
+	// resolution, and by nothing else. Once set it STAYS set for as
+	// long as the permanent is on the battlefield (CR 719.3b): no
+	// card unsolves a Case, and the condition that solved it going
+	// false again changes nothing.
+	//
+	// Not copiable, and cleared when the permanent leaves the
+	// battlefield (CR 400.7) — the same two sentences as ClassLevel,
+	// up with the other non-bool fields, and for the same reasons.
+	// Carried by the snapshot. Added in S46 (#757).
+	Solved bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -632,10 +830,10 @@ func (c Card) PowerForComparison() int {
 // +1/+1 counters, minus any -1/-1 counters. Used by the lethal-
 // damage and 0-toughness SBAs (S13.1). May be zero or negative —
 // callers compare against DamageMarked directly. NOT clamped (cf.
-// CurrentPower) because the SBAs need to distinguish "printed 0/0
-// placeholder" (Toughness == 0, no counters) from "reduced to 0/0
-// by -1/-1 counters" (Toughness > 0 + counters) and from "a 0/0 that
-// lost its last counter" (Card.LostLastCounter).
+// CurrentPower) because the SBAs need to tell a real 0 from the
+// importer's stand-in 0; ToughnessIsKnown below is where that
+// distinction is made, and this number means nothing for an object
+// it answers false for.
 //
 // Same caller responsibility as CurrentPower: ensure
 // RecomputeLayersIfStaleLocked has been called for this game state.
@@ -646,6 +844,71 @@ func (c Card) CurrentToughness() int {
 		t -= c.Counters["-1/-1"]
 	}
 	return t
+}
+
+// ToughnessIsKnown reports whether the engine knows what this
+// object's toughness IS. It is the only gate on the toughness
+// state-based action, and the one precondition CR 704.5f has in this
+// engine.
+//
+// CR 704.5f has no precondition in paper: a creature with toughness 0
+// or less is put into its owner's graveyard, full stop. The gate
+// exists because Card.Toughness is not always a toughness. The deck
+// importer parses Scryfall's printed string with strconv.Atoi and
+// writes 0 when that fails, so a `*` creature, a printing the
+// importer could not resolve, a token template with no body and every
+// test fixture that typed a creature line without a body all arrive
+// carrying a 0 that means "no number here". Killing those on sight is
+// the bug the skip has always existed to prevent; letting the skip
+// cover a REAL 0 is #683, #690 and #691.
+//
+// The answer, in the order it is decided:
+//
+//  1. A nonzero Toughness, or any counter on the object, was never in
+//     question. The fast path, and almost every permanent on almost
+//     every board.
+//  2. A layer 7a or 7b effect DEFINED the P/T in the current pass
+//     (Characteristic.PTDefined). Consuming Aberration and Lord of
+//     Extinction print `*`, but this engine computes them, so
+//     Effective().Toughness is the answer and empty graveyards really
+//     do make them 0/0 (#690). This is the branch that lets a CODED
+//     characteristic-defining ability out of the skip while an
+//     uncoded one stays in it, and the only one that reaches a token,
+//     which has no printing behind it.
+//  3. Otherwise a `*` toughness is the importer's stand-in and the
+//     engine does NOT know the number (Card.VariableToughness). A
+//     Mortivore nobody has coded keeps the skip, losing its last
+//     counter included (#683).
+//  4. A 0 the engine WATCHED arrive: the object's counters went from
+//     some to none (Card.LostLastCounter, #683). Holds for tokens and
+//     fixtures as well as for printings.
+//  5. A printing behind the object (ScryfallID). Its 0 came out of
+//     Scryfall's printed toughness and parsed as a number, because
+//     branch 3 already took every printing where it did not. That is
+//     a real printed 0/0 — a Hangarback Walker cast for X=0, a
+//     Wildwood Scourge that entered with no counters — and CR 704.5f
+//     puts it into its owner's graveyard at once, as it does in paper
+//     (#691).
+//
+// What stays skipped is the set with no printing, no computed P/T and
+// no counter history: test fixtures that left the body at 0, and 0/0
+// token templates. Both are objects the engine genuinely has no
+// toughness for.
+//
+// Caller responsibility is CurrentToughness': the effective
+// characteristic must be fresh, so call RecomputeLayersIfStaleLocked
+// first. The state-based action loop does.
+func (c Card) ToughnessIsKnown() bool {
+	if c.Toughness != 0 || len(c.Counters) > 0 {
+		return true
+	}
+	if c.effective != nil && c.effective.PTDefined {
+		return true
+	}
+	if c.VariableToughness {
+		return false
+	}
+	return c.LostLastCounter || c.ScryfallID != ""
 }
 
 // --- card-type predicates ------------------------------------
@@ -760,8 +1023,18 @@ func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
 // searching for a substring, which is strictly more accurate —
 // "Island" no longer contains a "land" type by accident of
 // spelling.
+// The face-down guard on the printed branch (and on the three
+// accessors below) is ADR 0069 decision 3's stated cost: the VALUE of
+// the CR 708.2 body has one definition, faceDownCharacteristic, but
+// the READS are where they always were, because these accessors take
+// a deliberate fast path off the printed fields when the layer cache
+// is cold. Without it a manifested Forest still answers "land" to
+// every predicate that runs before the first recompute.
 func (c Card) HasCardType(lowerType string) bool {
 	if c.effective == nil {
+		if c.FaceDownIsPermanent() {
+			return typeListHas(faceDownCharacteristic(c).Types, lowerType)
+		}
 		return typeLineHas(c.TypeLine, lowerType)
 	}
 	return typeListHas(c.effective.Types, lowerType)
@@ -781,6 +1054,12 @@ func (c Card) HasCardType(lowerType string) bool {
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
 func (c Card) HasSubtype(subtype string) bool {
+	// CR 708.2: a face-down permanent has NO subtypes, so it is not a
+	// Human, not an Elf, and — the reason this guard precedes the
+	// changeling check below — not every creature type either.
+	if c.FaceDownIsPermanent() {
+		return false
+	}
 	if c.effective == nil {
 		_, _, printed := ParseTypeLine(c.TypeLine)
 		if typeListHas(printed, subtype) {
@@ -803,6 +1082,12 @@ func (c Card) HasSubtype(subtype string) bool {
 // the one supertype the legend rule asks about.
 func (c Card) HasSupertype(supertype string) bool {
 	if c.effective == nil {
+		// CR 708.2: no supertypes either — a face-down legendary
+		// permanent is not legendary, which is why two face-down
+		// copies of the same legend can coexist.
+		if c.FaceDownIsPermanent() {
+			return false
+		}
 		super, _, _ := ParseTypeLine(c.TypeLine)
 		return typeListHas(super, supertype)
 	}
@@ -914,6 +1199,13 @@ func NewCommander(name string, owner uuid.UUID) Card {
 func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
+	}
+	// CR 708.2: a face-down permanent is COLOURLESS, whatever the
+	// card underneath costs or Scryfall stamped. Guarded on the
+	// printed branch only; the layered branch above already reads the
+	// projection through printedCharacteristic.
+	if c.FaceDownIsPermanent() {
+		return nil
 	}
 	if len(c.Colors) > 0 {
 		return c.Colors

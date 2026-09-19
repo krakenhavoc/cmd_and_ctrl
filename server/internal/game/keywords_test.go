@@ -293,7 +293,11 @@ func TestCanonicalKeyword(t *testing.T) {
 	}
 	// Mechanics the engine does not enforce are dropped rather than
 	// passed through as unknown ability strings.
-	for _, in := range []string{"Prepared", "Waterbend", "Airbend", "Transform", "Ward", "Cycling", ""} {
+	// "Cycling" left this list with #660, in the same change that
+	// taught the engine to honour it (effects.Cycling) — which is the
+	// rule the table's closedness encodes. Typecycling's own tokens
+	// ("Basic landcycling") stay uncanonical: see keywords.go.
+	for _, in := range []string{"Prepared", "Waterbend", "Airbend", "Transform", "Ward", "Basic landcycling", ""} {
 		if got, ok := CanonicalKeyword(in); ok {
 			t.Errorf("CanonicalKeyword(%q) = (%q, true), want not-canonical", in, got)
 		}

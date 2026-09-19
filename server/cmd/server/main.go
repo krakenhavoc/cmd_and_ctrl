@@ -20,9 +20,38 @@
 //	                        create games and list the whole lobby.
 //	CMDCTRL_SESSION_TTL   — session lifetime, Go duration string (e.g. 12h).
 //	                        Default 12h.
-//	CMDCTRL_SEED_DEMO     — if "1", seed a 4-player demo game at startup.
+//	CMDCTRL_SESSION_KEY   — HMAC-SHA256 key that signs session tokens, at
+//	                        least 32 bytes, distinct from the admin token.
+//	                        Set: sessions survive a restart. Unset: sessions
+//	                        are in memory and die with the process, with a
+//	                        warning on every boot. Too short: boot fails.
+//	                        Rotating it logs everyone out.
+//	CMDCTRL_IDENTITY_KEY  — AES-256-GCM key (same format as the session key:
+//	                        a random string of at least 32 bytes, distinct
+//	                        from the admin token and the session key) that
+//	                        encrypts Discord refresh tokens in the database
+//	                        (ADR 0051 decision 5). Unset: sign-in still
+//	                        works, the refresh token is discarded and stored
+//	                        as NULL, with a warning on every boot. Too short
+//	                        or reused: boot fails. Rotating it makes stored
+//	                        refresh tokens unreadable; nothing else breaks.
+//	CMDCTRL_SEED_DEMO    — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
+//
+// Persistent database (S34 sub-PR 1, ADR 0051). Opened at
+// <CMDCTRL_DATA_DIR>/db/cmdctrl.sqlite, before RestoreFromDisk runs;
+// skipped entirely when CMDCTRL_DATA_DIR is empty, same as every other
+// disk-backed store below.
+//
+//	CMDCTRL_DB_BACKUP_INTERVAL — Go duration between VACUUM INTO backup
+//	                              sweeps (db/cmdctrl.backup.sqlite,
+//	                              beside the live file). Default 1h.
+//	                              <= 0 disables the sweep. This is the
+//	                              in-process, same-disk copy only — the
+//	                              nightly off-node copy to HomeLab is
+//	                              the deploy owner's job, not this
+//	                              server's.
 //
 // Bot seats (S31). The `random` and `heuristic` tiers need nothing;
 // `assisted` and `strong` need a model endpoint, and report themselves
@@ -97,12 +126,14 @@ import (
 	// and every card falls through to manual sandbox resolution.
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -154,11 +185,69 @@ func main() {
 		log.Warn("dev feature override set in a production deployment; it has no effect and should be removed", "var", k)
 	}
 
+	// Process-lifetime context: canceled on SIGINT/SIGTERM. Created
+	// here, rather than just before srv.Shutdown as before S34, so the
+	// database's backup loop (below) can share it and stop on the same
+	// signal without its own plumbing.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// The persistent database (ADR 0051, S34 sub-PR 1): people, their
+	// games and their decks in later sub-PRs; today just the migrated,
+	// WAL-mode file and its backup sweep. Opened and migrated BEFORE
+	// RestoreFromDisk below, so a migration failure or a too-new schema
+	// (ErrSchemaTooNew) stops the boot before anything reads game state
+	// — mirroring game.SnapshotSchemaVersion's refuse-loudly posture.
+	//
+	// Skipped entirely when CMDCTRL_DATA_DIR is empty, same as the card
+	// index, avatar cache and bug-report store below: an empty data dir
+	// means "no disk persistence at all" for this deployment.
+	var database *db.DB
+	if cfg.DataDir != "" {
+		var err error
+		database, err = db.Open(ctx, cfg.DataDir)
+		if err != nil {
+			log.Error("database open/migrate failed", "err", err)
+			os.Exit(1)
+		}
+		log.Info("database opened", "path", database.Path())
+		go database.RunBackupLoop(ctx, log, cfg.DBBackupInterval)
+		if cfg.DBBackupInterval > 0 {
+			log.Info("database backup sweep started", "interval", cfg.DBBackupInterval)
+		} else {
+			log.Warn("CMDCTRL_DB_BACKUP_INTERVAL <= 0; the in-process backup sweep is disabled")
+		}
+	} else {
+		log.Info("CMDCTRL_DATA_DIR is empty; persistent database disabled")
+	}
+
 	// Auth + room manager are global singletons for the lifetime of
 	// the process. They outlive individual games.
-	authenticator := auth.NewMemoryAuthenticator()
+	//
+	// Sessions are HMAC-signed when CMDCTRL_SESSION_KEY is set, so a
+	// token survives a deploy (ADR 0044 decision 3, #517). Unset falls
+	// back to the in-memory store with a loud warning; a key that is
+	// set but too short fails the boot. There is no default key.
+	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
-	l := lobby.NewLobby(mgr)
+	// With a database, games / seats / invites are rows (ADR 0051
+	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
+	// lobby/*.json the previous binary left. Without one, the lobby
+	// keeps its metadata in memory and nothing about a game survives
+	// the process — the same as every other artifact under an empty
+	// CMDCTRL_DATA_DIR.
+	var l *lobby.Lobby
+	if database != nil {
+		l = lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database))
+	} else {
+		l = lobby.NewLobby(mgr)
+	}
+
+	// People (ADR 0051 decisions 2 and 5, S34 sub-PR 2). A Discord
+	// sign-in upserts a users + identities row and the session carries
+	// the user's id. Without a database there is nowhere to put them,
+	// and sign-in mints a session with a zero UserID, as before.
+	userStore := newUserStore(log, database)
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
@@ -237,8 +326,9 @@ func main() {
 	// have got from any restart before this feature existed. Nothing
 	// here is fatal: a bad restore point must never stop a boot.
 	//
-	// NOTE: auth sessions do NOT survive a restart
-	// (auth.MemoryAuthenticator is explicit about it), so players
+	// NOTE: auth sessions survive a restart only when
+	// CMDCTRL_SESSION_KEY is set (auth.HMACAuthenticator). Without it
+	// they are in memory and die with the process, and players
 	// re-authenticate through their invite link. That link is why
 	// lobby metadata is persisted alongside the engine snapshot.
 	//
@@ -366,6 +456,7 @@ func main() {
 		Discord:           discordCfg,
 		DiscordStateStore: discord.NewStateStore(),
 		DiscordAvatars:    avatarCache,
+		Users:             userStore,
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		Log:               log,
@@ -386,9 +477,6 @@ func main() {
 		// sever long-lived WebSockets and replay streams mid-flight.
 		IdleTimeout: 120 * time.Second,
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		log.Info("server listening", "addr", cfg.Addr, "data_dir", cfg.DataDir)
@@ -414,6 +502,11 @@ func main() {
 	}
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
+	if database != nil {
+		if err := database.Close(); err != nil {
+			log.Error("database close", "err", err)
+		}
+	}
 	log.Info("server stopped")
 }
 
@@ -449,6 +542,10 @@ type config struct {
 	// table and is operator-only. BotDecisionLogMode is its fullness.
 	BotDecisionLog     string
 	BotDecisionLogMode decisionlog.Mode
+	// DBBackupInterval is how often the persistent database's VACUUM
+	// INTO backup sweep runs (CMDCTRL_DB_BACKUP_INTERVAL). Defaults to
+	// db.DefaultBackupInterval; <= 0 disables the sweep.
+	DBBackupInterval time.Duration
 	// Env is the deployment identity from CMDCTRL_ENV. Unset means
 	// production — a forgotten variable fails closed.
 	Env appenv.Env
@@ -479,8 +576,22 @@ func loadConfig(log *slog.Logger) config {
 		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
 		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
 		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		DBBackupInterval: db.DefaultBackupInterval,
 		Env:              env,
 		Features:         appenv.LoadFeatures(env),
+	}
+
+	// CMDCTRL_DB_BACKUP_INTERVAL is a misconfiguration worth failing
+	// the boot over, same reasoning as CMDCTRL_BOT_MAX_THINK below: a
+	// deployment that asked for a backup cadence and silently did not
+	// get one is worse than a boot that refuses to start.
+	if raw := os.Getenv("CMDCTRL_DB_BACKUP_INTERVAL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Error("CMDCTRL_DB_BACKUP_INTERVAL invalid", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		c.DBBackupInterval = d
 	}
 
 	// CMDCTRL_BOT_MAX_THINK is a misconfiguration worth failing the
@@ -560,6 +671,53 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	return c
+}
+
+// newAuthenticator picks the session store (see auth.NewFromEnv) and
+// exits on a misconfigured key rather than booting on a weaker one.
+//
+// The session key must not be the admin token. The admin token is
+// copied into the Discord bot's env file on every deploy (ADR 0004
+// §6), so a shared value would let anything that can read that file
+// forge a session for any seat.
+func newAuthenticator(log *slog.Logger, cfg config) auth.Authenticator {
+	if strings.TrimSpace(os.Getenv(auth.SessionKeyEnv)) == cfg.AdminToken {
+		log.Error(auth.SessionKeyEnv + " must not equal CMDCTRL_ADMIN_TOKEN; generate a separate random key")
+		os.Exit(1)
+	}
+	a, err := auth.NewFromEnv(os.Getenv, log)
+	if err != nil {
+		log.Error("session key invalid", "var", auth.SessionKeyEnv, "err", err)
+		os.Exit(1)
+	}
+	if _, ok := a.(*auth.HMACAuthenticator); ok {
+		log.Info("sessions are HMAC-signed and survive a restart", "var", auth.SessionKeyEnv)
+	}
+	return a
+}
+
+// newUserStore builds the user store and its refresh-token key, and
+// exits on a misconfigured key rather than booting on a weak or
+// shared one (users.NewSealerFromEnv). The key is checked whether or
+// not there is a database, as the session key is: a bad value in the
+// env file is an operator mistake worth hearing about on any boot.
+//
+// With the key absent the store still works and refresh tokens are
+// discarded (ADR 0051 decision 5); NewSealerFromEnv has already
+// warned, naming the variable.
+func newUserStore(log *slog.Logger, database *db.DB) users.Store {
+	sealer, err := users.NewSealerFromEnv(os.Getenv, log)
+	if err != nil {
+		log.Error("identity key invalid", "var", users.IdentityKeyEnv, "err", err)
+		os.Exit(1)
+	}
+	if database == nil {
+		return users.NoStore{}
+	}
+	if sealer != nil {
+		log.Info("Discord refresh tokens are stored encrypted", "var", users.IdentityKeyEnv)
+	}
+	return users.NewSQLStore(database, sealer)
 }
 
 func envOr(key, dflt string) string {

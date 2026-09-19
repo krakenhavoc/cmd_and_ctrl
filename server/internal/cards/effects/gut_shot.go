@@ -10,18 +10,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The free ping. One damage to any target from the spell as its
 // source — Lightning Bolt's shape at one.
 //
-// Sandbox simplification, WEAKER than printed, the Gitaxian Probe
-// posture: the Phyrexian symbol is charged as {R}. ParseCost records
-// {R/P} as a red requirement flagged Phyrexian, but no payment path
-// consults the flag, so the "or 2 life" option does not exist yet —
-// the spell costs one red mana and cannot be cast for free. A
-// mana-payment seam, not a card file's.
+// The Gitaxian Probe posture, and now with the same ending: #787 made
+// the engine pay the Phyrexian symbol with 2 life when the cast
+// announces it (CastSpellParams.PhyrexianLife, CR 107.4c), and #916
+// gave the cast prompt the button that asks. The free ping is free of
+// mana.
 func init() {
 	Register(Spec{
 		OracleID:     "9afb3b6e-4909-4efa-aa79-81c0229411c9",
 		Name:         "Gut Shot",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Phyrexian mana isn't supported — you must pay {R}, you can't pay 2 life instead."},
+		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {

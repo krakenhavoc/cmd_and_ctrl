@@ -49,15 +49,20 @@ import "github.com/google/uuid"
 //     copy the symptom is a wrong ORDER rather than a stuck prompt,
 //     which is the harder one to notice.
 //
+//  4. A COPY OF A PERMANENT SPELL BECOMES A TOKEN. CR 608.3f: when
+//     it would resolve, no permanent card enters — a token that is a
+//     copy of the spell does, and the copy ceases to exist. That is
+//     resolvePermanentSpellCopyLocked at the bottom of this file, and
+//     it goes through #923's one token-creation path, so a doubler
+//     doubles it (it really is a created token, CR 111.13), entry
+//     replacements apply, and the entry can pause and resume. Until
+//     #666 the engine refused instead, on the reasoning that a second
+//     card-shaped object carrying the original's oracle ID on the
+//     battlefield was worse than nothing; the token is what makes it
+//     neither.
+//
 // What this deliberately does not do:
 //
-//   - Copies of PERMANENT spells. CR 608.3f makes a resolving copy
-//     of a permanent spell a TOKEN, and this engine has no
-//     token-from-stack-item path. Every card in the S30 batch says
-//     "target instant or sorcery spell", so the restriction is
-//     enforced by the cards' TargetSpec rather than by a check here;
-//     a future card that copies a creature spell needs the token
-//     rule before it ships (#666).
 //   - Copies of ABILITIES (CR 707.10 covers those too — Lithoform
 //     Engine, Strionic Resonator). Ability items carry a resolution
 //     closure rather than a card, so they are a different copy
@@ -66,6 +71,13 @@ import "github.com/google/uuid"
 // CopySpellForEffect creates a copy of the spell `spellID` under
 // `controller`'s control, per CR 707.10.
 //
+// `spellID` may be a spell on the stack (Reverberate's target) or the
+// spell currently RESOLVING (#920) — "that player may copy this
+// spell", the Chain cycle's own clause, where the copy is created by
+// the resolving spell's effect and controlled by the player the card
+// says creates it (CR 707.10b), not by the copied spell's controller.
+// See stackSpellLocked for how the second one is still findable.
+//
 // When mayChooseNewTargets is set and the copied spell actually has
 // a target clause with at least one legal target on the current
 // board, the controller is prompted first and the copy is created
@@ -73,16 +85,35 @@ import "github.com/google/uuid"
 // the original's targets — which is also what CR 707.10c says
 // happens when a player declines to change them.
 //
+// `except` is the card's "except …" clause (CR 707.10a): Double
+// Major's "except it isn't legendary if the spell is legendary". It
+// edits the COPIABLE VALUES the copy is created with, the same
+// PrintedValues an entering permanent's except clause edits (ADR
+// 0043), so the modification is on the copy from the moment it
+// exists and is still on the token it becomes. Nil for a plain copy.
+//
+// It is applied HERE, before anything is queued, rather than carried
+// into the re-target prompt: the continuation crosses a snapshot and
+// a closure cannot, so what the frame carries is the already-edited
+// card.
+//
 // Errors: ErrCardNotFound when the spell is no longer on the stack
 // (its controller may have had it countered in response to the copy
 // effect, which is a normal outcome and not an engine fault —
 // callers should treat it as "the copy effect did nothing").
 //
-// Caller must hold g.mu. Added in S30 (#95).
-func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTargets bool) error {
+// Caller must hold g.mu. Added in S30 (#95); `except` in S45 (#666).
+func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) error {
 	src, item, ok := g.stackSpellLocked(spellID)
 	if !ok {
 		return ErrCardNotFound
+	}
+	if except != nil {
+		v := CopiableValuesOf(src)
+		except(&v)
+		// `src` is already a value copy off the stack, so this can
+		// never reach the spell being copied.
+		src.setPrintedValues(v)
 	}
 	spec := castTargetSpecForItem(CatalogKey(src), item)
 	if !mayChooseNewTargets || spec == nil || !itemHasChosenTarget(item) {
@@ -94,7 +125,10 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	// that case the copy keeps the original's targets and is
 	// countered by game rules on resolution, which is the printed
 	// outcome rather than a wedged prompt.
-	lt := g.legalTargetsLocked(controller, spec)
+	// The copy's source is the copied SPELL (CR 707.10 — the copy has
+	// its characteristics), not the player making the copy, so
+	// protection is tested against the original's colour and type.
+	lt := g.legalTargetsLocked(SourceObject(controller, &src), spec)
 	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
 		g.createSpellCopyLocked(src, item, controller, item.Targets)
 		return nil
@@ -137,23 +171,39 @@ type copySpellFrame struct {
 	spec       *TargetSpec
 }
 
-// stackSpellLocked returns the card and stack item for a spell
-// currently on the stack. Caller must hold g.mu.
+// stackSpellLocked returns the card and stack item for a spell on the
+// stack — or for the spell currently RESOLVING, which is the same
+// object one step later in its life (#920).
+//
+// The resolving branch is CR 707.10's "copy this spell", the Chain
+// cycle's clause. A resolving spell is off the stack by every measure
+// this function used to take: its meta is out of StackMeta and, once
+// the copy decision pauses on a prompt, its card is out of the Stack
+// zone and in a graveyard. In the RULES it is still there — a spell is
+// put into its owner's graveyard as the final step of its own
+// resolution (CR 608.2m) — so the copy is made from last-known
+// information, which is what Game.resolving holds.
+//
+// It is narrow on purpose: resolvingSpellLocked answers only for the
+// resolving item's own ID, so Reverberate pointed at a spell that was
+// countered in response still gets ErrCardNotFound, which is the
+// outcome its callers are written for.
+//
+// Caller must hold g.mu.
 func (g *Game) stackSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) {
-	if g.Stack == nil {
-		return Card{}, nil, false
-	}
-	for _, c := range g.Stack.Cards {
-		if c.InstanceID != spellID {
-			continue
+	if g.Stack != nil {
+		for _, c := range g.Stack.Cards {
+			if c.InstanceID != spellID {
+				continue
+			}
+			item, ok := g.StackMeta[spellID]
+			if !ok || item == nil {
+				break
+			}
+			return c, item, true
 		}
-		item, ok := g.StackMeta[spellID]
-		if !ok || item == nil {
-			return Card{}, nil, false
-		}
-		return c, item, true
 	}
-	return Card{}, nil, false
+	return g.resolvingSpellLocked(spellID)
 }
 
 // itemHasChosenTarget reports whether the item names at least one
@@ -219,6 +269,23 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// CastFromZone is deliberately left empty. The copy was not cast
 	// from anywhere (CR 707.10), so Wash Away's "target spell that
 	// wasn't cast from its owner's hand" reads it as exactly that.
+	//
+	// Paid's MANA half is left at its zero value for the same reason,
+	// and the zero value is a REAL answer rather than a gap (#761):
+	// mana is not an object, so nothing was spent to cast the copy
+	// (the Dawnglow Infusion ruling under CR 707.10). A copied Vexing
+	// Bauble trigger counters the copy, a copied converge spell
+	// converges for nothing, and both are correct.
+	//
+	// #664 is the one part of the record that DOES travel. CR 707.10
+	// copies the choices made when the spell was cast, and "was it
+	// kicked" is one of them — a copy of a kicked Rite of Replication
+	// is kicked, the same way it keeps the modes and the X above.
+	// Copied through paidWithOptionalCosts' output rather than the
+	// wire list so a copy of a copy stays stable.
+	if len(item.Paid.OptionalCosts) > 0 {
+		meta.Paid.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 
@@ -242,7 +309,11 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateTargetsLocked(cf.controller, cf.spec, targets); err != nil {
+	// A SNAPSHOT, deliberately: the original spell can be countered
+	// between the prompt and the answer, and the copy's
+	// characteristics are the original's as they were (CR 707.10).
+	// cf.src is the value copy the frame kept for exactly this.
+	if err := g.validateTargetsLocked(SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src)), cf.spec, targets); err != nil {
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
@@ -250,6 +321,85 @@ func (g *Game) resolveCopySpellTargetsLocked(idx int, cf *copySpellFrame, target
 	g.createSpellCopyLocked(cf.src, &item, cf.controller, targets)
 	g.runStateChecksLocked()
 	return nil
+}
+
+// resolvePermanentSpellCopyLocked is CR 608.3f: "if a copy of a
+// spell is in a zone other than the stack, it ceases to exist … if
+// the copy is of a permanent spell, it becomes a token as it
+// resolves."
+//
+// Three things fall out of doing it this way rather than by pushing
+// the copy onto the battlefield:
+//
+//   - No card-shaped object carrying the original's oracle ID ever
+//     reaches the battlefield. A copy is not a card (CR 707.10), so a
+//     bounce spell cannot turn it into a card in somebody's hand, and
+//     the CR 704.5d existence check removes it from any zone but the
+//     battlefield (token_existence.go) — both for free, off
+//     `Card.IsToken`, because the template carries the Token
+//     supertype.
+//   - It really is a CREATED token (CR 111.13), so it goes through
+//     #923's one creation path: the CR 701.7b window opens, Doubling
+//     Season doubles it, Academy Manufactor could rewrite it, and
+//     every token then takes the ordinary battlefield entry —
+//     enters-tapped, enters-with-counters, `fireETBHookLocked` and a
+//     resumable pause included.
+//   - The copy's own modifications ride along. The token is a copy of
+//     the SPELL, and the spell on the stack already carries whatever
+//     its "except" clause said (Double Major's "it isn't legendary"),
+//     because CopySpellForEffect wrote those values into it when the
+//     copy was created.
+//
+// The copy leaves the stack FIRST. The creation can pause on a CR 616
+// ordering prompt, and a copy still sitting on the stack whose
+// StackMeta the resolver has already deleted is an object nothing can
+// resolve.
+//
+// Caller must hold g.mu.
+func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error {
+	g.ceaseToExistLocked(top.InstanceID)
+	tmpl := tokenCopyOfSpell(top)
+	// CR 707.10b / CR 400.7d: the optional additional costs the copy
+	// "paid" travel onto the permanent it becomes, exactly as they do
+	// on the ordinary permanent-resolution branch — a Double Major on
+	// a KICKED Wolfbriar Elemental makes a token that counts the
+	// kicks. This is NOT a copiable value and deliberately not on
+	// PrintedValues: it is cast-time state stamped at entry, and
+	// #988's createSpellCopyLocked is what put it on the copy's item
+	// in the first place. mintTokenLocked does not clear it, so the
+	// template is the right place to carry it.
+	if len(item.Paid.OptionalCosts) > 0 {
+		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
+	}
+	return g.CreateTokensThenForEffect(TokenCreation{
+		Controller: item.Controller,
+		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
+		Source:     item.SourceCardID,
+	}, nil)
+}
+
+// tokenCopyOfSpell builds the token template a resolving copy of a
+// permanent spell becomes: the spell's copiable values (CR 707.2),
+// plus the Token supertype.
+//
+// The face is settled first, for the same reason the ordinary
+// permanent-resolution branch settles it (ADR 0034): an MDFC or a
+// transform card resolves as the face that was cast, and an adventure
+// resolves front-up. Copying Layout and Faces across is CR 707.10g —
+// a copy of a double-faced permanent spell is double-faced too.
+//
+// The card-carried ability slices come across for the same reason
+// applyCopy carries them: they are the only source of truth when the
+// thing being copied is itself a token.
+func tokenCopyOfSpell(src Card) Card {
+	src.SetFace(faceOnResolve(src.Layout, src.ActiveFace))
+	v := CopiableValuesOf(src)
+	v.MakeToken()
+	var tok Card
+	tok.setPrintedValues(v)
+	tok.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
+	tok.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
+	return tok
 }
 
 // ceaseToExistLocked removes a resolved or countered COPY from the

@@ -567,9 +567,20 @@ func TestPassPriorityRunsStepEntryHooks(t *testing.T) {
 			defender.Life, startLife-2)
 	}
 
-	// One more wrap moves into end_combat; the clear hook should
-	// nil AttackingTarget on every battlefield card.
+	// One more wrap moves into end_combat, where the attacker is
+	// still attacking (CR 511.3 removes it from combat as that step
+	// ENDS); the wrap after that leaves the step and clears it.
 	for g.Turn.Step != StepEndCombat {
+		before := g.Turn.Step
+		wrapStep()
+		if g.Turn.Step == before {
+			t.Fatalf("priority-wrap loop didn't progress past %q", before)
+		}
+	}
+	if c := findCard(g, attacker); c == nil || c.AttackingTarget == uuid.Nil {
+		t.Errorf("AttackingTarget cleared on entry to end_combat; creatures leave combat as it ends (CR 511.3)")
+	}
+	for g.Turn.Step != StepPostcombatMain {
 		before := g.Turn.Step
 		wrapStep()
 		if g.Turn.Step == before {
@@ -578,7 +589,7 @@ func TestPassPriorityRunsStepEntryHooks(t *testing.T) {
 	}
 	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget != uuid.Nil {
-			t.Errorf("AttackingTarget not cleared after pass-priority into end_combat: %v",
+			t.Errorf("AttackingTarget not cleared once the end of combat step ended: %v",
 				c.AttackingTarget)
 		}
 	}
@@ -911,12 +922,18 @@ func TestResolveCombatDamageUnblockedAppliesPower(t *testing.T) {
 	if !stillAttacking {
 		t.Error("AttackingTarget cleared inside combat_damage; expected persistence until end_combat")
 	}
-	// One more advance moves the cursor into end_combat, which IS
-	// where the clear should fire.
+	// The end of combat step keeps them too: CR 511.3 removes
+	// creatures from combat as that step ENDS (#785), which is why
+	// Aetherize and Settle the Wreckage work when cast in it.
 	advanceTo(t, g, StepEndCombat)
+	if c := findCard(g, attacker); c == nil || c.AttackingTarget == uuid.Nil {
+		t.Error("AttackingTarget cleared on entry to end_combat, not as the step ended")
+	}
+	// Leaving the step is where the clear fires.
+	advanceTo(t, g, StepPostcombatMain)
 	for _, c := range g.Battlefield.Cards {
 		if c.AttackingTarget != uuid.Nil {
-			t.Error("AttackingTarget not cleared after entering end_combat")
+			t.Error("AttackingTarget not cleared once the end of combat step ended")
 		}
 	}
 }
@@ -2219,10 +2236,18 @@ func TestS131ActivateLoyaltySorcerySpeedGate(t *testing.T) {
 }
 
 // TestS131AnnounceTriggerAPNAPDrain covers the APNAP queue (CR
-// 603.3b): triggers from active player drain first, then turn-order
-// clockwise. With seats [0..3] and active=0, queueing in order
-// [seat2, seat0, seat3, seat1] should drain into StackMeta in seat
-// order [0, 1, 2, 3].
+// 603.3b): triggers from the active player are placed first — lowest
+// Seq, bottom of the stack, resolving LAST — then turn-order
+// clockwise. With seats [0..3] and active=0, a queue built in order
+// [seat2, seat0, seat3, seat1] drains into StackMeta in seat order
+// [0, 1, 2, 3].
+//
+// The queue is staged directly rather than through AnnounceTrigger,
+// because since #974 that verb drains as it announces (the announcer
+// holds priority, so the announce IS a CR 603.3b placement moment)
+// and four announces are four placements, not one batch. What is
+// under test here is the batch drain itself, which every HARVESTED
+// trigger still goes through.
 func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	// Park a card on each player's battlefield to use as source.
@@ -2230,18 +2255,27 @@ func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
 	for i, p := range g.Seats {
 		srcs[i] = pushCreatureToBattlefield(t, g, p)
 	}
-	// Announce in non-APNAP order: seat 2, seat 0, seat 3, seat 1.
-	for _, seat := range []int{2, 0, 3, 1} {
-		if err := g.AnnounceTrigger(g.Seats[seat].ID, srcs[seat], AbilityParams{
-			Label: "trigger",
-		}); err != nil {
-			t.Fatalf("AnnounceTrigger seat %d: %v", seat, err)
+	// Queue in non-APNAP order: seat 2, seat 0, seat 3, seat 1.
+	queued := make(map[int]uuid.UUID, len(g.Seats))
+	g.WithWriteLock(func() {
+		for _, seat := range []int{2, 0, 3, 1} {
+			id := uuid.New()
+			queued[seat] = id
+			g.PendingTriggers = append(g.PendingTriggers, &StackItem{
+				ID:           id,
+				Kind:         StackItemTriggered,
+				Controller:   g.Seats[seat].ID,
+				Owner:        g.Seats[seat].ID,
+				SourceCardID: srcs[seat],
+				Label:        "trigger",
+			})
 		}
-	}
+	})
 	if len(g.PendingTriggers) != 4 {
 		t.Fatalf("PendingTriggers count: got %d, want 4", len(g.PendingTriggers))
 	}
-	// Drain — manually for the test (in real play PassPriority calls it).
+	// Drain — manually for the test (in real play a priority-grant
+	// boundary calls it).
 	g.WithWriteLock(func() { g.drainPendingTriggersAPNAPLocked() })
 	if len(g.PendingTriggers) != 0 {
 		t.Errorf("PendingTriggers should be empty after drain: got %d", len(g.PendingTriggers))
@@ -2249,17 +2283,44 @@ func TestS131AnnounceTriggerAPNAPDrain(t *testing.T) {
 	if len(g.StackMeta) != 4 {
 		t.Fatalf("StackMeta count after drain: got %d, want 4", len(g.StackMeta))
 	}
-	// Verify each trigger landed; we don't assert per-seat ordering
-	// inside StackMeta because Go maps are unordered, but the controller
-	// set must match the four seats.
-	gotControllers := make(map[uuid.UUID]bool, 4)
-	for _, item := range g.StackMeta {
-		gotControllers[item.Controller] = true
-	}
-	for i, p := range g.Seats {
-		if !gotControllers[p.ID] {
-			t.Errorf("seat %d's trigger missing from drained stack", i)
+	// Seat order, by the Seq the drain minted: the active seat's
+	// trigger is at the bottom and each seat clockwise sits above it.
+	for seat := 1; seat < len(g.Seats); seat++ {
+		below, above := g.StackMeta[queued[seat-1]], g.StackMeta[queued[seat]]
+		if below == nil || above == nil {
+			t.Fatalf("seat %d's or seat %d's trigger missing from the drained stack", seat-1, seat)
 		}
+		if below.Seq >= above.Seq {
+			t.Errorf("seat %d placed at Seq %d, seat %d at %d — APNAP places the active seat first",
+				seat-1, below.Seq, seat, above.Seq)
+		}
+	}
+}
+
+// #974: the announce verb itself no longer leaves its trigger waiting.
+// The announcer holds priority, so CR 603.3b's "the next time a player
+// would receive priority" is now — before this, a pass round the table
+// found an empty stack and advanced the step with the trigger still
+// queued.
+func TestAnnounceTriggerPlacesItsTriggerImmediately(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	src := pushCreatureToBattlefield(t, g, me)
+
+	if err := g.AnnounceTrigger(me.ID, src, AbilityParams{Label: "manual"}); err != nil {
+		t.Fatalf("AnnounceTrigger: %v", err)
+	}
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("pending triggers after the announce: got %d, want 0 — the announce drains", len(g.PendingTriggers))
+	}
+	placed := 0
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == StackItemTriggered && item.Label == "manual" {
+			placed++
+		}
+	}
+	if placed != 1 {
+		t.Errorf("announced triggers on the stack: got %d, want 1", placed)
 	}
 }
 
@@ -3516,6 +3577,10 @@ func TestReadSnapshotConsistency(t *testing.T) {
 // crash) used to recurse to a fatal stack overflow because nothing
 // in the loop drained the queue. The loop now drains via the APNAP
 // path, so the action returns with the trigger moved to the stack.
+//
+// Since #974 the announce drains at its own boundary, so the queue is
+// already empty when AdvanceStep runs; the guard is that neither call
+// recurses.
 func TestAnnounceTriggerThenAdvanceStepTerminates(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
@@ -3527,8 +3592,17 @@ func TestAnnounceTriggerThenAdvanceStepTerminates(t *testing.T) {
 	if err := g.AnnounceTrigger(p.ID, src.InstanceID, AbilityParams{Label: "manual trigger"}); err != nil {
 		t.Fatalf("AnnounceTrigger: %v", err)
 	}
-	if len(g.PendingTriggers) != 1 {
-		t.Fatalf("pending triggers after announce: got %d, want 1", len(g.PendingTriggers))
+	if len(g.PendingTriggers) != 0 {
+		t.Fatalf("pending triggers after announce: got %d, want 0 (#974 drains at the announce)", len(g.PendingTriggers))
+	}
+	drained := 0
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == StackItemTriggered {
+			drained++
+		}
+	}
+	if drained != 1 {
+		t.Fatalf("triggered items on stack after the announce: got %d, want 1", drained)
 	}
 
 	// This call crashed the process (stack overflow) before the fix.
@@ -3538,15 +3612,6 @@ func TestAnnounceTriggerThenAdvanceStepTerminates(t *testing.T) {
 
 	if len(g.PendingTriggers) != 0 {
 		t.Errorf("pending triggers not drained at the state-check boundary: %d left", len(g.PendingTriggers))
-	}
-	drained := 0
-	for _, item := range g.StackMeta {
-		if item != nil && item.Kind == StackItemTriggered {
-			drained++
-		}
-	}
-	if drained != 1 {
-		t.Errorf("triggered items on stack after drain: got %d, want 1", drained)
 	}
 }
 

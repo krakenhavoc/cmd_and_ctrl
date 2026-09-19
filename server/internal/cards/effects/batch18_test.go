@@ -1198,8 +1198,11 @@ func TestB18MikaeusEntersWithXAndGrowsByTapping(t *testing.T) {
 	}
 	// #625: the team pump is the second ability; counter_cost_cards_test.go
 	// drives it. The X-counter timing is still a declared caveat.
-	if spec, _ := Lookup(b18MikaeusTheLunarchOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 2 {
-		t.Error("both tap abilities ship, and the X-counter caveat is still declared")
+	// #1002 moved the X counters onto the CR 614 entry pipeline and
+	// #691 made the X=0 body die as printed, so both caveats are gone
+	// and both tap abilities still ship.
+	if spec, _ := Lookup(b18MikaeusTheLunarchOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || len(spec.Activated) != 2 {
+		t.Errorf("both tap abilities ship and nothing is declared: %v %v %d", spec.Completeness, spec.Caveats, len(spec.Activated))
 	}
 }
 

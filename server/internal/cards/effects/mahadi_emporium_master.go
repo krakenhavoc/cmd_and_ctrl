@@ -12,9 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The aristocrats deck's end-of-turn payout. "Each creature that died
 // this turn" counts every player's creatures, tokens included, and is
 // evaluated when the trigger RESOLVES, so a creature that dies in
-// response to it is paid for. The engine keeps no per-turn death
-// tally; b11CreaturesDiedThisTurn walks the event log back to this
-// turn's upkeep, the way Bloodchief Ascension counts life lost.
+// response to it is paid for. b11CreaturesDiedThisTurn is the
+// per-turn tally's table-wide death count, the way Bloodchief
+// Ascension reads the life-lost cell.
 //
 // Sandbox gap, weaker than printed: the dead are recognised by where
 // they sit now, so a creature card that has since left every tracked

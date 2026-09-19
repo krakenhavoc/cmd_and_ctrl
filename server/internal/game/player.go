@@ -6,11 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// StartingLife is the Commander format's starting life total.
+// StartingLife is the Commander format's starting life total, and the
+// default for TableSettings.StartingLife — the value a game actually
+// uses is g.Settings.StartingLife (ADR 0075).
 const StartingLife = 40
 
 // CommanderDamageLethal is the single-commander damage total that wins
-// the game via the commander damage rule (CR 903.10a).
+// the game via the commander damage rule (CR 903.10a). It is the
+// default for TableSettings.CommanderDamage; the SBA check reads
+// g.Settings.CommanderDamage (ADR 0075).
 const CommanderDamageLethal = 21
 
 // MaxLifeHistoryEntries caps the per-player life-change log so a long
@@ -99,6 +103,24 @@ type Player struct {
 	Graveyard *Zone
 	Command   *Zone
 
+	// Emblems is the OTHER half of this player's command zone: the
+	// emblems they have been given (CR 114.2), as objects with a
+	// synthetic catalog key. See emblem.go and ADR 0064.
+	//
+	// It is a second slice rather than more cards in Command because
+	// every reader of Command.Cards means "commander card" — the cast
+	// enumerator offers them, the tax counts them, the admin move verb
+	// moves them, ReplaceDeck truncates them, and the CR 704.5d token
+	// sweep would delete one. ZoneRef is {Kind, Owner} with no
+	// discriminator, so nothing that resolves a zone by reference can
+	// reach this slice, which is how CR 114's "an emblem can't be
+	// moved, cast or targeted" is enforced: by the container, not by a
+	// check somebody has to remember.
+	//
+	// Kind is ZoneCommand because it IS the command zone. Added in
+	// S40 (#623).
+	Emblems *Zone
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.14a). See the note above the struct.
@@ -116,6 +138,23 @@ type Player struct {
 	// log is public — life is visible to all opponents in MTG, and the
 	// history is a UX affordance, not hidden information.
 	LifeHistory []LifeChange
+
+	// TurnsBegun counts the turns this seat has begun — and the turns
+	// it WOULD have begun after leaving the game, because the
+	// rotation bumps it for every eliminated seat it steps over
+	// (CR 800.4k / CR 800.4m).
+	//
+	// It is the counter an "until your next turn" continuous effect
+	// ends on (ADR 0063 Decision 3, #755): `Turn.Number` counts
+	// ROUNDS, so all four seats in a Commander game share one number
+	// and "your next turn" cannot be expressed with it. Defined by
+	// ADR 0059 Decision 1, which reserves the rest of that decision
+	// (`Turn.Seq`, `Round`, extra turns) for #753.
+	//
+	// The starting seat's first turn is stamped by `Start`, because
+	// it is the one turn that does not come through the rotation
+	// seam.
+	TurnsBegun int
 
 	// Eliminated is set when the player concedes (S08) or, in the
 	// future, loses to a state-based action (S13+ rules graft). An
@@ -148,7 +187,7 @@ type Player struct {
 	DeckImported bool
 
 	// UndosRemaining is how many undos this player can still spend in
-	// the current turn. Refreshed to Game.UndoLimit on entering this
+	// the current turn. Refreshed to Game.Settings.UndoLimit on entering this
 	// player's untap step. Decremented per successful undo. Added in
 	// S11 alongside the per-caller undo gate.
 	UndosRemaining int
@@ -238,6 +277,26 @@ type Player struct {
 	// Cleared at every step boundary by the step-change hook
 	// (CR 106.4). Added in S15 sub-PR 2.
 	ManaPool ManaPool
+
+	// CastPermissions are the granted cast and play permissions this
+	// player currently holds — "you may cast that card", flashback
+	// given to one card by Snapcaster, a set of cards locked by Past
+	// in Flames (ADR 0066, cast_permission.go).
+	//
+	// Per PLAYER rather than per card, because a permission names a
+	// player who is often not the card's owner and, for a standing
+	// rule, names no fixed card at all. STANDING permissions
+	// (Underworld Breach, Bolas's Citadel) are NOT here: they are
+	// derived from the battlefield on every query, so two sources
+	// compose and one leaving cannot revoke the other's grant — the
+	// same argument land_drops.go makes about Exploration.
+	//
+	// Swept at the cleanup step and at the beginning of a turn, for
+	// hygiene only (sweepCastPermissionsLocked): a permission whose
+	// CR 611.2 duration has run out, or whose named objects have
+	// moved on, is already refused by CastPermissionActiveForEffect
+	// and NamesCard.
+	CastPermissions []CastPermission
 }
 
 // newPlayer constructs a player with empty zones and their starting
@@ -259,6 +318,7 @@ func newPlayer(name string, seat int) *Player {
 	p.Hand = newZone(ZoneHand, id)
 	p.Graveyard = newZone(ZoneGraveyard, id)
 	p.Command = newZone(ZoneCommand, id)
+	p.Emblems = newZone(ZoneCommand, id)
 	return p
 }
 
@@ -313,12 +373,13 @@ func (p *Player) RecordCommanderDamage(fromCommander uuid.UUID, amount int) int 
 }
 
 // IsDeadByCommanderDamage reports whether any SINGLE commander has
-// dealt 21 or more damage to this player (CR 903.14a). Totals are
+// dealt `lethal` or more damage to this player (CR 903.14a; 21 by
+// default, the table's Settings.CommanderDamage in a game). Totals are
 // never summed across commanders — two partners at 15 apiece is 30
 // damage and not a loss.
-func (p *Player) IsDeadByCommanderDamage() bool {
+func (p *Player) IsDeadByCommanderDamage(lethal int) bool {
 	for _, d := range p.CommanderDamage {
-		if d >= CommanderDamageLethal {
+		if d >= lethal {
 			return true
 		}
 	}

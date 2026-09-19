@@ -70,6 +70,47 @@ const (
 	// EventDiscardCard — Actor discarded CardID.
 	EventDiscardCard EventKind = "discard_card"
 
+	// EventCycle — Actor cycled CardID (CR 702.29b): they activated
+	// its cycling ability and paid the cost, which discarded it.
+	// Source and CardID are both the cycled card.
+	//
+	// Emitted AFTER the cost's EventDiscardCard, with the card
+	// already in the graveyard, because that is where CR 702.29c
+	// puts it for the watchers. Both events fire for one cycling and
+	// that is the rule, not double-counting: a "cycles or discards"
+	// clause (CR 702.29d) watches one of them, and the discard
+	// payoffs in the catalog (Marauding Mako, Scrounging Skyray)
+	// watch the other.
+	//
+	// A watcher on the BATTLEFIELD — Astral Slide, Drake Haven,
+	// Fluctuator — sees this through the harvester's ordinary
+	// battlefield scan. "When you cycle THIS card" (Magmakin
+	// Artillerist) does not, and waits on a zone dimension for
+	// triggered abilities: ADR 0062 Decision 7.
+	EventCycle EventKind = "cycle"
+
+	// EventSpecialAction — Actor took a CR 116.2 special action on
+	// CardID. Label is the action as the card prints it ("Foretell
+	// {2}", "Suspend 1—{R}").
+	//
+	// One event kind for every special action, the way the verb is
+	// one verb: the rules group them because their contract is
+	// identical, and a payoff that ever cares which one was taken
+	// reads Label. Nothing in the catalog watches it today; it is
+	// the public log's record that a card left a hand for exile
+	// without being cast or discarded, which no other event says.
+	//
+	// That last sentence was a claim about a line that did not exist
+	// until #1021: the log had no arm for this kind, so the table saw
+	// the zone move and never the word "Foretell {2}". It is now
+	// projected as the `special_action` entry, whose `label` is this
+	// event's Label verbatim (protocol.LogSpecialAction).
+	//
+	// Emitted AFTER the action has been carried out, so the card is
+	// already in exile when a watcher sees it. ADR 0062 Decision 4,
+	// #658 / #659.
+	EventSpecialAction EventKind = "special_action"
+
 	// EventMill — Actor milled CardID from the top of their library.
 	// Fires per card.
 	EventMill EventKind = "mill"
@@ -87,10 +128,6 @@ const (
 	// EventUntapCard — CardID was untapped.
 	EventUntapCard EventKind = "untap_card"
 
-	// EventCounterPlaced — a counter of Label (see CounterKind /
-	// KnownCardCounters) was placed on CardID. Amount is the new
-	// count of that counter kind on the card. Fires on AddCounter
-	// and on the SBA +1/+1 / -1/-1 cancel.
 	// EventAttach fires when an Equipment or Aura becomes attached
 	// to a permanent or player (CR 301.5c, CR 303.4). CardID and
 	// Source are the attachment; Target is the host. Emitted by
@@ -110,6 +147,55 @@ const (
 	// attached to. Added in S24.
 	EventUnattach EventKind = "unattach"
 
+	// EventAttachSkipped — an effect tried to attach something and
+	// CR 701.3b's "the attachment doesn't happen" applied: the
+	// attachment is not on the battlefield (its equip was activated
+	// and it was sacrificed in response), the host is not, or the two
+	// are the same permanent. CardID and Source are the would-be
+	// attachment, Target the would-be host, and Label says which of
+	// the three it was.
+	//
+	// Deliberately NOT EventEffectError, for the reason
+	// EventPendingChoiceDropped is not one: nothing failed. An equip
+	// whose Equipment has left still RESOLVES and simply does nothing
+	// (CR 608.2, CR 702.6a), and reporting that as an effect error
+	// both misreads the rule and fails the catalog soak, which treats
+	// any effect error as a bug. The breadcrumb stays because a
+	// silent no-op is undebuggable; it produces no public log
+	// entry.
+	// #812.
+	EventAttachSkipped EventKind = "attach_skipped"
+
+	// EventControlChanged — CardID changed controller (CR 613.1b).
+	// Actor is the player who GAINED control, Target the player who
+	// LOST it; Source is the card whose effect took it, and is
+	// uuid.Nil when control REVERTED because the effect ended (the
+	// baseline is nobody's effect — Act of Treason's creature going
+	// home at cleanup).
+	//
+	// Emitted from the one materialise step at the end of the layer
+	// recompute (materialiseControlLocked), which is where the delta
+	// is known: control is layer 2's output, so a gain, an exchange,
+	// an expiry and a Mind Control being destroyed are all the same
+	// event from the same place. It rides the batch that was open
+	// when the pass ran, so an exchange (CR 701.12) is two events in
+	// one batch. Added for #930.
+	EventControlChanged EventKind = "control_changed"
+
+	// EventCounterPlaced — a counter of Label (see CounterKind /
+	// KnownCardCounters) was placed on or removed from a card.
+	// TARGET names the card — not CardID, which this one leaves
+	// unset — and Amount is the count of that kind on it AFTER the
+	// change, so a placement and a removal are the same event with a
+	// different number and neither carries the delta. Actor is
+	// uuid.Nil: applyCounterLocked is reached from a resolved spell,
+	// a paid cost, a trigger and the CR 704.5q cancel, and no single
+	// player is responsible for all four.
+	//
+	// Fires on AddCounter and on the SBA +1/+1 / -1/-1 cancel. The
+	// public log narrates it as the `counters` entry, for every kind
+	// but the two that are already a line somewhere else — see
+	// protocol.counterKindIsNarrated (#1021).
 	EventCounterPlaced EventKind = "counter_placed"
 
 	// EventTokenCreated — a token was created under Actor's control.
@@ -167,15 +253,19 @@ const (
 	// scry rather than an in-flight one. Source is the card that
 	// scried. Not emitted when the scry looked at nothing (an empty
 	// library), because no scry happened.
+	//
+	// LookedAt is the SIZE of the scry — the "2" in "scry 2" — and
+	// Amount is what moved. They are two different numbers and the
+	// log says both; see the field.
 	EventScry EventKind = "scry"
 
 	// EventSurveil — Actor finished a surveil (CR 701.25). Same
 	// shape as EventScry: emitted after the cards have been put
 	// back, with Amount = how many went to the GRAVEYARD (not the
 	// bottom — surveil has no bottom leg), so a "whenever you
-	// surveil" payoff sees a completed surveil. Source is the card
-	// that surveilled. Not emitted when the surveil looked at
-	// nothing (an empty library).
+	// surveil" payoff sees a completed surveil, and LookedAt = the
+	// size of the surveil. Source is the card that surveilled. Not
+	// emitted when the surveil looked at nothing (an empty library).
 	//
 	// Deliberately a distinct kind from EventScry rather than a
 	// flag on it: the two are different keywords with different
@@ -192,13 +282,33 @@ const (
 	// too. Actor is the sacrificing player (the controller), CardID
 	// the permanent.
 	//
-	// Sacrifice is NOT destruction: it ignores indestructible and
-	// regeneration, and "if a creature would die" replacements that
-	// key on destruction don't see it. Aristocrats payoffs ("whenever
+	// Sacrifice is NOT destruction: it ignores indestructible
+	// (CR 702.12b) and regeneration (CR 701.19a), and "if a creature
+	// would die" replacements that key on destruction don't see it —
+	// the exit it takes carries no Destruction flag (#667). Aristocrats payoffs ("whenever
 	// you sacrifice a permanent") watch this kind; "whenever a
 	// creature dies" payoffs watch EventLTB as before. Added in S21
 	// sub-PR 1.
 	EventSacrifice EventKind = "sacrifice"
+
+	// EventRegenerated — a regeneration shield replaced a destruction
+	// (CR 701.19a). Emitted by the engine built-in that owns the rule
+	// (regeneration.go), AFTER the shield has been spent and the
+	// permanent has been tapped, cleaned of damage and taken out of
+	// combat, and INSTEAD of the destruction: nothing left the
+	// battlefield, so there is no EventZoneMove and no EventLTB, and
+	// no dies-trigger fires.
+	//
+	// Actor is the permanent's controller, CardID and Source the
+	// permanent itself. Nothing in the catalog watches it yet — it is
+	// here because a regeneration is a thing that HAPPENED and the
+	// game log has to be able to say so, and because "whenever a
+	// permanent is regenerated" is a printed wording.
+	//
+	// It is NOT emitted when a shield is created: creating one changes
+	// nothing a player can observe except the shield count itself,
+	// which the wire carries on the card. Added in #667.
+	EventRegenerated EventKind = "regenerated"
 
 	// EventAttack — CardID was declared as an attacker. Actor is the
 	// attacking creature's controller; Target is the player it is
@@ -295,6 +405,22 @@ const (
 	// dropped "pick_target" from a dropped "trigger_prompt". #864.
 	EventPendingChoiceDropped EventKind = "pending_choice_dropped"
 
+	// EventPendingChoiceReassigned — a choice owed by a player who has
+	// left the game was handed to somebody else instead of being
+	// dropped (CR 800.4g/h). Actor is the departed chooser, Target is
+	// the player who inherits the prompt, Source is the choice's card
+	// (when known), and Label carries the PendingChoiceKind — the same
+	// three fields EventPendingChoiceDropped uses, so a stall dump can
+	// read the two side by side and see which prompts moved and which
+	// ended.
+	//
+	// The engine's event log is not on the wire (docs/protocol.md), and
+	// this one is deliberately not projected into the public `log`
+	// either: the reassignment is already visible to the table as the
+	// prompt itself, which the next snapshot renders to its new
+	// chooser. #902.
+	EventPendingChoiceReassigned EventKind = "pending_choice_reassigned"
+
 	// EventStepTransition is an engine-internal sentinel used only
 	// by the S17 replacement-effect pipeline. Fired from the top of
 	// runStepEntryHooksLocked so skip-step replacements (Stasis
@@ -302,6 +428,23 @@ const (
 	// event log — cards read it only via ReplacementEffect.Watches.
 	// Added in S17 sub-PR 2.
 	EventStepTransition EventKind = "step_transition"
+
+	// EventKeywordAction is the second engine-internal sentinel of
+	// the same shape, and the replacement-watch key for a KEYWORD
+	// ACTION with a count: proliferate (CR 701.34), scry (CR 701.22),
+	// surveil (CR 701.25). Cards read it only via
+	// ReplacementEffect.Watches; nothing emits it to the public log.
+	//
+	// One key for all three because RepEventKeywordAction is one
+	// kind: which action it is lives on the event
+	// (ReplacementEvent.KeywordAction) and the card-side helper
+	// narrows on it, so a "if you would scry" replacement is not
+	// woken by a proliferate. Reusing EventScry and EventSurveil here
+	// would key a PRE-event window on the names of two POST-event
+	// facts — those fire after the player has put the cards back,
+	// with the count this window settled on — and there is no
+	// EventProliferate at all. #976.
+	EventKeywordAction EventKind = "keyword_action"
 
 	// EventBeginUpkeep — the active player's upkeep step began.
 	// Actor is the active player (whose upkeep it is). The S19
@@ -364,9 +507,11 @@ const (
 
 	// EventManaAdded — one mana token landed in a player's pool.
 	// Actor = pool owner, Source = the producing permanent (uuid.Nil
-	// for non-card sources). The token's color rides Amount as 0
-	// (W/U/B/R/G/C carries no numeric weight) — the wire-side mana
-	// pool is the canonical projection. S15 sub-PR 2.
+	// for non-card sources). Colors carries the one symbol added
+	// (#763: it used to carry nothing, which is why nothing could
+	// trigger off "mana of a particular color was added"); the
+	// wire-side mana pool is still the canonical projection of the
+	// pool itself. S15 sub-PR 2.
 	EventManaAdded EventKind = "mana_added"
 
 	// EventManaPoolEmptied — a player's mana pool was cleared at a
@@ -379,6 +524,11 @@ const (
 	// from a caster's pool to pay for a spell. Actor = caster,
 	// Source = card being cast. Permissive / forced casts emit
 	// EventCostWarning instead. S15 sub-PR 3.
+	//
+	// #761: Amount is how many mana were spent and Colors the
+	// distinct COLOURS among them, in WUBRG order — the facts
+	// converge, sunburst and adamant read off the stack item, said
+	// out loud in the log as well.
 	EventManaSpent EventKind = "mana_spent"
 
 	// EventCostWarning — a cast_spell action proceeded under the S15
@@ -405,6 +555,34 @@ const (
 	// silent rules bug with no way for a card file to defend itself.
 	// Added in S27.
 	EventSagaChapter EventKind = "saga_chapter"
+
+	// EventClassLevel — a Class permanent's level designation became
+	// Amount (CR 716.2). Source / CardID / Target = the Class, Actor
+	// = its controller, Amount = the new level.
+	//
+	// It is what "When this Class becomes level N" watches, and it is
+	// also the layer-invalidation signal: a level change turns gated
+	// statics on, and the layer listener bumps on this kind (ADR
+	// 0071 decision 1).
+	//
+	// A dedicated kind rather than a predicate over
+	// EventCounterPlaced, for the reason EventSagaChapter is one and
+	// then some: a level is NOT a counter (CR 716.2b), so there is no
+	// counter event to predicate over in the first place.
+	//
+	// Added in S46 (#757).
+	EventClassLevel EventKind = "class_level"
+
+	// EventCaseSolved — a Case became solved (CR 719.3). Source /
+	// CardID / Target = the Case, Actor = its controller.
+	//
+	// Emitted once: a solved Case stays solved while it is on the
+	// battlefield, and SolveCaseForEffect is idempotent, so nothing
+	// watching this fires twice. Bumps the layer version for the same
+	// reason EventClassLevel does.
+	//
+	// Added in S46 (#757).
+	EventCaseSolved EventKind = "case_solved"
 
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn number and
@@ -517,6 +695,15 @@ const (
 	// emitted per die/coin; BatchSeq identifies the instruction that made them.
 	EventRollDie  EventKind = "roll_die"
 	EventFlipCoin EventKind = "flip_coin"
+
+	// EventSettingsChanged — one table setting changed (ADR 0075
+	// §2.3). Actor is the player who changed it (uuid.Nil for the
+	// server admin), Label is the setting's key (SettingUndoLimit,
+	// SettingAllowSpawn, …) and SettingOld / SettingNew are its
+	// values before and after, as text, so the log can narrate
+	// "set undos from 1 to 3 per turn". One event per field that
+	// actually changed. Public. Added in S35 (#1032).
+	EventSettingsChanged EventKind = "settings_changed"
 )
 
 // Event is a single entry in the per-game event log. Tagged union
@@ -589,11 +776,48 @@ type Event struct {
 	// delta, number of cards, counter count after the change.
 	Amount int `json:"amount,omitempty"`
 
+	// LookedAt is the SIZE of a finished keyword action that looks at
+	// the top of a library — the "2" in "scry 2" — on EventScry and
+	// EventSurveil, and zero on every other kind.
+	//
+	// A second number rather than a re-purposed Amount, because the
+	// two facts are both wanted at once and neither implies the
+	// other: Amount is how many cards MOVED (to the bottom, to the
+	// graveyard) and a scry 2 that moves one card is not a scry 1.
+	// Amount is also what "whenever you scry" payoffs and the
+	// surveil tests read, and #1036 was explicit that its meaning
+	// must not change.
+	//
+	// It is the size the action ACTUALLY had, which is two
+	// adjustments away from the number printed on the card: the
+	// CR 614 keyword-action window may have rewritten the count
+	// before the prompt was queued (Crystal Ball's "scry that many
+	// plus one" — see keyword_action.go), and a library shorter than
+	// the count clamps it (CR 701.22a looks at as many as there are).
+	// So it is len(PendingChoice.ScryCards) at the site that answers
+	// the prompt, and never the argument ScryForEffect was called
+	// with. Added for #1036.
+	LookedAt int `json:"looked_at,omitempty"`
+
 	// Label is a free-text qualifier: counter kind
 	// ("+1/+1", "loyalty", "poison"), trigger label, error
 	// classification. Kept as a string so adding new counter kinds
 	// doesn't require a schema change.
 	Label string `json:"label,omitempty"`
+
+	// Colors are the distinct colours a payment spent, in WUBRG
+	// order, on EventManaSpent (#761). Colourless is not a colour
+	// (CR 105.1) and never appears; Amount carries the total number
+	// of mana, colourless included.
+	//
+	// Empty on a payment the engine waived (permissive mode, a
+	// ForceCast) and on a genuinely free cast, which the log tells
+	// apart by the EventCostWarning that accompanies the first.
+	//
+	// On EventManaAdded (#763) it is the ONE symbol that token
+	// carried, "C" included — one event per token, so there is never
+	// more than one. Empty on every other event kind.
+	Colors []string `json:"colors,omitempty"`
 
 	// Sides is the die size for EventRollDie. Call and Won describe an
 	// EventFlipCoin; Won is false for a face-only flip.
@@ -611,6 +835,17 @@ type Event struct {
 	// events. Empty string means "not applicable."
 	OldZone ZoneKind `json:"old_zone,omitempty"`
 	NewZone ZoneKind `json:"new_zone,omitempty"`
+
+	// DiscardCause is why a discard happened, on EventDiscardCard: an
+	// effect's instruction, a cost, or the cleanup step's turn-based
+	// action (CR 701.8a, 601.2h, 514.1). Empty on every other kind.
+	//
+	// It is the distinction the rules draw — ADR 0013 §10a withdrew
+	// the voluntary/involuntary framing — and it rides the public event
+	// so the log can say why a card was pitched and a payoff that
+	// cares reads it beside Source, which names the card that asked.
+	// Added with #650.
+	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
@@ -660,6 +895,14 @@ type Event struct {
 	// was created in, not the one current when it lands. Added for
 	// #187 (ADR 0053 Decision 1).
 	CombatStep string `json:"combat_step,omitempty"`
+
+	// SettingOld / SettingNew are a table setting's value before and
+	// after an EventSettingsChanged, formatted as text: an int as
+	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an
+	// enum as its string value. Empty on every other kind. Added in
+	// S35 (#1032, ADR 0075).
+	SettingOld string `json:"setting_old,omitempty"`
+	SettingNew string `json:"setting_new,omitempty"`
 }
 
 // The two values of Event.CombatStep (and DamageAssignmentFrame's
@@ -679,9 +922,13 @@ const (
 
 // emitBecameTargetLocked fans one EventBecomesTarget out per target
 // slot in `targets`. Called from every site that finishes choosing
-// targets for a spell or ability: the cast path, the activated-
-// ability announce, the triggered-ability target pick, and the
-// manual sandbox announce.
+// targets for a spell or ability, and there are six: the cast path,
+// the catalog activation (activated.go), the manual sandbox
+// activation and the manual trigger announce (mutations.go), a
+// trigger's CR 603.3d target pick (pending_choice.go) and a copy's
+// re-target (spell_copy.go). One helper, so a card watching for
+// "becomes the target" cannot see a different board depending on
+// which verb announced (#968 was the sandbox activation missing).
 //
 // `actor` is the controller of the spell or ability, `source` is its
 // source card and `itemID` is its stack item. TargetSelf /
@@ -689,9 +936,10 @@ const (
 // chose.
 //
 // `source` and `itemID` are equal for a cast spell and differ for an
-// ability; see Event.StackItemID for why both are carried. A caller
-// with no item to name (the manual sandbox announce, before the item
-// exists) may pass uuid.Nil.
+// ability; see Event.StackItemID for why both are carried. Every
+// caller names an item: ward reads StackItemID to counter the object
+// that targeted, and Source would be the permanent the ability came
+// from.
 //
 // Emitted AFTER the item exists, so a trigger harvested off this
 // event lands on PendingTriggers above the thing that targeted.

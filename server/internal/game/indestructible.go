@@ -126,15 +126,23 @@ func IsIndestructible(c *Card) bool {
 // swallow an error per protected creature.
 //
 // Caller must hold g.mu.
-func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID) error {
+func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID, opts DestroyOptions) error {
 	// A grant registered moments ago in this same resolution frame
 	// bumps layerVersion but does not refresh `effective` until
 	// something asks. Ask.
 	g.RecomputeLayersIfStaleLocked()
 	if c := findBattlefieldCard(g, cardID); c != nil && IsIndestructible(c) {
+		// CR 702.12b: nothing happens at all. Note that a regeneration
+		// shield on an indestructible permanent is NOT spent here —
+		// there was no destruction for it to replace (#667).
 		return nil
 	}
-	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+	// #667: the destroy route, not the plain battlefield exit
+	// routeBattlefieldCardToOwnerGraveyardLocked takes. That is what
+	// marks the CR 614 event as a DESTRUCTION, which is the only thing
+	// a regeneration shield is allowed to replace, and what carries
+	// "it can't be regenerated" (CR 701.19c) down to it.
+	return g.routeBattlefieldExitInBatchThenLocked(cardID, destroyRouteWith(opts), nil, nil)
 }
 
 // DestructibleForEffect narrows a mass-destruction set down to the

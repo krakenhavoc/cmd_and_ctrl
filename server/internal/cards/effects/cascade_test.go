@@ -207,7 +207,7 @@ func TestCascadeHitIsCastableForFree(t *testing.T) {
 
 	var hit uuid.UUID
 	for _, c := range g.Exile.Cards {
-		if c.ExilePlay.Active(me.ID, g.Turn.Number) {
+		if permissionLive(g, g.CastPermissionOnCardByIDForEffect(c.InstanceID), me.ID) {
 			hit = c.InstanceID
 		}
 	}

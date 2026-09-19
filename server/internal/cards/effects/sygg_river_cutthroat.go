@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player's end step; the intervening if (CR 603.4) is checked at
 // announce — the trigger does not fire at all when no single
 // opponent has lost 3 this turn — and again at resolution, off the
-// event log walked back to the turn's upkeep
+// per-turn tally
 // (b06AnOpponentLostAtLeastThisTurn: damage and life loss both,
 // per opponent, not summed across the table). The "you may" is the
 // trigger's yes/no prompt.

@@ -15,16 +15,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the second main phase are both fully funded. That half is exact
 // here.
 //
-// ONE SIMPLIFICATION, strictly weaker than printed:
-//
-//   - PROTECTION FROM BLACK AND FROM GREEN is not granted.
-//     Protection is a parameterised keyword and CR 702.16b tests the
-//     quality against the SOURCE of a spell or ability, which the
-//     engine's targeting choke point never receives — see
-//     ADR 0038 for why that is a structural gap and not a to-do.
-//     Omitting it loses the Sword its evasion and its removal
-//     protection against two colours, which makes the card worse,
-//     not better.
+// PROTECTION FROM BLACK AND FROM GREEN is a layer-6 grant to the
+// equipped creature (GrantToAttached), enforced since #662 /
+// ADR 0072: a black or green spell cannot target the wearer
+// (CR 702.16b), a black or green Aura falls off it and a black or
+// green Equipment unattaches (CR 702.16c-d), black or green damage to
+// it is prevented (CR 702.16e), and a black or green creature cannot
+// block it (CR 702.16f). Against the two colours that print the most
+// removal, that is most of why the card is played.
 //
 // The discard used to be random with a caveat saying so, because the
 // engine's only discard surface here was DiscardRandomForEffect.
@@ -34,15 +32,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // behind a "then" — it happens as the trigger resolves, while the
 // discard prompt is still open — which is the printed card: the lands
 // come back whether or not the opponent has decided yet.
-//
-// Deferred until protection lands (CR 702.16, #662).
 func init() {
 	Register(Spec{
 		OracleID:     "d0901053-6de0-46d0-9ee3-8d40510236c1",
 		Name:         "Sword of Feast and Famine",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Protection from black and from green isn't granted."},
-		Static:       []game.StaticAbility{PumpAttached(2, 2)},
+		Completeness: CompletenessFull,
+		Static: []game.StaticAbility{
+			PumpAttached(2, 2),
+			GrantToAttached("protection from black", "protection from green"),
+		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

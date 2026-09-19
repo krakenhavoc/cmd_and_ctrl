@@ -328,8 +328,11 @@ func TestReversibleCardIsNotPlayable(t *testing.T) {
 // TestNonNumericToughnessIsStampedVariable pins the importer half of
 // #683's `*` exemption: a non-numeric printed toughness lands as 0 AND
 // as VariableToughness, so the toughness state check can tell it from
-// a printed 0/0 once counters have come and gone. A numeric 0 and an
-// empty value (a non-creature) are not variable.
+// a printed 0/0 once counters have come and gone. A numeric 0 is not
+// variable — since #691 that 0 is what kills a Hangarback Walker cast
+// for X=0 — and a MISSING toughness on a creature is variable, because
+// every creature prints one and the 0 this importer wrote is a record
+// it could not read rather than a printed body.
 func TestNonNumericToughnessIsStampedVariable(t *testing.T) {
 	for _, tc := range []struct {
 		toughness string
@@ -341,7 +344,7 @@ func TestNonNumericToughnessIsStampedVariable(t *testing.T) {
 		{"?", 0, true},
 		{"0", 0, false},
 		{"3", 3, false},
-		{"", 0, false},
+		{"", 0, true},
 	} {
 		got := importOne(cards.Card{
 			ID: uuid.New(), OracleID: uuid.New(), Name: "Test", Layout: "normal",
@@ -352,6 +355,18 @@ func TestNonNumericToughnessIsStampedVariable(t *testing.T) {
 		}
 		if got.VariableToughness != tc.want {
 			t.Errorf("toughness %q: VariableToughness = %v, want %v", tc.toughness, got.VariableToughness, tc.want)
+		}
+	}
+
+	// A card that prints no toughness at all is not a creature and is
+	// not flagged, whatever the toughness column says.
+	for _, typeLine := range []string{"Instant", "Land — Forest", "Legendary Artifact"} {
+		got := importOne(cards.Card{
+			ID: uuid.New(), OracleID: uuid.New(), Name: "Test", Layout: "normal",
+			TypeLine: typeLine,
+		})
+		if got.VariableToughness {
+			t.Errorf("%q was stamped VariableToughness; only creatures print one", typeLine)
 		}
 	}
 

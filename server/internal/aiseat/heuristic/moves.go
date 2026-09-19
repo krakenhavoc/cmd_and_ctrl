@@ -111,7 +111,7 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 			// half of that trade it can see — which is the right way
 			// round, because an ultimate it cannot evaluate is not an
 			// ultimate it should be firing.
-			v -= st.w.permanentValue(src)
+			v -= st.permanentValue(src)
 		}
 	}
 	for _, cp := range c.Counters {
@@ -128,6 +128,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 // Small and positive: a counter that exists is usually there to be
 // spent, which is exactly what a cost that removes it does.
 const genericCounterValue = 0.25
+
+// zeroXActivation prices an activation of an {X} ability announced at
+// X=0 (#810). Below passing, which scores 0, because the X-sized half
+// of what the ability does is nothing at X=0 — and a repeatable
+// no-op the policy keeps picking is a loop the game does not let run
+// (CR 732.2a).
+const zeroXActivation = -1.0
 
 // counterRemovalValue prices removing n counters of `kind` from `c`,
 // as a positive cost.
@@ -181,11 +188,24 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 
 	case legal.KindActivate:
 		cp := decode[activateParams](m.Params)
+		// #810, belt and braces. The enumerator no longer offers an
+		// {X} ability at X=0 when X is the whole of what it does, so
+		// this should not be reachable for such a card — but the
+		// policy is the other half of the pair that kept a table
+		// spinning, and a move that buys nothing has to rank below
+		// passing wherever it comes from. A card with a fixed rider
+		// is still offered at X=0 and still lands here; the rider is
+		// worth having, so the score is a small negative rather than
+		// a refusal, and a bot takes it only when there is nothing
+		// better on the list.
+		if cp.XValue == 0 && st.abilityDemandsX(cp.SourceCardID, cp.AbilityIndex) {
+			return zeroXActivation, "activate for X=0"
+		}
 		v := p.cfg.ActivateBase
 		v += st.targetsValue(p.cfg, cp.Targets)
 		for _, id := range cp.SacrificeIDs {
 			if c := st.bf[id]; c != nil {
-				v -= st.w.permanentValue(c)
+				v -= st.permanentValue(c)
 			}
 		}
 		// An {X} ability does more the bigger X is, and the
@@ -225,6 +245,18 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// does not want one.
 		return -1, "combat handled elsewhere"
 
+	case legal.KindSpecialAction:
+		// CR 116.2. A special action puts nothing on the stack and
+		// buys a cheaper or free cast on a later turn, which is why
+		// it is priced as a flat positive rather than through
+		// valueOfCast: there is no spell here to value, and the
+		// payoff arrives on a turn this evaluator cannot see.
+		//
+		// The enumerator has already checked the timing and the
+		// affordability, so anything that reaches here is a move the
+		// engine will accept (#544).
+		return p.cfg.SpecialActionValue, "special action: " + decode[specialActionParams](m.Params).Kind
+
 	case legal.KindChoice:
 		return p.valueOfChoice(st, m)
 	}
@@ -233,46 +265,55 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
-	card := st.mine[cp.InstanceID]
+	card := st.castSource(cp.InstanceID)
 	var v float64
 	reason := "cast"
+	if cp.AlternativeCost != "" {
+		reason = "cast (" + cp.AlternativeCost + ")"
+	}
 	if card != nil {
+		// What the card is worth once it resolves — the same function
+		// the FUEL price reads, so "what an escape spends" and "what an
+		// escape buys" cannot disagree about one card (#1013, fuel.go).
+		// The targets are added below; a card being pitched points at
+		// nothing, which is the one difference.
+		v += p.resolvedValue(st, card, cp.XValue)
 		switch {
+		case card.Unimplemented:
+			reason = "cast (unimplemented)"
 		case isCreature(card) || isPermanentSpell(card):
-			// What the permanent will be worth once it resolves. It
-			// arrives summoning-sick and untapped; permanentValue
-			// reads SummoningSick off the hand card, which is false
-			// there, so discount a creature explicitly.
-			pv := st.w.permanentValue(card)
-			if isCreature(card) {
-				pv *= st.w.SickCreature
-			}
-			v += pv
 			reason = "cast permanent"
 		default:
-			// An instant or sorcery: no body, so its value is its
-			// targets plus a mana-value proxy for whatever it does
-			// that the wire does not describe.
-			v += p.cfg.SpellPerMana * float64(manaValue(card.ManaCost, cp.XValue))
 			reason = "cast spell"
 		}
-		if card.IsCommander {
-			v += p.cfg.CommanderBonus
-		}
-		if card.Unimplemented {
-			// The engine will run none of this card's printed rules
-			// (ADR 0037). It still costs a card.
-			v -= p.cfg.SpellPerMana * float64(manaValue(card.ManaCost, cp.XValue))
-			reason = "cast (unimplemented)"
-		}
 	}
-	// The card leaves hand: one fewer resource.
-	v -= st.w.Hand
+	// A card leaves HAND: one fewer resource. #673 — a cast out of the
+	// graveyard, exile or the top of the library costs no card in
+	// hand, and charging one there was what made every flashback,
+	// escape and impulse cast score below passing and never get taken.
+	// What such a cast really spends is the card in the graveyard,
+	// which since #1013 is the alternative cost's own price below
+	// rather than a gap.
+	if cp.FromZone == "" || cp.FromZone == "hand" || cp.FromZone == "command" {
+		v -= st.w.Hand
+	}
+	// CR 601.2b's card half of a claimed alternative cost: Force of
+	// Will's pitched blue card, Daze's Island off the board, escape's
+	// five cards out of the graveyard.
+	//
+	// #1013: one price for all three, and it is the SAME one the
+	// enumerator sorted the payments by — so the payment the bot is
+	// offered first is the payment it then prices as cheapest, and the
+	// two cannot disagree. A graveyard card used to be worth nothing
+	// here, which made an escape look free.
+	for _, id := range cp.AltCostIDs {
+		v -= p.fuelValue(st, id)
+	}
 	// Additional costs are paid out of the same pool of resources.
 	v -= st.w.Hand * float64(len(cp.DiscardIDs))
 	for _, id := range cp.SacrificeIDs {
 		if c := st.bf[id]; c != nil {
-			v -= st.w.permanentValue(c)
+			v -= st.permanentValue(c)
 		}
 	}
 	v += st.targetsValue(p.cfg, cp.Targets)
@@ -285,6 +326,41 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	return v, reason
 }
 
+// castSource finds the card a cast move names, in any zone a cast can
+// come out of: the bot's hand or command zone, any graveyard, the
+// shared exile pile, and the top of the bot's own library (#673, CR
+// 401.5).
+//
+// Before the enumerator walked those zones this could only ever be a
+// hand card, so `st.mine` was the whole lookup. Leaving it that way
+// once the moves arrived would have priced every flashback, escape,
+// foretold and impulse cast as an unknown card — which is not a
+// neutral answer: it scores below passing, and a bot offered a
+// flashback would decline it forever.
+//
+// Nil when the card is in a zone this seat may not see, which is a
+// real answer rather than a bug: the move is still offered and still
+// priced, just without the body's value.
+func (st *state) castSource(id string) *protocol.CardView {
+	if c := st.mine[id]; c != nil {
+		return c
+	}
+	if c := st.graveyard[id]; c != nil {
+		return c
+	}
+	if c := st.exile[id]; c != nil {
+		return c
+	}
+	if st.seat != nil {
+		for i := range st.seat.Library.Cards {
+			if st.seat.Library.Cards[i].InstanceID == id {
+				return &st.seat.Library.Cards[i]
+			}
+		}
+	}
+	return nil
+}
+
 // isPermanentSpell reports whether a card in hand will become a
 // permanent when it resolves.
 func isPermanentSpell(c *protocol.CardView) bool {
@@ -295,6 +371,23 @@ func isPermanentSpell(c *protocol.CardView) bool {
 		}
 	}
 	return false
+}
+
+// abilityDemandsX reports whether the named ability of the named
+// permanent carries an {X} in its mana component (#810).
+//
+// Read off the filtered view's own `demands_x`, which the server
+// derives from the ability's cost string and ships so the client's X
+// picker does not have to re-parse it (protocol.ActivatedAbilityView).
+// A policy may not import internal/game (ADR 0033 §3), and this is
+// what that rule looks like in practice: the fact is already on the
+// wire, so the policy reads it rather than reaching for the engine.
+func (st *state) abilityDemandsX(sourceID string, index int) bool {
+	c := st.bf[sourceID]
+	if c == nil || index < 0 || index >= len(c.ActivatedAbilities) {
+		return false
+	}
+	return c.ActivatedAbilities[index].DemandsX
 }
 
 // targetsValue prices a target list. The sign convention is the
@@ -343,7 +436,7 @@ func (st *state) cardTargetValue(cfg Config, id string) float64 {
 		if c.Controller == st.me {
 			return cfg.OwnPermanentTarget
 		}
-		base := st.w.permanentValue(c)
+		base := st.permanentValue(c)
 		if isCreature(c) {
 			base = st.w.CreatureValue(c)
 		}

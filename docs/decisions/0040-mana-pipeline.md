@@ -243,14 +243,48 @@ snapshot. Three rules keep the rest of the pipeline unchanged:
   primitive's field of the same name) is the effect-side twin of the
   mana ability's narrowing flag, for printed "in your commander's color
   identity" text. No effect in the catalog sets it.
-- **The auto-tapper plans around a one-colour-N-mana source.** Its model
+- ~~**The auto-tapper plans around a one-colour-N-mana source.** Its model
   is one slot, one mana, one colour choice per slot, and a Gilded Lotus
   planned as three any-colour slots could be booked for `{W}`, `{U}` and
-  `{B}` at once, a plan the one-colour activation cannot honour. It is
-  the restricted-output exclusion's shape: the player taps the source by
-  hand (one prompt) and the cast spends the floated mana. Planning such
-  a source inline, choosing the colour that pays the most of the
-  remaining requirements, is possible later if it turns out to matter.
+  `{B}` at once, a plan the one-colour activation cannot honour.~~
+  *Superseded 2026-09-18 by the #779 addendum below — it turned out to
+  matter within a day: the planner is what `legal`, the cast gate and
+  the lobby preview all ask, so "plans around it" read as "this board
+  cannot pay".*
+
+## Addendum (#779): the auto-tapper plans a one-colour-N-mana source
+
+The planner models a "N mana of any one color" permanent as **one
+candidate per offered colour**, each with the pick already flattened
+into that colour's amount — three `{U}` slots for a Gilded Lotus booked
+blue, four `{G}` slots for a Nyx Lotus with devotion G4. The solver then
+reasons about it with the model it already had (one slot, one mana, one
+colour), and nothing in the search had to learn a new shape.
+
+- **The candidates are alternatives.** They share a `CardID`, and
+  `tapPlan.hasCard` stops the solver taking two: a permanent taps once
+  and makes one pick, so a lone Gilded Lotus funds `{U}{U}{U}` and never
+  `{W}{U}`.
+- **The plan carries the colour.** `plannedTap.OneColor` reaches
+  `materializePlanLocked`, which mints that colour rather than
+  re-deriving one. The two halves of the tapper disagreeing about a
+  colour is the #273 failure, and a multi-token pick is where it would
+  do the most damage.
+- **Surplus floats.** A Lotus booked for `{U}{U}` leaves its third slot
+  in the spare tally, `recruitGeneric` spends it on the generic half of
+  the same cost, and anything still left sits in the pool until the step
+  ends (CR 106.4). It is never booked as payment for a requirement of a
+  different colour.
+- **A stale plan drops before the tap.** A colour the source no longer
+  offers (a Nyx Lotus whose devotion moved in response) drops the source
+  the way the CR 903.4f narrowing and the counter-cost re-check do:
+  tapping a permanent for no mana is worse than not tapping it.
+- **Two one-colour slots on one ability is still declined.** That would
+  be a cross product of candidates for a shape no printed card has.
+
+This closes the gap #779 reported: `legal.canPayExcluding`, the strict
+cast gate and the lobby's `writeAutoTapPreview` all ask the same
+planner, so all three said "cannot pay" about a board that pays.
 
 ## Addendum — 2026-09-17: "any color" offers all five, identity first
 
@@ -408,3 +442,256 @@ printed for a commanderless or colourless deck (#259's direction).
   commander's color identity", and Path of Ancestry's creature-type
   half is a declared caveat (its scry rider is unimplemented), so the
   three mana paths above are the whole reader list.
+
+## Amendment — 2026-09-18 (#787): one symbol model, and the life half
+
+**CR 107.4.** Ten hybrid Phyrexian symbols — `{W/U/P}` through
+`{G/U/P}` — were an `unknown token` to `ParseCost`. Every card
+printing one was uncastable (`legal/cast.go` dropped it under the #289
+guard, the engine refused it with `ErrUnparseableCost`) and read mana
+value **0** where CR 202.3g says each Phyrexian symbol counts as 1.
+Ajani, Sleeper Agent; Lukka, Bound to Ruin; Nahiri, the Unforgiving;
+Tamiyo, Compleated Sage — four cards in the dump, importable into any
+deck today, and every `ManaValueLE` / cascade / `SpellManaValueAtLeast`
+read of them was wrong in both directions at once.
+
+- **No fourth symbol kind.** `ColorRequirement` already carried a
+  colour-option SET and two independent flags, and the ten symbols are
+  the existing pieces composed: `Options {"W","U"}` **and**
+  `Phyrexian`. `{W}`, `{W/U}`, `{W/P}`, `{W/U/P}` and `{2/W}` are one
+  struct with different fields set, so `ManaValue` (CR 202.3f/g), the
+  pool solver, the auto-tapper, the cost-modifier splice and the
+  colour readers all needed **no change** — five lines of parser and
+  the symbol was expressible. The rule the shape encodes is that a
+  Phyrexian symbol is not a colour-count: it is an alternative
+  PAYMENT, and it composes with however many colours the symbol names.
+- **Colour is not read from the parse.** `EffectiveColors`,
+  `printedColors` and `printedIdentityOf` scan the raw cost string for
+  `W U B R G`, so `{G/W/P}` was already both colours (CR 202.2d) and a
+  two-colour identity (CR 903.4) before this change, and still is. The
+  parse fix does not touch that path; the tests pin it so a future
+  parse-based colour reader cannot quietly disagree.
+- **The life half is announced, not inferred.** CR 601.2b makes "how
+  do you intend to pay each hybrid and Phyrexian symbol" part of
+  announcing the spell, so it is `CastSpellParams.PhyrexianLife` — an
+  announce-time parameter beside `Face`, `XValue` and the alternative
+  cost, not a `PendingChoice`, for the reason `Face` is not one: the
+  choice machinery resumes replacement, search and trigger frames and
+  has no frame for a half-validated cast. On the wire it is one
+  optional integer, `cast_spell`'s `phyrexian_life`.
+- **A count, not a list of symbols.** The engine strikes out the
+  symbols a life payment can actually save first — the ones no
+  spendable token in the pool matches, then the rest in printed order
+  — so a caster who says "one" never has the engine spend the life on
+  a pip they could have paid. Choosing between two symbols the pool
+  can both pay changes nothing but which colour is left floating.
+- **2 life each, through the one cost-shaped life path.** `#806` made
+  paying life a real loss that runs the CR 614 window and settles it
+  without a prompt (CR 601.2h pays a spell's costs as one indivisible
+  step). This calls `PayLifeForEffect` and writes no life total of its
+  own. An over-claim — more symbols than the cost prints, or more life
+  than CR 119.4 allows — is `ErrInvalidParam` **before** anything is
+  paid, so a refused cast costs neither mana nor a point.
+- **The auto-tapper plans the mana half only.** A claimed symbol
+  leaves the cost before `autoTapLocked` sees it; tapping a land for a
+  pip the caster said they would pay with life is exactly the
+  stranding the unparseable-cost short-circuit already avoids.
+- **What the enumerator offers is the MANA payment.**
+  `legal.EnumerateFor` now offers these casts at all, which it could
+  not before, and it offers them priced in mana. It advertises no life
+  payment, which is deliberate: #695's complaint is life-component
+  offers shown below the life total and then rejected, and the way not
+  to widen it is not to advertise one.
+- **What changes for symbols that already parsed.** Two things, both
+  reads. A missing-symbol breakdown now spells the Phyrexian tail —
+  `{W/P}` reported as `{W}` before and reports `{W/P}` now — so the
+  payment the engine did not take is visible in the message. And
+  `cascadeHit` stops bailing on a compleated planeswalker: an
+  unreadable cost was never a cascade hit, and a mana value of 4 now
+  is one.
+- **Still the board's gap.** No client button asks the question, so a
+  player clicking Gitaxian Probe from hand pays `{U}`. The five cards
+  whose caveats said "Phyrexian mana isn't supported" now say that,
+  which is the true statement. An ACTIVATED ability's mana cost has no
+  announce to carry the claim at all (Birthing Pod's `{1}{G/P}`,
+  Solphim's `{1}{R/P}{R/P}`), and both stay declared. *(Closed by the
+  2026-09-18 (#917, #916) amendment below.)*
+
+## Amendment — 2026-09-18 (#782): "could produce" asks the ability, now
+
+**CR 106.7.** "The type of mana a permanent could produce at any time
+includes any type of mana that an ability of that permanent would
+produce if the ability were to resolve at that time." Decision 5 above
+built that as *"the card's mana abilities unioned with
+`Card.ProducedMana`, Scryfall's `produced_mana`"*, with the recursion
+guard skipping every ability that had a `ProducedFunc`. Both halves
+broke once #742 put a whole family of chosen-colour lands in the
+catalog, and they broke in opposite directions at once:
+
+- **Too many colours.** Scryfall lists all five for every
+  chosen-colour land — checked in the dump for Thriving Isle, Sea Gate
+  and Uncharted Haven — because all five are printable outcomes. An
+  Exotic Orchard facing an opponent's Thriving Isle that **chose red**
+  could tap for white, black or green. The printed card allows blue or
+  red. That is stronger than printed, the direction #259 refuses.
+- **No colours at all.** A card built from the catalog with no
+  Scryfall record — a token, a demo seed, a test fixture — got
+  nothing, because a Thriving Isle's whole mana ability is a
+  `ProducedFunc` and the guard skipped every one of them. A Reflecting
+  Pool next to only an Uncharted Haven added no mana.
+
+**One function, `(*Game).ProducibleManaLocked`, in
+`game/producible_mana.go`.** It asks each of the permanent's mana
+abilities what it would add NOW: the `ProducedFunc` if there is one,
+then `manaPickOptions` — the same narrowing `ActivateManaAbility`,
+`AddManaForEffect`, `legal.EnumerateFor` and the auto-tapper read. So a
+chosen colour, a commander-identity narrowing (#844/#875's tri-state)
+and a plain "any colour" all answer exactly as the tap would, by
+construction rather than by a second implementation kept in step.
+`effects.producibleFrom` is gone; the three derivations share one
+`producibleAcross(g, match)` wrapper.
+
+- **The catalog answer wins; Scryfall is the fallback.**
+  `produced_mana` answers only when `ManaAbilitiesForCard` has nothing
+  at all — an imported land with no spec and no basic land type, where
+  the array is the only thing that knows anything. A card whose
+  abilities answer "nothing" answers nothing, because falling through
+  there would defeat both the chosen-colour read and the recursion
+  guard. (It did: two imported Exotic Orchards facing each other both
+  offered Scryfall's five colours straight through the guard.)
+- **The guard is declared, not inferred.**
+  `ManaAbility.DerivesFromOtherSources` marks the three abilities that
+  read what OTHER permanents could produce — Exotic Orchard, Fellwar
+  Stone, Reflecting Pool — and `ProducibleManaLocked` skips exactly
+  those. CR 106.6b answers the circular case with "no mana" and so
+  does the guard. The alternative, a re-entrancy counter, is undo
+  state on a snapshotted struct if it lives on `Game` and a data race
+  between two games in one process if it does not.
+  `TestDerivedManaAbilitiesDeclareTheGuard` holds the catalog to the
+  flag in both directions, reading the constructor's name off the
+  closure's code pointer, so a new derived card cannot forget it and
+  nothing else can claim it.
+- **Every other `ProducedFunc` is now evaluated.** The chosen-colour
+  lands (the Thriving cycle, the Gates, Uncharted Haven, Crossroads
+  Village, Mirage Mesa, Valgavoth's Lair), the scaled ones (Cabal
+  Coffers, Gaea's Cradle, Elvish Archdruid), devotion (Nyx Lotus,
+  Karametra's Acolyte), a creature's power (Marwyn), Mox Amber's
+  colours, the Urza lands' conditional {2}. **This retires one of
+  decision 5's declared simplifications:** a Reflecting Pool DOES now
+  see a Cabal Coffers' black, when there is a Swamp to make it.
+- **A land with no chosen colour yet produces nothing**, and an
+  unchosen Thriving Isle produces its printed colour alone — the same
+  "empty means the weaker outcome" rule every other reader of
+  `Card.ChosenColor` follows (#742).
+- **Costs and timing are still ignored**, which is the other half of
+  CR 106.7 and was already right: a tapped opposing Island still
+  offers {U}, a Temple of the False God its controller cannot activate
+  still offers {C}, and a Signet with an empty pool still offers its
+  two colours.
+- **Undo.** A pure read. Nothing is cached, nothing is stamped on a
+  card, and no new field is snapshotted — the one new field,
+  `DerivesFromOtherSources`, is on `ManaAbilityShape`, which is the
+  catalog's shape and not game state.
+
+
+## Amendment — 2026-09-18 (#917, #916): the same announce for an activation, and a board control for both
+
+The #787 amendment above left two gaps open on purpose and named
+them. This closes both.
+
+### #917 — an activated ability announces the life half too
+
+**CR 602.2b** asks the activator exactly what CR 601.2b asks the
+caster: "how do you intend to pay each hybrid and Phyrexian symbol",
+in one indivisible announcement, before any cost is paid. So the
+answer has the same shape and the same name —
+`ActivateAbilityParams.PhyrexianLife`, wire `phyrexian_life`, a count
+of symbols paid with 2 life each — and it is not a `PendingChoice`
+for the same reason the cast's is not.
+
+- **One strike-and-pay helper, two callers.** `phyrexian_mana.go` now
+  holds the pair `(*Game).strikePhyrexianLifeLocked` (validate the
+  claim, reduce the cost, price it, stamp `PaidCost.LifePaid`) and
+  `(*Game).payPhyrexianLifeLocked` (hand the life to
+  `PayLifeForEffect`). `applyCastCostLocked` and
+  `payAbilityManaCostLocked` call them in that order with the pool
+  spend between, and nothing about a Phyrexian symbol is decided
+  anywhere else. The cast path's old private
+  `validatePhyrexianLifeLocked` took a `CastSpellParams`, which is why
+  it could not be shared; the shared one takes the parsed cost, the
+  spend context, the count, the payer and the `PaidCost` — everything
+  both announcements have and nothing either one alone does.
+- **The rules are unchanged because the code is the same code.**
+  2 life per symbol (CR 107.4f); the symbols a life payment can save
+  struck first (`PhyrexianLifePlan`, unchanged, now exported so the
+  read-only preview can share it too); an over-claim or a CR 119.4
+  breach refused **before** anything is paid; the life paid before the
+  pool is spent, because the fallible half goes first (CR 119.8 can
+  still refuse it). Permissive mode waives the mana and still pays the
+  life, as it does for a cast.
+- **`PaidCost.LifePaid` sums.** ADR 0020's #958 addendum made it the
+  record of what an announcement paid, so an ability printing both a
+  `Life` component and a Phyrexian symbol records the total rather
+  than the printed component alone.
+- **The auto-tapper plans the mana half**, free: the strike happens
+  before the auto-tap branch inside `payAbilityManaCostLocked` — the
+  same ordering `applyAutoTapLocked` makes for a cast, for the same
+  reason. Tapping a land for a pip the activator said they would pay
+  with life is stranding it.
+- **The enumerator offers the life option, and the cast list still
+  does not.** `legal.affordablePayment` solves an ability's mana
+  component for the (X, symbols-by-life) pair: mana first, always, and
+  life only when the mana half alone cannot pay, taking the first —
+  cheapest — count that works. That is a deliberate asymmetry with the
+  cast list, and what makes it safe is what #695 asked for: the offer
+  is bounded by the life total (CR 119.4) and by the ability's own
+  printed `Life` component, so an offered activation is one the engine
+  accepts (#544). Without it Birthing Pod is simply never offered to a
+  seat with no green source, which is the gap #917 names.
+- **A claim against an ability with no mana component is refused**,
+  not dropped, exactly as an `x_value` on a costless ability is: it
+  means the client is firing the wrong ability.
+- **Cards.** Birthing Pod's caveat loses its activation half and keeps
+  only the board-button one. Solphim's names the one reason left —
+  `AbilityCost` still has no discard component — rather than two.
+
+### #916 — a board control to pay it
+
+- **The offer comes from the server, as a count.**
+  `phyrexian_symbols` rides `CardView` (the printed cast cost),
+  `alternative_costs[i]` (an offer replaces the cost, so it replaces
+  the ceiling) and `activated_abilities[i]`. Shipped rather than
+  re-derived for the reason `demands_x` is: a client that parsed the
+  mana string to find out would be a second parser of a syntax whose
+  last extension (#787) is the bug this whole line of work started
+  from. Stamped with the other cast clauses on the viewer's own
+  castable cards and stripped with them, so nobody but the announcer
+  is told the ceiling.
+- **One stepper, two prompt chains.** `PhyrexianCostModal` offers
+  "pay N with life", default 0, bounded by the symbol count and by
+  CR 119.4 — the SAME bound the engine enforces (`2N <= life`, so
+  paying down to exactly 0 is offered, because the engine accepts it).
+  A narrower client rule would hide a legal announcement and a wider
+  one would collect a value the announce gate rejects, so there is one
+  rule and `maxPhyrexianLife` is it. The prompt does not open at all
+  when the cost prints no symbol, or when CR 119.4 leaves 0 as the
+  only answer: a modal with one answer is a click, not a choice.
+- **Where it sits.** After the X picker in both chains, and before the
+  convoke picker (cast) and the mode picker (activation). X first
+  because an `{X}` cost has no size until X is announced and the
+  stepper's readout prices what is left; everything that follows is a
+  choice the cost's size does not change.
+- **The preview shows the mana half.** `GET /auto-tap-preview` takes
+  `?phyrexian=<n>` and strikes through `game.PhyrexianLifePlan` before
+  planning — the same strike the payment makes, reading the same pool
+  — so the readout answers "what does this still cost me in mana" as
+  the player steps the claim up. It clamps an over-claim rather than
+  400ing: refusing a malformed announce is the announce gate's job,
+  not a read-only preview's.
+- **Cards.** Birthing Pod, Gitaxian Probe, Gut Shot, Mental Misstep
+  and Phyrexian Metamorph lose their "the board has no button"
+  caveats and are `CompletenessFull` — five cards out of `caveats` and
+  into `full`, and the census is regenerated.
+- **Still open.** The bot's cast enumerator still advertises no life
+  payment for a CAST (above), and Solphim's ability still waits on an
+  activation-cost discard component.

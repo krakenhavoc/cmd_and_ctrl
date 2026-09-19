@@ -11,27 +11,36 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // table. Each opponent's discard is their own choice, one prompt per
 // opponent over their own hand, so nobody picks for anyone else.
 //
-// The catalog's one card that reads discard-FIRST-then-draw, which is
-// why the draw rides DiscardPrompt.Then (#651): "a card for each card
-// discarded THIS WAY" counts what actually reached a graveyard, so
-// each opponent's own answer is what buys the caster a card. Before
-// the discard was a real prompt the count had to be settled up front
-// from who was holding cards, and the draw happened while every
-// opponent was still deciding; that was this card's declared caveat
-// and it is gone. An opponent who leaves the game before answering
-// now buys nothing, which is the printed card.
+// The catalog's one card that reads discard-FIRST-then-count, and
+// since #1027 it is written as the engine's prompted-discard RUN:
+// "each other player discards a card" is ONE instruction however many
+// prompts it takes, and "a card for each card discarded THIS WAY" is
+// its continuation, run once after the last opponent has answered and
+// their cards have finished moving.
 //
-// An opponent with an empty hand is skipped rather than prompted —
-// they discard nothing, so there is nothing for the caster to draw
-// off. (The guard belongs here and not in the engine: the empty-hand
-// case of a discard prompt still runs Then, because "discard your
-// hand, THEN draw three" draws three from an empty hand. This card's
-// "then" is a payoff counting the discard, not the next instruction.)
+// Three things that buys over the per-prompt Then it used to ride:
 //
-// Sandbox simplification, cosmetic: the caster's cards arrive one per
-// answer rather than all at once once the table has discarded. No
-// priority passes in between and nothing in the catalog can see the
-// gap — a draw payoff counts the same draws either way.
+//   - The draw happens ONCE, for the whole table, after the table has
+//     discarded — which is the printed card. It used to arrive one
+//     card per answer, and that was a declared cosmetic simplification.
+//   - It counts what CR 701.8a counts. A madness card exiled instead
+//     of binned (CR 702.35a) was still discarded and still buys a
+//     card; a leg the CR 614 window cancelled did not and does not.
+//     The old count was "how many prompts had a Then", which is
+//     neither.
+//   - The empty-hand skip is the engine's rule, not this card's. An
+//     opponent with nothing in hand is never asked (CR 701.8a discards
+//     as many as you can), gets no entry in the run's answer, and buys
+//     the caster nothing — which used to need a guard here, written
+//     precisely because the prompt's own Then fires for an empty hand
+//     and this card's "then" is a payoff rather than the next
+//     instruction.
+//
+// An opponent who leaves the game before answering buys nothing: the
+// departure settles their leg with nothing discarded (#1016's
+// dropDefault, ADR 0013 §5y).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "abc37d6c-6300-47b5-a679-9db5b83eb54f",
@@ -39,21 +48,14 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			caster := item.Controller
-			source := item.SourceCardID
-			for _, opp := range ctx.Opponents() {
-				if p := ctx.PlayerByID(opp); p == nil || p.Hand.Size() == 0 {
-					continue
-				}
-				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player: opp,
-					Source: source,
-					N:      1,
-					Then: func(g *game.Game) error {
-						return g.DrawNForEffect(caster, 1)
-					},
+			return ctx.Game.EachPlayerDiscardsThenForEffect(caster,
+				game.DiscardPrompt{Source: item.SourceCardID, N: 1},
+				func(g *game.Game, discarded game.PromptedDiscards) error {
+					if n := discarded.Count(); n > 0 {
+						return g.DrawNForEffect(caster, n)
+					}
+					return nil
 				})
-			}
-			return nil
 		},
 	})
 }

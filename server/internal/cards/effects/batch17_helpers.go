@@ -340,14 +340,19 @@ func b17HistoricSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) b
 	return ok && b09IsHistoric(c)
 }
 
+// b17BreenaKey names Breena's ability for the once-per-batch guard
+// (#784). The stack LABEL below is computed per attacked opponent and
+// so cannot be the key; the opponent is the guard's own second
+// dimension (OncePerBatchPerPlayer), which is what keeps a
+// five-creature attack on one opponent to one card while a split
+// attack on two still triggers twice.
+const b17BreenaKey = "Breena, the Demagogue — an opponent was attacked"
+
 // b17BreenaLabel is the stack label of Breena's trigger for one
 // attacked opponent. The attacked player's name is in it because the
-// ability triggers once per opponent attacked per combat. The label
-// is computed per event, so the dedup is TriggerInFlightForEffect —
-// the per-event-key leftover, not the OncePerBatch batch guard,
-// until #784 — and it is what keeps a five-creature attack on one
-// opponent from drawing five cards while a split attack on two still
-// triggers twice.
+// ability triggers once per opponent attacked per combat: it is what
+// tells two of them apart on the stack, and what the once-per-turn
+// tally (the declared extra-combat retreat) keys on.
 func b17BreenaLabel(g *game.Game, opp uuid.UUID) string {
 	name := "an opponent"
 	if p := g.PlayerByIDForEffect(opp); p != nil {
@@ -396,11 +401,10 @@ func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) er
 // trimmed after every answer; a player with fewer permanents than
 // owed sacrifices what they have and the rest are dropped.
 func b17PlayerSacrificesN(g *game.Game, source, player uuid.UUID, n int, reason string) {
-	for i := 0; i < n; i++ {
-		if g.PlayerSacrificesForEffect(source, player, nil, reason) == 0 {
-			return
-		}
+	if n < 1 {
+		return
 	}
+	g.PlayerSacrificesNForEffect(source, player, nil, reason, n)
 }
 
 // b17WheelToGreatestDiscard is Jace's Archivist's body: each player
@@ -439,9 +443,9 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, player, cardID uuid.UUID) err
 	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
-	return g.ExileCardWithPermissionForEffect(cardID, game.ExilePlayPermission{
-		Player:    player,
-		UntilTurn: g.Turn.Number,
+	return g.ExileCardWithPermissionForEffect(cardID, game.CastPermission{
+		Player:   player,
+		Duration: g.UntilEndOfTurnDuration(),
 	})
 }
 

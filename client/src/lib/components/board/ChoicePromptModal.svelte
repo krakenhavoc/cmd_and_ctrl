@@ -17,6 +17,7 @@
     DamageAssignmentView,
     GameView,
     PendingChoiceView,
+    PickOptionView,
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
@@ -28,7 +29,7 @@
     type ServerErrorLike,
   } from "../../choiceRejection";
   import { doubledTriggerLabel } from "../../triggerDoubling";
-  import { colorButtons, colorPromptAnswerable } from "../../manaPick";
+  import { colorButtons, colorPromptAnswerable, colorPromptCopy } from "../../manaPick";
 
   interface Props {
     snap: GameView;
@@ -94,7 +95,18 @@
   $effect(() => {
     const nextID = active?.id ?? null;
     if (nextID !== lastChoiceID) {
-      selected = new Set();
+      // #826: an untap prompt whose ceiling is "all of them" is a board
+      // of nothing but "you may choose NOT to untap" permanents, and
+      // the default there is to untap — so the player's click should be
+      // the deselection. Where a cap binds there is no such default and
+      // the picker starts empty rather than pre-filled with a set the
+      // player would have to undo.
+      const options = active?.options ?? [];
+      const preselect =
+        active?.kind === "untap_choice" &&
+        options.length > 0 &&
+        (active.choose_max ?? 0) >= options.length;
+      selected = preselect ? new Set(options.map((c) => c.instance_id)) : new Set();
       ordered = [];
       rejection = null;
       submission = null;
@@ -118,6 +130,17 @@
 
   // answer sends a resolve_choice for the open prompt. Every kind's
   // submit goes through here so a refusal of any of them is shown.
+  // A new mode_pick prompt must not arrive holding the last one's
+  // picks — two Gala Greeters triggers in a turn are two questions.
+  let lastModeID: string | null = null;
+  $effect(() => {
+    const id = isModePick ? (active?.id ?? null) : null;
+    if (id !== lastModeID) {
+      lastModeID = id;
+      modePicks = [];
+    }
+  });
+
   function answer(params: Record<string, unknown>): void {
     if (!active || !viewerID) return;
     submission = { choiceID: active.id, sentAt: Date.now() };
@@ -152,18 +175,29 @@
   // are sent separately and can differ.
   const isChooseCards = $derived(active?.kind === "choose_cards");
 
+  // #826 untap_choice — CR 502.3's "the active player determines which
+  // permanents they control will untap", asked when a cap ("players
+  // can't untap more than one land") or an opt-out ("you may choose
+  // not to untap this") makes it a real decision. Same payload, same
+  // bounds and the same picker as choose_cards; what differs is the
+  // sentence, and that the candidates are public permanents rather
+  // than somebody's hand.
+  const isUntapChoice = $derived(active?.kind === "untap_choice");
+  // The two kinds that share the bounded card-set grid.
+  const isCardSetPick = $derived(isChooseCards || isUntapChoice);
+
   // How many cards this prompt accepts, and how few it will settle
   // for. Search and copy are the two that move the floor off the
   // ceiling.
   const pickMax = $derived(
     isSearch
       ? (active?.search_max ?? 1)
-      : isChooseCards
+      : isCardSetPick
         ? (active?.choose_max ?? active?.count ?? 0)
         : (active?.count ?? 0),
   );
   const pickMin = $derived(
-    isSearch || isCopyTarget ? 0 : isChooseCards ? (active?.choose_min ?? 0) : (active?.count ?? 0),
+    isSearch || isCopyTarget ? 0 : isCardSetPick ? (active?.choose_min ?? 0) : (active?.count ?? 0),
   );
   const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
 
@@ -208,6 +242,14 @@
   // `{choice_id, color}` answer as a mana pick; the server routes the
   // two by kind.
   const isColorChoice = $derived(active?.kind === "choose_color");
+  // #986: the card declares what it will DO with the colour
+  // (`color_purpose`), and the picker says it back. Five identical
+  // buttons cannot tell a player whether they are naming the colour
+  // their Coldsteel Heart will produce or the colour their Wash Out is
+  // about to bounce, and those are opposite answers. The button ORDER
+  // is the server's — it ranks the options by the same purpose — so
+  // nothing here sorts.
+  const colorCopy = $derived(colorPromptCopy(active?.color_purpose));
 
   function pickColor(color: string): void {
     if (!active || !viewerID) return;
@@ -349,6 +391,67 @@
   const isConfirm = $derived(active?.kind === "confirm");
   const confirmAccept = $derived(active?.accept_label || "Yes");
   const confirmDecline = $derived(active?.decline_label || "No");
+
+  // #568 option_pick — "choose one of the following", CR 608.2. The
+  // prompt an OPPONENT is asked while somebody else's spell resolves:
+  // Torment of Hailfire's three-way question, and the pile a Fact or
+  // Fiction chooser takes.
+  //
+  // A button per branch, answered with the INDEX. Not the card grid
+  // below: the answer is which consequence, not which cards, and an
+  // option's cards are context rather than the thing being picked.
+  // An option whose cards this seat may not see arrives with its
+  // label and no cards, which is the redaction pass working and not a
+  // missing render — so the button is still live.
+  const isOptionPick = $derived(active?.kind === "option_pick");
+  const pickOptions = $derived<PickOptionView[]>(active?.pick_options ?? []);
+  function answerOptionPick(index: number): void {
+    if (!active || !viewerID) return;
+    answer({ option_index: index });
+  }
+
+  // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
+  // chosen as the ability is put on the stack. A spell and an
+  // activated ability need no prompt (the player who announces is
+  // the player who chooses); a trigger has nobody to ask, because
+  // the engine is what puts it on the stack.
+  //
+  // Only the bullets that can actually be taken are on the wire —
+  // one whose clause has no legal target was dropped server-side —
+  // so `mode_indexes` says which ModeSpec index each label is, and
+  // that is what the answer sends back.
+  const isModePick = $derived(active?.kind === "mode_pick");
+  const modeLabels = $derived(active?.mode_options ?? []);
+  const modeIndexes = $derived(active?.mode_indexes ?? []);
+  const modeMin = $derived(active?.mode_min ?? 1);
+  const modeMax = $derived(active?.mode_max ?? 1);
+  const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // The chosen bullets IN THE ORDER CHOSEN — CR 700.2c resolves them
+  // in that order, and CR 700.2d lets the same one appear twice.
+  let modePicks = $state<number[]>([]);
+  const modeSingle = $derived(modeMax === 1 && !modeRepeatable);
+  const canConfirmModes = $derived(
+    modePicks.length >= modeMin && (modeMax <= 0 || modePicks.length <= modeMax),
+  );
+  function toggleMode(idx: number): void {
+    if (modeSingle) {
+      modePicks = [idx];
+      return;
+    }
+    if (!modeRepeatable && modePicks.includes(idx)) {
+      modePicks = modePicks.filter((x) => x !== idx);
+      return;
+    }
+    if (modeMax > 0 && modePicks.length >= modeMax) return;
+    modePicks = [...modePicks, idx];
+  }
+  function modeTimes(idx: number): number {
+    return modePicks.filter((x) => x === idx).length;
+  }
+  function answerModes(): void {
+    if (!canConfirmModes) return;
+    answer({ modes: modePicks });
+  }
 
   // #804 loop_shortcut — CR 726. The loop breaker has fired and this
   // viewer controls the ability that is repeating, so they get the
@@ -795,14 +898,15 @@
         </div>
       {:else if isColorChoice}
         <h2 id="choice-title">
-          {active.reason || "Choose a color"}
+          {active.reason || colorCopy.title}
           <span class="prompt-src" aria-hidden="true">choose a color · CR 105.4</span>
         </h2>
-        <!-- Neutral on purpose: the same prompt comes from a permanent
-             entering (the color is remembered) and from a spell or
-             ability resolving (it is used once), and the view does not
-             say which. -->
-        <p class="prompt-hint">Pick exactly one color. The card's text says how it is used.</p>
+        <!-- The hint is the card's declared purpose put into words
+             (#780 / #986). A prompt with no purpose falls back to the
+             neutral line, because without one the view genuinely does
+             not know whether the colour is remembered on a permanent
+             or used once as a spell resolves. -->
+        <p class="prompt-hint">{colorCopy.hint}</p>
         <div class="color-row">
           {#each buttons as b (b.color)}
             <button
@@ -968,6 +1072,71 @@
           <button type="button" onclick={() => answerOptional(false)}>Enter tapped</button>
           <button type="button" class="primary" onclick={() => answerOptional(true)}>
             Pay {active.pay_cost ?? ""}
+          </button>
+        </div>
+      {:else if isOptionPick}
+        <h2 id="choice-title">
+          {active.reason || "Choose one"}
+          <span class="prompt-src" aria-hidden="true">choose one · CR 608.2</span>
+        </h2>
+        <p class="prompt-hint">
+          Someone else's spell or ability is asking you. Every option listed is one you can take,
+          and the game waits until you pick one.
+        </p>
+        <ul class="pick-options">
+          {#each pickOptions as opt, i (i)}
+            <li>
+              <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+                <span class="pick-label">{opt.label}</span>
+                {#if opt.cards && opt.cards.length > 0}
+                  <span class="pick-cards">
+                    {#each opt.cards as c (c.instance_id)}
+                      <Card card={c} />
+                    {/each}
+                  </span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else if isModePick}
+        <h2 id="choice-title">
+          {triggerSourceName(active.source)}
+          <span class="prompt-src" aria-hidden="true">{active.reason || "choose one"}</span>
+        </h2>
+        <p class="prompt-hint">
+          The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
+          603.3c), and any targets it asks for come after.
+          {#if modeRepeatable}
+            You may choose the same mode more than once.
+          {/if}
+        </p>
+        <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
+          {#each modeLabels as label, i (i)}
+            {@const idx = modeIndexes[i] ?? i}
+            {@const times = modeTimes(idx)}
+            <li>
+              <button
+                type="button"
+                class="prompt-opt"
+                class:on={times > 0}
+                role={modeSingle ? "radio" : "checkbox"}
+                aria-checked={times > 0}
+                onclick={() => toggleMode(idx)}
+              >
+                <span class="prompt-radio" aria-hidden="true"></span>
+                <span class="mode-label">{label}</span>
+                {#if modeRepeatable && times > 0}
+                  <span class="mode-times">&times;{times}</span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+        <div class="prompt-foot">
+          <span class="prompt-count">{modePicks.length} / {modeMax > 0 ? modeMax : "any"}</span>
+          <button type="button" class="primary" disabled={!canConfirmModes} onclick={answerModes}>
+            Choose
           </button>
         </div>
       {:else if isConfirm}
@@ -1144,6 +1313,9 @@
           {:else if isCopyTarget}
             {active.reason || "Enter as a copy of…"}
             <span class="prompt-src" aria-hidden="true">copy · CR 707</span>
+          {:else if isUntapChoice}
+            {active.reason || "Untap step — choose which permanents untap"}
+            <span class="prompt-src" aria-hidden="true">untap · CR 502.3</span>
           {:else if isChooseCards}
             {active.reason || "Choose cards"}
             <span class="prompt-src" aria-hidden="true">choose</span>
@@ -1166,6 +1338,16 @@
           {:else if isCopyTarget}
             Pick what it enters as a copy of — it copies the printed card, so counters, damage and
             other effects don't come across. Or copy nothing and let it enter as itself.
+          {:else if isUntapChoice}
+            {#if pickMin === 0}
+              These don't have to untap. Leave any of them tapped, or untap them all.
+            {:else if pickMin === pickMax}
+              Only {pickMax} of these can untap this turn.
+            {:else}
+              Between {pickMin} and {pickMax} of these can untap this turn; the rest stay tapped.
+            {/if}
+            Nothing else on your board is affected — everything that could untap without a decision already
+            has.
           {:else if isChooseCards}
             {#if pickMin === pickMax}
               Pick {pickMax} of these.
@@ -1201,7 +1383,7 @@
         </div>
         <div class="prompt-foot">
           <span class="prompt-count">{selected.size} / {pickMax} selected</span>
-          {#if isSearch || isCopyTarget || (isChooseCards && pickMin === 0)}
+          {#if isSearch || isCopyTarget || (isCardSetPick && pickMin === 0)}
             <button
               type="button"
               onclick={() => (selected = new Set())}
@@ -1217,6 +1399,8 @@
               {selected.size === 0 ? "Fail to find" : "Take"}
             {:else if isCopyTarget}
               {selected.size === 0 ? "Enter as itself" : "Enter as a copy"}
+            {:else if isUntapChoice}
+              Untap
             {:else if isChooseCards}
               Choose
             {:else}
@@ -1303,6 +1487,31 @@
   }
   .card-pick.bottomed {
     opacity: 0.45;
+  }
+  .pick-options {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pick-option {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    text-align: left;
+  }
+  .pick-label {
+    font-weight: 600;
+  }
+  .pick-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 6px;
+    width: 100%;
   }
   .card-grid {
     display: grid;

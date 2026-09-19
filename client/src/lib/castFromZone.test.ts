@@ -39,6 +39,22 @@ describe("castableFromZone — who gets the graveyard cast button", () => {
     expect(castableFromZone(card, "graveyard", null, "me")).toBe(false);
   });
 
+  // #1022 / #1037. A permission names an OBJECT, so a card in an
+  // opponent's graveyard is castable by the seat that holds one —
+  // Wrexial's "cast target instant or sorcery card from that player's
+  // graveyard". The server computes that holder's own offers, targets
+  // and gate for their frame alone and names them in the public
+  // `exile_play`; the ownership gate above would have dropped the
+  // button on the floor.
+  it("offers it to a seat the grant names, in somebody else's graveyard", () => {
+    const granted = inYard({ castable_here: true, exile_play: { player: "them" } });
+    expect(castableFromZone(granted, "graveyard", "them", "me")).toBe(true);
+    // The pile's owner keeps their own answer, and a third seat gets
+    // neither: the stamps on their frame are the owner's public ones.
+    expect(castableFromZone(granted, "graveyard", "me", "me")).toBe(true);
+    expect(castableFromZone(granted, "graveyard", "third", "me")).toBe(false);
+  });
+
   it("withholds it from a card the server did not mark", () => {
     expect(castableFromZone(inYard(), "graveyard", "me", "me")).toBe(false);
     expect(castableFromZone(inYard({ castable_here: false }), "graveyard", "me", "me")).toBe(false);

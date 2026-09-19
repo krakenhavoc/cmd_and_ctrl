@@ -28,22 +28,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // two Patrols give afflict 3 twice, since two instances of afflict
 // trigger separately (CR 702.131b).
 //
-// DECLARED SIMPLIFICATION, weaker than printed, and narrower than it
-// was — the #388 timing gap. The lock-in (#830) drains the trigger
-// onto the stack INSIDE the declare blockers step, so under ordinary
-// priority play the 3 life is now lost before combat damage. What is
-// left is the sandbox's skip-ahead button: a seat that clicks
-// advance_step straight out of declare_blockers walks past the
-// trigger sitting on the stack, and takes the damage first. Same
-// total nearly always; a defending player who would have died to the
-// loss before their lifelink blocker gained them life survives.
-// Never stronger.
+// The #388 timing gap is closed on both halves and the card prints
+// as printed. The lock-in (#830) drains the trigger onto the stack
+// INSIDE the declare blockers step, so ordinary priority play loses
+// the 3 life before combat damage; and since #914 the sandbox's
+// skip-ahead button does too — advance_step passes priority until the
+// step ends (CR 117.4) rather than walking the cursor past a trigger
+// the step still owes. The caveat this card carried for both of them
+// is gone.
 func init() {
 	Register(Spec{
 		OracleID:     "1e51fab7-3ca5-4fbb-a1e9-b39c842895e8",
 		Name:         "Cyberman Patrol",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Advancing the step straight out of declare blockers deals combat damage before the afflict trigger resolves; passing priority loses the 3 life first, as printed."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBecomesBlocked},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

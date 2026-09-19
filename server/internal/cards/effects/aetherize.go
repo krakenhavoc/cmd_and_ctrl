@@ -16,11 +16,12 @@ import (
 // Worth noting why this one is expressible while the deck's attack
 // TRIGGERS are not: there is no EventAttack in events.go, so nothing
 // can fire "whenever ~ attacks". But combat STATE exists —
-// DeclareAttacker stamps Card.AttackingTarget, and ClearCombat wipes
-// it at end of combat. Aetherize is a spell reading that state at
-// resolution, not a trigger waiting on an event, so it needs no new
-// plumbing. Untargeted and symmetric: it takes the caster's own
-// attackers too.
+// DeclareAttacker stamps Card.AttackingTarget, and the cursor wipes it
+// as the end of combat step ENDS (CR 511.3, #785), so a flash deck can
+// still cast this in that step and catch the whole attack. Aetherize
+// is a spell reading that state at resolution, not a trigger waiting
+// on an event, so it needs no new plumbing. Untargeted and symmetric:
+// it takes the caster's own attackers too.
 //
 // S23: this is ReturnAllToHand's reason to exist. "All attacking
 // creatures" is not a battlefield predicate — attacking-ness lives in

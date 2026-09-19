@@ -19,16 +19,16 @@ import (
 
 // exileCardWithGrant drops a card into the shared exile pile carrying
 // `grant`, known to the whole table the way a face-up exile is.
-func exileCardWithGrant(g *game.Game, p *game.Player, c game.Card, grant game.ExilePlayPermission) uuid.UUID {
+func exileCardWithGrant(g *game.Game, p *game.Player, c game.Card, grant game.CastPermission) uuid.UUID {
 	c.InstanceID = uuid.New()
 	c.Owner = p.ID
 	c.Controller = p.ID
-	c.ExilePlay = grant
 	c.KnownBy = make(map[uuid.UUID]bool, len(g.Seats))
 	for _, s := range g.Seats {
 		c.KnownBy[s.ID] = true
 	}
 	g.Exile.PushTop(c)
+	g.GrantCastPermissionOverCardForEffect(c.InstanceID, grant)
 	return c.InstanceID
 }
 
@@ -63,8 +63,8 @@ func TestEnumeratorOffersNoIllegalXForAFreeCast(t *testing.T) {
 
 	stroke := game.Card{Name: "Test Stroke", TypeLine: "Sorcery", ManaCost: "{X}{U}", Layout: "normal"}
 	fromHand := handCard(seat, stroke)
-	free := exileCardWithGrant(g, seat, stroke, game.ExilePlayPermission{
-		Player: seat.ID, UntilTurn: g.Turn.Number, CostOverride: "{0}", CastOnly: true,
+	free := exileCardWithGrant(g, seat, stroke, game.CastPermission{
+		Player: seat.ID, Cost: "{0}", CastOnly: true,
 	})
 
 	moves := legal.EnumerateFor(g, seat.ID)

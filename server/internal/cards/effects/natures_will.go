@@ -9,17 +9,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 you control."
 //
 // The green Bear Umbra. combatDamageToPlayerBy is the condition;
-// "one or more" is a dedup, because the engine emits one damage
-// event per creature — but per PLAYER, not per source: the stack
-// label names the damaged player, and a second event for the same
-// player is declined while that label's trigger is pending or on the
-// stack (the engine's TriggerInFlightForEffect, keyed by that label). Creatures connecting
-// with two players in one combat fire twice, once per player, as
-// printed; three creatures hitting one player fire once. First-
-// strike and regular damage are two batches and two triggers, as in
-// paper. On resolution every untapped land the damaged player
-// controls is tapped and every tapped land the controller controls
-// is untapped.
+// "one or more" is the engine's once-per-batch guard with its PLAYER
+// dimension (OncePerBatchPerPlayer, CR 603.2c / #784), so a second
+// damage event naming the same player in the same damage step is
+// declined and a creature connecting with a second player is its own
+// trigger. Creatures connecting with two players in one combat fire
+// twice, once per player, as printed; three creatures hitting one
+// player fire once. First-strike and regular damage are two damage
+// steps and two batches (CR 510.4), so two triggers, as in paper.
+// The stack label still names the damaged player, which is what
+// tells two simultaneous triggers apart on the stack. On resolution
+// every untapped land the damaged player controls is tapped and
+// every tapped land the controller controls is untapped.
 //
 // No simplification.
 func init() {
@@ -28,10 +29,12 @@ func init() {
 		Name:         "Nature's Will",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
+			OncePerBatch: true,
+			BatchKey:     PerPlayer,
+			Key:          b24NaturesWillKey,
+			Watches:      []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return combatDamageToPlayerBy(ev, source.Controller, g) &&
-					!g.TriggerInFlightForEffect(source.InstanceID, b24NaturesWillLabel(g, ev.Target))
+				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				victim := ev.Target

@@ -11,11 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is what makes it a real Divination rather than a gamble: the land
 // can be played on either turn and a spell you cannot afford today
 // waits for tomorrow. The exile is the S21 impulse grant ("play",
-// not "cast", so a land is not stranded); the duration is the
-// b19ExileTopTwoUntilEndOfNextTurn shape, which the helper's comment
-// explains — the engine's grant expires by round, so a delayed
-// trigger at the beginning of your next upkeep pins it to end with
-// that turn.
+// not "cast", so a land is not stranded); the duration is ADR 0063's
+// "until the end of your next turn", keyed on the seat-turn counter
+// so it means the same thing from every seat.
 //
 // Wrenn's Resolve is the same card.
 //
@@ -26,7 +24,7 @@ func init() {
 		Name:         "Reckless Impulse",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return b19ExileTopTwoUntilEndOfNextTurn("Reckless Impulse")(ctx.Game, item)
+			return b19ExileTopTwoUntilEndOfNextTurn(ctx.Game, item)
 		},
 	})
 }

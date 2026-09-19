@@ -159,6 +159,19 @@ func ArtifactOrEnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsArtifact() || q.Card.IsEnchantment() }
 }
 
+// ColoredSpell passes on a spell that IS the given colour — "BLUE
+// spells you cast cost {1} less to cast" (The Water Crystal). `color`
+// is a single-letter code, "W" / "U" / "B" / "R" / "G", the spelling
+// game.Card.HasColor takes.
+//
+// Colour is read off the spell as it stands at announce, through
+// EffectiveColors, so a layer-5 colour change is honoured and a
+// multicolour spell is every colour it is: a {U}{R} spell is a blue
+// spell and a red one, and each discount that names one applies.
+func ColoredSpell(color string) CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.HasColor(color) }
+}
+
 // SpellManaValueAtLeast passes when the mana value of the spell
 // being cast is at least n. It reads the mana cost, not the price:
 // CR 202.3c says a cost modifier changes what a spell costs and never
@@ -206,4 +219,20 @@ func OtherSpellsCastThisTurn() func(q game.CostQuery) int {
 		}
 		return q.Game.SpellsCastThisTurn[q.Controller].Total
 	}
+}
+
+// SpellWithKeyword passes on a spell that has `kw` as it sits on the
+// stack — "creature spells WITH FLYING you cast cost {1} less"
+// (Warden of Evos Isle), and the discount half of every tribal or
+// keyword lord that prices rather than pumps.
+//
+// Reads the keyword off the spell rather than off a battlefield
+// permanent, which is the whole point: game.HasKeyword falls back to
+// the card's own Keywords and then to CatalogPrintedKeywords for an
+// object that is not on the battlefield, and a spell being priced is
+// on the stack. A creature that only GAINS the keyword once it
+// resolves is not discounted, which is what CR 601.2f says — the cost
+// is locked in from the spell as it exists while it is being cast.
+func SpellWithKeyword(kw string) CostPredicate {
+	return func(q game.CostQuery) bool { return game.HasKeyword(&q.Card, kw) }
 }

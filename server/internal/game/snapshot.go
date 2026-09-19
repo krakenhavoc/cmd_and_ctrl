@@ -77,10 +77,44 @@ import (
 // cannot know. Card.VariableToughness is the one such field; see
 // snapshot_backfill.go.
 //
+// The OTHER direction is also a reason to bump, and it is why v2
+// exists (#623, ADR 0064 Decision 7): emblems are additive and
+// restore correctly from a v1 file, but a v1 BINARY reading a v2 file
+// would restore a game with the emblems silently missing. There is no
+// per-field way to say "refuse this file if you don't know what an
+// emblem is", so the version is it. checkSchema already refuses a
+// file newer than the reader (ErrSchemaTooNew); the bump is what
+// makes it fire. The cost is that a pre-emblem binary refuses EVERY
+// post-emblem restore point, emblem or not.
+//
+// v3 is #945: a stored game.CastPermission carried its own window as
+// `untilTurn` / `whileInZone`, and now carries ADR 0063's
+// `duration` object instead. A v2 file decodes into the zero
+// Duration, which reads as "until end of turn, unstamped" — so every
+// granted permission in a restored pre-v3 game would lapse at the
+// next cleanup step, including the airbend and warp grants that
+// should have lasted for as long as the card stayed in exile. That is
+// a semantic shift in an existing field, which is exactly what this
+// constant is for.
+//
+// v4 is #1032 (ADR 0075): the table's configuration moved from the
+// single `undoLimit` field into the `settings` object. A v3 file has
+// no `settings` key, and its zero value is not a table anyone set up:
+// StartingLife and CommanderDamage 0, and an UndoLimit of 0 that the
+// v3 binary's Start would have rewritten to the default. So a pre-v4
+// file is migrated ONCE, by version, in migrateLegacySettings — and a
+// v4 file is restored as written, which is what lets a deliberate
+// "no undos" survive a restore. The other direction needs the bump
+// too: a v3 binary reading a v4 file would drop every setting.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 1
+const SnapshotSchemaVersion = 4
+
+// settingsSchemaVersion is the first schema that carries
+// GameSnapshot.Settings. Older files are migrated from UndoLimit.
+const settingsSchemaVersion = 4
 
 // minRestorableSchema is the oldest schema Restore still understands.
 // Raise it only when carrying a migration forward stops being worth
@@ -136,13 +170,19 @@ type GameSnapshot struct {
 	Stack       *zoneSnapshot `json:"stack"`
 	Exile       *zoneSnapshot `json:"exile"`
 
-	Turn              Turn      `json:"turn"`
-	MulligansOpen     bool      `json:"mulligansOpen"`
-	Monarch           uuid.UUID `json:"monarch"`
-	Initiative        uuid.UUID `json:"initiative"`
-	UndoLimit         int       `json:"undoLimit"`
-	StartingSeat      int       `json:"startingSeat"`
-	SplitSecondActive bool      `json:"splitSecondActive"`
+	Turn          Turn      `json:"turn"`
+	MulligansOpen bool      `json:"mulligansOpen"`
+	Monarch       uuid.UUID `json:"monarch"`
+	Initiative    uuid.UUID `json:"initiative"`
+	// UndoLimit is the pre-v4 home of the undo budget. Read only when
+	// migrating an older file (migrateLegacySettings); a v4 capture
+	// leaves it zero and it is omitted.
+	UndoLimit int `json:"undoLimit,omitempty"`
+	// Settings is the table's configuration (ADR 0075). Carried from
+	// v4; see settingsSchemaVersion.
+	Settings          TableSettings `json:"settings"`
+	StartingSeat      int           `json:"startingSeat"`
+	SplitSecondActive bool          `json:"splitSecondActive"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -189,17 +229,24 @@ type GameSnapshot struct {
 	EventBatch        uint64            `json:"eventBatch,omitempty"`
 	OncePerBatchFired map[string]uint64 `json:"oncePerBatchFired,omitempty"`
 
-	// AnnouncedBlocks / AnnouncedBecameBlocked are the block
-	// declaration's lock-in bookkeeping (#830, blockers.go): which
+	// AnnouncedBlocks / BlockedAttackers are what the block
+	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
-	// attacker, and which attackers have had their one
-	// EventBecomesBlocked. Both are empty outside a combat with
-	// blockers declared, and a file written before them restores as
-	// empty — which reads as "nothing announced yet", so the next
+	// attacker, and which attackers are BLOCKED (CR 509.1h) — the
+	// same set that has had its one EventBecomesBlocked (CR 506.4).
+	// Both are empty outside a combat with blockers declared, and a
+	// file written before them restores as empty — which reads as
+	// "nothing announced and nothing blocked yet", so the next
 	// lock-in announces the declaration the battlefield already
 	// carries. No schema bump.
-	AnnouncedBlocks        map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
-	AnnouncedBecameBlocked map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
+	//
+	// BlockedAttackers keeps the wire key the field was born with
+	// (#830 called it announcedBecameBlocked, before #715 gave the
+	// same set its rules name): identical contents, identical
+	// lifetime, so a file written before the rename restores a
+	// mid-combat blocked state rather than losing it.
+	AnnouncedBlocks  map[uuid.UUID]uuid.UUID `json:"announcedBlocks,omitempty"`
+	BlockedAttackers map[uuid.UUID]bool      `json:"announcedBecameBlocked,omitempty"`
 
 	// AnnouncedAttacks is the attack declaration's half of the same
 	// bookkeeping (#859, attackers.go): the creatures that have had
@@ -210,6 +257,18 @@ type GameSnapshot struct {
 	// the next lock-in announces the declaration the battlefield
 	// already carries. No schema bump.
 	AnnouncedAttacks map[uuid.UUID]bool `json:"announcedAttacks,omitempty"`
+
+	// FirstStrikeStepParticipants is the CR 510.4 / 702.7c
+	// participation record for the combat damage steps (#716): the
+	// combatants that had first strike or double strike as the first
+	// one began. Empty outside a combat that had a first-strike step,
+	// and a file written before it restores as empty — which reads as
+	// "there was no first-strike step", so every combatant deals
+	// damage in the regular step. That is the right answer for every
+	// older file except one paused in the priority window between the
+	// two steps, which could not exist before the steps did. No schema
+	// bump.
+	FirstStrikeStepParticipants map[uuid.UUID]bool `json:"firstStrikeStepParticipants,omitempty"`
 
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
@@ -244,13 +303,26 @@ type playerSnapshot struct {
 	Hand      *zoneSnapshot `json:"hand"`
 	Graveyard *zoneSnapshot `json:"graveyard"`
 	Command   *zoneSnapshot `json:"command"`
+	// Emblems is the other half of the command zone (CR 114, #623).
+	// Absent from every pre-S40 file, which restores as an empty
+	// zone — the right reading, because no game written before
+	// emblems existed had one. See SnapshotSchemaVersion for why the
+	// schema was bumped anyway.
+	Emblems *zoneSnapshot `json:"emblems,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
 	// not exist: harmless (they render nowhere and can never reach
 	// 21 again) but not migrated.
-	CommanderDamage    map[uuid.UUID]int `json:"commanderDamage,omitempty"`
-	LifeHistory        []LifeChange      `json:"lifeHistory,omitempty"`
+	CommanderDamage map[uuid.UUID]int `json:"commanderDamage,omitempty"`
+	LifeHistory     []LifeChange      `json:"lifeHistory,omitempty"`
+	// TurnsBegun is the seat-turn counter "until your next turn"
+	// durations end on (ADR 0063). A file written before S38 restores
+	// with 0 for every seat, which is a relative counter reading as
+	// "nobody has had a turn yet" — an effect stamped after the
+	// restore still ends on that player's next turn, because the
+	// stamp is taken from the restored value.
+	TurnsBegun         int               `json:"turnsBegun,omitempty"`
 	Eliminated         bool              `json:"eliminated"`
 	HandKept           bool              `json:"handKept"`
 	MulligansTaken     int               `json:"mulligansTaken"`
@@ -272,6 +344,14 @@ type playerSnapshot struct {
 	// a non-positive value back to DefaultLandDropsPerTurn.
 	LandDropsPerTurn int      `json:"landDropsPerTurn,omitempty"`
 	ManaPool         ManaPool `json:"manaPool,omitempty"`
+	// CastPermissions are the granted cast and play permissions this
+	// player holds (ADR 0066). Carried: who may cast what is not
+	// derivable from the board, and a restore that dropped them would
+	// silently revoke a cascade hit or a Snapcaster'd card that had
+	// not been cast yet. Pure data by construction — the type holds no
+	// closures, which is what lets it be mirrored rather than
+	// rebuilt.
+	CastPermissions []CastPermission `json:"castPermissions,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -312,6 +392,7 @@ type cardSnapshot struct {
 	ColorIdentity            []string            `json:"colorIdentity,omitempty"`
 	StartingLoyalty          int                 `json:"startingLoyalty"`
 	Keywords                 []string            `json:"keywords,omitempty"`
+	GrantedAbilities         []string            `json:"grantedAbilities,omitempty"`
 	Layout                   string              `json:"layout,omitempty"`
 	Faces                    []Face              `json:"faces,omitempty"`
 	ActiveFace               int                 `json:"activeFace,omitempty"`
@@ -329,13 +410,15 @@ type cardSnapshot struct {
 	BlockingTarget           uuid.UUID           `json:"blockingTarget"`
 	GoadedBy                 uuid.UUID           `json:"goadedBy"`
 	DamageMarked             int                 `json:"damageMarked"`
+	RegenerationShields      int                 `json:"regenerationShields,omitempty"`
 	FaceDown                 bool                `json:"faceDown"`
+	FaceDownKind             FaceDownKind        `json:"faceDownKind,omitempty"`
 	KnownBy                  map[uuid.UUID]bool  `json:"knownBy,omitempty"`
 	EnteredBattlefieldAt     int64               `json:"enteredBattlefieldAt"`
+	ObjectEpoch              int                 `json:"objectEpoch,omitempty"`
 	SummonedThisTurn         bool                `json:"summonedThisTurn"`
 	MarkedLethalByDeathtouch bool                `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool                `json:"lostLastCounter,omitempty"`
-	ExilePlay                ExilePlayPermission `json:"exilePlay"`
 	AttachedTo               TargetRef           `json:"attachedTo,omitempty"`
 	AttachedAt               int64               `json:"attachedAt,omitempty"`
 	BaseController           uuid.UUID           `json:"baseController,omitempty"`
@@ -348,7 +431,41 @@ type cardSnapshot struct {
 	// ChosenColor is the "as this enters, choose a color" answer
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
-	ChosenColor       string    `json:"chosenColor,omitempty"`
+	ChosenColor string `json:"chosenColor,omitempty"`
+	// ChosenPlayer is the CR 614.12 "as this enters, choose a player"
+	// answer (#980). Carried for NamedTribe's reason and one more: it
+	// is the whole of what True-Name Nemesis's protection reads, so a
+	// restore that lost it would bring the Nemesis back protected from
+	// nobody — a rules change, silently, with nothing in the state to
+	// say what went. Old snapshots have no key and their zero uuid
+	// reads correctly as "nobody chosen".
+	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+	// Provenance is CR 400.7d: what the spell that became this
+	// permanent was cast for — the alternative cost (#653) and the
+	// optional additional costs (#664, ADR 0073 §5), in one record.
+	// Carried, and for a sharper reason than NamedTribe's: the stack
+	// item it was copied from is gone by definition, so a restore that
+	// dropped it could not rebuild it from anything. A Phlage that
+	// escaped would come back having been hard-cast and sacrifice
+	// itself on the next trigger, and a kicked Gatekeeper of Malakir
+	// would come back unkicked, both silently.
+	//
+	// Absent in a file written before the field existed, which decodes
+	// as the zero record: "not cast, or cast for its mana cost", the
+	// answer every permanent gave before #653.
+	Provenance CastProvenance `json:"provenance,omitzero"`
+	// ClassLevel is the CR 716.2 level designation and Solved the
+	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
+	// for NamedTribe's reason and one more: they are legal zero
+	// values, so a restore that dropped them would bring back a
+	// level-3 Wizard Class as a level-1 one with two of its three
+	// abilities gone, and a solved Case unsolved — silently, with
+	// nothing in the state to say anything was lost. Old snapshots
+	// have neither key, and their zero values read correctly as
+	// "level 1, unsolved", which is why snapshot_backfill.go needs no
+	// arm for them.
+	ClassLevel        int       `json:"classLevel,omitempty"`
+	Solved            bool      `json:"solved,omitempty"`
 	StartingDefense   int       `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID `json:"protectorPlayerId,omitempty"`
 
@@ -368,6 +485,7 @@ type stackItemSnapshot struct {
 	Controller    uuid.UUID         `json:"controller"`
 	Owner         uuid.UUID         `json:"owner"`
 	SourceCardID  uuid.UUID         `json:"sourceCardId"`
+	SourceEpoch   int               `json:"sourceEpoch,omitempty"`
 	Label         string            `json:"label,omitempty"`
 	DoubledBy     uuid.UUID         `json:"doubledBy,omitempty"`
 	DoubledByName string            `json:"doubledByName,omitempty"`
@@ -379,15 +497,24 @@ type stackItemSnapshot struct {
 	HoldPriority  bool              `json:"holdPriority"`
 	CastFromZone  ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost       string            `json:"altCost,omitempty"`
+	Foretold      bool              `json:"foretold,omitempty"`
+	AltCostExiles bool              `json:"altCostExiles,omitempty"`
 	SplitSecond   bool              `json:"splitSecond"`
 	IsCopy        bool              `json:"isCopy,omitempty"`
 	Seq           uint64            `json:"seq"`
 	Ordered       bool              `json:"ordered"`
 
-	// HasEffect / HasTargetSpec record the two closure slots so the
-	// census can count what restore had to drop.
+	// Paid is what the announcement cost (#789 / #761). Carried: a
+	// restore that lost it would resolve a converge spell for zero
+	// and a "for each counter removed this way" ability for nothing,
+	// and neither number is recoverable from the restored board.
+	Paid PaidCost `json:"paid,omitempty"`
+
+	// HasEffect / HasTargetSpec / HasModeSpec record the catalog
+	// slots so the census can count what restore had to drop.
 	HasEffect     bool `json:"hasEffect,omitempty"`
 	HasTargetSpec bool `json:"hasTargetSpec,omitempty"`
+	HasModeSpec   bool `json:"hasModeSpec,omitempty"`
 
 	// OracleID is the source card's oracle ID, captured so restore
 	// can re-derive a SPELL's target spec from the catalog without
@@ -405,6 +532,14 @@ type delayedTriggerSnapshot struct {
 	CreatedTurn        int         `json:"createdTurn"`
 	Cards              []uuid.UUID `json:"cards,omitempty"`
 	HasEffect          bool        `json:"hasEffect,omitempty"`
+	// #663: the event condition. On and ExpiresAfterTurn are data
+	// and come back; the AppliesTo predicate and the Optional prompt
+	// are closures and do not, exactly as Effect does not — and the
+	// trigger is already counted once in
+	// ContinuationCensus.DelayedTriggerEffects, so it is already
+	// marked unrestorable and nothing here double-counts it.
+	On       []EventKind `json:"on,omitempty"`
+	Duration *Duration   `json:"duration,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -425,8 +560,10 @@ type pendingChoiceSnapshot struct {
 	CoinMaxUsefulWins    int                    `json:"coinMaxUsefulWins,omitempty"`
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
+	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
+	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
 	NoLegalTarget        bool                   `json:"noLegalTarget"`
@@ -434,6 +571,11 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
+	ModeOptionIndex      []int                  `json:"modeOptionIndex,omitempty"`
+	ModeOptionLabel      []string               `json:"modeOptionLabel,omitempty"`
+	ModeMin              int                    `json:"modeMin,omitempty"`
+	ModeMax              int                    `json:"modeMax,omitempty"`
+	ModeRepeatable       bool                   `json:"modeRepeatable,omitempty"`
 	SacrificeOptions     []uuid.UUID            `json:"sacrificeOptions,omitempty"`
 	CopyOptions          []uuid.UUID            `json:"copyOptions,omitempty"`
 	ScryCards            []uuid.UUID            `json:"scryCards,omitempty"`
@@ -445,9 +587,24 @@ type pendingChoiceSnapshot struct {
 	AcceptLabel          string                 `json:"acceptLabel,omitempty"`
 	LifeCost             int                    `json:"lifeCost,omitempty"`
 	DeclineLabel         string                 `json:"declineLabel,omitempty"`
-	ChooseCards          []uuid.UUID            `json:"chooseCards,omitempty"`
-	ChooseMin            int                    `json:"chooseMin,omitempty"`
-	ChooseMax            int                    `json:"chooseMax,omitempty"`
+	// OwedInStep: the step a pay-or-else prompt has to be answered in
+	// (#997). Carried so a restored game gates the same way, cheap
+	// and honest even though every prompt that sets it today also
+	// holds a continuation and so blocks the restore point.
+	OwedInStep TurnStep `json:"owedInStep,omitempty"`
+	// GuardsStackItem: the object on the stack whose fate a
+	// counter-unless-pays prompt decides (#951). Carried for
+	// OwedInStep's reason — a restored game gates the same way —
+	// and because the ID is the only route back to what the
+	// question was about.
+	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
+	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
+	ChooseMin       int         `json:"chooseMin,omitempty"`
+	// #568: the branches of an option pick. Carried for the reason
+	// ChooseCards is — the prompt is the options, and a restored game
+	// that forgot them would render a question with no answers.
+	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
+	ChooseMax   int            `json:"chooseMax,omitempty"`
 	// #804 CR 726 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -538,9 +695,12 @@ type ContinuationCensus struct {
 	// ChoiceResumeFrames is paused prompts holding a continuation.
 	ChoiceResumeFrames int `json:"choiceResumeFrames,omitempty"`
 
-	// TurnScopedStatics is floating until-end-of-turn continuous
-	// effects (Giant Growth's +3/+3).
-	TurnScopedStatics int `json:"turnScopedStatics,omitempty"`
+	// ScopedStatics is floating continuous effects with a duration
+	// (Giant Growth's +3/+3, Act of Treason's theft). The wire key
+	// stays `turnScopedStatics`, the name it had before the registry
+	// grew the other CR 611.2 durations, so a census written by an
+	// older binary still decodes.
+	ScopedStatics int `json:"turnScopedStatics,omitempty"`
 
 	// TurnScopedReplacements is floating until-end-of-turn
 	// replacement effects (Fog).
@@ -571,7 +731,7 @@ func (c ContinuationCensus) Empty() bool {
 		c.StackTargetSpecs == 0 &&
 		c.DelayedTriggerEffects == 0 &&
 		c.ChoiceResumeFrames == 0 &&
-		c.TurnScopedStatics == 0 &&
+		c.ScopedStatics == 0 &&
 		c.TurnScopedReplacements == 0 &&
 		c.IntrinsicAbilityCards == 0 &&
 		!c.UnpersistableRNG
@@ -580,7 +740,7 @@ func (c ContinuationCensus) Empty() bool {
 // Total is the number of individual continuations counted.
 func (c ContinuationCensus) Total() int {
 	n := c.StackEffects + c.StackTargetSpecs + c.DelayedTriggerEffects +
-		c.ChoiceResumeFrames + c.TurnScopedStatics +
+		c.ChoiceResumeFrames + c.ScopedStatics +
 		c.TurnScopedReplacements + c.IntrinsicAbilityCards
 	if c.UnpersistableRNG {
 		n++
@@ -635,7 +795,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		MulligansOpen:     g.MulligansOpen,
 		Monarch:           g.Monarch,
 		Initiative:        g.Initiative,
-		UndoLimit:         g.UndoLimit,
+		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
 		EventSeq:          g.eventSeq,
@@ -643,8 +803,9 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
 	s.AnnouncedBlocks = copyUUIDPairMap(g.announcedBlocks)
-	s.AnnouncedBecameBlocked = copyBoolMap(g.announcedBecameBlocked)
+	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
+	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -744,9 +905,10 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// Turn-scoped registries: entirely closure-bearing, so only the
 	// census and the labels survive. Dropping a Fog silently would be
 	// worse than refusing the restore point, which is what this does.
-	for _, st := range g.TurnScopedStatics {
-		cen.TurnScopedStatics++
-		cen.note("turn-scoped static: %s", labelOr(st.Label, st.Source.Name))
+	for _, st := range g.ScopedStatics {
+		cen.ScopedStatics++
+		cen.note("scoped static (%s): %s", st.Duration.Kind,
+			labelOr(st.Label, st.Source.Name))
 	}
 	for _, re := range g.TurnScopedReplacements {
 		cen.TurnScopedReplacements++
@@ -817,6 +979,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
@@ -834,18 +997,24 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		BlockingTarget:           c.BlockingTarget,
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
+		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
+		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		ObjectEpoch:              c.ObjectEpoch,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
+		ChosenPlayer:             c.ChosenPlayer,
+		ClassLevel:               c.ClassLevel,
+		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 		ManaAbilityCount:         len(c.ManaAbilities),
@@ -874,7 +1043,9 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Hand:               snapshotZone(p.Hand, cen),
 		Graveyard:          snapshotZone(p.Graveyard, cen),
 		Command:            snapshotZone(p.Command, cen),
+		Emblems:            snapshotZone(p.Emblems, cen),
 		CommanderDamage:    copyIntMap(p.CommanderDamage),
+		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -904,6 +1075,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 			out.ManaPool[i] = cloned
 		}
 	}
+	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
 	return out
 }
 
@@ -917,6 +1089,7 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		Controller:    s.Controller,
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
+		SourceEpoch:   s.SourceEpoch,
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -928,12 +1101,16 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		Foretold:      s.Foretold,
+		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Paid:          clonePaidCost(s.Paid),
 		HasEffect:     s.Effect != nil,
 		HasTargetSpec: s.targetSpec != nil,
+		HasModeSpec:   s.modeSpec != nil,
 		OracleID:      oracleIDOfLocked(g, s.SourceCardID),
 	}
 	if s.Effect != nil {
@@ -948,6 +1125,13 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 	if s.targetSpec != nil && !spellSpecRederivable(out) {
 		cen.StackTargetSpecs++
 		cen.note("stack target spec: %s", labelOr(s.Label, string(s.Kind)))
+	}
+	// #764: an ABILITY's ModeSpec came off the ability declaration,
+	// reached by an index the item does not record, so it cannot be
+	// recovered here either. A spell's is looked up by oracle ID.
+	if s.modeSpec != nil && !spellSpecRederivable(out) {
+		cen.StackTargetSpecs++
+		cen.note("stack mode spec: %s", labelOr(s.Label, string(s.Kind)))
 	}
 	return out
 }
@@ -982,6 +1166,13 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		CreatedTurn:        d.CreatedTurn,
 		HasEffect:          d.Effect != nil,
 	}
+	if d.Duration != nil {
+		dur := *d.Duration
+		out.Duration = &dur
+	}
+	if len(d.On) > 0 {
+		out.On = append([]EventKind(nil), d.On...)
+	}
 	if len(d.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), d.Cards...)
 	}
@@ -1006,14 +1197,21 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -1025,9 +1223,12 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
+		OwedInStep:           c.OwedInStep,
+		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -1037,6 +1238,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// slice is a complete copy.
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)
+		da.SourceLKI = copyCharacteristic(c.DamageAssignment.SourceLKI)
 		out.DamageAssignment = &da
 	}
 	// The continuation slots, one by one. Each is a paused effect.
@@ -1056,8 +1258,19 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		"confirmResume":     c.confirmResume != nil,
 		"chooseCardsResume": c.chooseCardsResume != nil,
 		// #742's resolution-time "choose a color".
+		// #568's option pick, for the same reason.
+		"optionPickResume":  c.optionPickResume != nil,
 		"chooseColorResume": c.chooseColorResume != nil,
+		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
+		// #1019's / #1027's prompted run — a sacrifice's or a
+		// discard's. Not a frame ON the choice — the continuation
+		// lives on the Game, keyed by this id, because the prompts of
+		// one run share it — but it is a continuation the snapshot
+		// cannot carry all the same, and a restore point taken
+		// mid-fan-out would drop the rest of the card. Counted here so
+		// the census says so.
+		"promptRun": c.promptRun != uuid.Nil,
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -1108,6 +1321,27 @@ func (s *GameSnapshot) RestoreStrict() (*Game, error) {
 	return s.restoreGame(), nil
 }
 
+// migrateLegacySettings builds the settings of a pre-v4 file, which
+// knew only an undo limit (#1032). Every other setting takes its
+// default, which is what those games were played under.
+//
+// The undo limit is kept when the v3 binary would have honoured it:
+// once a game was active its Start had already rewritten any value
+// <= 0 to the default, so an active or ended game's 0 was set on
+// purpose with set_undo_limit and survives. A LOBBY game's 0 (or less)
+// is the unset field Start was about to rewrite, and becomes the
+// default here instead.
+func migrateLegacySettings(state State, undoLimit int) TableSettings {
+	out := DefaultTableSettings()
+	switch {
+	case undoLimit > 0:
+		out.UndoLimit = undoLimit
+	case state != StateLobby:
+		out.UndoLimit = 0
+	}
+	return out
+}
+
 // checkSchema implements the version-skew policy: understand it, or
 // refuse it. Never guess at a shape you do not recognise.
 func (s *GameSnapshot) checkSchema() error {
@@ -1138,15 +1372,19 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.MulligansOpen = s.MulligansOpen
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
-	g.UndoLimit = s.UndoLimit
+	g.Settings = s.Settings
+	if s.Schema < settingsSchemaVersion {
+		g.Settings = migrateLegacySettings(s.State, s.UndoLimit)
+	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.announcedBlocks = copyUUIDPairMap(s.AnnouncedBlocks)
-	g.announcedBecameBlocked = copyBoolMap(s.AnnouncedBecameBlocked)
+	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
+	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -1297,6 +1535,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
 		Keywords:                 copyStrings(c.Keywords),
+		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		Layout:                   c.Layout,
 		Faces:                    copyFaces(c.Faces),
 		ActiveFace:               c.ActiveFace,
@@ -1314,18 +1553,24 @@ func restoreCard(c *cardSnapshot) Card {
 		BlockingTarget:           c.BlockingTarget,
 		GoadedBy:                 c.GoadedBy,
 		DamageMarked:             c.DamageMarked,
+		RegenerationShields:      c.RegenerationShields,
 		FaceDown:                 c.FaceDown,
+		FaceDownKind:             c.FaceDownKind,
 		KnownBy:                  copyBoolMap(c.KnownBy),
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
+		ObjectEpoch:              c.ObjectEpoch,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
-		ExilePlay:                c.ExilePlay,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
+		Provenance:               c.Provenance.Clone(),
 		ChosenColor:              c.ChosenColor,
+		ChosenPlayer:             c.ChosenPlayer,
+		ClassLevel:               c.ClassLevel,
+		Solved:                   c.Solved,
 		StartingDefense:          c.StartingDefense,
 		ProtectorPlayerID:        c.ProtectorPlayerID,
 	}
@@ -1351,6 +1596,17 @@ func restoreCard(c *cardSnapshot) Card {
 			out.ActivatedAbilities = CatalogActivatedAbilities(c.OracleID)
 		}
 	}
+	// ADR 0069: a snapshot written before FaceDownKind existed carries
+	// no kind, and a face-down card with no kind has no rule attached
+	// — no viewers row, no CR 708.2 answer. The only face-down object
+	// that could exist in such a file is a Necropotence exile, so it
+	// restores as one and comes back with the visibility it had
+	// (nobody may look) rather than as an unclassified flag. No schema
+	// bump: this is the field zero-valuing correctly, which
+	// SnapshotSchemaVersion's policy says does not need one.
+	if out.FaceDown && out.FaceDownKind == FaceDownNone {
+		out.FaceDownKind = FaceDownExiled
+	}
 	// `effective` is intentionally left nil: it is a derived cache,
 	// and restoreGame bumps layerVersion so the next read recomputes.
 	return out
@@ -1368,6 +1624,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Hand:               restoreZone(p.Hand, ZoneHand),
 		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
 		Command:            restoreZone(p.Command, ZoneCommand),
+		Emblems:            restoreZone(p.Emblems, ZoneCommand),
+		TurnsBegun:         p.TurnsBegun,
 		Eliminated:         p.Eliminated,
 		HandKept:           p.HandKept,
 		MulligansTaken:     p.MulligansTaken,
@@ -1392,6 +1650,13 @@ func restorePlayer(p *playerSnapshot) *Player {
 	if out.LandDropsPerTurn <= 0 {
 		out.LandDropsPerTurn = DefaultLandDropsPerTurn
 	}
+	// #623: a pre-emblem file carries no emblem zone, so restoreZone
+	// hands back one owned by nobody. newPlayer stamps the owner, so
+	// stamp it here too and a restored seat is the shape a fresh one
+	// is.
+	if out.Emblems != nil {
+		out.Emblems.Owner = out.ID
+	}
 	// clonePlayer guarantees these two are non-nil even when empty;
 	// match it so a restored game and a cloned one are the same shape.
 	out.CommanderDamage = copyIntMap(p.CommanderDamage)
@@ -1414,6 +1679,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 			out.ManaPool[i] = cloned
 		}
 	}
+	out.CastPermissions = cloneCastPermissions(p.CastPermissions)
 	return out
 }
 
@@ -1424,6 +1690,7 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		Controller:    s.Controller,
 		Owner:         s.Owner,
 		SourceCardID:  s.SourceCardID,
+		SourceEpoch:   s.SourceEpoch,
 		Label:         s.Label,
 		DoubledBy:     s.DoubledBy,
 		DoubledByName: s.DoubledByName,
@@ -1435,10 +1702,13 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 		HoldPriority:  s.HoldPriority,
 		CastFromZone:  s.CastFromZone,
 		AltCost:       s.AltCost,
+		Foretold:      s.Foretold,
+		AltCostExiles: s.AltCostExiles,
 		SplitSecond:   s.SplitSecond,
 		IsCopy:        s.IsCopy,
 		Seq:           s.Seq,
 		Ordered:       s.Ordered,
+		Paid:          clonePaidCost(s.Paid),
 		// Effect stays nil. A SPELL does not need one — resolution
 		// dispatches through EffectResolver by oracle ID — but an
 		// ability does, which is why a stack item with an Effect is
@@ -1447,6 +1717,9 @@ func restoreStackItem(s *stackItemSnapshot) *StackItem {
 	}
 	if s.HasTargetSpec && spellSpecRederivable(*s) {
 		out.targetSpec = CatalogTargetSpec(s.OracleID)
+	}
+	if s.HasModeSpec && s.Kind == StackItemSpell && s.OracleID != "" && CatalogModeSpec != nil {
+		out.modeSpec = CatalogModeSpec(s.OracleID)
 	}
 	return out
 }
@@ -1460,7 +1733,14 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		CreatedTurn:        d.CreatedTurn,
-		// Effect stays nil; see the census.
+		// Effect, AppliesTo and Optional stay nil; see the census.
+	}
+	if d.Duration != nil {
+		dur := *d.Duration
+		out.Duration = &dur
+	}
+	if len(d.On) > 0 {
+		out.On = append([]EventKind(nil), d.On...)
 	}
 	if len(d.Cards) > 0 {
 		out.Cards = append([]uuid.UUID(nil), d.Cards...)
@@ -1482,14 +1762,21 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
 		CoinWins:             c.CoinWins,
 		ColorOptions:         copyStrings(c.ColorOptions),
+		ColorPurpose:         c.ColorPurpose,
 		ManaRestrictions:     copyStrings(c.ManaRestrictions),
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
 		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
 		PickTargetCards:      copyUUIDs(c.PickTargetCards),
 		PickTargetMin:        c.PickTargetMin,
 		PickTargetMax:        c.PickTargetMax,
+		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
+		ModeMin:              c.ModeMin,
+		ModeMax:              c.ModeMax,
+		ModeRepeatable:       c.ModeRepeatable,
 		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -1501,9 +1788,12 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:          c.AcceptLabel,
 		DeclineLabel:         c.DeclineLabel,
 		LifeCost:             c.LifeCost,
+		OwedInStep:           c.OwedInStep,
+		GuardsStackItem:      c.GuardsStackItem,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
+		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -1514,6 +1804,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)
+		da.SourceLKI = copyCharacteristic(c.DamageAssignment.SourceLKI)
 		out.DamageAssignment = &da
 	}
 	return out
@@ -1568,6 +1859,23 @@ func copyTargetRefs(in []TargetRef) []TargetRef {
 		return nil
 	}
 	return append([]TargetRef(nil), in...)
+}
+
+// copyCharacteristic deep-copies an optional characteristics snapshot
+// — the CR 702.16e last-known information a damage-assignment frame
+// carries (#662). Value copy plus its own slices, so a restored frame
+// shares nothing with the live one.
+func copyCharacteristic(in *Characteristic) *Characteristic {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.Types = copyStrings(in.Types)
+	out.Subtypes = copyStrings(in.Subtypes)
+	out.Supertypes = copyStrings(in.Supertypes)
+	out.Colors = copyStrings(in.Colors)
+	out.Abilities = copyStrings(in.Abilities)
+	return &out
 }
 
 func copyReplacementEffectIDs(in []ReplacementEffectID) []ReplacementEffectID {

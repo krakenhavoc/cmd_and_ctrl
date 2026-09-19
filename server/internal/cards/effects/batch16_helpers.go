@@ -221,8 +221,8 @@ func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool 
 
 // b16CreatedATokenThisTurn reports whether `player` created a token
 // this turn — Bennie Bracks's intervening if. EventTokenCreated
-// carries the creator in Actor; the walk stops at the turn's upkeep
-// (b06EnteredThisTurn's posture).
+// carries the creator in Actor, and the per-turn tally counts it
+// there.
 func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
 	return g.TurnTallyFor(player).TokensCreated > 0
 }
@@ -329,15 +329,20 @@ func b16FirstLegalTargetCard(ctx *Context) (uuid.UUID, bool) {
 // affected player choosing the order, and no player would choose the
 // other way.
 //
-// One declared retreat: a land entering from a LIBRARY or GRAVEYARD
-// that carries an entry replacement of its own (a fetched Guildgate)
-// is left alone. Those entry sites cannot pause for a prompt, and
-// the seeded flag plus the land's own effect would be two applicable
-// effects at once — the ordering prompt the search path cannot
-// resume (Kismet has the same hole; reported on #309). A fetched
-// basic, a fetched Guildgate under nothing else, and every land
-// played or cast are as printed; a fetched tapland enters tapped.
-// Weaker than printed, never stronger.
+// There is one case the flag gate does NOT make silent: a land
+// FETCHED tapped that also carries its own enters-tapped clause. The
+// search seeds the flag before the window opens, so both effects are
+// applicable on the first gather and CR 616.1 really does ask the
+// controller to order them — which is the printed interaction, and
+// the answer is the player's.
+//
+// That case used to be a declared retreat here (a fetched Guildgate
+// was left alone), because the entry site could not pause: the prompt
+// was queued, nobody could answer it usefully and the land was
+// stranded in the library. #478 closed that — the search entry is
+// resumable and carries its tail across the pause — so the retreat
+// was describing a hole that had already been filled, and #732 took
+// it out. Every land is as printed now.
 func b16LandsYouControlEnterUntapped() game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
@@ -348,11 +353,6 @@ func b16LandsYouControlEnterUntapped() game.ReplacementEffect {
 			entering, ok := g.LookupCardForEffect(ev.CardID)
 			if !ok || !entering.IsLand() || entering.Controller != src.Controller {
 				return false
-			}
-			if ev.OldZone == game.ZoneLibrary || ev.OldZone == game.ZoneGraveyard {
-				if spec, ok := Lookup(game.CatalogKey(entering)); ok && len(spec.Replacements) > 0 {
-					return false
-				}
 			}
 			return true
 		},

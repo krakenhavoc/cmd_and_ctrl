@@ -7,13 +7,16 @@ import (
 )
 
 // exile_play_face_test.go — S32: the per-instance face on
-// ExilePlayPermission, which is the seam S27 named and could not
+// CastPermission, which is the seam S27 named and could not
 // cross. Three mechanisms have to agree for a defeated Siege's back
 // face to be castable, and this file pins each of them plus the
 // composition:
 //
-//	GrantsFace           the permission names one face and only while
-//	                     its window is open
+//	GrantsFace           the permission names one face, for one player
+//	                     (#945 moved the window out: every caller
+//	                     reaches a permission through
+//	                     CastPermissionForLocked, which has already
+//	                     asked CastPermissionActiveForEffect)
 //	faceForCastLocked    a face-naming grant SETS the face and narrows
 //	                     the card's own offer to nothing else
 //	faceOnResolve        a `transform` permanent keeps the face it was
@@ -53,44 +56,83 @@ func TestGrantsFace(t *testing.T) {
 	me, you := uuid.New(), uuid.New()
 	cases := []struct {
 		name     string
-		perm     ExilePlayPermission
+		perm     *CastPermission
 		who      uuid.UUID
-		turn     int
 		wantFace int
 		wantOK   bool
 	}{
-		{"zero value names nothing", ExilePlayPermission{}, me, 1, 0, false},
+		{"no permission at all", nil, me, 0, false},
 		{
 			"a grant that does not speak about faces",
-			ExilePlayPermission{Player: me, UntilTurn: 3}, me, 3, 0, false,
+			&CastPermission{Player: me}, me, 0, false,
 		},
 		{
-			"a back-face grant, in window",
-			ExilePlayPermission{Player: me, UntilTurn: 3, Face: 1}, me, 3, 1, true,
+			"a back-face grant",
+			&CastPermission{Player: me, Faces: []int{1}}, me, 1, true,
 		},
 		{
-			// The narrowing must stop when the granting stops, or an
-			// expired Siege grant would leave the exiled battle
-			// uncastable as anything at all rather than merely uncast.
-			"a back-face grant, expired",
-			ExilePlayPermission{Player: me, UntilTurn: 3, Face: 1}, me, 4, 0, false,
+			// #719: the case a bare `Face int` could not state. An
+			// adventure card's creature half IS face 0, so "opens face
+			// 0 and no other" and "says nothing about faces" were the
+			// same value until the field became a list.
+			"an Adventure grant, naming the creature face",
+			&CastPermission{Player: me, Faces: []int{0}}, me, 0, true,
+		},
+		{
+			// A grant naming SEVERAL faces answers no here: it is a
+			// choice, and faceForCastLocked is the one place that
+			// knows what to do with one.
+			"a grant naming two faces",
+			&CastPermission{Player: me, Faces: []int{0, 1}}, me, 0, false,
 		},
 		{
 			"a back-face grant, wrong player",
-			ExilePlayPermission{Player: me, UntilTurn: 3, Face: 1}, you, 3, 0, false,
-		},
-		{
-			// S29 warp's floor applies to face grants too.
-			"a back-face grant, before its floor",
-			ExilePlayPermission{Player: me, WhileExiled: true, NotBeforeTurn: 5, Face: 1}, me, 4, 0, false,
+			&CastPermission{Player: me, Faces: []int{1}}, you, 0, false,
 		},
 	}
 	for _, tc := range cases {
-		gotFace, gotOK := tc.perm.GrantsFace(tc.who, tc.turn)
+		gotFace, gotOK := tc.perm.GrantsFace(tc.who)
 		if gotFace != tc.wantFace || gotOK != tc.wantOK {
 			t.Errorf("%s: GrantsFace = (%d, %v), want (%d, %v)",
 				tc.name, gotFace, gotOK, tc.wantFace, tc.wantOK)
 		}
+	}
+}
+
+// TestExpiredFaceGrantStopsNarrowing is the other half of the rule
+// #945 moved: the narrowing must stop when the granting stops, or an
+// expired Siege grant would leave the exiled battle uncastable as
+// anything at all rather than merely uncast. GrantsFace no longer
+// checks that itself — CastPermissionForLocked does, once, for every
+// caller — so this pins the composition rather than the method.
+func TestExpiredFaceGrantStopsNarrowing(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	card := transformFixture(me.ID)
+	id := card.InstanceID
+	g.WithWriteLock(func() {
+		g.Exile.PushTop(card)
+		g.GrantCastPermissionOverCardForEffect(id, CastPermission{Player: me.ID, Faces: []int{1}})
+	})
+
+	var live *CastPermission
+	g.ReadSnapshot(func() {
+		c, _ := g.cardInZoneLocked(g.Exile, id)
+		live = g.CastPermissionForLocked(me.ID, c, ZoneExile)
+	})
+	if face, ok := live.GrantsFace(me.ID); !ok || face != 1 {
+		t.Fatalf("setup: live grant names face (%d, %v), want (1, true)", face, ok)
+	}
+
+	// The turn the grant was made in is over for its holder.
+	beginALaterTurnFor(g, g.Seats[g.Turn.ActiveSeat])
+	var after *CastPermission
+	g.ReadSnapshot(func() {
+		c, _ := g.cardInZoneLocked(g.Exile, id)
+		after = g.CastPermissionForLocked(me.ID, c, ZoneExile)
+	})
+	if after != nil {
+		t.Errorf("an expired grant still narrowed the card's faces: %+v", after)
 	}
 }
 
@@ -104,27 +146,27 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	card := transformFixture(me)
 
 	// No grant: CR 712.4, front only.
-	if face, ok := faceForCastLocked(card, 0, ExilePlayPermission{}, me, 1); !ok || face != 0 {
+	if face, ok := faceForCastLocked(card, 0, nil, me); !ok || face != 0 {
 		t.Errorf("ungranted face 0 = (%d, %v), want (0, true)", face, ok)
 	}
-	if _, ok := faceForCastLocked(card, 1, ExilePlayPermission{}, me, 1); ok {
+	if _, ok := faceForCastLocked(card, 1, nil, me); ok {
 		t.Error("a transform card's back face is castable without a grant")
 	}
 
-	grant := ExilePlayPermission{Player: me, UntilTurn: 1, Face: 1}
+	grant := &CastPermission{Player: me, Faces: []int{1}}
 	// The grant SETS the face: an unset request (the wire's default,
 	// and what every existing client sends from the exile pile) still
 	// announces the back.
-	if face, ok := faceForCastLocked(card, 0, grant, me, 1); !ok || face != 1 {
+	if face, ok := faceForCastLocked(card, 0, grant, me); !ok || face != 1 {
 		t.Errorf("granted, face unset = (%d, %v), want (1, true)", face, ok)
 	}
-	if face, ok := faceForCastLocked(card, 1, grant, me, 1); !ok || face != 1 {
+	if face, ok := faceForCastLocked(card, 1, grant, me); !ok || face != 1 {
 		t.Errorf("granted, face 1 = (%d, %v), want (1, true)", face, ok)
 	}
 	// Somebody else's grant does not narrow anything, and does not
 	// open anything either.
 	other := uuid.New()
-	if face, ok := faceForCastLocked(card, 0, grant, other, 1); !ok || face != 0 {
+	if face, ok := faceForCastLocked(card, 0, grant, other); !ok || face != 0 {
 		t.Errorf("another player under my grant = (%d, %v), want (0, true)", face, ok)
 	}
 
@@ -132,7 +174,7 @@ func TestFaceForCastUnderAGrant(t *testing.T) {
 	// than clamped to 0 — clamping would turn a Siege whose back face
 	// never imported into a free cast of the battle itself.
 	single := Card{InstanceID: uuid.New(), Name: "Plain", TypeLine: "Instant"}
-	if _, ok := faceForCastLocked(single, 0, grant, me, 1); ok {
+	if _, ok := faceForCastLocked(single, 0, grant, me); ok {
 		t.Error("a grant for face 1 on a single-faced card was honoured")
 	}
 }
@@ -154,17 +196,12 @@ func TestCastFromExileUnderAFaceGrant(t *testing.T) {
 	id := card.InstanceID
 	g.WithWriteLock(func() {
 		g.Exile.PushTop(card)
-		for i := range g.Exile.Cards {
-			if g.Exile.Cards[i].InstanceID == id {
-				g.Exile.Cards[i].ExilePlay = ExilePlayPermission{
-					Player:       me.ID,
-					UntilTurn:    g.Turn.Number,
-					CostOverride: "{0}",
-					CastOnly:     true,
-					Face:         1,
-				}
-			}
-		}
+		g.GrantCastPermissionOverCardForEffect(id, CastPermission{
+			Player:   me.ID,
+			Cost:     "{0}",
+			CastOnly: true,
+			Faces:    []int{1},
+		})
 		g.markCardKnownInZoneLocked(g.Exile, id)
 	})
 
@@ -190,7 +227,7 @@ func TestCastFromExileUnderAFaceGrant(t *testing.T) {
 	}
 	// The grant is spent as the card leaves exile, so a later effect
 	// that exiles this card again cannot inherit it.
-	if onStack.ExilePlay.Granted() {
+	if perm := g.CastPermissionOnCardByIDForEffect(id); perm.Granted() {
 		t.Error("the grant survived the cast")
 	}
 
@@ -311,20 +348,14 @@ func TestCastFromExileRefusesTheUngrantedFace(t *testing.T) {
 	id := card.InstanceID
 	g.WithWriteLock(func() {
 		g.Exile.PushTop(card)
-		for i := range g.Exile.Cards {
-			if g.Exile.Cards[i].InstanceID == id {
-				// A grant for a face the card does not have. The card
-				// has two faces, so face 2 is out of range and the
-				// cast must be refused rather than clamped onto the
-				// battle.
-				g.Exile.Cards[i].ExilePlay = ExilePlayPermission{
-					Player:       me.ID,
-					UntilTurn:    g.Turn.Number,
-					CostOverride: "{0}",
-					Face:         2,
-				}
-			}
-		}
+		// A grant for a face the card does not have. The card has two
+		// faces, so face 2 is out of range and the cast must be
+		// refused rather than clamped onto the battle.
+		g.GrantCastPermissionOverCardForEffect(id, CastPermission{
+			Player: me.ID,
+			Cost:   "{0}",
+			Faces:  []int{2},
+		})
 	})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "exile"}); err != ErrInvalidFace {
 		t.Errorf("out-of-range granted face: %v, want ErrInvalidFace", err)

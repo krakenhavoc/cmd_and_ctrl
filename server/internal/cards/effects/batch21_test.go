@@ -49,6 +49,7 @@ const (
 	b21SanctumSeekerOracle        = "afb71560-0fc9-4ea5-9d52-d93c17d72519"
 	b21HazelsBrewmasterOracle     = "e8180024-1979-4677-9a0d-e08d4b7c825a"
 	b21GeothermalBogOracle        = "e3b67368-1dd6-419b-a95d-7131b1dba23f"
+	b21RestInPeaceOracle          = "087f9ad7-e74f-40e2-8102-1ed2925d0418"
 )
 
 // b21Push seeds a catalog permanent under `owner` with a type line
@@ -154,9 +155,14 @@ func TestBatch21CardsAreRegistered(t *testing.T) {
 		b21SanctumSeekerOracle:        "Sanctum Seeker",
 		b21HazelsBrewmasterOracle:     "Hazel's Brewmaster",
 		b21GeothermalBogOracle:        "Geothermal Bog",
+		// #931 took the last of the four declared skips off the list:
+		// every graveyard arrival now opens the CR 614 window, so
+		// "if a card or token would be put into a graveyard from
+		// anywhere, exile it instead" is finally true of all of them.
+		b21RestInPeaceOracle: "Rest in Peace",
 	}
-	if len(want) != 33 {
-		t.Fatalf("the batch registers 33 cards, the table lists %d", len(want))
+	if len(want) != 34 {
+		t.Fatalf("the batch registers 34 cards, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -168,15 +174,15 @@ func TestBatch21CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four declared skips must stay out until their seam lands:
-	// a legendary-sorcery cast gate, a mode prompt for a triggered
-	// ability, a counter-removal cost component, and a graveyard
-	// redirect that covers discard, mill and the stack.
+	// The three declared skips that remain must stay out until their
+	// seam lands: a legendary-sorcery cast gate, a mode prompt for a
+	// triggered ability, and a counter-removal cost component. The
+	// fourth, Rest in Peace, shipped with #931 and is in the table
+	// above.
 	for oracle, name := range map[string]string{
 		"f5f0deb0-070a-45b6-9b81-0bc8143f3040": "Jaya's Immolating Inferno",
 		"397b9dcf-690a-4a58-8637-bb9baab7cc2f": "Elder Gargaroth",
 		"cada2a1c-5db2-4702-9a57-cbe7da1bf208": "Tome of Legends",
-		"087f9ad7-e74f-40e2-8102-1ed2925d0418": "Rest in Peace",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #383 but is registered — update the issue", name)
@@ -296,8 +302,10 @@ func TestB21LightningStrikeAndGutShotBurnAnyTarget(t *testing.T) {
 	if me.Life != 39 {
 		t.Errorf("Gut Shot to yourself: life %d, want 39", me.Life)
 	}
-	if spec, _ := Lookup(b21GutShotOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the Phyrexian mana gap must be declared")
+	// #916 gave the cast prompt the stepper that pays {R/P} with 2
+	// life, which was the only thing this card declared.
+	if spec, _ := Lookup(b21GutShotOracle); spec.Completeness != CompletenessFull {
+		t.Error("the Phyrexian mana gap is closed; Gut Shot is complete")
 	}
 }
 
@@ -692,8 +700,14 @@ func TestB21ManglehornMayDestroyAnArtifactAndTapsTheirs(t *testing.T) {
 	if !g.Battlefield.Contains(myRock) || !g.Battlefield.Contains(mine) {
 		t.Error("declining destroys nothing")
 	}
-	if spec, _ := Lookup(b21ManglehornOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	// #762: an opponent's artifact TOKEN — a Treasure — enters tapped
+	// too, because token creation now runs the entry pipeline.
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TreasureToken(), 1) })
+	if !b16Tapped(t, g, findBattlefieldByName(g, "Treasure")) {
+		t.Error("an opponent's artifact TOKEN enters tapped")
+	}
+	if spec, _ := Lookup(b21ManglehornOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 

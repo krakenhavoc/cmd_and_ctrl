@@ -470,10 +470,20 @@ func TestTriggerDoublerDoesNotApplyToManualOrReflexiveTriggers(t *testing.T) {
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{Controller: owner.ID, SourceCardID: source, Label: "delayed", At: StepEnd, Effect: func(*Game, *StackItem) error { return nil }})
 		g.fireDelayedTriggersLocked(StepEnd)
 	})
-	if got := len(g.PendingTriggers); got != 3 {
+	// The manual one is already on the stack: #974's announce drains at
+	// its own CR 603.3b boundary, so it is placed rather than queued.
+	// The reflexive and delayed ones are still waiting.
+	excluded := make([]*StackItem, 0, 3)
+	excluded = append(excluded, g.PendingTriggers...)
+	for _, item := range g.StackMeta {
+		if item != nil && item.Label == "manual" {
+			excluded = append(excluded, item)
+		}
+	}
+	if got := len(excluded); got != 3 {
 		t.Fatalf("manual/reflexive/delayed instances = %d, want 3", got)
 	}
-	for _, item := range g.PendingTriggers {
+	for _, item := range excluded {
 		if item.DoubledBy != uuid.Nil {
 			t.Fatalf("excluded trigger has doubler attribution: %#v", item)
 		}

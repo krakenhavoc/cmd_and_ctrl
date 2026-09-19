@@ -134,17 +134,38 @@ export function impulseActionLabel(
   return "cast";
 }
 
+// grantedFaceIndex is the ONE face a grant opens, or undefined when
+// it speaks about no faces (every impulse, airbend, warp and cascade
+// grant) or about several (a choice the caster has not made, which
+// nothing declares today).
+//
+// A list on the wire rather than a number, because zero had to mean
+// two things and could not: a defeated Siege's grant names the BACK
+// face and CR 715.4's Adventure grant names the CREATURE face, which
+// is face 0. `if (!grant.face)` read the second as "no opinion" and
+// re-opened the face picker on a cast with exactly one legal face.
+export function grantedFaceIndex(grant: ExilePlayView | null): number | undefined {
+  if (!grant || grant.faces?.length !== 1) return undefined;
+  return grant.faces[0];
+}
+
 // grantedFace returns the view of `card` that the grant actually
-// plays: `faces[grant.face]` materialised over the card when the
-// grant names a face, and the card unchanged when it does not.
+// plays: `faces[i]` materialised over the card when the grant names
+// one face, and the card unchanged when it does not.
 //
 // Exported because the button label and its aria-label both have to
 // name the half being cast — "cast Refraction Elemental from exile",
 // not "cast Invasion of Karsus from exile", which would name a card
 // the click cannot produce.
 export function grantedFace(card: CardView, grant: ExilePlayView | null): CardView {
-  if (!grant?.face) return card;
-  return cardAsFace(card, grant.face);
+  const i = grantedFaceIndex(grant);
+  // A grant naming the face that is ALREADY up returns the card
+  // untouched rather than round-tripping it through cardAsFace, which
+  // clears the announce-prompt fields the server computed for exactly
+  // that face. CR 715.4's Adventure grant is this case — face 0, on a
+  // card exile is already showing front-up (CR 712.8).
+  if (i === undefined || i === (card.active_face ?? 0)) return card;
+  return cardAsFace(card, i);
 }
 
 // --- S29: alternative cast paths from non-hand zones -------------
@@ -163,13 +184,25 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // castableFromZone reports whether the viewer may cast `card` out of
 // the zone the browser is showing.
 //
-// Two gates, and the ownership one is not redundant with the
-// server's. `castable_here` is PUBLIC — the graveyard is a public
-// zone and a flashback cost is printed on the card, so an opponent's
-// snapshot carries the bit too. Without the ownership check the
-// browser would offer a button on someone else's graveyard card that
-// the server then refuses with ErrCardNotFound, which reads to the
-// player as a bug rather than as a rule.
+// Two gates, and the second one is not redundant with the server's.
+// `castable_here` on a card in a per-seat pile is the PILE OWNER's
+// answer and it is public — the graveyard is a public zone and a
+// flashback cost is printed on the card, so an opponent's snapshot
+// carries the bit too. Without a second gate the browser would offer
+// a button on someone else's graveyard card that the server then
+// refuses with ErrCardNotFound, which reads to the player as a bug
+// rather than as a rule.
+//
+// The second gate is "or the grant names ME" (#1022, #1035, #1037). A
+// permission is a statement about an OBJECT, not about a pile —
+// Wrexial's "cast target instant or sorcery card from that player's
+// graveyard" — so a card in an opponent's pile IS castable by its
+// holder, and the server stamps that holder's own offers, targets and
+// gate on their frame and nobody else's. `exile_play` is how it says
+// whose: it is public, it names the seat, and since #1037 a viewer who
+// holds a grant over the card gets THEIR OWN rather than whichever
+// live permission came first. Reading it here is what turns the
+// server's per-holder stamp into a button.
 export function castableFromZone(
   card: CardView,
   zoneKind: BrowsableZone,
@@ -177,6 +210,7 @@ export function castableFromZone(
   ownerID: string,
 ): boolean {
   if (zoneKind !== "graveyard") return false;
-  if (!viewerID || viewerID !== ownerID) return false;
+  if (!viewerID) return false;
+  if (viewerID !== ownerID && card.exile_play?.player !== viewerID) return false;
   return card.castable_here === true;
 }

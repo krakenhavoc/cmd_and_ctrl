@@ -114,6 +114,7 @@ export type ActionType =
   | "set_promise"
   | "set_undo_limit"
   | "shuffle_library"
+  | "special_action"
   | "start_vote"
   | "tap"
   | "undo"
@@ -204,8 +205,12 @@ export interface GameView {
   vote?: VoteView;
   // Per-player per-turn undo budget. Refreshed on each player's untap
   // step. Drives the "undos: N" indicator and gates the undo button.
-  // Added in S11.
+  // Added in S11. Since ADR 0075 it mirrors `settings.undo_limit`:
+  // -1 means unlimited, 0 means no undos.
   undo_limit?: number;
+  // The table's settings (ADR 0075 §2.2). Public: every viewer,
+  // spectators included, gets the same object. Added in S35 (#1032).
+  settings?: TableSettingsView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -348,7 +353,17 @@ export interface LegalMoveView {
   type: string;
   player: string;
   params?: Record<string, unknown>;
-  kind: "pass" | "land" | "cast" | "activate" | "mana" | "attack" | "block" | "choice" | "mulligan";
+  kind:
+    | "pass"
+    | "land"
+    | "cast"
+    | "activate"
+    | "mana"
+    | "attack"
+    | "block"
+    | "choice"
+    | "mulligan"
+    | "special_action";
   label: string;
   // Instance ID of the card the move is about, when there is one.
   // Moves with no card (pass_priority, keep_hand, mulligan) carry the
@@ -418,7 +433,32 @@ export type LogKind =
   // roll or coin flip. The event text is already redacted and ready
   // for both the log and the attention strip.
   | "roll"
-  | "flip";
+  | "flip"
+  // #984: a player answered a "choose a ..." prompt out loud. The
+  // chosen VALUE is `choice` on the first two ("G", "Elf"); a chosen
+  // PLAYER is `target_seat`, like every other player in the log. All
+  // three carry `card_id` — the card the answer was given for, and the
+  // card whose later abilities read it back (CR 607.2d).
+  | "choose_color"
+  | "choose_type"
+  | "choose_player"
+  // #1021: six silences the log kept until they were written down.
+  // `control` names two seats — `seat` gained control, `target_seat`
+  // lost it (CR 613.1b). `special_action` carries the printed action
+  // in `label` ("Foretell {2}", CR 116.2). `cycle` REPLACES the zone
+  // line for the discard that paid for it (CR 702.29b). `counters`
+  // carries the kind in `label` and the count AFTER the change in
+  // `amount`. `scry` and `surveil` name NO card for anyone and carry
+  // only the count that moved. `saga_chapter` and `class_level` carry
+  // the chapter or level in `amount`.
+  | "control"
+  | "special_action"
+  | "cycle"
+  | "counters"
+  | "scry"
+  | "surveil"
+  | "saga_chapter"
+  | "class_level";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -450,6 +490,13 @@ export interface LogEvent {
   target?: string;
   // Signed / counting payload: life delta, damage dealt, cards drawn.
   amount?: number;
+  // #1036: the SIZE of a `scry` / `surveil` entry's keyword action —
+  // the "2" in "scry 2" — where `amount` is how many cards the table
+  // then watched move. Absent on every other kind, and absent on a
+  // scry recorded before the field existed. The rendered `text`
+  // already says both; this is here for a client that wants the
+  // numbers without parsing the sentence.
+  looked_at?: number;
   old_zone?: string;
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
@@ -460,6 +507,19 @@ export interface LogEvent {
   // presence alone means there are two beats. Read it, don't derive it
   // from keywords (#187, ADR 0053 Decision 1).
   combat_step?: "first_strike" | "regular";
+  // #984: the value named at a "choose a ..." prompt — the colour
+  // LETTER on a `choose_color` entry ("G"), the creature type on a
+  // `choose_type` one ("Elf"). Absent on a `choose_player` entry,
+  // whose answer is `target_seat`, and absent when the viewer is not a
+  // knower of the card that asked: the answer identifies the card as
+  // loudly as its name does, so it is redacted with it.
+  choice?: string;
+  // #1021: the printed name of the thing the entry is about when it is
+  // not a card — the special action as the card prints it ("Foretell
+  // {2}") on a `special_action` entry, the counter kind ("+1/+1") on a
+  // `counters` one. Redacted with the card's name exactly as `choice`
+  // is: both price or characterise the card the line no longer names.
+  label?: string;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
@@ -565,6 +625,16 @@ export interface PendingChoiceView {
     // ONLY — the candidates are usually cards in a hand, and their
     // number is as private as their faces.
     | "choose_cards"
+    // #826 CR 502.3: the untap step's own determination — "choose
+    // which of these untap", addressed to the active player over the
+    // permanents actually in question under a cap ("can't untap more
+    // than one land") or an opt-out ("you may choose not to untap
+    // this"). Same {choice_id, card_ids} payload and the same
+    // choose_min / choose_max bounds as choose_cards, and the same
+    // picker renders it. UNLIKE choose_cards the options and bounds
+    // reach every seat: the candidates are tapped permanents on the
+    // battlefield, which everyone can already see.
+    | "untap_choice"
     // #742: "choose a color" (CR 105.4) — as a permanent enters
     // (Coldsteel Heart, the Thriving lands; the answer is remembered on
     // the permanent) or while a spell resolves (Wash Out). color_options
@@ -583,6 +653,10 @@ export interface PendingChoiceView {
     // resolved this turn; loop_max_iterations is the ceiling the
     // engine will accept.
     | "loop_shortcut"
+    // #764, CR 603.3c: a modal triggered ability's mode, chosen as
+    // the ability is put on the stack. mode_options / mode_indexes /
+    // mode_min / mode_max / mode_repeatable describe the offer.
+    | "mode_pick"
     | string;
   chooser: string;
   from_player: string;
@@ -604,6 +678,18 @@ export interface PendingChoiceView {
   // amount. A colour missing from the map adds one; absent on ordinary
   // picks. Also, choose_color reuses color_options above.
   color_amounts?: Record<string, number>;
+  // #780: on a "choose_color" prompt — the card's own declaration of
+  // what it will DO with the colour it is handed. Public (it is a
+  // reading of the printed text) and absent on every other kind, and
+  // on a prompt from a card nobody has annotated yet.
+  //
+  // It exists because CR 105.4 makes all five colours a legal answer,
+  // so nothing else on the prompt says which question is being asked:
+  // Coldsteel Heart and Wash Out send the identical five buttons. The
+  // picker reads it for its WORDING (colorPromptCopy in manaPick.ts);
+  // the ORDER of color_options is already the server's answer to the
+  // same question (#986), so nothing here re-sorts.
+  color_purpose?: "mana" | "benefit" | "harm" | "filter" | "protect" | string;
   // S26: populated for kind "choose_creature_type" — every creature
   // type the engine knows, sorted. The list is long by design (the CR
   // 205.3m vocabulary is ~345 entries), so the picker filters it
@@ -655,6 +741,19 @@ export interface PendingChoiceView {
   // #74: populated for kind "confirm" — the card's own words for the
   // accept and decline branches. Absent means the client renders Yes /
   // No, which is right for a prompt that really is a yes/no.
+  /**
+   * pick_options populates the "option_pick" kind (#568): one entry
+   * per branch of "choose one of the following", in the card's
+   * printed order. Answered with `{option_index: N}` — the INDEX,
+   * because an option is a consequence and not always a set of cards.
+   *
+   * An option's own `cards` are context the client renders beside the
+   * label (a Fact or Fiction pile); they are already redacted
+   * per-viewer by the server, and an option over cards this seat may
+   * not see arrives with the label and no cards at all.
+   */
+  pick_options?: PickOptionView[];
+
   accept_label?: string;
   decline_label?: string;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
@@ -662,10 +761,11 @@ export interface PendingChoiceView {
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
   life_cost?: number;
-  // #74: populated for kind "choose_cards" — how few and how many of
-  // `options` the chooser must pick. Absent for every other kind, and
-  // absent for non-chooser viewers, who are not told the size of a
-  // choice over someone else's hidden cards.
+  // #74: populated for kinds "choose_cards" and "untap_choice" — how
+  // few and how many of `options` the chooser must pick. Absent for
+  // every other kind, and (for choose_cards only) absent for
+  // non-chooser viewers, who are not told the size of a choice over
+  // someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
   // CR 603.2d: when this is a trigger_prompt or pick_target choice,
@@ -684,6 +784,18 @@ export interface PendingChoiceView {
   // answer the engine accepts. `reason` carries "<card> — <ability>".
   loop_count?: number;
   loop_max_iterations?: number;
+  // #764, CR 603.3c: populated for kind "mode_pick" — the bullets a
+  // modal TRIGGER offers its controller as the ability is put on the
+  // stack. Only the choosable ones are listed (a bullet whose clause
+  // has no legal target is dropped), so mode_indexes carries the
+  // ModeSpec index each label belongs to and that is what the answer
+  // sends back: `resolve_choice {choice_id, modes: [i, …]}`.
+  // Repeats are legal only when mode_repeatable (CR 700.2d).
+  mode_options?: string[];
+  mode_indexes?: number[];
+  mode_min?: number;
+  mode_max?: number;
+  mode_repeatable?: boolean;
 }
 
 // ReplacementOptionView mirrors protocol.ReplacementOptionView —
@@ -692,6 +804,29 @@ export interface PendingChoiceView {
 // ("Doubling Season: double counters"); source_card_id is the card
 // hosting the effect (empty for engine built-ins like commander-
 // zone replacement). Added in S17 sub-PR 2.
+/**
+ * PickOptionView is one branch of an "option_pick" prompt (#568):
+ * the card's own words for it, the cards it is about (a pile, or
+ * nothing), and the life it charges.
+ */
+export interface PickOptionView {
+  label: string;
+  cards?: CardView[];
+  life_cost?: number;
+  /**
+   * The seat this option is about, for the prompts whose branches ARE
+   * players — "choose a player" / "choose an opponent" (#929) and
+   * True-Name Nemesis's as-enters sibling (#980). Absent on every
+   * other option, which is all of them.
+   *
+   * `label` is still what the player reads; this is the identity, so
+   * the client can render a seat chip rather than parse a name back
+   * out of the text. Public by CR 400.2 — who is seated is not hidden
+   * — so it is never redacted. #994.
+   */
+  player?: string;
+}
+
 export interface ReplacementOptionView {
   id: string;
   label?: string;
@@ -715,7 +850,10 @@ export interface DamageAssignmentView {
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`
 // server-side: one queued CR 603.7 delayed triggered ability. `at`
 // is the step whose beginning fires it ("end", "upkeep"); `cards`
-// are the instance IDs the effect acts on. Added in S22.
+// are the instance IDs the effect acts on. `on` (#663) is the event
+// condition of a "when you next cast …" trigger, which is owed on the
+// next matching event rather than at a step — such a trigger carries
+// `on` and an empty `at`. Added in S22.
 export interface DelayedTriggerView {
   id: string;
   controller: string;
@@ -724,6 +862,7 @@ export interface DelayedTriggerView {
   at: string;
   created_turn?: number;
   cards?: string[];
+  on?: string[];
 }
 
 // StackItemView mirrors `protocol.StackItemView` server-side: the
@@ -737,6 +876,11 @@ export interface StackItemView {
   label?: string;
   targets?: TargetRefView[];
   modes?: number[];
+  // #764: the oracle bullet of each chosen mode, in announce order
+  // and with repeats. The caster's hand card is gone by the time the
+  // spell is on the stack, so the overlay reads the labels off the
+  // item rather than printing raw indexes.
+  mode_labels?: string[];
   x_value?: number;
   distribution?: Record<string, number>;
   hold_priority?: boolean;
@@ -754,6 +898,20 @@ export interface StackItemView {
   // ability created by a trigger-doubling permanent.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #761: what paid for this spell — how many mana, and the distinct
+  // COLOURS among them in WUBRG order (colourless is not a colour, so
+  // it never appears here even though it counts in mana_spent). Mana
+  // is spent face up, so this is public, and a responder to a
+  // converge spell needs to see how wide it converged.
+  //
+  // mana_spent_unknown means the cast went through permissive mode or
+  // a strict-mode override: the engine never took the mana and has no
+  // record of what it was. Render that as unknown, never as zero —
+  // "nothing was spent" is a different and much stronger claim, and
+  // the one Vexing Bauble punishes.
+  mana_spent?: number;
+  colors_spent?: string[];
+  mana_spent_unknown?: boolean;
 }
 
 // TargetRefView mirrors `protocol.TargetRefView` server-side: a
@@ -761,6 +919,12 @@ export interface StackItemView {
 export interface TargetRefView {
   kind: "player" | "card" | "self" | "none";
   id?: string;
+  // #764: the target CLAUSE this pick answered — the clause index,
+  // and the index into the item's `modes` whose clause list that is.
+  // Both omitted at zero, which is every single-clause non-modal
+  // announcement.
+  slot?: number;
+  mode?: number;
 }
 
 export interface VoteView {
@@ -857,6 +1021,22 @@ export interface PlayerView {
   // Empties at every step boundary (CR 106.4), so this is absent
   // / empty in the common case outside an active cast sequence.
   mana_pool?: string[];
+  // #623 (CR 114): the emblems this seat has, in creation order.
+  // Absent for a seat with none, which is nearly every seat.
+  //
+  // Not a ZoneView — an emblem has no characteristics at all, so it
+  // is not a card and there is nothing for the card renderer to draw.
+  // The board shows these as chips beside the player identity, with
+  // `text` as the hover. Public: every seat sees every emblem.
+  emblems?: EmblemView[];
+}
+
+// One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
+// Champion emblem"); `text` is its printed ability, for the hover.
+export interface EmblemView {
+  instance_id: string;
+  label: string;
+  text: string;
 }
 
 export interface LifeChangeView {
@@ -887,6 +1067,10 @@ export interface ModeSpecView {
   min: number;
   max: number;
   options: ModeOptionView[];
+  // #764, CR 700.2d: "you may choose the same mode more than once"
+  // (Mystic Confluence). The picker offers a count per option rather
+  // than a toggle, and each occurrence is asked for its own targets.
+  repeatable?: boolean;
 }
 
 // AdditionalCostView is the "As an additional cost to cast this
@@ -912,6 +1096,33 @@ export interface AdditionalCostView {
   label?: string;
 }
 
+// OptionalCostView is one "you may pay an additional cost as you
+// cast this spell" offer — kicker, multikicker, buyback (CR 601.2b,
+// ADR 0073). Like an alternative cost it is an OFFER; unlike one,
+// the offers COMPOSE: a cast may claim one alternative cost and any
+// number of these, which is why they render as toggles beside the
+// alternative-cost radio list rather than as a modal of their own.
+//
+// `index` is what rides back on cast_spell in `optional_costs`,
+// repeated once per payment for a repeatable cost. It is a POSITION
+// and not a key, because a position is what the server's paid record
+// holds; `key` is here for labelling only.
+export interface OptionalCostView {
+  index: number;
+  key: string;
+  label?: string;
+  mana_cost?: string;
+  // How many times this cost may be paid for one cast: 1 for kicker
+  // and buyback, the multikicker cap above that. 1 renders a
+  // checkbox, more renders a stepper.
+  max_times?: number;
+  // The card-shaped halves, in the same shape and with the same
+  // meaning AdditionalCostView gives them: a present-and-empty
+  // sacrifice_options means the offer cannot be taken right now.
+  discard_cards?: number;
+  sacrifice_options?: LegalTargetsView;
+}
+
 // AlternativeCostView is one "you may cast this spell for its
 // overload / evoke / cleave cost" offer on a card in the viewer's own
 // hand (S22). Unlike an additional cost this is optional: the picker
@@ -928,16 +1139,23 @@ export interface AlternativeCostView {
   // fires straight away.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: the offer's clause list when its rewritten statement has
+  // more than one clause.
+  clauses?: LegalTargetsView[];
   // S28: the "pay N life" half of the cost (Force of Will's 1, Snuff
-  // Out's 4). Absent for the costs that charge none. The server
-  // enforces the life total; this is for the label.
+  // Out's 4). Absent for the costs that charge none. This is for the
+  // label — #695: the OFFER ITSELF is absent when the caster's life
+  // total is below it (CR 119.4), so a rendered offer is always one
+  // the server will accept. Exactly N still appears; paying down to
+  // zero is legal.
   life?: number;
   // S28: the cards that can pay the cost's card-shaped half — the
   // blue cards in your hand for Force of Will, the Islands you
   // control for Daze. The chosen instance ID rides back on cast_spell
   // as `alt_cost_ids`. Absent when the cost charges no cards (every
-  // S22 keyword); present-and-empty means you have nothing that can
-  // pay, so the offer is visible but unusable.
+  // S22 keyword). #695: never present-and-empty any more — an offer
+  // with nothing to pay it is not offered at all, for the same reason
+  // one whose life half is unpayable is not.
   pay_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card").
   pay_label?: string;
@@ -946,6 +1164,13 @@ export interface AlternativeCostView {
   // skips the X picker and sends nothing. Absent for nearly every
   // offer, including one priced with an {X} of its own.
   x_locked_at_zero?: boolean;
+  // CR 107.4 (#916): how many symbols in THIS offer's cost carry the
+  // "or 2 life" option. Claiming the offer replaces the mana cost, so
+  // it replaces the ceiling on `phyrexian_life` too — a picker that
+  // read the printed count while paying an alternative cost would
+  // offer a payment the announce gate rejects. Absent for every offer
+  // that prints none, which is all of them today.
+  phyrexian_symbols?: number;
 }
 
 // TapCostView is the "tap permanents you control to help pay for
@@ -979,6 +1204,20 @@ export interface TapCostView {
   demands_x?: boolean;
 }
 
+// SpecialActionView is one CR 116.2 special action offered on a card
+// in the viewer's own hand — foretell, suspend. A row and nothing
+// more: no targets, no modes, no cost picker, so the client sends
+// `special_action { card_id, kind, strict, auto_tap }` straight from
+// it. `available` is the server's own per-kind timing answer, so the
+// client greys the row rather than re-deriving a rule it would get
+// backwards (foretell is legal under split second; suspend is not).
+export interface SpecialActionView {
+  kind: string;
+  label: string;
+  cost?: string;
+  available?: boolean;
+}
+
 // ExilePlayView is the impulse-exile grant on a card in exile —
 // "exile the top card of that player's library, you may play it
 // this turn" (S21 sub-PR 6). Public information; the client offers
@@ -999,17 +1238,22 @@ export interface ExilePlayView {
   // that is live as soon as it is made, which is all of impulse
   // exile and airbend.
   not_before_turn?: number;
-  // S32: the printed face this grant opens, when it opens one —
-  // a defeated Siege's "exile it, then cast it transformed", where
-  // the card sitting in the exile pile still shows the battle and
-  // the thing the button casts is `faces[face]`. Absent for every
-  // grant that does not speak about faces (impulse exile, airbend,
-  // warp, cascade), which is all of them before S32.
+  // S32: the printed faces this grant opens, when it opens any.
+  // Absent for every grant that does not speak about faces (impulse
+  // exile, airbend, warp, cascade), which is all of them before S32.
+  //
+  // Two grants name one face each, in opposite directions: a defeated
+  // Siege's "exile it, then cast it transformed" names the BACK face,
+  // where the card sitting in the exile pile still shows the battle
+  // and the thing the button casts is `faces[1]`; CR 715.4's
+  // Adventure grant names the CREATURE face, face 0. That second one
+  // is why this is a list rather than the number it was until #719 —
+  // "absent" and "face 0" are different facts.
   //
   // Advisory only: the server settles the face from the grant rather
   // than from the request, so a client that ignores this labels the
   // button with the wrong name but cannot cast the wrong half.
-  face?: number;
+  faces?: number[];
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this grant's price does not, so casting under it fixes X at 0 —
   // what a cascade hit carries. The cast flow skips the X picker.
@@ -1051,6 +1295,20 @@ export interface ActivatedAbilityView {
   // then lower mana value, then the source. See sacrificeCost.ts.
   sacrifice_label?: string;
   sacrifice_options?: LegalTargetsView;
+  // #660: the discard cost components (CR 702.29a and the general
+  // "Discard a creature card" clause). `discard_self` is cycling's
+  // "Discard this card" — advisory only, there is nothing to pick,
+  // because the source IS the payment. `discard_cost_n` is the count
+  // of the general clause and its presence marks that component;
+  // `discard_cost_label` is the clause as printed ("a creature
+  // card"), and `discard_cost_options` the cards in hand that could
+  // pay it right now. The picks ride activate_ability as
+  // `discard_ids`; exactly `discard_cost_n` options means there is
+  // nothing to ask and the client skips its picker.
+  discard_self?: boolean;
+  discard_cost_n?: number;
+  discard_cost_label?: string;
+  discard_cost_options?: string[];
   // S27: a Vehicle's crew cost (CR 702.122a). crew_cost is the
   // number that the tapped creatures' TOTAL POWER must reach;
   // crew_options lists the creatures that could pay it right now —
@@ -1079,13 +1337,35 @@ export interface ActivatedAbilityView {
   //     target, so hexproof permanents are included. Absent when
   //     nothing can pay.
   //
-  // The choice rides activate_ability as `counter_source_ids` (not for
-  // the self form) and `counter_kind` (only for the any-kind form).
+  //   - counter_cost_among (#789): "from AMONG artifacts you control".
+  //     The N counters may be split across any number of the listed
+  //     permanents, so the picker is many-pick with a running total
+  //     and the payload carries a count per permanent.
+  //   - counter_cost_variable (#789): "Remove X counters" / "any
+  //     number". counter_cost_n is then the FLOOR rather than the
+  //     amount, and counter_cost_max is the most the viewer could
+  //     name right now — the stepper's ceiling.
+  //   - counter_cost_add / counter_cost_add_kind (#789): a cost that
+  //     PUTS counters on the source (Devoted Druid's -1/-1). Nothing
+  //     is chosen; counter_add_blocked is CR 118.3 saying the
+  //     permanent can't have them, which greys the row.
+  //
+  // The choice rides activate_ability (or activate_mana_ability) as
+  // `counter_source_ids` (not for the self form), `counter_counts`
+  // (only for the among and variable forms) and `counter_kind` (only
+  // for the any-kind form) — or, when an any-kind AMONG payment mixes
+  // kinds, `counter_kinds`, one per permanent (#943, Tekuthal).
   counter_cost_n?: number;
   counter_cost_kind?: string;
   counter_cost_self?: boolean;
   counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
   counter_cost_options?: CounterCostOptionView[];
+  counter_cost_add?: number;
+  counter_cost_add_kind?: string;
+  counter_add_blocked?: boolean;
   // {X} in the ability's mana cost (CR 602.2b) — Helm of Obedience,
   // Treasure Vault, Soothsaying. demands_x opens the X picker before
   // the targeting step, and the answer rides activate_ability as
@@ -1099,6 +1379,13 @@ export interface ActivatedAbilityView {
   demands_x?: boolean;
   min_x?: number;
   x_slots?: number;
+  // CR 107.4f (#917, #916): how many symbols in the ability's mana
+  // component carry the "or 2 life" option — 1 for Birthing Pod's
+  // "{1}{G/P}", 2 for Solphim's "{1}{R/P}{R/P}". It is the ceiling on
+  // the `phyrexian_life` the activation may claim, and the reason the
+  // menu knows to open the stepper at all. A COUNT rather than
+  // something the client derives, for the reason demands_x is one.
+  phyrexian_symbols?: number;
   // Present when the ability targets. A full LegalTargetsView since
   // #334: the server now stamps the clause's min / max (it always
   // had them; abilityLegalTargets just never copied them across),
@@ -1106,6 +1393,13 @@ export interface ActivatedAbilityView {
   // the Emperor's −2 — be confirmed with nothing picked.
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: every clause of the ability's statement when it has more
+  // than one, and its CR 700.2 mode clause when it is modal
+  // (Aetheric Amplifier). A modal ability announces its modes with
+  // its targets in the one activate_ability (CR 602.2b), so the menu
+  // shows the same mode picker a modal spell's hand card gets.
+  clauses?: LegalTargetsView[];
+  modes?: ModeSpecView;
 }
 
 // CounterCostOptionView is one permanent that could pay a "remove N
@@ -1119,6 +1413,11 @@ export interface ModeOptionView {
   label: string;
   target_mode?: string;
   legal_targets?: LegalTargetsView;
+  // #764: every clause of the bullet's statement when it has more
+  // than one, in printed order. Absent for the one-clause bullet
+  // that is nearly every bullet, where legal_targets is the whole
+  // answer.
+  clauses?: LegalTargetsView[];
 }
 
 // LegalTargetsView is a clause's legal set right now plus its
@@ -1133,6 +1432,13 @@ export interface LegalTargetsView {
   // meaningless until X is chosen, so the picker substitutes the X
   // collected in the cost prompts.
   count_from_x?: boolean;
+  // #764: the clause's printed wording, shown in the picker banner
+  // when a statement has more than one clause and the banner has to
+  // say which question it is asking.
+  label?: string;
+  // #764: this clause's picks must differ from every EARLIER
+  // clause's ("a second target permanent you control").
+  distinct?: boolean;
 }
 
 /**
@@ -1191,16 +1497,38 @@ export interface CardView {
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
   damage_marked?: number;
+  // Regeneration shields on this permanent (CR 701.19a, #667). Each
+  // one replaces the next destruction this turn: instead of dying it
+  // is tapped, all damage is removed from it and it leaves combat.
+  // Public state, like damage_marked; omitted when zero.
+  regeneration_shields?: number;
   // S13.5 visual face-down flag (CR 708 — morph / manifest /
   // mutate-bottom, Necropotence's exile). Distinct from known_by_you:
   // a viewer who doesn't know a face-down card gets it redacted to
   // game state and Card.svelte draws a back (cardBack.ts, #95); a
   // viewer who knows it still sees the face.
   face_down?: boolean;
+  // WHY it is face down (ADR 0069): "exiled" (CR 406.3, Necropotence),
+  // "foretold" (CR 702.143b), or one of the CR 708.2 permanent states
+  // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
+  // everyone can see that a permanent is a morph — so it survives the
+  // non-knower redaction and labels the card back.
+  face_down_kind?: string;
+  // Whether THIS viewer may look at the face of a face-down object:
+  // its controller for a CR 708.5 permanent, its owner for a foretold
+  // card (CR 702.143d), nobody for a plain face-down exile (CR 406.3).
+  // Stamped per-viewer by the server; equals `face_down && known_by_you`.
+  // True means "draw the real face plus a face-down badge".
+  face_visible?: boolean;
   // S13.5 per-viewer knowledge flag. True when the viewer is in the
   // server-side KnownBy set for this card. When false, printed
   // characteristics (name, type_line, scryfall_id, power, toughness,
   // counters, is_commander) are zero/empty.
+  //
+  // A face-down PERMANENT is the one exception to "zero/empty": its
+  // CR 708.2 body (type line "Creature", 2/2, no name, no colours) is
+  // public and reaches every viewer, because an opponent has to see
+  // the 2/2 to block it.
   known_by_you?: boolean;
   // Normalised battlefield position in [0, 1], stamped by
   // `set_battlefield_position`.
@@ -1282,6 +1610,13 @@ export interface CardView {
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
   legal_targets?: LegalTargetsView;
+  // #764: every clause of a MULTI-clause target statement, in
+  // printed order, each with its own legal set, count and printed
+  // wording — Bite Down's "target creature you control" then "target
+  // creature or planeswalker you don't control". Absent for the
+  // single-clause card that is nearly every card. The picker walks
+  // them one prompt at a time.
+  clauses?: LegalTargetsView[];
   // S20 sub-PR 4: for a modal card in the viewer's own hand — the
   // "Choose one" clause. Each option carries its label and, when it
   // targets, its own target_mode + legal set. The cast flow shows a
@@ -1298,6 +1633,34 @@ export interface CardView {
   // opens a picker before every other prompt, because the choice
   // changes what the rest of them ask. Absent for nearly every card.
   alternative_costs?: AlternativeCostView[];
+  // #1012: the PRINTED mana cost is not one of the prices this cast
+  // may claim out of the zone the card is in, so the caster must name
+  // one of `alternative_costs`. A Faithless Looting in the graveyard
+  // is castable at its flashback cost and at nothing else; a card a
+  // permission PRICES is the same shape.
+  //
+  // Absent — every hand cast, every command-zone cast, and a
+  // Gravecrawler whose graveyard permission carries no price — means
+  // the printed cost is on the menu as usual. `castable_here` is one
+  // bit and says only that a cast is possible from here; this is the
+  // other half of the sentence, and the client must not infer it from
+  // the shape of the offer list.
+  alternative_cost_required?: boolean;
+  // ADR 0073 (#664): the "you may pay an additional cost" offers this
+  // card makes — kicker, multikicker, buyback. Rendered inside the
+  // same picker the alternative costs open, because CR 601.2b
+  // announces them together. Absent for nearly every card.
+  optional_costs?: OptionalCostView[];
+  // #760 (ADR 0073 §7): the printed clause that stops this card being
+  // cast from the zone it is in right now — "Each player can't cast
+  // more than one spell each turn", "Cast this spell only if you
+  // control a legendary creature or planeswalker". Absent, which is
+  // nearly always, means nothing refuses the cast.
+  //
+  // The server's own cast gate answered this, so a card carrying it
+  // is one the server WILL refuse: grey it and show the clause rather
+  // than dispatching cast_spell and surfacing a toast.
+  cant_cast?: string;
   // S22: for a card in the viewer's own hand that lets you tap your
   // own permanents to help pay — convoke and waterbend. The cast
   // flow opens a picker after X and before targeting. Absent for
@@ -1311,6 +1674,15 @@ export interface CardView {
   // clauses under the readout. Absent for nearly every card and on
   // opponents' cards the viewer cannot read.
   target_cost_notes?: string[];
+  // CR 107.4 (#916): how many symbols in the printed cost carry the
+  // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
+  // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The
+  // cast flow opens a "pay N with life" stepper bounded by it and by
+  // the caster's life total, and sends the answer as `phyrexian_life`.
+  // Stamped with the other cast clauses on the viewer's own castable
+  // cards and absent everywhere else, so its presence IS the question
+  // "is there a life half to offer here".
+  phyrexian_symbols?: number;
   // S29: set on a card sitting in a zone its own text opens as a
   // cast source — a flashback card in the graveyard. The zone
   // browser keys its cast button off this, the way exile keys its
@@ -1318,12 +1690,52 @@ export interface CardView {
   // command-zone cards: those surfaces are cast surfaces for
   // everything in them. The cost to pay rides `alternative_costs`,
   // already filtered to the offers claimable from this zone.
+  //
+  // #1015: the server derives it from that offer list and its own
+  // cast gate — "nothing refuses this cast, and at least one price is
+  // claimable". An escape card in a graveyard too small to pay for it
+  // is NOT castable here, and used to render a button with no offer
+  // behind it. Whether the printed cost is one of those prices is
+  // `alternative_cost_required`, not this bit.
+  //
+  // WHOSE ANSWER IT IS depends on the pile (#1022, #1035). On a
+  // graveyard or a library it is the PILE OWNER's and it is public —
+  // a flashback cost is printed on a card in a public zone — so a
+  // reader looking at somebody else's pile must not take it as their
+  // own. It is YOUR answer when `exile_play` names you: the server
+  // computes the holder's own offers, targets and gate and ships them
+  // to that seat alone. zoneBrowser.logic and libraryTop are the two
+  // readers, and both ask the same question.
   castable_here?: boolean;
   // S21 sub-PR 6: present on a card in exile that someone may play
-  // this turn. Absent for ordinary exile, which is nearly all of it.
+  // this turn — and, since ADR 0066, on a card in a graveyard or on a
+  // library top that a permission opens. Absent for ordinary exile,
+  // which is nearly all of it.
+  //
+  // PUBLIC: the trigger that granted it resolved in the open, so every
+  // viewer gets one. #1037: a viewer who holds a permission over the
+  // card gets THEIR OWN rather than whichever live permission the
+  // server found first, so two seats that may both cast one card each
+  // see the grant they would cast under — its cost override, its
+  // faces, its any-color clause. Read it, never guess from the zone.
   exile_play?: ExilePlayView;
   // S21 sub-PR 2: activated abilities offered by this permanent.
   activated_abilities?: ActivatedAbilityView[];
+  // #660: activated abilities this card offers while it is IN HAND —
+  // cycling and typecycling (CR 702.29). A separate field from
+  // `activated_abilities` because the two are read by different UI
+  // and because a hand, unlike the battlefield, is not public: the
+  // server strips this from every seat but the hand's owner. `index`
+  // is the ability's index in the card's FULL list, so the same
+  // activate_ability payload works for both.
+  hand_abilities?: ActivatedAbilityView[];
+  // #658 / #659: CR 116.2 special actions this card offers while it
+  // is IN HAND — "Foretell {2}", "Suspend 1—{R}". Not abilities and
+  // not casts: they use no stack and there is nothing to respond to,
+  // so a row fires `special_action` directly with no picker in
+  // between. Hidden from every seat but the hand's owner, like
+  // `hand_abilities`.
+  special_actions?: SpecialActionView[];
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
@@ -1333,6 +1745,39 @@ export interface CardView {
   // was server-only, which is why canActivateLoyalty had to take
   // the caller's guess as an argument.
   loyalty_activated?: boolean;
+  // ADR 0071 (CR 716.2): a Class permanent's level designation — 1
+  // for a Class nobody has levelled, up from there. Present only for
+  // a Class on the battlefield, so the badge renders on presence
+  // rather than on parsing the type line. An uncatalogued Class
+  // carries it too: the level is engine state, not catalog state.
+  class_level?: number;
+  // ADR 0071 (CR 719.3): this Case is solved, and its "Solved —"
+  // lines are on. Absent — not `false` — for everything else.
+  //
+  // There is no field for "which printed abilities are active": an
+  // inactive ACTIVATED ability is already missing from
+  // `activated_abilities`, and an inactive static or trigger has no
+  // per-ability representation here to grey out.
+  solved?: boolean;
+  // #781 (CR 105.4 / CR 614.12): the answers this permanent's
+  // controller gave to its "as this enters, choose a color" and "as
+  // this enters, choose a creature type" instructions — one uppercase
+  // colour letter ("G") and one canonical creature type ("Elf").
+  // Absent when the card asks no such question, and absent between
+  // the permanent entering and the prompt being answered.
+  //
+  // PUBLIC. The choice is announced at the table, and CR 607.2d makes
+  // it the only way to read the card's other lines: "creatures you
+  // control of the chosen color" names a set nobody can compute
+  // without it. Cleared with the other type-derived bits for a card
+  // the viewer is not a knower of — "Elf" names Cavern of Souls.
+  //
+  // RENDER THEM THROUGH `chosenValueChips` (chosenValues.ts). That
+  // module is the one place either letter becomes a word, so the card
+  // tile, the hover panel and the zone browser cannot disagree about
+  // what "G" means.
+  chosen_color?: string;
+  named_tribe?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the
@@ -1352,6 +1797,12 @@ export interface CardView {
   // printed keywords (S18 Spec.PrintedKeywords). S18 renders
   // keyword badges from this list via the KeywordBadgeRow component.
   abilities?: string[];
+  // #662 — this permanent's CR 702.16 protections, already PARSED by
+  // the server. The raw "protection from red" tokens are in
+  // `abilities` like every other keyword; this is the same list with
+  // the quality pulled out, so the badge row renders "Protection from
+  // Demons" without the client owning a copy of the grammar.
+  protection?: ProtectionView[];
   // S24 — the restriction set the server computed for this
   // permanent: "cant_attack", "cant_block", "cant_be_blocked",
   // "cant_activate", "cant_activate_mana". Absent for the permanent
@@ -1383,6 +1834,36 @@ export interface CardView {
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
+// ProtectionView is one "protection from <quality>" on a permanent
+// (CR 702.16), parsed by the server. #662.
+//
+// The client never parses a protection token. Protection is the only
+// keyword whose ability carries a parameter, and the engine keeps
+// exactly one closed grammar for it (server/internal/game/
+// protection.go); a second copy here would be free to disagree about
+// what "protection from Demons" means.
+export interface ProtectionView {
+  // The quality as the CARD prints it — "red", "Demons",
+  // "artifacts", "everything". Badge tooltip text.
+  printed: string;
+  // Which characteristic of a source the quality is compared
+  // against: "color", "card_type", "subtype", "everything" or
+  // "player".
+  kind: string;
+  // What the rules compare — the wire colour ("R"), the lowercase
+  // card type ("artifact"), the canonical singular subtype
+  // ("Demon"). Absent for "everything".
+  //
+  // For "player" (CR 702.16k, #980 — True-Name Nemesis) it is the
+  // chosen SEAT'S ID, and the comparison is against the source's
+  // controller rather than against any characteristic of it. An id,
+  // like `CardView.controller`; `printed` stays "the chosen player",
+  // so the display string never holds a UUID. Absent while the
+  // permanent's as-enters prompt is still open, which reads correctly
+  // as "protected from nobody".
+  value?: string;
+}
+
 // one entry per activated mana ability on a battlefield permanent.
 // The client renders these as buttons in a right-click / long-press
 // menu anchored to the card. Added in S15 sub-PR 2.
@@ -1430,6 +1911,23 @@ export interface ManaAbilityView {
   // Temple's "only colorless Eldrazi". Informational; the server's
   // pool solver is what actually refuses an illegal payment.
   restrictions?: string[];
+  // #789: the counter half of the activation cost — Vivid Creek's
+  // "Remove a charge counter from this land", Ramos's five +1/+1
+  // counters, Mage-Ring Network's "any number of storage counters".
+  // The SAME field names an activated ability carries, and the same
+  // meanings, because it is the same component: counterCost.ts reads
+  // both through one structural type and builds one payload.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
+  counter_cost_add?: number;
+  counter_cost_add_kind?: string;
+  counter_add_blocked?: boolean;
 }
 
 // AttackTargetView is one legal attack target: the id to send as
@@ -1480,4 +1978,23 @@ export function uuid(): string {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+// TableSettingsView is a table's configuration (ADR 0075 §2.2). The
+// keys match the settings patch the server accepts, so a client can
+// send back exactly the fields it read.
+export interface TableSettingsView {
+  // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
+  undo_limit: number;
+  // Whose undo entries a seat may take back.
+  undo_scope: "own" | "host_any";
+  // Each seat's life at game start. Fixed once the game is active.
+  starting_life: number;
+  // Damage from one commander that loses the game.
+  commander_damage: number;
+  // AI seat pacing preset.
+  bot_pace: "fast" | "normal" | "slow";
+  // Whether the host and admin may spawn cards and tokens on a live
+  // table (every spawn is announced in the log).
+  allow_spawn: boolean;
 }

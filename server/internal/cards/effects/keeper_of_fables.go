@@ -8,15 +8,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Whenever one or more non-Human creatures you control deal
 //	 combat damage to a player, draw a card."
 //
-// The non-Human beatdown deck's Bident. "ONE OR MORE" is one trigger
-// per combat damage step, not one per creature: the engine emits one
-// damage event per creature, so the condition declines every later
-// event of the SAME batch (OncePerBatch, keyed on Event.Batch — see
-// AGENTS.md §7). Without it three attackers would draw three, which
-// is stronger than printed. First-strike and regular damage are two
-// batches and two draws, as in paper. Human is read off the
-// creature's effective subtypes, so a changeling is a Human and does
-// not count.
+// The non-Human beatdown deck's Bident. "ONE OR MORE … to A PLAYER"
+// is one trigger per PLAYER connected with (CR 603.2c, and this
+// card's own ruling of 2019-10-04: "if non-Human creatures you
+// control deal combat damage to two or more players at the same time,
+// Keeper of Fables's ability triggers for each of those players"),
+// not one per creature and not one per damage step. The engine emits
+// one damage event per creature, so the guard is
+// OncePerBatchPerPlayer (see AGENTS.md §7): three non-Humans on one
+// opponent draw one card, three on three opponents draw three.
+// First-strike and regular damage are two damage steps and two
+// batches (CR 510.4), so a draw for each (step, player) pair, as in
+// paper. Human is read off the creature's effective subtypes, so a
+// changeling is a Human and does not count.
 //
 // No simplification.
 func init() {
@@ -25,9 +29,8 @@ func init() {
 		Name:         "Keeper of Fables",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b30NonHumanCreatureYouControlDealtCombatDamageToPlayer(ev, source, g)
-			}, "Keeper of Fables — draw a card", Do(DrawCards{N: 1}))),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(b30NonHuman(),
+				"Keeper of Fables — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

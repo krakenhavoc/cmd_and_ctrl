@@ -16,6 +16,123 @@ import "github.com/google/uuid"
 // sent was accepted. TargetMode survives as the derived hint the
 // client uses for banner copy; TargetSpec is the truth.
 
+// TargetSource is WHO AND WHAT is choosing targets: the controller
+// making the choice (CR 601.2c) and, for CR 702.16b, the source
+// object whose qualities protection is tested against.
+//
+// Before #662 the targeting choke point received a bare
+// `caster uuid.UUID`, which is why ADR 0038 §7 could not write
+// protection's targeting check at all. Protection compares the
+// quality to the SOURCE — a spell's own colour, an ability's source
+// permanent's colour or type — and a red player's colourless artifact
+// ability is not red.
+//
+// Controller is what the spec's CardOK / PlayerOK predicates receive,
+// so the ~300 catalog Targets: clauses are untouched by the change.
+//
+// Exactly one of three constructors is used at each call site:
+//
+//	SourceObject(controller, card)    a live spell or ability source
+//	SourceSnapshot(controller, chars) a value copy the caller kept,
+//	                                  because the object may be gone
+//	                                  by the time the answer arrives
+//	                                  (spell_copy.go's re-target
+//	                                  prompt — the original can be
+//	                                  countered in between)
+//	SourceChooser(controller)         NO source: the cost-payment
+//	                                  enumerations that reuse
+//	                                  TargetSpec as a predicate and
+//	                                  do not target (ADR 0038 §4)
+//
+// A source-less value is not a hole. specMatchLocked's non-targeting
+// half never reaches the protection check, so SourceChooser is a
+// DECLARATION that this is not targeting, in the same way
+// SpecCandidatesForEffect is. See docs/decisions/0072-protection.md §2.
+type TargetSource struct {
+	// Controller is the player choosing. Always set.
+	Controller uuid.UUID
+
+	// Object is the live source, when the caller holds one.
+	Object *Card
+
+	// Snapshot is a value copy of the source's characteristics, for
+	// a caller whose source may have left by the time the check runs.
+	Snapshot *Characteristic
+}
+
+// SourceObject is the ordinary case: a live spell or ability source.
+func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
+	return TargetSource{Controller: controller, Object: obj}
+}
+
+// SourceSnapshot is the value-copy case (spell_copy.go, an LKI read).
+func SourceSnapshot(controller uuid.UUID, chars *Characteristic) TargetSource {
+	return TargetSource{Controller: controller, Snapshot: chars}
+}
+
+// SourceChooser declares that this walk is NOT targeting: a cost
+// payment, a "choose" that is not "target". Only the chooser matters.
+func SourceChooser(controller uuid.UUID) TargetSource {
+	return TargetSource{Controller: controller}
+}
+
+// Characteristics is the source's post-layer characteristics, or nil
+// when there is no source object. The live object wins over the
+// snapshot: a caller that has both kept the snapshot as a fallback.
+func (s TargetSource) Characteristics() *Characteristic {
+	if s.Object != nil {
+		return SourceCharacteristics(s.Object)
+	}
+	return s.Snapshot
+}
+
+// stackItemSourceLocked names the source of an item that is already
+// on the stack — the CR 608.2b re-check's TargetSource.
+//
+// For a SPELL the item's card is the spell itself and it is on the
+// stack, so the lookup always succeeds. For an ABILITY the source is
+// the permanent that produced it, and that permanent can have left
+// between announce and resolution; the ability still resolves
+// (CR 603.3d / CR 608.2), and this returns a source-less value for
+// it.
+//
+// DECLARED LIMITATION: protection is then not re-checked for that
+// ability, so a creature that gains protection from red in response
+// to a red permanent's ability, where the permanent ALSO leaves
+// before resolution, is still hit. The announce gate caught the
+// ordinary case and the damage half catches the damage; giving the
+// stack item its own last-known-information snapshot would be a
+// second LKI store next to the damage event's, for one ordering of
+// two rare events. See docs/decisions/0072-protection.md §2.
+//
+// Caller must hold g.mu.
+func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
+	if item == nil {
+		return TargetSource{}
+	}
+	if item.SourceCardID != uuid.Nil {
+		if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
+			return SourceObject(item.Controller, &c)
+		}
+	}
+	return SourceChooser(item.Controller)
+}
+
+// TargetClause is ONE clause of a target statement: one predicate,
+// chosen Min..Max times. It is an ALIAS for TargetSpec, not a second
+// type — a TargetSpec *is* its first clause, and a statement with
+// more than one clause hangs the rest off it in Rest (#764, ADR
+// 0065 §1). That shape is what lets a cost-payment predicate
+// (AbilityCost.SacrificeOther and friends), a mode option's clause
+// and a two-slot spell all be the same struct walked by the same
+// code, with one predicate struct in the tree.
+//
+// Read a clause list with ClauseCount / Clause (allocation-free) or
+// Clauses (convenient). Never read Rest off a clause you got from
+// one of those: the list is flat by construction and Register
+// refuses a nested Rest at boot.
+type TargetClause = TargetSpec
+
 // TargetSpec declares a spell's or ability's target clause: one
 // predicate, chosen Min..Max times. "Target creature" is 1 / 1;
 // "two target creatures" 2 / 2; "up to three target cards" 0 / 3;
@@ -89,6 +206,90 @@ type TargetSpec struct {
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.
 	AllowSame bool
+
+	// Distinct makes this clause's picks differ from every EARLIER
+	// clause's picks in the same statement — "a SECOND target
+	// permanent you control" (Resourceful Defense), "target creature
+	// or planeswalker you don't control" after "target creature you
+	// control". CR 601.2c lets one object fill two different
+	// instances of the word "target" unless the card says otherwise,
+	// so this is opt-in per clause rather than the default.
+	//
+	// AllowSame is the WITHIN-clause twin: it governs whether two
+	// picks of the SAME clause may coincide. The two are
+	// independent. Added by #764.
+	Distinct bool
+
+	// Rest holds clauses 2..n of a multi-clause statement, in
+	// printed order. Empty — which is every clause the catalog
+	// declared before #764, every cost-payment predicate and every
+	// mode option that targets once — means "this statement is one
+	// clause", and everything about the spec reads exactly as it did.
+	//
+	// The list is FLAT: an entry's own Rest is ignored, and
+	// effects.Register refuses one at boot. Build it with
+	// effects.Clauses(first, then…). Added by #764 (ADR 0065 §1).
+	Rest []TargetClause
+}
+
+// ClauseCount is the number of clauses in this statement: 1 for the
+// ordinary single-clause spec. Nil-safe (0).
+func (s *TargetSpec) ClauseCount() int {
+	if s == nil {
+		return 0
+	}
+	return 1 + len(s.Rest)
+}
+
+// Clause returns clause i of the statement, or nil when i is out of
+// range. Clause(0) is the spec itself — which is the whole point of
+// the head-and-tail shape — so the returned pointer's Rest is the
+// statement's tail and MUST NOT be read as though it were the
+// clause's own. Read predicate fields only.
+func (s *TargetSpec) Clause(i int) *TargetClause {
+	if s == nil || i < 0 || i > len(s.Rest) {
+		return nil
+	}
+	if i == 0 {
+		return s
+	}
+	return &s.Rest[i-1]
+}
+
+// Clauses is the allocating form of the same walk, for callers that
+// want a range loop (the protocol projection, the bot enumerator).
+// Each entry is a VALUE copy with Rest cleared, so nothing downstream
+// can mistake the statement's tail for a clause's own.
+func (s *TargetSpec) Clauses() []TargetClause {
+	n := s.ClauseCount()
+	if n == 0 {
+		return nil
+	}
+	out := make([]TargetClause, 0, n)
+	for i := 0; i < n; i++ {
+		c := *s.Clause(i)
+		c.Rest = nil
+		out = append(out, c)
+	}
+	return out
+}
+
+// Then appends clauses to this statement and returns it, so a
+// catalog constructor chain reads in printed order. Mutates and
+// returns the receiver, as WithCount does.
+func (s *TargetSpec) Then(more ...*TargetSpec) *TargetSpec {
+	for _, m := range more {
+		if m == nil {
+			continue
+		}
+		c := *m
+		c.Rest = nil
+		s.Rest = append(s.Rest, c)
+		// A nested statement flattens rather than nesting — the list
+		// is flat by construction everywhere it is read.
+		s.Rest = append(s.Rest, m.Rest...)
+	}
+	return s
 }
 
 // WithCount returns the spec with its Min / Max replaced — the
@@ -142,11 +343,12 @@ type LegalTargets struct {
 //
 // This is the TARGETING enumeration: the protection-style keyword
 // gate (CanBeTargetedBy) is applied, so a hexproof creature an
-// opponent controls never reaches the picker. Cost payments and
-// other "choose" effects that are not targeting want
-// specCandidatesLocked instead. Caller must hold g.mu.
-func (g *Game) legalTargetsLocked(caster uuid.UUID, spec *TargetSpec) LegalTargets {
-	return g.specMatchesLocked(caster, spec, true)
+// opponent controls never reaches the picker, and neither does a
+// pro-red one when the source is red. Cost payments and other
+// "choose" effects that are not targeting want specCandidatesLocked
+// instead. Caller must hold g.mu.
+func (g *Game) legalTargetsLocked(src TargetSource, spec *TargetSpec) LegalTargets {
+	return g.specMatchesLocked(src, spec, true)
 }
 
 // specCandidatesLocked is legalTargetsLocked without the
@@ -160,12 +362,17 @@ func (g *Game) legalTargetsLocked(caster uuid.UUID, spec *TargetSpec) LegalTarge
 //
 // Caller must hold g.mu.
 func (g *Game) specCandidatesLocked(chooser uuid.UUID, spec *TargetSpec) LegalTargets {
-	return g.specMatchesLocked(chooser, spec, false)
+	return g.specMatchesLocked(SourceChooser(chooser), spec, false)
 }
 
 // specMatchesLocked is the shared walk behind both enumerations.
 // `targeting` switches the CR 702 keyword gate on.
-func (g *Game) specMatchesLocked(caster uuid.UUID, spec *TargetSpec, targeting bool) LegalTargets {
+//
+// The spec's own predicates receive src.Controller, not the source
+// object: a catalog clause asks "whose is it?" and nothing more, and
+// keeping that argument a bare ID is what let #662 thread a source
+// through this file without touching ~300 catalog Targets: clauses.
+func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting bool) LegalTargets {
 	var out LegalTargets
 	if spec == nil {
 		return out
@@ -175,7 +382,7 @@ func (g *Game) specMatchesLocked(caster uuid.UUID, spec *TargetSpec, targeting b
 			if p == nil || p.Eliminated {
 				continue
 			}
-			if spec.PlayerOK != nil && !spec.PlayerOK(g, caster, p) {
+			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -185,10 +392,10 @@ func (g *Game) specMatchesLocked(caster uuid.UUID, spec *TargetSpec, targeting b
 		for _, z := range g.zonesOfKindLocked(zk) {
 			for i := range z.Cards {
 				c := z.Cards[i]
-				if targeting && !CanBeTargetedBy(&c, zk, caster) {
+				if targeting && !CanBeTargetedBy(&c, zk, src) {
 					continue
 				}
-				if spec.CardOK != nil && !spec.CardOK(g, caster, c, zk) {
+				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
 					continue
 				}
 				out.Cards = append(out.Cards, c.InstanceID)
@@ -210,8 +417,11 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 	case TargetSelf, TargetNone:
 		return true
 	case TargetPlayer, TargetCard:
-		if item != nil && item.targetSpec != nil {
-			return g.targetLegalLocked(item.Controller, item.targetSpec, ref)
+		// #764: the clause the ref was announced under, not the
+		// item's first clause — a two-slot spell's second pick is
+		// re-checked against its OWN predicate here.
+		if clause := g.clauseForRefLocked(item, ref); clause != nil {
+			return g.targetLegalLocked(g.stackItemSourceLocked(item), clause, ref)
 		}
 		return targetStillExistsLocked(g, ref)
 	}
@@ -221,8 +431,8 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 // LegalTargetsForEffect is the *ForEffect-surface wrapper around
 // legalTargetsLocked for callers already under g.mu (catalog
 // HasLegalTarget predicates, trigger target pickers).
-func (g *Game) LegalTargetsForEffect(caster uuid.UUID, spec *TargetSpec) LegalTargets {
-	return g.legalTargetsLocked(caster, spec)
+func (g *Game) LegalTargetsForEffect(src TargetSource, spec *TargetSpec) LegalTargets {
+	return g.legalTargetsLocked(src, spec)
 }
 
 // SpecCandidatesForEffect is the NON-targeting sibling of
@@ -247,14 +457,14 @@ func (g *Game) SpecCandidatesForEffect(chooser uuid.UUID, spec *TargetSpec) Lega
 // projection: which targets could `caster` pick for the card with
 // this oracle ID right now. Nil / empty when the card has no
 // structured targeting.
-func (g *Game) LegalTargetsFor(caster uuid.UUID, oracleID string) *LegalTargets {
+func (g *Game) LegalTargetsFor(src TargetSource, oracleID string) *LegalTargets {
 	spec := TargetSpecFor(oracleID)
 	if spec == nil {
 		return nil
 	}
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	lt := g.legalTargetsLocked(caster, spec)
+	lt := g.legalTargetsLocked(src, spec)
 	return &lt
 }
 
@@ -317,8 +527,8 @@ func (g *Game) zonesOfKindLocked(kind ZoneKind) []*Zone {
 // response to a spell already on the stack makes that spell fizzle
 // without anything else being taught the rule. Self / none refs are
 // always legal. Caller must hold g.mu.
-func (g *Game) targetLegalLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef) bool {
-	return g.specMatchLocked(caster, spec, ref, true)
+func (g *Game) targetLegalLocked(src TargetSource, spec *TargetSpec, ref TargetRef) bool {
+	return g.specMatchLocked(src, spec, ref, true)
 }
 
 // specMatchLocked is targetLegalLocked's body with the CR 702
@@ -326,7 +536,7 @@ func (g *Game) targetLegalLocked(caster uuid.UUID, spec *TargetSpec, ref TargetR
 // list, an activated ability's "sacrifice another" clause) pass
 // targeting=false: they reuse TargetSpec purely as a predicate over
 // permanents, and paying a cost never targets.
-func (g *Game) specMatchLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef, targeting bool) bool {
+func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef, targeting bool) bool {
 	switch ref.Kind {
 	case TargetSelf, TargetNone:
 		return true
@@ -338,7 +548,7 @@ func (g *Game) specMatchLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef
 		if p == nil || p.Eliminated {
 			return false
 		}
-		return spec.PlayerOK == nil || spec.PlayerOK(g, caster, p)
+		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
 	case TargetCard:
 		z := g.findCardZoneLocked(ref.ID)
 		if z == nil {
@@ -359,40 +569,25 @@ func (g *Game) specMatchLocked(caster uuid.UUID, spec *TargetSpec, ref TargetRef
 			if c.InstanceID != ref.ID {
 				continue
 			}
-			if targeting && !CanBeTargetedBy(&c, z.Kind, caster) {
+			if targeting && !CanBeTargetedBy(&c, z.Kind, src) {
 				return false
 			}
-			return spec.CardOK == nil || spec.CardOK(g, caster, c, z.Kind)
+			return spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)
 		}
 	}
 	return false
 }
 
-// validateTargetsLocked is the announce-time gate (CR 601.2c): the
-// number of targeted slots must fall within Min..Max, each must be
-// legal, and (unless AllowSame) no two may name the same object.
-// Returns ErrInvalidParam for a count / duplicate violation and
-// ErrIllegalTarget for a bad pick. Caller must hold g.mu.
-func (g *Game) validateTargetsLocked(caster uuid.UUID, spec *TargetSpec, targets []TargetRef) error {
-	n := 0
-	seen := make(map[uuid.UUID]bool, len(targets))
-	for _, t := range targets {
-		if t.Kind == TargetSelf || t.Kind == TargetNone {
-			continue
-		}
-		n++
-		if !spec.AllowSame {
-			if seen[t.ID] {
-				return ErrInvalidParam
-			}
-			seen[t.ID] = true
-		}
-		if !g.targetLegalLocked(caster, spec, t) {
-			return ErrIllegalTarget
-		}
-	}
-	if n < spec.Min || (spec.Max > 0 && n > spec.Max) {
-		return ErrInvalidParam
-	}
-	return nil
+// validateTargetsLocked is the announce-time gate (CR 601.2c) for a
+// NON-MODAL clause list: each pick must fall in its own clause's
+// Min..Max, be legal under that clause's predicate, and (unless
+// AllowSame) not repeat within it. Returns ErrInvalidParam for a
+// count / duplicate / bad-slot violation and ErrIllegalTarget for an
+// illegal pick.
+//
+// It is a thin wrapper over validateAnnouncedTargetsLocked (#764),
+// which is the general form the modal paths use; a single-clause spec
+// is that walk with one step. Caller must hold g.mu.
+func (g *Game) validateTargetsLocked(src TargetSource, spec *TargetSpec, targets []TargetRef) error {
+	return g.validateAnnouncedTargetsLocked(src, AnnouncedClauses(spec, nil, nil), targets)
 }

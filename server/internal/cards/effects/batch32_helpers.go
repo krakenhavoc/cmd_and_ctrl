@@ -91,30 +91,19 @@ func b32TokenYouControlAttacksAPlayer(g *game.Game, controller uuid.UUID) bool {
 
 // b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed is the set
 // of players a creature named `name` under `controller`'s control
-// dealt combat damage to this turn — walked off the event log back
-// to the turn's upkeep (b06EnteredThisTurn's boundary). What Trygon
-// Predator's target clause reads to narrow "target artifact or
-// enchantment THAT PLAYER controls" to the players its Predators
-// actually connected with: a target predicate is not handed the
-// trigger's event, so the log stands in for it. The dealing creature
-// is read live, and one that has since left the battlefield is
-// matched by the LKI its death recorded.
+// dealt combat damage to this turn. What Trygon Predator's target
+// clause reads to narrow "target artifact or enchantment THAT PLAYER
+// controls" to the players its Predators actually connected with: a
+// target predicate is not handed the trigger's event, so this stands
+// in for it.
+//
+// The per-turn tally's damage-source cell (#1009). It used to scan
+// this turn's events and look the dealing creature up wherever it had
+// since landed, which lost a dealer that had ceased to exist; the
+// tally records the name AT THE DAMAGE, while the creature is still
+// on the battlefield to be read.
 func b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g *game.Game, controller uuid.UUID, name string) map[uuid.UUID]bool {
-	out := map[uuid.UUID]bool{}
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
-			continue
-		}
-		if p := g.PlayerByIDForEffect(ev.Target); p == nil {
-			continue
-		}
-		src, ok := g.LookupCardForEffect(ev.Source)
-		if !ok || src.Name != name {
-			continue
-		}
-		out[ev.Target] = true
-	}
-	return out
+	return g.PlayersDealtCombatDamageThisTurnByName(controller, name)
 }
 
 // b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator is Trygon
@@ -437,11 +426,11 @@ func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
 	if !b32TokenYouControlAttacksAPlayer(g, item.Controller) {
 		return nil
 	}
-	if _, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.ExilePlayPermission{}); err != nil {
+	if _, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.CastPermission{}); err != nil {
 		return err
 	}
 	for _, id := range b32CardsInExileLastExiledDuring(g, item.Controller, b32NeyaliLabel) {
-		if err := g.ExileCardWithPermissionForEffect(id, game.ExilePlayPermission{Player: item.Controller, UntilTurn: g.Turn.Number}); err != nil {
+		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{Player: item.Controller, Duration: g.UntilEndOfTurnDuration()}); err != nil {
 			return err
 		}
 	}

@@ -22,7 +22,7 @@ func init() {
 		OracleID:      "9aef7510-9f06-4939-8cae-f71330d1105e",
 		Name:          "Turbulent Springs",
 		Completeness:  CompletenessFull,
-		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b34OpponentsControlLandsAtLeast(8))},
+		Replacements:  []game.ReplacementEffect{SelfEntersTappedUnless(b40CatchUpDualCondition())},
 		ManaAbilities: []ManaAbility{dualManaAbility("U", "R")},
 	})
 }

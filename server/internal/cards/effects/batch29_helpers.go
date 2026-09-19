@@ -446,19 +446,30 @@ func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 // b29TargetOpponentSacrificesACreatureThenWizard is Cornered by
 // Black Mages: the chosen opponent picks a creature of theirs to
 // sacrifice (their prompt, not a target — hexproof is irrelevant),
-// and the caster gets the Wizard. The token is created at once;
-// the sacrifice settles when the opponent answers.
+// and the caster gets the Wizard.
+//
+// In the printed order since #1019. The token used to be created on
+// the line after the prompt went up, so it arrived while the opponent
+// was still choosing — the clause is about a PLAYER and happens
+// either way (ADR 0013 §5m item 5), but the ORDER is observable and
+// the run's continuation is what makes it the printed one. A target
+// with no creature is never asked and the Wizard still comes, which
+// is the continuation running with nothing sacrificed.
 func b29TargetOpponentSacrificesACreatureThenWizard(item *game.StackItem, ctx *Context) error {
+	var victims []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetPlayer {
-			continue
+		if t.Kind == game.TargetPlayer {
+			victims = append(victims, t.ID)
+			break
 		}
-		ctx.Game.PlayerSacrificesForEffect(item.SourceCardID, t.ID,
-			sacrificeSpec("a creature", Creature()),
-			"Cornered by Black Mages — sacrifice a creature")
-		break
 	}
-	return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 black Wizard"), N: 1}.Apply(ctx)
+	return ctx.Game.PlayersSacrificeThenForEffect(item.SourceCardID, victims,
+		sacrificeSpec("a creature", Creature()),
+		"Cornered by Black Mages — sacrifice a creature",
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 black Wizard"), N: 1}.
+				Apply(NewContext(g, item))
+		})
 }
 
 // b29TapAllCreaturesControlledBy taps every untapped creature

@@ -589,7 +589,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
-					c.Subtypes = b27CreatureTypesPlusShapeshifter(exiled)
+					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
 				}
 			},
 		},

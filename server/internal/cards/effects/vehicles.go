@@ -119,7 +119,7 @@ func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
 	addedSubtypes := append([]string(nil), b.Subtypes...)
 	label := eotLabel(b.Label, "becomes a creature until end of turn")
 
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -134,11 +134,11 @@ func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
 				}
 			}
 		},
-	}, ctx.Source(), label)
+	}, ctx.Source(), label, ctx.Game.UntilEndOfTurnDuration())
 
 	if b.SetPower != 0 || b.SetToughness != 0 {
 		power, toughness := b.SetPower, b.SetToughness
-		ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+		ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: applies,
@@ -146,7 +146,7 @@ func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
 				c.Power = power
 				c.Toughness = toughness
 			},
-		}, ctx.Source(), label+" (base P/T)")
+		}, ctx.Source(), label+" (base P/T)", ctx.Game.UntilEndOfTurnDuration())
 	}
 	return nil
 }

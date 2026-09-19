@@ -37,21 +37,10 @@ func init() {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
-				spellID := item.Targets[0].ID
-				target := ctx.Game.StackItemForEffect(spellID)
-				if target == nil {
-					return nil
-				}
-				return PayUnless{
-					Chooser:  target.Controller,
+				return CounterUnlessPaid{
+					StackID:  item.Targets[0].ID,
 					Cost:     "{2}",
 					Question: "Izzet Charm — pay {2} or your spell is countered?",
-					OnDecline: func(ctx *Context) error {
-						if ctx.Game.StackItemForEffect(spellID) == nil {
-							return nil
-						}
-						return CounterTarget{StackID: spellID}.Apply(ctx)
-					},
 				}.Apply(ctx)
 			case ctx.HasMode(1):
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

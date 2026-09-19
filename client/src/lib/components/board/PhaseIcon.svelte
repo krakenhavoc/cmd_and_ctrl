@@ -70,6 +70,19 @@
   {:else if step === "declare_blockers"}
     <!-- Shield. -->
     <path d="M8 1.5 L14 3.5 V8 Q14 12.2 8 14.5 Q2 12.2 2 8 V3.5 Z" fill="currentColor" />
+  {:else if step === "first_strike_damage"}
+    <!-- The impact burst again, drawn small and offset up-left, with a
+         speed line behind it: the same event as combat damage, but
+         first. Reads as a sibling of the step below, which is what
+         CR 510.4's two combat damage steps are. -->
+    <path d="M6 2 L7.2 6 L11 7.2 L7.2 8.4 L6 12.4 L4.8 8.4 L1 7.2 L4.8 6 Z" fill="currentColor" />
+    <path
+      d="M9.5 11 L14 15"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+    />
   {:else if step === "combat_damage"}
     <!-- Impact burst — 8-point star. -->
     <path d="M8 1 L9.5 6.5 L15 8 L9.5 9.5 L8 15 L6.5 9.5 L1 8 L6.5 6.5 Z" fill="currentColor" />

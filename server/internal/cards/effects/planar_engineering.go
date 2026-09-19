@@ -16,11 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cards, up to four, put onto the battlefield tapped, then a
 // shuffle.
 //
-// Shape note, not a caveat: the search prompt is queued alongside
-// the sacrifice prompts rather than after them, because the
-// sacrifice prompt has no continuation. The lands leave the
-// battlefield and the basics come from the library, so no answer to
-// one changes the options of the other.
+// The printed "then" is the real one since #1019: the two sacrifice
+// prompts are one run and the search is its continuation, so the
+// basics are put onto the battlefield after the lands have gone. It
+// used to be queued alongside them, because the sacrifice prompt had
+// no continuation to hang it on.
 //
 // No simplification.
 func init() {

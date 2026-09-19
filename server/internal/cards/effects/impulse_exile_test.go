@@ -30,13 +30,20 @@ func stackLibrary(p *game.Player, name, typeLine, manaCost string) uuid.UUID {
 }
 
 // exiledPermission returns the impulse grant on a card in exile.
-func exiledPermission(g *game.Game, id uuid.UUID) game.ExilePlayPermission {
-	for _, c := range g.Exile.Cards {
-		if c.InstanceID == id {
-			return c.ExilePlay
-		}
+func exiledPermission(g *game.Game, id uuid.UUID) *game.CastPermission {
+	if perm := g.CastPermissionOnCardByIDForEffect(id); perm != nil {
+		return perm
 	}
-	return game.ExilePlayPermission{}
+	return &game.CastPermission{}
+}
+
+// permissionLive asks the engine's ONE liveness predicate (#945): the
+// permission names this player, its CR 702.185a floor has been
+// reached, and its CR 611.2 duration has not run out. Card tests ask
+// it rather than reading a window field, so they cannot disagree with
+// the cast path about what "live" means.
+func permissionLive(g *game.Game, perm *game.CastPermission, player uuid.UUID) bool {
+	return g.CastPermissionActiveForEffect(perm, player)
 }
 
 func TestRagavanStealsTheTopCardAndMakesATreasure(t *testing.T) {

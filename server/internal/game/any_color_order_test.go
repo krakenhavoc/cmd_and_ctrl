@@ -3,8 +3,6 @@ package game
 import (
 	"reflect"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 // Owner decision (2026-09-17): "any color" offers all five colours with
@@ -87,7 +85,7 @@ func TestAutoTapAnyColorPrefersCommanderIdentity(t *testing.T) {
 		setCommanderCostForTest(t, p, "{2}{G}")
 		birds := pushBattlefieldForTest(g, p.ID, "Birds of Paradise", "Creature — Bird", "d3a0b660-358c-41bd-9cd2-41fbf3491b1a")
 		g.WithWriteLock(func() {
-			g.materializePlanLocked(p, []uuid.UUID{birds}, costFor(t, "{1}"))
+			g.materializePlanLocked(p, tapPlan{{CardID: birds}}, costFor(t, "{1}"))
 		})
 		if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "G" {
 			t.Errorf("pool = %+v, want one {G}", p.ManaPool)

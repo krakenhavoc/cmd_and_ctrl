@@ -26,10 +26,11 @@
     cardsForZone,
     castableFromZone,
     grantedFace,
+    grantedFaceIndex,
     impulseActionLabel,
     impulseGrantFor,
   } from "../../zoneBrowser.logic";
-  import type { CastSourceZone } from "../../targeting";
+  import { printedCostClaimable, type CastSourceZone } from "../../targeting";
   import ModalLayer from "../ModalLayer.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -48,10 +49,17 @@
     // S29: a flashback / escape card in the viewer's own graveyard
     // casts through the Board's ordinary prompt chain — cost picker,
     // additional cost, X, modes, targeting — rather than firing a
-    // bare payload the way the exile impulse button does. The modal
-    // hands the card up with the zone it came out of and closes;
-    // everything after that is the same code path a hand cast takes.
-    onCastCard?: (card: CardView, fromZone: CastSourceZone) => void;
+    // bare payload. The modal hands the card up with the zone it came
+    // out of and closes; everything after that is the same code path
+    // a hand cast takes.
+    //
+    // #874: the exile impulse button goes through it too, and passes
+    // `face` when the grant names one. It used to dispatch cast_spell
+    // itself, which meant an {X} spell granted for its PRINTED cost
+    // could only ever be cast for X = 0 and a targeted one got no
+    // targets — the server was being asked to validate an
+    // announcement the player was never given the chance to make.
+    onCastCard?: (card: CardView, fromZone: CastSourceZone, face?: number) => void;
   }
 
   const {
@@ -104,8 +112,14 @@
   // is stamped the moment the end step exiles it and stays dark
   // until the next turn, so the turn number rides both derivations.
   const grantFor = (card: CardView) => impulseGrantFor(card, zoneKind, viewerID, view.turn.number);
+  // #874: the impulse button is gated on `onCastCard` for the reason
+  // the graveyard one is — the click is a hand-off to the Board's cast
+  // chain now, not a dispatch of its own, so without a handler there
+  // is nothing behind the button.
   const labelFor = (card: CardView) =>
-    impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
+    onCastCard === undefined
+      ? null
+      : impulseActionLabel(card, zoneKind, viewerID, view.turn.number);
   // S32: the name of the half the grant actually casts. Same as the
   // card's own name for every grant that names no face.
   const grantedName = (card: CardView) => grantedFace(card, grantFor(card)).name ?? "card";
@@ -119,10 +133,17 @@
 
   // The label is the printed clause when the card offers exactly one
   // way in ("Flashback {2}{R}"), so the button reads like the card.
-  // Two or more offers, or none, fall back to the verb — the Board's
+  // Two or more ways in, or none, fall back to the verb — the Board's
   // picker is about to ask anyway.
+  //
+  // #1012: "one way in" counts the PRINTED cost too. A Gravecrawler
+  // under an Underworld Breach has one offer and the printed cost
+  // beside it, and labelling that button "Escape" would name a price
+  // the player has not chosen yet.
   const castLabelFor = (card: CardView) =>
-    card.alternative_costs?.length === 1 ? card.alternative_costs[0].label || "cast" : "cast";
+    card.alternative_costs?.length === 1 && !printedCostClaimable(card)
+      ? card.alternative_costs[0].label || "cast"
+      : "cast";
 
   function castFromZone(card: CardView): void {
     if (!onCastCard || zoneKind !== "graveyard") return;
@@ -130,12 +151,21 @@
     onClose();
   }
 
+  // playFromExile hands an impulse cast to the Board's one cast entry
+  // point, exactly as the graveyard button does (#874). It used to
+  // dispatch `cast_spell` here, which skipped every announce-time
+  // prompt: a grant that lets you cast for the PRINTED cost was
+  // therefore always announced with X = 0, and a spell with targets
+  // or modes with none at all.
+  //
+  // The grant's face rides along. `grantedFace` is not used for the
+  // hand-off, because the chain wants the raw card plus the index —
+  // `cardAsFace` is applied once, by the Board, for the face picker
+  // and for this on the same line.
   function playFromExile(card: CardView): void {
-    sendAction(
-      "cast_spell",
-      { instance_id: card.instance_id, from_zone: "exile" },
-      viewerID ?? undefined,
-    );
+    const grant = grantFor(card);
+    if (!onCastCard || !grant) return;
+    onCastCard(card, "exile", grantedFaceIndex(grant));
     onClose();
   }
 

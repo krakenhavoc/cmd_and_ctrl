@@ -365,12 +365,20 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) == nil {
 		t.Fatal("each player with a creature is asked to sacrifice one")
 	}
-	if !g.Battlefield.Contains(rock) || controllerOf(t, g, rock) != me.ID {
-		t.Error("the picked permanent card returns to the battlefield")
+	// #1019: "if you sacrificed a creature this way" is about the
+	// SACRIFICE, so nothing comes back while the prompts are open.
+	if g.Battlefield.Contains(rock) {
+		t.Error("the permanent came back before anybody had chosen a creature")
 	}
 	answerSacrifice(t, g, me.ID, mine)
+	if g.Battlefield.Contains(rock) {
+		t.Error("the run waits for every asked seat, not just the controller")
+	}
 	answerSacrifice(t, g, opp.ID, theirs)
 	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(rock) || controllerOf(t, g, rock) != me.ID {
+		t.Error("the picked permanent card returns to the battlefield once the sacrifices have landed")
+	}
 	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
 		t.Error("the sacrifices happen")
 	}
@@ -774,13 +782,14 @@ func TestB17ArwenGivesOtherCreaturesCountersEqualToHerToughness(t *testing.T) {
 	if counterCount(g, rock, "+1/+1") != 0 {
 		t.Error("a noncreature gets nothing")
 	}
-	// Declared: a token skips the entry pipeline.
+	// #762: a created token takes the same entry pipeline, so it gets
+	// Arwen's toughness in counters like every other creature.
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
-	if counterCount(g, findBattlefieldByName(g, "Goblin"), "+1/+1") != 0 {
-		t.Error("a token gets nothing — the declared gap; if this flips, drop the caveat")
+	if got := counterCount(g, findBattlefieldByName(g, "Goblin"), "+1/+1"); got != 3 {
+		t.Errorf("a token: %d +1/+1 counters, want 3 (Arwen's toughness)", got)
 	}
-	if spec, _ := Lookup(b17ArwenOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the token gap must be declared")
+	if spec, _ := Lookup(b17ArwenOracle); spec.Completeness != CompletenessFull {
+		t.Error("the token gap is closed — the caveat must be gone")
 	}
 }
 
@@ -1074,7 +1083,7 @@ func TestB17ContainmentConstructExilesADiscardToPlayThisTurn(t *testing.T) {
 		t.Fatal("the discarded card is exiled from the graveyard")
 	}
 	perm := exiledPermission(g, land)
-	if perm.Player != me.ID || perm.CastOnly || perm.UntilTurn != g.Turn.Number {
+	if perm.Player != me.ID || perm.CastOnly || perm.Duration.Kind != game.UntilEndOfTurn {
 		t.Errorf("grant %+v: the controller may PLAY it this turn", perm)
 	}
 	if err := g.CastSpell(me.ID, land, game.CastSpellParams{FromZone: "exile"}); err != nil {

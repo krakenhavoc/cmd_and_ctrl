@@ -43,12 +43,19 @@ import (
 // outright was the alternative and it throws away the reason the +1
 // is a plus.
 //
-// THE −8 IS NOT REGISTERED. Emblems have no shape in the engine —
-// an object in no zone, with a continuous effect and no permanent to
-// hang it on — and an ability whose label promised an emblem and
-// delivered a loyalty payment would be a worse lie than one that is
-// not offered. Elspeth, Sun's Champion set this precedent and it is
-// followed here unchanged.
+// The −8 is REGISTERED since S40 (#623) and is the catalog's first
+// TRIGGERED emblem. Its whole declaration is an `Emblem` slot holding
+// one `Targeting(WheneverYouDraw(…), …)` — the same two constructors
+// a permanent's targeted draw trigger uses — and the emblem object
+// then reaches the trigger harvester through the same per-zone walk
+// that finds a battlefield permanent's triggers (ADR 0064 Decision 4).
+//
+// It fires once per card drawn, including the draws Teferi's own +1
+// makes and the turn-based draw step, which is the printed card. The
+// trigger goes on the stack, picks its target when it is put there
+// (CR 603.3d), is dropped when the opponents control no permanent,
+// and can be responded to — all of that is the ordinary trigger
+// pipeline and none of it is emblem code.
 //
 // This is also the card behind bug #367, whose reporter described a
 // Teferi showing "generic + or −" rows. That is what the client
@@ -62,12 +69,30 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"The +1's end-step untap picks two of your tapped lands for you rather than asking.",
-			"The -8 ultimate isn't offered — emblems don't exist yet.",
 		},
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
 		StartingLoyalty: 4,
+		Emblem: &EmblemSpec{
+			Label: "Teferi, Hero of Dominaria emblem",
+			Text:  "Whenever you draw a card, exile target permanent an opponent controls.",
+			Triggered: []game.TriggeredAbility{
+				Targeting(
+					WheneverYouDraw(
+						"Teferi, Hero of Dominaria emblem — exile target permanent an opponent controls",
+						func(g *game.Game, item *game.StackItem) error {
+							ctx := NewContext(g, item)
+							ts := ctx.LegalTargets()
+							if len(ts) == 0 {
+								return nil
+							}
+							return ExileTarget{Target: ts[0].ID}.Apply(ctx)
+						}),
+					TargetPermanent("target permanent an opponent controls", OpponentControls()),
+				),
+			},
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Draw a card. At the beginning of the next end step, untap up to two lands.",
@@ -100,6 +125,13 @@ func init() {
 						}
 					}
 					return nil
+				},
+			},
+			{
+				Label: "−8: You get an emblem with \"Whenever you draw a card, exile target permanent an opponent controls.\"",
+				Cost:  LoyaltyCost(-8),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateEmblem{}.Apply(NewContext(g, item))
 				},
 			},
 		},

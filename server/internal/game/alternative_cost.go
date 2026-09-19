@@ -95,10 +95,13 @@ type AlternativeCost struct {
 	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
 	// A COST, not a drawback: it is validated before anything is
-	// paid, so a player below N life cannot claim the offer at all.
-	// (CR 118.4 lets a player pay life down to exactly zero, and the
-	// state-based action kills them afterwards — that is a legal, if
-	// unwise, Force of Will.)
+	// paid, so a player below N life cannot claim the offer at all —
+	// and #695 made that true of the OFFER as well as the payment.
+	// AlternativeCostPayableLocked is the predicate; LifePayableBy is
+	// the line. (CR 119.4 lets a player pay life down to exactly
+	// zero, and the state-based action kills them afterwards — that
+	// is a legal, if unwise, Force of Will. The stale 118.4 citation
+	// here was the #693 renumbering tail.)
 	Life int
 
 	// ExileFromHand is "exile a blue card from your hand" (Force of
@@ -195,9 +198,9 @@ type AlternativeCost struct {
 	// clause uses the ordinary machinery rather than a bespoke one.
 	// Evoke queues a triggered ability; warp schedules a CR 603.7
 	// delayed trigger, and the grant it leaves behind is the same
-	// ExilePlayPermission airbend uses — unbounded (the window is
-	// "for as long as it remains exiled") with a NotBeforeTurn floor
-	// for the "on a later turn" clause.
+	// CastPermission airbend uses — CR 611.2b's "for as long as it
+	// remains exiled" (Duration.WhileInZone) with a NotBeforeTurn
+	// floor for the "on a later turn" clause.
 	//
 	// A warped creature is therefore a two-for-one paid in tempo:
 	// the cheap body now, the real body later. Nothing about the
@@ -224,9 +227,10 @@ type AlternativeCost struct {
 	// Charger), even though "+1/+1" is the case that matters.
 	//
 	// Applied through the CR 614 entry pipeline — the same
-	// ReplacementEvent.EntersWithCounters map Hangarback Walker's own
-	// self-replacement writes — rather than stapled on after the
-	// permanent lands. So a creature escaping under Doubling Season
+	// ReplacementEvent.EntersWithCounters map the card-printed clause
+	// writes (Hangarback Walker's X, Etched Oracle's sunburst; see
+	// entry_counters.go) — rather than stapled on after the permanent
+	// lands. So a creature escaping under Doubling Season
 	// gets twice the counters (CR 616), and an ETB trigger already
 	// sees them.
 	EntersWithCounterName  string
@@ -325,11 +329,54 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 	return alt, nil
 }
 
+// resolveAlternativeCostLocked is validateAlternativeCost widened by
+// ADR 0066: the claim is judged against the card's own offers FIRST
+// and against the offer a granted permission synthesises second.
+//
+// The order is the decision, not an implementation detail. A card
+// that both prints and is granted the same key keeps its PRINTED
+// cost: Deep Analysis flashed back under Past in Flames costs {1}{U}
+// and 3 life, not {3}{U}. A grant that overrode the printed offer
+// would make the card cheaper than it is, and the one direction a
+// sandbox must never err in is the player's favour (#259).
+//
+// Caller must hold g.mu.
+func (g *Game) resolveAlternativeCostLocked(card Card, grant *CastPermission, key string, targets []TargetRef) (*AlternativeCost, error) {
+	if key == "" {
+		return nil, nil
+	}
+	if alt, err := validateAlternativeCost(CatalogKey(card), key, targets); err == nil {
+		return alt, nil
+	}
+	granted := grant.AlternativeCostFor(card)
+	if granted == nil || granted.Key != key {
+		return nil, ErrInvalidParam
+	}
+	if granted.ClearsTargets && len(targets) > 0 {
+		return nil, ErrInvalidParam
+	}
+	return granted, nil
+}
+
 // PaysCards reports whether this cost has a component the caster
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
 	spec, _, _ := a.cardComponent()
 	return spec != nil
+}
+
+// CardPaymentCount is how many cards the caster must name in
+// CastSpellParams.AltCostIDs to pay this offer's card component: one
+// for a pitch or a bounce, escape's N, zero for an offer whose only
+// components are mana and life.
+//
+// Exported because the payment is exactly `want` and not "at least"
+// (see validateAlternativeCostPaymentLocked), so a caller BUILDING an
+// announcement — the bot enumerator, a client picker — has to know
+// the number rather than discover it from a rejection. Nil-safe.
+func (a *AlternativeCost) CardPaymentCount() int {
+	_, _, n := a.cardComponent()
+	return n
 }
 
 // Available reports whether a player may claim this offer right now
@@ -345,6 +392,109 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 		return false
 	}
 	return a.Condition == nil || a.Condition(g, controller)
+}
+
+// LifePayableBy is CR 119.4: a player may pay life only if their life
+// total is greater than or equal to the payment. Exactly equal is
+// payable — paying down to zero is legal, and the state-based action
+// that follows is a separate rule (CR 704.5a).
+//
+// One line, and it is a FUNCTION rather than a comparison spelled out
+// at each reader because it had been spelled out at only one of them
+// (#695): announce refused the cast, the view showed the offer anyway,
+// and a Force of Will at 0 life was a button that could only fail.
+//
+// Nil-safe on both sides. An offer with no life component is payable
+// by anybody.
+func (a *AlternativeCost) LifePayableBy(p *Player) bool {
+	if a == nil {
+		return false
+	}
+	if a.Life <= 0 {
+		return true
+	}
+	return p != nil && p.Life >= a.Life
+}
+
+// AlternativeCostPayableLocked reports whether a player could pay
+// EVERY component of this offer if they claimed it right now — the
+// one predicate behind "is this offer on the table" (#695).
+//
+// Three questions, in the order announce asks them:
+//
+//  1. the offer's own Condition (Available) — "if you control a
+//     Swamp", "if you control a commander";
+//  2. the life component (CR 119.4), which is why this function
+//     exists: the view used to ask only (1) and show Snuff Out's
+//     "pay 4 life" to a player at 3;
+//  3. the card component (CR 601.2b) — whether the caster's hand,
+//     graveyard or battlefield holds as many cards matching the
+//     clause as the cost demands. Force of Will with no other blue
+//     card in hand, an escape cost with two cards left in the
+//     graveyard.
+//
+// MANA IS DELIBERATELY NOT ASKED. CR 601.2g lets the caster activate
+// mana abilities after the cost is settled, so "you cannot afford it
+// yet" is not a reason to withhold the offer — it is what the
+// auto-tapper and the strict-mana gate are for. Every other component
+// is settled by the board at the moment the offer is read.
+//
+// `castID` is the spell being cast, which is never a legal payment:
+// CR 601.2a has already moved it to the stack by the time the cost is
+// paid, and it is what the printed "other" in escape's clause means.
+//
+// The three readers are the view's offer stamp, the bot enumerator
+// and CastSpell's own validator, so a shown offer, an enumerated move
+// and an accepted cast cannot disagree. Caller must hold g.mu.
+func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *AlternativeCost) bool {
+	if alt == nil {
+		return false
+	}
+	if !alt.Available(g, playerID) {
+		return false
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return false
+	}
+	if !alt.LifePayableBy(p) {
+		return false
+	}
+	spec, zone, want := alt.cardComponent()
+	if spec == nil {
+		return true
+	}
+	have := 0
+	for _, c := range g.zoneForAltCostLocked(p, zone).Cards {
+		if c.InstanceID == castID {
+			continue
+		}
+		if g.altCostCardOKLocked(p, spec, zone, c) {
+			have++
+			if have >= want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// altCostCardOKLocked is the per-card half of an alternative cost's
+// card component: may THIS card pay it?
+//
+// The one predicate, shared by the payability check above and by
+// validateAlternativeCostPaymentLocked's walk of the named IDs, so
+// the offer the client is shown and the payment the engine accepts
+// are decided by the same three lines.
+//
+// Not a target — a cost is not targeted (CR 601.2h), so hexproof and
+// shroud do not apply and the spec is matched directly against the
+// card rather than through the targeting gate. Caller must hold g.mu.
+func (g *Game) altCostCardOKLocked(p *Player, spec *TargetSpec, zone ZoneKind, c Card) bool {
+	if zone == ZoneBattlefield && c.Controller != p.ID {
+		return false
+	}
+	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
 }
 
 // validateAlternativeCostPaymentLocked checks the non-mana half of a
@@ -376,7 +526,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if alt.Life > 0 && p.Life < alt.Life {
+	// CR 119.4, through the same one-line predicate the view's offer
+	// stamp and the bot enumerator read (#695), so an offer the client
+	// can see is one this validator will accept.
+	if !alt.LifePayableBy(p) {
 		return ErrInvalidParam
 	}
 	spec, zone, want := alt.cardComponent()
@@ -402,18 +555,14 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 			return ErrInvalidParam
 		}
 		seen[id] = true
-		// Not a target — a cost is not targeted (CR 601.2h), so
-		// hexproof and shroud do not apply and the spec is matched
-		// directly against the card rather than through the
-		// targeting gate.
 		c, ok := g.cardInZoneLocked(g.zoneForAltCostLocked(p, zone), id)
 		if !ok {
 			return ErrCardNotFound
 		}
-		if zone == ZoneBattlefield && c.Controller != playerID {
-			return ErrInvalidParam
-		}
-		if spec.CardOK != nil && !spec.CardOK(g, playerID, c, zone) {
+		// The same per-card predicate AlternativeCostPayableLocked
+		// counts candidates with, so "the client was offered this"
+		// and "the engine accepts this" are one rule (#695).
+		if !g.altCostCardOKLocked(p, spec, zone, c) {
 			return ErrInvalidParam
 		}
 	}
@@ -436,6 +585,56 @@ func (g *Game) zoneForAltCostLocked(p *Player, kind ZoneKind) *Zone {
 		return p.Graveyard
 	}
 	return g.Battlefield
+}
+
+// AltCostCandidatesLocked lists the cards `playerID` may name to the
+// CARD-shaped half of `alt` right now — Force of Will's blue card in
+// hand, Daze's Island, escape's other cards in the graveyard — in
+// zone order, with the spell being cast excluded.
+//
+// It is AlternativeCostPayableLocked's sibling: that one counts the
+// candidates and stops at `want`, this one names them, and both walk
+// `zoneForAltCostLocked` through the SAME per-card predicate
+// (altCostCardOKLocked) the announce validator judges the caster's
+// named IDs with. One rule, three readers, so a payment the bot
+// enumerates is a payment the engine accepts.
+//
+// A copy built out of specCandidatesLocked would be close and not
+// equal: that walk visits EVERY seat's graveyard and leans on the
+// spec's own "you own it" predicate, which is a second statement of
+// "your graveyard" rather than the same one.
+//
+// `castID` is the spell being cast, which is never a legal payment:
+// CR 601.2a has already moved it to the stack by the time the cost is
+// paid, and that is precisely what escape's printed "other" means.
+//
+// Nil for an offer whose only components are mana and life, and for
+// nil. Caller must hold g.mu.
+func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *AlternativeCost) []uuid.UUID {
+	spec, kind, _ := alt.cardComponent()
+	if spec == nil {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	z := g.zoneForAltCostLocked(p, kind)
+	if z == nil {
+		return nil
+	}
+	out := make([]uuid.UUID, 0, len(z.Cards))
+	for i := range z.Cards {
+		c := z.Cards[i]
+		if c.InstanceID == castID {
+			continue
+		}
+		if !g.altCostCardOKLocked(p, spec, kind, c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
 }
 
 // payAlternativeCostLocked pays the non-mana components of a claimed
@@ -488,24 +687,27 @@ func (g *Game) payAlternativeCostLocked(playerID uuid.UUID, alt *AlternativeCost
 	return nil
 }
 
-// alternativeCostString is the "pay" half: the mana cost a cast
-// actually owes. The swap is total — nothing adds the printed cost
-// back, which is the difference between this file and
-// additional_cost.go.
-func alternativeCostString(card Card, key string) string {
-	if alt := AlternativeCostByKey(CatalogKey(card), key); alt != nil {
-		return alt.ManaCost
-	}
-	return card.ManaCost
-}
-
 // altCostExilesFromStack reports whether the cost this spell was
 // cast for replaces every stack-exit destination with exile — CR
-// 702.34a's flashback clause. Reads the key off the StackItem, so a
-// spell cast for its printed cost always answers false even on a
-// card that offers flashback.
-func altCostExilesFromStack(card Card, altCostKey string) bool {
-	alt := AlternativeCostByKey(CatalogKey(card), altCostKey)
+// 702.34a's flashback clause. A spell cast for its printed cost
+// always answers false, even on a card that offers flashback.
+//
+// The StackItem is the authority, not the catalog (ADR 0066, CR
+// 400.7g): a Snapcaster'd Brainstorm was cast for a flashback cost
+// the catalog has never heard of, and by the time it leaves the stack
+// the permission that granted it may well be gone. So the announce
+// path stamps the fact on the item and this reads it back, falling
+// back to the catalog for a printed keyword — which is also what
+// makes a game restored from a snapshot written before this field
+// behave exactly as it did.
+func altCostExilesFromStack(card Card, item *StackItem) bool {
+	if item == nil {
+		return false
+	}
+	if item.AltCostExiles {
+		return true
+	}
+	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
 	return alt != nil && alt.ExileOnLeavingStack
 }
 
@@ -585,8 +787,10 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 // entry, and the clause should use whichever existing machinery
 // matches its timing. Evoke's sacrifice is a triggered ability, warp's
 // exile is a delayed trigger, and "escapes with counters" is a
-// replacement — so it rides the same EntersWithCounters map Hangarback
-// Walker writes, rather than an AddCounter after the permanent lands.
+// replacement — so it rides the same EntersWithCounters map the CARD's
+// own printed "enters with X +1/+1 counters" writes one line later
+// (applyCastEntryCountersLocked, entry_counters.go), rather than an
+// AddCounter after the permanent lands.
 //
 // The difference is observable in both directions. Under Doubling
 // Season a Typhon escaping with three counters gets six, because the
@@ -640,12 +844,13 @@ func (g *Game) scheduleWarpExileLocked(card Card, item *StackItem, alt *Alternat
 				if g.controllerOfBattlefieldCardLocked(t.ID) == uuid.Nil {
 					continue
 				}
-				if err := g.ExileCardWithPermissionForEffect(t.ID, ExilePlayPermission{
+				if err := g.ExileCardWithPermissionForEffect(t.ID, CastPermission{
 					// Zero Player means "the card's owner", which is
 					// what warp says: YOU cast it later, and the
 					// warping player owns the card.
-					WhileExiled:   true,
+					Duration:      WhileInZoneDuration(),
 					NotBeforeTurn: notBefore,
+					Label:         "Warp — cast it from exile",
 				}); err != nil {
 					return err
 				}

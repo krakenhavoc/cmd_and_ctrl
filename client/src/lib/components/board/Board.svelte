@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     CardView,
     GameView,
+    LegalTargetsView,
     ManaAbilityView,
     ZoneView,
   } from "../../protocol";
@@ -49,12 +50,16 @@
     cancel as cancelTargeting,
     beginChoice as beginTargetingChoice,
     beginForAbility as beginTargetingForAbility,
-    beginForMode as beginTargetingForMode,
+    beginForModes as beginTargetingForModes,
+    advance,
+    allPicks,
     hasXCost,
     castLocksXAtZero,
     isModal,
     discardCostOf,
-    sacrificeCostOptions,
+    castSacrificeClause,
+    castSacrificeLabel,
+    optionalCostsOf,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -74,6 +79,7 @@
     type TargetRef,
   } from "../../targeting";
   import { suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { castPreviewParams } from "../../castPreview";
   import { orderSacrificeOptions, sacrificeCount } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
@@ -81,6 +87,7 @@
   import CounterCostModal from "./CounterCostModal.svelte";
   import {
     autoCounterChoice,
+    counterCostNeedsPrompt,
     counterPaymentParams,
     hasCounterCost,
     type CounterChoice,
@@ -93,6 +100,12 @@
   import FacePickerModal from "./FacePickerModal.svelte";
   import { cardAsFace, needsFacePicker } from "../../faces";
   import TapCostModal from "./TapCostModal.svelte";
+  import PhyrexianCostModal from "./PhyrexianCostModal.svelte";
+  import {
+    phyrexianSymbolsForAbility,
+    phyrexianSymbolsForCast,
+    shouldAskPhyrexianLife,
+  } from "../../phyrexianLife";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -197,6 +210,11 @@
     xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX) : 0,
   );
 
+  // #916: the viewer's life total, which is CR 119.4's cap on a
+  // Phyrexian life payment. Read off the live snapshot so a life loss
+  // while a prompt is open shrinks its ceiling.
+  const viewerLife = $derived(view.seats.find((s) => s.id === viewerID)?.life ?? 0);
+
   const activeSeatID = $derived(view.seats[view.turn.active_seat]?.id ?? null);
   const prioritySeatID = $derived(view.seats[view.turn.priority_holder]?.id ?? null);
   const monarchID = $derived(view.monarch ?? null);
@@ -221,7 +239,11 @@
   // S20 sub-PR 3: an {X} spell asks for X. The modal's confirm
   // continues into targeting / cast with the chosen value.
   let xPromptCard = $state<CardView | null>(null);
-  let xPromptChoices: CastChoices = {};
+  // $state because the X picker's cost preview reads it: the
+  // announcement so far (source zone, alternative cost, optional
+  // costs, face) is what the preview prices against (#696), so the
+  // template has to see it change when the prompt opens.
+  let xPromptChoices = $state<CastChoices>({});
   function confirmX(x: number): void {
     const card = xPromptCard;
     const choices = xPromptChoices;
@@ -238,13 +260,19 @@
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
   let altCostPromptChoices: CastChoices = {};
-  function confirmAltCost(key: string | undefined): void {
+  function confirmAltCost(key: string | undefined, optional: number[]): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
     altCostPromptCard = null;
     altCostPromptChoices = {};
     if (!card) return;
-    afterAltCost(card, key === undefined ? choices : { ...choices, altCost: key });
+    // ADR 0073 (#664): one prompt answers both halves of CR 601.2b —
+    // the cost paid INSTEAD of the mana cost, and the costs paid ON
+    // TOP of whichever that turns out to be. They compose, so neither
+    // branch of `key` drops the other.
+    let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
+    if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    afterAltCost(card, next);
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -286,10 +314,17 @@
 
   // #747: in the server's payment order, not board order, so the
   // picker's "Choose for me" takes the top of the list.
+  // ADR 0073: WHICH clause this cast is paying is settled when the
+  // prompt opens, not re-derived while it is open. The announcement
+  // cannot change underneath an open picker — the optional costs were
+  // claimed two prompts ago — and stashing it keeps the derived option
+  // list depending only on the board, which is the thing that CAN
+  // change while the player is choosing.
+  let sacrificePromptClause = $state<LegalTargetsView | undefined>(undefined);
+  let sacrificePromptLabel = $state("a permanent");
   const castSacrificeOptions = $derived.by(() => {
-    const card = sacrificePromptCard;
-    if (!card) return [];
-    return orderSacrificeOptions(view.battlefield.cards, sacrificeCostOptions(card));
+    if (!sacrificePromptCard) return [];
+    return orderSacrificeOptions(view.battlefield.cards, sacrificePromptClause?.cards);
   });
 
   function confirmSacrificeCost(instanceIDs: string[]): void {
@@ -403,7 +438,15 @@
   }
 
   function afterDiscardCost(card: CardView, choices: CastChoices): void {
-    if (sacrificeCostOptions(card) !== undefined) {
+    // ADR 0073: a NON-MANA optional cost (Constant Mists'
+    // "Buyback—Sacrifice a land") is paid through the same picker the
+    // mandatory clause opens. castSacrificeClause picks whichever
+    // clause this cast is actually paying, so the modal's options,
+    // count and label all come from one place.
+    const clause = castSacrificeClause(card, choices);
+    if (clause !== undefined) {
+      sacrificePromptClause = clause;
+      sacrificePromptLabel = castSacrificeLabel(card, choices);
       sacrificePromptChoices = choices;
       sacrificePromptCard = card;
       return;
@@ -424,18 +467,53 @@
     afterXCost(card, choices);
   }
 
-  // afterXCost is the seam between the X prompt and targeting, and
-  // the only reason the tap picker isn't in afterCastCosts with the
-  // others: a waterbend {X} cost can't size its picker until X is
-  // known, so this step has to come after the X prompt rather than
-  // before it.
+  // afterXCost is the seam between the X prompt and the rest of the
+  // announcement, and the reason the tap picker isn't in
+  // afterCastCosts with the others: a waterbend {X} cost can't size
+  // its picker until X is known, so this step has to come after the X
+  // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // CR 107.4c/f (#916): "{U/P} can be paid with either {U} or 2
+    // life", and CR 601.2b makes which one part of announcing the
+    // spell. Asked after X for the same reason the tap picker is:
+    // the stepper's live readout prices the mana half, and an {X}
+    // cost has no size until X is announced. Skipped when the cost
+    // prints no Phyrexian symbol, and when CR 119.4 leaves the
+    // caster unable to buy even one — a prompt whose only answer is
+    // 0 is a click, not a choice.
+    const symbols = phyrexianSymbolsForCast(card, choices.altCost);
+    if (shouldAskPhyrexianLife(symbols, viewerLife)) {
+      phyrexianPrompt = { card, symbols, choices };
+      return;
+    }
+    afterPhyrexianLife(card, choices);
+  }
+
+  function afterPhyrexianLife(card: CardView, choices: CastChoices): void {
     if (tapCostOf(card)) {
       tapPromptChoices = choices;
       tapPromptCard = card;
       return;
     }
     continueCast(card, choices);
+  }
+
+  // #916: the cast's Phyrexian stepper. One reactive object rather
+  // than the card / choices pair the older stages use, because the
+  // modal reads the stashed choices (the announced X, the symbol
+  // count the chosen cost prints) as well as the card — the same
+  // shape xAbilityPrompt has, for the same reason.
+  let phyrexianPrompt = $state<{
+    card: CardView;
+    symbols: number;
+    choices: CastChoices;
+  } | null>(null);
+
+  function confirmPhyrexianLife(n: number): void {
+    const p = phyrexianPrompt;
+    phyrexianPrompt = null;
+    if (!p) return;
+    afterPhyrexianLife(p.card, n > 0 ? { ...p.choices, phyrexianLife: n } : p.choices);
   }
 
   // ADR 0034: a modal double-faced card asks which HALF first —
@@ -467,7 +545,11 @@
   }
 
   function afterFace(card: CardView, choices: CastChoices): void {
-    if (alternativeCostsOf(card).length > 0) {
+    // ADR 0073: a card with kicker and no alternative cost opens the
+    // same picker with only the add-ons showing — one prompt for one
+    // question (CR 601.2b), rather than a second modal asking the
+    // other half of it.
+    if (alternativeCostsOf(card).length > 0 || optionalCostsOf(card).length > 0) {
       altCostPromptChoices = choices;
       altCostPromptCard = card;
       return;
@@ -475,17 +557,41 @@
     afterAltCost(card, choices);
   }
 
-  // handlePlayCard is the head of the chain. `fromZone` is undefined
-  // for the hand, which is every cast the board's own surfaces fire;
-  // S29's zone browser passes "graveyard" so a flashback cast walks
-  // the identical prompt chain and lands the zone on the payload via
-  // CastChoices.
+  // handlePlayCard is the head of the chain — the ONE entry point for
+  // casting a card, whichever surface the click came from. `fromZone`
+  // is undefined for the hand, which is every cast the board's own
+  // surfaces fire; S29's zone browser passes "graveyard" so a
+  // flashback cast walks the identical prompt chain, and #874 adds
+  // "exile", so an impulse cast does too.
+  //
+  // `face` is a face the CALLER already knows, which is only ever an
+  // exile grant naming one — a defeated Siege's back face, or the
+  // creature half of an adventure card exiled by its own Adventure
+  // (CR 715.4). It is not a default for the picker: a grant that names
+  // a face offers no choice, so asking would be asking a question with
+  // one answer, and the server ignores the request and uses the
+  // grant's face anyway (game/face.go, faceForCastLocked). What
+  // passing it buys is that the REST of the chain — the X picker, the
+  // targets, the modes — reads the half being cast rather than the
+  // half sitting face-up in exile.
+  //
+  // Which is why the gate is "defined", not "greater than zero". A
+  // CR 715.4 grant names face 0, and a `face > 0` test read that as
+  // "no face given" and re-opened the picker on a cast with exactly
+  // one legal half. Face 0 skips cardAsFace all the same: the card
+  // already IS its front face here, and cardAsFace would strip the
+  // announce-prompt fields the server computed for it.
   //
   // The face picker's confirm re-enters at afterFace with its own
   // choices object, so the zone has to be seeded here rather than at
   // the end — otherwise a modal DFC cast out of the graveyard would
   // lose it.
-  function handlePlayCard(card: CardView, fromZone?: CastSourceZone): void {
+  function handlePlayCard(card: CardView, fromZone?: CastSourceZone, face?: number): void {
+    if (face !== undefined) {
+      const played = face > 0 ? cardAsFace(card, face) : card;
+      afterFace(played, fromZone ? { face, fromZone } : { face });
+      return;
+    }
     if (needsFacePicker(card)) {
       facePromptZone = fromZone;
       facePromptCard = card;
@@ -500,18 +606,18 @@
   // option's legal set, otherwise the cast fires straight away.
   let modePromptCard = $state<CardView | null>(null);
   let modePromptChoices: CastChoices = {};
+  // #764: EVERY chosen bullet contributes its clauses to the walk,
+  // in the order they were chosen (CR 700.2c), and a repeated bullet
+  // (CR 700.2d) contributes them once per occurrence. The old shape
+  // took the FIRST targeted option and dropped the rest, which is
+  // why Kolaghan's Command could not be cast.
   function confirmModes(modes: number[]): void {
     const card = modePromptCard;
     const choices = modePromptChoices;
     modePromptCard = null;
     modePromptChoices = {};
     if (!card) return;
-    const targeted = modes.find((i) => card.modes?.options[i]?.legal_targets !== undefined);
-    if (targeted !== undefined) {
-      const option = card.modes!.options[targeted];
-      beginTargetingForMode(card, option, modes, choices);
-      return;
-    }
+    if (beginTargetingForModes(card, modes, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id, modes };
     applyCastChoices(params, choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
@@ -569,13 +675,26 @@
       targeting.set(togglePick(state, ref));
       return;
     }
-    fireTargets(state, [ref]);
+    stepOrFire({ ...state, picked: [ref] });
   }
 
   function confirmTargets(): void {
     const state = $targeting;
     if (!state || !canConfirm(state)) return;
-    fireTargets(state, state.picked);
+    stepOrFire(state);
+  }
+
+  // stepOrFire is the two-step picker's hinge (#764): a walk with
+  // another clause to ask about opens the next prompt; a finished
+  // walk fires the one action carrying every pick, each stamped with
+  // the clause it answered.
+  function stepOrFire(state: TargetingState): void {
+    const next = advance(state);
+    if (next) {
+      targeting.set(next);
+      return;
+    }
+    fireTargets(state, allPicks(state));
   }
   $effect(() => {
     setConfirmHandler(confirmTargets);
@@ -599,16 +718,27 @@
         ability_index: state.ability.index,
         sacrifice_ids: state.ability.sacrificeIDs,
         crew_ids: state.ability.crewIDs,
+        // #660: the discard picks were made at announce, before the
+        // targeting step, and ride the one activate_ability with the
+        // rest of the cost.
+        discard_ids: abilityDiscardIDs,
         ...state.ability.counter,
         targets,
       };
       if (state.ability.xValue !== undefined) params.x_value = state.ability.xValue;
+      // #916, CR 107.4f: announced with the rest of the cost, before
+      // these targets, and sent in the same message.
+      if (state.ability.phyrexianLife) params.phyrexian_life = state.ability.phyrexianLife;
+      if (state.modes !== undefined) params.modes = state.modes;
+      abilityDiscardIDs = [];
       sendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
       return;
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
     if (state.modes !== undefined) params.modes = state.modes;
+    // #764: a modal activated ability sends its modes beside its
+    // targets (CR 602.2b) — handled in the ability branch above.
     applyCastChoices(params, state.choices);
     sendAction("cast_spell", params, viewerID ?? undefined);
     cancelTargeting();
@@ -674,9 +804,77 @@
     crewIDs: string[];
   } | null>(null);
 
+  // #789: the same question for a MANA ability — Mage-Ring Network's
+  // "any number of storage counters", a Vivid land whose kind or
+  // permanent is ambiguous. One modal and one payload builder; only
+  // the action it ends in differs, because a mana ability has no
+  // targeting or X step after the cost.
+  let manaCounterPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+    sacrificeIDs?: string[];
+  } | null>(null);
+
+  // #660: the "Discard a creature card" component of an activated
+  // ability's cost (CR 602.2b), and cycling's "Discard this card",
+  // which needs no picker at all. Carried on the side rather than
+  // threaded through every hop of the announce chain, which already
+  // takes five arguments.
+  let abilityDiscardPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+  } | null>(null);
+  let abilityDiscardIDs: string[] = [];
+
+  // The cards the clause admits, resolved out of the seat's hand. The
+  // server already filtered them — a cost does not target, so nothing
+  // narrows them further here.
+  const abilityDiscardOptions = $derived.by(() => {
+    const p = abilityDiscardPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.discard_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  // #660: a card in hand projects its abilities on `hand_abilities`
+  // and a permanent on `activated_abilities` — never both, because
+  // the server filters by the zone the card is in (CR 113.6). One
+  // lookup reads whichever is there; `index` means the same thing on
+  // the wire either way.
+  function abilitiesOf(card: CardView): ActivatedAbilityView[] {
+    return card.activated_abilities ?? card.hand_abilities ?? [];
+  }
+
   function handleActivateAbility(card: CardView, index: number): void {
-    const ability = (card.activated_abilities ?? []).find((a) => a.index === index);
+    const ability = abilitiesOf(card).find((a) => a.index === index);
     if (!ability) return;
+    // #660: the discard payment is asked FIRST, as the cast flow asks
+    // its own — it is the cost most likely to make a player back out.
+    // Skipped when the hand holds exactly the cards the clause
+    // demands: a modal with one possible answer is a worse version of
+    // no modal.
+    if (ability.discard_cost_n) {
+      const options = ability.discard_cost_options ?? [];
+      if (options.length > ability.discard_cost_n) {
+        abilityDiscardPrompt = { card, ability };
+        return;
+      }
+      afterAbilityDiscardCost(card, ability, options);
+      return;
+    }
+    afterAbilityDiscardCost(card, ability, []);
+  }
+
+  // afterAbilityDiscardCost is the rest of the announce chain with the
+  // discard picks in hand: the sacrifice picker, the crew picker, the
+  // counter cost, then X and targeting.
+  function afterAbilityDiscardCost(
+    card: CardView,
+    ability: ActivatedAbilityView,
+    discardIDs: string[],
+  ): void {
+    abilityDiscardIDs = discardIDs;
     if (ability.sacrifice_options) {
       sacrificePrompt = { kind: "ability", card, ability };
       return;
@@ -686,6 +884,13 @@
       return;
     }
     askCounterCost(card, ability, [], []);
+  }
+
+  function confirmAbilityDiscardCost(ids: string[]): void {
+    const p = abilityDiscardPrompt;
+    abilityDiscardPrompt = null;
+    if (!p) return;
+    afterAbilityDiscardCost(p.card, p.ability, ids);
   }
 
   function askCounterCost(
@@ -713,9 +918,18 @@
     counterPrompt = { card, ability, sacrificeIDs, crewIDs };
   }
 
-  function confirmCounterCost(choice: CounterChoice): void {
+  function confirmCounterCost(choices: CounterChoice[]): void {
     const p = counterPrompt;
+    const m = manaCounterPrompt;
     counterPrompt = null;
+    manaCounterPrompt = null;
+    // #789: the same prompt serves a mana ability's counter cost —
+    // one component, one picker — so the confirm routes to whichever
+    // activation opened it.
+    if (m) {
+      sendManaAbility(m.card, m.ability, counterPaymentParams(m.ability, choices), m.sacrificeIDs);
+      return;
+    }
     if (!p) return;
     continueActivation(
       p.card,
@@ -723,7 +937,7 @@
       p.sacrificeIDs,
       p.crewIDs,
       undefined,
-      counterPaymentParams(p.ability, choice),
+      counterPaymentParams(p.ability, choices),
     );
   }
 
@@ -741,10 +955,52 @@
     continueActivation(p.card, p.ability, p.sacrificeIDs, p.crewIDs, x, p.counter);
   }
 
-  // S21: a mana ability with a sacrifice-another cost, handed up by
-  // PlayerPanel because the picker is board-wide.
-  function handleManaSacrificeCost(card: CardView, ability: ManaAbilityView): void {
-    sacrificePrompt = { kind: "mana", card, ability };
+  // S21, widened in #789: a mana ability whose cost still needs an
+  // answer, handed up by PlayerPanel because the pickers are
+  // board-wide. Sacrifice first, then counters — the order the engine
+  // validates and pays them in.
+  function handleManaAbilityCost(card: CardView, ability: ManaAbilityView): void {
+    if (ability.sacrifice_options) {
+      sacrificePrompt = { kind: "mana", card, ability };
+      return;
+    }
+    askManaCounterCost(card, ability);
+  }
+
+  // askManaCounterCost is askCounterCost's mana-ability twin: the same
+  // component, the same picker, the same auto-skip when there is only
+  // one way to pay (every Vivid land, Ramos). It exists separately
+  // only because a mana ability has no targeting or X step after the
+  // cost — the action goes straight out.
+  function askManaCounterCost(card: CardView, ability: ManaAbilityView): void {
+    if (!hasCounterCost(ability)) {
+      sendManaAbility(card, ability, {});
+      return;
+    }
+    const auto = autoCounterChoice(ability);
+    if (auto) {
+      sendManaAbility(card, ability, counterPaymentParams(ability, auto));
+      return;
+    }
+    manaCounterPrompt = { card, ability };
+  }
+
+  function sendManaAbility(
+    card: CardView,
+    ability: ManaAbilityView,
+    counter: CounterPayment,
+    sacrificeIDs?: string[],
+  ): void {
+    sendAction(
+      "activate_mana_ability",
+      {
+        card_id: card.instance_id,
+        ability_index: ability.index,
+        ...(sacrificeIDs && sacrificeIDs.length > 0 ? { sacrifice_ids: sacrificeIDs } : {}),
+        ...counter,
+      },
+      viewerID ?? undefined,
+    );
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -756,8 +1012,8 @@
       return;
     }
     const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
-    if (ability?.sacrifice_options) {
-      handleManaSacrificeCost(card, ability);
+    if (ability && (ability.sacrifice_options || counterCostNeedsPrompt(ability))) {
+      handleManaAbilityCost(card, ability);
       return;
     }
     const params = { card_id: card.instance_id, ability_index: activate.index };
@@ -769,14 +1025,19 @@
     sacrificePrompt = null;
     if (!p) return;
     if (p.kind === "mana") {
-      sendAction(
-        "activate_mana_ability",
-        {
-          card_id: p.card.instance_id,
-          ability_index: p.ability.index,
-          sacrifice_ids: instanceIDs,
-        },
-        viewerID ?? undefined,
+      // #789: a mana ability could in principle carry both halves, so
+      // the counter question is asked after the sacrifice one — the
+      // order the engine validates them in.
+      if (counterCostNeedsPrompt(p.ability)) {
+        manaCounterPrompt = { card: p.card, ability: p.ability, sacrificeIDs: instanceIDs };
+        return;
+      }
+      const auto = autoCounterChoice(p.ability);
+      sendManaAbility(
+        p.card,
+        p.ability,
+        counterPaymentParams(p.ability, auto ?? undefined),
+        instanceIDs,
       );
       return;
     }
@@ -792,6 +1053,8 @@
     crewIDs: string[] = [],
     xValue?: number,
     counter?: CounterPayment,
+    modes?: number[],
+    phyrexianLife?: number,
   ): void {
     // CR 602.2b: X is announced with the other choices and before
     // any cost is paid, so the picker opens after the cost picks
@@ -801,19 +1064,120 @@
       xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
       return;
     }
-    if (ability.legal_targets) {
-      beginTargetingForAbility(card, ability, sacrificeIDs, crewIDs, xValue, counter);
+    // CR 107.4f / CR 602.2b (#917, #916): the ability's Phyrexian
+    // symbols. Same question the cast chain asks, in the same place —
+    // after X, before the modes and the targets — and the same
+    // stepper asks it, told to price the ABILITY's cost.
+    if (
+      phyrexianLife === undefined &&
+      shouldAskPhyrexianLife(phyrexianSymbolsForAbility(ability), viewerLife)
+    ) {
+      phyrexianAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, modes };
       return;
+    }
+    // #764, CR 602.2b: a modal activated ability chooses its modes
+    // with its targets, in the one announcement — so the mode picker
+    // sits exactly where a modal cast's does, between the costs and
+    // the targeting walk.
+    if (ability.modes && modes === undefined) {
+      abilityModePrompt = { card, ability, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife };
+      return;
+    }
+    if (ability.legal_targets || ability.clauses?.length || (modes && modes.length > 0)) {
+      beginTargetingForAbility(
+        card,
+        ability,
+        sacrificeIDs,
+        crewIDs,
+        xValue,
+        counter,
+        modes,
+        phyrexianLife,
+      );
+      const t = $targeting;
+      if (t && t.steps.length > 0 && (t.legal || t.steps.length > 1)) return;
+      // A modal ability whose chosen bullets take no target falls
+      // through to the immediate activation below.
+      cancelTargeting();
     }
     const params: Record<string, unknown> = {
       source_card_id: card.instance_id,
       ability_index: ability.index,
       sacrifice_ids: sacrificeIDs,
       crew_ids: crewIDs,
+      discard_ids: abilityDiscardIDs,
       ...counter,
     };
     if (xValue !== undefined) params.x_value = xValue;
+    // #916: omitted at 0, which is the server default.
+    if (phyrexianLife) params.phyrexian_life = phyrexianLife;
+    if (modes !== undefined) params.modes = modes;
+    abilityDiscardIDs = [];
     sendAction("activate_ability", params, viewerID ?? undefined);
+  }
+
+  // #916: the activation's Phyrexian stepper — the same modal the
+  // cast chain opens, priced against the ability's own mana cost.
+  let phyrexianAbilityPrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+    modes?: number[];
+  } | null>(null);
+
+  function confirmAbilityPhyrexianLife(n: number): void {
+    const p = phyrexianAbilityPrompt;
+    phyrexianAbilityPrompt = null;
+    if (!p) return;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      p.modes,
+      n,
+    );
+  }
+
+  // #764: the mode picker for a modal ACTIVATED ability. It reuses
+  // ModePickerModal by handing it a synthetic card view carrying the
+  // ability's ModeSpec — one picker, three owners, the same way the
+  // engine has one ModeSpec for three owners.
+  let abilityModePrompt = $state<{
+    card: CardView;
+    ability: ActivatedAbilityView;
+    sacrificeIDs: string[];
+    crewIDs: string[];
+    xValue?: number;
+    counter?: CounterPayment;
+    // #916: already answered by the time the modes are picked, so it
+    // rides through rather than being asked for again.
+    phyrexianLife?: number;
+  } | null>(null);
+  const abilityModeCard = $derived(
+    abilityModePrompt
+      ? ({ ...abilityModePrompt.card, modes: abilityModePrompt.ability.modes } as CardView)
+      : null,
+  );
+  function confirmAbilityModes(modes: number[]): void {
+    const p = abilityModePrompt;
+    abilityModePrompt = null;
+    if (!p) return;
+    continueActivation(
+      p.card,
+      p.ability,
+      p.sacrificeIDs,
+      p.crewIDs,
+      p.xValue,
+      p.counter,
+      modes,
+      p.phyrexianLife,
+    );
   }
 
   // S20 sub-PR 2: a pick_target pending choice addressed to the
@@ -948,7 +1312,7 @@
             {onPassPriority}
             {onToggleAutopass}
             onActivateAbility={handleActivateAbility}
-            onManaSacrificeCost={handleManaSacrificeCost}
+            onManaAbilityCost={handleManaAbilityCost}
           />
         </div>
       {/if}
@@ -1028,11 +1392,14 @@
     onCancel={() => (crewPrompt = null)}
   />
   <CounterCostModal
-    card={counterPrompt?.card ?? null}
-    ability={counterPrompt?.ability ?? null}
+    card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}
+    ability={counterPrompt?.ability ?? manaCounterPrompt?.ability ?? null}
     board={view.battlefield.cards}
     onConfirm={confirmCounterCost}
-    onCancel={() => (counterPrompt = null)}
+    onCancel={() => {
+      counterPrompt = null;
+      manaCounterPrompt = null;
+    }}
   />
   <FacePickerModal
     card={facePromptCard}
@@ -1066,11 +1433,24 @@
       discardPromptChoices = {};
     }}
   />
+  <!-- #660: the same picker, one cost site over — an activated
+       ability's "Discard a creature card" (CR 602.2b). -->
+  <DiscardCostModal
+    card={abilityDiscardPrompt?.card ?? null}
+    options={abilityDiscardOptions}
+    need={abilityDiscardPrompt?.ability.discard_cost_n}
+    label={abilityDiscardPrompt?.ability.discard_cost_label}
+    onConfirm={confirmAbilityDiscardCost}
+    onCancel={() => {
+      abilityDiscardPrompt = null;
+      abilityDiscardIDs = [];
+    }}
+  />
   <SacrificeCostModal
     source={sacrificePromptCard}
-    label={sacrificePromptCard?.additional_cost?.label ?? "a permanent"}
+    label={sacrificePromptLabel}
     options={castSacrificeOptions}
-    count={sacrificeCount(sacrificePromptCard?.additional_cost?.sacrifice_options)}
+    count={sacrificeCount(sacrificePromptClause)}
     onConfirm={confirmSacrificeCost}
     onCancel={() => {
       sacrificePromptCard = null;
@@ -1081,6 +1461,7 @@
     gameID={view.id}
     card={xPromptCard}
     suggestedMax={suggestedX}
+    castParams={castPreviewParams(xPromptChoices)}
     onConfirm={confirmX}
     onCancel={() => {
       xPromptCard = null;
@@ -1100,6 +1481,33 @@
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
   />
+  <!-- CR 107.4c/f (#916): how many Phyrexian symbols the CAST pays
+       with 2 life each. Between the X picker and the convoke picker,
+       because it is announced with them and priced after X. -->
+  <PhyrexianCostModal
+    gameID={view.id}
+    card={phyrexianPrompt?.card ?? null}
+    symbols={phyrexianPrompt?.symbols ?? 0}
+    life={viewerLife}
+    xValue={phyrexianPrompt?.choices.xValue}
+    castParams={castPreviewParams(phyrexianPrompt?.choices)}
+    onConfirm={confirmPhyrexianLife}
+    onCancel={() => (phyrexianPrompt = null)}
+  />
+  <!-- The same stepper for an activated ability's mana component
+       (CR 602.2b), priced against the ABILITY's cost. -->
+  <PhyrexianCostModal
+    gameID={view.id}
+    card={phyrexianAbilityPrompt?.card ?? null}
+    symbols={phyrexianAbilityPrompt ? (phyrexianAbilityPrompt.ability.phyrexian_symbols ?? 0) : 0}
+    life={viewerLife}
+    xValue={phyrexianAbilityPrompt?.xValue}
+    abilityIndex={phyrexianAbilityPrompt?.ability.index}
+    costLabel={phyrexianAbilityPrompt?.ability.mana_cost}
+    confirmVerb="Activate"
+    onConfirm={confirmAbilityPhyrexianLife}
+    onCancel={() => (phyrexianAbilityPrompt = null)}
+  />
   <TapCostModal
     card={tapPromptCard}
     cost={tapPromptCard ? (tapCostOf(tapPromptCard) ?? null) : null}
@@ -1117,6 +1525,13 @@
     onCancel={() => {
       modePromptCard = null;
       modePromptChoices = {};
+    }}
+  />
+  <ModePickerModal
+    card={abilityModeCard}
+    onConfirm={confirmAbilityModes}
+    onCancel={() => {
+      abilityModePrompt = null;
     }}
   />
   {#if $zoneBrowser}

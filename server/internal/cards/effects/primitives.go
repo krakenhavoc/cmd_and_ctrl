@@ -134,10 +134,55 @@ func (m MillCards) Apply(ctx *Context) error {
 // OnResolve.
 type DestroyTarget struct {
 	Target uuid.UUID
+
+	// CantBeRegenerated is the clause printed on Mortify, Putrefy,
+	// Pongify, Terminate, Snuff Out and the rest: this destruction
+	// ignores regeneration shields (CR 701.19c). The shields are not
+	// spent — CR 701.19d leaves an ignored one on the permanent.
+	//
+	// It was cosmetic on every card that printed it until #667 gave
+	// the engine a shield to ignore. Set it wherever the oracle text
+	// says it; leaving it off a card that prints it is a real bug now.
+	CantBeRegenerated bool
 }
 
 func (d DestroyTarget) Apply(ctx *Context) error {
-	return ctx.Game.DestroyPermanentForEffect(d.Target)
+	return ctx.Game.DestroyPermanentForEffect(d.Target,
+		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated})
+}
+
+// Regenerate creates one regeneration shield for a permanent
+// (CR 701.19a) — "Regenerate target creature", "regenerate it".
+//
+// The shield replaces the NEXT destruction of that permanent this
+// turn: instead of being destroyed it is tapped, all damage is
+// removed from it, and it is removed from combat. It is used up doing
+// so, it expires at the cleanup step if it is not, and a second
+// Regenerate stacks a second shield. Everything about how that works
+// is in game/regeneration.go; a card just says this.
+//
+// What it does NOT save the permanent from: a sacrifice (CR 701.21a),
+// zero toughness (CR 704.5f), the legend rule, exile, a bounce, or a
+// destruction whose effect says it can't be regenerated
+// (CR 701.19c — DestroyTarget.CantBeRegenerated above).
+//
+// A target that is no longer on the battlefield is a no-op rather
+// than an error: CR 701.19b regenerates nothing.
+type Regenerate struct {
+	Target uuid.UUID
+}
+
+func (r Regenerate) Apply(ctx *Context) error {
+	if r.Target == uuid.Nil {
+		return nil
+	}
+	if err := ctx.Game.RegenerateForEffect(r.Target); err != nil {
+		// The permanent left before the ability resolved. CR 701.19b:
+		// regenerating a permanent that is not on the battlefield does
+		// nothing, which is not an error the card should report.
+		return nil
+	}
+	return nil
 }
 
 // SacrificePermanent sacrifices a battlefield permanent on behalf
@@ -147,10 +192,47 @@ func (d DestroyTarget) Apply(ctx *Context) error {
 // what aristocrats payoffs watch. Added in S21 sub-PR 1.
 type SacrificePermanent struct {
 	Target uuid.UUID
+
+	// Then is the "if you do" / "for each permanent sacrificed this
+	// way" clause for ONE permanent, and `sacrificed` is whether it
+	// really left the battlefield. Optional; leave it nil for a plain
+	// sacrifice with nothing hanging off it.
+	//
+	// #993, and the same shape as ExileTarget.Then (#870). A sacrifice
+	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
+	// an ordinary zone change, so a sacrificed commander opens the
+	// CR 903.9 window and the permanent is still on the battlefield
+	// while the question is open. A clause written on the next line
+	// therefore reads "still here, so it was not sacrificed" for a leg
+	// that is merely PAUSED and pays out nothing for a sacrifice that
+	// does land a beat later.
+	//
+	// `sacrificed` is sacrificedThisWayLocked's answer: true whenever
+	// the permanent left the battlefield, including a commander that
+	// took the command zone and a card an "exile it instead"
+	// replacement took — only where it went was replaced. Write the
+	// clause as something that acts on what it is told, not as the next
+	// line of the card.
+	Then func(ctx *Context, sacrificed bool) error
 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
-	return ctx.Game.SacrificePermanentForEffect(s.Target)
+	if s.Then == nil {
+		return ctx.Game.SacrificePermanentForEffect(s.Target)
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	//
+	// The source is uuid.Nil for the reason the fire-and-forget form
+	// passes none: SacrificePermanentForEffect stamps no source on
+	// EventSacrifice, and adding a Then must change the sequencing and
+	// nothing else.
+	item := ctx.Item
+	return ctx.Game.SacrificeThenForEffect(uuid.Nil, s.Target, func(g *game.Game, sacrificed bool) error {
+		return s.Then(NewContext(g, item), sacrificed)
+	})
 }
 
 // ExileTarget moves a card from whichever zone it's in to the
@@ -188,6 +270,96 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
 		return e.Then(NewContext(g, item), exiled)
 	})
+}
+
+// ExileThenIfItWas is "Exile target card from a graveyard. If it was
+// a creature card, <clause>" — Cling to Dust, Scavenging Ooze and
+// Deluge of the Dead, and the ONE body all three now share (#911).
+//
+// # Two facts, two moments
+//
+// The clause reads WHAT THE CARD WAS, which is a question about the
+// past: after the move the card is in exile with none of its
+// battlefield-era layers, so `Was` is answered BEFORE anything moves
+// (CR 608.2h / last-known information). That much the three cards
+// already did by hand.
+//
+// What they did NOT do is wait for the move. `ExileTarget` without a
+// `Then` is fire-and-forget: it returns nil when the CR 614 window
+// CANCELLED the exile ("cards in graveyards can't be exiled"), when a
+// replacement sent the card somewhere else, and when the move merely
+// PAUSED on a commander card's CR 903.9 prompt. All three paid out
+// anyway — life, a +1/+1 counter, a Zombie — for a card that was still
+// sitting in its graveyard. So the clause hangs off `ExileTarget.Then`
+// and is gated on `exiled`, CR 400.7's reading: the card that ARRIVED
+// in exile is the one the effect exiled.
+//
+// # Why no exile means no clause at all
+//
+// ADR 0013 §5m left this as a rules question and §5t answers it. "If
+// it WAS a creature card" has no referent when nothing was exiled:
+// "it" is the card the first sentence moved, and CR 614.10 says an
+// event replaced with nothing never happened. So neither branch runs —
+// Cling to Dust's `Otherwise` ("you draw a card") is the other half of
+// the same conditional, not a separate sentence, and a Cling to Dust
+// whose exile was cancelled draws nothing.
+//
+// That is the line between this primitive and the exile-then-an-
+// unconditional-clause family (Swords to Plowshares, Solitude, Path to
+// Exile's search), which §5m declared ungated and which stays ungated:
+// there the second sentence is about a player, makes no claim about the
+// card, and happens either way.
+//
+// A commander card that takes CR 903.9's offer left the graveyard but
+// did not reach exile, so it pays out nothing either — the same answer
+// the batch gives "for each card exiled this way".
+type ExileThenIfItWas struct {
+	Target uuid.UUID
+
+	// Was is the question the clause asks about the card, answered
+	// against the card as it was BEFORE the exile. Nil means "any
+	// card", which turns this into a plain "exile it; if you do, …".
+	// WasCreatureCard is the printed phrase all three cards use.
+	Was func(c game.Card) bool
+
+	// Then is the clause. It runs only when the card actually reached
+	// exile AND Was said yes.
+	Then func(ctx *Context) error
+
+	// Otherwise is Cling to Dust's "Otherwise, you draw a card": the
+	// same conditional's other branch, so it runs only when the card
+	// reached exile and Was said no. Optional.
+	Otherwise func(ctx *Context) error
+}
+
+// WasCreatureCard is the predicate behind the printed phrase "if it
+// was a creature card". Named so the three cards read like their own
+// oracle text and so a fourth does not re-derive it.
+func WasCreatureCard(c game.Card) bool { return c.IsCreature() }
+
+func (e ExileThenIfItWas) Apply(ctx *Context) error {
+	was := false
+	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok {
+		was = e.Was == nil || e.Was(c)
+	}
+	return ExileTarget{
+		Target: e.Target,
+		Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				// Nothing was exiled, so there is no "it" for the
+				// clause to be about. Neither branch.
+				return nil
+			}
+			clause := e.Then
+			if !was {
+				clause = e.Otherwise
+			}
+			if clause == nil {
+				return nil
+			}
+			return clause(ctx)
+		},
+	}.Apply(ctx)
 }
 
 // ReturnFromExile puts a card that is currently in exile back onto
@@ -327,10 +499,41 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 // Unsummon-style effects.
 type BounceToHand struct {
 	Target uuid.UUID
+
+	// Then is the "then …" / "if you do" clause for ONE card, and
+	// `bounced` is whether the card actually reached a hand. Optional;
+	// leave it nil for a plain bounce with nothing hanging off it.
+	//
+	// #993, and the same shape as ExileTarget.Then (#870). A hand is a
+	// CR 903.9 destination, so every bounce can pause: a commander
+	// returned to its owner's hand stops to ask them about the command
+	// zone, and a clause written on the next line runs with the
+	// permanent still on the battlefield and the question still open.
+	// Chain of Vapor asked its controller to sacrifice a land while
+	// they were already being asked something else.
+	//
+	// `bounced` is CR 400.7's reading: false when the window cancelled
+	// the move, when a replacement sent the card somewhere else, and
+	// when a commander took the command zone — it left, but not to a
+	// hand. A clause that is NOT gated on the move (the common case for
+	// a bounce: "then that permanent's controller may …" is a sentence
+	// about a player) simply ignores the argument and gets the ordering
+	// for free.
+	Then func(ctx *Context, bounced bool) error
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
-	return ctx.Game.BounceToHandForEffect(b.Target)
+	if b.Then == nil {
+		return ctx.Game.BounceToHandForEffect(b.Target)
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.BounceToHandThenForEffect(b.Target, func(g *game.Game, bounced bool) error {
+		return b.Then(NewContext(g, item), bounced)
+	})
 }
 
 // TapTarget taps a battlefield card. No effect if the card is not
@@ -514,16 +717,128 @@ type PayUnless struct {
 	OnDecline func(ctx *Context) error
 }
 
+// USE UpkeepPayUnless FOR "AT THE BEGINNING OF YOUR UPKEEP, PAY OR
+// ELSE". It is the same CR 118.12 prompt, and the difference is the
+// whole of #997: a pay-unless the ACTIVE player owes during their OWN
+// upkeep must stop the table while it is unanswered, because the rest
+// of the turn is what hangs on the answer. A card that writes that
+// clause out of PayUnless gets the Rhystic Study latitude instead and
+// the table can take the turn with the question still open. Stasis
+// and Pact of Negation did exactly that.
+
 func (p PayUnless) Apply(ctx *Context) error {
-	item := ctx.Item
-	decline := p.OnDecline
 	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
-		func(g *game.Game) error {
-			if decline == nil {
-				return nil
-			}
-			return decline(NewContext(g, item))
-		})
+		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
+}
+
+// declineAgainstTheSameItem adapts a card-side "or else" (a *Context
+// branch) to the engine-side one (a *game.Game branch) for the two
+// pay-unless primitives that take one.
+//
+// The Context is built FRESH when the branch runs, against whichever
+// *Game it is handed and bound to the same stack item: an undo
+// restores a clone, so the game the answer arrives at is not the one
+// that asked (StackItem.Effect's contract, which every resume frame
+// in the engine keeps). `item` is a detached pointer and the closure
+// captures nothing else.
+func declineAgainstTheSameItem(item *game.StackItem, decline func(ctx *Context) error) func(*game.Game) error {
+	return func(g *game.Game) error {
+		if decline == nil {
+			return nil
+		}
+		return decline(NewContext(g, item))
+	}
+}
+
+// UpkeepPayUnless is "at the beginning of your upkeep, pay <Cost> or
+// <consequence>" — Stasis's "sacrifice Stasis unless you pay {U}",
+// Pact of Negation's "pay {3}{U}{U}. If you don't, you lose the
+// game", and every cumulative upkeep (CR 702.24).
+//
+// It is PayUnless with the halt the shape needs and cannot be trusted
+// to ask for. The prompt is addressed to the player whose upkeep it
+// is, about their own permanent or their own survival, so the table
+// must not leave the step while it is unanswered (CR 117.3, CR
+// 500.4). The engine derives that from the cursor rather than from a
+// flag on the card (Game.QueueUpkeepPayUnlessForEffect,
+// game/upkeep_pay_unless.go): #567 shipped the flag, and the two
+// cards written afterwards with the same sentence printed on them
+// both missed it.
+//
+// The step is read off the cursor when the prompt is queued, so the
+// same primitive is right for a beginning-of-end-step pay-or-else; it
+// is named for the family every printed card of it belongs to.
+type UpkeepPayUnless struct {
+	// Chooser is the player asked to pay — the permanent's
+	// controller, which is who the printed clause always means.
+	Chooser uuid.UUID
+
+	// Cost is the printed payment ("{U}", "{3}{U}{U}").
+	Cost string
+
+	// Question is the prompt header.
+	Question string
+
+	// OnDecline is the "or else": sacrifice the permanent, lose the
+	// game. It runs on "no" and on a "yes" the chooser cannot fund,
+	// exactly as PayUnless's does.
+	OnDecline func(ctx *Context) error
+}
+
+func (p UpkeepPayUnless) Apply(ctx *Context) error {
+	return ctx.Game.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
+		Chooser:   p.Chooser,
+		Source:    ctx.Source(),
+		Cost:      p.Cost,
+		Question:  p.Question,
+		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+	})
+}
+
+// CounterUnlessPaid is "counter <StackID> unless its controller pays
+// <Cost>" — Daze, Dazzling Denial, Izzet Charm's first mode, Mystic
+// Confluence's first mode, Spell Stutter, and ward's mana leg.
+//
+// USE THIS RATHER THAN PayUnless WITH A CounterTarget DECLINE. It is
+// the same CR 118.12 prompt, and the difference is the whole of #951:
+// a pay-unless whose decline counters an object on the stack must
+// stop the table while it is unanswered, because resolving that
+// object answers the question by doing it. The engine derives the
+// halt from the guarded object (Game.QueueCounterUnlessPaidForEffect,
+// game/counter_unless_paid.go); a card that hand-rolls the shape out
+// of PayUnless gets the Rhystic Study latitude instead and the spell
+// resolves for free. Six cards did exactly that before this existed.
+//
+// It also absorbs the two checks every one of those six spelled out:
+// an object that has already left the stack raises no prompt at all
+// (there is nothing to counter and so nothing to charge for), and the
+// decline re-checks before countering.
+type CounterUnlessPaid struct {
+	// StackID is the object to counter — the "that spell".
+	StackID uuid.UUID
+
+	// Cost is the printed payment ("{1}", "{2}").
+	Cost string
+
+	// Question is the prompt header.
+	Question string
+
+	// Chooser overrides "its controller", which is what the engine
+	// reads off the guarded object when this is left zero. Ward sets
+	// it: CR 702.21a asks the player who cast the spell that targeted
+	// the warded permanent, and the trigger captured that player when
+	// the targeting event fired.
+	Chooser uuid.UUID
+}
+
+func (c CounterUnlessPaid) Apply(ctx *Context) error {
+	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+		StackItem: c.StackID,
+		Chooser:   c.Chooser,
+		Source:    ctx.Source(),
+		Cost:      c.Cost,
+		Question:  c.Question,
+	})
 }
 
 // EachPlayerSacrifices is "each player sacrifices a creature" (Fleshbag
@@ -551,6 +866,25 @@ type EachPlayerSacrifices struct {
 
 	// Label is the picker's banner copy: "a creature".
 	Label string
+
+	// Then is the clause printed after the edict — "if you sacrificed
+	// a creature this way, …", "then you draw a card". Optional; leave
+	// it nil for an edict with nothing hanging off it, which is most
+	// of them.
+	//
+	// #1019, and the same shape as SacrificePermanent.Then (#993). The
+	// prompts are a QUESTION per seat and return how many seats were
+	// asked, so a clause written on the next line pays out before
+	// anybody has chosen anything. This one runs once every asked seat
+	// has answered AND the permanents they named have finished moving
+	// — so a sacrificed commander's CR 903.9 prompt holds it too.
+	//
+	// `sacrificed` carries one entry per seat that was ASKED, in APNAP
+	// ask order, with the permanents that really left the battlefield
+	// (game.PromptedSacrifices). A commander that took the command
+	// zone is in it; a leg the CR 614 window cancelled is not. Write
+	// the clause as something that acts on what it is told.
+	Then func(ctx *Context, sacrificed game.PromptedSacrifices) error
 }
 
 func (e EachPlayerSacrifices) Apply(ctx *Context) error {
@@ -566,8 +900,19 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	if label == "" {
 		label = "a permanent"
 	}
-	ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
-	return nil
+	if e.Then == nil {
+		ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
+		return nil
+	}
+	// The context is rebuilt inside the continuation from the live
+	// *Game, the contract massEffect.apply explains: an undo restores
+	// this game's fields in place, so a captured *Game would be the
+	// wrong one.
+	item := ctx.Item
+	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), except, spec, "Sacrifice "+label,
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			return e.Then(NewContext(g, item), sacrificed)
+		})
 }
 
 // Scry is "scry N" (CR 701.22) — look at the top N cards of your
@@ -934,4 +1279,25 @@ func (r RevealTopOfLibrary) Apply(ctx *Context) error {
 		*r.Revealed = ids
 	}
 	return nil
+}
+
+// SacrificeThisIfStillOnBattlefield is the trigger body for the
+// commonest half-sentence in the format: "…, sacrifice it."
+//
+// It is a function rather than a primitive struct because it takes
+// nothing — the permanent doing the sacrificing is the trigger's own
+// source, read off the resolving item.
+//
+// The battlefield check is load-bearing rather than defensive. A
+// trigger resolves after everything that was put on the stack above
+// it, so between "when this becomes the target" and this body the
+// permanent can have been bounced, exiled or destroyed; CR 701.21a
+// says a sacrifice does nothing at all for a permanent its controller
+// no longer controls, and a resolution that cannot do its job must
+// not wedge the stack.
+func SacrificeThisIfStillOnBattlefield(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
+	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }

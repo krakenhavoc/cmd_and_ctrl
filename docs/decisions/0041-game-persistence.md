@@ -15,6 +15,24 @@ stands; 0044 builds the return path they assumed was already there.
 the snapshot writes `rngKind: "keyed"`, a caller-supplied `*rand.Rand`
 seeds the key and is persistable like any other game, and
 `"pcg"` / `"external"` files restore with a fresh key.
+**Amended by:** [ADR 0051](0051-user-database.md) decision 1 (S34
+sub-PR 1, [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607))
+— `<dataDir>/db/` is a new artifact directory alongside the ones below,
+holding the persistent SQLite store and its backup copy; see the
+Artifact layout table.
+**Amended by:** [ADR 0051](0051-user-database.md) decision 4 (S34
+sub-PR 3, [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607))
+— `<dumpDir>/lobby/<id>.json` is retired. Its content is now the
+`games`, `seats` and `invites` rows in the database. Invite tokens are
+stored only as SHA-256 hashes. The first boot of the new binary imports
+any `lobby/*.json` and renames each file to `<id>.json.imported` rather
+than deleting it, so a rolled-back binary can have them back
+([docs/environments.md](../environments.md)). Two behaviours below
+change with it. A restored room is paired with its `games` row instead
+of a file. Rows for games that did not come back are **kept**, not
+pruned: a finished game has no restore point by design, and its row is
+the history "my games" reads. The engine artifacts (`restore/`,
+`replays/`, `games/`) are unchanged.
 
 ## Context
 
@@ -89,6 +107,65 @@ capture(restore(decode(encode(capture(g))))) == capture(g)
 ```
 
 New snapshot fields are covered the moment they are added.
+
+### Amendment, 2026-09-19: `carried` is a property, not a row in a table
+
+*Amendment, 2026-09-19, branch
+`chore/993-1005-exit-lint-and-carried-enforcement`. Closes
+[#1005](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1005), filed
+while landing #980.*
+
+The two sentences above — "an unclassified field fails CI" and "new
+snapshot fields are covered the moment they are added" — were both true
+and together they read as a guarantee neither of them makes.
+
+**What was actually covered.** The drift test walks field NAMES. It
+never reads a value, so a row saying `carried` was a promise: `dropped`
+was the only disposition this ADR held to anything, through the census
+check. And the round-trip property compares
+`capture → JSON → restore → capture`, which is structurally blind to a
+field missing from BOTH projections — absent equals absent, on both
+sides. Delete a field from `snapshotCard` **and** `restoreCard` and
+every snapshot test passed. That was live: `NamedTribe`, `ChosenColor`
+and `ChosenPlayer`, the CR 614.12-family stored answers, were provably
+uncovered until #980 added them to the round trip's fixture by hand —
+and adding them by hand is the part that does not scale, because the
+fixture is the other half of the blind spot.
+
+**Decision: for every field classified `carried`, write a distinctive
+value onto a fixture, run the real capture → JSON → restore, and read
+the value back off the RESTORED GAME.** `snapshot_carried_test.go`, 213
+fields across the seven probed types. It is reflection over the drift
+plan rather than a generated table, so a `carried` row added tomorrow is
+enforced the moment it lands with no test edit — the same property the
+round trip claims, made true for the direction it cannot see.
+
+Four things make it hold rather than merely run:
+
+- **the value generator is plan-aware.** Filling a `rebuilt` field —
+  `Card.ManaAbilities` is two closures the catalog re-supplies by oracle
+  ID — would make the test assert the opposite of what that row says.
+- **unexported fields are reached through `unsafe`.** Half of `Game`'s
+  carried rows are unexported (the RNG key, the event sequence, the
+  combat lock-ins) and they are exactly the fields no other test can
+  see. A test may do this; production code may not.
+- **the failure names the projection.** The value is looked for in the
+  CAPTURED json: in the file means `restoreX` dropped it, not in the
+  file means `snapshotX` did.
+- **both escape hatches are checked.** `carriedFixture` (a type the
+  generator cannot invent a plausible value for) and
+  `carriedNotRoundTrippable` (the two rows where capture → restore is
+  deliberately not an identity: `Game.layerVersion`, which restore
+  advances by one to force a layer recompute, and
+  `ScopedStatic.Duration`, which `Clone` carries and the snapshot does
+  not). An entry that no longer names a live field fails CI, so neither
+  list can outlive the code it describes.
+
+`driftPlans` is now one list walked by all three tests, and
+`TestEveryPlannedTypeHasACarriedProbe` fails when a domain TYPE is added
+to the plan with no probe — so this survives somebody adding a type, not
+just a field. The header comments in `snapshot_test.go` and
+`snapshot_drift_test.go` say what each test does and does not cover.
 
 ## Decision 3 — The RNG is owned, seeded from crypto/rand, and carried
 
@@ -216,7 +293,9 @@ of the server sees — and is the obvious next increment.
 | `<dumpDir>/games/<id>.json` | `protocol.SnapshotPayload` — forensics | no (unchanged) |
 | `<dumpDir>/replays/<id>.jsonl` | append-only view history | no (unchanged) |
 | `<dumpDir>/restore/<id>.json` | `game.GameSnapshot` + room `seq` | **yes** |
-| `<dumpDir>/lobby/<id>.json` | `lobby.GameMeta`, mode 0600 | **yes** |
+| `<dumpDir>/lobby/<id>.json` | `lobby.GameMeta`, mode 0600. **Retired by ADR 0051**: imported into the database at boot and renamed `<id>.json.imported` | only by the one-time importer |
+| `<dumpDir>/db/cmdctrl.sqlite` | The persistent database (ADR 0051, `internal/db`), mode 0600 | **yes** (opened + migrated before `RestoreFromDisk`) |
+| `<dumpDir>/db/cmdctrl.backup.sqlite` | `VACUUM INTO` copy of the above, on a timer (`CMDCTRL_DB_BACKUP_INTERVAL`), mode 0600 | no |
 
 The room's `seq` travels with the snapshot: a restored room that
 restarted its counter would hand reconnecting clients a sequence number

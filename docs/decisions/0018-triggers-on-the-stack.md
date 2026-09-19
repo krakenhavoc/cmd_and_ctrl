@@ -191,6 +191,35 @@ while one is open, and the auto-tapper refuses to create one precisely
 because its contract is "no further player decisions required". It
 blocks.
 
+**Amendment (2026-09-18, #567): the latitude is per PROMPT, not per
+kind, and cumulative upkeep's does not take it.** CR 702.24's "put an
+age counter on this permanent, then sacrifice it unless you pay its
+upkeep cost for each age counter on it" is a `pay_unless` — the same
+prompt Rhystic Study raises, with the cost rebuilt each upkeep from the
+counters. Every reason this section gives for letting the table walk
+past one is Rhystic Study's and none of them survives the move: the
+question is addressed to the **active player**, during their **own**
+upkeep, and what hangs on the answer is whether a permanent is still on
+the battlefield for the rest of the turn. So this prompt blocks.
+
+It blocks through `PendingChoice.ForceBlocks`, a per-prompt flag read
+by the one predicate `game.ChoicePromptBlocksTable`, which the engine's
+gated verbs and `internal/legal` both call — the #794 rule that there is
+exactly one answer to "does this stop the table" is preserved, and
+`ChoiceBlocksTable(kind)` stays the answer for a KIND and stays what
+`TestEveryChoiceKindIsClassifiedAndEnumerated` checks. The override is
+**one-way**: it can only make a prompt block, never let one through, so
+the deny-by-default direction is intact and the allowlist above is
+still the whole of it. `pay_unless` remains the one non-blocking kind,
+and Rhystic Study, Smothering Tithe and Esper Sentinel play exactly as
+they did.
+
+Queue a blocking one with `Game.QueueBlockingPayUnlessForEffect`
+(card side: `PayUnless{Blocking: true}`). The rule of thumb the two
+cases give: a pay-unless addressed to somebody ELSE after the ability
+has resolved does not block; one addressed to the player whose turn it
+is, about their own permanent, does.
+
 What the gate does **not** do: answering a prompt (`resolve_choice`
 and its kin), `concede`, chat, undo, and the admin context menu's raw
 sandbox moves (`move_card`, `change_life`, `add_counter`,
@@ -244,12 +273,381 @@ silent failures a new kind used to be able to ship with — a gate
 decision nobody made, and an empty move list for the seat that owes it
 (the #499 / #618 wedge).
 
+**Amendment (2026-09-18, #796 / #568): a resolving effect may ask a
+question, and it may ask it of somebody else.**
+
+This section shipped the one prompt a resolving ability could put in
+front of another player, and welded it to a *mana payment*. Three
+shapes were left with nowhere to go, and each blocked real cards:
+
+- **A free yes/no for the effect's own controller.** "Mill two cards.
+  Then you may sacrifice this land" (Eden, Seat of the Sanctum). A
+  trigger's CR 603.5 "you may" is asked before the ability goes on the
+  stack and is over by the time anything resolves; `pay_unless` speaks
+  about mana; search / scry / put-from-hand each carry their own
+  decline because declining is part of that instruction.
+- **The same yes/no, addressed to an opponent.** "Target opponent may
+  have you draw three cards" (Combustible Gearhulk), "they may tap
+  that permanent" (Charismatic Conqueror), "loses 5 life unless they
+  discard a card" (Painful Quandary).
+- **A choice among three or more consequences, addressed to an
+  opponent.** "Each opponent loses 3 life unless that player
+  sacrifices a nonland permanent of their choice or discards a card"
+  (Torment of Hailfire), and the two piles of a Fact or Fiction split.
+
+**One primitive, one new kind, and no new yes/no kind.**
+
+`effects.MayChoice{Player, Question, YesLabel, NoLabel, LifeCost,
+OnYes, OnNo}` (`server/internal/cards/effects/may_choice.go`) is the
+yes/no, and it is built on the existing `PendingChoiceConfirm` — the
+chained-choice two-way prompt from #552, which is already a question
+whose branches are plain continuations supplied by the card, already
+addressed by `Chooser`, already classified here, already enumerated,
+already rendered. A `may` kind would have been a fourth spelling of a
+question the queue can ask, and every consumer would have needed a case
+for it. `Player` defaults to the effect's controller, which is what
+"you may" means; #568's cards set it to another seat and the prompt is
+otherwise identical.
+
+`PendingChoiceOptionPick` (`option_pick`,
+`server/internal/game/option_pick.go`) is the new kind: "choose one of
+the following", addressed to any seat, answered with the INDEX of the
+chosen option (`{option_index: N}`, routed by kind because zero is the
+commonest answer). Its options are plain data — a label, a life cost,
+and optionally the cards the option is about — and what an option MEANS
+lives in the frame the queuing effect supplies, which is what keeps it
+reusable rather than a second modal-spell system. A modal spell's
+"choose one —" is NOT this kind: that choice is made at announce
+(CR 601.2b) and lives on `Spec.Modes`.
+
+**A pile split needs no kind at all.** It is two chained prompts to two
+different seats (#552): a `choose_cards` addressed to the splitter with
+a floor of zero, and an `option_pick` addressed back to the controller
+whose two options each carry a pile. `Game.QueuePileSplitForEffect` /
+`effects.PileSplit` is that composition and nothing more.
+
+**Legality lives at queue time.** `ResolveOptionPick` validates the
+index and nothing else, exactly as `ResolveConfirm` validates nothing
+about the board. An effect builds its option list out of what the
+chooser can actually do (CR 608.2's "as much as possible") — Torment
+drops "sacrifice a nonland permanent" for a player who controls none —
+and must put a branch that always works FIRST, because that is the one
+`legal.choiceMoves` marks `AlwaysLegal`. A prompt whose every branch
+could fail is a seat that can be stuck (#544).
+
+**`option_pick` blocks the table**, like every other resolution-time
+decision: the effect that asked it is paused mid-resolution and its
+continuation is the rest of the card. `pay_unless` remains the only
+kind that does not block, and the reason is unchanged — it is asked
+*after* its trigger has left the stack.
+
+**Redaction: one function, in the projection.** A prompt addressed to
+seat B over seat A's cards is new, and `PendingChoiceView` shipping
+cards a viewer should not see is the leak PR #513 fixed. All of it is
+now `protocol.redactChoiceCards`, the only answer to "which of a
+prompt's cards may this viewer see", applied to `Options` and to every
+option's own `cards`:
+
+1. A viewer who is not a knower of a card does not get it — dropped,
+   not redacted to a back, because these lists come out of hidden
+   zones and a stable instance ID is a correlation handle.
+2. The CHOOSER keeps their whole list as answerable backs only when
+   the pool is their OWN material, or when it is another player's
+   HAND — a hand's size is public (CR 400.2), and a coercive discard
+   that revealed nothing still has to be answerable by picking one of
+   the backs. A pool that is neither (Fact or Fiction's five cards off
+   the top of a LIBRARY) shows the chooser only what was revealed.
+
+Rule 2 is therefore also a contract on the card: a cross-seat prompt
+over a non-hand zone must reveal what it asks about (#549), or its
+chooser is handed an empty list. That is the right failure — the
+alternative leaks a hidden zone, and every printed card of this family
+reveals first.
+
 Two more drains fell out of the sub-PR 6 cards: `CastSpell` (the
 caster gets priority right after casting, CR 117.3c — Rhystic's
 trigger must be on the stack by then) and the sandbox `draw_card`
 verb (Tithe / Sphinx watch draws). `Game.SpellsCastThisTurn` is
 bumped before `EventCast` fires so "first noncreature spell each
 turn" reads `Noncreature == 1` for the spell that triggered it.
+
+**Amendment (2026-09-18, #914): `advance_step` passes priority until
+the step ends. CR 117.4.**
+
+The #730 gate above stops the cursor for a PROMPT. Nothing stopped it
+for the STACK, and a step that ends owing something on its stack is
+the one thing CR 117.4 forbids: "a step or phase ends when all players
+pass in succession with an empty stack." So `AdvanceStep` walked past
+a trigger the step had already announced, and the next step's
+turn-based action happened first — combat damage before the afflict
+out of `declare_blockers`, regular damage before the first-strike
+damage triggers out of `first_strike_damage` (ADR 0045's amendment
+recorded both as open), an upkeep trigger resolving after the draw.
+It was never about combat: the cursor walked past anything.
+
+**The verb now means "pass priority until this step ends."** With an
+empty stack that is exactly what it always was — one move of the
+cursor, no pass, no extra event. With something on the stack it is the
+passes the rules require first: `AdvanceStep` drives `PassPriority`
+for the caller until the stack is empty, so each resolution is
+followed by state-based actions, the CR 603.3b trigger drain and
+another priority round, in the order a table of humans clicking "next"
+would produce. It is `PassPriority`'s own body under the lock
+(`passPriorityLocked`) — one priority engine, not a second one beside
+it — and the cursor moves at the end through the same
+`advanceCursorLocked` as before.
+
+**The drive stops on the three things that stop automatic passing
+anywhere else**, each with the cursor left in the step that still owes
+something and **no error**, because the resolutions it already made
+are real and the caller has to see them (`Room.apply` broadcasts
+nothing and mints no undo entry for a failed dispatch):
+
+- a **blocking prompt** raised by one of the resolutions — this
+  section's own rule, now applied to a prompt the verb itself caused;
+- a **CR 726 loop notice** ([ADR 0055](0055-loop-breaker.md)), checked
+  AFTER a pass so a standing notice still lets one manual nudge
+  through, exactly as the client's "next" button does;
+- the **game ending** under a resolution.
+
+A prompt that was already open when the verb was called is still the
+`*ChoicePendingError` refusal above: nothing has happened yet, so
+there is nothing to broadcast.
+
+**Bots are unaffected** — `internal/legal` has never enumerated
+`advance_step`, and a bot reaches the same board by passing priority,
+which is what the drive does on its behalf. **Three test expectations
+changed** rather than being silenced, each to the rules answer:
+Drana's first-strike trigger grows the attackers before regular
+damage (2 + 3, not 2 + 2), Professional Face-Breaker's first-strike
+Treasure is already made when the cursor reaches the regular step, and
+`TestB492…` is flipped to "afflict, then damage". Cyberman Patrol's
+caveat — the last of #388 — is gone with them.
+**Amendment (2026-09-18, #929): choosing a PLAYER is the same kind
+again.**
+
+"Choose a player" / "choose an opponent" (Gluntch, the Bestower;
+Skullwinder; Slithermuse; the still-unwritten "an opponent of your
+choice gains control") is a closed list of things with exactly one
+answer, which is the question `option_pick` already asks. So it gets
+**no kind of its own**: `Game.QueueChoosePlayerForEffect`
+(`server/internal/game/choose_player.go`) queues a
+`PendingChoiceOptionPick` with one option per eligible seat, labelled
+with that seat's name, and every consumer — the choice gate, the
+enumerator, the wire projection, the client modal — answers it
+unchanged. The card-facing shape is
+`effects.ChoosePlayer{Chooser, Among, Except, Question, Then}`
+(`cards/effects/choose_player.go`), with `Among` one of `Players`,
+`Opponents` or `OpponentsOf(id)`.
+
+**It is not a target, and it is not an ETB choice.** A target is named
+at announce (CR 601.2c), is public from that moment, and is re-checked
+at resolution (CR 608.2b); a chosen player is named while the effect
+resolves and nothing may respond to it — which is why a Slithermuse
+trigger cannot be fizzled by the opponent it was aimed at. The CR
+614.12 form ("AS this enters, choose a player" — True-Name Nemesis) is
+a third thing again: a replacement-time choice stored on the permanent
+and read for the rest of its life, the shape `ChooseColorAsEnters`
+already has for colours (#742, `Card.ChosenColor`).
+
+**It is designed elsewhere and is not built here.** Protection has
+since shipped ([ADR 0072](0072-protection.md), #662), and its §7
+already specifies this field down to the detail — `Card.ChosenPlayer`
+on `Card.ChosenColor`'s pattern, classified `carried`, cleared on every
+zone change, written by an as-enters (CR 614.12) sibling of
+`QueueChoosePlayerForEffect`, with the protection grammar resolving
+"the chosen player" against it so no raw UUID ever reaches a display
+string. That work is **#980**, and True-Name Nemesis waits on it; this
+amendment deliberately does not restate the design, because two copies
+of it would drift. What #929 owes #980 is the resolution-time prompt,
+and that is what it ships.
+
+**Amendment (2026-09-19, #980 / #994): the as-enters form landed on
+this kind too, and the kind learned to prune itself.**
+
+`Game.QueueChoosePlayerAsEntersForEffect` (`game/choose_player.go`) is
+the CR 614.12 sibling, and it is the SAME `option_pick`: same option
+list, same gate row, same enumerator case, same wire projection.
+Nothing about this amendment's "no kind of its own" changes. The only
+difference is where the answer goes — `Card.ChosenPlayer` on the
+permanent, rather than a `TargetPlayer` ref on one item's payload —
+and that difference is a lifetime, not a prompt. The design is ADR
+0072 §7 and its #980 amendment; this one still does not restate it.
+
+What DID change about the kind is worth recording here, because it is a
+property of `option_pick` and not of either player prompt.
+**`ChoiceOption` can now name a seat** (`ChoiceOption.Player`, #994),
+`uuid.Nil` on every option that is not about one. Two consequences:
+
+- **An open option list can SHRINK.** A seat that leaves the game is
+  pruned off every open prompt that offers it (CR 800.4a) — by
+  `reassignChoiceLocked` when the chooser is the one leaving, and by
+  `pruneDepartedSeatOptionsLocked` when anybody else is. Before this,
+  eligibility was filtered exactly once, at queue time, and a prompt
+  went on offering a player who was not a player. A list pruned to
+  nothing is dropped, which is the state `QueueChoosePlayerForEffect`
+  refuses to queue in the first place and the departure table's own
+  `dropDiscard` for this kind.
+- **A seat prompt is therefore answered with its SEAT, not its index.**
+  `OptionPickPrompt.ThenSeat` is the continuation for an option list of
+  players; `ResolveOptionPick` reads `PickOptions[index].Player` off the
+  list the chooser was shown and hands that to the branch. The index
+  form (`Then`) is unchanged and is still what every consequence-shaped
+  prompt uses — a pile, a Torment branch — because those options do not
+  move. A player prompt's do, and a closure holding the candidate slice
+  it was built with would record the player one seat along.
+
+**The answer rides `StackItem.Payload`.** #636 already carries "what
+the effect that created this item had to tell it" as `[]TargetRef`; a
+chosen player is a `TargetPlayer` ref and goes there rather than on a
+second payload field. `Targets` was not an option: a `pick_target`
+answer replaces `Targets` wholesale, so a player parked there would be
+erased by the next re-target prompt. A clause that asks twice appends
+twice in ask order, which is what makes Gluntch's "a SECOND player"
+expressible — `ctx.ChosenPlayers()` is the exclusion list and
+`ctx.ChosenPlayer()` is the most recent answer. A question that could
+not be asked records a `TargetNone` marker rather than nothing, so a
+later clause reads "nobody was chosen" instead of the previous
+clause's player.
+
+**Eligibility and order.** A seat that has left the game is not a
+player (CR 800.4a) and is never offered. The remaining seats are
+offered most-life-first, ties by seat, and that ordering IS the bot
+policy: `legal.choiceMoves` marks an option pick's first branch
+always-legal, and `docs/bot.md`'s posture for a prompt from somebody
+else's card is "price what you can see and take the first offer
+otherwise". Reassigning a prompt whose chooser leaves AFTER it is
+queued is `reassignChoiceLocked` (`game/pending_choice.go`, the CR
+800.4g/h/i function that landed with the CR 800.4 remainder in #959),
+not this primitive's business. What this primitive owns is the other
+moment — a chooser who is already gone when the question would be
+asked — and there the prompt is simply not queued and the absence is
+recorded.
+
+**Amendment (2026-09-19, #951): the latitude is Rhystic Study's SHAPE,
+not the word `pay_unless` — a prompt whose decline counters an object
+on the stack blocks while that object is there.**
+
+Ward borrows this section's prompt (CR 702.21a is a triggered ability
+whose resolution is "counter that spell or ability unless its
+controller pays"), and so do Daze, Dazzling Denial, Izzet Charm, Mystic
+Confluence and Spell Stutter. Every reason §6 gives for letting the
+table walk past a pay-unless is Rhystic Study's, and not one of them
+survives the move: the question is not background bookkeeping, it is
+*whether the spell underneath it resolves*. A table that resolves that
+spell has ANSWERED the question by doing it — for free, against the
+payer, with the ward tax skipped. #951 reproduced it with Diffusion
+Sliver: any third seat passing priority before the payer answered
+killed a warded permanent for nothing. CR 117.4 does not let the top of
+the stack resolve while a required action is outstanding, and CR 608.2
+makes the counter part of the resolution that asked the question.
+
+So the halt is **derived, not declared**. `PendingChoice.GuardsStackItem`
+records what the decline is about — the "that spell" — and
+`Game.ChoicePromptBlocksTable` (now a method, because the answer is a
+question about the board rather than about the prompt) blocks while
+that object is still on the stack. The alternative, a second per-card
+"please block" switch beside `ForceBlocks`, was rejected for the reason
+the six cards above are the evidence for: every one of them was written
+after §6 and every one of them got it wrong the same way. A card says
+what its text says; the engine works out what that means for the
+cursor.
+
+One door, `Game.QueueCounterUnlessPaidForEffect`
+(`server/internal/game/counter_unless_paid.go`), with
+`effects.CounterUnlessPaid` as its card-side primitive. It also absorbs
+the two checks all six cards had been spelling out for themselves: an
+object that has already left the stack raises no prompt at all (there
+is nothing to counter and so nothing to charge for, CR 118.12), and the
+decline re-checks before countering.
+
+**The halt cannot outlive its question, which is what keeps it from
+being a wedge.** The block is a live read, so a guarded spell that
+leaves the stack some other way — countered underneath the trigger,
+fizzled — takes the halt with it and the table plays on without anybody
+answering. The prompt's own chooser is never gated by it; a chooser who
+leaves the game is settled by the departure table's `dropDecline`
+column (CR 800.4f, the 2026-09-18 #961 amendment to
+[ADR 0060](0060-leaving-the-game.md)), which counters the spell and
+frees the table; and `internal/legal` reads the same predicate, so a
+bot seat is offered the answer and answers it.
+
+**What is unchanged.** `pay_unless` is still the one kind classified
+non-blocking, `ChoiceBlocksTable(kind)` is still the answer for a KIND
+and still what `TestEveryChoiceKindIsClassifiedAndEnumerated` checks,
+and Rhystic Study, Smothering Tithe, Esper Sentinel, Mystic Remora and
+Kazuul play exactly as they did — their declines guard nothing. Both
+per-prompt narrowings remain **one-way**: they can only make a prompt
+block, never let one through.
+
+**Noticed and not changed here.** Stasis ("at the beginning of your
+upkeep, sacrifice Stasis unless you pay {U}") and Pact of Negation
+("pay {3}{U}{U} … if you don't, you lose the game") are the #567 shape
+rather than this one — the active player, their own upkeep, a
+consequence that is not a stack object — and neither sets
+`PayUnless.Blocking` today. They are a separate judgement about the
+same section and are left for one. *(That judgement is the amendment
+below, 2026-09-19 / #997, which also retired `PayUnless.Blocking`.)*
+
+**Amendment (2026-09-19, #997): the upkeep shape blocks, and it blocks
+because the ENGINE reads the cursor — `PayUnless.Blocking` and
+`PendingChoice.ForceBlocks` are gone.**
+
+The judgement the amendment above deferred: **yes, it blocks.** "At the
+beginning of your upkeep, pay <cost> or <lose something you cannot get
+back>" — Stasis, Pact of Negation, every cumulative upkeep — is asked
+of the **active player**, during their **own upkeep**, and what hangs
+on the answer is whether a permanent is on the battlefield for the rest
+of the turn, or whether the player is still in the game. That is the
+reasoning the #567 amendment already accepted for CR 702.24; nothing
+about it is specific to cumulative upkeep. CR 117.3 does not pass
+priority on with a required action outstanding, and CR 500.4 does not
+end a step until it has been taken.
+
+**The interesting half is why the fix is not "set the flag on two more
+cards".** #567 shipped exactly that flag. Stasis and Pact of Negation
+were both written afterwards, with the same sentence printed on them,
+and neither author found it — which is #951's argument, arriving a
+second time: a card says what its text says, and the engine works out
+what that means for the cursor. So the halt is **derived** here too.
+
+`PendingChoice.OwedInStep` is a `TurnStep` — the cursor's turn number
+and step, frozen together when the prompt is queued — and
+`Game.ChoicePromptBlocksTable` blocks while the game is still standing
+in that step. It sits beside `GuardsStackItem` and is read through the
+same one predicate, so #794's rule that "does this stop the table" has
+exactly one answer is intact, and `ChoiceBlocksTable(kind)` is still
+the answer for a KIND and still what
+`TestEveryChoiceKindIsClassifiedAndEnumerated` checks. Both narrowings
+are still one-way.
+
+**Both narrowings are now facts about the BOARD, and that is what stops
+either being a wedge.** #951's lifts when the guarded object leaves the
+stack; this one lifts when the cursor leaves the step. Neither can
+outlive the thing it is about, so an undo, a restore or an admin
+walking the cursor by hand frees the table without anybody answering.
+
+One door, `Game.QueueUpkeepPayUnlessForEffect`
+(`server/internal/game/upkeep_pay_unless.go`), with
+`effects.UpkeepPayUnless` as its card-side primitive. Stasis, Pact of
+Negation and `CumulativeUpkeep` go through it. `PayUnless.Blocking`,
+`Game.QueueBlockingPayUnlessForEffect` and `PendingChoice.ForceBlocks`
+are **removed**: with the last declared halt derived, there is no
+card-level "please block" switch left to miss, which was the whole
+lesson of this amendment and of #951's.
+
+The step is read off the cursor rather than hard-coded to the upkeep,
+so a beginning-of-end-step pay-or-else is owed before the end step ends
+for the same reason. The primitive is named for the family every
+printed card of it belongs to.
+
+**What is unchanged.** `pay_unless` is still the one kind classified
+non-blocking, and Rhystic Study, Smothering Tithe, Esper Sentinel,
+Mystic Remora's Rhystic half and Kazuul play exactly as they did — they
+are asked of somebody else, about nothing the cursor cares about. A
+departed payer is still settled by the departure table's `dropDecline`
+column (CR 800.4f), and a bot seat answers the upkeep prompt through
+the ordinary pay-unless policy.
 
 ## Out of scope (explicit deferrals)
 

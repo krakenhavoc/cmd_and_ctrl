@@ -6,6 +6,7 @@ import type {
   CardView,
   LegalTargetsView,
   ModeOptionView,
+  OptionalCostView,
   PendingChoiceView,
   TapCostView,
 } from "./protocol";
@@ -68,10 +69,22 @@ export interface CastChoices {
   // charges one; undefined otherwise, and the server rejects a
   // non-empty list on an offer that charges nothing.
   altCostIDs?: string[];
+  // ADR 0073 (#664): the optional additional costs being paid, as
+  // POSITIONS in the card's `optional_costs`, repeated once per
+  // payment for a multikicker. Undefined and [] are the same thing
+  // to the server: decline them all.
+  optionalCosts?: number[];
   // S22: the untapped permanents tapped to help pay — convoke and
   // waterbend. Undefined and empty are the same thing to the server;
   // tapping nothing is always legal.
   tapIDs?: string[];
+  // CR 107.4c/f (#916): how many of the cost's Phyrexian symbols are
+  // being paid with 2 life each instead of mana. Collected after the
+  // X picker — an {X} cost has to be sized before the rest of it can
+  // be priced — and bounded by `phyrexian_symbols` and the caster's
+  // life total (CR 119.4). Undefined and 0 are the same thing to the
+  // server: pay every symbol with its coloured half.
+  phyrexianLife?: number;
   // ADR 0034: which printed face of a modal DFC is being cast or
   // played. Undefined and 0 are both "the front face", which is
   // every single-faced card. The face is chosen FIRST — before the
@@ -115,7 +128,15 @@ export function applyCastChoices(
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
   if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
     params.alt_cost_ids = choices.altCostIDs;
+  // ADR 0073: omitted when empty, which is the server default and
+  // what every client that predates the kicker toggles sends.
+  if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)
+    params.optional_costs = choices.optionalCosts;
   if (choices.tapIDs !== undefined && choices.tapIDs.length > 0) params.tap_ids = choices.tapIDs;
+  // #916: omitted at 0, which is the server default and what every
+  // client that predates the stepper sends.
+  if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
+    params.phyrexian_life = choices.phyrexianLife;
   // Face 0 is omitted rather than sent explicitly: it is the server
   // default, and `omitempty` on the Go side means an explicit zero
   // and an absent field are the same byte on the wire anyway.
@@ -163,6 +184,11 @@ export interface TargetingState {
     crewIDs: string[];
     xValue?: number;
     counter?: CounterPayment;
+    // #916, CR 107.4f: the Phyrexian symbols this activation pays
+    // with 2 life each. Announced with the rest of the cost, before
+    // the targets, and it rides the one activate_ability the confirm
+    // sends as `phyrexian_life`.
+    phyrexianLife?: number;
   };
   // Human-readable clause for the banner ("target artifact or
   // enchantment"); the server's TargetSpec label.
@@ -178,11 +204,49 @@ export interface TargetingState {
   min: number;
   max: number;
   picked: TargetRef[];
+  // #764 (ADR 0065 §7): an announcement is a WALK over its target
+  // clauses. `steps` is the whole walk — one entry per clause of
+  // each chosen mode occurrence — `step` is the cursor, and `done`
+  // holds the picks already made for earlier steps, each stamped
+  // with the clause it answered. The fields above (`mode`, `legal`,
+  // `label`, `min`, `max`, `picked`) always describe the CURRENT
+  // step, so every existing consumer — the banner, the highlight
+  // helpers, the click handlers — needs no change at all.
+  //
+  // A one-clause non-modal cast is a one-step walk, which is
+  // exactly what it was before.
+  steps: TargetStep[];
+  step: number;
+  done: TargetRef[];
+}
+
+// TargetStep is one clause of an announcement: which mode occurrence
+// and clause slot it answers, its legal set, its printed wording and
+// its count.
+export interface TargetStep {
+  mode: TargetingMode;
+  legal?: { players: Set<string>; cards: Set<string> };
+  label?: string;
+  min: number;
+  max: number;
+  // modeIndex is the index into the announced `modes` list (the
+  // OCCURRENCE, so a repeated mode's two occurrences differ here);
+  // slot is the clause index within that occurrence.
+  modeIndex: number;
+  slot: number;
+  // distinct marks a clause whose picks must differ from every
+  // EARLIER clause's ("a second target permanent you control").
+  distinct: boolean;
 }
 
 export interface TargetRef {
   kind: "player" | "card";
   id: string;
+  // slot / mode name the clause this pick answers. Omitted (0) for a
+  // single-clause non-modal announcement, which is what the server
+  // reads as "the only clause".
+  slot?: number;
+  mode?: number;
 }
 
 export const targeting: Writable<TargetingState | null> = guardedWritable(null, "targeting");
@@ -204,17 +268,118 @@ export function begin(
   alt?: AlternativeCostView,
 ): void {
   const lt = alt ? alt.legal_targets : card.legal_targets;
-  const legal = lt
-    ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
-    : undefined;
-  targeting.set({
-    card,
+  // #764: a card with more than one clause walks them in printed
+  // order. An alternative cost replaces the whole statement, so its
+  // own clause list wins when it has one.
+  const clauses = alt ? alt.clauses : card.clauses;
+  const steps = stepsFor(mode, lt, clauses, 0, choices);
+  targeting.set(openWalk(card, steps, { choices }));
+}
+
+// stepsFor turns one statement — a single `legal_targets` or a
+// multi-entry `clauses` list — into the walk's steps.
+export function stepsFor(
+  mode: TargetingMode,
+  lt: LegalTargetsView | undefined,
+  clauses: LegalTargetsView[] | undefined,
+  modeIndex: number,
+  choices?: CastChoices,
+): TargetStep[] {
+  const list = clauses && clauses.length > 0 ? clauses : lt ? [lt] : [];
+  if (list.length === 0) {
+    return [{ mode, min: 1, max: 1, modeIndex, slot: 0, distinct: false }];
+  }
+  return list.map((c, slot) => ({
     mode,
-    legal,
-    choices,
-    ...countOf(lt, choices),
+    legal: { players: new Set(c.players ?? []), cards: new Set(c.cards ?? []) },
+    label: c.label,
+    ...countOf(c, choices),
+    modeIndex,
+    slot,
+    distinct: c.distinct === true,
+  }));
+}
+
+// openWalk builds the state for the FIRST step of a walk. Extra
+// fields (choices, ability, modes, choiceID …) ride through
+// untouched.
+export function openWalk(
+  card: CardView,
+  steps: TargetStep[],
+  extra: Partial<TargetingState>,
+): TargetingState {
+  const first = steps[0];
+  return {
+    card,
+    mode: first.mode,
+    legal: first.legal,
+    label: first.label,
+    min: first.min,
+    max: first.max,
     picked: [],
-  });
+    steps,
+    step: 0,
+    done: [],
+    ...extra,
+  };
+}
+
+// stamped is the current step's picks with their clause coordinates
+// written on, which is what the wire carries.
+export function stamped(t: TargetingState): TargetRef[] {
+  const cur = t.steps[t.step];
+  if (!cur) return t.picked;
+  return t.picked.map((p) => ({ ...p, mode: cur.modeIndex, slot: cur.slot }));
+}
+
+// allPicks is every pick of the walk so far, in step order.
+export function allPicks(t: TargetingState): TargetRef[] {
+  return [...t.done, ...stamped(t)];
+}
+
+// advance closes the current step and opens the next, or returns
+// null when the walk is finished and the caller should fire. A step
+// whose legal set is empty and whose min is 0 is skipped — there is
+// nothing to ask.
+export function advance(t: TargetingState): TargetingState | null {
+  const done = allPicks(t);
+  let next = t.step + 1;
+  while (next < t.steps.length) {
+    const s = t.steps[next];
+    const n = (s.legal?.players.size ?? 0) + (s.legal?.cards.size ?? 0);
+    if (n === 0 && s.min === 0) {
+      next++;
+      continue;
+    }
+    break;
+  }
+  if (next >= t.steps.length) return null;
+  const s = t.steps[next];
+  return {
+    ...t,
+    mode: s.mode,
+    legal: pruneDistinct(s, done),
+    label: s.label,
+    min: s.min,
+    max: s.max,
+    picked: [],
+    step: next,
+    done,
+  };
+}
+
+// pruneDistinct drops from a step's legal set everything an earlier
+// clause already took, when the clause says its pick must differ.
+function pruneDistinct(
+  s: TargetStep,
+  done: TargetRef[],
+): { players: Set<string>; cards: Set<string> } | undefined {
+  if (!s.legal || !s.distinct || done.length === 0) return s.legal;
+  const taken = new Set(done.map((d) => d.id));
+  return {
+    players: new Set([...s.legal.players].filter((id) => !taken.has(id))),
+    cards: new Set([...s.legal.cards].filter((id) => !taken.has(id))),
+  };
 }
 
 // countOf reads a clause's min / max off the wire; free-form cards
@@ -287,27 +452,30 @@ export function confirm(): void {
 // a modal spell: the legal set and banner clause come from the
 // option, not the card. `modes` is the full chosen set (the targeted
 // option plus any untargeted ones) and rides the cast.
-export function beginForMode(
-  card: CardView,
-  option: ModeOptionView,
-  modes: number[],
-  choices?: CastChoices,
-): void {
-  const mode = (option.target_mode || "any") as TargetingMode;
-  const lt = option.legal_targets;
-  const legal = lt
-    ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) }
-    : undefined;
-  targeting.set({
-    card,
-    mode,
-    legal,
-    choices,
-    modes,
-    label: option.label,
-    ...countOf(lt, choices),
-    picked: [],
+export function beginForModes(card: CardView, modes: number[], choices?: CastChoices): boolean {
+  const steps = modeSteps(card, modes, choices);
+  if (steps.length === 0) return false;
+  targeting.set(openWalk(card, steps, { choices, modes }));
+  return true;
+}
+
+// modeSteps is the walk a modal announcement asks for: every clause
+// of every chosen OCCURRENCE, in the order the modes were chosen
+// (CR 700.2c). A repeated mode (CR 700.2d) contributes its clauses
+// once per occurrence, each with its own modeIndex, which is what
+// gives each occurrence its own targets.
+export function modeSteps(card: CardView, modes: number[], choices?: CastChoices): TargetStep[] {
+  const options = card.modes?.options ?? [];
+  const out: TargetStep[] = [];
+  modes.forEach((optionIndex, occurrence) => {
+    const option = options[optionIndex];
+    if (!option?.legal_targets && !option?.clauses?.length) return;
+    const mode = (option.target_mode || "any") as TargetingMode;
+    for (const s of stepsFor(mode, option.legal_targets, option.clauses, occurrence, choices)) {
+      out.push({ ...s, label: s.label || option.label });
+    }
   });
+  return out;
 }
 
 // isModal reports whether a card needs the mode picker before it
@@ -332,6 +500,52 @@ export function sacrificeCostOptions(card: CardView): string[] | undefined {
   return opts.cards ?? [];
 }
 
+// castSacrificeClause is the sacrifice clause THIS cast is paying
+// (ADR 0073 §4): the card's mandatory one, or — when the card has
+// none — the clause of the first optional cost the announcement
+// claimed. Undefined when the cast owes no sacrifice at all.
+//
+// One function so the modal's options, its count and its label all
+// come from the same clause. The mandatory cost wins because the
+// server walks the flat sacrifice_ids list in that order: mandatory
+// first, then each claimed optional cost by index.
+//
+// NOT a merge of the two. No printed card charges a mandatory
+// sacrifice AND an optional one, the server would need both payments
+// in one flat list to be in plan order, and a picker that silently
+// collected two clauses' worth of permanents under one label would be
+// lying about what it was asking. If such a card ever prints, this is
+// where it gets a second prompt.
+export function castSacrificeClause(
+  card: CardView,
+  choices: CastChoices | undefined,
+): LegalTargetsView | undefined {
+  const mandatory = card.additional_cost?.sacrifice_options;
+  if (mandatory) return mandatory;
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer?.sacrifice_options) return offer.sacrifice_options;
+  }
+  return undefined;
+}
+
+// castSacrificeLabel is the prompt copy for that clause, as printed —
+// "Sacrifice a creature", "Buyback—Sacrifice a land".
+export function castSacrificeLabel(
+  card: CardView | null,
+  choices: CastChoices | undefined,
+): string {
+  if (!card) return "a permanent";
+  if (card.additional_cost?.sacrifice_options) {
+    return card.additional_cost.label ?? "a permanent";
+  }
+  for (const index of choices?.optionalCosts ?? []) {
+    const offer = optionalCostsOf(card)[index];
+    if (offer?.sacrifice_options) return offer.label ?? "a permanent";
+  }
+  return "a permanent";
+}
+
 // tapCostOf returns a card's convoke / waterbend clause, or
 // undefined for the vast majority of cards that offer none (S22).
 export function tapCostOf(card: CardView): TapCostView | undefined {
@@ -352,6 +566,70 @@ export function tapCostLimit(tc: TapCostView, xValue: number | undefined): numbe
 // vast majority that have none (S22).
 export function alternativeCostsOf(card: CardView): AlternativeCostView[] {
   return card.alternative_costs ?? [];
+}
+
+// printedCostClaimable reports whether "its mana cost" is one of the
+// prices this cast may claim out of the zone the card is in (#1012).
+//
+// The server decides this — one list of CR 118.9 prices for the
+// engine, the bot and the view — and the client reads the answer. It
+// used to infer it: a graveyard card with an offer list was assumed
+// to be flashback-only and a hand card was assumed not to be, which
+// is right for the two common cards and wrong for a Gravecrawler
+// under an Underworld Breach, where the printed cost and the granted
+// escape cost are both on the menu.
+export function printedCostClaimable(card: CardView): boolean {
+  return card.alternative_cost_required !== true;
+}
+
+// optionalCostsOf returns the "you may pay an additional cost" offers
+// on a card — kicker, multikicker, buyback — or an empty list for the
+// vast majority that have none (ADR 0073).
+export function optionalCostsOf(card: CardView): OptionalCostView[] {
+  return card.optional_costs ?? [];
+}
+
+// optionalCostMaxTimes is how many times one offer may be paid: 1 for
+// kicker and buyback, the multikicker cap above that. The fallback of
+// 1 is for an offer that predates the field rather than a guess — a
+// repeatable cost always sends its cap.
+export function optionalCostMaxTimes(offer: OptionalCostView): number {
+  const n = offer.max_times ?? 1;
+  return n < 1 ? 1 : n;
+}
+
+// optionalCostSelection turns the picker's per-offer counts into the
+// wire's index list: paying an offer N times is naming its index N
+// times, which is how multikicker announces its count without a
+// second field (ADR 0073 §2).
+//
+// Ascending, so the list the client sends matches the record the
+// server normalises it to — two clients that picked the same costs in
+// different orders produce the same announcement.
+export function optionalCostSelection(counts: Map<number, number>): number[] {
+  const out: number[] = [];
+  for (const index of [...counts.keys()].sort((a, b) => a - b)) {
+    const n = counts.get(index) ?? 0;
+    for (let i = 0; i < n; i++) out.push(index);
+  }
+  return out;
+}
+
+// optionalCostPayOptions returns the permanents that can pay an
+// offer's sacrifice half, or undefined when it charges none — which
+// is every mana kicker. An empty array means the offer cannot be
+// taken right now: a Constant Mists with no land to sacrifice.
+export function optionalCostPayOptions(offer: OptionalCostView): string[] | undefined {
+  if (!offer.sacrifice_options) return undefined;
+  return offer.sacrifice_options.cards ?? [];
+}
+
+// castIsForbidden reports whether the server's own cast gate has
+// already refused this card from the zone it is in (#760). The client
+// greys the card rather than dispatching a cast_spell it knows will
+// come back as an error.
+export function castIsForbidden(card: CardView): boolean {
+  return (card.cant_cast ?? "") !== "";
 }
 
 // alternativeCostByKey finds the offer a cast is paying. Undefined
@@ -448,26 +726,53 @@ export function beginForAbility(
   crewIDs: string[] = [],
   xValue?: number,
   counter?: CounterPayment,
+  modes?: number[],
+  phyrexianLife?: number,
 ): void {
-  const lt = ability.legal_targets;
-  targeting.set({
-    card,
-    mode: (ability.target_mode || "any") as TargetingMode,
-    legal: lt ? { players: new Set(lt.players ?? []), cards: new Set(lt.cards ?? []) } : undefined,
-    // CR 602.2b: X was announced before the targets were chosen and
-    // cannot change now — it rides through to the one
-    // activate_ability the confirm sends.
-    ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter },
-    // The count comes off the wire like every other clause's. This
-    // used to be a hard-coded 1 / 1 with a note explaining that
-    // ActivatedAbilityView carried an inline `{players?, cards?}`
-    // with no min / max, and naming the fix: give it a
-    // LegalTargetsView and emit the count server-side. #334 needed
-    // exactly that — Teferi's "up to one target" is Min 0 — so the
-    // note is now the code.
-    ...countOf(lt),
-    picked: [],
+  // #764: a modal activated ability announces its modes WITH its
+  // targets (CR 602.2b), so the walk is built out of the chosen
+  // bullets' clauses exactly as a modal cast's is. A non-modal
+  // ability is the same walk over its own clause list — one step for
+  // the overwhelming majority, which is what it always was.
+  //
+  // The count comes off the wire like every other clause's. This used
+  // to be a hard-coded 1 / 1 with a note naming the fix — give the
+  // view a LegalTargetsView and emit the count server-side — which
+  // #334 needed, because Teferi's "up to one target" is Min 0.
+  const steps =
+    modes && modes.length > 0
+      ? abilityModeSteps(ability, modes)
+      : stepsFor(
+          (ability.target_mode || "any") as TargetingMode,
+          ability.legal_targets,
+          ability.clauses,
+          0,
+        );
+  targeting.set(
+    openWalk(card, steps, {
+      // CR 602.2b: X was announced before the targets were chosen and
+      // cannot change now — it rides through to the one
+      // activate_ability the confirm sends.
+      ability: { index: ability.index, sacrificeIDs, crewIDs, xValue, counter, phyrexianLife },
+      modes,
+    }),
+  );
+}
+
+// abilityModeSteps is modeSteps for an activated ability's own
+// ModeSpecView.
+export function abilityModeSteps(ability: ActivatedAbilityView, modes: number[]): TargetStep[] {
+  const options = ability.modes?.options ?? [];
+  const out: TargetStep[] = [];
+  modes.forEach((optionIndex, occurrence) => {
+    const option = options[optionIndex];
+    if (!option?.legal_targets && !option?.clauses?.length) return;
+    const mode = (option.target_mode || "any") as TargetingMode;
+    for (const st of stepsFor(mode, option.legal_targets, option.clauses, occurrence)) {
+      out.push({ ...st, label: st.label || option.label });
+    }
   });
+  return out;
 }
 
 // isLegalCardTarget / isLegalPlayerTarget answer "can I click this
@@ -497,17 +802,17 @@ export function legalTargetCount(t: TargetingState): number {
 // legal set comes from the choice itself.
 export function beginChoice(choice: PendingChoiceView, card: CardView): void {
   const pt = choice.pick_target ?? {};
-  targeting.set({
-    card,
-    mode: "any",
-    legal: { players: new Set(pt.players ?? []), cards: new Set(pt.cards ?? []) },
-    choiceID: choice.id,
-    label: choice.reason,
-    doubledBy: choice.doubled_by,
-    doubledByName: choice.doubled_by_name,
-    ...countOf(pt),
-    picked: [],
-  });
+  // A pick_target prompt is always ONE clause: the server walks a
+  // multi-clause trigger one prompt at a time (#764), so the client
+  // answers each prompt on its own and never holds a walk here.
+  targeting.set(
+    openWalk(card, stepsFor("any", pt, undefined, 0), {
+      choiceID: choice.id,
+      label: choice.reason,
+      doubledBy: choice.doubled_by,
+      doubledByName: choice.doubled_by_name,
+    }),
+  );
 }
 
 // cancel clears the prompt without firing cast_spell. Wired to the

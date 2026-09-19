@@ -369,12 +369,18 @@ func TestB19RecklessImpulseGrantsPlayUntilTheEndOfYourNextTurn(t *testing.T) {
 			if !g.Exile.Contains(forest) || !g.Exile.Contains(shock) || !me.Library.Contains(deep) {
 				t.Fatal("the top two cards are exiled")
 			}
-			round := g.Turn.Number
 			for _, id := range []uuid.UUID{forest, shock} {
 				perm := exiledPermission(g, id)
-				if perm.Player != me.ID || perm.CastOnly || !perm.Active(me.ID, round) {
+				if perm.Player != me.ID || perm.CastOnly || !permissionLive(g, perm, me.ID) {
 					t.Errorf("%+v: the caster may PLAY it now", perm)
 				}
+			}
+			// #945: the duration IS the clause, so the card schedules
+			// nothing. Before the swap this queued a CR 603.7 delayed
+			// trigger in the caster's next upkeep whose only job was
+			// to re-stamp the window.
+			if len(g.DelayedTriggers) != 0 {
+				t.Errorf("%d delayed triggers scheduled, want none", len(g.DelayedTriggers))
 			}
 			// The land can be played this turn.
 			if err := g.CastSpell(me.ID, forest, game.CastSpellParams{FromZone: "exile"}); err != nil {
@@ -382,33 +388,28 @@ func TestB19RecklessImpulseGrantsPlayUntilTheEndOfYourNextTurn(t *testing.T) {
 			}
 			// Through every opponent's turn the grant is still live.
 			advanceToMainOf(t, g, (tc.seat+1)%4)
-			if !exiledPermission(g, shock).Active(me.ID, g.Turn.Number) {
+			if !permissionLive(g, exiledPermission(g, shock), me.ID) {
 				t.Fatal("the grant survives the caster's own cleanup")
 			}
 			advanceToMainOf(t, g, (tc.seat+3)%4)
-			if !exiledPermission(g, shock).Active(me.ID, g.Turn.Number) {
+			if !permissionLive(g, exiledPermission(g, shock), me.ID) {
 				t.Fatal("the grant survives seat 0's cleanup of the next round too")
 			}
-			// Your next upkeep: the delayed trigger pins the grant to
-			// this turn.
-			advanceToUpkeepOf(t, g, tc.seat)
-			if stackFullyEmpty(g) {
-				t.Fatal("the delayed trigger fires at the beginning of your next upkeep")
-			}
-			if exiledPermission(g, shock).UntilTurn == g.Turn.Number {
-				t.Fatal("the trigger uses the stack: nothing is re-stamped before it resolves")
-			}
-			passPriorityAroundTable(t, g)
+			// Your next turn, which the clause reaches the END of.
+			// #945: one duration says so — ADR 0063's seat-turn
+			// counter — where this used to need a backstop window and
+			// a delayed trigger in your upkeep to pull it back.
+			advanceToMainOf(t, g, tc.seat)
 			perm := exiledPermission(g, shock)
-			if perm.UntilTurn != g.Turn.Number || !perm.Active(me.ID, g.Turn.Number) {
-				t.Errorf("after the upkeep trigger the grant is %+v, want live through this turn only", perm)
+			if perm.Duration.Kind != game.UntilEndOfTurn || !permissionLive(g, perm, me.ID) {
+				t.Errorf("on your next turn the grant is %+v, want live", perm)
 			}
 			if !g.Battlefield.Contains(forest) {
-				t.Error("the land played last turn is untouched by the re-stamp")
+				t.Error("the land played last turn is untouched")
 			}
 			// Still castable at your end step; gone on the next player's turn.
 			advanceToEndStepOf(t, g, tc.seat)
-			if !exiledPermission(g, shock).Active(me.ID, g.Turn.Number) {
+			if !permissionLive(g, exiledPermission(g, shock), me.ID) {
 				t.Error("the end of your next turn is still your next turn")
 			}
 			advanceToMainOf(t, g, (tc.seat+1)%4)
@@ -532,8 +533,11 @@ func TestB19BirthingPodChainsUpOneManaValue(t *testing.T) {
 	if wurm == uuid.Nil || b16Tapped(t, g, wurm) {
 		t.Error("the pick enters the battlefield untapped")
 	}
-	if spec.Completeness != CompletenessCaveats {
-		t.Error("the Phyrexian mana gap must be declared")
+	// #917 / #916 closed both halves of the Phyrexian gap this card
+	// declared: the activation announces the life payment and the
+	// board offers it, so nothing about {G/P} is simplified any more.
+	if spec.Completeness != CompletenessFull {
+		t.Error("the Phyrexian mana gap is closed; Birthing Pod is complete")
 	}
 }
 

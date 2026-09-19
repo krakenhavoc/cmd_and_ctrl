@@ -28,6 +28,16 @@ import (
 // It is deliberately a test and not a linter: it runs on every CI
 // build, it names the exact field, and it tells you which file to
 // edit.
+//
+// WHAT THIS FILE DOES NOT DO, and #1005 is the report that it was read
+// as doing: it walks field NAMES and never reads a value. A row saying
+// `carried` is a promise, and `dropped` is the only disposition this
+// file holds to anything — TestDroppedFieldsAreAllCensused makes a
+// dropped field name the census counter that accounts for it.
+// snapshot_carried_test.go is the other half: it writes a value into
+// every `carried` field, runs the real capture → restore, and reads it
+// back off the restored game. Neither test is enough alone — one knows
+// which fields exist, the other knows what happens to them.
 
 // disposition records what the snapshot does with one field.
 type disposition int
@@ -75,7 +85,7 @@ var gameFields = plan(
 	"MulligansOpen", carried, "",
 	"Monarch", carried, "",
 	"Initiative", carried, "",
-	"UndoLimit", carried, "",
+	"Settings", carried, "",
 	"StartingSeat", carried, "",
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",
@@ -115,18 +125,28 @@ var gameFields = plan(
 	// trigger or swallow it.
 	"eventBatch", carried, "",
 	"oncePerBatchFired", carried, "",
-	// #830 block-declaration lock-in. Carried for the same reason and
-	// in the same pair-wise way: the map of announced pairings names
-	// what the "became blocked" marks were recorded for, so a restore
-	// that kept one and not the other would either re-announce an
-	// attacker that is already blocked or swallow a real block.
+	// #830 block-declaration lock-in, and #715's blocked state.
+	// Carried for the same reason and in the same pair-wise way: the
+	// map of announced pairings names what the blocked marks were
+	// recorded for, so a restore that kept one and not the other
+	// would either re-announce an attacker that is already blocked or
+	// swallow a real block. blockedAttackers is carried for one more
+	// reason — a restore that dropped it would hand a blocked
+	// attacker's combat damage to the defending player (CR 509.1h).
 	"announcedBlocks", carried, "",
-	"announcedBecameBlocked", carried, "",
+	"blockedAttackers", carried, "GameSnapshot.BlockedAttackers",
 	// #859 attack-declaration lock-in. Carried for the reason the two
 	// above are: a restore that dropped it would announce an attacker
 	// that has already attacked, and one that invented it would
 	// swallow a declaration the battlefield is still carrying.
 	"announcedAttacks", carried, "",
+	// #716 combat damage step participation. Carried for the reason
+	// the three above are, and for one more: the window between the
+	// two combat damage steps is a priority window, so an undo or a
+	// deploy restore can land inside it. A restore that dropped the
+	// record would let every first-striker deal its damage again in
+	// the regular step.
+	"firstStrikeStepParticipants", carried, "",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	// ADR 0054: the key and the per-turn stream counters ARE the
@@ -144,11 +164,14 @@ var gameFields = plan(
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
 	"mu", rebuilt, "a fresh receiver owns its own lock, exactly as Clone does",
 
-	"TurnScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.TurnScopedStatics",
+	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
+	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice or discard instruction paused on its prompts, and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
+	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
+	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 )
@@ -186,9 +209,35 @@ var cardFields = plan(
 	"BlockingTarget", carried, "",
 	"GoadedBy", carried, "",
 	"DamageMarked", carried, "",
+	// #667 regeneration shields. Carried for the reason DamageMarked
+	// is: it is per-turn state on one permanent that nothing can
+	// re-derive, and a restore that dropped it would let a creature
+	// the table has already paid to protect die to the next Doom
+	// Blade. Not a counter, so it is its own field rather than a
+	// Counters entry (see Card.RegenerationShields).
+	"RegenerationShields", carried, "",
 	"FaceDown", carried, "",
+	// ADR 0069: carried — the kind is the rule. A restore that
+	// dropped it would bring back a face-down object with no viewers
+	// row, no CR 708.2 answer and no catalog suppression. restoreCard
+	// reads an ABSENT kind on a face-down card as FaceDownExiled, the
+	// only face-down object that could exist before the field did.
+	"FaceDownKind", carried, "",
 	"KnownBy", carried, "",
 	"EnteredBattlefieldAt", carried, "",
+	// #936 / CR 400.7: the object's serial number, and the epoch half
+	// of every per-object tally key. Carried, not rebuilt — nothing
+	// can re-derive how many times a card has changed zones, and a
+	// restore that zeroed it would silently merge the returning
+	// object's "only once each turn" counts with the ones the object
+	// before it wrote. Absent in a file written before the field
+	// existed, which decodes as zero: the same answer a card that has
+	// never moved gives. It is also the CR 400.7 object identity a
+	// granted cast permission names (ADR 0066), so a restore that reset
+	// it would revive every permission ever granted against the card —
+	// the one direction this field must not fail in. Listed once: the
+	// row was written twice, and a map keeps the last one.
+	"ObjectEpoch", carried, "",
 	"SummonedThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	// #683: carried — a restore that dropped it would let a 0/0 that
@@ -200,12 +249,6 @@ var cardFields = plan(
 	// from the printing when a file written before #683 has no key
 	// (snapshot_backfill.go); every file this binary writes has it.
 	"VariableToughness", carried, "",
-	// Embedded BY VALUE in CardSnapshot rather than mirrored, so
-	// every field it grows — S29's NotBeforeTurn, S32's Face — is
-	// carried automatically and none of them appear in this plan.
-	// That shortcut is only safe while the type stays pure data,
-	// which TestEmbeddedDomainTypesStayPureData now proves.
-	"ExilePlay", carried, "",
 	// S24 attachments (ADR 0036). Carried, not rebuilt: which sword
 	// is on which creature is not derivable from anything else, and
 	// a restore that dropped it would silently un-equip the board.
@@ -221,12 +264,39 @@ var cardFields = plan(
 	// it is printed as. Pure data by construction — see copy.go on
 	// why PrintedValues carries no closures.
 	"PrintedSelf", carried, "",
+	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
+	// clause granted. Carried, and carriable at all, because it holds
+	// catalog KEYS rather than closures — the abilities themselves
+	// are static catalog data the restoring binary already has. A
+	// restore that dropped it would leave a Phantasmal Image copy
+	// with no sacrifice trigger and no Illusion type.
+	"GrantedAbilities", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
 	// #742: the colour named as the permanent entered. A player's
 	// choice, so nothing can rebuild it.
 	"ChosenColor", carried, "",
+	// #980, CR 614.12 / CR 702.16k: the player named as the permanent
+	// entered. A player's choice, so nothing can rebuild it — and it
+	// is the whole of what True-Name Nemesis's protection reads.
+	"ChosenPlayer", carried, "",
+	// #653 / #664, CR 400.7d: what the spell that became this
+	// permanent was cast for — the alternative cost and the optional
+	// additional costs, one record. Carried, and it is the field here
+	// with the least room to be anything else: it was copied off a
+	// StackItem that no longer exists, so a restore that dropped it
+	// could not rebuild it from any other part of the game. A Phlage
+	// that escaped would come back hard-cast and sacrifice itself; a
+	// kicked Gatekeeper of Malakir would come back unkicked.
+	"Provenance", carried, "",
+	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
+	// designations. Carried, and the reason is sharper than for the
+	// two above — both zero values are LEGAL states ("level 1",
+	// "unsolved"), so a restore that dropped them would come back
+	// wrong and say nothing about it.
+	"ClassLevel", carried, "",
+	"Solved", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
 	// source: a restore that lost StartingDefense would re-stamp
 	// nothing (the stamp is idempotent and only fires on entry), and
@@ -251,8 +321,18 @@ var playerFields = plan(
 	"Hand", carried, "",
 	"Graveyard", carried, "",
 	"Command", carried, "",
+	// #623 / CR 114: the other half of the command zone. Carried, and
+	// it has to be — which emblems a player has is not derivable from
+	// anything else on the board, and a restore that dropped them
+	// would quietly un-ultimate a planeswalker.
+	"Emblems", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
+	// The seat-turn counter "until your next turn" durations end on
+	// (ADR 0063). Carried: a restore that dropped it would restart
+	// every such effect's clock, and a departed seat's skipped turns
+	// are not derivable from the board.
+	"TurnsBegun", carried, "",
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulligansTaken", carried, "",
@@ -274,6 +354,28 @@ var playerFields = plan(
 	"MaxHandSize", carried, "",
 	"LandDropsPerTurn", carried, "",
 	"ManaPool", carried, "",
+	// ADR 0066 granted cast and play permissions. Carried, not
+	// rebuilt: who may cast what is not derivable from the board, and
+	// a restore that dropped them would silently revoke a cascade hit
+	// or a Snapcaster'd card nobody had cast yet. STANDING permissions
+	// (Underworld Breach, Bolas's Citadel) are not in this slice at
+	// all — they are re-derived from the battlefield on every query.
+	"CastPermissions", carried, "",
+)
+
+// scopedStaticFields classifies game.ScopedStatic — the floating
+// continuous-effect registry's entry type. It was not classified
+// before S38, so a field added to it used to vanish across a restore
+// with nothing complaining. The whole entry is dropped and censused;
+// `Duration` is the half of it that is plain data and could be
+// carried the day #515 makes the ability re-derivable, which is why
+// it is classified `carried` rather than sharing the closure's fate.
+var scopedStaticFields = plan(
+	"Ability", dropped, "two closures; counted by ContinuationCensus.ScopedStatics",
+	"Source", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Timestamp", dropped, "rides with the ability; counted by ContinuationCensus.ScopedStatics",
+	"Duration", carried, "plain data (duration.go); carried by Clone and ready for #515",
+	"Label", dropped, "reaches the operator through ContinuationCensus.Labels",
 )
 
 var zoneFields = plan(
@@ -288,6 +390,14 @@ var stackItemFields = plan(
 	"Controller", carried, "",
 	"Owner", carried, "",
 	"SourceCardID", carried, "",
+	// CR 400.7 (#812): which OBJECT an ability's source was at
+	// announce, so "attach this permanent" can refuse a source that
+	// left — or that left and came back as a new object. Carried,
+	// and it has to be: the epoch is a reading of a card that has
+	// since moved, so nothing in the restored board could recompute
+	// it, and a restore that lost it would let a bounced-and-replayed
+	// Equipment be equipped by the old ability.
+	"SourceEpoch", carried, "",
 	"Label", carried, "",
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
@@ -304,6 +414,16 @@ var stackItemFields = plan(
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
+	// CR 702.143c (#658). Carried: a restore that lost it would make
+	// "if this spell was foretold" false for a spell already on the
+	// stack, and the fact cannot be recomputed — the card turned face
+	// up as it was cast, so the object it was read from is gone.
+	"Foretold", carried, "",
+	// CR 702.34a / CR 400.7g (ADR 0066). Carried for the reason
+	// IsCopy is: a restore that lost it would route a flashed-back
+	// spell to a graveyard instead of exile, and a card Snapcaster
+	// gave flashback to could then be flashed back again forever.
+	"AltCostExiles", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -312,8 +432,23 @@ var stackItemFields = plan(
 	"IsCopy", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
+	// #789 / #761: what the announcement paid — the counters
+	// removed, the life, and the mana tokens that left the pool.
+	// Carried, and it has to be: the counters are off the board and
+	// the Treasure that made the mana may be in a graveyard by the
+	// time the item resolves, so a restore that lost the record
+	// would resolve Painful Truths for zero cards and a "for each
+	// counter removed this way" ability for nothing.
+	"Paid", carried, "",
 
 	"targetSpec", rebuilt, "a spell's spec is re-derived from the catalog by oracle ID; an ability's is censused",
+	// #764: the ModeSpec an item was announced under, so the CR
+	// 608.2b re-check can find the clause of the mode occurrence a
+	// TargetRef names. Same disposition as targetSpec and for the
+	// same reason: catalog data, keyed by oracle ID for a spell and
+	// unreachable for an ability, which is why an ability carrying
+	// one is counted in ContinuationCensus.StackTargetSpecs.
+	"modeSpec", rebuilt, "a spell's mode spec is re-derived from the catalog by oracle ID; an ability's is censused",
 	"Effect", dropped, "a closure; counted in ContinuationCensus.StackEffects (spells need none — they dispatch via EffectResolver)",
 )
 
@@ -326,8 +461,14 @@ var delayedTriggerFields = plan(
 	"ControllerTurnOnly", carried, "",
 	"CreatedTurn", carried, "",
 	"Cards", carried, "",
+	// #663's event condition. The data half comes back so a restored
+	// game still knows WHAT was owed and until when.
+	"On", carried, "",
+	"Duration", carried, "",
 
 	"Effect", dropped, "a closure; counted in ContinuationCensus.DelayedTriggerEffects",
+	"AppliesTo", dropped, "a closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
+	"Optional", dropped, "a prompt declaration holding a Chooser closure; its trigger is counted once in ContinuationCensus.DelayedTriggerEffects through Effect beside it",
 )
 
 var pendingChoiceFields = plan(
@@ -343,6 +484,7 @@ var pendingChoiceFields = plan(
 	"CoinMaxUsefulWins", carried, "",
 	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
+	"ColorPurpose", carried, "",
 	// Added by the mana pipeline (#352/#356). A restricted mana token
 	// is game state that survives undo — clone.go deep-copies it at
 	// clone.go:135 — so the snapshot must carry it too, or a restored
@@ -351,6 +493,11 @@ var pendingChoiceFields = plan(
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
+	// #763: whether answering this pick is "a permanent was tapped for
+	// mana" (CR 106.12a), which is what fires the triggered mana
+	// abilities. A restored Birds pick that lost it would put the mana
+	// in the pool and skip Wild Growth's {G}.
+	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"NoLegalTarget", carried, "",
@@ -358,11 +505,31 @@ var pendingChoiceFields = plan(
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
 	"PickTargetMax", carried, "",
+	// #764 mode_pick. Carried for the same reason ChooseCards is:
+	// the offered options ARE the prompt, and a restored game that
+	// forgot them would put a question with no answers in front of a
+	// seat. The bounds travel with them because the answer is
+	// validated against them.
+	"ModeOptionIndex", carried, "",
+	"ModeOptionLabel", carried, "",
+	"ModeMin", carried, "",
+	"ModeMax", carried, "",
+	"ModeRepeatable", carried, "",
 	"SacrificeOptions", carried, "",
 	"CopyOptions", carried, "",
 	"ScryCards", carried, "",
 	"TriggerOrderIDs", carried, "",
 	"PayCost", carried, "",
+	// #997: the step a pay-or-else prompt has to be answered in
+	// (Stasis, Pact of Negation, cumulative upkeep). Carried so a
+	// restored game gates exactly as the live one did; clone.go gets
+	// it from the value copy every PendingChoice starts from.
+	"OwedInStep", carried, "",
+	// #951: the object on the stack a counter-unless-pays prompt is
+	// about. Carried for the same reason — the gate re-reads it, so a
+	// restored game that forgot it would let the guarded spell resolve
+	// for free, which is the bug the field exists to stop.
+	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
 	// S28 cascade: which card the "you may cast it without paying
@@ -382,6 +549,11 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"ChooseMax", carried, "",
+	// #568's option pick: the branches of "choose one of the
+	// following", carried for the same reason ChooseCards is — the
+	// options ARE the prompt, and a restored game that forgot them
+	// would put a question with no answers in front of a seat.
+	"PickOptions", carried, "",
 	// #804's CR 726 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
@@ -393,35 +565,51 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copySpellResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseColorResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019) or a discard (#1027); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
 )
+
+// driftPlans is every domain type the snapshot touches, paired with the
+// plan that classifies its fields.
+//
+// ONE list, because three tests walk it: the drift guard below, the
+// dropped-field census check under it, and the `carried` enforcement in
+// snapshot_carried_test.go. A domain type added to one list and not the
+// others is exactly the drift this file exists to stop — and the third
+// of those tests fails until a new type has a probe, so a plan cannot
+// arrive with nothing checking its promises.
+var driftPlans = []struct {
+	sample any
+	plan   fieldPlan
+}{
+	{Game{}, gameFields},
+	{Card{}, cardFields},
+	{Player{}, playerFields},
+	{Zone{}, zoneFields},
+	{StackItem{}, stackItemFields},
+	{DelayedTrigger{}, delayedTriggerFields},
+	{PendingChoice{}, pendingChoiceFields},
+	{ScopedStatic{}, scopedStaticFields},
+}
+
+// driftPlanName is the type name a plan is keyed and reported under.
+func driftPlanName(sample any) string { return reflect.TypeOf(sample).Name() }
 
 // TestSnapshotCoversEveryDomainField is the drift guard.
 func TestSnapshotCoversEveryDomainField(t *testing.T) {
-	cases := []struct {
-		sample any
-		plan   fieldPlan
-	}{
-		{Game{}, gameFields},
-		{Card{}, cardFields},
-		{Player{}, playerFields},
-		{Zone{}, zoneFields},
-		{StackItem{}, stackItemFields},
-		{DelayedTrigger{}, delayedTriggerFields},
-		{PendingChoice{}, pendingChoiceFields},
-	}
-
-	for _, tc := range cases {
+	for _, tc := range driftPlans {
 		rt := reflect.TypeOf(tc.sample)
 		t.Run(rt.Name(), func(t *testing.T) {
 			live := map[string]bool{}
@@ -467,14 +655,9 @@ problem.`, rt.Name(), name, strings.ToLower(rt.Name()[:1])+rt.Name()[1:])
 // game state. Without this the `dropped` bucket would be a place to
 // quietly lose things.
 func TestDroppedFieldsAreAllCensused(t *testing.T) {
-	all := map[string]fieldPlan{
-		"Game":           gameFields,
-		"Card":           cardFields,
-		"Player":         playerFields,
-		"Zone":           zoneFields,
-		"StackItem":      stackItemFields,
-		"DelayedTrigger": delayedTriggerFields,
-		"PendingChoice":  pendingChoiceFields,
+	all := map[string]fieldPlan{}
+	for _, tc := range driftPlans {
+		all[driftPlanName(tc.sample)] = tc.plan
 	}
 	censusFields := map[string]bool{}
 	ct := reflect.TypeOf(ContinuationCensus{})
@@ -531,13 +714,16 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		// value "" is right for a file written before them, so no
 		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
-		// Card.ExilePlay is one of these: CardSnapshot holds an
-		// ExilePlayPermission by value, so the type's fields never
-		// reach cardFields and a func or an unexported field added to
-		// it would vanish across a restart with nothing complaining.
-		// Listed from S32, when the permission started carrying a
-		// face and stopped being a type nobody ever extends.
-		ExilePlayPermission{},
+		// Player.CastPermissions is one of these: PlayerSnapshot holds
+		// []CastPermission by value, so the type's fields never reach
+		// playerFields and a func or an unexported field added to it
+		// would vanish across a restart with nothing complaining.
+		// Listed from S32, when the permission started carrying a face
+		// and stopped being a type nobody ever extends; ADR 0066 made
+		// the guard load-bearing, because the whole reason a granted
+		// permission is a struct of flags rather than a predicate is
+		// that it has to survive this check.
+		CastPermission{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

@@ -24,17 +24,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     unattaches under CR 704.5n and every "enchant creature" Aura
 //     on it goes to the graveyard under CR 704.5m, both as
 //     state-based actions, in the same settling. An enchanted
-//     Aura or Equipment should itself become unattached under
-//     CR 704.5p; that rule isn't implemented (#675).
+//     Aura or Equipment becomes unattached itself under CR 704.5p,
+//     which is why a Song'd Control Magic hands the creature back.
 //   - layer 5 — colourless. Not cosmetic in Commander: it takes a
 //     commander out of range of a colour-restricted answer, and it
 //     changes what the permanent contributes to devotion.
-//   - layer 6 — the ability loss, built as a full LoseAllAbilities.
-//     That is what stops a Song'd Sol Ring making mana and a Song'd
-//     Saga advancing. The rules put this loss in layer 4, as part of
-//     the type change, and limit it to the permanent's own rules
-//     text, so abilities other effects granted earlier should
-//     survive; this wipes them (#669).
+//   - layer 4 again — the ability loss, which is part of the SAME
+//     clause and not a second sentence (SetsBasicLandType). That is
+//     what stops a Song'd Sol Ring making mana and a Song'd Saga
+//     advancing, and putting it in layer 4 rather than layer 6 is
+//     what makes CR 305.7's last sentence true: a grant that lands
+//     in layer 6 is applied after this and survives it, whenever it
+//     was made. Boros Charm's indestructible on a Sol Ring the Song
+//     later enchants is the case (#669).
 //
 // The {G} it taps for is deliberately NOT declared here. It comes
 // from the Forest subtype, through game.ManaAbilitiesForCard's
@@ -53,41 +55,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not abilities. The loyalty state-based action does not kill it
 // either, because it is not a planeswalker while the Song is on it.
 //
-// DECLARED GAPS. Neither is weaker than printed: both leave the
-// enchanted permanent with less than the rules give it.
-//
-//   - CR 305.7, STRONGER than printed. The Song removes only the
-//     abilities from the permanent's own rules text; Song's
-//     2014-11-07 ruling says the permanent "will still have any
-//     abilities it gained from other effects." LoseAllAbilities is a
-//     full layer-6 wipe, so an ability another effect granted BEFORE
-//     the Song attached (Boros Charm's indestructible) is removed
-//     too, and a wrath then destroys a Forest the printed card would
-//     leave alive. A grant newer than the Song survives, by timestamp.
-//   - CR 613.8, and the enchanted permanent again ends up with less:
-//     Urborg, Tomb of Yawgmoth's "each land" depends on the land type
-//     this writes. The layer engine orders layer 4 by timestamp only,
-//     so with an Urborg that entered BEFORE the Song attached, the
-//     enchanted permanent is a Forest and not also a Swamp, and it
-//     loses the {B} mana ability Urborg should give it.
-//
-// Both are pinned, skipped, in layer_dependency_pairs_test.go and go
-// with the CR 613.8 dependency work, which also moves the CR 305.7
-// removal into layer 4.
+// Urborg, Tomb of Yawgmoth's "each land" depends on the land type
+// this writes (CR 613.8a), so the enchanted permanent is a Forest
+// Swamp that taps for {B} as well as {G} whichever of the two arrived
+// first. The layer engine resolves that dependency since ADR 0067;
+// both entry orders are pinned in layer_dependency_pairs_test.go.
 func init() {
 	Register(Spec{
 		OracleID:     "7c3944fa-7c86-4979-85a9-86196aa94594",
 		Name:         "Song of the Dryads",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The enchanted permanent also loses abilities other effects gave it before Song of the Dryads was attached (for example indestructible from Boros Charm); the printed card only removes its own abilities.",
-			"If Urborg, Tomb of Yawgmoth was on the battlefield before Song of the Dryads was attached, the enchanted permanent isn't also a Swamp and doesn't tap for {B}.",
-		},
-		Targets: EnchantPermanent(),
+		Completeness: CompletenessFull,
+		Targets:      EnchantPermanent(),
 		Static: []game.StaticAbility{
-			SetAttachedTypes([]string{"Land"}, []string{"Forest"}),
+			SetsBasicLandType(AttachedToSource, []string{"Land"}, []string{"Forest"}),
 			SetAttachedColors(),
-			LoseAllAbilities(),
 		},
 	})
 }

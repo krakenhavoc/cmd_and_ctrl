@@ -18,31 +18,98 @@ var defs = map[string]*game.CardDef{}
 // lookupDef is the game.CatalogLookup implementation.
 func lookupDef(key string) *game.CardDef { return defs[key] }
 
+// activatedShapes projects declared activated abilities into the
+// engine's shapes. Shared by buildDef and by buildGrantDef, because
+// a CR 707.9a granted activated ability is declared exactly as a
+// card's own is (ability_grant.go). Nil in, nil out.
+func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.ActivatedAbilityShape, len(in))
+	for i, a := range in {
+		out[i] = game.ActivatedAbilityShape{
+			Label:        a.Label,
+			Cost:         a.Cost,
+			Targets:      a.Targets,
+			Modes:        a.Modes,
+			SorcerySpeed: a.SorcerySpeed,
+			Zones:        a.Zones,
+			Cycling:      a.Cycling,
+			Condition:    a.Condition,
+			ActiveWhen:   a.ActiveWhen,
+			Effect:       a.Effect,
+		}
+	}
+	return out
+}
+
 // buildDef projects one Spec into the shape the engine reads.
 func buildDef(spec Spec) *game.CardDef {
 	d := &game.CardDef{
-		StartingLoyalty:       spec.StartingLoyalty,
-		TargetMode:            spec.TargetMode,
-		Targets:               spec.Targets,
-		Modes:                 spec.Modes,
-		Replacements:          spec.Replacements,
-		PrintedKeywords:       spec.PrintedKeywords,
-		Triggered:             spec.Triggered,
-		TriggerDoublers:       spec.TriggerDoublers,
-		AdditionalCost:        spec.AdditionalCost,
-		AlternativeCosts:      spec.AlternativeCosts,
-		TapCost:               spec.TapCost,
-		CostModifiers:         spec.CostModifiers,
-		SelfCostModifiers:     spec.SelfCostModifiers,
-		CastableZones:         spec.CastableZones,
-		UntapStep:             spec.UntapStep,
-		UntapStepRestrictions: spec.UntapStepRestrictions,
-		CantBeCountered:       spec.CantBeCountered,
-		NoMaxHandSize:         spec.NoMaxHandSize,
-		AdditionalLandPlays:   spec.AdditionalLandPlays,
+		StartingLoyalty:            spec.StartingLoyalty,
+		TargetMode:                 spec.TargetMode,
+		Targets:                    spec.Targets,
+		Modes:                      spec.Modes,
+		Replacements:               spec.Replacements,
+		EntersWithCountersFromCast: spec.EntersWithCountersFromCast,
+		PrintedKeywords:            spec.PrintedKeywords,
+		Triggered:                  spec.Triggered,
+		ManaTriggers:               spec.ManaTriggers,
+		TriggerDoublers:            spec.TriggerDoublers,
+		AdditionalCost:             spec.AdditionalCost,
+		OptionalCosts:              spec.OptionalCosts,
+		AlternativeCosts:           spec.AlternativeCosts,
+		TapCost:                    spec.TapCost,
+		CostModifiers:              spec.CostModifiers,
+		SelfCostModifiers:          spec.SelfCostModifiers,
+		CastableZones:              spec.CastableZones,
+		SpecialActions:             spec.SpecialActions,
+		UntapStep:                  spec.UntapStep,
+		UntapStepRestrictions:      spec.UntapStepRestrictions,
+		UntapCaps:                  spec.UntapCaps,
+		UntapOptOuts:               spec.UntapOptOuts,
+		CantBeCountered:            spec.CantBeCountered,
+		NoMaxHandSize:              spec.NoMaxHandSize,
+		WantsDistinctColors:        spec.WantsDistinctColors,
+		AdditionalLandPlays:        spec.AdditionalLandPlays,
+		XMatters:                   spec.XMatters,
+		CastPermissions:            standingCastPermissions(spec.CastPermissions),
+		LibraryTopVisible:          spec.LibraryTopVisible,
+		CastCondition:              spec.CastCondition,
+		CastConditionLabel:         spec.CastConditionLabel,
+		CastRestrictions:           spec.CastRestrictions,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
+	}
+	// #659 / CR 702.62b: suspend's two triggered abilities are the
+	// KEYWORD's, not the card's. Grown here from the declaration so
+	// three card files cannot spell them three ways and the fourth
+	// cannot forget one, exactly as the Cycling constructor stamps
+	// its own zone and discard cost.
+	//
+	// #990 made it two: the upkeep countdown and "when the last time
+	// counter is removed". They are separate abilities in print, they
+	// go on the stack at different moments and either can be
+	// countered without the other — see game/suspend.go's header.
+	for _, sa := range spec.SpecialActions {
+		if sa.Kind == game.SpecialActionSuspend {
+			d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+				game.SuspendUpkeepTrigger(), game.SuspendLastCounterTrigger())
+			break
+		}
+	}
+	// #657 / CR 702.35a: madness is a replacement and a trigger, and
+	// both belong to the KEYWORD. Grown here from the one-string
+	// declaration for the reason suspend's pair is, and appended to
+	// whatever the card declares itself — Big Game Hunter has an ETB
+	// trigger of its own and keeps it.
+	if spec.Madness != "" {
+		d.Replacements = append(append([]game.ReplacementEffect(nil), d.Replacements...),
+			game.MadnessReplacement())
+		d.Triggered = append(append([]game.TriggeredAbility(nil), d.Triggered...),
+			game.MadnessTrigger(spec.Madness))
 	}
 	// S20: a structured TargetSpec is the source of truth for the
 	// client hint too.
@@ -70,19 +137,7 @@ func buildDef(spec Spec) *game.CardDef {
 			return nil
 		}
 	}
-	if len(spec.Activated) > 0 {
-		d.Activated = make([]game.ActivatedAbilityShape, len(spec.Activated))
-		for i, a := range spec.Activated {
-			d.Activated[i] = game.ActivatedAbilityShape{
-				Label:        a.Label,
-				Cost:         a.Cost,
-				Targets:      a.Targets,
-				SorcerySpeed: a.SorcerySpeed,
-				Condition:    a.Condition,
-				Effect:       a.Effect,
-			}
-		}
-	}
+	d.Activated = activatedShapes(spec.Activated)
 	if len(spec.ManaAbilities) > 0 {
 		d.ManaAbilities = make([]game.ManaAbilityShape, len(spec.ManaAbilities))
 		for i, a := range spec.ManaAbilities {
@@ -92,12 +147,16 @@ func buildDef(spec Spec) *game.CardDef {
 				SacrificeOther:            a.Cost.SacrificeOther,
 				LifeCost:                  a.Cost.Life,
 				ManaCost:                  a.Cost.Mana,
+				RemoveCounters:            a.Cost.RemoveCounters,
+				AddCounter:                a.Cost.AddCounter,
 				Produced:                  a.Produced,
 				Label:                     a.Label,
 				Rider:                     a.Rider,
 				NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 				Condition:                 a.Condition,
 				ProducedFunc:              a.ProducedFunc,
+				ProducedForPaid:           a.ProducedForPaid,
+				DerivesFromOtherSources:   a.DerivesFromOtherSources,
 				Restrictions:              a.Restrictions,
 				RestrictionsFunc:          a.RestrictionsFunc,
 			}
@@ -113,11 +172,7 @@ func buildDef(spec Spec) *game.CardDef {
 			Layer:     game.Layer6Ability,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, kw := range kws {
-					if !keywordSliceContains(c.Abilities, kw) {
-						c.Abilities = append(c.Abilities, kw)
-					}
-				}
+				appendKeywordsTo(c, kws)
 			},
 		}
 		d.Static = append(append([]game.StaticAbility(nil), spec.Static...), synth)
@@ -126,4 +181,27 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Static = nil
 	}
 	return d
+}
+
+// standingCastPermissions normalises a Spec's declared permissions
+// into the shape the engine derives them in (ADR 0066): a permanent's
+// static ability is always a STANDING permission and always lasts for
+// as long as the permanent remains.
+//
+// Forced here rather than checked in Register, because there is no
+// other thing a card file could have meant: a Spec slot is read off
+// the battlefield, and the two fields it would be setting are the two
+// the derivation owns. A per-instance permission does not come from a
+// Spec at all.
+func standingCastPermissions(in []game.CastPermission) []game.CastPermission {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]game.CastPermission, len(in))
+	copy(out, in)
+	for i := range out {
+		out[i].Scope = game.ScopeStanding
+		out[i].Duration = game.WhileInZoneDuration()
+	}
+	return out
 }

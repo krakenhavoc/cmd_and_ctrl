@@ -105,7 +105,7 @@ func TestCommanderIdentityHoldsOnTheBattlefield(t *testing.T) {
 		g, p := setup(t)
 		birds := pushBattlefieldForTest(g, p.ID, "Birds of Paradise", "Creature — Bird", birdsOracleID)
 		g.WithWriteLock(func() {
-			g.materializePlanLocked(p, []uuid.UUID{birds}, costFor(t, "{1}"))
+			g.materializePlanLocked(p, tapPlan{{CardID: birds}}, costFor(t, "{1}"))
 		})
 		if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "G" {
 			t.Errorf("pool = %+v, want one {G}", p.ManaPool)

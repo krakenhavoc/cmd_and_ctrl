@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import { get } from "svelte/store";
 
 import {
+  advance,
+  allPicks,
   begin,
   beginForAbility,
-  beginForMode,
+  beginForModes,
   cancel,
   canConfirm,
   confirm,
@@ -155,8 +157,8 @@ describe("modal targeting", () => {
     expect(modeOptionCastable(charm.modes!.options[2])).toBe(true);
   });
 
-  it("beginForMode takes the option's legal set and label, and carries the modes", () => {
-    beginForMode(charm, charm.modes!.options[0], [0], { xValue: 3 });
+  it("beginForModes takes the option's legal set and label, and carries the modes", () => {
+    expect(beginForModes(charm, [0], { xValue: 3 })).toBe(true);
     const t = get(targeting)!;
     expect(t.mode).toBe("player");
     expect(t.label).toBe("Exile target player's graveyard.");
@@ -165,6 +167,145 @@ describe("modal targeting", () => {
     expect(isLegalPlayerTarget(t, "p1")).toBe(true);
     expect(isLegalPlayerTarget(t, "p0")).toBe(false);
     expect(isLegalCardTarget(t, "c-anything")).toBe(false);
+    cancel();
+  });
+
+  it("an all-untargeted selection asks nothing", () => {
+    expect(beginForModes(charm, [2])).toBe(false);
+    expect(get(targeting)).toBe(null);
+  });
+});
+
+// --- #764: per-mode targets, repeated modes, multi-clause walks ----
+
+describe("the two-step picker (#764)", () => {
+  // Kolaghan's Command's shape: two bullets that each target.
+  const command = {
+    instance_id: "c-cmd",
+    name: "Kolaghan's Command",
+    modes: {
+      prompt: "Choose two",
+      min: 2,
+      max: 2,
+      options: [
+        {
+          label: "Destroy target artifact.",
+          target_mode: "permanent",
+          legal_targets: { cards: ["rock"], min: 1, max: 1 },
+        },
+        {
+          label: "Deals 2 damage to any target.",
+          target_mode: "any",
+          legal_targets: { cards: ["bear"], players: ["p1"], min: 1, max: 1 },
+        },
+      ],
+    },
+  } as unknown as CardView;
+
+  it("walks one clause per chosen mode, stamping each pick with its occurrence", () => {
+    expect(beginForModes(command, [0, 1])).toBe(true);
+    let t = get(targeting)!;
+    expect(t.steps.length).toBe(2);
+    expect(t.step).toBe(0);
+    expect(t.label).toBe("Destroy target artifact.");
+    expect(isLegalCardTarget(t, "rock")).toBe(true);
+    expect(isLegalCardTarget(t, "bear")).toBe(false);
+
+    // Answer the first clause and step on.
+    t = { ...t, picked: [{ kind: "card", id: "rock" }] };
+    const second = advance(t)!;
+    expect(second.step).toBe(1);
+    expect(second.label).toBe("Deals 2 damage to any target.");
+    expect(second.done).toEqual([{ kind: "card", id: "rock", mode: 0, slot: 0 }]);
+    expect(isLegalCardTarget(second, "bear")).toBe(true);
+
+    // Answer the second and finish.
+    const last = { ...second, picked: [{ kind: "card" as const, id: "bear" }] };
+    expect(advance(last)).toBe(null);
+    expect(allPicks(last)).toEqual([
+      { kind: "card", id: "rock", mode: 0, slot: 0 },
+      { kind: "card", id: "bear", mode: 1, slot: 0 },
+    ]);
+    cancel();
+  });
+
+  it("a repeated mode (CR 700.2d) gets one step per occurrence", () => {
+    const confluence = {
+      instance_id: "c-conf",
+      name: "Mystic Confluence",
+      modes: {
+        prompt: "Choose three",
+        min: 3,
+        max: 3,
+        repeatable: true,
+        options: [
+          {
+            label: "Return target creature to its owner's hand.",
+            target_mode: "creature",
+            legal_targets: { cards: ["a", "b"], min: 1, max: 1 },
+          },
+          { label: "Draw a card." },
+        ],
+      },
+    } as unknown as CardView;
+    expect(beginForModes(confluence, [0, 0, 1])).toBe(true);
+    const t = get(targeting)!;
+    expect(t.steps.length).toBe(2);
+    expect(t.steps.map((s) => s.modeIndex)).toEqual([0, 1]);
+    cancel();
+  });
+
+  it("a two-clause card walks its clauses in printed order", () => {
+    const bite = {
+      instance_id: "c-bite",
+      name: "Bite Down",
+      target_mode: "permanent",
+      legal_targets: { cards: ["mine"], min: 1, max: 1 },
+      clauses: [
+        { cards: ["mine"], min: 1, max: 1, label: "target creature you control" },
+        {
+          cards: ["theirs"],
+          min: 1,
+          max: 1,
+          label: "target creature or planeswalker you don't control",
+          distinct: true,
+        },
+      ],
+    } as unknown as CardView;
+    begin(bite, "permanent");
+    const t = get(targeting)!;
+    expect(t.steps.length).toBe(2);
+    expect(t.label).toBe("target creature you control");
+    expect(isLegalCardTarget(t, "mine")).toBe(true);
+    expect(isLegalCardTarget(t, "theirs")).toBe(false);
+    const second = advance({ ...t, picked: [{ kind: "card", id: "mine" }] })!;
+    expect(second.label).toBe("target creature or planeswalker you don't control");
+    expect(isLegalCardTarget(second, "theirs")).toBe(true);
+    cancel();
+  });
+
+  it("a distinct clause drops what an earlier clause already took", () => {
+    const move = {
+      instance_id: "c-move",
+      name: "Resourceful Defense",
+      target_mode: "permanent",
+      legal_targets: { cards: ["a", "b"], min: 1, max: 1 },
+      clauses: [
+        { cards: ["a", "b"], min: 1, max: 1, label: "target permanent you control" },
+        {
+          cards: ["a", "b"],
+          min: 1,
+          max: 1,
+          label: "a second target permanent you control",
+          distinct: true,
+        },
+      ],
+    } as unknown as CardView;
+    begin(move, "permanent");
+    const t = get(targeting)!;
+    const second = advance({ ...t, picked: [{ kind: "card", id: "a" }] })!;
+    expect(isLegalCardTarget(second, "a")).toBe(false);
+    expect(isLegalCardTarget(second, "b")).toBe(true);
     cancel();
   });
 });

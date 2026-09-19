@@ -210,3 +210,93 @@ func TestB30SavvyHunterBlocksOnceWhenRepointed(t *testing.T) {
 		t.Errorf("one block is one Food: %d", got)
 	}
 }
+
+// --- #492: block triggers reach the stack before combat damage -----
+//
+// The report: DeclareBlocker ran no state checks, so a "becomes
+// blocked" trigger sat on PendingTriggers until the step advanced —
+// after combat damage. #857 moved the announcement to the block
+// declaration's LOCK-IN (commitBlockDeclarationLocked), which runs at
+// the first priority boundary INSIDE declare_blockers, so the trigger
+// is on the stack and resolves there under ordinary priority play.
+// These two tests are that fix pinned, and the one case it does not
+// cover.
+
+// TestB492BlockTriggersResolveBeforeCombatDamage is the issue's own
+// shape (CR 509.1h / 510): a blocked Cyberman Patrol's afflict 3 is
+// applied in the declare-blockers step, ahead of the unblocked
+// attacker's combat damage.
+func TestB492BlockTriggersResolveBeforeCombatDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	patrol := b12Push(g, me.ID, "Cyberman Patrol", "Artifact Creature — Cyberman", b26CybermanPatrolOracle, 2, 2)
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	wall := b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 4)
+	declareAttack(t, g, opp.ID, patrol, bear)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	life := opp.Life
+
+	if err := g.DeclareBlocker(wall, patrol); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	if n := len(g.PendingTriggers) + triggersOnStackFrom(g, patrol); n != 0 {
+		t.Fatalf("the click stages the pairing and announces nothing: %d triggers", n)
+	}
+	lockInBlocks(t, g)
+	if triggerOnStack(g, patrol) == nil && len(g.PendingTriggers) == 0 {
+		t.Fatal("the lock-in announces the block and harvests the afflict")
+	}
+	passPriorityAroundTable(t, g)
+
+	if g.Turn.Step != game.StepDeclareBlockers {
+		t.Fatalf("the afflict resolved in %s, want declare_blockers", g.Turn.Step)
+	}
+	if opp.Life != life-3 {
+		t.Fatalf("afflict 3 before any damage: %d to %d", life, opp.Life)
+	}
+	advanceTo(t, g, game.StepCombatDamage)
+	if opp.Life != life-3-2 {
+		t.Errorf("then the unblocked Bear's 2: %d, want %d", opp.Life, life-5)
+	}
+}
+
+// TestB492AdvanceStepOutOfDeclareBlockersResolvesTheAfflictFirst is
+// the same probe with the answer #914 gave it. It used to pin the
+// opposite — the skip-ahead button walked the cursor into combat
+// damage with the afflict still on the stack, so the Bear's 2 landed
+// before the 3 — and that was never a property of block triggers:
+// AdvanceStep walked past ANYTHING on the stack, including a trigger
+// an earlier priority pass had announced.
+//
+// CR 117.4 is the rule it broke: a step ends only once every player
+// has passed in succession with the stack EMPTY. advance_step now
+// passes priority until the step ends, so what the step owes resolves
+// inside it. The afflict is a declare-blockers trigger, it resolves
+// there, and the 3 comes before the 2 — the same order ordinary
+// priority play has produced since #857, which is why Cyberman Patrol
+// no longer declares the caveat.
+func TestB492AdvanceStepOutOfDeclareBlockersResolvesTheAfflictFirst(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	patrol := b12Push(g, me.ID, "Cyberman Patrol", "Artifact Creature — Cyberman", b26CybermanPatrolOracle, 2, 2)
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	wall := b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 4)
+	declareAttack(t, g, opp.ID, patrol, bear)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	life := opp.Life
+
+	if err := g.DeclareBlocker(wall, patrol); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	advanceTo(t, g, game.StepCombatDamage)
+
+	if triggerOnStack(g, patrol) != nil {
+		t.Fatal("the afflict is still on the stack — the step ended owing it")
+	}
+	if opp.Life != life-3-2 {
+		t.Fatalf("afflict 3 in declare_blockers, then the Bear's 2: %d to %d, want %d", life, opp.Life, life-5)
+	}
+	if spec, _ := Lookup(b26CybermanPatrolOracle); spec.Completeness != CompletenessFull {
+		t.Error("the skip-ahead ordering was the card's last declared gap")
+	}
+}

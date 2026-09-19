@@ -31,28 +31,21 @@ import (
 //
 // S22 sandbox simplifications:
 //
-//   - **No foretell** (CR 702.143, tracked in #658). Foretell is three
-//     things the engine does not have yet, and none of them is a
-//     card-file detail. First, a special action taken from HAND: pay
-//     {2} and exile the card face down, any time its owner has
-//     priority during their own turn (CR 116.2h, 702.143a-b); there
-//     is no special-action verb (#655). Second, a face-down exile its
-//     OWNER can see and the table cannot (CR 702.143a): both
-//     primitives that mint an exile-play grant
-//     (ExileTopWithPermissionForEffect,
-//     ExileCardWithPermissionForEffect) mark the card known to every
-//     seat on the way in, deliberately, because an impulse grant
-//     nobody can see is unplayable, and the face-down route marks it
-//     known to nobody (#656). Third, a permission on that ONE exiled
-//     card, keyed "foretell" and live from the next turn on, that
-//     leaves the spell "foretold" on the stack (CR 702.143c-d, #652).
-//     `Spec.CastableZones` plus `AlternativeCost.FromZone` are NOT
-//     that permission: they are card-level, so they would make every
-//     exiled copy, a Path to Exile target included, castable for
-//     {1}{W} on any turn. Warp's end-step exile
-//     (scheduleWarpExileLocked) is the nearest precedent for the
-//     third piece. The card is castable only for its printed {3}{W}
-//     until foretell lands. Strictly weaker than printed.
+//   - **Foretell** (CR 702.143) ships on #658 and is one line on this
+//     card: `Foretell("{1}{W}")`. The comment this replaced claimed
+//     `Spec.CastableZones` plus `AlternativeCost.FromZone` already
+//     covered the cost half and only the hidden exile was missing.
+//     That was wrong twice. Those two are CARD-level declarations, so
+//     they would make every exiled copy of this card — a Path to
+//     Exile target included — castable for {1}{W} on any turn, while
+//     foretold status and the foretell cost belong to the ONE card
+//     that was foretold (CR 702.143c-d). And they are not "the cost
+//     half" either: the foretell cost is claimable only from a LATER
+//     turn (CR 702.143a), which no card-level declaration can say.
+//     What foretell actually rides is a per-instance CastPermission
+//     (ADR 0066) over that one exiled object, carrying the
+//     NotBeforeTurn floor, plus ADR 0069's face-down kind for the
+//     owner-only look.
 //   - The replacement does not fire on a permanent that would go to
 //     the **command zone** instead (a commander dying with the CR
 //     903.9 built-in taken): that built-in rewrites the destination
@@ -65,7 +58,10 @@ func init() {
 		OracleID:     "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
 		Name:         "Cosmic Intervention",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Foretell isn't implemented, so it can only be cast for its normal cost; a dying commander still goes to the command zone instead of being saved."},
+		Caveats:      []string{"A dying commander still goes to the command zone instead of being saved."},
+		SpecialActions: []game.SpecialAction{
+			Foretell("{1}{W}"),
+		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Capture plain IDs, never pointers: the replacement is
 			// value-copied onto the undo stack and has to keep

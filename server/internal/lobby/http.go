@@ -24,6 +24,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
@@ -91,6 +92,12 @@ type Config struct {
 	// token + /users/@me endpoints via httptest. Nil falls back to
 	// http.DefaultClient.
 	DiscordHTTPClient *http.Client
+	// Users records who signed in (ADR 0051 decision 2, S34 sub-PR 2).
+	// The OAuth callback upserts the Discord identity here and stamps
+	// the returned user id onto the session as Principal.UserID. Nil
+	// behaves as users.NoStore: sign-in works and the session carries
+	// a zero UserID, which is what a deployment with no database gets.
+	Users users.Store
 
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
@@ -420,12 +427,19 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 // createGame (admin-only) creates a new game in the lobby and
 // returns its metadata INCLUDING the invite token. The admin is
 // responsible for distributing the invite out-of-band.
+//
+// games.created_by is the caller's UserID (ADR 0051 decision 2). The
+// route is admin-only, and an admin session carries no UserID, so
+// today that is always NULL; it is read from the principal rather
+// than hard-coded so opening the route to signed-in users later is a
+// change to the middleware line and nothing here.
 func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	var body createGameRequest
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	meta, err := c.Lobby.Create(body.Name)
+	p, _ := auth.PrincipalFromContext(r.Context())
+	meta, err := c.Lobby.CreateBy(body.Name, p.UserID)
 	if err != nil {
 		return err
 	}
@@ -523,13 +537,19 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	// rather than 401-ing. An identity session that expired while
 	// the user was hunting for the code should feel like "type your
 	// name", not like being thrown out.
-	var identity DiscordIdentity
+	var (
+		identity DiscordIdentity
+		userID   uuid.UUID
+	)
 	if cred := auth.CredentialFromRequest(r); cred != "" {
 		p, verr := c.Auth.Validate(r.Context(), cred)
 		switch {
 		case verr != nil:
 			// Expired or bogus — treat the caller as anonymous.
 		case p.Role == auth.RoleIdentified:
+			// The seat session is minted from the identity session,
+			// so it belongs to the same person (ADR 0051 decision 3).
+			userID = p.UserID
 			identity = DiscordIdentity{
 				ID:         p.DiscordID,
 				Username:   p.DiscordUsername,
@@ -556,6 +576,7 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	p := auth.Principal{
 		Role:     auth.RolePlayer,
+		UserID:   userID,
 		GameID:   meta.ID,
 		PlayerID: playerID,
 		Name:     name,
@@ -869,13 +890,46 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 // game; the caller's own player ID is read from query params and
 // validated against their session principal.
 //
+// #696: the preview PRICES THE ANNOUNCEMENT, not the card. Every
+// query param below that the cast payload carries is passed straight
+// into game.CastSpellParams and handed to g.PriceCast, the engine's
+// one cast pricer — so a flashback, escape, overload, kicked,
+// back-face or granted exile cast is previewed at the price CastSpell
+// will charge for it. The endpoint used to parse `card.ManaCost` and
+// re-apply the commander tax and the cost modifiers itself, which
+// knew nothing about any of those and disabled "Auto-tap & cast" on
+// casts that would have gone through.
+//
 // Query params:
 //
 //	?card=<instance-uuid>     — required. The card the caller plans
-//	                            to cast; the server reads its
-//	                            ManaCost + commander tax (when the
-//	                            card is in command zone) to derive
-//	                            the effective cost.
+//	                            to cast.
+//	?from_zone=<zone>         — optional. The zone the cast comes out
+//	                            of: "hand" (the default), "command",
+//	                            "graveyard", "exile" or "library".
+//	                            Must match the cast_spell payload the
+//	                            confirm button will send, because the
+//	                            zone decides the commander tax, which
+//	                            cost modifiers see the cast, and which
+//	                            granted permission prices it.
+//	?alternative_cost=<key>   — optional. The CR 118.9 cost the cast
+//	                            claims ("flashback", "overload",
+//	                            "evoke"). Empty means the printed
+//	                            cost. A key the card does not offer
+//	                            from that zone is a 400, the same
+//	                            refusal the cast gets.
+//	?optional_costs=<i>,<i>   — optional. Positions in the card's
+//	                            optional additional costs (ADR 0073),
+//	                            repeated once per payment for a
+//	                            multikicker, so the preview prices the
+//	                            kicked cast the caster is announcing.
+//	?tap_ids=<uuid>,<uuid>... — optional. Permanents being tapped for
+//	                            convoke or waterbend. They pay part of
+//	                            the cost, so the plan must not also
+//	                            tap them for mana.
+//	?face=<int>               — optional. The printed face being cast
+//	                            (ADR 0034). A modal DFC's back face
+//	                            has its own mana cost.
 //	?x=<int>                  — optional. Caller-supplied X value
 //	                            for spells with {X} in their cost.
 //	                            Defaults to 0.
@@ -885,7 +939,9 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 //	                            so the X picker an {X} ability opens
 //	                            reads the ability's own price
 //	                            (Helm of Obedience's "{X}", not the
-//	                            "{4}" in the card's corner).
+//	                            "{4}" in the card's corner). Every
+//	                            cast-shaped param above is ignored on
+//	                            this branch — an ability is not a cast.
 //	?exclude=<uuid>,<uuid>... — optional. Comma-separated lock-tap
 //	                            permanent IDs the auto-tapper must
 //	                            NOT consider; lets the client
@@ -896,7 +952,8 @@ func redeemSeatReclaim(c Config, w http.ResponseWriter, r *http.Request) error {
 //	{
 //	  "ok": true,
 //	  "plan": ["<uuid>", "<uuid>", ...],
-//	  "missing": null   // or ["{R}", "{1}"] when ok is false
+//	  "missing": null,  // or ["{R}", "{1}"] when ok is false
+//	  "cost": "{2}"     // the cost string this cast PAYS
 //	}
 //
 // Errors: 400 on missing/malformed query params; 403 on a
@@ -933,19 +990,28 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 		xValue = v
 	}
-	excluded := map[uuid.UUID]bool{}
-	if ex := r.URL.Query().Get("exclude"); ex != "" {
-		for _, raw := range strings.Split(ex, ",") {
-			raw = strings.TrimSpace(raw)
-			if raw == "" {
-				continue
-			}
-			eid, err := uuid.Parse(raw)
-			if err != nil {
-				return httpError(http.StatusBadRequest, "exclude must be a comma-separated UUID list")
-			}
-			excluded[eid] = true
+	// #916: ?phyrexian=<n> is the announce-time claim the cost
+	// prompt is collecting — how many of the cost's Phyrexian
+	// symbols are being paid with 2 life each (CR 107.4f). The
+	// preview plans the MANA HALF ONLY, exactly as the engine's
+	// auto-tapper does, so the stepper's readout answers "what will
+	// this still cost me in mana" rather than tapping a land for a
+	// pip the player just said they would pay with life.
+	phyrexian := 0
+	if ps := r.URL.Query().Get("phyrexian"); ps != "" {
+		v, err := strconv.Atoi(ps)
+		if err != nil || v < 0 {
+			return httpError(http.StatusBadRequest, "phyrexian must be a non-negative integer")
 		}
+		phyrexian = v
+	}
+	locked, err := uuidListParam(r.URL.Query().Get("exclude"), "exclude")
+	if err != nil {
+		return err
+	}
+	excluded := make(map[uuid.UUID]bool, len(locked))
+	for _, eid := range locked {
+		excluded[eid] = true
 	}
 	g, err := c.Lobby.LookupGame(id)
 	if err != nil {
@@ -988,54 +1054,145 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return httpError(http.StatusBadRequest, "ability's cost cannot be parsed: "+err.Error())
 		}
+		spend := game.ManaSpendForAbility(card)
+		cost = strikePhyrexianForPreview(g, p.PlayerID, cost, spend, phyrexian)
 		return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-			ab.Cost.Mana, game.ManaSpendForAbility(card), w)
+			ab.Cost.Mana, spend, w)
 	}
-	cost, err := game.ParseCost(card.ManaCost)
+	// #696: the whole of the cast's price, from the engine's one
+	// pricer. The alternative cost claimed at announce, a granted
+	// permission's flat override (airbend's {2}, cascade's {0}), the
+	// "spend mana as though any colour" fold, the commander tax, the
+	// mana half of the announced optional costs, the board's cost
+	// modifiers and the convoke/waterbend subtraction all land in one
+	// call, priced for the face and the source zone the cast will
+	// actually name.
+	//
+	// ADR 0048 addendum §15: the modifier pass inside it also applies
+	// the card's own self modifiers (affinity, Ghalta). The preview
+	// still has no targets on its query string, so it prices with
+	// none: a per-target surcharge (Fireball, strive) reads as the
+	// one-target price, which is what the X picker shows alongside the
+	// printed clause (CardView.target_cost_notes).
+	params, err := castParamsFromPreviewQuery(r, xValue)
 	if err != nil {
-		return httpError(http.StatusBadRequest, "card's printed cost cannot be parsed: "+err.Error())
+		return err
 	}
-	// Commander tax: if the card is in the command zone of the
-	// caller's seat, add {2} per prior cast. Mirrors
-	// effectiveCostLocked's logic so preview + actual cast align.
-	fromZone := game.ZoneHand
-	if seat := g.PlayerByIDForEffect(p.PlayerID); seat != nil && seat.Command != nil {
-		for _, c := range seat.Command.Cards {
-			if c.InstanceID == cardID {
-				cost.Generic += seat.CommanderCasts[cardID] * 2
-				fromZone = game.ZoneCommand
-				break
+	price, err := g.PriceCast(p.PlayerID, card, params)
+	if err != nil {
+		return httpError(http.StatusBadRequest, "this cast cannot be priced: "+err.Error())
+	}
+	// price.Card, not `card`: the face the cast announces is
+	// materialised by the pricer, and the spend context is read off
+	// the card type, which a modal DFC's two faces need not share
+	// (ADR 0034).
+	spend := game.ManaSpendForCast(price.Card)
+	cost := strikePhyrexianForPreview(g, p.PlayerID, price.Total, spend, phyrexian)
+	// The cost string reported back is the one this cast PAYS, not
+	// the one in the card's corner — a flashed-back Think Twice reads
+	// "{2}{U}" and an airbent permanent reads "{2}". The commander tax
+	// and the cost modifiers are not folded into the string (they are
+	// generic and the string is Scryfall notation); `plan` and
+	// `missing` are the authority on the total, and they are priced
+	// with both.
+	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
+		price.Paid, spend, w)
+}
+
+// castParamsFromPreviewQuery reads the announce-time half of the cast
+// off the preview's query string (#696). Everything here changes the
+// PRICE, which is why the endpoint takes it at all: the same values
+// the client will put in the cast_spell payload it is previewing.
+//
+// Malformed input is a 400 rather than a silent default, for the
+// reason the endpoint exists — a preview that quietly priced a
+// different cast from the one the button will send is worse than no
+// preview.
+func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellParams, error) {
+	q := r.URL.Query()
+	params := game.CastSpellParams{
+		FromZone:        q.Get("from_zone"),
+		AlternativeCost: q.Get("alternative_cost"),
+		XValue:          xValue,
+	}
+	if fs := q.Get("face"); fs != "" {
+		v, err := strconv.Atoi(fs)
+		if err != nil || v < 0 {
+			return params, httpError(http.StatusBadRequest, "face must be a non-negative integer")
+		}
+		params.Face = v
+	}
+	if os := q.Get("optional_costs"); os != "" {
+		for _, raw := range strings.Split(os, ",") {
+			raw = strings.TrimSpace(raw)
+			if raw == "" {
+				continue
 			}
+			v, err := strconv.Atoi(raw)
+			if err != nil || v < 0 {
+				return params, httpError(http.StatusBadRequest, "optional_costs must be a comma-separated list of non-negative integers")
+			}
+			params.OptionalCosts = append(params.OptionalCosts, v)
 		}
 	}
-	// S28: the board's cost modifiers (CR 601.2f). Without this the
-	// preview plans a tap for the printed price and the cast that
-	// follows it is short by however much Sphere of Resistance
-	// charges — the two would disagree exactly when the player most
-	// needs them to agree. Same "mirrors effectiveCostLocked" rule
-	// the commander tax above follows.
-	//
-	// ADR 0048 addendum §15: the same call also applies the card's
-	// own self modifiers (affinity, Ghalta), because they live inside
-	// the one pricing function. The preview has no targets on its
-	// query string, so it prices with none: a per-target surcharge
-	// (Fireball, strive) reads as the one-target price, which is what
-	// the X picker shows alongside the printed clause
-	// (CardView.target_cost_notes). It also has no face and no
-	// graveyard or exile source, so a back-face or flashback cast of a
-	// self-modified spell is still priced as a front-face hand cast;
-	// that joins the preview-parity list on #696.
-	cost, err = g.ApplyCostModifiers(cost, game.CostQuery{
-		Card:       card,
-		Controller: p.PlayerID,
-		FromZone:   fromZone,
-		XValue:     xValue,
-	})
+	ids, err := uuidListParam(q.Get("tap_ids"), "tap_ids")
 	if err != nil {
-		return httpError(http.StatusBadRequest, err.Error())
+		return params, err
 	}
-	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
-		card.ManaCost, game.ManaSpendForCast(card), w)
+	params.TapIDs = ids
+	return params, nil
+}
+
+// uuidListParam parses a comma-separated UUID query param, naming
+// itself in the 400 so the caller can tell which list was malformed.
+func uuidListParam(raw, name string) ([]uuid.UUID, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	var out []uuid.UUID
+	for _, s := range strings.Split(raw, ",") {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, httpError(http.StatusBadRequest, name+" must be a comma-separated UUID list")
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+// strikePhyrexianForPreview removes the Phyrexian symbols the caller
+// says they are paying with life, so the preview plans only the mana
+// the announcement still owes (#916).
+//
+// game.PhyrexianLifePlan is the SAME strike the engine makes, reading
+// the same pool, so the preview and the payment pick the same
+// symbols. It clamps rather than rejects: the preview is advisory,
+// and an over-claim is the announce gate's refusal to make
+// (strikePhyrexianLifeLocked, CR 601.2b / CR 119.4), not a reason to
+// answer a read-only question with a 400.
+func strikePhyrexianForPreview(
+	g *game.Game,
+	playerID uuid.UUID,
+	cost game.ParsedCost,
+	spend game.ManaSpendContext,
+	claimed int,
+) game.ParsedCost {
+	if claimed <= 0 {
+		return cost
+	}
+	if have := cost.PhyrexianSymbols(); claimed > have {
+		claimed = have
+	}
+	seat := g.PlayerByIDForEffect(playerID)
+	if seat == nil {
+		return cost
+	}
+	reduced, _ := game.PhyrexianLifePlan(cost, seat.ManaPool, spend, claimed)
+	return reduced
 }
 
 // writeAutoTapPreview renders the auto-tap preview body for an
@@ -1775,17 +1932,23 @@ func removeBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meta)
 }
 
-// logout revokes the caller's credential server-side and clears the
-// session cookie. Unauthenticated — we want a client with an already-
-// expired token to be able to reach this endpoint to flush its cookie
-// without hitting a 401 first. Always returns 204 so the client can
-// safely treat the response as idempotent.
+// logout asks the authenticator to revoke the caller's credential and
+// clears the session cookie. Unauthenticated — we want a client with
+// an already-expired token to be able to reach this endpoint to flush
+// its cookie without hitting a 401 first. Always returns 204 so the
+// client can safely treat the response as idempotent.
+//
+// The revoke is only as strong as the authenticator. In production
+// that is auth.HMACAuthenticator, whose Revoke is advisory (ADR 0044
+// decision 3): the token stays valid until it expires, and logout
+// ends the session by clearing the cookie here and the client's
+// stored copy. TestLogoutWithStatelessSessions pins that.
 func logout(c Config, w http.ResponseWriter, r *http.Request) error {
 	if cred := auth.CredentialFromRequest(r); cred != "" {
-		// Ignore Revoke errors: a stateless HMAC-style authenticator
-		// may always return nil, a stateful one may return "unknown
-		// token" which we treat as already-revoked. Either way the
-		// client just wants its cookie cleared.
+		// Ignore Revoke errors: the stateless authenticator always
+		// returns nil, a stateful one may return "unknown token"
+		// which we treat as already-revoked. Either way the client
+		// just wants its cookie cleared.
 		_ = c.Auth.Revoke(r.Context(), cred)
 	}
 	clearSessionCookie(c, w)

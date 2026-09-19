@@ -34,17 +34,39 @@ const (
 	// CounterCharge is a generic resource counter (Aether Vial,
 	// Coalition Relic, etc.). No SBA.
 	CounterCharge = "charge"
+	// CounterStorage is the storage counter (Mage-Ring Network,
+	// Crucible of the Spirit Dragon, the Mirrodin storage lands). A
+	// generic resource counter like CounterCharge, distinct because
+	// the cards that bank them spend them by the handful and print
+	// "storage counter" in the cost. No SBA. Added with #789's
+	// variable counter cost.
+	CounterStorage = "storage"
 	// CounterStun is the stun counter (post-NEO). A would-be untap
 	// removes one instead; untapPermanentLocked enforces it for every
 	// untap, not as a state-based action.
 	CounterStun = "stun"
 	// CounterShield is the shield counter (post-MOM).
 	CounterShield = "shield"
+	// CounterAge is the age counter (CR 122.1d), placed by cumulative
+	// upkeep (CR 702.24a) and by nothing else in the catalog. No SBA:
+	// its whole job is to be COUNTED, once a turn, by the keyword's
+	// own upkeep trigger, which then charges its cost that many
+	// times. See cards/effects/cumulative_upkeep.go (#567).
+	CounterAge = "age"
 	// CounterLore is the saga lore counter (CR 714). SBA: a saga
 	// whose final-chapter lore counter is set is sacrificed by
 	// its controller (CR 704.5s). The advance-chapter trigger
 	// lands in S14+ with the effect catalog.
 	CounterLore = "lore"
+	// CounterTime is the time counter (CR 122.1d), placed by suspend
+	// (CR 702.62a) and removed one per upkeep by the suspended card's
+	// own exile trigger. No SBA: it is a countdown that one trigger
+	// reads, and having any at all is what "suspended" MEANS
+	// (CR 702.62b) — which is why suspend needs no per-card flag
+	// beside it. MoveCard clears counters on the way out of exile
+	// (CR 400.7), so a suspended creature never enters the
+	// battlefield carrying them.
+	CounterTime = "time"
 )
 
 // Player-level counter type identifiers.
@@ -82,9 +104,12 @@ var KnownCardCounters = []string{
 	CounterLoyalty,
 	CounterDefense,
 	CounterCharge,
+	CounterStorage,
 	CounterStun,
 	CounterShield,
 	CounterLore,
+	CounterAge,
+	CounterTime,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

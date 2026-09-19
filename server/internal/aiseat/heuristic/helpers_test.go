@@ -82,6 +82,23 @@ func keywords(kw ...string) cardOpt {
 	return func(c *protocol.CardView) { c.Abilities = append(c.Abilities, kw...) }
 }
 
+// protection sets the PARSED protection the server projects onto a
+// permanent (#662). It is deliberately separate from keywords(): the
+// raw "protection from red" token rides Abilities like every other
+// keyword, but nothing in a policy package may parse it — a policy
+// package cannot import internal/game at all (ADR 0033 §3) — so the
+// bot reads this list and a fixture has to set it the way the wire
+// would.
+func protection(qualities ...protocol.ProtectionView) cardOpt {
+	return func(c *protocol.CardView) { c.Protection = append(c.Protection, qualities...) }
+}
+
+// proColor is the projected "protection from <colour>" for a wire
+// colour letter, for fixtures.
+func proColor(letter, printed string) protocol.ProtectionView {
+	return protocol.ProtectionView{Printed: printed, Kind: "color", Value: letter}
+}
+
 func attacking(seat int) cardOpt {
 	return func(c *protocol.CardView) { c.AttackingTarget = seatID(seat).String() }
 }

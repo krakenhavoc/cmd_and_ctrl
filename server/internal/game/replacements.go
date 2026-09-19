@@ -24,6 +24,11 @@ import (
 //   - drawCardLocked → RepEventDraw
 //   - MoveCardByIDAsCommander → RepEventMove (carries EntersTapped,
 //     EntersWithCounters, asCommanderMove breadcrumb)
+//   - routeCardToZoneLocked → RepEventMove, or RepEventDiscard when the
+//     route is a discard (CR 701.8, #650)
+//   - createTokensLocked → RepEventCreateTokens, then one
+//     RepEventMove battlefield entry per token created (CR 701.7b,
+//     #762)
 //   - ChangePlayerLife → RepEventLife
 //   - MarkDamage / MarkCombatDamage → RepEventDamage
 //   - AddCounter → RepEventCounter
@@ -40,22 +45,105 @@ import (
 // ReplacementEventKind narrows the meaningful fields on a
 // ReplacementEvent. Values:
 //
-//	"draw"    — RepEventDraw    — DrawPlayer
-//	"move"    — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
-//	"counter" — RepEventCounter — CounterTarget, CounterName, CounterDelta
-//	"life"    — RepEventLife    — LifePlayer, LifeDelta
-//	"damage"  — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
-//	"step"    — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
+//	"draw"         — RepEventDraw    — DrawPlayer
+//	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
+//	"counter"      — RepEventCounter — CounterTarget, CounterName, CounterDelta
+//	"life"         — RepEventLife    — LifePlayer, LifeDelta
+//	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
+//	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
+//	"keyword_action"— RepEventKeywordAction — KeywordAction, KeywordActionCount (CR 701.22 / 701.25 / 701.34)
+//	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.13a)
+//	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 type ReplacementEventKind string
 
 const (
-	RepEventDraw           ReplacementEventKind = "draw"
-	RepEventMove           ReplacementEventKind = "move"
-	RepEventCounter        ReplacementEventKind = "counter"
-	RepEventLife           ReplacementEventKind = "life"
-	RepEventDamage         ReplacementEventKind = "damage"
+	RepEventDraw    ReplacementEventKind = "draw"
+	RepEventMove    ReplacementEventKind = "move"
+	RepEventCounter ReplacementEventKind = "counter"
+	RepEventLife    ReplacementEventKind = "life"
+	RepEventDamage  ReplacementEventKind = "damage"
+
+	// RepEventDiscard is a discard (CR 701.8a) — the one exit whose
+	// keyword action is defined by where the card comes FROM, so it is
+	// its own event kind rather than a flag on RepEventMove. Library of
+	// Leng, madness (#657) and the Obstinate Baloth family all key on
+	// "if you would discard", and two of the three also need the CAUSE:
+	// an effect's instruction, a cost, or the cleanup step's turn-based
+	// action. See #650 and ADR 0061.
+	//
+	// It still carries the move payload — CardID, OldZone (always the
+	// hand), NewZone, NewZoneOwner and the zoneRoute — because a discard
+	// IS a move out of the hand and its replacements rewrite the
+	// destination. Everything in the engine that finishes, abandons or
+	// prunes a routed exit therefore handles the two kinds together; see
+	// isExitMove.
+	RepEventDiscard ReplacementEventKind = "discard"
+
+	// RepEventCreateTokens is one "create N tokens" INSTRUCTION
+	// (CR 701.7b), opened once however many tokens it makes, so a
+	// doubler modifies the instruction rather than each token: "create
+	// two tokens" with Parallel Lives out is one event that becomes
+	// four tokens, not two events of two. See #762 and ADR 0061.
+	//
+	// The tokens it settles on each run the ordinary battlefield-ENTRY
+	// pipeline afterwards (a RepEventMove with no old zone), so
+	// enters-tapped, enters-with-counters and the ETB hook reach a
+	// token exactly as they reach every other permanent.
+	RepEventCreateTokens ReplacementEventKind = "create_tokens"
+
+	// RepEventKeywordAction is one KEYWORD ACTION with a count —
+	// proliferate (CR 701.34), scry (CR 701.22) or surveil
+	// (CR 701.25) — opened once per INSTRUCTION at the one entry point
+	// of each, the way RepEventCreateTokens is opened once per
+	// creation instruction. "If you would proliferate, proliferate
+	// twice instead" (Tekuthal, Inquiry Dominus) and "if you would
+	// scry, scry that many plus one instead" are replacements of the
+	// action, not of the counters it places or the cards it looks at.
+	// See #976 and keyword_action.go.
+	//
+	// ONE kind with an Action discriminator rather than one kind per
+	// verb: everything downstream of the count is the same code for
+	// all three, so a fourth counted keyword action is a constant and
+	// an arm of one switch. What the count MEANS is per action —
+	// times for proliferate, cards for scry and surveil — and is
+	// written on the KeywordAction constants.
+	RepEventKeywordAction ReplacementEventKind = "keyword_action"
+
+	// RepEventMill is one "mill N cards" INSTRUCTION (CR 701.13a),
+	// opened once per instruction before any card moves — the third
+	// member of the count-carrying family, after RepEventCreateTokens
+	// and RepEventKeywordAction, and opened for the same reason: "if an
+	// opponent would mill one or more cards, they mill twice that many
+	// cards instead" (Bruvac the Grandiloquent) replaces the NUMBER,
+	// not the per-card zone change.
+	//
+	// The per-card zone change is a separate, older window and was
+	// never missing: every milled card routes through
+	// routeCardToZoneLocked, so Leyline of the Void sees each card and
+	// a milled commander is offered the command zone (CR 903.9). What
+	// had no seam was the amount. See #569 and mill.go.
+	//
+	// Opened only for a real mill: a graveyard destination (CR 701.13a
+	// defines the keyword action by where the cards go, so "exile the
+	// top N cards of your library" is not a mill and opens no window)
+	// and a positive count (there is nothing to replace about milling
+	// nothing, and the unbounded `until` run — Helm of Obedience — names
+	// no number to double).
+	RepEventMill ReplacementEventKind = "mill"
+
 	RepEventStepTransition ReplacementEventKind = "step"
 )
+
+// isExitMove reports whether a kind is a routed move OUT of a zone — an
+// ordinary RepEventMove or a discard. The two share every field the
+// exit path reads (CardID, OldZone, NewZone, NewZoneOwner, zoneRoute)
+// and differ only in what the completed move announces, so every engine
+// site that finishes, abandons or prunes a routed exit asks this rather
+// than naming one kind and quietly skipping the other.
+func isExitMove(kind ReplacementEventKind) bool {
+	return kind == RepEventMove || kind == RepEventDiscard
+}
 
 // ReplacementEventID is the per-event key used by the once-per-event
 // tracking map (CR 614.5). Minted by applyReplacementsLocked on first
@@ -149,12 +237,47 @@ type ReplacementEvent struct {
 
 	// OldZone / NewZone / NewZoneOwner describe the motion.
 	// Replacements can rewrite NewZone (the CR 903.9 commander-zone
-	// built-in, Stone of Erech's graveyard → exile, etc.). No discard
-	// builds a RepEventMove yet: every discard moves the card directly
-	// and bypasses this pipeline (#650).
+	// built-in, Stone of Erech's graveyard → exile, Library of Leng's
+	// hand → top of library).
+	//
+	// A created TOKEN enters with OldZone empty: it came from no zone
+	// at all (CR 111.1 — a token is created on the battlefield), which
+	// is the honest spelling and the one every "enters the
+	// battlefield" replacement already reads past, because they key on
+	// NewZone.
 	OldZone      ZoneKind
 	NewZone      ZoneKind
 	NewZoneOwner uuid.UUID
+
+	// Destruction says this battlefield exit is a DESTRUCTION
+	// (CR 701.7a), as opposed to the other things that take the same
+	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
+	// attached Aura, a creature at zero toughness, a planeswalker at
+	// zero loyalty, a battle at zero defense. Only meaningful on a
+	// RepEventMove whose OldZone is the battlefield.
+	//
+	// DECLARED, never derived. Every one of those exits ends in the
+	// same graveyard through the same primitive, so there is nothing
+	// about the event a reader could have looked at to tell them
+	// apart; the engine had no use for the distinction until
+	// regeneration needed it (#667), and indestructible sidesteps it
+	// by filtering BEFORE the window opens (indestructible.go).
+	//
+	// Set from the route the destroying verb chose (destroyRoute in
+	// simultaneous.go), so it survives a CR 903.9 pause with
+	// everything else the move was asked for.
+	Destruction bool
+
+	// CantBeRegenerated is the rider printed by Damnation, Day of
+	// Judgment, Mortify, Putrefy, Pongify and the rest: this
+	// destruction ignores regeneration shields (CR 701.19c).
+	//
+	// It gates the built-in's AppliesTo rather than being consumed
+	// inside its Replace, because CR 701.19d leaves an ignored shield
+	// UNUSED — a creature with a shield that Damnation kills would
+	// still have had that shield if something had saved it. Only
+	// meaningful alongside Destruction.
+	CantBeRegenerated bool
 
 	// EntersTapped is mutated by enters-tapped replacements
 	// (Kismet). Only meaningful when NewZone == ZoneBattlefield.
@@ -194,23 +317,41 @@ type ReplacementEvent struct {
 	// BEFORE EventETB fires (Hangarback Walker "enters with X +1/+1
 	// counters", etc.). Applied by the battlefield-entry path under
 	// the same lock before the ETB event.
+	//
+	// Write it through AddCounterAtETB and DRAIN IT THROUGH
+	// (*Game).applyEntryCountersLocked — never with a bare range
+	// (#1010). Each kind opens its own RepEventCounter window, so the
+	// drain order is observable: map order made two kinds on one entry
+	// open their windows, ask their CR 616 prompts and write their log
+	// lines differently on every run. The drain's doc comment carries
+	// the canonical order and why it is not a player's choice.
 	EntersWithCounters map[string]int
 
 	// entryResumable is an unexported breadcrumb meaning "if this
 	// entry pauses for a prompt, the generic resume path may finish
 	// it" (executeEntryToBattlefieldLocked). Set by the land-play
-	// branch of CastSpell and — since S16.5, so Clone can ask what
-	// to copy — by stack resolution, which hands the resume its
-	// StackItem so the Aura attach and evoke's sacrifice trigger
-	// survive the pause.
+	// branch of CastSpell, by stack resolution — since S16.5, so Clone
+	// can ask what to copy — which hands the resume its StackItem so
+	// the Aura attach and evoke's sacrifice trigger survive the pause,
+	// and since #478 by the three effect-side entries that go through
+	// enterBattlefieldThroughPipelineLocked: the library search, the
+	// exile return and the reanimation.
 	//
-	// Off by default on purpose. The remaining battlefield-entry
-	// sites do things the generic push can't: an exile→battlefield
-	// return mints a new InstanceID (CR 400.7), and the library-
-	// search path owes its caller a shuffle. Finishing those
-	// generically would silently drop the new object identity or
-	// leak library order, which is worse than leaving them exactly
-	// as they are — they still never pause today.
+	// Those three used to be unflagged, on the argument that finishing
+	// them generically would silently drop work the starting effect
+	// owed — the search's shuffle and EventSearchLibrary, the caller's
+	// Then, and the exile return's new object identity (CR 400.7). The
+	// argument was right about the cost; what was missing was a way to
+	// CARRY those duties across the pause, which is what entryTail
+	// below is. With one the generic resume is faithful, so they are
+	// flagged and the entry can ask its question.
+	//
+	// Off by default still. putOntoBattlefieldFromZoneLocked (the
+	// hand / library "put onto the battlefield" batch) is the remaining
+	// unflagged entry: it runs every card's pipeline against the
+	// pre-entry board and then moves them together, a simultaneity a
+	// per-card resume would break. A card of that batch whose pipeline
+	// pauses stays where it was — weaker than printed, never stronger.
 	//
 	// An effect that WOULD pause consults this before prompting: a
 	// pay-life entry choice on an unflagged event takes the un-paid
@@ -218,6 +359,35 @@ type ReplacementEvent struct {
 	// offerEntryLifePaymentLocked). Any entry site that grows a
 	// faithful resume should set this and inherit the prompt.
 	entryResumable bool
+
+	// entryTail is the entry half's answer to zoneRoute: what the
+	// effect that asked for this battlefield ENTRY still owes once the
+	// pipeline settles — the new object identity an exile return mints,
+	// and the rest of the effect (a search's shuffle and its caller's
+	// Then). Set by enterBattlefieldThroughPipelineLocked's callers and
+	// read only by executeEntryToBattlefieldLocked and
+	// runEntryTailLocked, which both the inline path and the CR 616
+	// resume go through.
+	//
+	// A non-nil value is not what makes an entry resumable —
+	// entryResumable is — but it is what makes resuming it FAITHFUL.
+	// See entry_tail.go. Added in #478.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	entryTail *entryTail
+
+	// landPlay flags the one battlefield entry that is a LAND DROP
+	// (CR 305.2): the land branch of CastSpell. The resume bumps
+	// LandsPlayedThisTurn only for it.
+	//
+	// It is declared rather than derived. The resume used to infer a
+	// land play from "this card is a land and the event carries no
+	// StackItem", which was true while the only two resumable entries
+	// were the land play and stack resolution and became wrong the
+	// moment a fetched, reanimated or blinked land could pause there
+	// (#478): a land an effect puts onto the battlefield was not
+	// PLAYED, so it must not spend the turn's land drop.
+	landPlay bool
 
 	// zoneRoute is the exit half's answer to entryResumable: the
 	// per-destination bookkeeping (to the bottom of the library, face
@@ -241,6 +411,139 @@ type ReplacementEvent struct {
 	// flavor flag on the manual move_card action. Unexported because
 	// the catalog should never read or set it.
 	asCommanderMove bool
+
+	// --- RepEventDiscard fields ---
+	//
+	// A discard also fills in the RepEventMove fields above: CardID is
+	// the discarded card, OldZone is the hand it is leaving, and
+	// NewZone / NewZoneOwner are the destination a replacement may
+	// rewrite.
+
+	// DiscardPlayer is the player discarding the card — its owner,
+	// because every hand in this engine holds only its owner's cards
+	// (CR 701.8a moves the card to that player's graveyard).
+	DiscardPlayer uuid.UUID
+
+	// DiscardCause is why the discard is happening: an effect's
+	// instruction, a cost, or the cleanup step's turn-based action. It
+	// is the distinction the rules actually draw, and the one Library
+	// of Leng needs ("if an EFFECT causes you to discard a card"); the
+	// Gatherer ruling of 2004-10-04 says costs are not effects, and
+	// CR 514.1 / 703.1 make the cleanup discard a turn-based action
+	// rather than anybody's effect. See ADR 0013 §10a, which withdrew
+	// the voluntary/involuntary framing #160 was written around, and
+	// ADR 0061.
+	//
+	// Source names the card whose effect or cost asked for it, so the
+	// Obstinate Baloth family ("a spell or ability an opponent controls
+	// causes you to discard") can read its controller.
+	DiscardCause DiscardCause
+
+	// --- RepEventCreateTokens fields ---
+
+	// TokenController is the player the tokens are created under the
+	// control of. Actor carries the same value; this is the name the
+	// rules use ("create one or more tokens UNDER YOUR CONTROL"), and
+	// a doubler's AppliesTo reads it.
+	TokenController uuid.UUID
+
+	// TokenGroups is what the instruction creates, one entry per KIND
+	// of token: a template, how many of it, and the creation-time
+	// entry options the instruction asked for.
+	//
+	// Groups rather than a bare count because the printed cards need
+	// both halves. Parallel Lives, Anointed Procession, Doubling
+	// Season, Primal Vigor and Mondrak multiply the COUNTS
+	// (MultiplyTokens); Academy Manufactor rewrites the KIND SET
+	// (ReplaceTokenKinds) — "if you would create a Clue, Food or
+	// Treasure token, instead create one of each" turns one group into
+	// three. A count alone could not express the second.
+	TokenGroups []TokenGroup
+
+	// TokenAttacking is the player the tokens are created attacking
+	// (CR 506.3c — put onto the battlefield attacking, never
+	// declared, so nothing sees an attack declaration). uuid.Nil for
+	// the ordinary creation.
+	TokenAttacking uuid.UUID
+
+	// tokenTail is the token half's answer to lifeTail and damageTail:
+	// the rest of the effect that asked for the creation, run with the
+	// IDs of the tokens that were actually made once the pipeline
+	// settles. Set by CreateTokensThenForEffect and read only by
+	// runTokenTailLocked, which both the inline path and the CR 616
+	// resume reach.
+	//
+	// It exists because a creation can now PAUSE: a Doubling Season
+	// and an Academy Manufactor in the same window is a CR 616
+	// ordering prompt, and a caller that says "create a token, then
+	// sacrifice it" cannot write the second half on the next line.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See token_create.go.
+	tokenTail *tokenTail
+
+	// --- RepEventKeywordAction fields ---
+
+	// KeywordAction is WHICH keyword action this is — proliferate,
+	// scry or surveil. A replacement narrows on it in AppliesTo, the
+	// way a discard replacement narrows on DiscardCause; Actor is the
+	// player taking the action ("if YOU would proliferate") and
+	// Source the card whose effect asked for it.
+	KeywordAction KeywordAction
+
+	// KeywordActionCount is the count the action is taken with, and
+	// the one field a keyword-action replacement rewrites: "twice
+	// instead" is `ev.KeywordActionCount *= 2`, "that many plus one"
+	// is `+= 1`.
+	//
+	// What it counts is per action and is written on the
+	// KeywordAction constants: for proliferate it is the number of
+	// TIMES the whole action is taken (base 1), for scry and surveil
+	// the number of CARDS looked at (base N).
+	KeywordActionCount int
+
+	// keywordAction is the keyword-action sibling of zoneRoute,
+	// damageTail and tokenTail: what the entry point still owes once
+	// the window settles — a proliferate's chosen permanents and
+	// players, and a scry's prompt kind and "then" continuation. Set
+	// by the entry points in keyword_action.go and read only by
+	// applyResolvedKeywordActionLocked, which both the inline path and
+	// the CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	keywordAction *keywordActionTail
+
+	// --- RepEventMill fields ---
+
+	// MillPlayer is the player milling — the one whose library is read,
+	// which is NOT always the card's owner or the effect's controller
+	// ("each opponent mills three cards"). Actor carries the same
+	// value; this is the name the rules use, and it is the affected
+	// player for CR 616.1.
+	MillPlayer uuid.UUID
+
+	// MillCount is how many cards the instruction mills, and the one
+	// field a mill replacement rewrites: Bruvac the Grandiloquent is
+	// `ev.MillCount *= 2`, The Water Crystal is `+= 4`.
+	//
+	// It is the number the instruction ASKED for, not what the library
+	// can supply. A player told to mill more cards than they have mills
+	// as many as possible (CR 701.13b) and the clamp happens in
+	// millPlanLocked, after this window settles — so a Bruvac doubling
+	// a mill of twenty against a library of twelve doubles twenty,
+	// which is what the card says and is observable through any
+	// "plus N" sharing the window.
+	MillCount int
+
+	// mill is the mill's tail: what the instruction still owes once the
+	// window settles — the destination it named, its `until` predicate,
+	// and the caller's continuation. Set by the two entry points in
+	// effect_api.go and read only by applyResolvedMillLocked, which
+	// both the inline path and the CR 616 resume go through.
+	//
+	// Unexported engine plumbing — the catalog never sets or reads it.
+	// See mill.go.
+	mill *millTail
 
 	// --- RepEventCounter fields ---
 
@@ -282,6 +585,26 @@ type ReplacementEvent struct {
 	DamageTarget   uuid.UUID
 	DamageAmount   int
 	IsCombatDamage bool
+
+	// SourceLKI is the damage source's characteristics AS THEY WERE
+	// when the event was created — last-known information, CR 608.2h.
+	// Nil when the source is unknown (a sandbox mark with no source,
+	// an effect that names none).
+	//
+	// DamageSource alone cannot answer CR 702.16e, and not only
+	// because of a pause. A SPELL source is never on the battlefield
+	// at all, so a Lightning Bolt's redness has no lookup; and a
+	// permanent that dealt damage and then died has DIFFERENT
+	// characteristics in the graveyard from the ones it dealt the
+	// damage with — a pumped, colour-shifted attacker is red on the
+	// battlefield and colourless in the yard. Reading the new zone
+	// would be the wrong object.
+	//
+	// Set from damageTail.sourceLKI by
+	// damageThroughReplacementsLocked, the one body all six damage
+	// entry points and the CR 616 resume go through, so there is
+	// exactly one place it is filled in. See ADR 0072 §3.
+	SourceLKI *Characteristic
 
 	// damageTail is the damage half's answer to zoneRoute: what the
 	// entry point still owes once the pipeline settles the amount —
@@ -439,6 +762,26 @@ type ReplacementEffect struct {
 	// goes. Takes precedence over Optional and EntryLifeCost, which
 	// no printed copy effect combines with. See copy_choice.go.
 	CopySelector *CopySelector
+
+	// Preemptive declares a RULES-LEVEL shield that applies before
+	// any other applicable replacement, with no CR 616 ordering
+	// prompt. Exactly one effect sets it: protection's damage
+	// prevention (CR 702.16e, builtin_replacements.go).
+	//
+	// It exists because "which of these applies first?" has an
+	// observable answer even when the event ends the same way.
+	// Protection cancels the damage event outright, so in every
+	// ordering it is the last thing to happen to that event — but a
+	// CHARGED prevention shield ("prevent the next 4 damage",
+	// effects.PreventNextDamage) ordered first would spend a charge
+	// absorbing damage that was never going to be dealt. #420 is
+	// that bug; this flag is the fix.
+	//
+	// It is a DECLARED SIMPLIFICATION of CR 616.1, which gives the
+	// affected object's controller the ordering choice. See ADR 0072
+	// §4 for why the prompt is taken away and what it costs
+	// (Phytohydra).
+	Preemptive bool
 
 	// PureCancel declares that Replace does nothing but call
 	// ev.Cancel() — it rewrites no other field on the event and
@@ -667,6 +1010,16 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		if len(applicable) == 0 {
 			return ev, nil
 		}
+		// A PREEMPTIVE effect applies before anything else and
+		// without a prompt, however many others also apply — the
+		// whole point is that nothing else gets to charge itself
+		// first (ReplacementEffect.Preemptive; protection, CR
+		// 702.16e). Built-ins are gathered first, so scanning from
+		// the front finds it immediately on the ordinary board.
+		if i := firstPreemptive(applicable); i >= 0 {
+			g.applyFirstGatheredLocked(ev, applicable[i:i+1])
+			continue
+		}
 		if len(applicable) > 1 {
 			// CR 616: affected player picks order. Queue a prompt
 			// and stash the resume frame; caller returns without
@@ -789,6 +1142,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		ErrorMsg: ErrReplacementIterationExceeded.Error(),
 	})
 	return ev, ErrReplacementIterationExceeded
+}
+
+// firstPreemptive is the index of the first gathered replacement
+// that declared itself preemptive, or -1. See
+// ReplacementEffect.Preemptive.
+func firstPreemptive(applicable []activeReplacement) int {
+	for i, a := range applicable {
+		if a.effect.Preemptive {
+			return i
+		}
+	}
+	return -1
 }
 
 // allPureCancels reports whether every gathered replacement has
@@ -1304,6 +1669,35 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		want = EventDrawCard
 	case RepEventMove:
 		want = EventZoneMove
+	case RepEventDiscard:
+		// CR 701.8a. A discard is a move out of the hand, but what a
+		// discard replacement watches for is the DISCARD — Library of
+		// Leng, madness, "if you would discard a card, exile it
+		// instead" — so it keys on the discard event, not the zone
+		// move. An effect that wants both declares both.
+		want = EventDiscardCard
+	case RepEventCreateTokens:
+		want = EventTokenCreated
+	case RepEventKeywordAction:
+		// CR 701.22 / 701.25 / 701.34. One watch key for all three
+		// counted keyword actions, because the action is a field on
+		// the event and the card-side helper narrows on it — see
+		// EventKeywordAction, which is a replacement-watch sentinel
+		// like EventStepTransition rather than a logged event.
+		want = EventKeywordAction
+	case RepEventMill:
+		// CR 701.13a. EventMill is the post-event twin and it fires per
+		// CARD, after the move, while this window is one per
+		// INSTRUCTION and opens before any card has left the library.
+		// Reusing the key rather than minting a sentinel is what
+		// RepEventCreateTokens and RepEventDiscard already do with
+		// EventTokenCreated and EventDiscardCard, whose twins fire
+		// afterwards too: an EventKind means "the mill" in a
+		// ReplacementEffect.Watches and "a card was milled" in a
+		// TriggeredAbility.Watches, and no code reads one as the other.
+		// The sentinel spelling is for a family with no twin at all
+		// (EventStepTransition, EventKeywordAction).
+		want = EventMill
 	case RepEventCounter:
 		want = EventCounterPlaced
 	case RepEventLife:

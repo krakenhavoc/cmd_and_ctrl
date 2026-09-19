@@ -17,7 +17,7 @@ import (
 //  2. The take-back is real — it is gone at the end step, and gone
 //     to EXILE rather than to a graveyard, so it can come back.
 //  3. "On a later turn" is real. This is the one a naive
-//     implementation gets wrong, because an unbounded WhileExiled
+//     implementation gets wrong, because an unbounded zone-bound
 //     grant is live the instant it is stamped — and it is stamped
 //     during the end step of the turn the creature was warped in.
 
@@ -142,7 +142,7 @@ func TestWarpExilesAtTheNextEndStep(t *testing.T) {
 	}
 }
 
-// "On a later turn", and the reason ExilePlayPermission grew a
+// "On a later turn", and the reason CastPermission grew a
 // floor. The grant is stamped during the end step of the turn the
 // creature was warped in, so an unbounded grant with no floor would
 // be live immediately.
@@ -152,10 +152,12 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	warpTurn := g.Turn.Number
 	advanceThroughEndStep(t, g)
 
-	var grant game.ExilePlayPermission
+	var grant game.CastPermission
 	for _, c := range g.Exile.Cards {
 		if c.InstanceID == id {
-			grant = c.ExilePlay
+			if perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID); perm != nil {
+				grant = *perm
+			}
 		}
 	}
 	if !grant.Granted() {
@@ -164,16 +166,21 @@ func TestWarpGrantIsDarkUntilTheNextTurn(t *testing.T) {
 	if grant.Player != active.ID {
 		t.Errorf("grant names %v, want the warping player %v", grant.Player, active.ID)
 	}
-	if !grant.WhileExiled {
-		t.Errorf("warp's grant is not unbounded — it lasts as long as the card is exiled")
+	if grant.Duration.Kind != game.WhileInZone {
+		t.Errorf("warp's grant is %v, want CR 611.2b's \"for as long as it remains exiled\"", grant.Duration.Kind)
 	}
 	if grant.NotBeforeTurn != warpTurn+1 {
 		t.Errorf("NotBeforeTurn: got %d, want %d", grant.NotBeforeTurn, warpTurn+1)
 	}
-	if grant.Active(active.ID, warpTurn) {
+	if permissionLive(g, &grant, active.ID) {
 		t.Errorf("the grant is live on the turn the creature was warped")
 	}
-	if !grant.Active(active.ID, warpTurn+1) {
+	// CR 702.185a's floor is a round number, so a later round opens
+	// it — the one thing Duration cannot say, and the reason
+	// NotBeforeTurn survived #945.
+	later := g.Clone()
+	later.Turn.Number = warpTurn + 1
+	if !permissionLive(later, &grant, active.ID) {
 		t.Errorf("the grant is not live on the next turn")
 	}
 }

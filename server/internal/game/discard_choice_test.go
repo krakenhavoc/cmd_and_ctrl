@@ -163,7 +163,7 @@ func TestEffectDiscardWithNoCardsQueuesNothingAndStillRunsThen(t *testing.T) {
 	id := queueEffectDiscard(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game) error { ran = true; return nil },
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { ran = true; return nil },
 	})
 	if id != uuid.Nil || discardPromptFor(g, p.ID) != nil {
 		t.Error("an empty hand must queue no prompt")
@@ -260,7 +260,7 @@ func TestEffectDiscardThenRunsAfterTheCardsAreGone(t *testing.T) {
 	queueEffectDiscard(g, DiscardPrompt{
 		Player: p.ID,
 		N:      1,
-		Then: func(g *Game) error {
+		Then: func(g *Game, _ uuid.UUID, _ []uuid.UUID) error {
 			ran++
 			inGraveyardWhenThenRan = p.Graveyard.Contains(pick)
 			return nil
@@ -297,7 +297,7 @@ func TestEffectDiscardForAnEliminatedPlayerStrandsNothing(t *testing.T) {
 	id := queueEffectDiscard(g, DiscardPrompt{
 		Player: gone.ID,
 		N:      1,
-		Then:   func(*Game) error { ran = true; return nil },
+		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { ran = true; return nil },
 	})
 	if id != uuid.Nil || discardPromptFor(g, gone.ID) != nil {
 		t.Error("a departed seat is not prompted")

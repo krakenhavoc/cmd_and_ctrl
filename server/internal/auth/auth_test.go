@@ -11,43 +11,99 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestMemoryIssueValidate(t *testing.T) {
-	a := NewMemoryAuthenticator()
-	p := Principal{Role: RolePlayer, PlayerID: uuid.New(), GameID: uuid.New(), Name: "Alice"}
-
-	tok, issued, err := a.Issue(context.Background(), p, time.Minute)
-	if err != nil {
-		t.Fatalf("Issue: %v", err)
-	}
-	if tok == "" {
-		t.Error("Issue returned empty token")
-	}
-	if issued.IssuedAt.IsZero() || issued.ExpiresAt.IsZero() {
-		t.Error("Issue did not stamp IssuedAt / ExpiresAt")
-	}
-
-	back, err := a.Validate(context.Background(), tok)
-	if err != nil {
-		t.Fatalf("Validate: %v", err)
-	}
-	if back.PlayerID != p.PlayerID || back.GameID != p.GameID || back.Name != p.Name {
-		t.Errorf("Validate returned mismatched principal: %+v", back)
+// contractImpls is every Authenticator the server can run with. The
+// tests that describe the interface's contract run against each, so
+// swapping one for the other in main.go cannot change behaviour a
+// caller depends on. What genuinely differs (Revoke, expired-token
+// purging) is tested per implementation below and in hmac_test.go.
+func contractImpls(t *testing.T) map[string]func() Authenticator {
+	t.Helper()
+	return map[string]func() Authenticator{
+		"memory": func() Authenticator { return NewMemoryAuthenticator() },
+		"hmac": func() Authenticator {
+			a, err := NewHMACAuthenticator([]byte(testKey))
+			if err != nil {
+				t.Fatalf("NewHMACAuthenticator: %v", err)
+			}
+			return a
+		},
 	}
 }
 
-func TestMemoryValidateRejectsUnknown(t *testing.T) {
-	a := NewMemoryAuthenticator()
-	_, err := a.Validate(context.Background(), "bogus-token")
-	if err != ErrInvalidCredential {
-		t.Errorf("Validate bogus: got %v, want ErrInvalidCredential", err)
+func TestContractIssueValidate(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			p := Principal{Role: RolePlayer, PlayerID: uuid.New(), GameID: uuid.New(), Name: "Alice"}
+
+			tok, issued, err := a.Issue(context.Background(), p, time.Minute)
+			if err != nil {
+				t.Fatalf("Issue: %v", err)
+			}
+			if tok == "" {
+				t.Error("Issue returned empty token")
+			}
+			if issued.IssuedAt.IsZero() || issued.ExpiresAt.IsZero() {
+				t.Error("Issue did not stamp IssuedAt / ExpiresAt")
+			}
+
+			back, err := a.Validate(context.Background(), tok)
+			if err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			if back.PlayerID != p.PlayerID || back.GameID != p.GameID || back.Name != p.Name {
+				t.Errorf("Validate returned mismatched principal: %+v", back)
+			}
+			if !back.ExpiresAt.Equal(issued.ExpiresAt) || !back.IssuedAt.Equal(issued.IssuedAt) {
+				t.Errorf("Validate timestamps %v/%v, Issue returned %v/%v",
+					back.IssuedAt, back.ExpiresAt, issued.IssuedAt, issued.ExpiresAt)
+			}
+		})
 	}
 }
 
-func TestMemoryValidateRejectsEmpty(t *testing.T) {
-	a := NewMemoryAuthenticator()
-	_, err := a.Validate(context.Background(), "")
-	if err != ErrInvalidCredential {
-		t.Errorf("Validate empty: got %v, want ErrInvalidCredential", err)
+func TestContractValidateRejectsGarbage(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			for _, tok := range []string{"", "bogus-token", "v1.", "v1..", "a.b.c"} {
+				if _, err := a.Validate(context.Background(), tok); err != ErrInvalidCredential {
+					t.Errorf("Validate %q: got %v, want ErrInvalidCredential", tok, err)
+				}
+			}
+		})
+	}
+}
+
+func TestContractIssueRejectsNonPositiveTTL(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			if _, _, err := a.Issue(context.Background(), Principal{Role: RolePlayer}, 0); err == nil {
+				t.Error("Issue with ttl=0: expected error, got nil")
+			}
+			if _, _, err := a.Issue(context.Background(), Principal{Role: RolePlayer}, -time.Second); err == nil {
+				t.Error("Issue with negative ttl: expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestContractRevokeReturnsNil(t *testing.T) {
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) {
+			a := mk()
+			tok, _, err := a.Issue(context.Background(), Principal{Role: RolePlayer}, time.Minute)
+			if err != nil {
+				t.Fatalf("Issue: %v", err)
+			}
+			if err := a.Revoke(context.Background(), tok); err != nil {
+				t.Errorf("Revoke: %v", err)
+			}
+			if err := a.Revoke(context.Background(), "unknown"); err != nil {
+				t.Errorf("Revoke unknown: got %v, want nil", err)
+			}
+		})
 	}
 }
 
@@ -74,16 +130,6 @@ func TestMemoryValidateRejectsExpired(t *testing.T) {
 	}
 	if got := a.Count(); got != 0 {
 		t.Errorf("Count after expiry: got %d, want 0", got)
-	}
-}
-
-func TestMemoryIssueRejectsNonPositiveTTL(t *testing.T) {
-	a := NewMemoryAuthenticator()
-	if _, _, err := a.Issue(context.Background(), Principal{}, 0); err == nil {
-		t.Error("Issue with ttl=0: expected error, got nil")
-	}
-	if _, _, err := a.Issue(context.Background(), Principal{}, -time.Second); err == nil {
-		t.Error("Issue with negative ttl: expected error, got nil")
 	}
 }
 
@@ -144,7 +190,12 @@ func TestMiddlewareRejectsMissingCredential(t *testing.T) {
 }
 
 func TestMiddlewareAttachesPrincipal(t *testing.T) {
-	a := NewMemoryAuthenticator()
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) { testMiddlewareAttachesPrincipal(t, mk()) })
+	}
+}
+
+func testMiddlewareAttachesPrincipal(t *testing.T, a Authenticator) {
 	want := Principal{Role: RolePlayer, PlayerID: uuid.New(), Name: "Alice"}
 	tok, _, err := a.Issue(context.Background(), want, time.Minute)
 	if err != nil {
@@ -174,7 +225,12 @@ func TestMiddlewareAttachesPrincipal(t *testing.T) {
 }
 
 func TestMiddlewareEnforcesRole(t *testing.T) {
-	a := NewMemoryAuthenticator()
+	for name, mk := range contractImpls(t) {
+		t.Run(name, func(t *testing.T) { testMiddlewareEnforcesRole(t, mk()) })
+	}
+}
+
+func testMiddlewareEnforcesRole(t *testing.T, a Authenticator) {
 	tok, _, _ := a.Issue(context.Background(), Principal{Role: RolePlayer}, time.Minute)
 
 	h := Middleware(a, RoleAdmin)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

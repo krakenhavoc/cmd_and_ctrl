@@ -100,70 +100,21 @@ func b19EntersWithCountersCounted(kind string, count func(g *game.Game, src *gam
 // library. Until the end of your next turn, you may play those
 // cards."
 //
-// The engine's impulse grant expires by ROUND number (Turn.Number
-// advances when the table wraps to seat 0), and the cleanup sweep
-// runs on every seat's cleanup, so no single UntilTurn value means
-// "the end of your next turn" for every seat: the round of your next
-// turn ends the grant at seat 0's cleanup of that round, which for
-// anyone but seat 0 is BEFORE their turn, and one round later would
-// leave it live through opponents' turns after yours. So the grant
-// is stamped two rounds out as a backstop and a CR 603.7 delayed
-// trigger at the beginning of your next upkeep re-stamps it to end
-// with that turn — the first cleanup after your upkeep in a round is
-// your own, which is exactly "until the end of your next turn". The
-// re-stamp is ordinary catalog machinery (a delayed trigger on the
-// stack in your upkeep, visible and respondable), and it touches only
-// cards still in exile that still carry this grant.
-func b19ExileTopTwoUntilEndOfNextTurn(label string) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		controller := item.Controller
-		exiled, err := g.ExileTopWithPermissionForEffect(controller, controller, 2, game.ExilePlayPermission{
-			UntilTurn: g.Turn.Number + 2,
-		})
-		if err != nil {
-			return err
-		}
-		if len(exiled) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:                 game.StepUpkeep,
-			ControllerTurnOnly: true,
-			Label:              label + " — the exiled cards may be played until end of turn",
-			Cards:              exiled,
-			Effect:             b19EndImpulseGrantWithThisTurn,
-		}.Apply(NewContext(g, item))
-	}
-}
-
-// b19EndImpulseGrantWithThisTurn is the delayed-trigger body behind
-// b19ExileTopTwoUntilEndOfNextTurn: every listed card that is still
-// in exile under the item controller's grant has the grant re-stamped
-// to lapse at this turn's cleanup. A card already played, or exiled
-// again by something else since, is left alone — re-stamping goes
-// through ExileCardWithPermissionForEffect, which would MOVE a card
-// that is anywhere but exile, so the zone check is not optional.
-// Package-level so the delayed trigger captures nothing.
-func b19EndImpulseGrantWithThisTurn(g *game.Game, item *game.StackItem) error {
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
-			continue
-		}
-		z := g.FindCardZoneForEffect(t.ID)
-		if z == nil || z.Kind != game.ZoneExile {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || c.ExilePlay.Player != item.Controller || c.ExilePlay.WhileExiled {
-			continue
-		}
-		perm := c.ExilePlay
-		perm.UntilTurn = g.Turn.Number
-		if err := g.ExileCardWithPermissionForEffect(t.ID, perm); err != nil {
-			return err
-		}
-	}
-	return nil
+// One line, because the duration is a duration (#945). It used to be
+// two: the engine's permission expired by ROUND number (Turn.Number
+// advances when the table wraps to seat 0) and no single round meant
+// "the end of your next turn" for every seat, so the grant was
+// stamped two rounds out as a backstop and a CR 603.7 delayed trigger
+// in the holder's next upkeep re-stamped it to end with that turn.
+// ADR 0063's seat-turn counter says the clause directly —
+// `Player.TurnsBegun + 1`, which is your next turn whoever you are —
+// so the backstop, the trigger and the re-stamp helper are all gone.
+func b19ExileTopTwoUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
+	controller := item.Controller
+	_, err := g.ExileTopWithPermissionForEffect(controller, controller, 2, game.CastPermission{
+		Duration: g.UntilEndOfYourNextTurnDuration(controller),
+	})
+	return err
 }
 
 // b19BirthingPodSearch is Birthing Pod's body: the sacrificed

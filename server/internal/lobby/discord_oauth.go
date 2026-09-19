@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
 
 // discordConfig responds with a minimal flag so the Svelte Join
@@ -122,6 +124,30 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		AvatarHash: user.Avatar,
 	}
 
+	// Record the person before anything else happens (ADR 0051
+	// decision 2): the first sign-in mints a users row, a later one
+	// refreshes its name and avatar. Done before the seat claim so a
+	// failed write cannot leave a seat taken by someone who then gets
+	// no session. The refresh token goes to the store and nowhere
+	// else — it is sealed there, or discarded when no
+	// CMDCTRL_IDENTITY_KEY is configured. With no database the store
+	// is users.NoStore and u.ID is zero, which is today's session.
+	scopes := token.Scope
+	if scopes == "" {
+		scopes = discord.RequestedScopes
+	}
+	u, err := c.userStore().UpsertFromDiscord(r.Context(), user, token.RefreshToken, scopes)
+	if err != nil {
+		// The store's error can name tables and columns; the browser
+		// gets a plain sentence and the log gets the detail.
+		log := c.Log
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
+		return httpError(http.StatusInternalServerError, "could not record your sign-in; try again")
+	}
+
 	// Login-page flow: nobody named a table, so there is no seat to
 	// claim. Mint an identity-only session and hand it to the SPA,
 	// which shows the invite-code box. The fragment carries no game
@@ -130,6 +156,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	if entry.Unbound() {
 		p := auth.Principal{
 			Role:              auth.RoleIdentified,
+			UserID:            u.ID,
 			Name:              identity.DisplayName(),
 			DiscordID:         user.ID,
 			DiscordUsername:   user.Username,
@@ -160,6 +187,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	p := auth.Principal{
 		Role:              auth.RolePlayer,
+		UserID:            u.ID,
 		GameID:            meta.ID,
 		PlayerID:          playerID,
 		Name:              identity.DisplayName(),
@@ -218,6 +246,15 @@ func discordAvatar(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadGateway, err.Error())
 	}
 	return nil
+}
+
+// userStore returns the Config's user store, or users.NoStore when none
+// is wired (no database, and every test that does not opt in).
+func (c Config) userStore() users.Store {
+	if c.Users == nil {
+		return users.NoStore{}
+	}
+	return c.Users
 }
 
 // discordStore returns the Config's state store, constructing a

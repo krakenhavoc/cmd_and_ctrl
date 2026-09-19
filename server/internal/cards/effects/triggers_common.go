@@ -125,6 +125,58 @@ func OncePerBatch(t game.TriggeredAbility) game.TriggeredAbility {
 	return t
 }
 
+// OncePerBatchPerPlayer is OncePerBatch for a clause that names A
+// PLAYER (#784, CR 603.2c): the batch collapses per player rather
+// than per batch, so three creatures connecting with three opponents
+// in one damage step are three triggers and two creatures hitting one
+// opponent are one. Keeper of Fables' ruling (2019-10-04) states it
+// for the damage wording; Horizon Explorer's and Neyali's state it
+// for "attack a player".
+//
+// The extra dimension is PerPlayer below, appended to the ability's
+// Key by the engine's own guard — one key, one guard, no second
+// dedupe path.
+func OncePerBatchPerPlayer(t game.TriggeredAbility) game.TriggeredAbility {
+	t.OncePerBatch = true
+	t.BatchKey = PerPlayer
+	return t
+}
+
+// PerPlayer is the TriggeredAbility.BatchKey reading for "… to a
+// player" / "… attack a player": the player the event names. That is
+// the damaged player for a damage event, and the defending player an
+// attack ends on for an attack declaration — read through
+// b17DefendingPlayer, so an attack at that player's planeswalker or
+// battle counts as the same player and not a second one.
+func PerPlayer(ev game.Event, _ *game.Card, g *game.Game) string {
+	if ev.Kind == game.EventAttack {
+		return b17DefendingPlayer(g, ev).String()
+	}
+	return ev.Target.String()
+}
+
+// WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer is
+// the printed shape of Professional Face-Breaker, Keeper of Fables,
+// Grazilaxx, Rapacious Guest, Thopter Spy Network and Olivia: one
+// trigger per player the controller's creatures connect with in a
+// combat damage step (CR 603.2c), whatever their number.
+//
+// `creature` narrows which of the controller's creatures count —
+// non-Human, artifact, Faerie, outlaw — read off the damage SOURCE
+// post-layer. Nil counts every creature they control.
+func WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature CardPredicate, label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		if !combatDamageToPlayerBy(ev, source.Controller, g) {
+			return false
+		}
+		if creature == nil {
+			return true
+		}
+		c, ok := g.LookupCardForEffect(ev.Source)
+		return ok && creature(g, source.Controller, c)
+	}, label, effect))
+}
+
 // Targeting gives a trigger a target clause (CR 603.3d — chosen as
 // the ability goes on the stack, re-checked on resolution). The
 // Effect reads the pick from item.Targets[0]; the constructors'
@@ -241,6 +293,27 @@ func ThisDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Cha
 // positive amount). Fires once per life-gain event, as printed.
 func YouGainedLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
+}
+
+// ThisChangedController — the source permanent changed controller
+// (EventControlChanged, #930). ev.Target is the player who lost it
+// and ev.Actor the player who gained it; the engine emits the event
+// only on a real delta, so those two are never the same player.
+func ThisChangedController(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventControlChanged && ev.CardID == source.InstanceID &&
+		ev.Target != uuid.Nil && ev.Actor != uuid.Nil
+}
+
+// AnOpponentGainedControlOfAPermanentYouOwn — some permanent you OWN
+// (CR 108.3 — ownership does not move) came under an opponent's
+// control. The source is the watcher, not the permanent, so this
+// reads the event's card rather than the source's instance ID.
+func AnOpponentGainedControlOfAPermanentYouOwn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventControlChanged || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.Owner == source.Controller
 }
 
 // StepBegan — the named step began (EventStepBegan, #588). With
@@ -390,4 +463,104 @@ func AtEndOfYourCombat(label string, effect Effect) game.TriggeredAbility {
 // WheneverYouGainLife — "Whenever you gain life".
 func WheneverYouGainLife(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventChangeLife, YouGainedLife, label, effect)
+}
+
+// --- where the ability watches from (CR 113.6, #925) ----------------
+
+// InGraveyard makes a trigger watch from its owner's GRAVEYARD
+// instead of from the battlefield — "when you cycle this card"
+// (CR 702.29c, the card is already in the graveyard when the ability
+// triggers), Bloodghast's landfall, Narcomoeba's arrival.
+//
+// It replaces the zone list rather than adding to it, which is the
+// rule and not a shortcut: an ability printed to work from the
+// graveyard does not also work from play, and a permanent with a
+// graveyard trigger firing on the battlefield is the bug this
+// wrapper exists to make impossible to write.
+//
+// "You" inside the trigger is the card's OWNER while it sits there
+// (CR 108.4): the harvest hands the predicate a source whose
+// Controller is its Owner, so ByYou, Self and Landfall all read the
+// way the card prints them.
+func InGraveyard(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
+	return t
+}
+
+// InExile is InGraveyard for exile — suspend's "at the beginning of
+// your upkeep, remove a time counter from this card" and "when the
+// last is removed, cast it" (CR 702.62b/c, #659).
+func InExile(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Zones = []game.ZoneKind{game.ZoneExile}
+	return t
+}
+
+// ThisWasPutIntoYourGraveyardFromYourLibrary — "when this card is put
+// into your graveyard from your library" (Narcomoeba, the dredge and
+// mill recursion family).
+//
+// Watches both kinds the route emits: EventMill for a mill proper
+// (CR 701.17a) and EventZoneMove for every other library-to-graveyard
+// move, which is one ability with two conditions rather than two
+// abilities — the card prints one sentence. The zone pair is read off
+// the event rather than assumed, so a card milled from an OPPONENT's
+// library does not trigger their copy.
+func ThisWasPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.CardID == source.InstanceID &&
+		ev.OldZone == game.ZoneLibrary &&
+		ev.NewZone == game.ZoneGraveyard
+}
+
+// WhenThisIsPutIntoYourGraveyardFromYourLibrary is the printed shape
+// over that condition, already scoped to the graveyard — the zone the
+// card is in when it triggers.
+func WhenThisIsPutIntoYourGraveyardFromYourLibrary(label string, effect Effect) game.TriggeredAbility {
+	return InGraveyard(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove},
+		ThisWasPutIntoYourGraveyardFromYourLibrary, label, effect))
+}
+
+// --- control changes (#930, CR 613.1b) ------------------------------
+//
+// One event, emitted from the one materialise step at the end of the
+// layer pass, covers every way control moves: a spell or ability
+// taking a permanent, an Aura's static, an exchange (CR 701.12), and
+// the permanent going home when the effect ends. So a card that
+// triggers on losing control fires on the revert as well as on the
+// theft, with nothing written per card.
+
+// WhenYouLoseControlOfThis — "When you lose control of ~" (Khârn the
+// Betrayer's Sigil of Corruption, Coffin Queen, Gustha's Scepter).
+//
+// "You" is the player who LOST control, and that is the one printed
+// shape whose ability is not controlled by the source's current
+// controller: by the time the event is emitted the permanent is
+// already the other player's, so an item built the ordinary way would
+// hand the thief the trigger. The item is built for ev.Target instead
+// — the only reading under which "you lose control of ~" can be true
+// of its own controller.
+func WhenYouLoseControlOfThis(label string, effect Effect) game.TriggeredAbility {
+	t := On(game.EventControlChanged, ThisChangedController, label, effect)
+	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label, effect)
+		item.Controller, item.Owner = ev.Target, ev.Target
+		return item
+	}
+	return t
+}
+
+// WhenYouGainControlOfThis — "When you gain control of ~ from another
+// player" (Risky Move). The gaining player is the permanent's
+// controller by the time the event lands, so the ordinary item is
+// already theirs.
+func WhenYouGainControlOfThis(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventControlChanged, ThisChangedController, label, effect)
+}
+
+// WheneverAnOpponentGainsControlOfAPermanentYouOwn — the Zedruu
+// shape: the watcher is one permanent and the permanent that moved is
+// another, matched by OWNERSHIP (CR 108.3), which no zone change or
+// theft alters. Fires once per permanent, as printed; two permanents
+// donated by one resolution are two triggers.
+func WheneverAnOpponentGainsControlOfAPermanentYouOwn(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventControlChanged, AnOpponentGainedControlOfAPermanentYouOwn, label, effect)
 }

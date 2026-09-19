@@ -19,6 +19,7 @@ package deck
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -326,12 +327,22 @@ func printedKeywords(c cards.Card) []string {
 		front = keywordLines(c.CardFaces[0].OracleText)
 	}
 	var confirm map[string]bool
+	wantProtection := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
-		kw, ok := game.CanonicalKeyword(raw)
+		kws, ok := game.CanonicalKeywords(raw)
 		if !ok {
+			// PROTECTION lands here, always: Scryfall's array carries
+			// the bare family name and the quality lives only in the
+			// oracle text, so the tokens come from the line scan
+			// below instead (#662). Everything else Scryfall names
+			// that the engine does not enforce is simply dropped.
+			if strings.EqualFold(strings.TrimSpace(raw), "protection") {
+				wantProtection = true
+			}
 			continue
 		}
+		kw := kws[0]
 		if front != nil && !front[kw] {
 			continue
 		}
@@ -360,10 +371,52 @@ func printedKeywords(c cards.Card) []string {
 		}
 		out = append(out, kw)
 	}
+	// Protection (CR 702.16) is PARAMETERISED, so it cannot come off
+	// the array the way every other keyword does: Scryfall says only
+	// "Protection" and the quality is in the oracle text. The tokens
+	// are read from the keyword-ability LINES instead, through the
+	// same scan the narrow-variant confirmation uses — which also
+	// gives the multi-face narrowing for free, because a keyword the
+	// front face does not print is not in `front`.
+	//
+	// A quality protection.go's closed grammar cannot parse mints
+	// nothing, so the card carries no protection at all and stays
+	// flagged by the ADR 0037 coverage signal. Errs weaker, exactly
+	// as ADR 0038 §6 chose for "Hexproof from".
+	if wantProtection {
+		lines := front
+		if lines == nil {
+			lines = keywordLinesOf(c)
+		}
+		var protections []string
+		for kw := range lines {
+			if _, ok := game.ParseProtectionQuality(kw); ok && !containsString(out, kw) {
+				protections = append(protections, kw)
+			}
+		}
+		// Map iteration order is random and Card.Keywords is what the
+		// client's badge row renders, so the tokens are sorted — the
+		// printed order is not recoverable from a set, and a stable
+		// order is what stops a card's badges shuffling between
+		// imports.
+		sort.Strings(protections)
+		out = append(out, protections...)
+	}
 	if len(out) == 0 {
 		return nil
 	}
 	return out
+}
+
+// containsString is a plain membership test for the small token
+// slices in this file.
+func containsString(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // narrowVariantKeywords lists the canonical tokens whose Scryfall
@@ -402,7 +455,14 @@ func keywordLines(text string) map[string]bool {
 			line = line[:i]
 		}
 		for _, part := range strings.Split(line, ",") {
-			if kw, ok := game.CanonicalKeyword(part); ok {
+			// CanonicalKeywords, not the singular form: "protection
+			// from Demons and from Dragons" is one comma-separated
+			// part and two abilities (CR 702.16m, #662).
+			kws, ok := game.CanonicalKeywords(part)
+			if !ok {
+				continue
+			}
+			for _, kw := range kws {
 				out[kw] = true
 			}
 		}
@@ -438,6 +498,44 @@ func nonNumericStat(s string) bool {
 	return err != nil
 }
 
+// variableToughness answers game.Card.VariableToughness for one set of
+// printed values: "the engine has no number for this toughness, and
+// the 0 it parsed is a stand-in".
+//
+// Two ways that happens, and the second is #691's safety net:
+//
+//   - the string is present and is not a number ("*", "1+*", "?") —
+//     nonNumericStat's case, and the whole of #683;
+//   - the string is ABSENT on a card or face whose type line says
+//     creature. Every creature has a printed toughness, so a missing
+//     one is a record the engine cannot read rather than a printed 0,
+//     and the 0 this importer writes must not be taken for one.
+//
+// The second matters because the toughness state-based action now
+// kills a printed 0/0 that carries a printing (Card.ToughnessIsKnown
+// branch 5). Without this line a Scryfall record that omits a creature
+// face's power and toughness — a layout nobody has taught the dump
+// reader about yet — would put that creature into the graveyard the
+// moment it landed. Flagging it keeps the pre-#683 posture instead:
+// the skip covers it, and it lives as a 0/0 nothing can kill, which is
+// the failure that can be seen and reported.
+//
+// A card with no toughness at all and no creature type — every land,
+// instant, sorcery and artifact — is not flagged, as before. Nor is a
+// JOINED type line ("Creature — Human Wizard // Legendary Planeswalker
+// — Jace"): Scryfall leaves the top-level toughness of a multi-face
+// printing empty on purpose, the number lives on the face, and
+// SetFace(0) overwrites this flag from there anyway.
+func variableToughness(typeLine, toughness string) bool {
+	if strings.TrimSpace(toughness) != "" {
+		return nonNumericStat(toughness)
+	}
+	if strings.Contains(typeLine, "//") {
+		return false
+	}
+	return strings.Contains(strings.ToLower(typeLine), "creature")
+}
+
 // PrintedVariableToughness returns the game.PrintedVariableToughness
 // lookup over idx: the answer toGameCard and printedFaces stamp,
 // recomputed for a printing by its Scryfall ID. Restoring a game
@@ -461,10 +559,10 @@ func PrintedVariableToughness(idx *cards.Index) func(scryfallID string) (top boo
 		if len(c.CardFaces) >= 2 {
 			faces = make([]bool, len(c.CardFaces))
 			for i, f := range c.CardFaces {
-				faces[i] = nonNumericStat(f.Toughness)
+				faces[i] = variableToughness(f.TypeLine, f.Toughness)
 			}
 		}
-		return nonNumericStat(c.Toughness), faces, true
+		return variableToughness(c.TypeLine, c.Toughness), faces, true
 	}
 }
 
@@ -486,7 +584,7 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// #683: the toughness SBA keeps skipping a `*` creature's
 		// stand-in 0 after it loses its last counter, where a
 		// printed 0/0 dies.
-		VariableToughness: nonNumericStat(c.Toughness),
+		VariableToughness: variableToughness(c.TypeLine, c.Toughness),
 		// CR 306.5b — printed starting loyalty. The engine turns
 		// this into loyalty counters on battlefield entry; without
 		// it the 704.5i SBA eats the walker on the next priority
@@ -572,7 +670,7 @@ func printedFaces(c cards.Card) []game.Face {
 			Colors:            faceColors(f),
 			Power:             power,
 			Toughness:         toughness,
-			VariableToughness: nonNumericStat(f.Toughness),
+			VariableToughness: variableToughness(f.TypeLine, f.Toughness),
 			StartingLoyalty:   loyalty,
 			StartingDefense:   defense,
 			OracleText:        f.OracleText,

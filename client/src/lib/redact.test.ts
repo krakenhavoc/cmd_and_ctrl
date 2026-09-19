@@ -20,6 +20,14 @@ describe("redactSecrets — query parameters", () => {
     expect(redactSecrets(`/ws?token=${TOKEN}#frag`)).toBe(`/ws?token=${REDACTED}#frag`);
   });
 
+  it("redacts a whole signed session token, dots included (#517)", () => {
+    const signed = `v1.eyJyIjoicGxheWVyIn0.${TOKEN}`;
+    expect(redactSecrets(`/ws?token=${signed}&game=g-1`)).toBe(`/ws?token=${REDACTED}&game=g-1`);
+    expect(redactSecrets(`Authorization: Bearer ${signed}`)).toBe(
+      `Authorization: Bearer ${REDACTED}`,
+    );
+  });
+
   it("redacts the invite and reclaim ?t= in a hash route", () => {
     expect(redactSecrets(`https://h/#/games/abc/join?t=${INVITE}&spectator=1`)).toBe(
       `https://h/#/games/abc/join?t=${REDACTED}&spectator=1`,

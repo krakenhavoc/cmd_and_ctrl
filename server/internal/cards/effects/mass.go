@@ -161,11 +161,14 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 // Damnation, Ritual of Soot, Planar Cleansing, an overloaded
 // Vandalblast.
 //
-// Regeneration and totem armor are not modelled anywhere in the
-// engine, so "they can't be regenerated" is cosmetic on the cards
-// that print it — the same note Wrath of God has carried since S14.
-// The clause becomes load-bearing when regeneration lands, and this
-// primitive is where it will be enforced.
+// "THEY CAN'T BE REGENERATED" IS ENFORCED, as of #667: set
+// CantBeRegenerated and the sweep ignores regeneration shields
+// (CR 701.19c) without spending them (CR 701.19d). It was cosmetic on
+// every card that printed it for as long as the engine had no shield
+// to ignore — the note Wrath of God carried from S14 to S40 — which
+// is why every wipe in the catalog that prints the clause had to be
+// revisited when the shield landed rather than only the new ones.
+// Totem armor (CR 702.111) is still unmodelled.
 //
 // INDESTRUCTIBLE IS HONOURED, as of S30 (#470 / #446), and this
 // comment has twice been the place the truth went stale — first
@@ -205,9 +208,16 @@ type DestroyAllMatching struct {
 	// they do. Write it as a clause that acts on what it is given, not
 	// as the next line of the card.
 	Then func(ctx *Context, swept []game.Card, destroyed int) error
+
+	// CantBeRegenerated is the clause Damnation, Damn, Day of
+	// Judgment, Decree of Pain, Winds of Rath and Shatterstorm print:
+	// this destruction ignores regeneration shields (CR 701.19c), and
+	// does not spend them (CR 701.19d). #667.
+	CantBeRegenerated bool
 }
 
 func (d DestroyAllMatching) Apply(ctx *Context) error {
+	opts := game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated}
 	m := massEffect{
 		match:  d.Match,
 		narrow: (*game.Game).DestructibleForEffect,
@@ -218,10 +228,12 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 		// fire-and-forget: every leg is destroyed on this line, and a
 		// commander's CR 903.9 prompt lands its own card later without
 		// holding the rest of the board up.
-		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.DestroyPermanentsForEffect(ids) }
+		m.move = func(g *game.Game, ids []uuid.UUID) int {
+			return g.DestroyPermanentsForEffect(ids, opts)
+		}
 	} else {
 		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
-			return g.DestroyPermanentsThenForEffect(ids, then)
+			return g.DestroyPermanentsThenForEffect(ids, then, opts)
 		}
 	}
 	return m.apply(ctx)

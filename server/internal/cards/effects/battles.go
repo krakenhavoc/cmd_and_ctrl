@@ -93,7 +93,7 @@ const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast i
 // The battle leaves the battlefield for exile, and the exiled card is
 // stamped with a grant that opens its BACK face, for nothing, to the
 // player who controlled the battle. That is the S32 half of the seam
-// S27 named: ExilePlayPermission.Face says which face a per-instance
+// S27 named: CastPermission.Faces says which faces a per-instance
 // grant opens, CastSpell's exile branch reads it before the face gate
 // (faceForCastLocked), and faceOnResolve keeps a cast `transform`
 // face rather than forcing every permanent front-up. Without all
@@ -103,7 +103,7 @@ const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast i
 //
 // # The price
 //
-// "{0}", not "" — ExilePlayPermission.CostOverride reads the empty
+// "{0}", not "" — CastPermission.Cost reads the empty
 // string as "no override, pay the printed cost", and a Siege back
 // face HAS no printed cost (Scryfall gives every one of them
 // `mana_cost: ""`), so the printed path would charge nothing by
@@ -166,11 +166,12 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		// attackable by everyone else, so the two are routinely
 		// different players and the card is unambiguous about which
 		// one gets the back face.
-		return g.ExileCardWithPermissionForEffect(battleID, game.ExilePlayPermission{
-			Player:       item.Controller,
-			CostOverride: "{0}",
-			CastOnly:     true,
-			Face:         SiegeBackFace,
+		return g.ExileCardWithPermissionForEffect(battleID, game.CastPermission{
+			Player:   item.Controller,
+			Cost:     "{0}",
+			CastOnly: true,
+			Faces:    []int{SiegeBackFace},
+			Label:    "Cast it transformed, without paying its mana cost",
 		})
 	}
 }

@@ -329,7 +329,7 @@ func TestDecisionEventsRestartTheRun(t *testing.T) {
 			if got := g.TurnTally.LoopRun[TallyKey(source, label)]; got != 1 {
 				t.Errorf("loop run = %d after a %s, want 1", got, tc.name)
 			}
-			if got := g.TurnTally.Resolved[TallyKey(source, label)]; got != 2 {
+			if got := g.ResolvedThisTurn(source, label); got != 2 {
 				t.Errorf("Resolved = %d, want 2 — a decision restarts the run, not the turn tally", got)
 			}
 		})

@@ -82,12 +82,15 @@ type Game struct {
 	// Added in S10.
 	Initiative uuid.UUID
 
-	// UndoLimit is the per-player budget of undos allowed each turn.
-	// Refreshed on each player's untap step. Default DefaultUndoLimit;
-	// admin / any seated player can change via the set_undo_limit
-	// action. Sandbox — players self-police, the limit is a guardrail
-	// against runaway rewinds, not a strict policy. Added in S11.
-	UndoLimit int
+	// Settings is the table's configuration: the undo budget and
+	// scope, starting life, the commander damage threshold, bot pace
+	// and the spawn switch (ADR 0075 §2.2, settings.go). NewGame sets
+	// DefaultTableSettings; UpdateSettings changes it, in the lobby or
+	// mid-game. Carried by Clone and the snapshot, and deliberately
+	// NOT rolled back by RestoreFrom — an undo must not be able to
+	// undo the setting that limits undos. Replaced the S11 UndoLimit
+	// field in S35 (#1032).
+	Settings TableSettings
 
 	// StartingSeat is the seat index that took the first turn. Set in
 	// Start() to the active seat at game start. Used by the StepDraw
@@ -284,6 +287,12 @@ type Game struct {
 	// key is already recorded against the live batch declines, and
 	// anything else fires.
 	//
+	// The ability key carries a SECOND dimension when the printed
+	// clause quantifies over something (#784, CR 603.2c) — "deal
+	// combat damage to A PLAYER" is once per player, not once per
+	// step — appended by TriggeredAbility.BatchKey. No extra state:
+	// the same map, a longer key. See event_batch.go.
+	//
 	// Both survive Clone / RestoreFrom together, for the reason
 	// TurnTally does: an undo that rewound the counter but kept the
 	// marks (or the reverse) would either double-fire a trigger or
@@ -291,27 +300,41 @@ type Game struct {
 	eventBatch        uint64
 	oncePerBatchFired map[string]uint64
 
-	// announcedBlocks and announcedBecameBlocked are what the block
-	// declaration has already announced this combat (#830).
-	// announcedBlocks maps blocker -> the attacker its EventBlock
-	// named; announcedBecameBlocked records the attackers that have
-	// had their one EventBecomesBlocked (CR 506.4).
+	// announcedBlocks and blockedAttackers are what this combat's
+	// block declaration has produced (#830, #715). announcedBlocks
+	// maps blocker -> the attacker its EventBlock named;
+	// blockedAttackers is the set of attackers that are BLOCKED.
 	//
-	// They exist because the declaration is announced at LOCK-IN and
-	// the sandbox lets the defender keep clicking afterwards: the
+	// blockedAttackers is the CR 509.1h state: "a creature remains
+	// blocked even if all the creatures blocking it are removed from
+	// combat". It is written in exactly one place —
+	// commitBlockDeclarationLocked, the block declaration's lock-in —
+	// and read by both combat damage steps, which never ask the live
+	// battlefield whether an attacker is blocked (#715: they used to,
+	// so an attacker whose chump blocker died hit the player). The
+	// same set is the CR 506.4 announcement guard, because an
+	// attacker becomes blocked exactly once: an EventBecomesBlocked
+	// is emitted when, and only when, an attacker is added here.
+	//
+	// The maps exist because the declaration is announced at LOCK-IN
+	// and the sandbox lets the defender keep clicking afterwards: the
 	// commit emits events only for what has changed since, so a
 	// second blocker added to an already-blocked attacker announces
 	// its own block and no second "becomes blocked", and a blocker
 	// re-pointed after the lock-in does not re-announce the attacker
 	// it left. Both are cleared by clearCombatLocked, which is also
 	// what clears BlockingTarget — they are one combat's bookkeeping.
+	// removeFromCombatLocked drops one permanent's rows when an
+	// effect takes it out of combat (CR 506.4).
 	//
 	// Carried by Clone / RestoreFrom together for the reason
 	// eventBatch and oncePerBatchFired are: an undo that rewound the
 	// declaration but kept the announcements would swallow the
-	// re-done trigger, and the reverse would double-fire it.
-	announcedBlocks        map[uuid.UUID]uuid.UUID
-	announcedBecameBlocked map[uuid.UUID]bool
+	// re-done trigger, and the reverse would double-fire it — and an
+	// undo that dropped the blocked state would hand a blocked
+	// attacker's damage to the defending player.
+	announcedBlocks  map[uuid.UUID]uuid.UUID
+	blockedAttackers map[uuid.UUID]bool
 
 	// announcedAttacks is the same bookkeeping for the ATTACK
 	// declaration (#859, attackers.go): the creatures that have had
@@ -326,6 +349,36 @@ type Game struct {
 	// RestoreFrom and the persisted snapshot, for the reasons the two
 	// block maps above are.
 	announcedAttacks map[uuid.UUID]bool
+
+	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
+	// participation record: the attacking and blocking creatures that
+	// had first strike or double strike as the FIRST combat damage
+	// step began (#716). It is recorded once, at that step's entry,
+	// and both damage steps read it instead of re-reading keywords:
+	//
+	//   - the first-strike step deals damage for exactly this set;
+	//   - the regular step deals damage for every combatant NOT in
+	//     it, plus the ones that have double strike right now.
+	//
+	// Re-reading the keywords in the second step is the bug #716
+	// reports. Between the two steps there is a real priority window
+	// (#717), so a lord granting first strike can die to first-strike
+	// damage, or be Murdered in the window: the creature it pumped
+	// has already dealt its damage and must not deal it again, and
+	// one that GAINS first strike in the window is owed its ordinary
+	// damage in the second step rather than a first-strike hit it
+	// missed.
+	//
+	// Empty means the first-strike step did not happen, so every
+	// combatant deals damage in the single combat damage step — which
+	// is also what the zero value gives a combat that never had one.
+	// Cleared by clearCombatLocked alongside the declarations it
+	// describes, and carried by Clone / RestoreFrom and the persisted
+	// snapshot for the reason announcedBlocks is: the window between
+	// the steps is a priority window, so an undo or a restore can land
+	// inside it, and a record that was dropped there would let a
+	// first-striker hit twice.
+	firstStrikeStepParticipants map[uuid.UUID]bool
 
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
@@ -359,6 +412,52 @@ type Game struct {
 	// construction, so Clone / RestoreFrom do not carry it: no
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
+
+	// enteringTokens holds the tokens whose CR 614 battlefield-entry
+	// window is open and which are therefore in NO zone yet: minted,
+	// not pushed. A card entering the battlefield sits in the zone it
+	// is leaving while its entry replacements are consulted; a token
+	// has no such zone (CR 111.1 — it is created on the battlefield),
+	// and an entry replacement still has to be able to read it.
+	// Urabrask the Hidden asks whether the entering permanent is a
+	// creature an opponent controls, and it asks through
+	// LookupCardForEffect, which is why that function looks here when
+	// no zone holds the card.
+	//
+	// Non-empty only for the duration of one token's entry — normally
+	// a few statements, and across a prompt when that entry pauses on
+	// a CR 616 ordering question. Clone copies it so an undo across
+	// such a prompt still has the token; the persisted snapshot does
+	// not carry it, exactly as it does not carry the once-per-event
+	// map the same paused window is holding. See token_create.go.
+	enteringTokens []Card
+
+	// resolving is the stack item whose resolution is in flight, plus
+	// the card it was (CR 608.2m last-known information), held for
+	// exactly one event batch — see resolving_item.go (#920).
+	//
+	// resolveTopOfStackLocked removes an item from StackMeta BEFORE it
+	// runs, which is right: the item is no longer on the stack and
+	// nothing may target it. But CR 707.10 lets a resolving spell
+	// create a copy of ITSELF (Chain of Vapor, Chain of Smog), and
+	// CopySpellForEffect finds its source through StackMeta, so with
+	// the entry already gone the copy leg found nothing. This slot is
+	// where it looks instead.
+	//
+	// Its lifetime is the OCCURRENCE, not the function call: the copy
+	// decision is a prompt, so it is answered after the resolution
+	// has returned and the spell has already reached the graveyard.
+	// beginEventBatchLocked clears it, which makes the terminal
+	// boundary exactly the next resolution or the next step — the
+	// same boundary #829 already draws, and one no open prompt can be
+	// crossed by, because a resolution-time prompt blocks the table.
+	//
+	// Clone carries it so an undo across that prompt still has the
+	// source; the persisted snapshot drops it, for the reason
+	// enteringTokens is dropped — it is non-empty between actions only
+	// for a resolution paused on a prompt, and that prompt's resume
+	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
+	resolving *resolvingItem
 
 	// The game's randomness: a secret key plus per-stream draw
 	// counters for the current turn (ADR 0054 Decision 2). Every
@@ -434,15 +533,16 @@ type Game struct {
 	// gated via source card's AppliesTo). Added in S17 sub-PR 5.
 	TurnScopedReplacements []ReplacementEffect
 
-	// TurnScopedStatics is the per-turn CONTINUOUS-EFFECT slot —
-	// the layer-engine twin of TurnScopedReplacements. Entries are
-	// floating static abilities with a duration rather than a
-	// battlefield source: Giant Growth's +3/+3, Overrun's mass pump
-	// and trample grant, a loyalty ability's "+2/+2 and first strike
-	// until end of turn". Consulted by activeStaticAbilitiesLocked
-	// alongside the battlefield walk and swept at StepCleanup
-	// (CR 514.2). See turn_scoped_statics.go. Added in S32.
-	TurnScopedStatics []ScopedStatic
+	// ScopedStatics is the CONTINUOUS-EFFECT slot for effects whose
+	// lifetime is a duration rather than a battlefield source: Giant
+	// Growth's +3/+3, Overrun's mass pump and trample grant, Act of
+	// Treason's theft, Agent of Treachery's. Consulted by
+	// activeStaticAbilitiesLocked alongside the battlefield walk and
+	// swept by the one duration sweep (CR 611.2). See
+	// scoped_statics.go and duration.go. Added in S32 as
+	// TurnScopedStatics; renamed in S38 when it stopped being
+	// turn-scoped (ADR 0063).
+	ScopedStatics []ScopedStatic
 
 	// testReplacements is the test-only replacement injection slot
 	// populated by RegisterReplacementForTest. Unexported so
@@ -473,6 +573,27 @@ type Game struct {
 	// sub-PR 2.
 	nextReplacementEventID atomic.Uint64
 
+	// promptRuns holds the prompted runs in flight — sacrifices
+	// (#1019) and discards (#1027) alike — keyed by the id each of a
+	// run's prompts carries on PendingChoice.promptRun
+	// (prompt_run.go). One run is one printed instruction; the entry
+	// lives from the moment its prompts are queued until the last of
+	// them has settled and its continuation has run.
+	//
+	// ONE registry for both verbs, because the keys are freshly
+	// minted uuids and "which prompt is a leg of which run" is one
+	// question: a second map would be a second place for a new verb's
+	// clone, restore and census wiring to be forgotten.
+	//
+	// So between actions it holds an entry only for an instruction
+	// paused on a prompt, and that entry is part of the prompt's
+	// state: Clone deep-copies it and RestoreFrom puts it back, for
+	// exactly the reason replacementsAppliedThisEvent above does — an
+	// undo into the open prompt would otherwise replay the answer
+	// against a counter that had already been decremented and pay out
+	// a seat early.
+	promptRuns map[uuid.UUID]*promptRun
+
 	mu sync.RWMutex
 }
 
@@ -486,6 +607,7 @@ func NewGame() *Game {
 		Battlefield: newZone(ZoneBattlefield, uuid.Nil),
 		Stack:       newZone(ZoneStack, uuid.Nil),
 		Exile:       newZone(ZoneExile, uuid.Nil),
+		Settings:    DefaultTableSettings(),
 	}
 	// S16 sub-PR 2: install the layer-engine invalidation listener.
 	// Bumps g.layerVersion on the events that change which static
@@ -515,7 +637,15 @@ func NewGame() *Game {
 	// replacement. Refactored from S13.1's inline
 	// applyCommanderZoneReplacementLocked. See
 	// builtin_replacements.go.
-	g.BuiltinReplacements = append(g.BuiltinReplacements, commanderZoneReplacement)
+	g.BuiltinReplacements = append(g.BuiltinReplacements,
+		commanderZoneReplacement,
+		regenerationShieldReplacement,
+		// #662, CR 702.16e. Order in this slice is not precedence —
+		// the protection built-in declares Preemptive, which is what
+		// puts it ahead of every other applicable replacement and
+		// keeps a charged prevention shield unspent (ADR 0072 §4).
+		protectionPreventsDamageReplacement,
+	)
 	return g
 }
 
@@ -546,6 +676,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	seat := len(g.Seats)
 	p := newPlayer(name, seat)
+	p.Life = g.Settings.StartingLife
 
 	// Stamp every card with its owner (overwriting whatever the caller
 	// set) and route commanders vs. library cards.
@@ -671,9 +802,9 @@ func (g *Game) start(key *[32]byte) error {
 		g.rngKey = mintRNGKey()
 		g.rngCounters = nil
 	}
-	if g.UndoLimit <= 0 {
-		g.UndoLimit = DefaultUndoLimit
-	}
+	// No "<= 0 means default" rewrite here any more (ADR 0075 §2.2):
+	// NewGame sets the defaults, and a limit of 0 set in the lobby is
+	// a table that wants no undos.
 	// S13.5: collect every seated player's ID so command-zone
 	// initialisation can mark all knowers in one pass.
 	allSeatedIDs := make([]uuid.UUID, 0, len(g.Seats))
@@ -681,7 +812,8 @@ func (g *Game) start(key *[32]byte) error {
 		allSeatedIDs = append(allSeatedIDs, p.ID)
 	}
 	for _, p := range g.Seats {
-		p.UndosRemaining = g.UndoLimit
+		p.UndosRemaining = g.Settings.UndoLimit
+		p.Life = g.Settings.StartingLife
 		// The opening shuffle is the pre-game turn index's first draw
 		// on this seat's shuffle stream (the cursor is set to turn 1
 		// below).
@@ -709,6 +841,9 @@ func (g *Game) start(key *[32]byte) error {
 	}
 	g.Turn = newStartingTurn()
 	g.StartingSeat = g.Turn.ActiveSeat
+	// The one turn that does not begin through the rotation seam
+	// still counts as a turn begun (ADR 0063 Decision 3).
+	g.noteTurnBegunLocked(g.StartingSeat)
 	g.State = StateActive
 	g.MulligansOpen = true
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
@@ -724,11 +859,10 @@ func (g *Game) start(key *[32]byte) error {
 // count for redraws (simplified — no London bottom-N penalty yet).
 const OpeningHandSize = 7
 
-// DefaultUndoLimit is the per-player undo budget refreshed each turn
-// when Game.UndoLimit is unset. One is intentionally tight — undo is
-// for "I clicked the wrong card", not for re-litigating turns. Admin
-// or any seated player can raise it via set_undo_limit if the table
-// wants more leniency. Added in S11.
+// DefaultUndoLimit is the default per-player undo budget refreshed
+// each turn (TableSettings.UndoLimit). One is intentionally tight —
+// undo is for "I clicked the wrong card", not for re-litigating
+// turns. The table can change it through UpdateSettings. Added in S11.
 const DefaultUndoLimit = 1
 
 // End transitions the game to the ended state. Idempotent: calling
@@ -736,25 +870,46 @@ const DefaultUndoLimit = 1
 func (g *Game) End() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.State != StateEnded {
+		// CR 702.143f, #658. The same sweep endGameIfDecidedLocked
+		// runs, on the other door out of an active game — an admin
+		// ending the table, and every caller that ends it outright.
+		g.revealForetoldAtGameEndLocked()
+	}
 	g.State = StateEnded
 }
 
-// AdvanceStep moves the turn cursor forward by one step. After the
-// cleanup step, the cursor wraps to the next seat's untap step and
-// the turn number increments. Returns the new Turn.
+// AdvanceStep is the sandbox's skip-ahead: "pass priority until this
+// step ends." With an empty stack that is one step of the cursor, the
+// way it always was. With something ON the stack it is the passes the
+// rules require first — CR 117.4, a step or phase ends only once every
+// player has passed in succession with an empty stack — so whatever
+// the step owed resolves INSIDE the step instead of after the next
+// one's turn-based actions (#914). After the cleanup step the cursor
+// wraps to the next seat's untap step and the turn number increments.
+// Returns the Turn the call ends on.
 //
 // Side effects on step transitions:
+//   - Entering first_strike_damage: the first-strike damage pass
+//     runs (CR 510.4). The step exists only when a combatant has
+//     first or double strike as it would begin; otherwise the cursor
+//     walks through it without entering it.
 //   - Entering combat_damage: ResolveCombatDamage runs (S08 —
 //     auto-applies unblocked attacker damage to defending players'
 //     life totals). Combat declarations (AttackingTarget /
 //     BlockingTarget) are intentionally left in place.
-//   - Entering end_combat: clearCombatLocked wipes the combat
-//     declarations. Deferring the clear until this step lets the
-//     client keep its combat-arrow overlay visible through the
-//     entire combat_damage step instead of vanishing the moment
-//     damage is resolved.
+//   - LEAVING end_combat: clearCombatLocked wipes the combat
+//     declarations (CR 511.3 — creatures are removed from combat as
+//     that step ENDS, #785). Everything that happens in the end of
+//     combat step, "at end of combat" triggers included, still sees
+//     the attackers and blockers; the client's combat arrows come
+//     down when the cursor reaches postcombat_main.
 //
-// Returns ErrGameNotActive if the game is not in the active state.
+// Returns ErrGameNotActive if the game is not in the active state,
+// and a *ChoicePendingError while a blocking prompt is open (#730).
+// A prompt raised by a resolution the drive itself caused is NOT an
+// error: the drive stops there with the cursor where it is, so the
+// table sees the prompt against the board that raised it.
 func (g *Game) AdvanceStep() (Turn, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -781,6 +936,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if c := g.blockingChoiceLocked(); c != nil {
 		return g.Turn, choicePendingErrorLocked(c)
 	}
+	// #914 / CR 117.4: a step does not end while the stack has
+	// anything on it. Drive the table's passes until it is empty —
+	// each resolution followed by SBAs, the trigger drain and another
+	// priority round, exactly as ordinary play does it — and only
+	// then move the cursor.
+	switch g.driveStepToEndLocked() {
+	case driveStepEnded:
+		// The last pass wrapped with an empty stack and ended the
+		// step itself. That path runs the same entry hooks this one
+		// does; finish with the state checks below so AdvanceStep's
+		// postcondition is the same however the step ended.
+		g.runStateChecksLocked()
+		return g.Turn, nil
+	case driveHalted:
+		// A prompt, a loop notice or the game ending stopped the
+		// drive. The cursor stays in the step that still owes
+		// something; no error, because the resolutions that got this
+		// far are real and the caller must see them.
+		return g.Turn, nil
+	}
 	g.advanceCursorLocked()
 	g.runStepEntryHooksLocked()
 	// CR 117.5 / 704.3: SBAs fire whenever a player would get
@@ -791,6 +966,87 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// that accumulated during the prior step without a priority pass.
 	g.runStateChecksLocked()
 	return g.Turn, nil
+}
+
+// driveResult says how the CR 117.4 drive in AdvanceStep ended.
+type driveResult int
+
+const (
+	// driveCursorMayMove: nothing is on the stack in the step the
+	// call started in, so the cursor moves the way it always has.
+	// Also the answer when the step grants no priority at all
+	// (untap, cleanup) and there is therefore nothing to drive —
+	// the cursor still moves, so a stray stack item cannot wedge a
+	// step that no pass_priority could unstick either.
+	driveCursorMayMove driveResult = iota
+	// driveStepEnded: the passes emptied the stack and the wrap ended
+	// the step on its own. The cursor has already moved.
+	driveStepEnded
+	// driveHalted: a blocking prompt, a CR 726 loop notice, or the
+	// game ending stopped the drive with the step still owing
+	// something. The cursor has not moved.
+	driveHalted
+)
+
+// maxAdvanceStepPasses bounds the CR 117.4 drive. One resolution
+// costs up to one pass per seat, so this is ~256 resolutions at a
+// four-player table — far past anything a step legitimately owes, and
+// past the CR 726 loop breaker's own threshold, which stops the drive
+// long before this does. Hitting it halts the drive with the cursor
+// where it stands; the caller clicks again.
+const maxAdvanceStepPasses = 1024
+
+// driveStepToEndLocked passes priority around the table for the
+// caller until the step's stack is empty — CR 117.4's "all players
+// pass in succession with the stack empty", which is what the sandbox
+// skip-ahead has to mean if it is not to walk past what the step owes
+// (#914).
+//
+// It reuses PassPriority's body rather than resolving anything
+// itself: one priority engine, so the drive resolves, runs SBAs,
+// drains triggers and hands priority back in exactly the order a
+// table of humans clicking "next" would.
+//
+// It stops on the three things that stop automatic passing anywhere
+// else in the engine: a prompt addressed to somebody (#730 /
+// ADR 0018 §6), a CR 726 loop notice (ADR 0055 — checked AFTER a
+// pass, so a standing notice still lets one manual nudge through the
+// way the client's "next" button does), and the game ending under a
+// resolution.
+//
+// Caller must hold g.mu.
+func (g *Game) driveStepToEndLocked() driveResult {
+	start := g.Turn
+	for i := 0; i < maxAdvanceStepPasses; i++ {
+		// A resolution that queued a prompt stops the drive here
+		// rather than inside passPriorityLocked, so the halt is a
+		// state the caller can broadcast rather than an error over a
+		// board that has already changed. Ahead of the stack check
+		// because the LAST resolution of the drive is the one most
+		// likely to ask a question: an empty stack with a prompt
+		// standing on it is still a cursor #730 must not move.
+		if g.blockingChoiceLocked() != nil {
+			return driveHalted
+		}
+		if !g.stackHasItemsLocked() {
+			return driveCursorMayMove
+		}
+		if err := g.passPriorityLocked(); err != nil {
+			if errors.Is(err, ErrNoPriority) {
+				return driveCursorMayMove
+			}
+			return driveHalted
+		}
+		if g.Turn.Step != start.Step ||
+			g.Turn.Number != start.Number ||
+			g.Turn.ActiveSeat != start.ActiveSeat {
+			return driveStepEnded
+		}
+		if g.LoopNotice != nil {
+			return driveHalted
+		}
+	}
+	return driveHalted
 }
 
 // advanceCursorLocked moves the step cursor forward by one — the
@@ -806,6 +1062,26 @@ func (g *Game) AdvanceStep() (Turn, error) {
 // caches, so SpellsCastThisTurn / LoyaltyActivatedThisTurn survived
 // every ordinary turn change. Caller must hold g.mu.
 func (g *Game) advanceCursorLocked() {
+	// CR 511.3: "as soon as the end of combat step ends, all
+	// creatures, battles and planeswalkers are removed from combat."
+	// This is where that step ends — the one seam every step
+	// transition goes through — so this is where combat is cleared
+	// (#785). It used to happen on ENTRY to end_combat, which took
+	// every attacker and blocker out of combat for the whole of the
+	// step the rules keep them in: Aetherize, Settle the Wreckage and
+	// Aetherspouts cast there found nothing, Desert had no legal
+	// target in the only step it can be activated, and "activate only
+	// if you control an attacking creature" was false there. The "at
+	// end of combat" triggers are unaffected: CR 511.2 fires them as
+	// the step BEGINS, from the step-entry hook's announcement, with
+	// the creatures still in combat.
+	//
+	// The manual ClearCombat verb, PassTurn and the eliminated-seat
+	// rotation keep their own calls — a turn that ends early never
+	// reaches this seam.
+	if g.Turn.Step == StepEndCombat {
+		g.clearCombatLocked()
+	}
 	// #829: entering a step is one of the two points where play moves
 	// on, so the events this step emits are a new occurrence — first
 	// strike damage and regular damage are two batches, as in paper.
@@ -873,6 +1149,32 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 	return g.SpellsCastThisTurn[playerID]
 }
 
+// stepExistsLocked reports whether the step the cursor has landed on
+// is one THIS turn actually has. A step that does not exist is walked
+// through by runStepEntryHooksLocked without being entered: nothing
+// announces, no turn-based action runs, and no player receives
+// priority in it.
+//
+// One step answers false today. CR 506.1 / 510.4: a combat phase has
+// TWO combat damage steps, the first of them for first strike, only
+// "if at least one attacking or blocking creature has first strike or
+// double strike as the combat damage step begins". The cursor is at
+// that moment right now, so the check is the live board — which is
+// also why it is a predicate here rather than a flag set when blockers
+// were declared: a creature can gain or lose first strike during the
+// declare-blockers step's own priority window.
+//
+// The regular combat damage step always exists (every combat has one),
+// and so does every other step in turnSequence.
+//
+// Caller must hold g.mu.
+func (g *Game) stepExistsLocked(s Step) bool {
+	if s != StepFirstStrikeDamage {
+		return true
+	}
+	return len(g.firstStrikeStepParticipantSetLocked()) > 0
+}
+
 // runStepEntryHooksLocked dispatches the per-step side effects that
 // fire on entering certain steps. Called from every code path that
 // changes Turn.Step (AdvanceStep, PassPriority's wrap-and-advance
@@ -902,13 +1204,14 @@ func (g *Game) CastTallyFor(playerID uuid.UUID) CastTally {
 //     your end step" triggers fire. The delayed-trigger drain that
 //     runs just before the switch covers "at the beginning of the
 //     next end step" for the same boundary.
-//   - StepEndCombat: clear AttackingTarget / BlockingTarget on every
-//     battlefield card. Deferring the clear until end_combat (rather
-//     than combat_damage) lets the client keep its combat-arrow
-//     overlay visible through the entire combat_damage step instead
-//     of vanishing the moment damage is resolved.
-//   - StepCleanup (S13): auto-advance past cleanup to the next
-//     seat's turn. S13.4 will hook interactive discard in here.
+//   - StepEndCombat: nothing. The step has no turn-based action
+//     (CR 511.1), and the removal from combat happens as it ENDS
+//     (CR 511.3), from advanceCursorLocked — not here (#785).
+//   - StepCleanup (S13): the CR 514.1 hand-size discard pauses the
+//     cursor here (S13.4); the CR 514.2 sweep runs; then cleanup.go's
+//     one exit either ends the turn (CR 514.3) or gives the active
+//     player priority in this step and comes back for a second
+//     cleanup step (CR 514.3a, #661).
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
@@ -923,6 +1226,17 @@ func (g *Game) runStepEntryHooksLocked() {
 	// untap step's own untaps bump it again on the way into upkeep.
 	// Fast-path no-op when nothing changed.
 	g.RecomputeLayersIfStaleLocked()
+	// #717 / CR 506.1: not every turn has every step. A step this
+	// turn does not have never begins — no announcement, no turn-based
+	// action, no priority — so the cursor walks straight through it,
+	// which is the same move a step CANCELLED by a replacement makes
+	// below (CR 500.11). Checked before the replacement window because
+	// a step that does not exist is not a step anything can replace.
+	if !g.stepExistsLocked(g.Turn.Step) {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -1071,7 +1385,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		}
 	case StepUntap:
 		if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) {
-			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.UndoLimit
+			g.Seats[g.Turn.ActiveSeat].UndosRemaining = g.Settings.UndoLimit
 			// CR 502.1-502.3, in untap.go: the active seat's
 			// permanents untap and stop being summoning-sick, plus
 			// whatever an UntapStepPermission (Seedborn Muse)
@@ -1081,11 +1395,21 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			// PendingTriggers and go on the stack at the next
 			// priority boundary, which is the upkeep, exactly as
 			// CR 502.4 requires of a step that grants none.
-			g.performUntapStepLocked(g.Turn.ActiveSeat)
+			//
+			// #826: the step can PAUSE. CR 502.3's "the active
+			// player determines which permanents they control will
+			// untap" is a real decision under a Winter Orb cap or
+			// a "you may choose not to untap" clause, and the
+			// prompt stops the step halfway with nothing untapped
+			// and the cursor unmoved. Its continuation calls
+			// exitUntapStepLocked, which is what this case would
+			// have called. See untap_choice.go (ADR 0070).
+			if g.performUntapStepLocked(g.Turn.ActiveSeat) {
+				return
+			}
 		}
 		// Untap grants no priority; recurse into the next step.
-		g.advanceCursorLocked()
-		g.runStepEntryHooksLocked()
+		g.exitUntapStepLocked()
 	case StepDraw:
 		if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 			return
@@ -1115,10 +1439,16 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			Kind:  EventBeginDrawStep,
 			Actor: g.Seats[g.Turn.ActiveSeat].ID,
 		})
+	case StepFirstStrikeDamage:
+		// CR 510.4: the first combat damage step's turn-based action.
+		// It grants priority like any other step, so there is no
+		// auto-advance — the triggers this damage causes go on the
+		// stack at the boundary resolveFirstStrikeCombatDamageLocked
+		// runs, and the active player gets to respond before the
+		// second step's damage is dealt (CR 510.3).
+		g.resolveFirstStrikeCombatDamageLocked()
 	case StepCombatDamage:
 		g.resolveCombatDamageLocked()
-	case StepEndCombat:
-		g.clearCombatLocked()
 	case StepCleanup:
 		// CR 402.2: build the discard-pending map for any player
 		// over their per-player MaxHandSize. The cursor pauses at
@@ -1131,14 +1461,14 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// player left the game, or the sandbox pass_turn verb — ends
 		// through the same code (ADR 0059 Decision 6, #766).
 		g.sweepTurnEndLocked()
-		// Auto-advance only when no player owes discard. Otherwise
-		// the cursor sits at Cleanup with PriorityHolder=NoPriority
-		// until DiscardSelection drains the pending map and re-fires
-		// this hook.
-		if len(g.DiscardPending) == 0 {
-			g.advanceCursorLocked()
-			g.runStepEntryHooksLocked()
-		}
+		// CR 514.3 / 514.3a: the turn ends here — unless a state-based
+		// action fired or a trigger is waiting, in which case the
+		// active player gets priority in this step and another cleanup
+		// step follows. The cursor also sits here, with
+		// PriorityHolder=NoPriority, while any player owes a discard;
+		// DiscardSelection calls the same exit once the pending map
+		// drains. One exit, one decision — see cleanup.go (#661).
+		g.exitCleanupStepLocked()
 	}
 }
 
@@ -1204,6 +1534,35 @@ func (g *Game) CurrentState() State {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.State
+}
+
+// WinnerSeat returns the seat of the one player left standing in an
+// ended game. ok is false while the game is not over, and for an
+// ended game with no single survivor (a draw, or an ended table with
+// nobody seated). The engine keeps no winner field — the game ends
+// when exactly one seat is not Eliminated — so this derives it the
+// same way, under the read lock. Read by the lobby to fill
+// games.winner_seat (ADR 0051 decision 4).
+func (g *Game) WinnerSeat() (seat int, ok bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.State != StateEnded {
+		return 0, false
+	}
+	found := -1
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if found >= 0 {
+			return 0, false
+		}
+		found = p.Seat
+	}
+	if found < 0 {
+		return 0, false
+	}
+	return found, true
 }
 
 // ActivePlayer returns the player whose turn it currently is, or nil

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Rise of the Witch-king — Sorcery {2}{B}{G} (EDHREC rank 1924):
 //
@@ -10,29 +14,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // An edict that pays you back. The sacrifice is EachPlayerSacrifices
 // with the controller included — every player picks their own, one
-// prompt each, and a player with no creature is skipped (CR
-// 701.21a). "If you sacrificed a creature this way" is whether the
-// controller was handed a prompt: a player with a creature MUST
-// sacrifice one, so the prompt being queued is the condition.
+// prompt each, and a player with no creature is skipped (CR 701.21a).
+//
+// "IF YOU SACRIFICED A CREATURE THIS WAY" is the run's answer for the
+// controller's seat (#1019, ADR 0013 §5x). It used to be "was the
+// controller handed a prompt", which is a question about the
+// QUESTION: the permanent came back before anybody had chosen
+// anything, and a controller whose only creature left while another
+// seat was being asked was paid out for a sacrifice that never
+// happened. EachPlayerSacrificesThenForEffect runs the clause once
+// every asked seat has answered AND the permanents they named have
+// finished moving — so a sacrificed commander's CR 903.9 prompt holds
+// the payout too, and a commander that takes the command zone still
+// counts, because CR 701.17a's sacrifice is the move off the
+// battlefield.
 //
 // Sandbox simplification, declared (the Mount Doom / Time Wipe
 // posture): "you may return another permanent card from your
-// graveyard" is a resolution-time choice made AFTER the sacrifices,
-// and the engine has no pick-from-graveyard prompt with a
-// continuation for a spell — the sacrifice prompts carry none. So
-// the card to return is picked when the spell is cast, as an
-// optional target ("up to one"), and it comes back as the spell
-// resolves, before the sacrifice prompts are answered. Three
-// consequences, all weaker than printed: opponents see the pick
-// before the spell resolves; the creature you sacrifice cannot be
-// the card that comes back (it is not in the graveyard yet when you
-// pick — "another" for free, but also no choosing it deliberately);
-// and if the picked card left the graveyard in response the spell
-// is countered by game rules (CR 608.2b) and the edict does not
-// happen either, where the printed card would still make everyone
-// sacrifice. The returned permanent is on the battlefield before
-// you answer your own sacrifice prompt, but is not offered by it:
-// the options were listed when the prompt was queued.
+// graveyard" is a resolution-time choice, and the engine has no
+// pick-from-graveyard prompt with a continuation for a spell. So the
+// card to return is picked when the spell is cast, as an optional
+// target ("up to one"). Three consequences, all weaker than printed:
+// opponents see the pick before the spell resolves; the creature you
+// sacrifice cannot be the card that comes back (it is not in the
+// graveyard yet when you pick — "another" for free, but also no
+// choosing it deliberately); and if the picked card left the
+// graveyard in response the spell is countered by game rules (CR
+// 608.2b) and the edict does not happen either, where the printed
+// card would still make everyone sacrifice.
 func init() {
 	Register(Spec{
 		OracleID:     "3c86541c-3601-4a38-8872-39705e41303a",
@@ -44,18 +53,28 @@ func init() {
 		Targets: TargetCardInGraveyard("up to one permanent card in your graveyard to return", YouOwn(), Permanent()).WithCount(0, 1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
-			spec := sacrificeSpec("a creature", Creature())
-			ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), controller, spec, "Rise of the Witch-king — sacrifice a creature")
-			if ctx.Game.PlayerSacrificesForEffect(ctx.Source(), controller, spec, "Rise of the Witch-king — sacrifice a creature") == 0 {
-				return nil
-			}
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-			}
-			return nil
+			return ctx.Game.EachPlayerSacrificesThenForEffect(
+				ctx.Source(), uuid.Nil,
+				sacrificeSpec("a creature", Creature()),
+				"Rise of the Witch-king — sacrifice a creature",
+				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+					if !sacrificed.Sacrificed(controller) {
+						return nil
+					}
+					// A fresh Context bound to the same stack item:
+					// an undo restores the game's fields in place, so
+					// the *Game captured when the prompts went up can
+					// be the wrong object by the time they are
+					// answered (resumeClause's contract).
+					ctx := NewContext(g, item)
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind != game.TargetCard {
+							continue
+						}
+						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
+					}
+					return nil
+				})
 		},
 	})
 }

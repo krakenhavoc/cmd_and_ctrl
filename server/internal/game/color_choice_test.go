@@ -26,7 +26,7 @@ func TestColorChoiceStoredFormStampsChosenColor(t *testing.T) {
 	seat := g.Seats[0].ID
 	heart := pushTypedTestCard(g, Card{Name: "Coldsteel Heart", TypeLine: "Snow Artifact", Owner: seat, Controller: seat})
 	var id uuid.UUID
-	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil) })
+	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil, ColorForMana) })
 
 	c := choiceByKind(g, PendingChoiceColor)
 	if c == nil || !reflect.DeepEqual(c.ColorOptions, AllColors) {
@@ -58,7 +58,9 @@ func TestColorChoiceRefusesAnswersOffTheList(t *testing.T) {
 	seat, other := g.Seats[0].ID, g.Seats[1].ID
 	isle := pushTypedTestCard(g, Card{Name: "Thriving Isle", TypeLine: "Land", Owner: seat, Controller: seat})
 	var id uuid.UUID
-	g.WithWriteLock(func() { id = g.QueueColorChoiceForEffect(seat, isle, "Thriving Isle", ColorsOtherThan("U")) })
+	g.WithWriteLock(func() {
+		id = g.QueueColorChoiceForEffect(seat, isle, "Thriving Isle", ColorsOtherThan("U"), ColorForMana)
+	})
 
 	for _, bad := range []string{"U", "C", "", "blue", "WU"} {
 		if err := g.ResolveColorChoice(id, seat, bad); !errors.Is(err, ErrInvalidParam) {
@@ -90,7 +92,7 @@ func TestColorChoiceStoredAnswerAfterTheSourceLeft(t *testing.T) {
 	bystander := pushTypedTestCard(g, Card{Name: "Sol Ring", TypeLine: "Artifact", Owner: seat, Controller: seat})
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil)
+		id = g.QueueColorChoiceForEffect(seat, heart, "Coldsteel Heart", nil, ColorForMana)
 		if _, err := MoveCard(g.Battlefield, g.Seats[0].Graveyard, heart); err != nil {
 			t.Fatalf("MoveCard: %v", err)
 		}
@@ -122,7 +124,9 @@ func TestColorChoiceStoredAnswerAfterTheSourceLeft(t *testing.T) {
 func TestColorChoiceOptionsAreRealColorsOnly(t *testing.T) {
 	g := newActiveGame(t)
 	seat := g.Seats[0].ID
-	g.WithWriteLock(func() { g.QueueColorChoiceForEffect(seat, uuid.New(), "x", []string{"g", "C", "Z", "W", "G"}) })
+	g.WithWriteLock(func() {
+		g.QueueColorChoiceForEffect(seat, uuid.New(), "x", []string{"g", "C", "Z", "W", "G"}, ColorForMana)
+	})
 	if got := choiceByKind(g, PendingChoiceColor).ColorOptions; !reflect.DeepEqual(got, []string{"W", "G"}) {
 		t.Errorf("options = %v, want [W G]", got)
 	}
@@ -313,16 +317,19 @@ func TestOneColorAmountIsOnePickMintingN(t *testing.T) {
 	}
 }
 
-// The planner's model is one slot, one mana, one colour per slot; a
-// one-colour-N-mana source would be booked for three different
-// colours at once. It plans around the source instead.
-func TestAutoTapperPlansAroundOneColorAmountSources(t *testing.T) {
+// #779 replaced #742's "the auto-tapper plans around a one-colour
+// source" with real planning; the full cover is in
+// autotap_one_color_test.go. This keeps the simplest shape of it
+// pinned next to the rest of the #742 tests: a lone Gilded Lotus
+// funds a generic cost.
+func TestAutoTapperPlansOneColorAmountSources(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	pushIntrinsicPermanent(g, me, "Gilded Lotus", "Artifact", oneColorShape("{W3|U3|B3|R3|G3}"), nil)
+	lotus := pushIntrinsicPermanent(g, me, "Gilded Lotus", "Artifact", oneColorShape("{W3|U3|B3|R3|G3}"), nil)
 	cost, _ := ParseCost("{1}")
-	if plan, ok := g.AutoTapForCost(me.ID, cost, 0); ok {
-		t.Errorf("the auto-tapper planned %v off a one-colour-amount source", plan)
+	plan, ok := g.AutoTapForCost(me.ID, cost, 0)
+	if !ok || len(plan) != 1 || plan[0] != lotus {
+		t.Errorf("plan = %v (ok=%v), want the Gilded Lotus", plan, ok)
 	}
 }
 

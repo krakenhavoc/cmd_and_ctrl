@@ -52,6 +52,18 @@ type CopySpell struct {
 
 	// ChooseNewTargets enables the CR 707.10c re-target prompt.
 	ChooseNewTargets bool
+
+	// Except is the card's "except …" clause (CR 707.10a) — Double
+	// Major's "except it isn't legendary if the spell is legendary".
+	// It edits the copiable values the copy is created with, the same
+	// game.PrintedValues an entering permanent's except clause edits,
+	// so "if the spell is legendary" needs no condition of its own:
+	// RemoveSupertype is a no-op when the supertype is not there.
+	//
+	// It is applied to every copy independently, which is what a
+	// multi-copy card with an except clause would mean. Nil for the
+	// plain copies, which is every card in the family but one.
+	Except func(v *game.PrintedValues)
 }
 
 func (c CopySpell) Apply(ctx *Context) error {
@@ -64,7 +76,7 @@ func (c CopySpell) Apply(ctx *Context) error {
 		controller = ctx.Controller()
 	}
 	for i := 0; i < n; i++ {
-		err := ctx.Game.CopySpellForEffect(c.StackID, controller, c.ChooseNewTargets)
+		err := ctx.Game.CopySpellForEffect(c.StackID, controller, c.ChooseNewTargets, c.Except)
 		if err == game.ErrCardNotFound {
 			// The copied spell left the stack between copies. The
 			// copies already made stand; there is nothing left to

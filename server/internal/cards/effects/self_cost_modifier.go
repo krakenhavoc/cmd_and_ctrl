@@ -335,8 +335,8 @@ func CreatureWithCounter(kind string) CardPredicate {
 
 // AttackingCreature matches a creature that is currently attacking —
 // Ancient Stone Idol's "for each attacking creature". Combat
-// declarations are cleared when combat ends, so outside combat nothing
-// matches.
+// declarations are cleared as the end of combat step ENDS (CR 511.3),
+// so outside combat nothing matches.
 func AttackingCreature() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsCreature() && c.AttackingTarget != uuid.Nil

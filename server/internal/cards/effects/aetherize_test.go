@@ -67,6 +67,28 @@ func TestAetherizeIsSymmetric(t *testing.T) {
 	}
 }
 
+// The end of combat step is the last window a flash deck has, and
+// creatures are in combat for all of it (CR 511.3, #785). Cast there,
+// Aetherize still finds the attack.
+func TestAetherizeCastInTheEndOfCombatStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+
+	attacker := pushVanillaCreature(g, me.ID, "Charger", 3, 3)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	advanceTo(t, g, game.StepEndCombat)
+
+	castInPlace(t, g, me.ID, "Aetherize", aetherizeOracle)
+	passPriorityAroundTable(t, g)
+
+	if _, stillOut := aangCardOnBF(g, attacker); stillOut {
+		t.Error("an attacker was not returned by Aetherize cast in the end of combat step")
+	}
+}
+
 // Nothing attacking is a legal, harmless resolution.
 func TestAetherizeWithNoAttackers(t *testing.T) {
 	g := newCatalogGame(t)

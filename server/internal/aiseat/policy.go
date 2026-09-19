@@ -78,6 +78,47 @@ type Conceder interface {
 	ShouldConcede(in Input) bool
 }
 
+// TargetOrderer is an optional Policy extension (#687, ADR 0033 §1).
+// A policy that implements it decides which of a spell's candidate
+// targets survive the enumerator's expansion cap; one that does not
+// gets the engine's candidate order, exactly as before.
+//
+// It exists because the cap is spent in candidate order, so the
+// table's biggest threat could simply be absent from the move list —
+// and no policy can pick a move it was never offered. Ranking a board
+// is a POLICY question and `legal` may not import this package, so
+// the ordering is injected rather than implemented down there.
+//
+// `in` carries the View and the Seat and NOT the moves: it is called
+// to build the move list, so there is nothing yet to rank. The
+// returned function is called once per candidate during that one
+// enumeration and must not retain anything.
+type TargetOrderer interface {
+	TargetOrder(in Input) legal.TargetOrder
+}
+
+// CostFuelPricer is an optional Policy extension (#1013, ADR 0033 §1).
+// A policy that implements it says what a card a CARD-SHAPED COST would
+// eat is worth to KEEP — the blue card Force of Will pitches, the five
+// cards an Uro exiles to escape — and the enumerator offers the
+// cheapest payment first; one that does not gets the engine's zone
+// order, exactly as before.
+//
+// TargetOrderer's twin, and separate from it for the reason
+// legal.CostFuelOrder is a separate type: the two ask OPPOSITE
+// questions. A target order ranks the board by importance and the
+// enumerator keeps the top; a fuel price ranks the seat's own cards by
+// what it would lose and the enumerator spends the BOTTOM. One
+// interface with one method would let a policy answer one with the
+// other and pitch its best card every time.
+//
+// `in` carries the View and the Seat and NOT the moves: it is called to
+// build the move list. The returned function is called once per
+// candidate during that one enumeration and must not retain anything.
+type CostFuelPricer interface {
+	CostFuelPrice(in Input) legal.CostFuelOrder
+}
+
 // Policy decides. Decide must respect ctx — the runner imposes a
 // hard deadline and falls back when it expires — and must be safe to
 // call from one goroutine at a time per seat.

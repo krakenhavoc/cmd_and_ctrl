@@ -336,9 +336,9 @@ func TestPutOnBottomInRandomOrderFromExile(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		c := NewCard("Exiled", me.ID)
 		c.TypeLine = "Instant"
-		c.ExilePlay = ExilePlayPermission{Player: me.ID, UntilTurn: 99}
 		c.AddKnowersAll([]uuid.UUID{g.Seats[0].ID, g.Seats[1].ID})
 		g.Exile.PushTop(c)
+		g.GrantCastPermissionOverCardForEffect(c.InstanceID, CastPermission{Player: me.ID})
 		pile = append(pile, c.InstanceID)
 	}
 	before := len(g.Events)
@@ -353,7 +353,7 @@ func TestPutOnBottomInRandomOrderFromExile(t *testing.T) {
 	bottom := map[uuid.UUID]bool{}
 	for _, c := range me.Library.Cards[:3] {
 		bottom[c.InstanceID] = true
-		if c.ExilePlay.Player != uuid.Nil {
+		if perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID); perm.Granted() {
 			t.Error("a card kept its exile grant in the library (CR 400.7)")
 		}
 		if c.IsKnownTo(g.Seats[1].ID) || c.IsKnownTo(me.ID) {

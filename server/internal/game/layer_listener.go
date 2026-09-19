@@ -36,7 +36,7 @@ import (
 //     indestructible" is the forcing function — a static whose
 //     predicate reads the turn rather than the battlefield.
 //     (Turn-scoped "until end of turn" effects do NOT depend on that
-//     bump: `ClearExpiredTurnScopedStaticsLocked` bumps the version
+//     bump: `ClearEndOfTurnScopedStaticsLocked` bumps the version
 //     itself when it sweeps.)
 //   - Control changes. Nothing needed as of S24: Mind Control's
 //     layer-2 control change is a continuous effect whose only input
@@ -102,6 +102,36 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
 		g.layerVersion.Add(1)
+	case EventControlChanged:
+		// #990: who controls a permanent is an AppliesTo input for
+		// every "creatures you control" static and for every
+		// ForAsLongAs duration keyed on control (suspend's haste,
+		// CR 702.62e). The pass that MOVES control cannot see its own
+		// answer — materialiseControlLocked writes Card.Controller
+		// after the layer walk has already run against the old one —
+		// so without this bump the stale resolution survives until
+		// some unrelated event invalidates it, and a creature keeps
+		// the grant it just lost.
+		//
+		// Safe at this point in the pass for the reason
+		// emitControlChangesLocked gives: the deltas are emitted
+		// AFTER lastResolvedVersion is stored, so this schedules the
+		// next pass rather than re-entering the current one. That
+		// second pass produces no further delta and so no further
+		// bump.
+		g.layerVersion.Add(1)
+	case EventClassLevel, EventCaseSolved:
+		// ADR 0071: a designation switches printed statics on and off,
+		// so a level-up or a solve changes which continuous effects
+		// are in play. Charge-counter thresholds need no arm of their
+		// own — EventCounterPlaced above is emitted for removals too,
+		// which is exactly the pair a live "{N+}" gate needs.
+		//
+		// Without this the level-3 anthem would appear only when some
+		// unrelated permanent happened to move, which is the same
+		// staleness the chosen-creature-type bump fixes in
+		// creature_type_choice.go.
+		g.layerVersion.Add(1)
 	case EventAttach, EventUnattach:
 		// S24: attachment is an AppliesTo input for every
 		// "equipped creature" / "enchanted creature" static, and
@@ -161,7 +191,7 @@ func handSizeStaticIsLiveLocked(g *Game) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		for _, ab := range CatalogStaticAbilities(CatalogKey(g.Battlefield.Cards[i])) {
+		for _, ab := range StaticAbilitiesForCard(g.Battlefield.Cards[i]) {
 			if ab.DependsOnHandSize {
 				return true
 			}

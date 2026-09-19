@@ -88,22 +88,6 @@ func b34IsGreen(c game.Card) bool {
 	return false
 }
 
-// b34OpponentsControlLandsAtLeast is Turbulent Fen's untapped
-// condition: the controller's opponents, between them, control `n`
-// or more lands. The reader takes the entering land's controller, as
-// SelfEntersTappedUnless hands it.
-func b34OpponentsControlLandsAtLeast(n int) func(g *game.Game, controller uuid.UUID) bool {
-	return func(g *game.Game, controller uuid.UUID) bool {
-		total := 0
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller != controller && c.IsLand() {
-				total++
-			}
-		}
-		return total >= n
-	}
-}
-
 // b34GraveyardHasAtLeast is threshold's test: `player`'s graveyard
 // holds `n` or more cards.
 func b34GraveyardHasAtLeast(g *game.Game, player uuid.UUID, n int) bool {
@@ -150,24 +134,27 @@ func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
 
 // b34GoblinsEnteredUnderYourControlThisTurn is Hobgoblin Bandit
 // Lord's count: the Goblins that entered the battlefield under
-// `controller`'s control this turn, walked off the event log back to
-// the turn's upkeep. Each entry is read wherever the card now sits,
-// so a Goblin that has since died still counts, as printed; one
-// that can no longer be found does not, which errs weaker. Effective
-// subtypes, so a changeling counts.
+// `controller`'s control this turn.
+//
+// ONE TALLY READ, and it has to be (#811, CR 603.10 / CR 608.2h).
+// This used to walk the event log for EventETB and then look each
+// card up to ask what it is NOW, which answers a different question
+// in three places at once. A Soldier that entered and has since been
+// turned into a Goblin by a Maskwood Nexus counted, and the printed
+// card counts what entered. A Goblin that entered under an opponent's
+// control and that you have since stolen counted for you, because
+// c.Controller is a fact about now. And a Goblin TOKEN that entered
+// and has since died counted for nothing, because CR 704.5d had
+// already removed it and the lookup found no card — the commonest
+// case the card is printed for, on a Goblin board, silently missing.
+//
+// Game.EnteredWithSubtypeThisTurn records each permanent's subtypes
+// and the player it entered under at its EventETB, so it answers the
+// printed question directly, and it is the same accessor Lilypad
+// Village and Eowyn read. A changeling counts (CR 702.73a, the
+// tally's all-creature-types bucket).
 func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUID) int {
-	n := 0
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
-			continue
-		}
-		c, ok := g.LookupCardForEffect(ev.CardID)
-		if !ok || c.Controller != controller || !c.HasSubtype("Goblin") {
-			continue
-		}
-		n++
-	}
-	return n
+	return g.EnteredWithSubtypeThisTurn(controller, "Goblin")
 }
 
 // b34DamageSourceController resolves who controls the source of a
@@ -306,18 +293,7 @@ func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 // b34ZombiesAndTokensYouControlHaveFlying is the flying half of On
 // Wings of Gold — layer 6, deduped.
 func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
-	return game.StaticAbility{
-		Layer:     game.Layer6Ability,
-		AppliesTo: b34ZombieOrTokenYouControl,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, k := range c.Abilities {
-				if k == "flying" {
-					return
-				}
-			}
-			c.Abilities = append(c.Abilities, "flying")
-		},
-	}
+	return KeywordGrant(b34ZombieOrTokenYouControl, "flying")
 }
 
 // --- replacements --------------------------------------------------
@@ -524,29 +500,6 @@ func b34ThatPlayerLosesLifeAndDraws(player uuid.UUID, life, draw int) func(g *ga
 	}
 }
 
-// b34PayLifeToDraw is Crossway Troublemakers' dies body: the
-// controller pays `life` life and draws a card. The "you may" was
-// answered when the trigger fired; a controller who can no longer
-// pay (CR 119.4 — a life payment needs at least that much life)
-// neither pays nor draws.
-func b34PayLifeToDraw(life int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		p := g.PlayerByIDForEffect(item.Controller)
-		if p == nil || p.Eliminated || p.Life < life {
-			return nil
-		}
-		// "Pay N life. If you do, draw a card" — a COST (CR 118.3),
-		// so the cost path: the CR 614 window still runs on it
-		// (CR 119.4 makes a payment a life loss) but settles in one
-		// step, because "if you do" has to know the payment finished
-		// before the draw happens (#793).
-		if err := g.PayLifeForEffect(item.SourceCardID, item.Controller, life); err != nil {
-			return err
-		}
-		return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-	}
-}
-
 // b34DamageEachOpponentAndGainLife is Arbaaz Mir's body: `damage`
 // from Arbaaz to each opponent, then the controller gains `life`.
 func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item *game.StackItem) error {
@@ -561,8 +514,9 @@ func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item 
 // b34DamageChosenTargetPerGoblinEnteredThisTurn is Hobgoblin Bandit
 // Lord's activation body: damage from the Lord to the announced
 // target, if still legal, equal to the Goblins that entered under
-// the controller's control this turn, counted as the ability
-// resolves.
+// the controller's control this turn. Counted as the ability
+// RESOLVES (CR 608.2h) — a Goblin that entered in response to the
+// activation is in the number — off the per-turn entry tally.
 func b34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := b34GoblinsEnteredUnderYourControlThisTurn(g, item.Controller)

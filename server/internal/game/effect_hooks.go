@@ -35,10 +35,44 @@ import (
 // The cost, stated plainly: a call site that FORGETS CatalogKey
 // silently resolves to face 0's spec rather than erroring.
 func CatalogKey(c Card) string {
-	if c.ActiveFace == 0 || c.OracleID == "" {
-		return c.OracleID
+	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
+	// TEXT — no triggered, activated, mana, static or replacement
+	// abilities, no cost modifiers, no "as enters" hook, no printed
+	// keywords, no catalog entry at all. catalogDef already reads the
+	// empty key as "this card has no entry", and every Catalog*
+	// reader already handles that, so the whole of CR 708.2a is this
+	// one predicate at the one place a Card becomes a catalog key.
+	//
+	// It is HERE rather than in CatalogAbilityKey (the documented
+	// "what does this permanent DO" accessor) because four ability
+	// readers deliberately bypass that accessor, each for a good
+	// reason — the layer pass's static gather, the LTB trigger's
+	// last-known identity, HasKeyword, and the ETB hook — and each
+	// would otherwise have needed its own face-down arm.
+	//
+	// Exile is deliberately NOT suppressed: FaceDownIsPermanent is
+	// false for the two exile kinds, so a foretold card keeps the
+	// CastableZones, AlternativeCosts and Targets its cast out of
+	// exile needs (#658). Nothing off the battlefield runs a trigger,
+	// static or replacement off a catalog entry (CR 113.6), so
+	// keeping it costs nothing.
+	if c.FaceDownIsPermanent() {
+		return ""
 	}
-	return c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
+	base := c.OracleID
+	if c.ActiveFace != 0 && c.OracleID != "" {
+		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
+	}
+	// CR 707.9a, #665: an ability a copy effect GRANTED is part of
+	// the object's copiable values and has no oracle ID of its own,
+	// so it rides in the key. Every card in the game but a granted
+	// copy takes the nil-slice fast path and gets the bare key back
+	// unchanged; catalogDef answers the composite one by merging the
+	// grant's abilities into the card's. See copy_grants.go.
+	if len(c.GrantedAbilities) == 0 {
+		return base
+	}
+	return catalogKeyWithGrants(base, c.GrantedAbilities)
 }
 
 // CatalogKeyForFace is CatalogKey for a face other than the one
@@ -181,6 +215,65 @@ type ManaAbilityShape struct {
 	// sub-costs land with later sprints" note (#352 sub-gap 1).
 	ManaCost string
 
+	// RemoveCounters is a "remove N counters" component of the
+	// activation cost — Vivid Creek's "{T}, Remove a charge counter
+	// from this land", Ramos's "Remove five +1/+1 counters", Mage-
+	// Ring Network's "Remove any number of storage counters" (#789).
+	//
+	// It is the SAME type an activated ability's cost carries
+	// (AbilityCost.RemoveCounters), not a parallel one, and that is
+	// the whole design: one CounterRemovalCost, two owners, so the
+	// validator (validateCounterRemovalLocked), the candidate walk
+	// (CounterCostOptionsForEffect), the move enumerator, the
+	// protocol view and the client's picker are each written once.
+	// The S15 note above finally has no "counter" left in it.
+	//
+	// Validated with every other component before any is paid, and
+	// paid after the tap and the life, so an activation that cannot
+	// pay fails with the source still untapped.
+	//
+	// The AUTO-TAPPER only plans a source whose counter cost it can
+	// both decide and pay: the self form, a printed kind, a fixed
+	// count, and enough counters on the permanent right now. Every
+	// other shape is a decision, and the planner makes none — see
+	// autoTapAbilityFor and manaCounterCostPlannable.
+	RemoveCounters *CounterRemovalCost
+
+	// AddCounter is a cost that puts a counter on the source. No
+	// printed mana ability has one today; the slot exists because
+	// the component is declared once and owned by both ability
+	// kinds, and leaving it off here would mean a second place that
+	// has to learn about counter costs later. Auto-tap never plans
+	// an ability that has one.
+	AddCounter *CounterAddCost
+
+	// ProducedForPaid computes the produced-mana string from what
+	// the cost actually PAID, for an ability whose output the
+	// printed text derives from the payment rather than from the
+	// board (#789):
+	//
+	//   - Mage-Ring Network, "Add {C} for each storage counter
+	//     removed this way" — returns "{C3}" for three.
+	//   - Crucible of the Spirit Dragon's "Add X mana", and any
+	//     future "for each counter / each life paid" clause.
+	//
+	// Wins over ProducedFunc, which wins over Produced. Returning ""
+	// produces no mana, which is the printed behaviour for a variable
+	// removal that removed nothing.
+	//
+	// The `paid` record is the SAME PaidCost a stack item carries
+	// (paid_cost.go); a mana ability has no stack item to hang it on
+	// (CR 605.3b), so it is handed over directly and lives only for
+	// the length of the activation.
+	//
+	// Same locking contract as Condition and ProducedFunc: read-only,
+	// under g.mu. CR 106.7's "could produce" reader evaluates it with
+	// the LARGEST record the source could pay right now, because
+	// that is what "could" means — a Mage-Ring Network with three
+	// storage counters could produce {C}, and one with none could
+	// not.
+	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) string
+
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "Activate only
 	// if you control three or more artifacts" (Mox Opal). Checked
@@ -217,6 +310,23 @@ type ManaAbilityShape struct {
 	//
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
 	ProducedFunc func(g *Game, controller, source uuid.UUID) string
+
+	// DerivesFromOtherSources marks a ProducedFunc that asks OTHER
+	// permanents what THEY could produce — Exotic Orchard,
+	// Reflecting Pool, Fellwar Stone. It is the recursion guard:
+	// ProducibleManaLocked (CR 106.7) evaluates every other
+	// ProducedFunc and skips these, because two Exotic Orchards
+	// facing each other would otherwise recurse until the stack ran
+	// out. CR 106.6b answers the circular case with "no mana" and so
+	// does the guard.
+	//
+	// A declaration rather than something inferred at run time: the
+	// alternative is a re-entrancy counter, which on a snapshotted
+	// struct is undo state nobody wants and off it is a data race
+	// between two games in one process.
+	//
+	// Added in S44 (#782).
+	DerivesFromOtherSources bool
 
 	// Restrictions are the tags stamped onto every ManaToken this
 	// ability produces — "spend this mana only to cast a creature
@@ -298,6 +408,23 @@ type ManaAbilityShape struct {
 	// flipped from narrowing to ordering.
 	NarrowToCommanderIdentity bool
 }
+
+// CatalogWantsDistinctColors reports whether a spell READS the
+// colours of the mana that paid for it — converge (CR 702.86),
+// sunburst (CR 702.44), and nothing else today. It is the switch that
+// picks the colour-maximising payment strategy at the cast gate
+// (#761, ADR 0068 §5).
+//
+// A declaration on effects.Spec rather than something inferred from
+// the oracle text, for the reason DerivesFromOtherSources is one: a
+// text scan quietly stops matching when a card words the clause
+// differently, and the failure is silent and stronger-than-nothing in
+// the wrong direction (a converge spell that counts one colour).
+//
+// Nil hook ⇒ no catalog wired ⇒ every payment keeps the default
+// colourless-first order, which is what the game package's own tests
+// expect.
+var CatalogWantsDistinctColors func(oracleID string) bool
 
 // CatalogManaAbilities returns the registered mana abilities for
 // the given oracle ID (one entry per `effects.Spec.ManaAbilities`

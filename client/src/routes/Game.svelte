@@ -9,6 +9,7 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
   import { fetchBugReportConfig } from "../lib/api";
+  import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
@@ -22,7 +23,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import { cancel as cancelTargeting, confirm as confirmTargeting } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
-  import type { StepID } from "../lib/turn";
+  import { stopKeyFor, type StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import {
@@ -252,7 +253,11 @@
       holdPriority: $holdPriority,
       autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
       ownsEveryStackItem: ownsEveryStackItem(view, viewerID),
-      stepStop: step ? $settings.gameplay.stepStops[step] : undefined,
+      // The two combat damage steps share one stop (turn.ts
+      // `stopKeyFor`): a stop on combat damage stops on the
+      // first-strike step too, which is the window a player who asked
+      // to see damage most wants.
+      stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
       smartAutoPass: $settings.gameplay.smartAutoPass,
       hasLegalResponse: hasAnyLegalResponse(view, viewerID, $lastSeq),
     });
@@ -375,6 +380,13 @@
   // insufficient-mana toast is the canonical entry point; the
   // dismiss button (and ESC inside the modal) closes it.
   let autoTapCardID = $state<string | null>(null);
+  // #696: the preview has to price the cast the confirm button will
+  // replay, not the card's printed cost — so the stashed payload's
+  // source zone, alternative cost, optional costs, convoke taps and
+  // face are read back out of the same stash confirmAutoTap replays.
+  const autoTapCastParams = $derived(
+    castPreviewParamsFromPayload(autoTapCardID ? lastCastByCardID.get(autoTapCardID) : undefined),
+  );
   function openAutoTap(): void {
     if (!manaOverride) return;
     autoTapCardID = manaOverride.cardID;
@@ -497,7 +509,9 @@
       if (step === "untap") {
         play("turn_change");
         play("untap_all");
-      } else if (step === "combat_damage") {
+      } else if (step === "first_strike_damage" || step === "combat_damage") {
+        // Both combat damage steps get the cue (CR 510.4): a combat
+        // with first strike in it is heard twice, which is what it is.
         play("combat_resolve");
       }
     }
@@ -1420,6 +1434,7 @@
         {gameID}
         snap={view}
         cardID={autoTapCardID}
+        castParams={autoTapCastParams}
         onConfirm={confirmAutoTap}
         onCancel={cancelAutoTap}
       />

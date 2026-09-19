@@ -68,7 +68,7 @@ func TestLegalTargetsFiltersByPredicateAndZone(t *testing.T) {
 	dead.TypeLine = "Creature — Zombie"
 	opp.Graveyard.PushTop(dead)
 
-	lt := g.LegalTargetsForEffect(me.ID, nonBlackCreatureSpec())
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), nonBlackCreatureSpec())
 	has := func(id uuid.UUID) bool {
 		for _, c := range lt.Cards {
 			if c == id {
@@ -482,32 +482,32 @@ func TestValidateTargetsCountAndDistinct(t *testing.T) {
 	}
 	g.WithWriteLock(func() {
 		exact := twoCreaturesSpec()
-		if err := g.validateTargetsLocked(me.ID, exact, refs(a, b)); err != nil {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), exact, refs(a, b)); err != nil {
 			t.Errorf("two distinct creatures: %v", err)
 		}
-		if err := g.validateTargetsLocked(me.ID, exact, refs(a)); err != ErrInvalidParam {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), exact, refs(a)); err != ErrInvalidParam {
 			t.Errorf("one of two: %v, want ErrInvalidParam", err)
 		}
-		if err := g.validateTargetsLocked(me.ID, exact, refs(a, a)); err != ErrInvalidParam {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), exact, refs(a, a)); err != ErrInvalidParam {
 			t.Errorf("same creature twice: %v, want ErrInvalidParam", err)
 		}
-		if err := g.validateTargetsLocked(me.ID, exact, refs(a, rock)); err != ErrIllegalTarget {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), exact, refs(a, rock)); err != ErrIllegalTarget {
 			t.Errorf("creature + artifact: %v, want ErrIllegalTarget", err)
 		}
 		same := twoCreaturesSpec()
 		same.AllowSame = true
-		if err := g.validateTargetsLocked(me.ID, same, refs(a, a)); err != nil {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), same, refs(a, a)); err != nil {
 			t.Errorf("AllowSame duplicate: %v", err)
 		}
 		upTo := twoCreaturesSpec().WithCount(0, 2)
-		if err := g.validateTargetsLocked(me.ID, upTo, nil); err != nil {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), upTo, nil); err != nil {
 			t.Errorf("up to two with none: %v", err)
 		}
-		if err := g.validateTargetsLocked(me.ID, upTo, refs(a, b)); err != nil {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), upTo, refs(a, b)); err != nil {
 			t.Errorf("up to two with two: %v", err)
 		}
 		unbounded := twoCreaturesSpec().WithCount(1, 0)
-		if err := g.validateTargetsLocked(me.ID, unbounded, refs(a, b)); err != nil {
+		if err := g.validateTargetsLocked(SourceChooser(me.ID), unbounded, refs(a, b)); err != nil {
 			t.Errorf("unbounded with two: %v", err)
 		}
 	})
@@ -561,7 +561,7 @@ func TestMultiTargetPartialAndFullFizzle(t *testing.T) {
 		if !g.TargetStillLegalForEffect(item, TargetRef{Kind: TargetCard, ID: b}) {
 			t.Errorf("surviving target reported illegal")
 		}
-		if spellAllTargetsIllegalLocked(g, item, item.targetSpec) {
+		if spellAllTargetsIllegalLocked(g, item) {
 			t.Errorf("one legal target left: must not fizzle")
 		}
 		if err := g.resolveTopOfStackLocked(); err != nil {

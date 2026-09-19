@@ -17,12 +17,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sacrifices are that many sacrifice prompts at resolution, each the
 // caster's own pick among their artifacts, enchantments and tokens
 // (the b17PlayerSacrificesN shape, one permanent per prompt). The
-// prompts are queued BEFORE the creatures return, so their option
+// prompts are answered BEFORE the creatures return, so their option
 // lists were computed without the returning cards — an artifact
 // creature that just came back is never offered as the price of its
 // own return. Fewer eligible permanents than chosen cards returns
 // only as many as can be paid for; a card that left the graveyard
 // in response is skipped (CR 608.2b).
+//
+// "THAT MANY" is how many were sacrificed (#1019, ADR 0013 §5x). It
+// used to be how many prompts were QUEUED, read on the line after the
+// last one went up: the creatures came back before anybody had picked
+// a Treasure, and a prompt the engine withdrew — its token gone by
+// the time the seat got to it — still bought a creature card.
 //
 // DECLARED SIMPLIFICATION, weaker than printed: the order of the
 // choices. Choosing the creatures at cast means opponents see the
@@ -55,15 +61,22 @@ func init() {
 			if n <= 0 {
 				return nil
 			}
-			for i := 0; i < n; i++ {
-				if ctx.Game.PlayerSacrificesForEffect(ctx.Source(), ctx.Controller(),
-					sacrificeSpec("an artifact, enchantment, or token", Or(Artifact(), Enchantment(), IsTokenPredicate())),
-					"Lich-Knights' Conquest — sacrifice an artifact, enchantment, or token") == 0 {
-					n = i
-					break
-				}
-			}
-			return b24ReturnGraveyardTargetsToBattlefield(ctx, n)
+			// "That many" is how many were SACRIFICED, not how many
+			// prompts went up (#1019, ADR 0013 §5x). The run's
+			// continuation waits for every one of the n prompts and
+			// for the permanents they name to finish moving, so a
+			// prompt withdrawn because its token had already gone, and
+			// a sacrifice the CR 614 window cancelled, no longer buy a
+			// creature card back.
+			controller := ctx.Controller()
+			return ctx.Game.PlayerSacrificesThenForEffect(
+				ctx.Source(), controller,
+				sacrificeSpec("an artifact, enchantment, or token", Or(Artifact(), Enchantment(), IsTokenPredicate())),
+				"Lich-Knights' Conquest — sacrifice an artifact, enchantment, or token",
+				n,
+				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+					return b24ReturnGraveyardTargetsToBattlefield(NewContext(g, item), sacrificed.Count())
+				})
 		},
 	})
 }

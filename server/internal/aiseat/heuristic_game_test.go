@@ -396,11 +396,7 @@ func TestRunnerConcedesThroughTheConcederInterface(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	r := aiseat.Start(ctx, room, bot.ID, alwaysConcedes{}, aiseat.Config{}, nil, testLogger())
-	select {
-	case <-r.Done():
-	case <-time.After(3 * time.Second):
-		t.Fatal("the runner did not exit after its policy conceded")
-	}
+	waitForRunner(t, "the runner to exit after its policy conceded", r)
 	var eliminated bool
 	g.ReadSnapshot(func() { eliminated = g.Seats[0].Eliminated })
 	if !eliminated {
@@ -425,9 +421,42 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 	// Set the board up by hand, before any runner is watching.
 	g.Seats[0].Life = 1
 	g.Seats[0].Hand.Cards = nil
-	g.Battlefield.PushTop(game.Card{
+	// KnownBy the whole table, as a permanent on the battlefield
+	// always is. Without it (#95) the bot's FILTERED view showed a
+	// face-down card with no type line, `hopeless` counted the
+	// opponent's creatures as zero and the seat never conceded — the
+	// test passed only because the Killer went on to kill it, which is
+	// not what its name says it checks.
+	killer := game.Card{
 		InstanceID: uuid.New(), Name: "Killer", TypeLine: "Creature — Bear",
 		Power: 4, Toughness: 4, Owner: opp.ID, Controller: opp.ID,
+		KnownBy: map[uuid.UUID]bool{bot.ID: true, opp.ID: true},
+	}
+	g.Battlefield.PushTop(killer)
+
+	// The fixture's own precondition, asserted rather than assumed
+	// (#635). `hopeless` requires an EMPTY hand, so a draw landing
+	// before the bot's first decision would make the position look
+	// survivable and the seat would play on until the budget ran out.
+	// It cannot happen here, and this is why: the bot is the active
+	// player holding priority in its own UPKEEP, one step before its
+	// own draw. Nothing can advance past that step without the bot
+	// passing first, so its first window is necessarily a window with
+	// an empty hand — whatever order the two runner goroutines happen
+	// to be scheduled in. Seat 0 being the active player is a fact
+	// about seed 88; if a seeding change ever moves it, this says so
+	// instead of timing out.
+	g.ReadSnapshot(func() {
+		if g.Turn.ActiveSeat != 0 || g.Turn.PriorityHolder != 0 {
+			t.Fatalf("fixture: want the bot active and holding priority, got active=%d priority=%d",
+				g.Turn.ActiveSeat, g.Turn.PriorityHolder)
+		}
+		if g.Turn.Step != game.StepUpkeep {
+			t.Fatalf("fixture: want the bot on %s, before its draw; got %s", game.StepUpkeep, g.Turn.Step)
+		}
+		if n := g.Seats[0].Hand.Size(); n != 0 {
+			t.Fatalf("fixture: the bot holds %d cards; a hopeless position has none", n)
+		}
 	})
 
 	cfg := heuristic.DefaultConfig()
@@ -438,15 +467,25 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 	// A pass-only opponent keeps the cursor moving without ever
 	// attacking, so the elimination below can only be the concede.
 	aiseat.Start(ctx, room, opp.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
-	select {
-	case <-r.Done():
-	case <-time.After(5 * time.Second):
-		t.Fatalf("the bot played on from a hopeless position (life %d)", g.Snapshot().Seats[0].Life)
-	}
+	// The runner exiting is the concede: nothing else ends it while
+	// the context is live. Waited for through the package's one wait
+	// primitive, whose budget is a backstop for a wedged runner and
+	// not a claim about how fast a loaded machine decides — the 5s
+	// literal this replaces was exactly that claim, and #635 is the
+	// CI run that called it (#848's rule, applied here).
+	waitForRunner(t, "the bot to concede a hopeless position", r)
 	var eliminated bool
-	g.ReadSnapshot(func() { eliminated = g.Seats[0].Eliminated })
+	var life int
+	g.ReadSnapshot(func() { eliminated, life = g.Seats[0].Eliminated, g.Seats[0].Life })
 	if !eliminated {
 		t.Fatal("the bot did not concede")
+	}
+	// It CONCEDED rather than died. The distinction is the test: a
+	// seat eliminated at negative life was killed by the Killer, which
+	// this fixture would report as a pass while the concede heuristic
+	// never ran at all.
+	if life <= 0 {
+		t.Errorf("the seat is out at %d life — it was killed, not conceded", life)
 	}
 }
 
@@ -475,15 +514,31 @@ func TestHeuristicDoesNotConcedeAWinnableGame(t *testing.T) {
 	defer cancel()
 	aiseat.Start(ctx, room, bot.ID, heuristic.NewWithConfig(cfg), aiseat.Config{}, nil, testLogger())
 	aiseat.Start(ctx, room, opp.ID, heuristic.New(), aiseat.Config{}, nil, testLogger())
-	deadline := time.Now().Add(1500 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		var conceded bool
-		g.ReadSnapshot(func() { conceded = g.Seats[0].Eliminated && g.Seats[0].Life > 0 })
+	// "It did not scoop" has to be measured in TURNS, not in seconds:
+	// the concede rule counts consecutive hopeless turns, so a wall
+	// clock says nothing about how many chances the bot was given. A
+	// second and a half of a loaded runner can be no turns at all,
+	// which is a test that measured the machine (#635, #848).
+	//
+	// ConcedeTurns is 1 here, so surviving a third turn is already two
+	// turns past the trigger. The scoop check runs on every poll, so
+	// the moment it happens this fails with the right message rather
+	// than waiting out the bound. The opponent is a real heuristic and
+	// may well kill the bot on the way — that ends the game, and a
+	// game that ended is as good an answer as turn 3.
+	const wantTurn = 3
+	waitFor(t, fmt.Sprintf("turn %d, or the game to end, without a scoop", wantTurn), func() bool {
+		var conceded, over bool
+		var turn int
+		g.ReadSnapshot(func() {
+			conceded = g.Seats[0].Eliminated && g.Seats[0].Life > 0
+			turn, over = g.Turn.Number, g.State != game.StateActive
+		})
 		if conceded {
-			t.Fatal("the bot scooped a game it still had cards for")
+			t.Fatalf("the bot scooped a game it still had cards for, on turn %d", turn)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
+		return over || turn >= wantTurn
+	})
 }
 
 // timingPolicy records how long each decision took. It is a Policy

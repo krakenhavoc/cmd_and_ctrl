@@ -29,18 +29,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // decks play colourless creatures: no number of counters ever pays
 // for a {G}{U} spell's coloured half.
 //
-// SANDBOX SIMPLIFICATION — "protection from white and from black" is
-// NOT implemented. ADR 0038 explains why the keyword has no home:
-// CR 702.16b tests the quality against the SOURCE of the spell or
-// ability, and the engine's targeting choke point never sees the
-// source object. Strictly weaker than printed — Animar is a legal
-// target for a white removal spell here. Tracked in #662.
+// "Protection from white and from black" is printed data and rides
+// PrintedKeywords, enforced since #662 / ADR 0072. It is why Animar
+// survives a table: Swords to Plowshares and Path to Exile cannot
+// target it, a Damnation-class black spell that DAMAGES cannot hurt
+// it (a black wrath that DESTROYS still does — protection is not
+// indestructible, CR 702.16e is about damage), and the white and
+// black creatures that would happily block it cannot.
+//
+// The two colours it does NOT have protection from are its own two
+// removal colours in practice, which is the printed card.
 func init() {
 	Register(Spec{
-		OracleID:     "725880b2-1675-414f-b61b-cf6533797dbf",
-		Name:         "Animar, Soul of Elements",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Protection from white and from black isn't granted, so Animar can be targeted and damaged by white and black sources."},
+		OracleID:        "725880b2-1675-414f-b61b-cf6533797dbf",
+		Name:            "Animar, Soul of Elements",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"protection from white", "protection from black"},
 		CostModifiers: []game.CostModifier{
 			CostsLessEach(CountersOnSource(game.CounterPlusOne),
 				"Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar, Soul of Elements.",

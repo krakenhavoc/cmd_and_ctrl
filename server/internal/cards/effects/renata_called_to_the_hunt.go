@@ -20,16 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counter — cast, reanimated, fetched or flickered creature cards
 // all get it, and Hardened Scales and Doubling Season apply to it.
 //
-// Sandbox simplification, declared: creature TOKENS get nothing.
-// Token creation skips the CR 614 zone-move pipeline (the Urabrask
-// the Hidden gap), so no entry replacement sees a token — Arwen's
-// declared gap, shared. Weaker than printed, never stronger.
+// Creature TOKENS get the counter too, since #762: a created token
+// runs the same battlefield-entry pipeline every other permanent
+// runs, so this replacement sees one exactly as it sees a cast
+// creature. Arwen's matching gap closed in the same change.
 func init() {
 	Register(Spec{
 		OracleID:     "6761b077-7a89-42c9-93ab-675fe4231564",
 		Name:         "Renata, Called to the Hunt",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Creature tokens you create don't get the extra +1/+1 counter — only creature cards entering the battlefield do."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,

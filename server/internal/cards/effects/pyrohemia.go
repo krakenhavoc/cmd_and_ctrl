@@ -38,12 +38,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginEndStep, func(_ game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b23NoCreaturesOnBattlefield(g)
-			}, "Pyrohemia — no creatures: sacrifice it", func(g *game.Game, item *game.StackItem) error {
-				if !b23NoCreaturesOnBattlefield(g) || !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
-			}),
+			}, "Pyrohemia — no creatures: sacrifice it", b23SacrificeSelfWhenNoCreatures),
 		},
 	})
 }

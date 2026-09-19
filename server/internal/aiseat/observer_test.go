@@ -3,6 +3,8 @@ package aiseat_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -49,8 +51,24 @@ func (c *collector) len() int {
 
 // runWithObserver seats policy on seat 0 with an observer and a
 // keep-and-pass opponent on seat 1, and runs until the observer has
-// seen want events (or the timeout).
+// seen want events.
 func runWithObserver(t *testing.T, policy aiseat.Policy, cfg aiseat.Config, want int) (*collector, *aiseat.Runner) {
+	t.Helper()
+	return runWithObserverUntil(t, policy, cfg, fmt.Sprintf("%d observer events", want),
+		func(c *collector) bool { return c.len() >= want })
+}
+
+// runWithObserverUntil is the same table, waiting on a shape of event
+// rather than on a count of them.
+//
+// The observed seat is seated FIRST, and that ordering is load-bearing
+// now that aiseat.Start subscribes before it returns (#938): seat 1's
+// keep therefore cannot land in a window where seat 0 is not listening,
+// so a policy that parks on its first window is still woken for a
+// second. Before that, seat 0 could step once against a board seat 1
+// had already settled, park, and wait out the whole budget for a commit
+// nobody was going to make.
+func runWithObserverUntil(t *testing.T, policy aiseat.Policy, cfg aiseat.Config, what string, ready func(*collector) bool) (*collector, *aiseat.Runner) {
 	t.Helper()
 	room := newRoom(t, 2, 7)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,7 +78,7 @@ func runWithObserver(t *testing.T, policy aiseat.Policy, cfg aiseat.Config, want
 	cfg.Observer = c
 	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, policy, cfg, nil, testLogger())
 	aiseat.Start(ctx, room, room.Game.Seats[1].ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
-	waitFor(t, "observer events", func() bool { return c.len() >= want })
+	waitFor(t, what, func() bool { return ready(c) })
 	cancel()
 	<-r.Done()
 	return c, r
@@ -187,34 +205,115 @@ func TestRunnerObserverClassifiesFallbacks(t *testing.T) {
 // decliner never wants anything. On a window where it does not hold
 // priority that is honoured; where it does, the runner turns it into
 // the pass it stood in for and says so.
-type decliner struct{}
+//
+// keepHand is which of those two halves the fixture reaches. A seat
+// that declines its mulligan never keeps, so the table never leaves
+// the one window that has no pass in it; keeping the hand is what buys
+// a window that does.
+type decliner struct{ keepHand bool }
 
 func (decliner) Name() string { return "decliner" }
 
-func (decliner) Decide(context.Context, aiseat.Input) (aiseat.Decision, error) {
-	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing here"}, nil
-}
-
-func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
-	c, _ := runWithObserver(t, decliner{}, aiseat.Config{}, 2)
-	sawPass, sawDecline := false, false
-	for _, ev := range c.events() {
-		switch {
-		case ev.Fallback == aiseat.FallbackDeclinePass:
-			sawPass = true
-			if ev.Index < 0 {
-				t.Errorf("a decline that became a pass dispatched index %d", ev.Index)
-			}
-		case ev.Index == aiseat.Decline:
-			sawDecline = true
-			if ev.Applied {
-				t.Error("a decline was reported as applied")
+func (d decliner) Decide(_ context.Context, in aiseat.Input) (aiseat.Decision, error) {
+	if d.keepHand {
+		for i, m := range in.Moves {
+			if strings.HasPrefix(m.Label, "Keep hand") {
+				return aiseat.Decision{Index: i, Reason: "keep, and want nothing after"}, nil
 			}
 		}
 	}
-	if !sawPass && !sawDecline {
-		t.Fatalf("a policy that declines every window produced neither a decline nor a decline→pass over %d events", c.len())
-	}
+	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing here"}, nil
+}
+
+// A decline is two different facts depending on whether the seat is
+// holding the table up, and the runner has to report which: honoured
+// where nobody is waiting, turned into the pass it stood in for where
+// somebody is. Both halves, because either one alone is the bug the
+// other hides.
+//
+// This used to be one run asserting `sawPass || sawDecline` over a
+// fixture that can only produce declines — the seat declines its
+// mulligan, so no window with a pass in it is ever reached — so the
+// decline→pass half, which is what the test is named for, was never
+// exercised at all (#938).
+func TestRunnerObserverRecordsTheDeclineToPass(t *testing.T) {
+	t.Run("no pass on offer, so the decline stands", func(t *testing.T) {
+		// The mulligan window offers Keep and Mulligan and no pass.
+		// Two events: the seat's own first window, and the one it is
+		// woken for when the opponent keeps — guaranteed to arrive,
+		// because Start subscribed this seat before the opponent
+		// existed.
+		c, _ := runWithObserver(t, decliner{}, aiseat.Config{}, 2)
+		evs := c.events()
+		if len(evs) < 2 {
+			t.Fatalf("got %d events, want the seat's own window and the one the opponent's keep woke it for", len(evs))
+		}
+		for i, ev := range evs {
+			if ev.Index != aiseat.Decline {
+				t.Errorf("event %d dispatched index %d; there is no pass in a mulligan window to turn a decline into", i, ev.Index)
+			}
+			if ev.Applied {
+				t.Errorf("event %d reports a decline as applied", i)
+			}
+			if ev.Fallback != "" {
+				t.Errorf("event %d claims fallback %q; the policy answered exactly what it meant", i, ev.Fallback)
+			}
+		}
+	})
+
+	t.Run("a pass on offer, so the decline becomes it", func(t *testing.T) {
+		// Waiting for an APPLIED one, not merely for one: the seat
+		// that reaches the dispatcher second in a two-runner race has
+		// its pass refused (priority has moved), which is a window
+		// that reports the decline→pass perfectly well and never
+		// commits anything. That rejection is the ordinary step race
+		// between two seats — `isStepRace` in runner_test.go names the
+		// same thing — and it is not what this test is about.
+		declinePass := func(ev aiseat.DecisionEvent) bool {
+			return ev.Fallback == aiseat.FallbackDeclinePass
+		}
+		c, _ := runWithObserverUntil(t, decliner{keepHand: true}, aiseat.Config{},
+			"a decline the runner turned into a pass and played", func(c *collector) bool {
+				for _, ev := range c.events() {
+					if declinePass(ev) && ev.Applied {
+						return true
+					}
+				}
+				return false
+			})
+		applied := 0
+		for i, ev := range c.events() {
+			if !declinePass(ev) {
+				continue
+			}
+			if ev.Index < 0 || ev.Index >= len(ev.Input.Moves) {
+				t.Fatalf("event %d: a decline that became a pass dispatched index %d of %d moves", i, ev.Index, len(ev.Input.Moves))
+			}
+			if mv := ev.Input.Moves[ev.Index]; mv.Kind != legal.KindPass {
+				t.Errorf("event %d: the decline became %q (%s), which is not a pass", i, mv.Label, mv.Kind)
+			}
+			if ev.Decision.Index != aiseat.Decline {
+				t.Errorf("event %d: the policy's own answer reads %d; the runner overwrote it instead of recording it", i, ev.Decision.Index)
+			}
+			switch {
+			case ev.Applied:
+				applied++
+			// The two ways a decided window legitimately commits
+			// nothing, both of which the event has to say out loud or
+			// a decision census cannot balance: the dispatcher refused
+			// it, or the runner's context ended before it got there.
+			case ev.RejectErr != nil || ev.Forced == aiseat.ForcedCancelled:
+			default:
+				t.Errorf("event %d: the pass was neither played, refused, nor cancelled: %+v", i, ev)
+			}
+		}
+		// The runner played at least one of them, so the table moved:
+		// this is the half that keeps a declining bot from stalling a
+		// game.
+		if applied == 0 {
+			t.Fatalf("no decline→pass reached the table over %d events", c.len())
+		}
+	})
 }
 
 // --- latency ---------------------------------------------------------

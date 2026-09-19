@@ -25,6 +25,7 @@ import (
 const (
 	blasphemousActOracle = "7a2484a9-04fd-41a0-8224-610c1c07ed10"
 	fireballOracle       = "aa7714b0-2bfb-458a-8ebf-37ec2c53383e"
+	gildedLotusOracle    = "9a02a9a7-39d9-4763-85d3-747a0540b60b"
 )
 
 type previewFixture struct {
@@ -161,5 +162,43 @@ func TestAutoTapPreviewPricesFireballAtOneTarget(t *testing.T) {
 	}
 	if got := f.preview(fireball, 4); got.OK {
 		t.Errorf("Fireball at X=4 with four Mountains: preview ok with plan %v, want a miss ({4}{R})", got.Plan)
+	}
+}
+
+// #779: the preview reports a cast only a "N mana of any one color"
+// source can fund as payable. Before the planner learned the shape, a
+// board of Gilded Lotus + two Islands answered `ok: false` with
+// `missing: [U U]` for {3}{U}{U} — the cast modal greyed out its
+// "Auto-tap & cast" button on a board that pays.
+func TestAutoTapPreviewPlansAGildedLotus(t *testing.T) {
+	f := newPreviewFixture(t)
+	whale := f.spawn(f.alice, game.ZoneHand, game.Card{
+		Name: "Big Blue Thing", TypeLine: "Creature — Whale", ManaCost: "{3}{U}{U}",
+	}, 1)[0]
+	f.spawn(f.alice, game.ZoneBattlefield, game.Card{
+		Name: "Gilded Lotus", TypeLine: "Artifact", OracleID: gildedLotusOracle,
+	}, 1)
+	f.spawn(f.alice, game.ZoneBattlefield, game.Card{Name: "Island", TypeLine: "Basic Land — Island"}, 2)
+
+	got := f.preview(whale, 0)
+	if !got.OK || len(got.Plan) != 3 {
+		t.Fatalf("Gilded Lotus + 2 Islands for {3}{U}{U}: ok=%v plan=%v missing=%v, want ok with three taps",
+			got.OK, got.Plan, got.Missing)
+	}
+}
+
+// …and still says no to a cast the one pick cannot make: two colours
+// out of one Lotus.
+func TestAutoTapPreviewRefusesTwoColoursFromOneLotus(t *testing.T) {
+	f := newPreviewFixture(t)
+	bird := f.spawn(f.alice, game.ZoneHand, game.Card{
+		Name: "Azorius Thing", TypeLine: "Creature — Bird", ManaCost: "{W}{U}",
+	}, 1)[0]
+	f.spawn(f.alice, game.ZoneBattlefield, game.Card{
+		Name: "Gilded Lotus", TypeLine: "Artifact", OracleID: gildedLotusOracle,
+	}, 1)
+
+	if got := f.preview(bird, 0); got.OK {
+		t.Errorf("{W}{U} off one Gilded Lotus: preview ok with plan %v, want a miss", got.Plan)
 	}
 }

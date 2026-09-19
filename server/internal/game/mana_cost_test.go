@@ -74,6 +74,23 @@ func TestParseCostTable(t *testing.T) {
 			},
 		}},
 
+		// Hybrid Phyrexian — CR 107.4's ten symbols. One symbol, two
+		// colour options, the life option (#787); the ten are walked
+		// exhaustively in phyrexian_mana_test.go.
+		{"{G/W/P}", want{
+			phyrexian: true,
+			required:  []ColorRequirement{{Options: []string{"G", "W"}, Phyrexian: true}},
+		}},
+		{"{1}{G}{G/W/P}{W}", want{
+			generic:   1,
+			phyrexian: true,
+			required: []ColorRequirement{
+				{Options: []string{"G"}},
+				{Options: []string{"G", "W"}, Phyrexian: true},
+				{Options: []string{"W"}},
+			},
+		}},
+
 		// Two-mana hybrid — {2/W} (pay 2 generic or 1 white).
 		{"{2/W}", want{required: []ColorRequirement{
 			{Options: []string{"W"}, NumericAlt: 2, HasNumericAlt: true},
@@ -146,7 +163,9 @@ func TestParseCostErrors(t *testing.T) {
 		"R}",      // missing opening brace
 		"{}",      // empty token body
 		"{foo}",   // multi-char nonsense
-		"{W/X/U}", // triple hybrid (not supported)
+		"{W/X/U}", // a triple whose tail is not Phyrexian (CR 107.4 has no such symbol)
+		"{W/U/Q}", // untap symbol in a hybrid tail
+		"{1/W/P}", // no numeric-alt hybrid Phyrexian is printed
 		"{1x}",    // mixed alphanumeric token body
 	}
 	for _, c := range cases {

@@ -11,12 +11,18 @@ import (
 // counter of each kind already there."
 //
 // The rule splits cleanly into a CHOICE and an APPLICATION, and only
-// the application lives here. ProliferateForEffect takes the chosen
+// the application lives here. applyProliferateLocked takes the chosen
 // permanents and players as arguments and does not decide anything:
 // the catalog's Proliferate primitive picks them today (a
 // deterministic beneficial pick — see the primitive's own comment),
 // and an interactive picker, when one lands, feeds the same function
 // a player-chosen list without this file changing.
+//
+// The keyword ACTION — the CR 614 window that "if you would
+// proliferate, proliferate twice instead" replaces, and the entry
+// point every catalog proliferate goes through — is
+// ProliferateForEffect in keyword_action.go (#976). It calls this
+// once per time the window settled on.
 //
 // Two properties the application has to get right:
 //
@@ -30,8 +36,10 @@ import (
 //     Season doubles a proliferated counter exactly as it doubles any
 //     other, which is the paper interaction.
 
-// ProliferateForEffect gives each named permanent and each named
-// player one additional counter of every kind they already have.
+// applyProliferateLocked gives each named permanent and each named
+// player one additional counter of every kind they already have —
+// ONE proliferate, the application half of CR 701.34 with the choice
+// already made and the CR 614 window already settled.
 //
 // Both lists may be empty — "any number" includes zero, and a
 // proliferate with nothing worth choosing is a legal no-op rather
@@ -41,7 +49,7 @@ import (
 // have moved underneath it.
 //
 // Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) ProliferateForEffect(cardIDs []uuid.UUID, playerIDs []uuid.UUID) error {
+func (g *Game) applyProliferateLocked(cardIDs []uuid.UUID, playerIDs []uuid.UUID) error {
 	for _, id := range cardIDs {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {

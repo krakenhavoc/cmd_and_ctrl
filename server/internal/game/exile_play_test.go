@@ -21,7 +21,7 @@ func seedLibraryTop(p *Player, name, typeLine string) uuid.UUID {
 
 // impulseExile runs the primitive: exiles the top of victim's
 // library and grants thief permission for this turn.
-func impulseExile(t *testing.T, g *Game, victim, thief *Player, perm ExilePlayPermission) uuid.UUID {
+func impulseExile(t *testing.T, g *Game, victim, thief *Player, perm CastPermission) uuid.UUID {
 	t.Helper()
 	var ids []uuid.UUID
 	var err error
@@ -46,25 +46,57 @@ func toMainPhase(t *testing.T, g *Game) {
 	}
 }
 
-func TestExilePlayPermissionActive(t *testing.T) {
-	me, you := uuid.New(), uuid.New()
+// beginALaterTurnFor makes it look as though `p` has begun another
+// turn since — Player.TurnsBegun is the seat-turn counter every
+// ADR 0063 duration is stamped against, and a real rotation bumps it
+// in noteTurnBegunLocked. Tests that only need "time has passed for
+// this seat" say so here rather than driving four turns of play.
+func beginALaterTurnFor(g *Game, p *Player) {
+	g.WithWriteLock(func() { p.TurnsBegun++ })
+}
+
+// TestCastPermissionActive pins the one liveness test (#945): the
+// permission names you, its CR 702.185a floor has been reached, and
+// its CR 611.2 duration has not run out.
+func TestCastPermissionActive(t *testing.T) {
+	g := newActiveGame(t)
+	me, you := g.Seats[0], g.Seats[1]
+	var thisTurn, myNextTurn Duration
+	g.WithWriteLock(func() {
+		thisTurn = g.UntilEndOfTurnDuration()
+		myNextTurn = g.UntilEndOfYourNextTurnDuration(me.ID)
+	})
 	cases := []struct {
-		name string
-		perm ExilePlayPermission
-		who  uuid.UUID
-		turn int
-		want bool
+		name  string
+		perm  CastPermission
+		who   uuid.UUID
+		later bool // a later turn has begun for the holder
+		want  bool
 	}{
-		{"zero value grants nothing", ExilePlayPermission{}, me, 1, false},
-		{"holder, in window", ExilePlayPermission{Player: me, UntilTurn: 3}, me, 3, true},
-		{"holder, earlier turn", ExilePlayPermission{Player: me, UntilTurn: 3}, me, 2, true},
-		{"holder, expired", ExilePlayPermission{Player: me, UntilTurn: 3}, me, 4, false},
-		{"somebody else", ExilePlayPermission{Player: me, UntilTurn: 3}, you, 3, false},
+		{"zero value grants nothing", CastPermission{}, me.ID, false, false},
+		{"holder, this turn", CastPermission{Player: me.ID, Duration: thisTurn}, me.ID, false, true},
+		{"holder, a turn later", CastPermission{Player: me.ID, Duration: thisTurn}, me.ID, true, false},
+		{"holder, until end of next turn", CastPermission{Player: me.ID, Duration: myNextTurn}, me.ID, true, true},
+		{"while in zone outlasts every turn", CastPermission{Player: me.ID, Duration: WhileInZoneDuration()}, me.ID, true, true},
+		{"somebody else", CastPermission{Player: me.ID, Duration: thisTurn}, you.ID, false, false},
+		{"the floor is not reached yet", CastPermission{
+			Player: me.ID, Duration: WhileInZoneDuration(), NotBeforeTurn: g.Turn.Number + 1,
+		}, me.ID, false, false},
 	}
 	for _, tc := range cases {
-		if got := tc.perm.Active(tc.who, tc.turn); got != tc.want {
-			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			probe := g
+			if tc.later {
+				probe = g.Clone()
+				beginALaterTurnFor(probe, probe.Seats[0])
+			}
+			perm := tc.perm
+			var got bool
+			probe.ReadSnapshot(func() { got = probe.CastPermissionActiveForEffect(&perm, tc.who) })
+			if got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -74,24 +106,23 @@ func TestExileTopWithPermissionMovesAndStamps(t *testing.T) {
 	opp.Library.Cards = nil
 	loot := seedLibraryTop(opp, "Stolen Bolt", "Instant")
 
-	id := impulseExile(t, g, opp, me, ExilePlayPermission{CastOnly: true})
+	id := impulseExile(t, g, opp, me, CastPermission{CastOnly: true})
 	if id != loot {
 		t.Fatalf("exiled %v, want the top card %v", id, loot)
 	}
 	if !g.Exile.Contains(loot) {
 		t.Fatalf("card never reached exile")
 	}
-	var got ExilePlayPermission
-	for _, c := range g.Exile.Cards {
-		if c.InstanceID == loot {
-			got = c.ExilePlay
-		}
+	got := CastPermission{}
+	if perm := g.CastPermissionOnCardByIDForEffect(loot); perm != nil {
+		got = *perm
 	}
 	if got.Player != me.ID {
 		t.Errorf("permission holder = %v, want the thief %v", got.Player, me.ID)
 	}
-	if got.UntilTurn != g.Turn.Number {
-		t.Errorf("UntilTurn = %d, want this turn %d", got.UntilTurn, g.Turn.Number)
+	if got.Duration.Kind != UntilEndOfTurn || got.Duration.Player != me.ID {
+		t.Errorf("duration = %v (player %v), want until end of this turn for %v",
+			got.Duration.Kind, got.Duration.Player, me.ID)
 	}
 	if !got.CastOnly {
 		t.Errorf("CastOnly should have ridden through")
@@ -99,7 +130,7 @@ func TestExileTopWithPermissionMovesAndStamps(t *testing.T) {
 	// An empty library is not an error — you exile what's there.
 	opp.Library.Cards = nil
 	g.WithWriteLock(func() {
-		ids, err := g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 2, ExilePlayPermission{})
+		ids, err := g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 2, CastPermission{})
 		if err != nil || len(ids) != 0 {
 			t.Errorf("empty library: ids %v err %v, want none and no error", ids, err)
 		}
@@ -122,7 +153,7 @@ func TestCastFromExileNeedsALivePermission(t *testing.T) {
 	// Granted to somebody else.
 	theirs := seedLibraryTop(opp, "Theirs", "Instant")
 	g.WithWriteLock(func() {
-		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, opp.ID, 1, ExilePlayPermission{})
+		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, opp.ID, 1, CastPermission{})
 	})
 	if err := g.CastSpell(me.ID, theirs, CastSpellParams{FromZone: "exile"}); err != ErrNoPlayPermission {
 		t.Errorf("someone else's grant: %v, want ErrNoPlayPermission", err)
@@ -143,7 +174,7 @@ func TestExilePermissionLapsesWithTheTurn(t *testing.T) {
 	toMainPhase(t, g)
 	opp.Library.Cards = nil
 	seedLibraryTop(opp, "Stolen Bolt", "Instant")
-	loot := impulseExile(t, g, opp, me, ExilePlayPermission{})
+	loot := impulseExile(t, g, opp, me, CastPermission{})
 
 	if err := g.CastSpell(me.ID, loot, CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("this turn it should be castable: %v", err)
@@ -151,13 +182,12 @@ func TestExilePermissionLapsesWithTheTurn(t *testing.T) {
 	// Put it back and roll the turn over.
 	g.WithWriteLock(func() {
 		_, _ = MoveCard(g.Stack, g.Exile, loot)
-		for i := range g.Exile.Cards {
-			if g.Exile.Cards[i].InstanceID == loot {
-				g.Exile.Cards[i].ExilePlay = ExilePlayPermission{Player: me.ID, UntilTurn: g.Turn.Number}
-			}
-		}
+		g.GrantCastPermissionOverCardForEffect(loot, CastPermission{Player: me.ID, Duration: g.UntilEndOfTurnDuration()})
 		delete(g.StackMeta, loot)
 		g.Turn.Number++
+		// #945: the window is a seat-turn, not a round, so this is
+		// what makes it a LATER turn for the grant's holder.
+		me.TurnsBegun++
 	})
 	if err := g.CastSpell(me.ID, loot, CastSpellParams{FromZone: "exile"}); err != ErrNoPlayPermission {
 		t.Errorf("next turn: %v, want ErrNoPlayPermission", err)
@@ -170,7 +200,7 @@ func TestCastFromExileSpendsThePermission(t *testing.T) {
 	toMainPhase(t, g)
 	opp.Library.Cards = nil
 	seedLibraryTop(opp, "Stolen Bolt", "Instant")
-	loot := impulseExile(t, g, opp, me, ExilePlayPermission{CastOnly: true})
+	loot := impulseExile(t, g, opp, me, CastPermission{CastOnly: true})
 
 	if err := g.CastSpell(me.ID, loot, CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("cast from exile: %v", err)
@@ -184,10 +214,8 @@ func TestCastFromExileSpendsThePermission(t *testing.T) {
 	}
 	// The grant is spent, so re-exiling this card later can't
 	// resurrect it.
-	for _, c := range g.Stack.Cards {
-		if c.InstanceID == loot && c.ExilePlay.Granted() {
-			t.Errorf("permission survived the cast")
-		}
+	if perm := g.CastPermissionOnCardByIDForEffect(loot); perm.Granted() {
+		t.Errorf("permission survived the cast")
 	}
 }
 
@@ -200,7 +228,7 @@ func TestCastOnlyStrandsALandButPlayDoesNot(t *testing.T) {
 	opp.Library.Cards = nil
 
 	seedLibraryTop(opp, "Stolen Island", "Basic Land — Island")
-	stranded := impulseExile(t, g, opp, me, ExilePlayPermission{CastOnly: true})
+	stranded := impulseExile(t, g, opp, me, CastPermission{CastOnly: true})
 	if err := g.CastSpell(me.ID, stranded, CastSpellParams{FromZone: "exile"}); err != ErrNoPlayPermission {
 		t.Fatalf("cast-only land: %v, want ErrNoPlayPermission", err)
 	}
@@ -209,7 +237,7 @@ func TestCastOnlyStrandsALandButPlayDoesNot(t *testing.T) {
 	}
 
 	seedLibraryTop(opp, "Playable Island", "Basic Land — Island")
-	playable := impulseExile(t, g, opp, me, ExilePlayPermission{})
+	playable := impulseExile(t, g, opp, me, CastPermission{})
 	if err := g.CastSpell(me.ID, playable, CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("play-permission land: %v", err)
 	}
@@ -221,7 +249,7 @@ func TestCastOnlyStrandsALandButPlayDoesNot(t *testing.T) {
 			if c.Controller != me.ID {
 				t.Errorf("controller = %v, want the thief", c.Controller)
 			}
-			if c.ExilePlay.Granted() {
+			if perm := g.CastPermissionOnCardByIDForEffect(c.InstanceID); perm.Granted() {
 				t.Errorf("permission survived the land drop")
 			}
 		}
@@ -233,23 +261,19 @@ func TestCleanupClearsExpiredExilePermissions(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	opp.Library.Cards = nil
 	seedLibraryTop(opp, "This Turn", "Instant")
-	thisTurn := impulseExile(t, g, opp, me, ExilePlayPermission{})
+	thisTurn := impulseExile(t, g, opp, me, CastPermission{})
 	seedLibraryTop(opp, "Next Turn", "Instant")
-	nextTurn := impulseExile(t, g, opp, me, ExilePlayPermission{UntilTurn: g.Turn.Number + 1})
+	var nextTurnWindow Duration
+	g.WithWriteLock(func() { nextTurnWindow = g.UntilEndOfYourNextTurnDuration(me.ID) })
+	nextTurn := impulseExile(t, g, opp, me, CastPermission{Duration: nextTurnWindow})
 
-	g.WithWriteLock(func() { g.clearExpiredExilePlayLocked() })
+	g.WithWriteLock(func() { g.sweepCastPermissionsLocked(true) })
 
-	for _, c := range g.Exile.Cards {
-		switch c.InstanceID {
-		case thisTurn:
-			if c.ExilePlay.Granted() {
-				t.Errorf("a this-turn grant survived cleanup")
-			}
-		case nextTurn:
-			if !c.ExilePlay.Granted() {
-				t.Errorf("a grant with a later window was cleared early")
-			}
-		}
+	if perm := g.CastPermissionOnCardByIDForEffect(thisTurn); perm.Granted() {
+		t.Errorf("a this-turn grant survived cleanup")
+	}
+	if perm := g.CastPermissionOnCardByIDForEffect(nextTurn); !perm.Granted() {
+		t.Errorf("a grant with a later window was cleared early")
 	}
 }
 
@@ -303,7 +327,7 @@ func TestExileTopWithPermissionTakesTheTopNotTheBottom(t *testing.T) {
 	var got []uuid.UUID
 	var err error
 	g.WithWriteLock(func() {
-		got, err = g.ExileTopWithPermissionForEffect(me.ID, me.ID, 1, ExilePlayPermission{})
+		got, err = g.ExileTopWithPermissionForEffect(me.ID, me.ID, 1, CastPermission{})
 	})
 	if err != nil {
 		t.Fatalf("ExileTopWithPermissionForEffect: %v", err)

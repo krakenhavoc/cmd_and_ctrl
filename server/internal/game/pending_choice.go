@@ -41,8 +41,6 @@ import (
 //
 // Future kinds (reserved names, not implemented yet):
 //
-//	"mode_pick"         — chooser picks a mode index for a modal
-//	                      spell.
 //	"mill_reveal"       — chooser picks which of the revealed top-N
 //	                      library cards go where (Brainstorm's
 //	                      put-two-back half).
@@ -325,6 +323,14 @@ type PendingChoice struct {
 	// first — see manaPickOptionsFor). Added in S15 sub-PR 2.
 	ColorOptions []string
 
+	// ColorPurpose is what the card asking a PendingChoiceColor will do
+	// with the answer — #780's card-side declaration. Unused for every
+	// other kind. It is carried rather than derived because the only
+	// thing that could derive it is the card's own text, and the
+	// engine does not read card text. Projected onto the wire as
+	// `color_purpose`; see ColorPurpose.
+	ColorPurpose ColorPurpose
+
 	// ManaRestrictions are the spend restrictions the token minted
 	// by this PendingChoiceMana will carry — Delighted Halfling's
 	// "spend this mana only to cast a legendary spell". Empty for
@@ -350,6 +356,24 @@ type PendingChoice struct {
 	// ParseProducedMana). Deep-copied by clone.go and carried by the
 	// snapshot. Added for #742.
 	ManaAmounts map[string]int
+
+	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
+	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
+	// whose colour the controller is still choosing.
+	//
+	// It is the one bit that tells ResolveManaChoice whether answering
+	// this pick fires the CR 605.1b triggered mana abilities (#763,
+	// ADR 0074 §3). For a Birds-of-Paradise-style source this is the
+	// only moment the produced colour is known, so it is the only
+	// place Mana Flare can read it. A pick queued by a resolving spell
+	// (AddManaForEffect — Dark Ritual, Sanctum of Fruitful Harvest) or
+	// by a triggered mana ability's own "any color" leaves it false:
+	// neither of those tapped anything, and firing on them would break
+	// CR 106.12a in one direction and recurse in the other.
+	//
+	// Carried by the value copy every clone starts from, and by the
+	// snapshot.
+	ManaTapped bool
 
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
@@ -400,6 +424,30 @@ type PendingChoice struct {
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
 
+	// ModeOptionIndex / ModeOptionLabel are the options a
+	// PendingChoiceModePick offers, in printed order: the ModeSpec
+	// index of each option and its oracle bullet. Only the choosable
+	// ones are listed (an option whose clause has no legal target is
+	// dropped, CR 603.3d), so the answer is validated against this
+	// list rather than against the whole ModeSpec — and the CLIENT
+	// cannot offer what the engine would refuse. Carried by the
+	// snapshot: the options ARE the prompt. Added by #764.
+	ModeOptionIndex []int
+	ModeOptionLabel []string
+
+	// ModeMin / ModeMax / ModeRepeatable are the ModeSpec's bounds,
+	// repeated onto the prompt so the picker and the bot's
+	// enumerator need nothing but the prompt to answer it.
+	// Added by #764.
+	ModeMin, ModeMax int
+	ModeRepeatable   bool
+
+	// modePickResume is the server-only continuation for a
+	// PendingChoiceModePick: the captured trigger, so the answer
+	// continues into the CR 603.3d target walk and then Build.
+	// Added by #764.
+	modePickResume *modePickFrame
+
 	// copySpellResume is the other continuation a
 	// PendingChoicePickTarget can carry (S30, #95): the CR 707.10
 	// "you may choose new targets for the copy" prompt. It reuses
@@ -421,6 +469,32 @@ type PendingChoice struct {
 	// change between the prompt and the answer (an earlier player's
 	// sacrifice can trigger something that removes a creature).
 	SacrificeOptions []uuid.UUID
+
+	// promptRun links this prompt to the RUN it is one leg of — the
+	// printed instruction whose continuation waits for every seat it
+	// asked (#1019, #1027, prompt_run.go). uuid.Nil on a prompt
+	// nothing is waiting on, which is every sacrifice and every
+	// discard the fire-and-forget entry points queue.
+	//
+	// TWO KINDS carry one: PendingChoiceSacrifice (one leg of a
+	// prompted sacrifice, sacrifice_run.go) and the
+	// PendingChoiceChooseCards a discard prompt is
+	// (discard_run.go). One field rather than one per verb, because
+	// the runs are one registry and "this prompt is a leg of that
+	// run" is one fact; defaultDroppedChoiceLocked reads the FIELD
+	// rather than the kind for the same reason, so a third verb needs
+	// no third branch.
+	//
+	// A plain id rather than a pointer to the frame, and that is the
+	// undo contract rather than a style choice: the prompts of one run
+	// SHARE mutable state, and cloneLocked copies each PendingChoice by
+	// value — a shared pointer would be duplicated per prompt and an
+	// undo snapshot would hold as many half-finished runs as the run
+	// had prompts. The runs themselves live on the Game
+	// (Game.promptRuns) and are deep-copied once, so the counter and
+	// the queue rewind together. Not serialised, like every other
+	// continuation link.
+	promptRun uuid.UUID
 
 	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
 	// may be copied from — "any creature on the battlefield" for
@@ -552,6 +626,47 @@ type PendingChoice struct {
 	confirmResume  *confirmFrame
 	coinFlipResume *coinFlipFrame
 
+	// OwedInStep is the step THIS prompt has to be answered in: the
+	// upkeep of "at the beginning of your upkeep, sacrifice this
+	// unless you pay" (Stasis, Pact of Negation, every cumulative
+	// upkeep). The zero value names no step, which is every other
+	// prompt in the engine.
+	//
+	// While the cursor is still standing in that step the prompt
+	// blocks the table, whatever its kind's classification says
+	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
+	// not let priority pass on with a required action outstanding and
+	// CR 500.4 does not let the step end until it has been taken. Set
+	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
+	// which is the one door into this shape.
+	//
+	// It replaced a per-card "please block" boolean in #997, for the
+	// reason #951 gives for deriving the other narrowing: the boolean
+	// shipped with cumulative upkeep in #567, Stasis and Pact of
+	// Negation were written afterwards with the same sentence printed
+	// on them, and neither author found the switch.
+	OwedInStep TurnStep
+
+	// GuardsStackItem is the object on the stack whose fate THIS prompt
+	// decides: the "that spell" of CR 118.12's "counter that spell
+	// unless its controller pays {N}" — ward, Daze, Mana Leak.
+	//
+	// While that object is still on the stack the prompt blocks the
+	// table, whatever its kind's classification says
+	// (Game.ChoicePromptBlocksTable, choice_gate.go). It is the other
+	// half of OwedInStep's rule and the same kind of fact: both are
+	// facts about the GAME, re-read every time the gate is asked,
+	// rather than a halt declared once when the prompt was queued.
+	// That is the whole point — once the guarded object has left the
+	// stack there is nothing left to counter, the question is
+	// background again, and the halt lifts itself rather than needing
+	// somebody to notice.
+	//
+	// Set only by QueueCounterUnlessPaidForEffect
+	// (counter_unless_paid.go), which is the one door into this shape.
+	// See #951.
+	GuardsStackItem uuid.UUID
+
 	// ChooseCards is the candidate set of a PendingChoiceChooseCards,
 	// in the order the client should render them. Wire-serialised via
 	// PendingChoiceView.Options and redacted per viewer like every
@@ -572,6 +687,19 @@ type PendingChoice struct {
 	// they are re-checked against. Not serialised. See
 	// chained_choice.go.
 	chooseCardsResume *chooseCardsFrame
+
+	// PickOptions are the branches of a PendingChoiceOptionPick — the
+	// card's own words for each, plus the cards it is about (a pile,
+	// or nothing). Wire-serialised via PendingChoiceView.PickOptions,
+	// with each option's card list projected through the same
+	// per-viewer redaction as every other Options-bearing kind. See
+	// option_pick.go.
+	PickOptions []ChoiceOption
+
+	// optionPickResume is the server-only continuation for a
+	// PendingChoiceOptionPick: what the chosen index means. Not
+	// serialised. See option_pick.go.
+	optionPickResume *optionPickFrame
 
 	// chooseColorResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
@@ -634,13 +762,44 @@ type mayCastFrame struct {
 
 // pickTargetFrame is the continuation for a targeted trigger's
 // pick_target prompt. Added in S20 sub-PR 2.
+//
+// #764: a trigger's targets are a WALK over the announcement's
+// clause steps, not a single clause. One prompt is one step; the
+// frame accumulates the picks and re-queues itself for the next
+// step until the list is exhausted, and only then does Build run.
+// A single-clause trigger — every targeted trigger that predates
+// #764 — is that walk with one step, which is one prompt, which is
+// exactly what it was.
 type pickTargetFrame struct {
-	ev        Event
-	source    Card
-	lki       Characteristic
-	build     func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
-	spec      *TargetSpec
+	ev     Event
+	source Card
+	lki    Characteristic
+	build  func(ev Event, source *Card, sourceLKI Characteristic, g *Game) *StackItem
+	// spec is the ability's card-level clause statement (nil for a
+	// modal ability, whose clauses come from the chosen options).
+	spec *TargetSpec
+	// modeSpec / modes are the ability's modes and the occurrences
+	// chosen at CR 603.3c, stamped onto the built item so the
+	// resolution re-check can find each ref's clause.
+	modeSpec *ModeSpec
+	modes    []int
+	// steps is the announcement's clause list, step the cursor into
+	// it, and picked the refs answered so far (each already stamped
+	// with its Mode / Slot).
+	steps  []AnnouncedClause
+	step   int
+	picked []TargetRef
+
 	doubledBy doublerRef
+}
+
+// currentClause is the clause the open prompt is asking about, or
+// nil when the walk is finished.
+func (f *pickTargetFrame) currentClause() *TargetClause {
+	if f == nil || f.step < 0 || f.step >= len(f.steps) {
+		return nil
+	}
+	return &f.steps[f.step].Clause
 }
 
 // triggerResumeFrame stashes the per-trigger continuation data the
@@ -733,6 +892,14 @@ type DamageAssignmentFrame struct {
 	// credits this player even if the attacker is no longer on the
 	// battlefield).
 	SourceController uuid.UUID
+
+	// SourceLKI is the attacker's characteristics at prompt-queue
+	// time, for the same died-before-resume reason as SourceLifelink:
+	// CR 702.16e prevents damage from a source with the quality, and
+	// the quality has to be read off the attacker as it was when it
+	// assigned, not off a card in a graveyard. Rides onto the damage
+	// event through damageTailFromFrame. #662.
+	SourceLKI *Characteristic `json:",omitempty"`
 
 	// SourceIsCommander is the attacker's commander flag at
 	// prompt-queue time, cached for the same died-before-resume
@@ -871,7 +1038,7 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// an index into g.PendingChoices does not survive that.
 		g.dequeueChoiceLocked(idx)
 		return g.discardCardsLocked(from.ID, picks, discardOptions{
-			cause:  discardCauseEffect,
+			cause:  DiscardCauseEffect,
 			source: choice.Source,
 		})
 	default:
@@ -934,6 +1101,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if v, ok := choice.ManaAmounts[color]; ok {
 		n = v
 	}
+	colors := make([]string, 0, n)
 	for k := 0; k < n; k++ {
 		p.ManaPool.AddMana(ManaToken{
 			Color:  color,
@@ -948,9 +1116,32 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 			Kind:   EventManaAdded,
 			Actor:  chooserID,
 			Source: choice.Source,
+			Colors: []string{color},
 		})
+		colors = append(colors, color)
 	}
+	tapped := choice.ManaTapped
+	source := choice.Source
 	g.dequeueChoiceLocked(idx)
+	// #763, CR 605.1b / 605.4a: the second of the three production
+	// sites, and the ONLY one that knows the colour a
+	// Birds-of-Paradise-style source produced — which is what "one
+	// mana of any type that land produced" needs (Mana Flare,
+	// Mirari's Wake) and what Wild Growth on a dual land waits for.
+	//
+	// After the dequeue, so a trigger that queues a pick of its own
+	// (Fertile Ground's "any color") does not land behind the answered
+	// one in the queue. Fires only for a pick that came from TAPPING a
+	// permanent for mana: see PendingChoice.ManaTapped.
+	if tapped {
+		if card := g.findCardByIDLocked(source); card != nil {
+			g.fireManaTriggersLocked(ManaProduced{
+				Source:     *card,
+				Controller: chooserID,
+				Colors:     colors,
+			}, nil)
+		}
+	}
 	return nil
 }
 
@@ -973,15 +1164,52 @@ func (g *Game) dequeueChoiceLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
-	g.dropChoiceLocked(idx)
+	g.removeChoiceAtLocked(idx)
 	g.notePlayerDecisionLocked()
 }
 
-// dropChoiceLocked removes the choice at index idx without recording
-// a player decision: the engine withdrawing a prompt nobody answered
-// (a sacrifice choice whose card has left, a stale zone-change
-// prompt). Caller must hold g.mu.
+// dropChoiceLocked is the engine WITHDRAWING a prompt nobody answered
+// — a sacrifice choice whose card has left, a stale zone-change
+// prompt, a CR 726 shortcut whose notice was cleared, an option pick
+// with no legal answer left. No player decision is recorded (that is
+// dequeueChoiceLocked's job, above).
+//
+// THE WITHDRAWAL IS NOT ALWAYS THE END OF THE QUESTION (#1006). The
+// departure table's second column says what a dropped prompt of this
+// kind still has to do, and it is performed here, so every withdrawal
+// path settles a kind the same way and the next prune cannot forget
+// it: `option_pick` runs its continuation with the no-choice outcome,
+// because the effect that asked is paused mid-resolution and its
+// continuation is the rest of the card. Every other kind's action is
+// the zero value and this costs a map lookup.
+//
+// The action runs AFTER the queue has been rewritten, so a
+// continuation that queues the next link of a chain does not land
+// behind the question it is replacing. A caller sweeping the queue by
+// index should walk it BACKWARDS, as every existing one does.
+//
+// The departure sweep does NOT come through here — it rebuilds the
+// slice in one pass and runs the same actions itself, behind the CR
+// 800.4f/g gates that only a departure needs
+// (dropChoicesForPlayerLocked, mutations.go). There is no path that
+// reaches both.
+//
+// Caller must hold g.mu.
 func (g *Game) dropChoiceLocked(idx int) {
+	if idx < 0 || idx >= len(g.PendingChoices) {
+		return
+	}
+	c := g.PendingChoices[idx]
+	g.removeChoiceAtLocked(idx)
+	g.runChoiceDropActionLocked(c)
+}
+
+// removeChoiceAtLocked takes the choice at idx out of the queue and
+// does nothing else, preserving slice order for the rest. The two
+// exits from the queue — an answer (dequeueChoiceLocked) and a
+// withdrawal (dropChoiceLocked) — differ in what they do around this,
+// and share the one line that does it. Caller must hold g.mu.
+func (g *Game) removeChoiceAtLocked(idx int) {
 	if idx < 0 || idx >= len(g.PendingChoices) {
 		return
 	}
@@ -989,6 +1217,202 @@ func (g *Game) dropChoiceLocked(idx int) {
 	if len(g.PendingChoices) == 0 {
 		g.PendingChoices = nil
 	}
+}
+
+// runChoiceDropActionLocked performs the departure table's second
+// column for one prompt that has just left the queue unanswered —
+// THE one place those actions are performed (choiceDepartureDecisions,
+// leave_game.go).
+//
+// Two callers, and the split between them is deliberate: this says
+// WHAT a dropped prompt of a kind still owes, and each caller says
+// WHEN a prompt is dropped and what it has to check first. The
+// departure sweep checks CR 800.4f/g's gates
+// (departedChoiceActionAllowedLocked); an ordinary withdrawal checks
+// nothing, because the chooser and the card are both still in the game
+// and only the question has gone.
+//
+// Caller must hold g.mu, and must have taken the prompt out of the
+// queue already.
+func (g *Game) runChoiceDropActionLocked(c *PendingChoice) {
+	if c == nil {
+		return
+	}
+	switch choiceDepartureDecisions[c.Kind].onDrop {
+	case dropDecline:
+		g.declineDepartedChoiceLocked(c)
+	case dropDefault:
+		g.defaultDroppedChoiceLocked(c)
+	}
+}
+
+// reassignChoiceLocked hands an open prompt to a new chooser — the
+// performing half of CR 800.4g/h. The POLICY (which kinds move, and who
+// inherits) is one file away, in leave_game.go with the rest of
+// CR 800.4; this is the only code that rewrites a PendingChoice.Chooser
+// after the choice has been queued.
+//
+// Reports whether the prompt moved. False means there is nothing left
+// to ask and the caller drops it exactly as it did before #902.
+//
+// What it does, and deliberately no more:
+//
+//   - Prunes the candidates that leave the game with the old chooser.
+//     CR 800.4a takes every object they OWN out of the game in the same
+//     breath as this runs, so a card of theirs on the prompt is already
+//     a card that will not be there when the answer arrives (the same
+//     staleness #701 taught the zone-change resume to recognise, one
+//     step earlier). A departed player is not offered as a target
+//     either. If that empties the question, the prompt is not moved —
+//     handing a seat a prompt with no answers is the #544 wedge.
+//   - Rewrites Chooser, which IS the re-redaction: protocol's
+//     redactChoiceCards decides what a prompt's card lists show from
+//     PendingChoiceView.Chooser and .FromPlayer at VIEW time, on every
+//     snapshot, per viewer. So the next broadcast already shows the new
+//     chooser exactly what that seat may see of a pool that is not
+//     theirs, and shows the departed seat nothing. There is no stored
+//     redaction to re-run.
+//   - Emits EventPendingChoiceReassigned, the twin of #868's
+//     EventPendingChoiceDropped, so a stall dump says where the prompt
+//     went instead of going quiet.
+//
+// What it does NOT touch is the CONTINUATION. Every resume frame on the
+// choice — the trigger's Build closure, the pile's `then`, the target
+// spec — is the rest of the CARD, and the card did not change because
+// the player answering it did. The new chooser makes the choice; the
+// effect still does what it printed, to whoever it printed it about.
+// The bot enumerator needs nothing: choiceMoves keys on Chooser
+// (internal/legal/choices.go), so the inheriting seat is offered the
+// prompt's answers on its next window, and the client renders it from
+// the same field.
+//
+// Caller must hold g.mu.
+func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool {
+	if c == nil || newChooser == uuid.Nil || newChooser == c.Chooser {
+		return false
+	}
+	if p := g.playerByIDLocked(newChooser); p == nil || p.Eliminated {
+		return false
+	}
+	gone := c.Chooser
+
+	// A candidate is pruned when it is leaving the game with the old
+	// chooser (they own it) or is already out of every zone.
+	keep := func(ids []uuid.UUID) []uuid.UUID {
+		if len(ids) == 0 {
+			return nil
+		}
+		out := make([]uuid.UUID, 0, len(ids))
+		for _, id := range ids {
+			card := g.findCardByIDLocked(id)
+			if card == nil || card.Owner == gone {
+				continue
+			}
+			out = append(out, id)
+		}
+		if len(out) == 0 {
+			return nil
+		}
+		return out
+	}
+
+	switch c.Kind {
+	case PendingChoicePickTarget:
+		players := make([]uuid.UUID, 0, len(c.PickTargetPlayers))
+		for _, id := range c.PickTargetPlayers {
+			if id == gone {
+				continue
+			}
+			players = append(players, id)
+		}
+		if len(players) == 0 {
+			players = nil
+		}
+		c.PickTargetPlayers, c.PickTargetCards = players, keep(c.PickTargetCards)
+		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
+			return false
+		}
+	case PendingChoiceChooseCards:
+		c.ChooseCards = keep(c.ChooseCards)
+		if len(c.ChooseCards) == 0 {
+			return false
+		}
+		if c.ChooseMax > len(c.ChooseCards) {
+			c.ChooseMax = len(c.ChooseCards)
+		}
+		if c.ChooseMin > c.ChooseMax {
+			c.ChooseMin = c.ChooseMax
+		}
+		if c.Count > c.ChooseMax {
+			c.Count = c.ChooseMax
+		}
+	case PendingChoiceOptionPick:
+		// The branches are labelled sentences and survive on their own;
+		// only the piles they name, and the SEATS they name, can go.
+		for i := range c.PickOptions {
+			c.PickOptions[i].Cards = keep(c.PickOptions[i].Cards)
+		}
+		// #994 / CR 800.4a: a seat option naming the player who is
+		// leaving is not an answer any more — they are not a player.
+		// Pruned here as well as in pruneDepartedSeatOptionsLocked
+		// because this path runs FIRST, before that sweep, and must
+		// not hand the new chooser a list it would then have to
+		// re-prune. If that empties the question the prompt does not
+		// move, which is the same rule the card arms above keep:
+		// handing a seat a prompt with no answers is the #544 wedge.
+		if opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool { return id != gone }); ok {
+			c.PickOptions = opts
+		} else {
+			return false
+		}
+	}
+
+	c.Chooser = newChooser
+	g.EmitEvent(Event{
+		Kind:   EventPendingChoiceReassigned,
+		Actor:  gone,
+		Target: newChooser,
+		Source: c.Source,
+		Label:  string(c.Kind),
+	})
+	return true
+}
+
+// keepSeats filters the SEAT options of an option list, leaving every
+// option that is not about a seat exactly where it is.
+//
+// The second return is "there is still a question here". False means
+// every option named a seat and every one of those seats failed the
+// test, so the prompt has no legal answer left; the caller decides what
+// to do about it, because the two callers do different things (the
+// reassignment refuses to move the prompt, the departure sweep drops
+// it). It is never false for a list with a non-seat option in it, which
+// is why a Fact or Fiction pile split cannot be emptied by this.
+//
+// `keep` is asked only about options that carry a seat (#994). An
+// option with a zero Player is not about a player and is kept without
+// being asked.
+func keepSeats(in []ChoiceOption, keep func(uuid.UUID) bool) ([]ChoiceOption, bool) {
+	dropped := 0
+	for _, opt := range in {
+		if opt.Player != uuid.Nil && !keep(opt.Player) {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		return in, true
+	}
+	if dropped == len(in) {
+		return nil, false
+	}
+	out := make([]ChoiceOption, 0, len(in)-dropped)
+	for _, opt := range in {
+		if opt.Player != uuid.Nil && !keep(opt.Player) {
+			continue
+		}
+		out = append(out, opt)
+	}
+	return out, true
 }
 
 // queueOptionalReplacementPromptLocked queues a CR 614.10 yes/no
@@ -1204,10 +1628,55 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if card, ok := g.LookupCardForEffect(ev.CardID); ok {
 			return card.Controller
 		}
+	case RepEventDiscard:
+		// #982. A discard is a move out of a hand, but the affected
+		// player is not "the controller of the card" the move branch
+		// above looks up — a card in a hand has no controller, and
+		// CR 701.8a puts it into THAT PLAYER'S graveyard. The
+		// discarding player is on the event; read it.
+		//
+		// Not observable while every discard replacement in the catalog
+		// is controller-scoped, because the fallback below then names
+		// the same player. Madness (#657) and the Obstinate Baloth
+		// family read a discard an OPPONENT caused, and the first of
+		// those to share a window with another discard replacement
+		// would otherwise ask the wrong player.
+		return ev.DiscardPlayer
+	case RepEventCreateTokens:
+		// #982, and the same rule read off the other event ADR 0061
+		// added: "create one or more tokens UNDER YOUR CONTROL", so the
+		// affected player is the one the tokens are created under the
+		// control of.
+		//
+		// Primal Vigor is the printed shape that needs it. It is
+		// deliberately symmetrical ("if one or more tokens would be
+		// created"), so an opponent's Primal Vigor beside your own
+		// Anointed Procession on YOUR creation used to put the CR 616
+		// ordering prompt to the Primal Vigor player.
+		return ev.TokenController
+	case RepEventMill:
+		// #569. CR 701.13a: the player who mills is the one whose
+		// library is being read, and they are the affected player
+		// whoever controls the replacements. Bruvac the Grandiloquent
+		// and The Water Crystal both replace an OPPONENT's mill, so
+		// with the two of them on one battlefield the fallback below
+		// would name their controller rather than the opponent CR 616.1
+		// gives the choice to. The first printed board where the
+		// fallback is not accidentally right.
+		return ev.MillPlayer
 	case RepEventStepTransition:
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventKeywordAction:
+		// #976. The affected player of a keyword action is the player
+		// TAKING it — the one who proliferates, the one who scrys —
+		// which is Actor. Naming it here rather than falling through
+		// to the first gathered effect's controller matters for the
+		// same reason it does for a draw: the two are the same player
+		// for every printed card today, and CR 616.1 gives the choice
+		// to the affected one whoever controls the replacements.
+		return ev.Actor
 	}
 	if len(applicable) > 0 && applicable[0].effect.Controller != nil {
 		return applicable[0].effect.Controller(ev, g, applicable[0].source)
@@ -1482,7 +1951,7 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// happens here — which is also where it was before #694.
 		g.runStateChecksLocked()
 		return nil
-	case RepEventMove:
+	case RepEventMove, RepEventDiscard:
 		// #529: a move that came through the shared exit primitive
 		// carries everything its resume needs on the event itself, so
 		// it is finished by the same code the unpaused path runs —
@@ -1509,22 +1978,38 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// said "yes"). Run the physical move through the shared
 		// executeBattlefieldLeaveLocked helper.
 		if ev.entryResumable && ev.NewZone == ZoneBattlefield && ev.OldZone != ZoneBattlefield {
-			// A paused ENTRY — the shockland's pay-2-life prompt,
-			// or a CR 616 ordering prompt between two enters-tapped
-			// effects. The pipeline function bailed before moving
-			// anything, so the push happens here. See
-			// executeEntryToBattlefieldLocked.
-			return g.executeEntryToBattlefieldLocked(ev)
+			// A paused ENTRY — the shockland's pay-2-life prompt, a
+			// CR 616 ordering prompt between two enters-tapped effects,
+			// Clone's "choose what to copy". The pipeline function
+			// bailed before moving anything, so the push happens here,
+			// through exactly the finisher the unpaused path runs
+			// (executeEntryToBattlefieldLocked), and the effect's own
+			// post-entry duties run off ev.entryTail with it: a search's
+			// shuffle and EventSearchLibrary, the caller's Then, the new
+			// object identity an exile return mints (#478).
+			_, err := g.executeEntryToBattlefieldLocked(ev)
+			if err != nil {
+				return err
+			}
+			// Answering a prompt is an action boundary, like every other
+			// Resolve* handler, so the sweep the finisher deliberately
+			// skips happens here — the unpaused entry paths get theirs
+			// from the resolution bookend they run inside. It runs after
+			// the tail so a permanent that entered and then died does so
+			// once, with everything else the effect did.
+			g.runStateChecksLocked()
+			return nil
 		}
 		if ev.OldZone != ZoneBattlefield {
 			// What is left here is a battlefield ENTRY that is not
-			// entryResumable — an exile → battlefield return (it mints
-			// a new instance ID, CR 400.7) or a library search (it owes
-			// its caller a shuffle). Those bail before moving anything
-			// and are documented as not happening when they pause; see
-			// ReplacementEvent.entryResumable. Since #707 no EXIT lands
-			// here: every one of them carries a zoneRoute or comes off
-			// the battlefield.
+			// entryResumable: putOntoBattlefieldFromZoneLocked's batch,
+			// which runs every card's pipeline against the pre-entry
+			// board and then moves them together — a simultaneity a
+			// per-card resume would break. It bails before moving
+			// anything and is documented as not happening when it
+			// pauses; see ReplacementEvent.entryResumable. Since #707 no
+			// EXIT lands here: every one of them carries a zoneRoute or
+			// comes off the battlefield.
 			return nil
 		}
 		var owner *Player
@@ -1537,6 +2022,49 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// this branch only when it is flagged ViaBattlefieldLeave —
 		// every other exit went to executeZoneRouteLocked above.
 		return g.finishBattlefieldLeaveLocked(ev, owner)
+	case RepEventCreateTokens:
+		// #762: the CR 701.7b window has settled on how many tokens of
+		// which kinds this instruction makes. Creating them is the
+		// same function the unpaused path runs, so a creation that
+		// paused on an ordering prompt and one that did not cannot
+		// drift apart — and each token then takes the ordinary
+		// battlefield entry, which may pause again on its own.
+		return g.applyResolvedTokenCreationLocked(ev)
+	case RepEventKeywordAction:
+		// #976: the CR 614 window has settled on how many times this
+		// proliferate happens, or how many cards this scry looks at.
+		// Taking the action is the same function the unpaused path
+		// runs, so a keyword action that paused on an ordering prompt
+		// and one that did not cannot drift apart.
+		_, err := g.applyResolvedKeywordActionLocked(ev)
+		if err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the effect-time helpers
+		// deliberately skip happens here — a proliferated tenth poison
+		// counter is a CR 704.5c loss, and the unpaused path gets its
+		// sweep from the resolution bookend it runs inside.
+		g.runStateChecksLocked()
+		return nil
+	case RepEventMill:
+		// #569: the CR 614 window has settled on how many cards this
+		// instruction mills. Planning and routing them is the same
+		// function the unpaused path runs, so a mill that paused on an
+		// ordering prompt and one that did not cannot drift apart — and
+		// each card then takes the ordinary per-card exit, which may
+		// pause again on CR 903.9.
+		if _, err := g.applyResolvedMillLocked(ev); err != nil {
+			return err
+		}
+		// Answering a prompt is an action boundary, like every other
+		// Resolve* handler, so the sweep the effect-time helpers
+		// deliberately skip happens here. Running a library out is NOT
+		// a loss (CR 701.13b, #767), but the cards that landed can be —
+		// a milled Aura loses its host and a mill payoff's trigger has
+		// to be put on the stack against a swept board.
+		g.runStateChecksLocked()
+		return nil
 	case RepEventStepTransition:
 		// #710: finish the step entry the prompt interrupted, with
 		// the same code the unpaused path runs. A cancelled event is
@@ -1598,32 +2126,83 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 	if ev == nil {
 		return nil
 	}
-	// #793: a cancelled LIFE change is still an answer to whoever
-	// asked for it. "You gain life equal to the life lost this way"
-	// gains nothing when the loss was replaced away — but a drain
-	// adding up several players' losses has to be told so, or it waits
-	// on this one forever.
-	if ev.Kind == RepEventLife {
+	// One arm per ReplacementEventKind, and #982's enumeration test
+	// (replacement_kind_gate_test.go) fails until a new kind has one.
+	// This was an if-chain until then — the same code in the same
+	// order, because every condition on it is exclusive on Kind — but a
+	// chain is not something a scanner can read a kind out of, and
+	// "nothing is owed here" is a decision worth writing down rather
+	// than falling off the end of.
+	switch ev.Kind {
+	case RepEventLife:
+		// #793: a cancelled LIFE change is still an answer to whoever
+		// asked for it. "You gain life equal to the life lost this way"
+		// gains nothing when the loss was replaced away — but a drain
+		// adding up several players' losses has to be told so, or it
+		// waits on this one forever.
 		return g.runLifeTailLocked(ev, 0)
-	}
-	// #807: and the same for a cancelled DAMAGE event. "You gain life
-	// equal to the damage dealt this way" gains nothing when a Fog ate
-	// the damage, and the batch behind Creeping Bloodsucker has to be
-	// told so before it can move on to the next opponent.
-	if ev.Kind == RepEventDamage {
+	case RepEventDamage:
+		// #807: and the same for a cancelled DAMAGE event. "You gain
+		// life equal to the damage dealt this way" gains nothing when a
+		// Fog ate the damage, and the batch behind Creeping Bloodsucker
+		// has to be told so before it can move on to the next opponent.
 		return g.runDamageTailLocked(ev, 0)
-	}
-	// #853: and the same for a cancelled EXIT that carries a route.
-	// The card stays where it is, but a multi-card discard sequenced
-	// through the route's continuation has to be told, or the rest of
-	// the batch — and the "then draw two" behind it — never happens.
-	if ev.Kind == RepEventMove {
-		return g.runRouteTailLocked(ev.zoneRoute)
-	}
-	if ev.Kind != RepEventStepTransition {
+	case RepEventCreateTokens:
+		// #762: a cancelled or replaced-away token CREATION makes
+		// nothing, and the rest of the card ("create a Treasure, then
+		// sacrifice it") has to be told so rather than wait for tokens
+		// that will never arrive.
+		return g.abandonTokenCreationLocked(ev)
+	case RepEventKeywordAction:
+		// #976: and a cancelled KEYWORD ACTION. "Scry 2, then draw a
+		// card" still draws when the scry was replaced away — the
+		// sentence after "then" is not conditional on the action having
+		// happened — so the continuation has to be told rather than
+		// left waiting on a prompt that will never be queued.
+		return g.abandonKeywordActionLocked(ev)
+	case RepEventMill:
+		// #569: and a cancelled MILL, whose caller is often reading the
+		// list. "Mill three cards, then return a creature card milled
+		// this way to your hand" returns nothing when the mill was
+		// replaced away, but it has to be told that rather than wait
+		// for cards that will never arrive.
+		return g.abandonMillLocked(ev)
+	case RepEventMove, RepEventDiscard:
+		// #853: a cancelled EXIT that carries a route. The card stays
+		// where it is, but a multi-card discard sequenced through the
+		// route's continuation has to be told, or the rest of the batch
+		// — and the "then draw two" behind it — never happens.
+		//
+		// #478: and a cancelled ENTRY that carries a tail. A search
+		// whose fetched permanent the window cancelled still owes its
+		// library a shuffle and its caller a "found nothing"; a leg of
+		// a multi-card fetch has to be told before it can start the
+		// next one. A move carries a route or an entry tail, never
+		// both, so running both is one call and a no-op.
+		//
+		// #762: a cancelled ENTRY of a created token is the one move
+		// that leaves an object behind. A token exists only on the
+		// battlefield (CR 111.1), so one whose entry was replaced away
+		// simply ceases to be; the rest of its batch still lands,
+		// through the entry tail.
+		g.dropEnteringTokenLocked(ev.CardID)
+		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
+			return err
+		}
+		return g.runEntryTailLocked(ev, uuid.Nil)
+	case RepEventStepTransition:
+		// The one kind whose cancellation is not nothing — see the
+		// doc comment above.
+		return g.applyResolvedReplacementEventLocked(ev)
+	case RepEventDraw, RepEventCounter:
+		// Nothing is sequenced behind either: a cancelled draw and a
+		// cancelled counter placement simply do not happen, and neither
+		// entry point carries a continuation, so there is nobody to
+		// tell. A draw tail or a counter tail, if one is ever added,
+		// belongs here.
 		return nil
 	}
-	return g.applyResolvedReplacementEventLocked(ev)
+	return nil
 }
 
 // QueueDiscardFromRevealedHand is the Thoughtseize entry point.
@@ -1936,40 +2515,128 @@ func (g *Game) queueTriggerPromptLocked(
 // refreshTargetChoicesLocked re-reads the frozen set at the next
 // priority-grant boundary (#809). Caller must hold g.mu. Added in S20
 // sub-PR 2.
-func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef) {
-	lt := g.legalTargetsLocked(source.Controller, t.Targets)
-	// CR 603.3d: no legal target ⇒ the ability is removed from the
-	// stack and does nothing. dispatchTriggerInstanceLocked already
-	// checked this at harvest time, but the OPTIONAL path comes back
-	// through here from ResolveTriggerPrompt, an arbitrary time later,
-	// and a prompt with an empty option list is a prompt nobody can
-	// answer — which since #791 is a table that cannot move.
-	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+func (g *Game) queuePickTargetLocked(ev Event, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, modes []int, steps []AnnouncedClause) {
+	g.queuePickTargetStepLocked(&pickTargetFrame{
+		ev:        ev,
+		source:    source,
+		lki:       lki,
+		build:     t.Build,
+		spec:      t.Targets,
+		modeSpec:  t.Modes,
+		modes:     append([]int(nil), modes...),
+		steps:     steps,
+		doubledBy: doubledBy,
+	})
+}
+
+// queuePickTargetStepLocked opens the prompt for the frame's CURRENT
+// step, skipping steps whose optional clause ("up to one target") has
+// nothing to offer, and finishing the walk when the steps run out.
+//
+// CR 603.3d: a REQUIRED clause with no legal target means the ability
+// is removed from the stack and does nothing.
+// dispatchTriggerInstanceLocked already checked that at harvest time,
+// but the OPTIONAL path comes back through here from
+// ResolveTriggerPrompt an arbitrary time later, and a prompt with an
+// empty option list is a prompt nobody can answer — which since #791
+// is a table that cannot move.
+//
+// Caller must hold g.mu.
+func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
+	for f.step < len(f.steps) {
+		clause := f.currentClause()
+		// The frame's source is a VALUE COPY taken when the trigger
+		// was harvested, which is exactly the source CR 702.16b wants:
+		// the permanent may have left between the trigger and the
+		// prompt, and its qualities then are what count.
+		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source), clause)
+		lt = withoutPicked(lt, f.picked, clause.Distinct)
+		if len(lt.Players) == 0 && len(lt.Cards) == 0 {
+			if clause.Min > 0 {
+				// The whole ability is removed (CR 603.3d), together
+				// with the picks already made for earlier clauses —
+				// nothing was put on the stack, so nothing is undone.
+				return
+			}
+			// "Up to one target" with nothing to point at: the step is
+			// answered by choosing nothing.
+			f.step++
+			continue
+		}
+		label := clause.Label
+		if label == "" {
+			label = "Choose a target"
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:              PendingChoicePickTarget,
+			Chooser:           f.source.Controller,
+			Count:             1,
+			Source:            f.source.InstanceID,
+			Reason:            label,
+			PickTargetPlayers: lt.Players,
+			PickTargetCards:   lt.Cards,
+			PickTargetMin:     clause.Min,
+			PickTargetMax:     clause.Max,
+			pickTargetResume:  f,
+		})
 		return
 	}
-	label := t.Targets.Label
-	if label == "" {
-		label = "Choose a target"
+	g.finishPickTargetLocked(f)
+}
+
+// finishPickTargetLocked runs Build with every step answered and
+// queues the item, stamping the announcement onto it so the CR
+// 608.2b re-check can find each ref's clause.
+//
+// Caller must hold g.mu.
+func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
+	if f.build == nil {
+		return
 	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoicePickTarget,
-		Chooser:           source.Controller,
-		Count:             1,
-		Source:            source.InstanceID,
-		Reason:            label,
-		PickTargetPlayers: lt.Players,
-		PickTargetCards:   lt.Cards,
-		PickTargetMin:     t.Targets.Min,
-		PickTargetMax:     t.Targets.Max,
-		pickTargetResume: &pickTargetFrame{
-			ev:        ev,
-			source:    source,
-			lki:       lki,
-			build:     t.Build,
-			spec:      t.Targets,
-			doubledBy: doubledBy,
-		},
-	})
+	source := f.source
+	item := f.build(f.ev, &source, f.lki, g)
+	if item == nil {
+		return
+	}
+	item.Targets = append([]TargetRef(nil), f.picked...)
+	item.Modes = append([]int(nil), f.modes...)
+	item.targetSpec = f.spec
+	item.modeSpec = f.modeSpec
+	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
+	g.queueHarvestedTriggerLocked(item)
+	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
+	// it is put on the stack, which is right here. Emitted after the
+	// queue so a "becomes the target" trigger stacks above the
+	// ability that targeted. Added in S22 for Monk Gyatso.
+	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, item.Targets)
+	g.runStateChecksLocked()
+}
+
+// withoutPicked drops from a legal set every object already picked
+// for an EARLIER clause, when this clause is Distinct ("a second
+// target permanent you control"). A non-Distinct clause gets the set
+// untouched — CR 601.2c lets one object fill two different instances
+// of the word "target".
+func withoutPicked(lt LegalTargets, picked []TargetRef, distinct bool) LegalTargets {
+	if !distinct || len(picked) == 0 {
+		return lt
+	}
+	taken := make(map[uuid.UUID]bool, len(picked))
+	for _, p := range picked {
+		taken[p.ID] = true
+	}
+	out := LegalTargets{}
+	for _, id := range lt.Players {
+		if !taken[id] {
+			out.Players = append(out.Players, id)
+		}
+	}
+	for _, id := range lt.Cards {
+		if !taken[id] {
+			out.Cards = append(out.Cards, id)
+		}
+	}
+	return out
 }
 
 // ResolvePickTarget processes the controller's target choice for a
@@ -2021,7 +2688,8 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 		return g.resolveCopySpellTargetsLocked(idx, cf, targets)
 	}
 	frame := choice.pickTargetResume
-	if frame == nil || frame.build == nil || frame.spec == nil {
+	step := frame.currentClause()
+	if frame == nil || frame.build == nil || step == nil {
 		g.dequeueChoiceLocked(idx)
 		return nil
 	}
@@ -2030,25 +2698,32 @@ func (g *Game) ResolvePickTargets(choiceID, chooserID uuid.UUID, targets []Targe
 			return ErrInvalidParam
 		}
 	}
-	if err := g.validateTargetsLocked(chooserID, frame.spec, targets); err != nil {
+	// #764: the refs answer THIS step, so they are validated against
+	// this clause alone and stamped with its (Mode, Slot) — the walk
+	// asks one clause at a time and the item ends up carrying the
+	// whole announcement.
+	cur := frame.steps[frame.step]
+	stamped := make([]TargetRef, 0, len(targets))
+	for _, t := range targets {
+		t.Mode, t.Slot = cur.Mode, cur.Slot
+		stamped = append(stamped, t)
+	}
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(chooserID, &frame.source), frame.steps[frame.step:frame.step+1], stamped); err != nil {
 		return err
 	}
-	g.dequeueChoiceLocked(idx)
-	source := frame.source
-	item := frame.build(frame.ev, &source, frame.lki, g)
-	if item == nil {
-		return nil
+	if step.Distinct {
+		for _, t := range stamped {
+			for _, p := range frame.picked {
+				if p.ID == t.ID {
+					return ErrInvalidParam
+				}
+			}
+		}
 	}
-	item.Targets = append([]TargetRef(nil), targets...)
-	item.targetSpec = frame.spec
-	item.DoubledBy, item.DoubledByName = frame.doubledBy.id, frame.doubledBy.name
-	g.queueHarvestedTriggerLocked(item)
-	// CR 603.3d / 115.7: a triggered ability's targets are chosen as
-	// it is put on the stack, which is right here. Emitted after the
-	// queue so a "becomes the target" trigger stacks above the
-	// ability that targeted. Added in S22 for Monk Gyatso.
-	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, targets)
-	g.runStateChecksLocked()
+	g.dequeueChoiceLocked(idx)
+	frame.picked = append(frame.picked, stamped...)
+	frame.step++
+	g.queuePickTargetStepLocked(frame)
 	return nil
 }
 
@@ -2092,7 +2767,7 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 	}
 	// S20: a targeted optional trigger continues into the target
 	// pick; an untargeted one builds straight away.
-	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy)
+	g.buildOrPickTriggerLocked(frame.ev, frame.source, frame.lki, frame.ability, frame.doubledBy, nil)
 	// The prompt is answered outside any priority-wrap, so nothing
 	// downstream would drain the queue until the next pass around
 	// the table — and an empty stack at that wrap would advance the
@@ -2124,6 +2799,26 @@ func (g *Game) QueuePayUnlessForEffect(
 	cost, question string,
 	onDecline func(g *Game) error,
 ) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil)
+}
+
+// queuePayUnlessLocked is the one body behind every pay-unless.
+//
+// `owed` is the step the prompt has to be answered in, or the zero
+// TurnStep for one the table may walk past (#997,
+// upkeep_pay_unless.go); `guards` is the stack object whose fate the
+// decline decides, or uuid.Nil for the detached Rhystic shape (#951,
+// counter_unless_paid.go). They are separate because they are facts
+// about different parts of the board — the cursor and the stack — and
+// no caller sets both. Both are read LIVE by the gate, so neither can
+// hold the table after the thing it is about has gone.
+func (g *Game) queuePayUnlessLocked(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onDecline func(g *Game) error,
+	owed TurnStep,
+	guards uuid.UUID,
+) error {
 	parsed, err := ParseCost(cost)
 	if err != nil {
 		g.EmitEvent(Event{
@@ -2143,12 +2838,14 @@ func (g *Game) QueuePayUnlessForEffect(
 		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoicePayUnless,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  question,
-		PayCost: cost,
+		Kind:            PendingChoicePayUnless,
+		Chooser:         chooser,
+		Count:           1,
+		Source:          source,
+		Reason:          question,
+		PayCost:         cost,
+		OwedInStep:      owed,
+		GuardsStackItem: guards,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
@@ -2371,6 +3068,47 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 	return nil
 }
 
+// declineDepartedChoiceLocked runs the "no" branch of a prompt whose
+// chooser left the game still owing it. It is the dropDecline action
+// of the departure table (choiceDepartureDecisions, leave_game.go) and
+// the second half of CR 800.4f: the departed player's cost is not
+// paid, and "unless that player pays" is a sentence about what happens
+// when it is not. Rhystic Study still draws; Smothering Tithe still
+// makes its Treasure (#961).
+//
+// This is the SAME continuation ResolvePayUnless runs for an answered
+// "no", reached from the elimination sweep rather than from an answer
+// — the #808 shape: one more terminal outcome of a paused pipeline,
+// and leaving the game is the one being added. Two things make it safe
+// to run from inside the sweep, and both are somebody else's invariant
+// rather than a check here:
+//
+//   - it cannot re-queue a prompt to the departed seat, because
+//     QueueChoiceForEffect refuses an eliminated chooser (#864). A
+//     prompt it queues to a SURVIVOR is fine and stays queued;
+//   - it is only reached for a prompt whose object a survivor still
+//     controls (departedChoiceObjectLocked), so the branch is written
+//     against material CR 800.4a has not just taken off the table.
+//
+// A may-pay frame (QueueMayPayForEffect: "you may pay {2}. If you do,
+// ...") carries no decline branch and nothing happens, which is the
+// right reading of "if you do" for a player who no longer can.
+//
+// Caller must hold g.mu.
+func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
+	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.onDecline == nil {
+		return
+	}
+	if err := c.payUnlessResume.onDecline(g); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    c.Chooser,
+			Source:   c.Source,
+			ErrorMsg: err.Error(),
+		})
+	}
+}
+
 // S32 (#352): this one keeps the zero spend context deliberately. A
 // pay-unless / may-pay cost is not a cast and not an activation — it
 // is a cost demanded by a resolving effect — so no "spend only to
@@ -2392,14 +3130,15 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID) bool 
 		}
 		g.materializePlanLocked(p, plan, cost)
 	}
-	if !p.ManaPool.SpendMana(cost, 0) {
+	spent, ok := p.ManaPool.SpendManaFor(cost, 0, ManaSpendContext{})
+	if !ok {
 		return false
 	}
-	g.EmitEvent(Event{
-		Kind:   EventManaSpent,
-		Actor:  p.ID,
-		Source: source,
-	})
+	// #761: the log line carries what was spent, like every other
+	// payment path. There is no stack item to hang the record on —
+	// this pays a PROMPT's cost, which is already resolving — so
+	// nothing else records it.
+	g.EmitEvent(manaSpentEvent(p.ID, source, spent))
 	return true
 }
 
@@ -2584,8 +3323,32 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	if c.Controller != chooserID {
 		return ErrCardCallerMismatch
 	}
+	// The run this prompt is one leg of, read BEFORE the dequeue: the
+	// entry is about to leave the queue and the continuation below
+	// closes over the id rather than over the entry.
+	run, seat := choice.promptRun, choice.Chooser
 	g.dequeueChoiceLocked(idx)
-	if err := g.sacrificePermanentLocked(cardID); err != nil {
+	// #1019: the picked permanent goes through the sacrifice's own
+	// CONTINUATION rather than the fire-and-forget call, for the two
+	// reasons ADR 0013 §5x gives. It is what lets a run wait for a leg
+	// the CR 903.9 window has merely PAUSED — a sacrificed commander
+	// is still on the battlefield while its owner answers, and a run
+	// that settled on this line would pay out with the permanent still
+	// in play — and what lands in the run is
+	// sacrificedThisWayLocked's answer rather than a re-read of the
+	// board on the next line.
+	//
+	// The source stays uuid.Nil because the fire-and-forget form
+	// passed none (sacrificePermanentLocked): EventSacrifice carries
+	// no source for a prompted sacrifice today, and giving the leg a
+	// continuation must change the sequencing and nothing else.
+	if err := g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
+		var landed []uuid.UUID
+		if sacrificed {
+			landed = []uuid.UUID{cardID}
+		}
+		return g.settleRunLegLocked(run, seat, landed)
+	}); err != nil {
 		return err
 	}
 	g.runStateChecksLocked()
@@ -2623,22 +3386,90 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 	}
 }
 
-// pausedZoneChangeStaleLocked reports whether the exit stashed on a
+// pruneDepartedSeatOptionsLocked takes the seats that have left the
+// game off every open option-pick prompt (#994, CR 800.4a).
+//
+// THE OTHER HALF of reassignChoiceLocked's seat prune, and the reason
+// both exist. That one runs when the CHOOSER leaves and is about the
+// prompt changing hands; this one runs when ANYBODY leaves and is about
+// the prompt's own option list, including the far commoner case — a
+// prompt owed by a survivor that offers a seat somebody else has just
+// vacated. Nothing ran for that case before: eligibility was filtered
+// once, at queue time (eligibleChosenPlayersLocked), and a seat that
+// left afterwards stayed on the buttons. "Choose a player" could then
+// name somebody who was not a player, which CR 800.4a says it cannot.
+//
+// It prunes and does not re-ask. A player choice is a choice among
+// seats, so a shorter list is the same question with one fewer answer;
+// the question is the same one and the card is not re-read.
+//
+// An emptied prompt is DROPPED rather than left unanswerable. That is
+// the state QueueChoosePlayerForEffect refuses to queue in the first
+// place — no eligible seat, no question — and an option_pick blocks the
+// table (choice_gate.go), so a prompt with nothing on it is the #544
+// wedge rather than a harmless leftover.
+//
+// The drop goes through dropChoiceLocked, which since #1006 also runs
+// the departure table's action for the kind: option_pick is
+// dropDefault, so the frame runs with "nobody chose" and the rest of
+// the card — the sentence printed after "choose a player" — still
+// happens. This path is the reason that fix is not only about
+// departures: here the CHOOSER is still at the table and it is the
+// question that has gone.
+//
+// Card options are NOT touched here. A card that left with its owner is
+// removeObjectsOwnedByLocked's business and reaches the prompts through
+// the prunes beside this one; keepSeats only ever asks about an option
+// that names a seat.
+//
+// Caller must hold g.mu.
+func (g *Game) pruneDepartedSeatOptionsLocked() {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c == nil || c.Kind != PendingChoiceOptionPick || len(c.PickOptions) == 0 {
+			continue
+		}
+		opts, ok := keepSeats(c.PickOptions, func(id uuid.UUID) bool {
+			p := g.playerByIDLocked(id)
+			return p != nil && !p.Eliminated
+		})
+		if !ok {
+			g.EmitEvent(Event{
+				Kind:   EventPendingChoiceDropped,
+				Actor:  c.Chooser,
+				Source: c.Source,
+				Label:  string(c.Kind),
+			})
+			g.dropChoiceLocked(i)
+			continue
+		}
+		c.PickOptions = opts
+	}
+}
+
+// pausedZoneChangeStaleLocked reports whether the move stashed on a
 // queued prompt's resume frame can still happen.
 //
-// A paused exit moves NOTHING: the card sits in its old zone until
-// the prompt is answered (see routeCardToZoneLocked). So a card that
-// is no longer in the zone its paused move says it is leaving has
+// A paused move moves NOTHING: the card sits in its old zone until
+// the prompt is answered (see routeCardToZoneLocked, and
+// enterBattlefieldThroughPipelineLocked for the entry side). So a card
+// that is no longer in the zone its paused move says it is leaving has
 // already left by some other route, and that move will never happen.
 // Answering the prompt then either fails — the battlefield-leave
 // resume cannot find the card on the battlefield, which is the
 // "card instance not found in zone" of #605 — or, worse, moves the
 // card a SECOND time out of a zone nobody asked about, because the
-// shared exit primitive moves it from wherever it finds it.
+// shared primitive moves it from wherever it finds it.
 //
-// Battlefield ENTRIES are excluded: executeEntryToBattlefieldLocked
-// locates the card by scan and short-circuits when it is already on
-// the battlefield, so an entry prompt is never stale in this sense.
+// #478 brought battlefield ENTRIES under the same rule. They used to be
+// excluded on the grounds that a paused entry could only ever be
+// answered into a harmless double-push, which was true while nothing
+// that pauses an entry could be overtaken: a fetched permanent's entry
+// prompt is now open while the card sits in a LIBRARY, and a mill, a
+// draw or an opponent's exile can take it out from under the question.
+// A card already ON the battlefield is not stale — the entry it is
+// waiting on simply short-circuits — and neither is one still in its
+// source zone.
 //
 // Caller must hold g.mu.
 func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
@@ -2646,11 +3477,22 @@ func (g *Game) pausedZoneChangeStaleLocked(frame *replacementResumeFrame) bool {
 		return false
 	}
 	ev := frame.ev
-	if ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+	if !isExitMove(ev.Kind) {
 		return false
 	}
 	src := g.findCardZoneLocked(ev.CardID)
-	return src == nil || src.Kind != ev.OldZone
+	if src == nil {
+		// #762: a CREATED TOKEN whose entry is paused is in no zone at
+		// all — minted, staged, not yet pushed. That is not a card that
+		// has left by another route; it is exactly where the paused
+		// entry left it.
+		_, staged := g.enteringTokenLocked(ev.CardID)
+		return !staged
+	}
+	if ev.NewZone == ZoneBattlefield && src == g.Battlefield {
+		return false
+	}
+	return src.Kind != ev.OldZone
 }
 
 // zoneChangePausedLocked reports whether an exit for cardID is already
@@ -2669,7 +3511,7 @@ func (g *Game) zoneChangePausedLocked(cardID uuid.UUID) bool {
 			continue
 		}
 		ev := c.replacementResume.ev
-		if ev == nil || ev.Kind != RepEventMove || ev.NewZone == ZoneBattlefield {
+		if ev == nil || !isExitMove(ev.Kind) || ev.NewZone == ZoneBattlefield {
 			continue
 		}
 		if ev.CardID == cardID {
@@ -2826,6 +3668,12 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 		Actor:  chooserID,
 		Source: choice.Source,
 		Amount: len(bottom),
+		// The size of the scry, not the size of the motion: the cards
+		// the prompt was asking about, which is what the CR 614
+		// keyword-action window settled on clamped to the library
+		// (see Event.LookedAt). Both numbers are on the event because
+		// the log says both.
+		LookedAt: len(choice.ScryCards),
 	})
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
@@ -2995,6 +3843,29 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 // surveil then emits EventSurveil once, for the payoffs that watch
 // the keyword itself.
 //
+// #931: the graveyard leg goes through the shared exit primitive
+// (routeAllThenLocked with millRoute, the template it shares with an
+// ordinary library → graveyard move) rather than pushing the cards
+// into the pile by hand. So the CR 614 window opens on each of them —
+// "if a card would be put into a graveyard from anywhere, exile it
+// instead" (Rest in Peace, Leyline of the Void) — and a surveilled
+// commander is offered the command zone (CR 903.9).
+//
+// Which means the leg can PAUSE, so everything after it moved into the
+// batch's continuation: the EventSurveil announcement and the rest of
+// the effect run once every card has settled, not on the next line
+// with a prompt still open.
+//
+// The cards that are going to the graveyard are put BACK on top of the
+// library first, above the ones that stay, and then routed out of it.
+// They have to be in a zone for the window to replace a move out of
+// it, and the order is what leaves the library correct on the far
+// side: once the graveyard-bound cards have left, the kept ones are
+// the top of the library in the order the player chose. A leg the
+// window cancels outright is the one visible consequence — that card
+// stays on top of the library rather than under the kept ones, which
+// is a position the rules do not name for a move that never happened.
+//
 // Caller must NOT hold g.mu.
 func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder []uuid.UUID) error {
 	g.mu.Lock()
@@ -3028,6 +3899,14 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
+	// Read off the choice before it goes out of scope: the
+	// continuation below may run an action later, from the resume of a
+	// CR 903.9 prompt, and must not close over a dequeued frame.
+	resume := choice.scryResume
+	// The size of the surveil, read off the frame for the same reason
+	// the resume is: the continuation below runs later, possibly from
+	// the resume of a CR 903.9 prompt, with the frame dequeued.
+	lookedAt := len(choice.ScryCards)
 
 	// Pull all of them out first, then place them, so the
 	// intermediate state can't depend on removal order.
@@ -3039,45 +3918,50 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		}
 		pulled[id] = c
 	}
-	// Graveyard first: the cards that stay on top end up above a
-	// library that no longer contains the ones that left, which is
-	// the order the printed instruction reads in.
-	for _, id := range graveyard {
-		c := pulled[id]
-		p.Graveyard.PushTop(c)
-		g.markCardKnownInZoneLocked(p.Graveyard, c.InstanceID)
-		g.EmitEvent(Event{
-			Kind:    EventMill,
-			Actor:   chooserID,
-			Source:  choice.Source,
-			CardID:  c.InstanceID,
-			OldZone: ZoneLibrary,
-			NewZone: ZoneGraveyard,
-		})
-	}
+	// The kept cards go back first and the graveyard-bound ones on top
+	// of them, so that once the route has taken the latter out of the
+	// library the former are its top in the order the player chose.
 	// topOrder is top-first and PushTop appends to the top, so walk it
 	// backwards: the last push lands on top and must be the caller's
 	// first entry.
 	for i := len(topOrder) - 1; i >= 0; i-- {
 		p.Library.PushTop(pulled[topOrder[i]])
 	}
-	g.EmitEvent(Event{
-		Kind:   EventSurveil,
-		Actor:  chooserID,
-		Source: choice.Source,
-		Amount: len(graveyard),
-	})
-	// The rest of the effect, now that the library is in the order the
-	// player chose.
-	if choice.scryResume != nil {
-		if err := choice.scryResume(g); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    chooserID,
-				Source:   choice.Source,
-				ErrorMsg: err.Error(),
-			})
+	for i := len(graveyard) - 1; i >= 0; i-- {
+		p.Library.PushTop(pulled[graveyard[i]])
+	}
+	r := millRoute(chooserID, ZoneGraveyard)
+	r.Source = choice.Source
+	source := choice.Source
+	err = g.routeAllThenLocked(r, graveyard, func(g *Game, milled []uuid.UUID) error {
+		g.EmitEvent(Event{
+			Kind:   EventSurveil,
+			Actor:  chooserID,
+			Source: source,
+			Amount: len(milled),
+			// `milled` is what the route actually put in the
+			// graveyard — a leg a Rest in Peace exiled instead is not
+			// in it — while the size of the surveil is the whole
+			// looked-at set and does not move with the replacement.
+			LookedAt: lookedAt,
+		})
+		// The rest of the effect, now that the library is in the order
+		// the player chose and every card that was going to a graveyard
+		// has settled.
+		if resume != nil {
+			if err := resume(g); err != nil {
+				g.EmitEvent(Event{
+					Kind:     EventEffectError,
+					Actor:    chooserID,
+					Source:   source,
+					ErrorMsg: err.Error(),
+				})
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	g.runStateChecksLocked()
 	return nil

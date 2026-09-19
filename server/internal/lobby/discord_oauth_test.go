@@ -31,6 +31,15 @@ type discordStub struct {
 
 func newDiscordTestStack(t *testing.T) (*httptest.Server, *Lobby, *discordStub, *discord.StateStore) {
 	t.Helper()
+	return newDiscordTestStackWith(t, nil)
+}
+
+// newDiscordTestStackWith is newDiscordTestStack with a hook that may
+// rewrite the Config — swap the Lobby, the Authenticator, or wire a
+// user store — before the handler is built. The returned *Lobby is
+// whatever cfg.Lobby ends up as.
+func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.Server, *Lobby, *discordStub, *discord.StateStore) {
+	t.Helper()
 	stub := &discordStub{
 		tokenStatus: http.StatusOK,
 		tokenBody:   `{"access_token":"tok-stub","token_type":"Bearer","expires_in":3600,"scope":"identify"}`,
@@ -70,11 +79,14 @@ func newDiscordTestStack(t *testing.T) (*httptest.Server, *Lobby, *discordStub, 
 		DiscordStateStore: store,
 		DiscordHTTPClient: stub.srv.Client(),
 	}
+	if configure != nil {
+		configure(&cfg)
+	}
 	mux := http.NewServeMux()
 	mux.Handle("/", Handler(cfg))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv, l, stub, store
+	return srv, cfg.Lobby, stub, store
 }
 
 func TestDiscordConfigReportsEnabled(t *testing.T) {

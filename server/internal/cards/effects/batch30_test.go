@@ -154,9 +154,12 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 		b30ExtractFromDarknessOracle: "Extract from Darkness",
 		b30DocksideChefOracle:        "Dockside Chef",
 		b30GrimGuardianOracle:        "Grim Guardian",
+		// #920 shipped the resolving-item slot, which is the one
+		// thing "a spell copying itself at resolution" was waiting on.
+		b30ChainOfSmogSkipOracle: "Chain of Smog",
 	}
-	if len(want) != 28 {
-		t.Fatalf("the batch registers 27 cards plus one already on main, the table lists %d", len(want))
+	if len(want) != 29 {
+		t.Fatalf("the batch registers 28 cards plus one already on main, the table lists %d", len(want))
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -168,13 +171,12 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four declared skips must NOT be registered — each needs a
+	// The three declared skips must NOT be registered — each needs a
 	// seam the engine does not have, and a spec would ship the card
 	// stronger than printed or as something other than itself.
 	for _, skipped := range []string{
 		b30UltimaSkipOracle,             // a land losing all types and abilities and gaining a mana ability; a tap-for-{C} rider
 		b30GemhideSliverSkipOracle,      // a mana ability granted to other permanents by a static
-		b30ChainOfSmogSkipOracle,        // a spell copying itself at resolution on the target player's say-so
 		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
 	} {
 		if _, ok := Lookup(skipped); ok {
@@ -764,8 +766,11 @@ func TestB30IronSpiderPumpsArtifactCreaturesAndVehicles(t *testing.T) {
 			t.Errorf("%s: %d counters, want %d", want.what, got, want.n)
 		}
 	}
-	if spec, _ := Lookup(b30IronSpiderOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the counter-removal draw is a declared gap")
+	// #789 made the draw ability real: "from among artifacts you
+	// control" is a counter removal split across permanents, and the
+	// card no longer ships with a gap.
+	if spec, _ := Lookup(b30IronSpiderOracle); len(spec.Activated) != 2 || spec.Completeness != CompletenessFull {
+		t.Error("the counter-removal draw should be live and the card complete (#789)")
 	}
 }
 

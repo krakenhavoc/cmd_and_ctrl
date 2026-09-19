@@ -87,6 +87,13 @@ func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 	return ok && isLegendary(&dealer)
 }
 
+// b24NaturesWillKey names Nature's Will's ability for the
+// once-per-batch guard (#784). The stack LABEL below names the
+// damaged player and so cannot be the key; the player is the guard's
+// own second dimension (OncePerBatchPerPlayer), and this names the
+// ability the dimension hangs off.
+const b24NaturesWillKey = "Nature's Will — tap their lands, untap yours"
+
 // b24NaturesWillLabel is Nature's Will's stack label for one damaged
 // player — the player's name is what makes two players' triggers two
 // labels.
@@ -268,13 +275,23 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 // creature with the greatest power among the creatures they control
 // (GreatestPowerYouControl is evaluated for the CHOOSER — the
 // sacrifice prompt passes them as the caster — so ties are theirs to
-// break) and lose `life`. The loss is immediate; the sacrifice is
-// their prompt.
+// break) and lose `life`.
+//
+// The loss waits for the sacrifice since #1019. It is a clause about a
+// PLAYER, so it happens whichever way the prompt is answered (ADR 0013
+// §5m item 5) and the run's answer is deliberately ignored — what the
+// continuation buys is the printed ORDER, which is observable: a
+// Blood Artist's drain and this loss used to arrive in the wrong
+// sequence, and an opponent at 2 life lost it before choosing what to
+// sacrifice.
 func b24PlayerSacrificesGreatestPowerCreatureAndLosesLife(g *game.Game, item *game.StackItem, player uuid.UUID, life int) error {
-	g.PlayerSacrificesForEffect(item.SourceCardID, player,
+	source := item.SourceCardID
+	return g.PlayersSacrificeThenForEffect(source, []uuid.UUID{player},
 		sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
-		"Will of the Abzan — sacrifice a creature with the greatest power")
-	return g.ChangePlayerLifeForEffect(item.SourceCardID, player, -life)
+		"Will of the Abzan — sacrifice a creature with the greatest power",
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			return g.ChangePlayerLifeForEffect(source, player, -life)
+		})
 }
 
 // b24ReturnGraveyardTargetsToBattlefield puts up to `n` of the

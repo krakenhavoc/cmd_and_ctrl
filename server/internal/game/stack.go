@@ -70,6 +70,27 @@ const (
 type TargetRef struct {
 	Kind TargetRefKind
 	ID   uuid.UUID
+
+	// Slot is the index of the target CLAUSE this ref answers,
+	// within the clause list that governed the announcement
+	// (TargetSpec.Clause(Slot)). Zero — the value every ref carried
+	// before #764, in every snapshot and on every wire message — is
+	// "the only clause", so nothing needed migrating.
+	//
+	// Announce order is clause order, so a positional reader
+	// (item.Targets[0] is the biter, [1] the victim) is still
+	// correct; the slot is what lets the CR 608.2b re-check run each
+	// pick against its OWN predicate instead of a union. Added by
+	// #764 (ADR 0065 §2).
+	Slot int
+
+	// Mode is the index into StackItem.Modes — the mode OCCURRENCE,
+	// not the option — whose clause list Slot indexes. Zero for a
+	// non-modal item and for the first chosen mode. A repeated mode
+	// (CR 700.2d) is two occurrences with the same option index and
+	// different Mode values, which is what gives each occurrence its
+	// own target group. Added by #764.
+	Mode int
 }
 
 // StackItem is the metadata for one item on the stack. Lives in
@@ -103,6 +124,29 @@ type StackItem struct {
 	// it's the card the ability came from — usually a battlefield
 	// permanent that stays in place.
 	SourceCardID uuid.UUID
+
+	// SourceEpoch is Card.ObjectEpoch read off the source AS THE ITEM
+	// WAS PUT ON THE STACK — the announce-time identity of the OBJECT
+	// the ability came from, not of the card (CR 400.7).
+	//
+	// It exists for the one question SourceCardID cannot answer: is
+	// the permanent on the battlefield right now the same permanent
+	// whose ability this is? A Loxodon Warhammer bounced and replayed
+	// while its equip is on the stack keeps its instance ID and is a
+	// NEW OBJECT, and an ability that acts on its own source must
+	// refuse the impostor exactly as it refuses a source that simply
+	// left. AbilitySourceObjectGoneLocked is that read; equip
+	// (AttachSourceForEffect) is its first caller.
+	//
+	// Stamped by the two announce paths that put an ABILITY of a
+	// permanent on the stack — the catalog activation (activated.go)
+	// and the manual sandbox one (ActivateAbility) — which are also
+	// the only two places a StackItemActivated is built. Meaningless
+	// on any other kind, and AbilitySourceGoneForEffect reads the
+	// KIND rather than treating some value as a sentinel: zero is a
+	// real epoch, since a token created straight onto the
+	// battlefield has never changed zones.
+	SourceEpoch int
 
 	// Label is a free-text caller-provided string for ability items
 	// ("Goblin Bombardment damage", "Counterspell ETB"). Empty for
@@ -152,6 +196,27 @@ type StackItem struct {
 	// targets" spells. Sandbox: just data capture, not enforcement.
 	Distribution map[uuid.UUID]int
 
+	// Paid is what this announcement actually cost: the counters
+	// removed or added, the life paid, and — since #761 — the mana
+	// tokens that left the pool, or the fact that the engine waived
+	// the charge (PaidCost.OnPaper).
+	//
+	// DATA, not a closure, and stamped at announce for the same
+	// reason XValue is: by the time the item resolves the counters
+	// are gone, the mana has been spent and the Treasure that made
+	// it may have been sacrificed, so nothing downstream could
+	// recompute any of it. Converge, sunburst, adamant, "if no mana
+	// was spent" and "for each counter removed this way" are all one
+	// read of this field.
+	//
+	// A COPY of a spell carries an empty record (CR 707.10, the
+	// Dawnglow Infusion ruling): mana is not an object, so nothing
+	// was spent to cast the copy. That is a real zero rather than an
+	// unknown — NoManaSpent is true of a copy, and it should be.
+	//
+	// Added in #789 (the counter half) and #761 (the mana half).
+	Paid PaidCost
+
 	// HoldPriority signals that the controller did NOT want priority
 	// to rotate to the next seat after the announce. Used for
 	// chaining casts (e.g. cast Lightning Bolt holding priority, then
@@ -183,6 +248,40 @@ type StackItem struct {
 	// field. Also drives evoke's sacrifice-on-entry trigger and the
 	// CR 608.2b re-check's choice of target clause. Added in S22.
 	AltCost string
+
+	// Foretold marks a spell cast from a FORETOLD CARD — CR 702.143c's
+	// "if this spell was foretold", which Poison the Cup, Haunting
+	// Voyage and Starnheim Unleashed read.
+	//
+	// Distinct from `AltCost == "foretell"`, and the difference is the
+	// rule: a spell is foretold because the CARD was foretold, not
+	// because the foretell cost was the one paid. An effect that let
+	// its owner cast a foretold card some other way would still be
+	// casting a foretold card.
+	//
+	// Stamped at announce from the card in its source zone, because
+	// that is the last moment the fact is readable: CR 406.3a turns
+	// the card face up as it is cast, and ADR 0069 decision 5 makes
+	// that MoveCard's unconditional ClearFaceDown. Added for #658.
+	Foretold bool
+
+	// AltCostExiles is CR 702.34a's flashback clause as a FACT about
+	// this stack object: "exile this card instead of putting it
+	// anywhere else any time it would leave the stack".
+	//
+	// It rides the item rather than being re-derived from the catalog
+	// because since ADR 0066 an alternative cost can be GRANTED — a
+	// card Snapcaster gave flashback to was cast for a cost the
+	// catalog has never heard of, and the permission that granted it
+	// is usually gone by the time the spell leaves the stack. CR
+	// 400.7g is the rule: the granted ability is part of the object on
+	// the stack.
+	//
+	// False on a spell cast for its printed cost, and on a game
+	// restored from a snapshot written before this field — for which
+	// altCostExilesFromStack still falls back to the catalog, so a
+	// printed flashback behaves exactly as it did.
+	AltCostExiles bool
 
 	// IsCopy marks a spell item that is a COPY of another spell
 	// (CR 707.10) rather than a cast card — Reverberate's output,
@@ -253,6 +352,15 @@ type StackItem struct {
 	// list. Meaningless once the item is on the stack. Added in S19
 	// sub-PR 8.
 	Ordered bool
+
+	// modeSpec is the ModeSpec an ability item was announced under,
+	// so the CR 608.2b re-check can find the clause list of the mode
+	// OCCURRENCE a TargetRef names. Nil for a spell (looked up by
+	// oracle ID, like its targetSpec) and for every non-modal
+	// ability. Unexported: set by the harvester and the activation
+	// path, shared by cloneStackItem, re-derived on restore. Added
+	// by #764.
+	modeSpec *ModeSpec
 
 	// targetSpec is the S20 TargetSpec a targeted ability item was
 	// built against, so resolveTopAbilityLocked can run the same

@@ -1274,7 +1274,10 @@ the stack inside `declare_blockers`, so under ordinary priority play
 afflict resolves before combat damage — which it did not before. A
 seat that clicks `advance_step` straight out of the step still walks
 past the trigger on the stack and takes the damage first. Cyberman
-Patrol's caveat now says exactly that.
+Patrol's caveat now says exactly that. **(Closed 2026-09-18, #914:
+`advance_step` passes priority until the step ends, so the skip-ahead
+route resolves the afflict inside `declare_blockers` too. The caveat
+is gone and the card is `CompletenessFull`.)**
 
 Unchanged: the attack side. `DeclareAttacker` announces per creature
 as it is declared and drains immediately, which is what Adeline and
@@ -1420,3 +1423,374 @@ un-declared by `ClearCombat` before any priority boundary now
 announces nothing at all, which it should not have before either.
 
 Unchanged: everything about blocks, and the client.
+
+---
+
+## Amendment (2026-09-18): two combat damage steps with a priority window between them (#717, #716)
+
+Amends nothing above — Decisions 1-23 are about which declarations are
+legal and when they are announced, and none of them moves. This adds
+the step AFTER the declarations: CR 510.4's second combat damage step,
+tracked on [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717),
+and the participation rule that goes with it,
+[#716](https://github.com/krakenhavoc/cmd_and_ctrl/issues/716). It is
+the answer [ADR 0053](0053-combat-damage-beats.md) Decision 5 deferred
+when #187 shipped presentation-only.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 506.1: "there are two combat damage steps" in a combat where a
+creature has first strike or double strike. CR 510.4: if at least one
+attacking or blocking creature has first strike or double strike **as
+the combat damage step begins**, the phase gets an extra combat damage
+step, the first one for those creatures, and the second for the
+creatures that had NEITHER keyword then plus the ones that have double
+strike now (CR 702.4b, 702.7b, 702.7c). CR 510.3 / 510.3a give the
+active player priority after each step, with the damage triggers put on
+the stack first.
+
+The engine had one `combat_damage` step running two passes back to
+back, so a "whenever this deals combat damage" trigger from first-strike
+damage resolved after regular damage, and nobody could respond in
+between.
+
+### Decision 24. The first-strike damage step is a step, and a turn may not have it
+
+`StepFirstStrikeDamage` (`first_strike_damage`) is a thirteenth entry in
+`turnSequence`, between `declare_blockers` and `combat_damage`, in
+`PhaseCombat`. `StepCombatDamage` keeps its name, its wire value and its
+meaning: it is the regular damage step, the second one when the first
+happened and the only one when it did not. Every combat has it.
+
+**It is skipped by the mechanism the engine already had for a step it
+does not need.** `finishStepEntryLocked` already handles a step
+cancelled by a CR 614 replacement (Stasis, Necropotence) by advancing
+past it and recursing into the next step's entry — a skipped step
+(CR 500.11). `runStepEntryHooksLocked` now asks `stepExistsLocked`
+first and makes exactly that move for a step this turn does not have:
+nothing announces, no turn-based action runs, and no player gets
+priority in it. The check is ahead of the replacement window on purpose
+— a step that does not exist is not a step anything can replace.
+
+`stepExistsLocked` answers false for one step today: `first_strike_damage`
+when no attacking or blocking creature has first strike or double strike.
+It is a live board read, not a flag set at declare-blockers, because
+CR 510.4 asks the question as the damage step begins and a creature can
+gain or lose first strike in the declare-blockers priority window.
+
+**No client special case.** The client's step list gains one entry and
+its phase strip one icon; nothing on the client decides whether the step
+happens.
+
+**Rejected: a `Sub` tag on a spliced second `combat_damage`**, which is
+what [ADR 0059](0059-turn-machinery.md) Decision 12 sketched. That design
+belongs to ADR 0059's `TurnPlan` — a planned list of steps with
+insertion — and none of that machinery exists yet; building it here would
+have made #717 the vehicle for extra turns and extra phases. A step that
+a turn has or does not have is the same idea one layer down, and it is
+the shape the plan can absorb: when the plan lands, `first_strike_damage`
+is a plan entry that is present or absent, and `stepExistsLocked` is the
+predicate that decides. ADR 0059 Decision 12 is superseded on the SHAPE
+and stands on everything else (both steps count for `combat_damage`'s
+ordinal; no card reads it; the client's stops treat the pair as one).
+
+### Decision 25. One participation record, taken as the first step begins
+
+`Game.firstStrikeStepParticipants` (unexported, `map[uuid.UUID]bool`) is
+the combatants that had first strike or double strike as the FIRST
+combat damage step began. `firstStrikeStepParticipantSetLocked` is the
+one scan that produces it, and it answers both questions CR 510.4 asks
+at that instant: whether the step exists (the set is non-empty) and who
+deals damage in it.
+
+`participatesInStepLocked` reads only that record:
+
+- first step — the creatures in the record;
+- second step — the creatures NOT in the record, plus any that have
+  double strike now.
+
+That second line is #716. The old `participatesInSubstep` re-read
+`HasKeyword` after the layer recompute between the passes, so a creature
+whose granted first strike died with its lord looked like a
+non-first-striker and dealt its damage a second time; one that gained
+first strike in between was skipped by a step it had never dealt damage
+in. With a real priority window between the steps those are no longer
+edge cases — the window is exactly where a lord dies and a pump lands.
+The live keyword read that remains is the one CR 702.7c asks for:
+"plus the ones that have double strike now".
+
+**It is combat-scoped state**, cleared by `clearCombatLocked` with the
+declarations it describes, and carried by `Clone` / `RestoreFrom` and the
+persisted snapshot — classified `carried` in `clone.go`, `snapshot.go`
+and `snapshot_drift_test.go` next to `announcedBlocks` and
+`announcedAttacks`. It is carried for one more reason than they are: the
+window between the steps is a priority window, so an undo or a deploy
+restore can land inside it, and a record dropped there would let every
+first-striker hit twice. An older snapshot restores with an empty
+record, which reads as "there was no first-strike step" — right for
+every file written before the steps existed.
+
+### What this fixes along the way
+
+**[#702](https://github.com/krakenhavoc/cmd_and_ctrl/issues/702) — the
+regular pass no longer overtakes a first-strike assignment prompt.** A
+CR 510.1c multi-blocker damage-assignment prompt blocks the table
+(`choice_gate.go`), and the cursor cannot leave a step while a blocking
+prompt is open (#730). With the two passes in two steps, that gate is
+the fix: the regular step cannot begin until the first step's assignment
+is answered. `TestCombatStepFirstStrikeAssignmentPromptOrder` loses its
+skip. `DamageAssignmentFrame.FirstStrike` keeps its meaning as the
+frame's record of which step queued it.
+
+**The hand-rolled event batch between the passes is gone.** #784 opened
+a batch by hand in `resolveCombatDamageLocked` because the rules split a
+step the cursor did not. The cursor splits it now, so the ordinary "the
+cursor enters a new step" boundary produces both batches and
+[ADR 0049](0049-card-engine-seam-review.md)'s boundary rule is one
+sentence with nothing named beside it. Professional Face-Breaker still
+makes three Treasures for (first strike, A) / (regular, A) /
+(regular, B).
+
+### What it leaves
+
+**[#914](https://github.com/krakenhavoc/cmd_and_ctrl/issues/914) is not
+fixed here**, and the new step widens it by one case: `advance_step`
+walks past a non-empty stack, so a seat that clicks it in the
+first-strike damage step takes regular damage before the first-strike
+damage triggers resolve — the same shape as the `declare_blockers`
+caveat #914 already records. Ordinary priority play is correct, because
+passing priority resolves the stack. The fix is a turn-structure
+decision (#914 lists three options), and the version scoped to this
+amendment's steps is not a one-liner: gating `advance_step` on "the
+stack is not empty" in `declare_blockers` and the two damage steps was
+tried on this branch and refuses the advance in **11 existing tests**
+in `internal/cards/effects` — attack and upkeep triggers that are still
+on the stack when the test walks the cursor into combat damage, plus
+`TestB492AdvanceStepOutOfDeclareBlockersStillTakesDamageFirst`, which
+pins today's behaviour on purpose. That is a change to what the verb
+MEANS, and it needs the sentinel error, the `internal/legal` rule and
+the client message #914 asks for. It stays #914's call.
+
+> **Closed (2026-09-18, #914).** The call went the other way and cost
+> no sentinel, no `internal/legal` rule and no client message:
+> `advance_step` now means "pass priority until the step ends" (CR
+> 117.4), so it RESOLVES what the step owes instead of refusing to
+> move. The 11 tests the refusal broke are not broken by the drive —
+> they reach the same board, because passing is what they would have
+> done by hand. Three expectations did change, all in
+> `internal/cards/effects`, and each to the rules answer rather than
+> to silence: Drana, Liberator of Malakir (her first-strike trigger
+> grows the attackers before regular damage: 2 + 3, not 2 + 2),
+> Professional Face-Breaker (the (first strike, A) Treasure is already
+> made when the cursor reaches the regular step — still three), and
+> `TestB492…`, flipped to "afflict, then damage" and renamed. See
+> [ADR 0018 §6](0018-triggers-on-the-stack.md)'s 2026-09-18 amendment.
+
+**[#715](https://github.com/krakenhavoc/cmd_and_ctrl/issues/715) is
+unchanged**: a blocked attacker whose blockers have all left combat is
+still treated as unblocked in the second step. Its test keeps its skip.
+*(Fixed on 2026-09-18 by Decision 26 below, and the skip came off with
+it.)*
+
+**The beat animation is not rebuilt.** [ADR 0053](0053-combat-damage-beats.md) Decision 5 now carries a note saying what #717 changed for the client beat sequencer: it keys a combat's beats on the first damage step entry, keeps the arrow cache through the new step, and keeps everything else.
+
+---
+
+## Amendment (2026-09-18): an attacker stays blocked when its blockers leave (#715)
+
+Amends the addendum's [Decision 13](#13-the-stored-declaration-is-always-legal-and-the-menace-close-out-is-deleted)
+on WHERE the menace close-out lives, and adds the state the combat
+damage steps had been doing without. Decisions 1-25 stand.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 509.1h: "a creature remains blocked even if all the creatures
+blocking it are removed from combat." CR 506.4 removes a creature from
+combat when it leaves the battlefield, phases out, or an effect says
+so. CR 510.1c: a blocked creature with no creatures blocking it
+assigns no combat damage. CR 702.19d/e: trample is the exception — a
+blocked trampler with nothing blocking it assigns all its damage to
+the player or planeswalker it is attacking. CR 509.1b makes block
+legality a property of the declaration, checked as it is made.
+
+The engine kept no blocked state. Both combat damage passes rebuilt
+`blockersByAttacker` from the live battlefield, so "no live blocker"
+and "not blocked" were the same question, and the menace close-out ran
+on that same live map at damage time. Three wrong boards, all the same
+bug: a chump blocker that died in the first-strike step let the
+attacker hit the player in the second; a blocker destroyed in the
+declare-blockers window let a blocked attacker through; and a menace
+attacker that lost one of its two blockers had its whole block
+reverted and hit the player for full.
+
+### Decision 26. One blocked record, written at the lock-in and read at damage
+
+`Game.blockedAttackers` (unexported, `map[uuid.UUID]bool`) is the set
+of attackers that are BLOCKED this combat. It is the field #830's
+`announcedBecameBlocked` already was, under the name the rules give
+it: an attacker becomes blocked exactly once (CR 506.4) and stays
+blocked (CR 509.1h), so the set that has had its `EventBecomesBlocked`
+and the set that is blocked are the same set, and keeping two would be
+two things to get out of step.
+
+**Written in one place.** `commitBlockDeclarationLocked` (`blockers.go`),
+the block declaration's lock-in — Decision 19's "the declaration is
+complete" point. Nothing else writes it. `clearCombatLocked` drops it
+with the `BlockingTarget` wipe it describes, `removeFromCombatLocked`
+(#921) drops one attacker's row when an effect takes that attacker out
+of combat, and the battlefield exit (#935) drops it when the attacker
+leaves the battlefield. A row keyed by the ATTACKER is never touched by
+anything that happens to a BLOCKER, which is CR 509.1h expressed as a
+map key.
+
+**Read in one place.** `attackerBlockedLocked`, called by
+`assignAndDealCombatDamageLocked` for an attacker with no live
+blockers: blocked and no blockers left → no damage at all (CR 510.1c);
+blocked, no blockers left and trample → all of it to what it is
+attacking (CR 702.19d/e); never blocked → the unblocked path it always
+took. Both damage steps run that one function, so first strike and
+double strike need nothing of their own — which is what takes the skip
+off `TestCombatStepDoubleStrikeBlockerDiesInFirstStep`.
+
+**No "becomes unblocked" event.** There is no such rules concept: the
+attacker's state never changes, so there is nothing to announce.
+
+**The menace close-out moves with it**, from the top of
+`assignAndDealCombatDamageLocked` to `revertIllegalBlockCountsLocked`,
+called by the lock-in before it announces anything. Same rule
+(`BlockerCountValid`, CR 702.111b), asked at the moment CR 509.1b asks
+it: the declaration is complete, so a COUNT can be judged. An attacker
+already in `blockedAttackers` is skipped — its declaration was legal
+when it was made, and legality is never re-evaluated. Three things
+fall out. An illegal lone block against a menace attacker is reverted
+INSIDE `declare_blockers`, where the defender can see it and block
+again, instead of silently at damage. The reverted blocker's
+`EventBlock` is never emitted, so "whenever this creature blocks" no
+longer fires for a block the engine is about to undo. And the damage
+steps no longer read `HasKeyword(atk, "menace")` at all. This is the
+half of Decision 13 that does not need the bulk `DeclareBlockers`
+verb: the close-out is not deleted yet, but it is no longer at damage
+time, and when the set-shaped declaration lands it is
+`revertIllegalBlockCountsLocked` that it replaces.
+
+**It is combat-scoped state**, classified `carried` in `clone.go`,
+`snapshot.go` and `snapshot_drift_test.go` beside `announcedBlocks`,
+`announcedAttacks` and `firstStrikeStepParticipants`. An undo that
+rewound the removal but dropped the blocked state, or a deploy restore
+that landed between the damage steps without it, would hand the
+defending player damage they had blocked. The persisted key keeps its
+#830 spelling (`announcedBecameBlocked`) — identical contents and
+identical lifetime, so a file written before the rename restores a
+mid-combat blocked state rather than losing it.
+
+### What this fixes, and what it leaves
+
+Fixed: the three boards above, on both damage steps, for a blocker
+that died, was bounced, or was removed from combat by an effect; and a
+blocked trampler whose blockers are gone now tramples over for its
+full power (CR 702.19d/e).
+
+Unchanged: the multi-blocker CR 510.1c assignment prompt. An attacker
+with two or more live blockers still queues it, and a blocker that
+dies while the prompt is open is the prompt's own validation problem,
+not this record's.
+
+Not attempted: "removed from combat" as a card-facing verb (#672), and
+the CR 509.1c blocking REQUIREMENTS that Decision 15 sketches. Both
+read this state when they land; neither writes it.
+
+---
+
+## Amendment (2026-09-18): combat lasts through the end of combat step (#785)
+
+Adds the other end of the combat's lifetime. Decisions 1-26 stand;
+this one moves a single call site.
+
+Sprint S37 (combat correctness), tracked on
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rules
+
+CR 511.1: the end of combat step has no turn-based action, and the
+active player receives priority in it. CR 511.2: "at end of combat"
+abilities trigger as the step BEGINS. CR 511.3: "as soon as the end of
+combat step ends, all creatures, battles, and planeswalkers are
+removed from combat."
+
+`runStepEntryHooksLocked` called `clearCombatLocked` on ENTRY to
+`end_combat`, so every attacker and blocker stopped being in combat
+for the whole of the step the rules keep them in. The comment there
+showed the clear had already been deferred once — from `combat_damage`,
+to keep the client's arrows up through the damage step — and it had
+stopped one step short of where the rules put it.
+
+The cost was that **no creature was attacking during the end of combat
+step at all**. Aetherize, Settle the Wreckage and Aetherspouts cast
+there found nothing and did nothing. Desert ("{T}: this land deals 1
+damage to target attacking creature. Activate only during the end of
+combat step") had no legal target in the only step it can be
+activated, which is why it was left out of #743. Goro-Goro, Disciple
+of Ryusei's "activate only if you control an attacking modified
+creature" was false there, against the printed card, and carried a
+declared caveat saying so.
+
+### Decision 27. The clear happens as the cursor LEAVES end_combat
+
+`advanceCursorLocked` — the one seam every step transition goes
+through — clears combat when the step it is leaving is
+`StepEndCombat`, and `runStepEntryHooksLocked` loses its
+`StepEndCombat` case entirely (the step has no turn-based action,
+CR 511.1). One call site moves; nothing else about the clear changes.
+
+**What still happens at the step's entry** is the step announcement,
+so "at end of combat" triggers are harvested from `EventStepBegan`
+with the creatures still in combat (CR 511.2 fires them as the step
+begins, and CR 511.3 removes the creatures after). Legion Loyalty's
+delayed trigger, scheduled `At: StepEndCombat`, is in the same
+position and now exiles its myriad tokens while they are still
+attacking — which is what a token exiled at end of combat is.
+
+**The verbs keep their own clears.** `ClearCombat` (the sandbox verb),
+`PassTurn` and the eliminated-seat rotation end a turn without the
+cursor ever leaving `end_combat`, so each still calls
+`clearCombatLocked` itself. #672's "remove from combat" verb and
+#921's `removeFromCombatLocked` are per-permanent and untouched.
+
+**No client change.** The combat arrows are drawn from the server's
+`attacking_target` / `blocking_target` with no step gate
+(`CombatArrows.svelte`), so they now come down when the cursor reaches
+`postcombat_main` — which is the rules answer and the same behaviour
+the deferral was protecting. [ADR 0053](0053-combat-damage-beats.md)'s
+`keepArrowCache` is untouched: it governs the geometry cache of tiles
+that have LEFT the battlefield, kept while a beat cue is still
+playing, which is a different question from whether a live card's
+arrow is drawn.
+
+### What this fixes, and what it leaves
+
+Fixed: every "attacking creature" reader in the catalog works in the
+end of combat step — Aetherize (tested), Settle the Wreckage,
+Aetherspouts, `b13AttackingCreaturesYouControl`, `b26AttackingCreatures`,
+`AttackingCreature()`.
+
+Two cards lose a caveat and become `full`, neither needing a line of
+card code changed — which is the Darksteel Citadel posture paying off.
+**Goro-Goro, Disciple of Ryusei**'s Dragon ability is activatable in
+the step, as printed. **Desert** (#450) is the worked example: "{T}:
+this land deals 1 damage to target attacking creature. Activate only
+during the end of combat step" landed in roadmap batch 43 declared as
+printed and unusable, because the one window the ability allows had no
+attacking creature in it. It has one now, and batch 43's
+`TestB43DesertPingsAnAttackerInTheEndOfCombatStep` is the assertion
+that batch said was waiting for this fix.
+
+Unchanged: the two combat damage steps, the blocked state (Decision 26)
+and the declarations' announcements. They are all cleared by the same
+`clearCombatLocked`, so they all now last exactly as long as the
+combat does.

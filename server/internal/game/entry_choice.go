@@ -235,10 +235,13 @@ func (g *Game) ResolveEntryPayLife(choiceID, chooserID uuid.UUID, pay bool) erro
 		return err
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		return nil
-	}
-	return g.applyResolvedReplacementEventLocked(out)
+	// #478: through the shared finisher the other two resumes use,
+	// rather than this path's own copy of it. The copy returned nil for
+	// a CANCELLED event, which was harmless while the only entry that
+	// could ask for life was a land play with nothing waiting on it —
+	// and drops a search's shuffle and its caller's Then now that a
+	// fetched shockland can be asked.
+	return g.finishSettledReplacementLocked(ev, out)
 }
 
 // markReplacementAppliedLocked records that one effect has had its
@@ -259,51 +262,104 @@ func (g *Game) markReplacementAppliedLocked(ev *ReplacementEvent, id Replacement
 	g.replacementsAppliedThisEvent[ev.ID][id] = true
 }
 
-// executeEntryToBattlefieldLocked is the resume half of an entry
-// that paused for a prompt: it performs the move the paused pipeline
-// function never got to perform, with the settled event's payload.
+// executeEntryToBattlefieldLocked is the ONE finisher for a settled
+// battlefield ENTRY: it performs the move with the settled event's
+// payload and then runs what the effect that asked for it still owed.
 //
-// This closes a hole that predates the shocklands. Every
-// battlefield-ENTRY path bails on errReplacementPending and trusts
-// the resume path to finish the job — but
-// applyResolvedReplacementEventLocked only ever implemented the
+// It started life as the resume half alone, and closed a hole that
+// predates the shocklands: every battlefield-ENTRY path bails on
+// errReplacementPending and trusts the resume path to finish the job,
+// but applyResolvedReplacementEventLocked only ever implemented the
 // battlefield-LEAVE case, so a paused entry left the card sitting in
-// its old zone forever. Nothing hit it before now because no entry
-// replacement ever paused: two enters-tapped effects on one
-// permanent (Kismet plus the land's own) would have been the first,
-// via the CR 616 ordering prompt.
+// its old zone forever.
 //
-// Reached only for an event flagged entryResumable. Two sites carry
-// that flag: the land-play branch, whose push this reproduces
-// exactly, and (since S16.5) the stack-resolution branch, which
-// reproduces it PLUS the two jobs only stack resolution does — the
-// resolved Aura's attach and evoke's sacrifice trigger — off the
-// StackItem the event carries.
+// #478 made it the finisher for the INLINE path too, for the three
+// effect-side entries that reach it through
+// enterBattlefieldThroughPipelineLocked — the library search, the exile
+// return and the reanimation. Each of those used to have its own copy
+// of the push, which is how an entry that paused and one that did not
+// drift apart; there is one copy now, and the resume runs exactly the
+// code the unpaused path runs. Five sites feed it:
 //
-// Still deliberately NOT the exile→battlefield return: that mints a
-// new object identity (CR 400.7) and a generic push would quietly
-// skip it.
+//   - the land-play branch, whose push this reproduces exactly;
+//   - (since S16.5) stack resolution, which reproduces it PLUS the two
+//     jobs only stack resolution does — the resolved Aura's attach and
+//     evoke's sacrifice trigger — off the StackItem the event carries;
+//   - (since #478) the search, the exile return and the reanimation,
+//     whose extra duties ride on ev.entryTail.
 //
 // The card is located live rather than trusted from ev.OldZone: the
-// prompt is asynchronous, and the answer arrives in a later action.
+// prompt is asynchronous, and the answer arrives in a later action. But
+// the move is REFUSED when the card has left the zone the window opened
+// over — it was milled, drawn or exiled while the question was open, so
+// this entry can never happen and moving it from wherever it is now
+// would rip it out of a zone nobody asked about. Same rule
+// pausedZoneChangeStaleLocked prunes by; this is the backstop for a
+// departure the prune does not run at.
+//
+// Returns the entering permanent's ID — the NEW one when the entry
+// minted a new object (CR 400.7) — and uuid.Nil when nothing entered.
 //
 // Caller must hold g.mu.
-func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
+func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uuid.UUID, err error) {
+	defer func() {
+		if tailErr := g.runEntryTailLocked(ev, entered); tailErr != nil && err == nil {
+			err = tailErr
+		}
+	}()
+	var (
+		srcKind ZoneKind
+		moved   Card
+	)
 	src := g.findCardZoneLocked(ev.CardID)
-	if src == nil {
-		return ErrCardNotFound
-	}
-	if src == g.Battlefield {
+	switch {
+	case src == g.Battlefield:
 		// Something already resolved the entry; don't double-push.
-		return nil
+		return ev.CardID, nil
+	case src == nil:
+		// #762: a CREATED TOKEN, staged in Game.enteringTokens while
+		// its entry window was open. It is minted rather than moved —
+		// a token comes from no zone at all (CR 111.1) — so it is
+		// pushed here and its arrival announces EventTokenCreated
+		// rather than a zone move. Everything after that point is the
+		// entry every other permanent takes, which is the whole point
+		// of it being on this path.
+		tok, ok := g.takeEnteringTokenLocked(ev.CardID)
+		if !ok {
+			return uuid.Nil, ErrCardNotFound
+		}
+		if tok.AttackingTarget != uuid.Nil {
+			// CR 506.3c: PUT onto the battlefield attacking, never
+			// declared, so the attack-declaration lock-in must not
+			// mistake this for a staged declaration and announce it.
+			g.noteAttackAnnouncedLocked(tok.InstanceID)
+		}
+		g.Battlefield.PushTop(tok)
+		moved = tok
+	default:
+		if src.Kind != ev.OldZone {
+			return uuid.Nil, nil
+		}
+		srcKind = src.Kind
+		m, err := MoveCard(src, g.Battlefield, ev.CardID)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		moved = m
 	}
-	srcKind := src.Kind
-	moved, err := MoveCard(src, g.Battlefield, ev.CardID)
-	if err != nil {
-		return err
+	entered = moved.InstanceID
+	if ev.entryTail != nil && ev.entryTail.newObject {
+		// CR 400.7, and it happens FIRST: the reset zeroes the tapped
+		// flag and the counters, so the settled EntersTapped and
+		// EntersWithCounters below have to be applied to the new object
+		// rather than to the one that is about to be wiped.
+		if newID := g.resetAsNewObjectLocked(entered); newID != uuid.Nil {
+			entered = newID
+			moved.InstanceID = newID
+		}
 	}
 	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID != moved.InstanceID {
+		if g.Battlefield.Cards[i].InstanceID != entered {
 			continue
 		}
 		if ev.Actor != uuid.Nil {
@@ -314,21 +370,28 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 		if ev.EntersTapped {
 			g.Battlefield.Cards[i].Tapped = true
 		}
-		// Mirrors the land branch in CastSpell: the impulse grant is
-		// spent by the play, prompt or no prompt.
-		g.Battlefield.Cards[i].ExilePlay = ExilePlayPermission{}
 		break
 	}
-	g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-	// CR 707.2 — see the twin call in resolveTopOfStackLocked. The
-	// copy lands before the counters and before any event, so an ETB
-	// trigger never sees the permanent as its own printed self.
-	if copied, ok := g.applyEntersAsCopyLocked(ev, moved.InstanceID); ok {
+	g.markCardKnownInZoneLocked(g.Battlefield, entered)
+	// CR 400.7d (#653, #664): what the spell that became this
+	// permanent was cast for — the alternative cost AND the optional
+	// additional costs, one record. Before the copy and the counters,
+	// so nothing can land between the permanent arriving and the
+	// record being true of it, and well before EventETB, because both
+	// "sacrifice it unless it escaped" and "if it was kicked" are
+	// triggers harvested off that event and have to find the answer
+	// already there. After the CR 400.7 reset above, which would
+	// otherwise wipe it. A nil stackItem is every entry that was not a
+	// resolving spell, and writes nothing. See cast_provenance.go.
+	g.stampCastProvenanceLocked(entered, ev.stackItem)
+	moved.Provenance = g.CastProvenanceForEffect(entered)
+	// CR 707.2 — the copy lands before the counters and before any
+	// event, so an ETB trigger never sees the permanent as its own
+	// printed self.
+	if copied, ok := g.applyEntersAsCopyLocked(ev, entered); ok {
 		moved = copied
 	}
-	for name, n := range ev.EntersWithCounters {
-		_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-	}
+	g.applyEntryCountersLocked(entered, ev.EntersWithCounters)
 	// Per-turn land-drop tally. The land branch in CastSpell bumps
 	// this on the path where nothing pauses; this branch is the same
 	// land play finishing after a prompt, and it was never bumping
@@ -337,23 +400,37 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 	// never saw. Found by the MDFC back-face test; the bug is older
 	// and applies to the whole pay-life cycle.
 	//
-	// A land PLAY is a land drop; a land that resolved off the stack
-	// is not one, and neither is anything else that arrives here. The
-	// stack site (S16.5) carries its StackItem, which is exactly the
-	// signal that separates the two.
-	if moved.IsLand() && ev.Actor != uuid.Nil && ev.stackItem == nil {
+	// CR 305.2: a land PLAY is a land drop and nothing else is. The
+	// flag says which entry this is (#478) — inferring it from "a land
+	// with no StackItem" was true while the land play and stack
+	// resolution were the only resumable entries and would count a
+	// fetched, reanimated or blinked land now that they are not.
+	if ev.landPlay && ev.Actor != uuid.Nil {
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
 		g.LandsPlayedThisTurn[ev.Actor]++
 	}
-	g.EmitEvent(Event{
-		Kind:    EventZoneMove,
-		Actor:   ev.Actor,
-		CardID:  moved.InstanceID,
-		OldZone: srcKind,
-		NewZone: ZoneBattlefield,
-	})
+	if srcKind == "" {
+		// #762: a created token arrived from no zone, so the
+		// announcement is the creation itself (CR 111.1). One event,
+		// never two — a token that also emitted a zone move would be
+		// counted twice by everything watching permanents arrive.
+		g.EmitEvent(Event{
+			Kind:   EventTokenCreated,
+			Actor:  ev.Actor,
+			Source: ev.Source,
+			CardID: entered,
+		})
+	} else {
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   ev.Actor,
+			CardID:  entered,
+			OldZone: srcKind,
+			NewZone: ZoneBattlefield,
+		})
+	}
 	// S16.5: the two jobs stack resolution does that no other entry
 	// site does. Both need the StackItem, which is why carrying it
 	// across the pause is what made the stack site resumable at all.
@@ -361,17 +438,16 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) error {
 	// ETB trigger already sees the attachment, exactly as the
 	// un-paused path orders it.
 	if ev.stackItem != nil {
-		g.attachResolvedAuraLocked(moved.InstanceID, ev.stackItem)
+		g.attachResolvedAuraLocked(entered, ev.stackItem)
 	}
 	g.EmitEvent(Event{
 		Kind:   EventETB,
 		Actor:  ev.Actor,
-		CardID: moved.InstanceID,
+		CardID: entered,
 	})
-	g.fireETBHookLocked(moved.InstanceID, CatalogKey(moved))
+	g.fireETBHookLocked(entered, CatalogKey(moved))
 	if ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(moved, ev.stackItem)
 	}
-	g.runStateChecksLocked()
-	return nil
+	return entered, nil
 }

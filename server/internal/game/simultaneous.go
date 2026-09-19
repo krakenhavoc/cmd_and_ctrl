@@ -46,11 +46,17 @@ import "github.com/google/uuid"
 // rules consequences.
 //
 // Deliberately NOT addressed here:
-//   - Regeneration is not modelled anywhere in the engine
-//     (keywords.go's canonical set is closed and does not contain
-//     it), so "they can't be regenerated" is still cosmetic. A batch
-//     changes nothing about that.
-//   - Totem armor, likewise absent.
+//   - Totem armor is absent.
+//
+// Regeneration USED to be on that list too, with the same shape of
+// note indestructible below carried: "not modelled anywhere in the
+// engine, so they can't be regenerated is still cosmetic". #667
+// shipped CR 701.19, and the batch DID have to change for it — see
+// doomedPermanent and routeAllLandedPerLegLocked below. One
+// state-based-action pass is one event (CR 704.3) and its doomed set
+// mixes two rules that destroy with three that merely put a permanent
+// into a graveyard, so the legs now leave together by different
+// routes rather than together by one.
 //
 // Indestructible USED to be on that list, and the entry outlived its
 // truth: S25 (#380) shipped CR 702.12 hours after this file landed,
@@ -168,21 +174,25 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 		if findCardOnBattlefield(g, card.InstanceID) >= 0 {
 			continue
 		}
-		// CatalogAbilityKey, and it answers off the copy the batch
+		// TriggersForCard, and it answers off the copy the batch
 		// captured while the card was still on the battlefield — so
 		// a creature wiped while under a Kenrith's Transformation
-		// has no dies-trigger here either, for the same CR 603.10
-		// reason harvestLTB reads its snapshot.
-		oracle := CatalogAbilityKey(card)
-		if oracle == "" {
-			continue
-		}
-		triggers := CatalogTriggers(oracle)
+		// has no dies-trigger here either, and a Case that was not
+		// solved when the wipe hit has no solved dies-trigger, for
+		// the same CR 603.10 reason harvestLTB reads its snapshot.
+		triggers := TriggersForCard(card)
 		if len(triggers) == 0 {
 			continue
 		}
 		lki := card.Effective()
 		for _, t := range triggers {
+			// #925: same rule the battlefield walk and harvestLTB
+			// apply — this pass is about permanents that were on the
+			// battlefield when the batch opened, so an ability that
+			// declared another zone is not one of them.
+			if !TriggerWatchesFromZone(t, ZoneBattlefield) {
+				continue
+			}
 			if !triggerWatches(t.Watches, ev.Kind) {
 				continue
 			}
@@ -216,8 +226,8 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 // save.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
-	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids))
+func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOptions) int {
+	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids), firstDestroyOptions(opts))
 }
 
 // DestroyPermanentsThenForEffect destroys every permanent in `ids` as
@@ -246,8 +256,8 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID) int {
 // form does, so a survivor is neither destroyed nor counted.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error) error {
-	return g.routeAllThenLocked(destroyRoute, g.DestructibleForEffect(ids), then)
+func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error, opts ...DestroyOptions) error {
+	return g.routeAllThenLocked(destroyRouteWith(firstDestroyOptions(opts)), g.DestructibleForEffect(ids), then)
 }
 
 // destroyedThisWayLocked reports whether a settled destruction of
@@ -282,6 +292,47 @@ func (g *Game) destroyedThisWayLocked(cardID uuid.UUID) bool {
 		return false
 	}
 	return z.Kind == ZoneGraveyard || z.Kind == ZoneCommand
+}
+
+// sacrificedThisWayLocked reports whether a settled sacrifice of
+// cardID counts as a SACRIFICE — the question "for each permanent
+// sacrificed this way" (God-Eternal Bontu's draw) is asking.
+//
+// CR 701.17a: "To sacrifice a permanent, its controller moves it from
+// the battlefield to its owner's graveyard." The sacrifice is that
+// MOVE OFF the battlefield, and nothing replaces the sacrifice itself
+// — a replacement rewrites where the permanent goes. So the answer is
+// "is it still on the battlefield":
+//
+//   - anywhere else. Sacrificed. A graveyard is the printed
+//     destination; the command zone is CR 903.9 taking the offer; exile
+//     is Rest in Peace or Liesa, and a hand or a library is some other
+//     rewrite. All of them replaced the destination of a sacrifice
+//     that had already happened.
+//   - gone from the game entirely (a sacrificed TOKEN, CR 111.8).
+//     Sacrificed: it left the battlefield because its controller
+//     sacrificed it.
+//   - still on the battlefield. NOT sacrificed — the CR 614 window
+//     cancelled the move outright, or its prompt was abandoned
+//     (ADR 0013 §5j), and nothing ever left.
+//
+// This is where sacrifice PARTS COMPANY with destroy, and the two
+// rules are why. CR 701.7a defines a destruction BY the graveyard, so
+// a permanent a replacement sent to exile was not destroyed however
+// thoroughly it left (destroyedThisWayLocked, #863) — the command zone
+// is destroy's one declared carry-over. CR 701.17a names the same
+// destination but the keyword action is the controller's move off the
+// battlefield, and Korvold triggers on a sacrifice whose card an
+// "exile it instead" replacement took. Two rules, two functions, one
+// board read each; routeLegLandedLocked picks between them.
+//
+// Read off the live board rather than off the settled event, for the
+// reason destroyedThisWayLocked gives: it is the reading that is still
+// true after an undo rewinds into an open prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificedThisWayLocked(cardID uuid.UUID) bool {
+	return findCardOnBattlefield(g, cardID) < 0
 }
 
 // landedInZoneLocked reports whether cardID is now in the zone its
@@ -337,11 +388,57 @@ func (g *Game) landedInZoneLocked(cardID uuid.UUID, dst ZoneKind, dstOwner uuid.
 // physical move belongs to executeBattlefieldLeaveLocked, whose event
 // names its own default ("its owner's graveyard", or exile when the
 // owner has left the table). See zoneRoute.ViaBattlefieldLeave.
+//
+// battlefieldExitRoute is the same exit WITHOUT the destruction flag,
+// and it is the one every other way off the battlefield takes: a
+// sacrifice (CR 701.21a), the legend rule (CR 704.5j), an illegally
+// attached Aura (CR 704.5m), a creature at zero toughness (CR 704.5f),
+// a planeswalker at zero loyalty (CR 704.5i), a battle at zero defense
+// (CR 704.5v). None of those is a destruction, so none of them may be
+// regenerated — and the flag is the only thing that says so, because
+// all of them end in the same graveyard through the same primitive
+// (#667, regeneration.go).
 var (
-	destroyRoute = zoneRoute{ViaBattlefieldLeave: true}
-	exileRoute   = zoneRoute{Dst: ZoneExile}
-	bounceRoute  = zoneRoute{Dst: ZoneHand}
+	destroyRoute         = zoneRoute{ViaBattlefieldLeave: true, Destruction: true}
+	battlefieldExitRoute = zoneRoute{ViaBattlefieldLeave: true}
+	exileRoute           = zoneRoute{Dst: ZoneExile}
+	bounceRoute          = zoneRoute{Dst: ZoneHand}
 )
+
+// destroyRouteWith is the destroy template carrying the rider a
+// particular destruction printed — "it can't be regenerated" and
+// nothing else, today (CR 701.19c).
+func destroyRouteWith(opts DestroyOptions) zoneRoute {
+	r := destroyRoute
+	r.CantBeRegenerated = opts.CantBeRegenerated
+	return r
+}
+
+// sacrificeRoute is the SEVENTH template (#910): the exit a SACRIFICE
+// takes, built on battlefieldExitRoute rather than on destroyRoute
+// because a sacrifice is not a destruction (CR 701.17a — "sacrificing
+// a permanent doesn't destroy it, so regeneration and other effects
+// that replace destruction can't affect it"). Inheriting the
+// undestructive route is what makes that true by construction rather
+// than by a comment: no Destruction flag, so the CR 701.19 shield
+// never sees it (#667).
+//
+// It differs from the exits around it in exactly two declared ways.
+//
+//   - it ANNOUNCES. EventSacrifice is emitted while the permanent is
+//     still on the battlefield, before the window opens over its move,
+//     so a "whenever you sacrifice" payoff can read what it is losing
+//     (sacrifice.go). No other battlefield exit announces anything.
+//   - "this way" is a different rule, sacrificedThisWayLocked's.
+//
+// A function rather than a package var because the announcement names
+// the card that asked for the sacrifice, which belongs to the caller.
+func sacrificeRoute(source uuid.UUID) zoneRoute {
+	r := battlefieldExitRoute
+	r.Sacrifice = true
+	r.Source = source
+	return r
+}
 
 // millRoute is the fourth template (#893) and the one that cannot be a
 // package var, because two things about a mill are decided by the
@@ -362,6 +459,51 @@ var (
 // landedInZoneLocked measures "milled this way" against (CR 400.7).
 func millRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
 	return zoneRoute{Dst: dest, Actor: player, Mill: dest == ZoneGraveyard}
+}
+
+// searchRoute is the SIXTH template (#931): a library search that
+// takes the cards it finds into a hand or a graveyard — "search your
+// library for a card and put it into your graveyard" (Entomb, Buried
+// Alive, Unmarked Grave, Vile Entomber, Goblin Engineer, Final
+// Parting's first half).
+//
+// Before this the take was a raw MoveCard, so the one thing a
+// graveyard arrival owes — the CR 614 window, "if a card would be put
+// into a graveyard from anywhere, exile it instead" — never opened for
+// it, and neither did CR 903.9 for a tutored commander. Rest in Peace
+// could not be written because of it (ADR 0061 §7).
+//
+// Like millRoute it is a function rather than a package var, for the
+// same two reasons: the destination belongs to the CARD ("into your
+// graveyard" / "into your hand") and the Actor is the SEARCHER, who is
+// always the library's owner but not always the card's — Assassin's
+// Trophy makes the victim search their own library.
+//
+// It is NOT a mill: CR 701.17a defines a mill from the TOP of a
+// library by count, and no mill payoff may see an Entomb. That is the
+// one thing it does not share with millRoute, and it is why the two
+// are separate templates rather than one with a flag. A battlefield
+// destination never reaches here — an entry is not an exit, and
+// searchEnterBattlefieldLocked owns it.
+func searchRoute(player uuid.UUID, dest ZoneKind) zoneRoute {
+	return zoneRoute{Dst: dest, Actor: player}
+}
+
+// tuckRoute is the fifth template (#783): "put it into its owner's
+// library", at the position the tucking effect printed.
+//
+// The position rides the route rather than being applied by the caller
+// after the move, for the reason zoneRoute.Depth gives: a commander
+// tucked to the bottom, or third from the top, whose owner is asked
+// about the command zone and declines still lands where the card said,
+// because nothing has moved until the prompt is answered.
+//
+// The destination owner is deliberately left nil — every printed tuck
+// is "its OWNER's library" (CR 903.9's destinations all are), and
+// routeDestinationLocked resolves that per card, which is what lets one
+// batch tuck four attackers into four different libraries.
+func tuckRoute(opts TuckOptions) zoneRoute {
+	return zoneRoute{Dst: ZoneLibrary, ToBottom: opts.ToBottom, Depth: opts.Depth}
 }
 
 // routeAllThenLocked routes every card in `ids` as one simultaneous
@@ -447,12 +589,34 @@ func (g *Game) routeAllLocked(r zoneRoute, ids []uuid.UUID) int {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
+	return g.routeAllLandedPerLegLocked(ids, func(uuid.UUID) zoneRoute { return r })
+}
+
+// routeAllLandedPerLegLocked is that body with the route chosen PER
+// LEG rather than once for the batch.
+//
+// One caller needs it and it is the state-based-action sweep. A
+// single SBA pass is one event (CR 704.3) and its doomed set mixes
+// two rules that DESTROY a permanent (CR 704.5g lethal damage,
+// CR 704.5h deathtouch) with three that merely put it into a
+// graveyard (CR 704.5f zero toughness, CR 704.5i zero loyalty,
+// CR 704.5v zero defense). They have to leave together — a Blood
+// Artist must see the whole pass — and they have to leave by
+// different routes, because a regeneration shield may replace the
+// first two and must not touch the last three (#667).
+//
+// Everything else about the batch is unchanged: the pre-move copies
+// are published once for the whole loop, and nothing here can pause.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UUID) zoneRoute) []uuid.UUID {
 	if len(ids) == 0 {
 		return nil
 	}
 	defer g.beginSimultaneousExitLocked(ids)()
 	landed := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
+		r := routeFor(id)
 		if g.routeLegNothingToDoLocked(r, id) {
 			continue
 		}
@@ -478,7 +642,16 @@ func (g *Game) routeAllLandedLocked(r zoneRoute, ids []uuid.UUID) []uuid.UUID {
 // Caller must hold g.mu in write mode.
 func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func(g *Game) error) error {
 	if r.ViaBattlefieldLeave {
-		return g.routeBattlefieldExitInBatchThenLocked(id, batch, then)
+		if r.Sacrifice {
+			// Before the window, while the permanent is still there:
+			// CR 701.17a's announcement is not part of the move, and a
+			// "whenever you sacrifice" payoff reads characteristics
+			// that are gone a line later (sacrifice.go).
+			if err := g.announceSacrificeLocked(id, r.Source); err != nil {
+				return err
+			}
+		}
+		return g.routeBattlefieldExitInBatchThenLocked(id, r, batch, then)
 	}
 	r.CardID = id
 	r.simultaneousExit = batch
@@ -517,6 +690,9 @@ func (g *Game) routeLegNothingToDoLocked(r zoneRoute, id uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) routeLegLandedLocked(r zoneRoute, id uuid.UUID) bool {
 	if r.ViaBattlefieldLeave {
+		if r.Sacrifice {
+			return g.sacrificedThisWayLocked(id)
+		}
 		return g.destroyedThisWayLocked(id)
 	}
 	return g.landedInZoneLocked(id, r.Dst, r.DstOwner)
@@ -548,8 +724,52 @@ func (g *Game) routeLegLandedLocked(r zoneRoute, id uuid.UUID) bool {
 // here, in the exile sweep and in the bounce sweep — is one.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) destroyPermanentsLocked(ids []uuid.UUID) int {
-	return g.routeAllLocked(destroyRoute, ids)
+func (g *Game) destroyPermanentsLocked(ids []uuid.UUID, opts DestroyOptions) int {
+	return g.routeAllLocked(destroyRouteWith(opts), ids)
+}
+
+// doomedPermanent is one entry of the state-based-action sweep's
+// doomed set: the permanent, and whether the rule that doomed it
+// DESTROYS it (CR 704.5g lethal damage, CR 704.5h deathtouch) or
+// merely puts it into a graveyard (CR 704.5f, CR 704.5i, CR 704.5v).
+//
+// The distinction was invisible before regeneration, because all five
+// end in the same graveyard by the same route. It is visible now: a
+// regeneration shield replaces the first two and does nothing about
+// the last three, and a 2/2 under two -1/-1 counters with a shield on
+// it dies (#667).
+type doomedPermanent struct {
+	id          uuid.UUID
+	destruction bool
+}
+
+// sweepDoomedPermanentsLocked performs one state-based-action pass's
+// collected doomed set as ONE simultaneous event (CR 704.3), each
+// permanent by the route its own rule asks for.
+//
+// The SBA's half of what destroyPermanentsLocked used to do for both
+// callers. It is a separate function rather than a flag on that one
+// because the two callers are answering different questions: the
+// effect path destroys a set it has already narrowed with one rule
+// (CR 702.12b indestructible), and this path leaves with five.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) sweepDoomedPermanentsLocked(doomed []doomedPermanent) {
+	if len(doomed) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, 0, len(doomed))
+	destruction := make(map[uuid.UUID]bool, len(doomed))
+	for _, d := range doomed {
+		ids = append(ids, d.id)
+		destruction[d.id] = d.destruction
+	}
+	g.routeAllLandedPerLegLocked(ids, func(id uuid.UUID) zoneRoute {
+		if destruction[id] {
+			return destroyRoute
+		}
+		return battlefieldExitRoute
+	})
 }
 
 // ExileCardsForEffect exiles every card in `ids` as one simultaneous
@@ -630,6 +850,75 @@ func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exile
 	})
 }
 
+// SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
+// simultaneous exit and hands `then` the ones that were actually
+// SACRIFICED — "then draw a card for each permanent sacrificed this
+// way" (God-Eternal Bontu), and every "sacrifice all X, then for
+// each …" that could not be written before.
+//
+// #910. Destroy, exile, bounce, tuck and mill have all had this since
+// #815 / #866 / #893; sacrifice had only the per-card call, so Living
+// Death's second pass fired and forgot and any follow-up ran on the
+// next line with a commander's CR 903.9 prompt still open.
+//
+// Sacrifice is not replaceable (CR 701.17a: sacrificing doesn't
+// destroy, so nothing that replaces destruction touches it, and no
+// replacement stops the sacrifice itself) — but the MOVE it makes is
+// an ordinary zone change, so a sacrificed commander opens the CR 903.9
+// window and a leg can PAUSE exactly like a destroy leg. That is the
+// whole reason this is a continuation rather than a return value.
+//
+// `sacrificed` is sacrificedThisWayLocked's answer: the permanents that
+// really left the battlefield. A commander that took the command zone
+// IS in it — it was sacrificed, and only where the card went was
+// replaced — and so is one an "exile it instead" replacement took.
+//
+// `source` is the card that asked, stamped on each EventSacrifice.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
+	return g.routeAllThenLocked(sacrificeRoute(source), ids, then)
+}
+
+// SacrificeThenForEffect is the SINGLE-CARD form: sacrifice one
+// permanent and tell `then` whether it really left the battlefield.
+//
+// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
+// for the reason that one gives: a one-card read-back is the same
+// problem as a batch one — the one leg is the leg that can pause — and
+// a second sacrifice path with its own notion of what happened is how
+// two verbs drift. "Sacrifice a creature. If you do, …" is this call.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Game, sacrificed bool) error) error {
+	return g.SacrificeAllThenForEffect(source, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
+// SacrificeAllForEffect is the FIRE-AND-FORGET batch: "each player
+// sacrifices all permanents they control that are one or more colors"
+// (All Is Dust), with nothing waiting on the answer.
+//
+// What it buys over a loop of single sacrifices is the one thing a
+// loop cannot have: the permanents leave as one SIMULTANEOUS exit, so
+// a Blood Artist swept by the same spell sees every death including
+// its own (CR 603.10 last-known information). That was All Is Dust's
+// declared caveat until this existed.
+//
+// The count is how many of the legs that SETTLED were sacrificed. A
+// leg that paused on the CR 903.9 prompt cannot be in it — nothing has
+// left yet — which is why a card that READS the number uses
+// SacrificeAllThenForEffect.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
+	return g.routeAllLocked(sacrificeRoute(source), ids)
+}
+
 // BounceCardsToHandForEffect returns every card in `ids` to its
 // owner's hand as one simultaneous event and returns how many of them
 // reached a hand. Evacuation, an overloaded Cyclonic Rift, Whelming
@@ -658,4 +947,87 @@ func (g *Game) BounceCardsToHandForEffect(ids []uuid.UUID) int {
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game, bounced []uuid.UUID) error) error {
 	return g.routeAllThenLocked(bounceRoute, ids, then)
+}
+
+// BounceToHandThenForEffect is the SINGLE-CARD form: return one card
+// to its owner's hand and tell `then` whether it actually reached a
+// hand.
+//
+// The fourth of the single-card wrappers, beside ExileCardThenForEffect
+// (#870), SacrificeThenForEffect (#910) and TuckToLibraryThenForEffect
+// (#783), and a WRAPPER over the batch for the reason the first of them
+// gives: a one-card read-back is the same bug as a batch one — the one
+// leg is the leg that can pause — and a second bounce path with its own
+// notion of what landed is how two verbs drift. A batch of one
+// publishes a one-card simultaneous exit, which no watcher can observe.
+//
+// #993 is why it exists. A hand is a CR 903.9 destination, so every
+// bounce can pause, and the catalog had no way to say "return it, THEN
+// …" for one card: Boomerang Basics drew its card and Chain of Vapor
+// opened its chain on the next line, with the bounced commander still
+// on the battlefield and its owner's question still open.
+//
+// `bounced` is false when the CR 614 window cancelled the move, when a
+// replacement sent the card somewhere else, and when a commander took
+// CR 903.9's offer — it left, but not to a hand. The continuation runs
+// on every one of those outcomes, because a caller that is waiting has
+// to be told even when the answer is "nothing happened".
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) BounceToHandThenForEffect(cardID uuid.UUID, then func(g *Game, bounced bool) error) error {
+	return g.BounceCardsToHandThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
+}
+
+// TuckCardsToLibraryThenForEffect puts every card in `ids` into its
+// OWNER's library as one simultaneous exit and hands `then` the ones
+// that actually reached a LIBRARY — Aetherspouts' "put all attacking
+// creatures on top or bottom of their owners' libraries", after which
+// each owner orders only the cards that arrived.
+//
+// ExileCardsThenForEffect's twin (ADR 0013 §5k, §5n), on the same body,
+// with the same CR 400.7 reading of "this way": a commander that took
+// CR 903.9's offer went to the command zone, not to a library, so it is
+// not in the list and nothing downstream may count it.
+//
+// #783 is the reason the `Then` half exists at all. A library is a
+// CR 903.9 destination, so EVERY tuck can pause — and until this
+// existed the fire-and-forget form was the only one, so a card that had
+// more to do after the tuck (Chaos Warp's shuffle and reveal,
+// Aetherspouts' scry, Sylvan Library's next question) did it on the
+// next line, with the card still on the battlefield and the question
+// still open.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) TuckCardsToLibraryThenForEffect(ids []uuid.UUID, opts TuckOptions, then func(g *Game, tucked []uuid.UUID) error) error {
+	return g.routeAllThenLocked(tuckRoute(opts), ids, then)
+}
+
+// TuckToLibraryThenForEffect is the SINGLE-CARD form: tuck one card and
+// tell `then` whether it actually reached a library.
+//
+// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
+// for the reason that one gives: a one-card read-back is the same bug
+// as a batch one, and a second tuck path with its own notion of what
+// landed is how two verbs drift. A batch of one publishes a one-card
+// simultaneous exit, which no watcher can observe.
+//
+// `tucked` is false when the CR 614 window cancelled the move, when a
+// replacement sent the card somewhere else, and when a commander took
+// CR 903.9's offer — it left, but not to a library. The continuation
+// runs on every one of those outcomes, because a caller that is waiting
+// has to be told even when the answer is "nothing happened".
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) TuckToLibraryThenForEffect(cardID uuid.UUID, opts TuckOptions, then func(g *Game, tucked bool) error) error {
+	return g.TuckCardsToLibraryThenForEffect([]uuid.UUID{cardID}, opts, func(g *Game, landed []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, len(landed) == 1)
+	})
 }

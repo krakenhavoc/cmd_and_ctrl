@@ -76,8 +76,14 @@ func TestNeedsCatalogEffectSilentOnCardsThatWork(t *testing.T) {
 }
 
 // TestNeedsCatalogEffectCatchesRealRules covers the other side —
-// text the engine has no generic path for. The five named cases are
-// the five cards behind the 2026-09-10 reports.
+// text the engine has no generic path for. The named cases are the
+// cards behind real reports: the 2026-09-10 playtest first, then the
+// in-app "my trigger didn't fire" set (#366, #369, #373, #508), each
+// of which turned out to be an uncatalogued card rather than a
+// trigger the engine dropped. They are pinned here because this
+// predicate is the ONLY thing that tells such a player the truth —
+// if it goes quiet about one of these, the card silently rejoins the
+// set of things that look like engine bugs.
 func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -144,6 +150,10 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 		// line only on commas and demanding an exact keyword match on
 		// every part is what stops a station threshold impersonating
 		// a keyword-ability line.
+		//
+		// The card has a Spec since S46 (#759), and this case is
+		// unaffected: NeedsCatalogEffect is a TEXT scan, and the text
+		// still needs one.
 		name:     "#337 The Seriema",
 		typeLine: "Legendary Artifact — Spacecraft",
 		texts: []string{"When The Seriema enters, search your library for a " +
@@ -163,6 +173,61 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 			"spell, this creature gets +1/+1 until end of turn.)\nWhen Ty Lee " +
 			"enters, tap up to one target creature. It doesn't untap during " +
 			"its controller's untap step for as long as you control Ty Lee."},
+	}, {
+		// #366. A transform DFC: Scryfall leaves the top-level text
+		// null, so the union of the FACES is the only thing that says
+		// this card prints rules. The report reads "enters an artifact
+		// but no prompt or resolution works for its ETB", which is an
+		// uncatalogued permanent doing exactly what one does — and the
+		// only defence against saying nothing about it is that the
+		// face texts reach the scan. A caller that passed the top
+		// level alone would flag this card as complete.
+		name:     "#366 Brass's Tunnel-Grinder",
+		typeLine: "Legendary Artifact // Legendary Land — Cave",
+		texts: []string{
+			"",
+			"When Brass's Tunnel-Grinder enters, discard any number of " +
+				"cards, then draw that many cards plus one.\nAt the beginning " +
+				"of your end step, if you descended this turn, put a bore " +
+				"counter on Brass's Tunnel-Grinder. Then if there are three or " +
+				"more bore counters on it, remove those counters and transform " +
+				"it. (You descended if a permanent card was put into your " +
+				"graveyard from anywhere.)",
+			"(Transforms from Brass's Tunnel-Grinder.)\n{T}: Add {R}.\n" +
+				"Whenever you cast a permanent spell using mana produced by " +
+				"Tecutlan, discover X, where X is that spell's mana value.",
+		},
+	}, {
+		// #369. The bullets are the case worth having: a modal line
+		// starts with "•", which is not a keyword, so the line scan
+		// reads each one as a rule. Waiting on the per-source
+		// once-per-turn tally (#764 / ADR 0065) rather than on
+		// EventDiscardCard, which works.
+		name:     "#369 Monument to Endurance",
+		typeLine: "Artifact",
+		texts: []string{"Whenever you discard a card, choose one that hasn't " +
+			"been chosen this turn —\n• Draw a card.\n• Create a Treasure " +
+			"token.\n• Each opponent loses 3 life."},
+	}, {
+		// #373. Flying is canonical and genuinely works — the two
+		// trigger lines below it are what the report was about.
+		name:     "#373 The Mighty Thor, Jane Foster",
+		typeLine: "Legendary Creature — Human God Hero",
+		texts: []string{"Flying\nWhenever The Mighty Thor attacks, exile up " +
+			"to one target nontoken artifact or creature, then return that " +
+			"card to the battlefield tapped under its owner's control.\n" +
+			"Whenever an Equipment you control enters, draw a card."},
+	}, {
+		// #508. Flash works; the ETB bounce and the landfall pump do
+		// not. "Landfall —" is an ability word, printed italic and
+		// rules-free, but it sits on the same line as the trigger it
+		// labels, so the line is a rule either way.
+		name:     "#508 Ambrosia Whiteheart",
+		typeLine: "Legendary Creature — Bird",
+		texts: []string{"Flash\nWhen Ambrosia Whiteheart enters, you may " +
+			"return another permanent you control to its owner's hand.\n" +
+			"Landfall — Whenever a land you control enters, Ambrosia " +
+			"Whiteheart gets +1/+0 until end of turn."},
 	}, {
 		name:     "plain spell",
 		typeLine: "Instant",

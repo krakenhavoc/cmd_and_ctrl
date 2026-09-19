@@ -97,6 +97,20 @@ const (
 	// 0-based offset into the catalog's Spec.ManaAbilities (or 0 for
 	// the synthetic basic-land ability derived from TypeLine).
 	TypeActivateManaAbility Type = "activate_mana_ability"
+	// TypeSpecialAction is a CR 116.2 special action: a game action a
+	// player takes without using the stack and without passing
+	// priority. Params carry `{card_id, kind}` plus the usual
+	// `{strict, auto_tap}` payment pair; `kind` is one of `foretell`
+	// (CR 702.143a) and `suspend` (CR 702.62a), with `turn_face_up`
+	// (CR 116.2g) reserved for #95.
+	//
+	// ONE verb rather than one per keyword, because CR 116 groups
+	// these actions precisely because their contract is identical —
+	// no stack, no announce, no response window, no targets. The
+	// per-kind differences are when it may be taken and what it
+	// costs, which is a switch in game.PerformSpecialAction's timing
+	// table and not a second verb. ADR 0062 Decision 4; #658 / #659.
+	TypeSpecialAction Type = "special_action"
 	// S21 sub-PR 1 — sacrifice a permanent you control (CR 701.21).
 	// Params carry `{instance_id}`. Distinct from a manual
 	// move_card to the graveyard: it emits EventSacrifice, so
@@ -294,6 +308,10 @@ var playerScopedActions = map[Type]struct{}{
 	TypeResolveChoice:       {},
 	TypeSetMaxHandSize:      {},
 	TypeActivateManaAbility: {},
+	// A special action is taken on a card in your OWN hand
+	// (CR 702.143a, CR 702.62a), so a seat may never take one for
+	// another seat.
+	TypeSpecialAction: {},
 	// Cast vote on behalf of self only — the seated voter is the
 	// authoritative caller. start_vote is also self-driven (the
 	// initiator is `Player`) but the "any caller may start a vote"
@@ -372,6 +390,13 @@ func Dispatch(g *game.Game, a Action) error {
 			// S21 sub-PR 6 — the permanent paid to a "sacrifice a
 			// creature" additional cost (Village Rites).
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// ADR 0073 (#664) — the optional additional costs being
+			// paid (CR 601.2b): kicker, multikicker, buyback, as
+			// POSITIONS in the card's OptionalCosts slice, repeated
+			// once per payment for a multikicker. Absent is the
+			// ordinary "decline them all" case, and absent on a card
+			// that offers none is every cast the engine has ever had.
+			OptionalCosts []int `json:"optional_costs,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -393,6 +418,12 @@ func Dispatch(g *game.Game, a Action) error {
 			// which is the right answer for every single-faced card
 			// and for any client that predates the face picker.
 			Face int `json:"face,omitempty"`
+			// CR 107.4 / CR 601.2b (#787) — how many of the cost's
+			// Phyrexian symbols are being paid with 2 life each
+			// instead of mana. Absent (0) pays every symbol with its
+			// coloured half, which is what every client that predates
+			// hybrid Phyrexian mana sends.
+			PhyrexianLife int `json:"phyrexian_life,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -412,6 +443,7 @@ func Dispatch(g *game.Game, a Action) error {
 			AutoTap:         p.AutoTap,
 			AlternativeCost: p.AlternativeCost,
 			Face:            p.Face,
+			PhyrexianLife:   p.PhyrexianLife,
 		}
 		if len(p.DiscardIDs) > 0 {
 			params.DiscardIDs = make([]uuid.UUID, 0, len(p.DiscardIDs))
@@ -432,6 +464,13 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				params.SacrificeIDs = append(params.SacrificeIDs, id)
 			}
+		}
+		// ADR 0073: indices, not IDs, so there is nothing to parse —
+		// but they are copied rather than aliased, because the
+		// decoded payload does not outlive the dispatch and the
+		// engine stamps this slice onto a stack item that does.
+		if len(p.OptionalCosts) > 0 {
+			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 		}
 		if len(p.AltCostIDs) > 0 {
 			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
@@ -852,8 +891,10 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		// Sandbox — any seated player or admin may raise/lower the
-		// limit. The table self-polices abuse.
-		return g.SetUndoLimit(p.Limit)
+		// limit. The table self-polices abuse. (ADR 0075 sub-PR 3
+		// narrows this to host-or-admin.) A negative limit clamps to
+		// 0; this legacy action cannot select UndoUnlimited.
+		return g.SetUndoLimit(a.Caller, p.Limit)
 
 	case TypeCounterSpell:
 		if err := requirePriorityHolder(g, a.Caller); err != nil {
@@ -923,10 +964,37 @@ func Dispatch(g *game.Game, a Action) error {
 			// "remove N counters" cost removes from (omitted for the
 			// "from this" form); counter_kind names the kind for "a
 			// counter" of any kind.
+			// counter_counts is the per-permanent split, added in
+			// #789 for a removal spread across several permanents
+			// ("from among artifacts you control") or one whose
+			// count the activator announces ("Remove X storage
+			// counters"). Omitted for a fixed one-permanent cost,
+			// which is the shape every earlier client sends.
+			// counter_kinds is #943's per-permanent kind, parallel to
+			// counter_source_ids, for the one printed cost whose
+			// parts may differ in kind (Tekuthal's "three counters
+			// from among other artifacts, creatures, and
+			// planeswalkers you control"). Omitted whenever the
+			// payment is of one kind, which counter_kind still says.
 			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
 			CounterKind      string   `json:"counter_kind,omitempty"`
-			Strict           bool     `json:"strict,omitempty"`
-			AutoTap          bool     `json:"auto_tap,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
+			// #660 — discard_ids names the cards paid to a
+			// "Discard a creature card" cost on an activated
+			// ability (CR 602.2b). Cycling's "Discard this card"
+			// needs none: the source IS the payment.
+			DiscardIDs []string `json:"discard_ids,omitempty"`
+			// CR 107.4f / CR 602.2b (#917) — how many of the mana
+			// component's Phyrexian symbols are being paid with 2
+			// life each instead of mana (Birthing Pod's {1}{G/P}).
+			// The SAME field name cast_spell uses, because it is the
+			// same announcement one rule number over. Absent (0)
+			// pays every symbol with its coloured half, which is
+			// what every client that predates it sends.
+			PhyrexianLife int  `json:"phyrexian_life,omitempty"`
+			Strict        bool `json:"strict,omitempty"`
+			AutoTap       bool `json:"auto_tap,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -966,6 +1034,14 @@ func Dispatch(g *game.Game, a Action) error {
 				}
 				counterIDs = append(counterIDs, id)
 			}
+			discardIDs := make([]uuid.UUID, 0, len(p.DiscardIDs))
+			for _, raw := range p.DiscardIDs {
+				id, err := uuid.Parse(raw)
+				if err != nil {
+					return fmt.Errorf("activate_ability discard_ids: %w", err)
+				}
+				discardIDs = append(discardIDs, id)
+			}
 			refs := make([]game.TargetRef, 0, len(p.Targets))
 			for _, t := range p.Targets {
 				ref, err := t.toRef()
@@ -978,16 +1054,25 @@ func Dispatch(g *game.Game, a Action) error {
 				SacrificeIDs:     sacIDs,
 				CrewIDs:          crewIDs,
 				CounterSourceIDs: counterIDs,
+				CounterCounts:    p.CounterCounts,
 				CounterKind:      p.CounterKind,
+				CounterKinds:     p.CounterKinds,
+				DiscardIDs:       discardIDs,
 				Targets:          refs,
+				// #764, CR 602.2b: a modal activated ability announces
+				// its modes with its targets, in one indivisible step.
+				Modes: append([]int(nil), p.Modes...),
 				// The same `x_value` the free-form branch below
 				// hands to buildAbilityParams, now reaching the real
 				// CR 602 path: an ability whose cost carries {X}
 				// announces a value here and the engine charges
 				// XSlots·X generic for it.
-				XValue:  p.XValue,
-				Strict:  p.Strict,
-				AutoTap: p.AutoTap,
+				XValue: p.XValue,
+				// CR 107.4f: the life half of the announcement, routed
+				// through the same strike-and-pay helper a cast's is.
+				PhyrexianLife: p.PhyrexianLife,
+				Strict:        p.Strict,
+				AutoTap:       p.AutoTap,
 			})
 		}
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)
@@ -1122,6 +1207,21 @@ func Dispatch(g *game.Game, a Action) error {
 			// is "stop here", which is why this branch is routed by
 			// the choice's KIND and not by the field's presence.
 			Iterations int `json:"iterations"`
+			// OptionIndex answers a PendingChoiceOptionPick (#568):
+			// which of the prompt's branches the chooser took.
+			// Zero — the field's own zero value — is the FIRST
+			// option and the commonest answer, which is why this
+			// branch is routed by the choice's KIND and not by the
+			// field's presence, exactly as Iterations above is.
+			OptionIndex int `json:"option_index"`
+			// Modes answers a PendingChoiceModePick (#764, CR
+			// 603.3c): the chosen OPTION indexes in the order
+			// chosen. Routed by the choice's KIND, for the same
+			// reason Iterations is — an index list of zeroes
+			// ([0, 0, 0] is Mystic Confluence drawing three cards) is
+			// an ordinary answer, and so is the empty list on a
+			// "choose up to one".
+			Modes []int `json:"modes"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1139,6 +1239,19 @@ func Dispatch(g *game.Game, a Action) error {
 		// presence to route on.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceLoopShortcut {
 			return g.ResolveLoopShortcut(choiceID, a.Player, p.Iterations)
+		}
+		// #568, CR 608.2: "choose one of the following", addressed to
+		// any seat. Routed by kind for the same reason the shortcut
+		// above is — the whole payload is an integer whose most
+		// meaningful value is zero.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOptionPick {
+			return g.ResolveOptionPick(choiceID, a.Player, p.OptionIndex)
+		}
+		// #764, CR 603.3c: the mode of a modal triggered ability,
+		// chosen as the ability is put on the stack. Routed by kind
+		// for the same reason the two above are.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceModePick {
+			return g.ResolveModePick(choiceID, a.Player, p.Modes)
 		}
 		if p.Color != "" {
 			// #742: route by kind. A "choose a color" answer sent to
@@ -1355,6 +1468,12 @@ func Dispatch(g *game.Game, a Action) error {
 				// rather than a missing field — which is why it is
 				// routed here by kind, ahead of the count guards.
 				return g.ResolveChooseCards(choiceID, a.Player, ids)
+			case game.PendingChoiceUntapChoice:
+				// #826, CR 502.3: "choose which of these untap". Same
+				// payload and same floor-can-be-zero reason as the
+				// line above — a board of nothing but "you may choose
+				// not to untap" permanents accepts the empty answer.
+				return g.ResolveUntapChoice(choiceID, a.Player, ids)
 			case game.PendingChoiceCopyTarget:
 				// "You may have this enter as a copy of ..." — an
 				// EMPTY list is the decline, exactly as it is for
@@ -1383,6 +1502,17 @@ func Dispatch(g *game.Game, a Action) error {
 			// name and shape as activate_ability's, so the client
 			// reuses one picker for both ability kinds.
 			SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+			// #789 — the counter component of a mana ability's cost,
+			// with exactly the field names and shapes
+			// activate_ability uses. One component, one payload
+			// shape, whichever ability kind carries it: Vivid Creek
+			// sends nothing at all (the self form with a printed
+			// kind and count), Mage-Ring Network sends
+			// counter_counts, and #943's counter_kinds.
+			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
+			CounterKind      string   `json:"counter_kind,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1399,8 +1529,21 @@ func Dispatch(g *game.Game, a Action) error {
 			}
 			sacIDs = append(sacIDs, id)
 		}
-		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex,
-			game.ManaAbilityParams{SacrificeIDs: sacIDs})
+		manaCounterIDs := make([]uuid.UUID, 0, len(p.CounterSourceIDs))
+		for _, raw := range p.CounterSourceIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability counter_source_ids: %w", err)
+			}
+			manaCounterIDs = append(manaCounterIDs, id)
+		}
+		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
+			SacrificeIDs:     sacIDs,
+			CounterSourceIDs: manaCounterIDs,
+			CounterCounts:    p.CounterCounts,
+			CounterKind:      p.CounterKind,
+			CounterKinds:     p.CounterKinds,
+		})
 
 	case TypeSetMaxHandSize:
 		if a.Player == uuid.Nil {
@@ -1413,6 +1556,38 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.SetMaxHandSize(a.Player, p.Value)
+
+	case TypeSpecialAction:
+		// CR 116.2: a special action is taken by a player who has
+		// priority, and it uses no stack. The priority gate is the
+		// same one every other announce runs; there is deliberately
+		// no SplitSecondActive check here, because whether split
+		// second bars this action is the KIND's question and the
+		// engine's timing table answers it (foretell yes, suspend
+		// no — CR 702.61b, CR 702.62c).
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		var p struct {
+			CardID  string `json:"card_id"`
+			Kind    string `json:"kind"`
+			Strict  bool   `json:"strict,omitempty"`
+			AutoTap bool   `json:"auto_tap,omitempty"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		cardID, err := uuid.Parse(p.CardID)
+		if err != nil {
+			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		return g.PerformSpecialAction(a.Player, cardID, game.SpecialActionKind(p.Kind), game.SpecialActionParams{
+			Strict:  p.Strict,
+			AutoTap: p.AutoTap,
+		})
 
 	case TypeSacrificePermanent:
 		var p struct {
@@ -1512,6 +1687,15 @@ type zoneRefWire struct {
 type castTargetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answers (#764,
+	// ADR 0065 §2): the clause index within the clause list, and the
+	// index into the announced `modes` whose clause list that is.
+	// Both optional and both defaulting to 0, which is what every
+	// single-clause non-modal cast has always meant — a client that
+	// never sends them keeps working, and the server fills them in
+	// by walking the clauses in order.
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 // damageAssignmentParam is one {blocker_id, amount} pair from a
@@ -1558,7 +1742,10 @@ func buildAbilityParams(label string, targets []castTargetWire, modes []int, xVa
 }
 
 func (t castTargetWire) toRef() (game.TargetRef, error) {
-	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind)}
+	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Slot: t.Slot, Mode: t.Mode}
+	if ref.Slot < 0 || ref.Mode < 0 {
+		return game.TargetRef{}, fmt.Errorf("slot / mode must not be negative")
+	}
 	switch ref.Kind {
 	case game.TargetSelf, game.TargetNone:
 		// ID is meaningless / allowed-empty for these kinds. Drop

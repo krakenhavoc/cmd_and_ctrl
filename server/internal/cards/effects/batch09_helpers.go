@@ -108,31 +108,63 @@ func b09CounterThenUntapLands(n int) func(item *game.StackItem, ctx *Context) er
 //	 choice, discards a card, and loses 3 life. You draw a card and
 //	 gain 3 life."
 //
-// The sacrifice is the opponent's own choice — PlayerSacrificesForEffect
-// queues them a prompt over their own creatures and planeswalkers,
-// which is what "of their choice" means and why it is not a target
-// (hexproof is irrelevant to it). The discard is their choice too,
-// through the same discard prompt Mind Rot opens. The life loss, the
-// draw and the life gain run at once; the two prompts hold the table
-// until the opponent answers them. Package-level so the triggered
-// item captures nothing.
+// The sacrifice is the opponent's own choice — a prompt over their own
+// creatures and planeswalkers, which is what "of their choice" means
+// and why it is not a target (hexproof is irrelevant to it). The
+// discard is their choice too, through the same discard prompt Mind
+// Rot opens.
+//
+// ONE NESTED CHAIN IN PRINTED ORDER (#1027). Both halves are prompts,
+// and until #1019 and #1027 neither had a continuation: the body
+// queued the sacrifice, queued the discard beside it, and then ran the
+// life loss, the draw and the life gain on the line after two open
+// questions. Every one of those three is a clause about a PLAYER and
+// happens whichever way the prompts are answered (ADR 0013 §5m item
+// 5), so nothing was wrong except the ORDER — and the order is
+// observable: the opponent chose what to pitch already at 3 life less
+// than the card says, and a Blood Artist's drain from the sacrifice
+// arrived after the caster had drawn.
+//
+// So the sacrifice run's continuation is the discard run, and the
+// discard run's continuation is the last three clauses. Both answers
+// are deliberately ignored — nothing on this card is conditional, and
+// a `sacrificed`/`discarded` gate would be a rule the card does not
+// print (ADR 0013 §5v item 2). What the runs buy is the sequence.
+//
+// The context is rebuilt from the live *Game inside each continuation
+// rather than captured, the contract every continuation in the tree
+// signs: an undo restores this game's fields in place, so a captured
+// *Game would be the wrong one.
+//
+// Package-level so the triggered item captures nothing.
 func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}
 	victim := item.Targets[0].ID
-	ctx := NewContext(g, item)
 	if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
 		return nil
 	}
-	g.PlayerSacrificesForEffect(item.SourceCardID, victim,
+	source := item.SourceCardID
+	return g.PlayerSacrificesThenForEffect(source, victim,
 		sacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
-		"Archon of Cruelty — sacrifice a creature or planeswalker")
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: victim,
-		Source: item.SourceCardID,
-		N:      1,
-	})
+		"Archon of Cruelty — sacrifice a creature or planeswalker", 1,
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			return g.PlayerDiscardsThenForEffect(
+				game.DiscardPrompt{Player: victim, Source: source, N: 1},
+				func(g *game.Game, _ game.PromptedDiscards) error {
+					return b09ArchonOfCrueltyPayout(g, item, victim)
+				})
+		})
+}
+
+// b09ArchonOfCrueltyPayout is Archon of Cruelty's last three clauses,
+// printed after both prompts: "…and loses 3 life. You draw a card and
+// gain 3 life."
+//
+// Caller holds g.mu.
+func b09ArchonOfCrueltyPayout(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
+	ctx := NewContext(g, item)
 	if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -3); err != nil {
 		return err
 	}

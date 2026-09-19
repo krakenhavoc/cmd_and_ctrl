@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2b7c4dab-e432-4b34-b058-3cec5c0d72df",
 		Name:         "Martial Coup",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()

@@ -50,8 +50,81 @@ is a comment on its card file.
 | 18 | #311 | **36** | 6 | 55 | PR #480 — the group was 45; Dragon Fodder, Solitude and Nevinyrral's Disk were already on `main` |
 | 19 | #312 | **22** | 5 | 73 | PR #481 — the "no new machinery" group (27 of the 100) |
 | 20 | #313 | **27** | 2 | 71 | PR #483 — the "no new machinery" group (29 of the 100) |
-| 21–40 | #383–#391, #393–#403 | 0 | 0 | — | not started — ranked against `459dea6`, 2026-09-11 |
+| 21 | #383 | **33** | — | — | PR #485 — the "no new machinery" group (33 of the 37 it listed) |
+| 22 | #384 | **28** | — | — | PR #486 — the "no new machinery" group (28 of the 34 it listed) |
+| 23 | #385 | **14** | — | — | PR #487 — the "no new machinery" group (14 of the 21 it listed) |
+| 24 | #386 | **30** | — | — | PR #488 — the "no new machinery" group (30 of the 40 it listed) |
+| 25 | #387 | **19** | — | — | PR #490 — the "no new machinery" group (19 of the 32 it listed) |
+| 26 | #388 | **28** | — | — | PR #491 — the "no new machinery" group (28 of the 35 it listed) |
+| 27 | #389 | **27** | — | — | PR #493 — the "no new machinery" group (27 of the 29 it listed) |
+| 28 | #390 | **27** | — | — | PR #494 — the "no new machinery" group (27 of the 37 it listed) |
+| 29 | #391 | **26** | — | — | PR #495 — the "no new machinery" group (26 of the 33 it listed) |
+| 30 | #393 | **27** | — | — | PR #496 — the "no new machinery" group (27 of the 32 it listed) |
+| 31 | #394 | **17** | — | — | PR #497 — the "no new machinery" group (17 of the 24 it listed) |
+| 32 | #395 | **20** | — | — | PR #498 — the "no new machinery" group (20 of the 30 it listed) |
+| 33 | #396 | **26** | — | — | PR #528 — the "no new machinery" group (26 of the 34 it listed) |
+| 34 | #397 | **32** | — | — | PR #532 — the "no new machinery" group (32 of the 42 it listed) |
+| 35 | #398 | **23** | — | — | PR #538 — the "no new machinery" group (23 of the 28 it listed) |
+| 36 | #399 | **27** | — | — | PR #542 — the "no new machinery" group (27 of the 33 it listed) |
+| 37–40 | #400–#403 | 0 | 0 | — | not started |
 | 41–60 | #448–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
+
+### Where the work actually is — measured 2026-09-18
+
+The Progress table above says what has been *registered*. It does not say
+what is *available*, and the two have drifted apart because a batch only
+ever harvests its "no new machinery" group.
+
+**Read the status comment on a batch issue, not the issue body.** Every
+one of the sixty issues carries a per-card `Status 2026-09-1x` comment
+checked against `develop`, and that comment — not the body — is the
+current triage. The bodies were written against the frozen batch-01
+detector set and still file cards under the five mechanics above; the
+status comments already correct for that, list each card's *other*
+blockers in parentheses, and carry a refutation checklist. A re-sort of
+the bodies alone overcounts, because dominant-blocker filing hides
+second blockers.
+
+**What the first six batches actually measured.** Batches 37–43 were
+worked on 2026-09-18 against today's `develop`:
+
+| Batch | Scoped as writable | Registered | Rate |
+|---|---:|---:|---:|
+| 38 | 62 | 40 | 65% |
+| 39 | 62 | 31 | 50% |
+| 40 | 59 | 33 | 56% |
+| 41 | 71 | 46 | 65% |
+| 42 | ~40 | 29 | ~72% |
+| 43 | 66 | 47 | 71% |
+| **total** | **~360** | **226** | **~63%** |
+
+**So roughly 63% of a "ready" card actually gets written, not the
+umbrella's 86%.** Every miss but two was a *hidden second blocker*
+rather than a mechanic anyone thought was missing — cards whose real
+blocker is an unimplemented keyword (level up, prowess, ninjutsu,
+persist, cycling, offspring) are the worst case, because a keyword's
+absence never surfaces in a dominant-blocker filing at all.
+
+Two cards went the other way and shipped *better* than filed: Bygone
+Colossus (warp is implemented end to end, #324) and Decoction Module
+(energy is a real player counter already).
+
+Plan against ~60%, and expect the skip list to be as useful an output as
+the cards — it is what tells you which primitive to build next. Batch 43
+named three mechanics the detector set has no blocker tag for at all
+(`floating-triggers`, `constrained-mana-production`,
+`conditional-alternative-costs`), plus `attack-requirements`: CR 508.1d
+"attacks each combat if able" has no home, because `game.Restriction`
+carries prohibition bits only. Goblin Rabblemaster is a skip rather than
+a caveat for that reason — dropping a requirement removes a DRAWBACK,
+which is the #259 direction.
+
+**A batch worked after a mechanic lands is worth more than the same batch
+worked before it.** #937 (modal and multi-target clauses) merged while
+batch 43 was in flight and converted three planned skips into the
+catalog's first modal triggered ability, first multi-predicate trigger
+and first modal activated ability. Other batches holding cards filed
+under modal / multi-target are worth a re-look now.
 
 <!-- BEGIN GENERATED CATALOG CENSUS — regenerate with: go test ./internal/cards/coverage/ -update -->
 
@@ -63,12 +136,12 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **1718** |
-| — whole cards (bare `oracle_id`) | **1654** |
-| — back faces (`<oracle_id>#1`) | 64 |
-| Declared `full` | 1257 |
-| Declared `caveats` | 389 |
-| Declared `unreviewed` | 72 |
+| Registry keys (`len(effects.All())`) | **2051** |
+| — whole cards (bare `oracle_id`) | **1985** |
+| — back faces (`<oracle_id>#1`) | 66 |
+| Declared `full` | 1586 |
+| Declared `caveats` | 394 |
+| Declared `unreviewed` | 71 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
 only its sixty land backs, and those cards are still gap cards on their
@@ -601,8 +674,8 @@ comments; a card can sit in two):
   Reflection).
 - Singles worth naming: attack- and block-count restrictions (Silent
   Arbiter, Crawlspace), a die roll over the seeded RNG (Ancient
-  Copper Dragon, Ancient Gold Dragon), a mill replacement (Bruvac), a
-  search replacement (Aven Mindcensor).
+  Copper Dragon, Ancient Gold Dragon) and a search replacement (Aven
+  Mindcensor). The mill replacement (Bruvac) closed with #569.
 
 **X on an activated ability is closed.** `game.AbilityCost` reads an
 `{X}` out of its mana component and carries a `MinX` floor for "X
@@ -619,19 +692,23 @@ Two neighbouring seams stayed open, and it is worth saying which:
 - **A variable-count sacrifice cost.** Ruthless Technomancer's
   "Sacrifice X artifacts" is an X that is not in the mana component;
   `AbilityCost.SacrificeOther` still names exactly one permanent.
-- **A mill replacement.** Bruvac still cannot be written, but the
-  reason moved: `MillToZoneForEffect` routes every card through the
-  CR 614 pipeline (so Leyline of the Void and the CR 903.9 commander
-  redirect both apply to a mill today). What is missing is a
-  replacement event kind for the mill AMOUNT — "if a player would
-  mill one or more cards, they mill twice that many instead" is not a
-  per-card zone move.
+- **A mill replacement.** ~~Bruvac still cannot be written~~
+  **Closed by #569, S39.** The reason had already moved once:
+  `MillToZoneForEffect` routes every card through the CR 614 pipeline
+  (so Leyline of the Void and the CR 903.9 commander redirect both
+  apply to a mill today), and what was missing was a replacement event
+  kind for the mill AMOUNT — "if a player would mill one or more
+  cards, they mill twice that many instead" is not a per-card zone
+  move. `game.RepEventMill` is that kind, opened once per mill
+  instruction before any card leaves the library
+  ([ADR 0013 §5u](../decisions/0013-replacement-effects.md)). Bruvac
+  the Grandiloquent and The Water Crystal both ship `full`.
 
-Three engine bugs the sweep found are filed, not fixed: **#446** (mass
-destroy bypasses indestructible), **#478** (a fetched permanent whose
-entry queues a replacement prompt is stranded in the library), **#482**
-(effect-side life changes skip the life-replacement pipeline; Rhox
-Faithmender is wrong today). The agents also recorded, on their issues,
+Three engine bugs the sweep found were filed rather than fixed on the
+spot: **#446** (mass destroy bypasses indestructible), **#478** (a
+fetched permanent whose entry queues a replacement prompt is stranded in
+the library; **fixed**, S39), **#482** (effect-side life changes skip the
+life-replacement pipeline; Rhox Faithmender is wrong today). The agents also recorded, on their issues,
 the smaller gaps they worked around: attacking taps without a tap
 event, dies-trigger LKI without counter math, entry replacements that
 cannot read X, a printed 0/0 the toughness SBA never sweeps, tokens
@@ -840,15 +917,43 @@ gaps that bite are usually the unprinted ones.
 **Batches 21–40 and 41–60 ran the batch 01–20 detector set unchanged**,
 on purpose: the three passes are one ranked list, and a "ready today"
 count computed against a different detector set would not be comparable
-across the boundaries. The cost is that the detectors are already known
-stale in three places — `ManaAbilityCost.Mana` and friends landed with
-#352, `BoostUntilEOT` / `GrantKeywordUntilEOT` with #314, and both
-loyalty abilities (`game/activated.go`, `game/loyalty_test.go`) and the
-attachment relation (`game/attach.go`) are on `main` now — so
-**`mana pipeline`, `until EOT`, `card types` and `attachments` are
-over-counted as blockers in every batch issue, 01–60 alike**. The batch-02 lesson applies with full force out here: re-check
-the triage before working a batch, because the blockers move faster
-than the issues do.
+across the boundaries. The cost is that the detectors go stale as
+primitives land, and **as of 2026-09-18 five whole blocker groups are
+over-counted in every batch issue, 01–60 alike**:
+
+| Detector group | Shipped as | Cards it still counts as blocked |
+|---|---|---:|
+| Cost modification, alternative casts | #93 (S28), 2026-09-11 | 658 |
+| Until-end-of-turn continuous effects | #279 / #314 (S32) | 540 |
+| Attachments — Equipment and Auras | #280 → S33 (`game/attach.go`) | 332 |
+| Mana pipeline | #352 (S32), `ManaAbilityCost.Mana` and friends | 234 |
+| Card-type completeness | #92 (S27), `game/activated.go`, `game/loyalty_test.go` | 203 |
+
+**1,967 cards across the 6000 sit in a blocked group whose blocker has
+shipped.** That is more than the whole registered catalog, and it is
+invisible to anyone reading a batch issue, because the issue still
+files those cards under a mechanic that does not exist any more.
+
+**Cost modification is the one to watch**, and it is the one an earlier
+revision of this paragraph missed: it is the #1 blocker in all three
+ranking tables, and it closed on 2026-09-11 — the same day batches
+21–40 were ranked, two days before 41–60 were. It was stale before the
+ink was dry on the issues that cite it.
+
+Four more groups are PARTLY unblocked and need reading card by card:
+protection (hexproof, shroud, ward, indestructible and damage
+prevention shipped; protection itself is #662, copying is #665/#666),
+deferred combat keywords (landwalk #705 and changeling shipped; infect
+is #748, prowess is #706), multi-face (the face model and MDFC picker
+shipped; the transform verb is #343, adventure is #719) and non-hand
+casting (flashback and escape shipped; cycling #660, foretell #658,
+suspend #659, madness #657 remain).
+
+Every batch issue 01–60 now carries a comment with its own re-sorted
+ready group — the issue's own card lists, re-filed against what is on
+`develop`, not a fresh detection pass. The batch-02 lesson applies with
+full force out here: re-check the triage before working a batch,
+because the blockers move faster than the issues do.
 
 ## What the catalog covered at the audit
 
@@ -895,13 +1000,13 @@ Ordered by "unlocks alone", because that is the column that answers
 
 | Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
 |---:|---|---:|---:|---:|---|
-| 1 | Cost modification, alternative casts and costs computed at activation | **120** | 241 | 205 | #93 |
-| 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | #352 |
+| 1 | Cost modification, alternative casts and costs computed at activation | **120** | 241 | 205 | #93 — **shipped** (S28) |
+| 2 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **98** | 183 | 115 | #352 — **shipped** (S32) |
 | 3 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **78** | 242 | 119 | #662 / #665 / #666 ¹ |
-| 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 |
+| 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **59** | 232 | 171 | #279 — **shipped** (S32) |
 | 5 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **59** | 106 | 95 | — |
-| 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | — |
+| 6 | Attachments — Equipment and Auras | **47** | 105 | 104 | #280 — **shipped** (S33) |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **45** | 98 | 61 | #996 |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **39** | 95 | 45 | — |
 | 9 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **28** | 96 | 28 | #705 / #706 / #748 ¹ |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **24** | 54 | 28 | — |
@@ -909,7 +1014,7 @@ Ordered by "unlocks alone", because that is the column that answers
 | 12 | "As this enters, choose …" — creature type / colour / name a card | **23** | 47 | 24 | — |
 | 13 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **21** | 77 | 32 | — |
 | 14 | Multi-face cards (MDFC / transform / adventure / split ~~/ class / case~~) | **18** | 69 | 69 | #343 / #719 ² |
-| 15 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **13** | 49 | 44 | #92 |
+| 15 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **13** | 49 | 44 | #92 — **shipped** (S27) |
 | 16 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **9** | 29 | 14 | — |
 | 17 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **9** | 23 | 9 | — |
 | 18 | Change of control (gain control, exchange control) | **7** | 16 | 8 | #756 ³ |
@@ -958,13 +1063,15 @@ tables below.
 ³ *Update 2026-09-17:* this row used to say #76, the S24 attachments
 tracker, which is closed. S24 shipped layer 2 for a control Aura only
 (Mind Control, [ADR 0036](../decisions/0036-attachments.md) decision
-17); no other spell or ability can gain or exchange control yet. That
-work is [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756),
-filed from the card-coverage audit, and it builds on the
-permanent-duration registry,
-[#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755). The
-counts are from the original pass and are unchanged. The same footnote
-applies to the two tables below.
+17). *Update 2026-09-18:* [#756](https://github.com/krakenhavoc/cmd_and_ctrl/issues/756)
+and its prerequisite [#755](https://github.com/krakenhavoc/cmd_and_ctrl/issues/755)
+shipped ([ADR 0063](../decisions/0063-durations-and-control.md)): any
+spell or ability can now gain control of a permanent for any CR 611.2
+duration, and exchange control (CR 701.12). The cards in this row are
+unblocked and still have to be written one at a time — Act of Treason,
+Agent of Treachery, Sower of Temptation and Switcheroo landed with the
+engine work. The counts are from the original pass and are unchanged.
+The same footnote applies to the two tables below.
 
 **769 of the 2000 (38%) need no new machinery at all.** That is the most
 actionable number in this document: there is more than a sprint of
@@ -1013,17 +1120,17 @@ Same detectors, ranks 2,235–4,253.
 
 | Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
 |---:|---|---:|---:|---:|---|
-| 1 | Cost modification, alternative casts and costs computed at activation | **110** | 282 | 225 | #93 |
+| 1 | Cost modification, alternative casts and costs computed at activation | **110** | 282 | 225 | #93 — **shipped** (S28) |
 | 2 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **93** | 248 | 149 | #662 / #665 / #666 ¹ |
 | 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **64** | 214 | 64 | #705 / #706 / #748 ¹ |
-| 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **63** | 270 | 180 | #279 |
-| 5 | Attachments — Equipment and Auras | **55** | 123 | 117 | #280 |
-| 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 |
+| 4 | Until-end-of-turn continuous effects (turn-scoped statics) | **63** | 270 | 180 | #279 — **shipped** (S32) |
+| 5 | Attachments — Equipment and Auras | **55** | 123 | 117 | #280 — **shipped** (S33) |
+| 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **47** | 113 | 59 | #352 — **shipped** (S32) |
 | 7 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **40** | 116 | 93 | — |
 | 8 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **35** | 86 | 46 | — |
-| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | — |
+| 9 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **31** | 91 | 40 | #996 |
 | 10 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **30** | 105 | 42 | — |
-| 11 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **26** | 87 | 72 | #92 |
+| 11 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **26** | 87 | 72 | #92 — **shipped** (S27) |
 | 12 | Exile-and-return (blink) and exile-until-leaves | **23** | 58 | 32 | — |
 | 13 | Table-state mechanics (monarch, initiative, day/night, The Ring, dungeons, speed) | **17** | 27 | 17 | — |
 | 14 | "As this enters, choose …" — creature type / colour / name a card | **17** | 35 | 18 | — |
@@ -1063,19 +1170,19 @@ Same detectors, ranks 4,254–6,289.
 
 | Rank | Missing mechanic | Unlocks alone | Appears in | Dominant blocker for | Tracking |
 |---:|---|---:|---:|---:|---|
-| 1 | Cost modification, alternative casts and costs computed at activation | **114** | 296 | 228 | #93 |
-| 2 | Until-end-of-turn continuous effects (turn-scoped statics) | **77** | 300 | 189 | #279 |
+| 1 | Cost modification, alternative casts and costs computed at activation | **114** | 296 | 228 | #93 — **shipped** (S28) |
+| 2 | Until-end-of-turn continuous effects (turn-scoped statics) | **77** | 300 | 189 | #279 — **shipped** (S32) |
 | 3 | Deferred combat keywords (infect, persist, undying, exalted, landwalk, changeling…) | **73** | 224 | 73 | #705 / #706 / #748 ¹ |
 | 4 | Protection / hexproof / ward / indestructible / shroud, damage prevention, copying | **57** | 216 | 106 | #662 / #665 / #666 ¹ |
-| 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 |
-| 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 |
-| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | — |
+| 5 | Attachments — Equipment and Auras | **49** | 114 | 111 | #280 — **shipped** (S33) |
+| 6 | Mana pipeline — restricted / derived mana, mana from a spell, gated or scaled mana abilities | **40** | 98 | 60 | #352 — **shipped** (S32) |
+| 7 | Library-top placement and ordered look (Brainstorm / tutors / Ponder) | **37** | 108 | 53 | #996 |
 | 8 | Attack / block restrictions and taxes (can't be blocked, attack taxes, must attack) | **35** | 114 | 44 | — |
 | 9 | Casting and playing from zones other than hand (flashback, escape, cycling, foretell, impulse) | **31** | 111 | 85 | — |
 | 10 | Keyword actions with no primitive (proliferate, surveil, explore, connive, amass…) | **26** | 67 | 30 | — |
 | 11 | Player-scoped and game-rule effects (hand size, extra turns / combats / land drops, command zone) | **26** | 64 | 31 | — |
 | 12 | Exile-and-return (blink) and exile-until-leaves | **22** | 65 | 28 | — |
-| 13 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **19** | 106 | 87 | #92 |
+| 13 | Card-type completeness — planeswalkers, sagas, vehicles, battles, classes | **19** | 106 | 87 | #92 — **shipped** (S27) |
 | 14 | Per-player / per-turn tallies (storm, second-spell, cast counts, lifegain counts) | **16** | 40 | 16 | — |
 | 15 | Layer-4 type-changing statics feeding mana derivation (Urborg / Yavimaya / Blood Moon) | **14** | 39 | 17 | — |
 | 16 | Change of control (gain control, exchange control) | **13** | 26 | 14 | #756 ³ |

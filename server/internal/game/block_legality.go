@@ -27,7 +27,7 @@ import "github.com/google/uuid"
 // Only the reasons some check actually produces are declared. The
 // addendum reserves more (cant_be_blocked_by, cant_be_blocked_except_by,
 // cant_block_attacker, too_few_blockers, too_many_blockers,
-// declaration_limit, not_defending, tapped, protection); each joins
+// declaration_limit, not_defending, tapped); each joins
 // this list in the PR that first returns it, so the wire never
 // advertises a refusal nothing can send.
 type BlockReason string
@@ -59,6 +59,10 @@ const (
 	// BlockReasonSkulk — skulk cannot be blocked by a creature with greater
 	// power.
 	BlockReasonSkulk BlockReason = "skulk"
+	// BlockReasonProtection — the attacker has protection from a
+	// quality the blocker has (CR 702.16f). #662 claimed the token
+	// ADR 0045's addendum reserved.
+	BlockReasonProtection BlockReason = "protection"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -75,6 +79,7 @@ func BlockReasons() []BlockReason {
 		BlockReasonShadow,
 		BlockReasonHorsemanship,
 		BlockReasonSkulk,
+		BlockReasonProtection,
 	}
 }
 
@@ -116,7 +121,7 @@ func (r BlockRefusal) Legal() bool { return r.Reason == "" }
 //     the attacker (CR 509.1b);
 //  2. evasion keywords: flying (CR 702.9b), landwalk (CR 702.14c), fear,
 //     intimidate, shadow, horsemanship and skulk;
-//  3. protection (CR 702.16f) — RESERVED for #662;
+//  3. protection (CR 702.16f), #662;
 //  4. block rules from permanents and until-end-of-turn effects —
 //     RESERVED for #750 (addendum PR 4).
 //
@@ -178,10 +183,19 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 
 	// 3. Protection (CR 702.16f): "attacking creatures with protection
 	// can't be blocked by creatures that have the stated quality".
-	// Reserved for #662 — one call here, reading the blocker's
-	// effective colours, types and controller, all of which this
-	// function already has. Nothing is checked until protection exists
-	// as a quality the engine can read.
+	// #662 filled in the slot ADR 0045's addendum reserved, with the
+	// call it predicted: the blocker's effective characteristics,
+	// which this function already holds.
+	//
+	// ONE DIRECTION ONLY, and the rule is asymmetric on purpose.
+	// Protection on the ATTACKER refuses a blocker with the quality;
+	// protection on the BLOCKER refuses nothing — a pro-red creature
+	// may block a red attacker all day, it simply takes no damage
+	// (CR 702.16e). Writing the test both ways would be the
+	// commonest misreading of the keyword.
+	if HasProtection(attacker) && ProtectedFrom(attacker, SourceCharacteristics(blocker)) {
+		return BlockRefusal{Reason: BlockReasonProtection, Source: attacker.InstanceID}
+	}
 
 	// 4. Block rules ("can't be blocked except by Walls", "can't be
 	// blocked by creatures with power 2 or less"), read from their
@@ -220,6 +234,10 @@ type BlockRefusedError struct {
 	// switched landwalk on: "Tropical Island" and "an Island".
 	LandName string
 	LandKind string
+	// Quality is the protection quality that refused the block, as
+	// the attacker's token prints it: "red", "Demons". Empty for
+	// every other reason. #662.
+	Quality string
 }
 
 // Error is the debug form. It is the sentence as a third party would
@@ -268,6 +286,12 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 		return attacker + " has horsemanship, and " + blocker + " does not."
 	case BlockReasonSkulk:
 		return attacker + " has skulk, and " + blocker + " has greater power."
+	case BlockReasonProtection:
+		// CR 702.16f. The quality is named because "has protection"
+		// alone does not tell the player which of their creatures
+		// could have blocked instead.
+		return attacker + " has protection from " + nameOr(e.Quality, "that quality") +
+			", so " + blocker + " can't block it."
 	}
 	return blocker + " can't block " + attacker + "."
 }
@@ -298,6 +322,11 @@ func (g *Game) blockRefusedErrorLocked(attacker, blocker *Card, r BlockRefusal) 
 			if spec, ok := landwalkRequirement(kw); ok {
 				e.LandKind = spec.describe()
 			}
+		}
+	case BlockReasonProtection:
+		e.Keyword = string(r.Reason)
+		if q, ok := MatchedProtection(attacker, SourceCharacteristics(blocker)); ok {
+			e.Quality = q.Printed
 		}
 	}
 	return e

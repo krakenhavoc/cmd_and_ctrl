@@ -22,6 +22,17 @@
     hand: ZoneView;
     isSelf: boolean;
     onPlayCard?: (card: CardView) => void;
+    // #660: a card in hand can have activated abilities that function
+    // THERE — cycling, typecycling (CR 702.29a/e). They ride
+    // `hand_abilities` on the wire and open the same popover a
+    // permanent's abilities do. Self hands only: an opponent's hand
+    // cards carry no abilities on the wire in the first place.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // Why the CR 307.1 sorcery-speed window is shut, or "" when it is
+    // open. Passed through to the popover exactly as the battlefield
+    // rows pass it; no cycling ability is sorcery-speed today, but a
+    // hand ability that is would grey correctly.
+    sorcerySpeedBlocked?: string;
     // S13.3 — when present, each hand card is checked for legality
     // and rendered greyed-out with a reason tooltip if illegal.
     // Self hands only; opponent hands always render face-down with
@@ -30,7 +41,15 @@
     viewerID?: string | null;
   }
 
-  const { hand, isSelf, onPlayCard, snap = null, viewerID = null }: Props = $props();
+  const {
+    hand,
+    isSelf,
+    onPlayCard,
+    onActivateAbility,
+    sorcerySpeedBlocked = "",
+    snap = null,
+    viewerID = null,
+  }: Props = $props();
 
   // Opponent hand composition:
   //   - hand.cards contains any cards the server has revealed to the
@@ -141,6 +160,10 @@
           faceDown={!isSelf && c.known_by_you !== true}
           showManaCost={isSelf}
           priority={isSelf}
+          onActivateAbility={isSelf && (c.hand_abilities?.length ?? 0) > 0
+            ? (idx) => onActivateAbility?.(c, idx)
+            : undefined}
+          {sorcerySpeedBlocked}
           onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
         />
       </div>

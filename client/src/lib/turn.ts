@@ -19,6 +19,7 @@ export const STEP_IDS = [
   "begin_combat",
   "declare_attackers",
   "declare_blockers",
+  "first_strike_damage",
   "combat_damage",
   "end_combat",
   "postcombat_main",
@@ -40,6 +41,7 @@ export const STEP_LABELS: Record<StepID, string> = {
   begin_combat: "Begin Combat",
   declare_attackers: "Declare Attackers",
   declare_blockers: "Declare Blockers",
+  first_strike_damage: "First Strike",
   combat_damage: "Combat Damage",
   end_combat: "End Combat",
   postcombat_main: "Main 2",
@@ -54,6 +56,26 @@ export const STEP_LABELS: Record<StepID, string> = {
 // can't stop on a step that doesn't grant you priority anyway) and
 // whether to show the priority indicator (it doesn't).
 export const NO_PRIORITY_STEPS: ReadonlySet<StepID> = new Set(["untap", "cleanup"]);
+
+// The two combat damage steps share ONE stop. CR 510.4 splits combat
+// damage into a first-strike step and a regular step, and the server
+// only gives a turn the first of them when first or double strike is
+// on the board (`first_strike_damage`, #717). A player who asked to
+// stop on combat damage means both, and a grid row for a step most
+// turns do not have would be a setting that usually does nothing — so
+// `first_strike_damage` reads the `combat_damage` stop and gets no row
+// of its own. Manual one-shot pins (priorityStops.ts) are per step and
+// are unaffected: you can pin just the first-strike step.
+export function stopKeyFor(step: StepID): StepID {
+  return step === "first_strike_damage" ? "combat_damage" : step;
+}
+
+// hasOwnStop reports whether a step gets its own entry in the per-step
+// stops map and its own row in the settings grid: it must grant
+// priority, and it must not borrow another step's stop.
+export function hasOwnStop(step: StepID): boolean {
+  return !NO_PRIORITY_STEPS.has(step) && stopKeyFor(step) === step;
+}
 
 // stepLabel resolves a step ID (or unknown string from a future
 // server) to a human label, falling back to the raw ID so an

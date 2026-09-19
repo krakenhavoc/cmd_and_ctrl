@@ -92,6 +92,19 @@ its own the moment the game leaves the active state, so the end of a
 game needs no explicit stop. Deleting a game and shutting the server
 down both cancel the runners and wait for them.
 
+`Start` **subscribes the seat to the room before it returns**, on the
+caller's goroutine rather than on the runner's. That is what makes
+"the bot is seated" a fact you can order other things against: nobody
+schedules the runner goroutine, so a subscription taken inside it left
+a window — as wide as a loaded machine cares to make it — in which a
+commit reached every other seat at the table and not this one. The
+runner would still see the *effect* of that commit, because its first
+look is at the live game rather than at a payload; what it lost was the
+WAKE. A seat that wants nothing from a window parks until the next
+commit, so a commit that landed in the window is one it would never be
+woken for, and the last bot seated at a busy table could sit out the
+rest of the game (#938).
+
 **A bot survives a deploy.** `is_bot`, `bot_tier` and `bot_deck` ride
 both the engine snapshot and the persisted lobby metadata, and the
 lobby's restore path relaunches a runner for every bot seat in a game
@@ -156,6 +169,89 @@ worst one, or, where the prompt allows it, declines. A prompt over
 anything but the bot's own hand (the battlefield, a library, an
 opponent's hand) carries nothing on the wire that says what naming a
 card costs, so the bot takes the first answer offered.
+
+### What a bot answers when somebody else's card asks (#796 / #568 / #929)
+
+Three prompt shapes reach a bot seat from a spell or ability it does
+not control, and none of them is a card-from-hand pick, so the section
+above does not price them.
+
+**A free yes/no at resolution (`confirm`, #796).** `MayChoice` is the
+"you may [do X]. If you do, [Y]" a resolving effect asks — Eden's
+sacrifice, Mask of Memory's optional draw, Combustible Gearhulk's
+question to its target. It rides the existing `confirm` kind, so the
+policy is the one `confirm` already has: both branches are offered, the
+accept branch carries whatever life the card charges as
+`LegalMoveView.cost.life`, and the DECLINE is the kind's always-legal
+answer. A bot therefore never takes a life payment it cannot see the
+price of, which is the #547 rule pointed at a prompt instead of an
+activated ability.
+
+**An option pick (`option_pick`, #568).** "Choose one of the
+following", addressed to any seat: Torment of Hailfire's three-way
+question, and the pile a Fact or Fiction chooser takes. Every branch is
+enumerated, in the card's printed order, and each carries its declared
+life cost — so "lose 3 life" and "discard a card" are priced
+differently and a bot at 3 life is not handed a way to kill itself for
+free. **The first option is the always-legal one**, by the kind's own
+contract: an effect builds its option list out of what this seat can
+actually do (CR 608.2), and the branch it puts first is one that never
+fails ("lose 3 life", which needs no permanent and no card in hand).
+A policy with nothing better to say takes it, which terminates.
+
+**A choose-a-player prompt (`option_pick` again, #929).** "Choose a
+player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
+is an option pick whose branches are SEATS, one option per eligible
+player, labelled with that player's name. Nothing is hidden and
+nothing costs life, so there is no price to read; what decides the
+answer is the ORDER, and the order is the policy: **the eligible seats
+are offered most life first**, ties by seat, so the always-legal first
+offer a policy takes with nothing better to say is the player with the
+highest life total. `Game.QueueChoosePlayerForEffect` does the
+ordering, which is why there is no second copy of this judgement in
+`internal/aiseat`.
+
+It is a legality-and-termination policy, not a strength one, and the
+weakness is worth naming: the best pick is frequently not the
+highest-life seat (Slithermuse wants the opponent with the fullest
+hand; Skullwinder wants the one with the worst graveyard). A card
+whose clause makes that gap matter should change the ordering the
+prompt is queued with, not teach a policy to special-case the card.
+
+**A pile split** needs no policy of its own. Its first half is an
+ordinary `choose_cards` prompt over public, revealed cards, so the
+existing card-set enumeration offers the subsets — including the empty
+pile, which is this prompt's always-legal answer — and its second half
+is the option pick above, two branches, each labelled with its pile's
+size. A heuristic that takes the first offer splits and then takes
+pile one; that is a weak split rather than an illegal one, and it
+terminates, which is the bar this list exists to clear.
+
+The general rule behind all four: a prompt from somebody else's card
+carries nothing on the wire that says what an answer is WORTH beyond
+its declared cost, so a bot prices what it can see and takes the first
+offer otherwise — the same posture the paragraph above takes for a
+prompt over anything but the bot's own hand.
+
+**Which permanents untap (`untap_choice`, #826, CR 502.3).** The one
+card-set pick whose sign is never in doubt. Under a Winter Orb or a
+Static Orb the untap step stops and asks the active player which of
+their permanents untap, and a permanent the bot names is a permanent it
+gets back — so the heuristic scores an answer as the total
+`permanentValue` of the cards it names and takes the best, the same
+valuation the sacrifice prompt uses with the opposite sign. That
+settles the count as well as the choice: untapping is never worth less
+than nothing, so a bot under a cap takes a full legal set rather than a
+short one, and among full sets the most valuable.
+
+It is a greedy pick over legal sets, not a plan — the bot does not know
+which colours its hand will want three spells from now, and the wire
+carries nothing that would say. What it does guarantee is that the
+answer is always legal and the table always moves: the enumerator
+offers only sets the engine accepts (the cap solver runs inside
+`ChooseCardsPickLegalLocked`), and this is the one prompt that can open
+in a step where nobody holds priority, so a seat with no answer here
+would stop the game outright rather than merely stall its own turn.
 
 ### An unavailable tier is refused, not downgraded
 
@@ -244,6 +340,131 @@ already at the table when an endpoint goes away keeps playing; a new
 one cannot be seated at a tier this server cannot honour.
 
 ---
+
+## Which colour a bot names (#780)
+
+Every `choose_color` prompt (CR 105.4) offers five legal answers and, on
+its own, says nothing about which one the card wants. So a bot with no
+other information named the colour its hand needed most — right for
+Coldsteel Heart, right by accident for Selective Obliteration, and a
+self-inflicted board wipe for Wash Out, where a mono-green bot named
+green and bounced its own permanents while leaving the opposition's
+alone.
+
+The prompt now carries the card's own declaration of what it will do
+with the answer (`color_purpose` on the wire, `game.ColorPurpose` in the
+catalog), and the policy is one function switching on it —
+`colorChoiceValue` in `aiseat/heuristic/choices.go`. There are no
+per-card branches anywhere in it.
+
+| Purpose | Cards | What the bot names |
+|---|---|---|
+| `mana` | Coldsteel Heart, the Thriving lands, the Gates, and the one-colour lands (Uncharted Haven, Crossroads Village, Mirage Mesa, Valgavoth's Lair) | the colour its **hand** asks for most — the pre-#780 rule, unchanged |
+| `benefit` | Heraldic Banner, Selective Obliteration | the same, with the colour it has most of on its **own board** breaking ties. Selective Obliteration's chosen colour is the one that *survives*, so "name what you want to keep" is the same question the anthem asks |
+| `harm` | Wash Out | the colour that costs the **opposition** most net of what it costs the bot, priced with the same `permanentValue` the board evaluation uses |
+| `filter` | Oona, Queen of the Fae | the colour most common among the opponents' **known** cards — their battlefield, their graveyards and the stack. Libraries and hands are counts on the wire and stay that way ([ADR 0033 §3](decisions/0033-ai-bot-seat.md)), so this is a proxy, and on a board that has shown nothing every colour ties and the enumerator's order decides |
+| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
+
+**An undeclared prompt keeps the old rule.** The purpose is a string,
+its zero value is "nothing was said", and the default arm is the
+hand-need scoring exactly as it was — so a card nobody has annotated
+plays no worse than it did yesterday. What stops one *staying*
+unannotated is a catalog guard rather than a runtime check:
+`cards/effects/color_purpose_guard_test.go` scans the catalog's source
+and fails the build for a `choose_color` prompt whose first argument is
+not one of the declared constants, in the style of #806's and #810's
+lints.
+
+**The ENUMERATOR orders by the purpose too (#986).** The table above is
+the policy's scoring; it is not the only reader. Until #986 the
+enumerator offered every colour prompt's answers in one order — "what
+this seat has most of on the battlefield" — whatever the prompt was
+for, which meant the `random` tier, a heuristic that scored two colours
+the same, and any future "take the first offered answer" all got the
+Coldsteel Heart answer for a Wash Out. `legal.OrderColorOptionsLocked`
+(`server/internal/legal/color_order.go`) now ranks them by the same
+purpose, in battlefield counts only:
+
+| Purpose | Ranked by |
+|---|---|
+| `mana`, `benefit`, undeclared | permanents the chooser controls of that colour — the pre-#986 rule, unchanged |
+| `harm` | permanents the OTHER seats control of that colour, minus the chooser's own |
+| `filter` | permanents the other seats control of that colour; the chooser's own board is not a term |
+| `protect` | the greatest POWER among creatures other seats control of that colour — one 8/8 outranks four 1/1s |
+
+It is an ORDERING and never a filter: every answer the engine accepts
+is still offered, so the policy still sees all five and still re-ranks
+them. It is not a second scorer either — it is battlefield counts, not
+`Weights`, and it is deliberately the crudest public proxy for each of
+the questions `colorChoiceValue` asks properly. What it fixes is the
+seats that have no policy: the `random` tier, a tie-broken heuristic,
+and the human, whose `color_options` buttons come off the same call so
+that the first button and the first enumerated move are always the same
+colour.
+
+This is a FUNCTION and not an `Options` hook, which is the difference
+from #687's `OrderTargets`. Ranking a board by what a spell is worth
+against it is a policy question and `legal` may not import `aiseat`, so
+the target ordering is injected by the seat. A colour prompt's order is
+a reading of the card's own printed text against public counts, it has
+to be identical for a bot and for a human because both read it off the
+same prompt, and `legal` is the layer both already go through.
+
+## An attached permanent is priced once, by its role (#727)
+
+An Equipment's +2/+2 arrives on the wire as its host's `power` and
+`toughness` — the projection is post-layer — so a board evaluation that
+also charges `w.Permanent` for the Equipment has paid for the same
++2/+2 twice. [ADR 0036](decisions/0036-attachments.md) named that
+double count when attachments shipped and asked for "score it zero",
+and zero is too broad: a Pacifism scored at zero is a removal spell the
+bot can see no reason to cast.
+
+So an attached permanent is classified ONCE, by **what it is doing**,
+and priced by that role. The classification is
+`heuristic.AttachmentRole`, and it reads the HOST rather than the card:
+a policy may not hold a `*game.Game` ([ADR 0033
+§3](decisions/0033-ai-bot-seat.md)) and so cannot open a `CardDef` and
+inspect its `StaticAbility` list — but it does not need to, because
+every one of those statics has already run and left its mark on the
+host's projection. No card name appears anywhere in the split, which is
+what makes it work for the next Aura nobody has written yet.
+
+| Role | How it is recognised | What it is worth on its own line |
+|---|---|---|
+| **buff** — Equipment, `+N/+N` Aura | the default: attached to a permanent, no control change, no restriction | `AttachedEquipment` (0.60) for an Equipment or Fortification, which survives its host and can be moved; `AttachedAura` (0.10) for an Aura, which cannot. **The boost itself is on the host.** |
+| **restriction** — Pacifism, Arrest, Faith's Fetters | the host carries a neutralising `restrictions` token (`cant_attack`, `cant_block`, `cant_activate`, `cant_activate_mana`) and is controlled by somebody else | **the host's neutralised value** — exactly what `CreatureValue`'s restriction discount took off the host's controller, credited back to the seat that cast the Aura |
+| **control** — Control Magic, Mind Control | the host's `controller` is the attachment's controller while its `owner` is somebody else | **nothing.** Layer 2 has already moved the creature onto this seat's ledger; the ordinary creature pass counts it there |
+| **curse** — Curse of Opulence | `attached_to.kind` is `player` | its own permanent, unchanged — there is no host permanent for the value to ride |
+
+`cant_be_blocked` is deliberately not a neutralising restriction. It is
+carried on the attacker but restricts the DEFENDER, so a Whispersilk
+Cloak or an Aether Tunnel makes its host *better*, and discounting the
+host for it would have the sign backwards. The combat planner already
+reads it where it belongs — `couldBlock` in `combat.go` will not pair a
+blocker against it — so the attack and block plans see it even though
+the board evaluation charges nothing for it either way.
+
+**The restriction discount is the other half, and it is what makes
+removal Auras castable.** `CreatureValue` used to ignore
+`CardView.Restrictions` entirely, so a pacified 5/5 was worth exactly
+what it was worth the turn before and the only thing Pacifism changed
+about the bot's score was the 1.20 the Aura cost it as a permanent —
+casting removal made the bot's own evaluation go *down*. Each
+restriction is now a multiplier (`CantAttack` 0.45, `CantBlock` 0.70,
+`CantActivate` 0.80) and they compose, so Pacifism leaves about 31% of
+a creature and Arrest about 25%. The debit lands on the host's
+controller and the matching credit on the Aura's, so the ledger
+balances: a removal Aura is worth exactly the creature it is holding
+down, no more.
+
+The two soft edges are deliberate and both are cheap. A buff Aura on a
+creature this seat stole with something *else* reads as control and is
+priced at 0 rather than 0.10. A second restriction Aura on an
+already-pacified creature claims the same neutralised value as the
+first — a board where two seats have spent two cards answering one
+creature, and over-rating their answers is not a decision anyone is
+worried about.
 
 ## The four curated decks
 
@@ -680,6 +901,250 @@ Gate a policy only once you have run the suite and seen it pass.
 
 ---
 
+## Enumerating a modal announcement (#764)
+
+A modal cast or activation is a product: every legal selection of
+modes, times every legal set of targets for each clause of each
+chosen mode. That product is unbounded in principle and is bounded in
+practice by `legal.Options.MaxExpansionPerSource` (default 12, [ADR
+0033](decisions/0033-ai-bot-seat.md) §1). The policy for spending
+that budget is stated here because it decides what a bot is even
+allowed to consider, and [ADR 0065
+§6](decisions/0065-modal-and-multi-target-clauses.md) is where it was
+decided:
+
+- **Prefer the modes that have legal targets.** An option whose
+  clause cannot be filled from the current board is dropped before
+  any combination is built, so the budget is never spent on a
+  selection the engine would refuse at announce. This is the same
+  `ChoosableModeOptions` walk the `mode_pick` prompt uses, so the
+  enumerator and the prompt offer the same bullets.
+- **All-one-mode first for a repeatable spec.** With CR 700.2d in
+  play (Mystic Confluence's "you may choose the same mode more than
+  once") the selections that take one bullet `Max` times are emitted
+  before the mixed multisets. When only one bullet is legal, "that
+  bullet three times" is the only selection there is, and it must not
+  be crowded out by mixtures the seat cannot take.
+- **Modes outermost.** The budget is spent mode-selection first, so
+  every selection gets at least one target set before any selection
+  gets a second. Without that, one charm's first bullet with twelve
+  targets would be the whole move list and the other three bullets
+  would never be offered.
+
+A `mode_pick` prompt is enumerated the same way: `choiceMoves` offers
+every legal multiset of the bullets the prompt carries, capped by the
+same budget, and labels each move with the bullets rather than their
+indexes so the decision log reads.
+
+## Enumerating an optional additional cost (#664)
+
+A card with kicker, multikicker or buyback is not one cast, it is
+several: an unkicked Burst Lightning and a kicked one are different
+moves at different prices with different effects, and a bot only ever
+offered the cheap one could never kick anything. Each announced set
+walks the whole modes x targets x payments expansion on its own, so
+the policy for choosing the sets is what keeps that product finite
+([ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)
+§9):
+
+- **Decline everything, or pay exactly ONE of the offered costs.**
+  Paying two different optional costs at once (Thornscape Battlemage's
+  "Kicker {R} and/or {W}") is a power-set search whose every member
+  needs its own affordability probe, and no card in the catalog offers
+  two. A bot does not take that line yet; it is never offered one it
+  cannot pay for.
+- **A repeatable cost is offered up to THREE times.** Multikicker is
+  unbounded in paper, but an announcement has to be finite and a
+  decision loop has to terminate. Three is a policy number, not a
+  rule, and it lives in `legal.maxEnumeratedRepeats`.
+- **Priced through the engine's own helper.** `game.AddOptionalCostMana`
+  adds the claimed costs' mana at CR 601.2f, and both the cast path
+  and the enumerator call it — so a kicked line is never advertised at
+  the unkicked price, which is the same #544 discipline the cost
+  modifiers follow.
+- **The move label names the kick** ("Cast Burst Lightning (Kicker
+  {4})", "... (Multikicker {G} x3)"), so the kicked and unkicked casts
+  of one card are distinguishable in the move list and in a bot-eval
+  trace.
+
+A NON-MANA optional cost (Constant Mists' "Buyback—Sacrifice a land")
+is expanded through the same payment search the mandatory sacrifice
+cost uses. A cast owing TWO card-shaped sacrifice clauses at once — a
+mandatory one and a kicker's — is not enumerated, for the reason
+escape's exile-from-graveyard cost is not: the two pools have to be
+searched together into one flat list, and no card asks for it.
+
+## Enumerating a cast from a zone that is not the hand (#673)
+
+A bot casts from every zone the engine would accept a cast from —
+hand, the command zone, its own graveyard, exile and the top of its
+own library — at every price the engine would charge. Two questions,
+and the enumerator asks the engine both rather than answering either
+itself:
+
+- **May this card be cast from here?** The card's own declaration
+  (`game.CastableZonesFor` — flashback, escape, Gravecrawler) or a
+  granted `game.CastPermission` ([ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)
+  — Snapcaster, cascade, impulse exile, warp's recast, a foretold,
+  suspended or madness-discarded card). The graveyard is walked on
+  every decision, because
+  a card's own flashback opens it with nothing granted; exile and the
+  library are walked only when something has granted a permission,
+  because nothing else can open them.
+- **At what price?** `game.CastOffersForLocked` is the one list: a nil
+  entry for the printed mana cost when the cast path allows a claim of
+  nothing, plus every alternative cost claimable from that zone, in
+  announce precedence and already filtered through
+  `AlternativeCostPayableLocked`, the predicate the client's picker is
+  filtered with too. One move per entry, so a flashed-back Faithless
+  Looting and a
+  hard-cast one are separate moves at separate prices — the same rule
+  the optional costs follow.
+
+A third question the same walk answers, and the reason an adventure
+needed no code here: WHICH FACE. `Card.CastableFaces` offers both
+halves of an adventure (CR 715.3) and of a modal DFC, and a grant that
+names faces NARROWS the choice to exactly those (CR 715.4's "cast the
+creature from exile") — `faceForCastLocked`'s own rule, so a half the
+enumerator offers is a half the announce path accepts.
+
+A zone the card PRICES must be paid for. A Faithless Looting in the
+graveyard is never offered at the {R} in its corner, because
+`validateCastPathLocked` would refuse that cast and the enumerator
+must not offer a move the engine refuses.
+
+The move label names the price and, when the price eats cards, what it
+ate: `Cast Voracious Typhon from graveyard (Escape—{5}{G}{G}, Exile
+four other cards from your graveyard, exiling Fuel 0, Fuel 1, …)`. The
+life half of a pitch rides `Move.Cost.Life`, so a policy reading only
+the wire payload does not price Force of Will as free.
+
+### The card component of an alternative cost
+
+Escape's "exile N other cards from your graveyard", Force of Will's
+pitched blue card and Daze's returned Island are all one mechanism: a
+COST paid in cards, named on the wire as `alt_cost_ids`. The
+candidates come from `game.AltCostCandidatesLocked`, which shares its
+per-card predicate with the announce validator, so a payment the
+enumerator builds is a payment `CastSpell` accepts.
+
+**Up to THREE payments are enumerated per offer** —
+`legal.maxEnumeratedCostPayments`, beside `maxEnumeratedRepeats` and
+for the same reason. It was ONE until #1013, and the cap was never the
+real constraint: the missing EVALUATION was. [ADR
+0033](decisions/0033-ai-bot-seat.md) §1's corollary is that a variable
+in a cost must not become an arity of the target cross product —
+escape-five over a twenty-card graveyard is 15,504 payments, each
+needing its own price — and the payments were indistinguishable to a
+policy that priced the battlefield and the seats and valued a card in a
+graveyard at nothing. It picked between them by index, so an Uro
+escaping over a graveyard holding a second Uro, a Snapcaster target and
+three lands ate whichever three were oldest.
+
+Two things changed, and the corollary still holds.
+
+**The payments are priced.** `aiseat.CostFuelPricer` is
+`TargetOrderer`'s twin: an optional Policy extension the runner asks
+for once per decision, threaded into the enumerator as
+`legal.Options.OrderCostFuel`. It is a second hook rather than a second
+meaning for the first because the two ask OPPOSITE questions — a
+target order ranks the board by importance and the enumerator keeps the
+TOP of it; a fuel price ranks a seat's own cards by what it would lose
+and the enumerator spends the BOTTOM. A policy that answered one with
+the other would pitch its best card every time. A policy with no
+opinion gets `AltCostCandidatesLocked`'s zone order, byte-identical to
+what it got before.
+
+The heuristic's answer is `heuristic.fuelValue`
+(`aiseat/heuristic/fuel.go`), in three cases:
+
+| where the card is | what it is worth |
+| --- | --- |
+| in hand, or the command zone | `Weights.Hand` (the number `Evaluate` already charges per card in hand) plus what it would do if it resolved |
+| a graveyard or exile, and the seat can still CAST it (escape, flashback, a granted impulse — read off the view's own `castable_here` / offer stamps) | `Config.FuelIdle` plus `Config.FuelRecast` × the same card-in-hand price: a real card, at a discount, because it needs its own cost and its own window |
+| a graveyard or exile, and it is idle | `Config.FuelFloor` for a LAND, `Config.FuelIdle` for anything else. That gap is the whole of "eat the lands, not the spells" |
+| on the battlefield (Daze's Island) | the same `boardValue` the rest of the evaluation uses |
+
+Neither floor is zero: a card nobody can use today is still one
+tomorrow's delve or flashback might want, and zero would make every
+unreadable card the first thing a cost ate.
+
+**And the extra payments spend no target budget.** They are offered in
+a second pass, out of whatever `MaxExpansionPerSource` the target walk
+did not use, against the FIRST announcement it made — the same spell
+with the same targets at a different price, which is what they all
+are. An Uro with no targets has eleven unspent and gets its
+alternatives; a removal spell with an escape cost over a wide board
+spends its budget on targets and gets none. The corollary is enforced
+rather than restated.
+
+ONE function answers both halves, and that is deliberate: the
+enumerator reads it to decide which payment to OFFER, and
+`valueOfCast` reads it to price the payment it was offered. A second
+scorer for the ordering would eventually disagree with the first about
+what an escape costs, and the bot would take a payment it then priced
+as a mistake. It also closes #673's declared gap — a non-hand cast
+still costs no card in HAND, and what it really spends is now the
+alternative cost's own price rather than nothing.
+
+## Ordering target expansion by threat (#687)
+
+`legal.Options.MaxExpansionPerSource` is spent in candidate order, so
+before this the answer to "which twelve of an opponent's twenty
+permanents may the bot point a removal spell at" was whatever order
+`LegalTargetsForEffect` happened to walk the battlefield in — and the
+table leader's best creature could simply be absent from the move
+list, at which point no policy could pick it. [ADR
+0033](decisions/0033-ai-bot-seat.md) §1 promised an ordering from the
+start and it was not built until now.
+
+**It is a hook, not a scorer in `legal`.** Ranking a board is a policy
+question and `legal` may not import `aiseat` (which imports it), so
+the enumerator takes `Options.OrderTargets` and the seat that wants an
+order supplies one: `aiseat.TargetOrderer`, an optional Policy
+extension the runner asks for once per decision. A policy with no
+opinion pays nothing and gets exactly the enumeration it got before.
+
+The heuristic implements it with the SAME functions it scores
+everything else with — `Weights.Threat` for a seat (the one the attack
+rotation ranks opponents with) and `Weights.boardValue` for a
+permanent (the one `Evaluate` adds up, so #727's attachment roles and
+every restriction discount apply). There is no second scorer to drift
+from the first.
+
+Two things it deliberately does not do:
+
+- **It does not know what the spell is**, so it cannot prefer an
+  opponent's creature for a Murder and your own for a Giant Growth.
+  The ordering is by IMPORTANCE — the biggest objects on the table
+  survive the cap, whoever controls them — and choosing among the
+  survivors stays `Decide`'s job, where the spell is known. Its only
+  power is to stop a target being dropped, and dropping the board's
+  biggest permanent is wrong for every spell.
+- **It prices nothing off the battlefield.** A spell on the stack and
+  a card in a graveyard score zero, which keeps them in the engine's
+  own candidate order. Those clauses have a handful of candidates and
+  the cap does not bite on them. (A card in a graveyard is priced by
+  the FUEL hook above, and deliberately not by this one: what a card
+  is worth to SPEND and what it is worth to TARGET are different
+  questions, which is why #1013 added a second hook rather than
+  widening this one.)
+
+The sort is stable, so equal scores keep the engine's order and two
+enumerations of one board produce the same move list — which is what
+makes a decision log replayable.
+
+## Never offered a banned cast (#760)
+
+The announce-time cast gate (`game.CastGateLocked`) is called once per
+candidate cast in `castMovesForCard`, and it is the SAME function
+`CastSpell` refuses with. A bot under a Rule of Law that had already
+cast a spell would otherwise be offered the cast, refused, and offer
+it to itself again on the next decision — the stall that shared
+predicates exist to prevent. The view's `cant_cast` stamp is the third
+reader of the same answer, so the human client greys exactly what the
+bot is not offered.
+
 ## Known limitations
 
 Stated plainly, because most of them are design decisions rather than
@@ -699,6 +1164,18 @@ never negotiate.
 **No learning across games, and no opponent modelling.** Bots are
 stateless between games. The one played you last night remembers
 nothing about it.
+
+**A card in a hidden or unordered zone has no value to the
+evaluation.** `score.go` prices the battlefield and the seats; a card
+in a graveyard, in exile or on top of a library is worth nothing to
+it. Two consequences worth stating, because both look like bugs: the
+bot cannot choose WHICH cards an escape cost eats (see
+[above](#the-card-component-of-an-alternative-cost)), and a
+graveyard cast whose payoff is not a permanent — Lingering Souls'
+two tokens, made by a sorcery's resolution the scorer does not model
+— is priced at roughly nothing and taken only when nothing else is
+on offer. The move is enumerated either way; what is missing is the
+number, not the option.
 
 **No deckbuilding.** A bot never builds, tunes or swaps a deck. In the
 lobby, picking one of the four curated decks is the whole of the
@@ -741,6 +1218,46 @@ every surviving window and a wider candidate list.
 conservative, on the grounds that a human playing a bot generally
 wants the finish.
 
+**A bot is never offered an {X} spell or ability at X=0 when X is the
+whole of what it does.** Soothsaying's "{X}: Look at the top X cards of
+your library" is free at X=0, does nothing, and is back on the list the
+moment it resolves — so a table of bots took it 79,519 times in five
+minutes and never got past turn 18
+([#810](https://github.com/krakenhavoc/cmd_and_ctrl/issues/810)). The
+enumerator's rule is one line of policy: the smallest X it will
+announce for such a cost is 1, and where X=1 cannot be paid for the
+move is not offered at all. A card with a fixed rider — The Goose
+Mother is a 2/2 flier before X buys anything — is still offered at X=0,
+and then only when nothing larger is affordable, because the enumerator
+always takes the largest X the seat can pay. Which cards are which is
+the catalog's declaration (`Spec.XMatters`), not a guess. CR 602.2b
+still makes X=0 a legal announcement and the engine still accepts one;
+this is about what is worth putting in front of a player.
+
+**An X paid in LIFE is priced the same way, one short of the life
+total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
+announced by paying X life as an additional cost — so the affordable-X
+search saw no `{X}` slot, announced 0, and offered a board wipe that
+swept for -0/-0
+([#957](https://github.com/krakenhavoc/cmd_and_ctrl/issues/957)). The
+same floor applies (1, because the card declares `XMatters`), the
+ceiling is the seat's life total minus one — CR 119.4 forbids paying
+more life than you have, and a sweep a bot does not survive is not the
+one offer to hand it — and `MaxX` caps it like any other X. A bot at 13
+life is offered Toxic Deluge at X=12; a bot at 1 life is not offered it
+at all. The rule is keyed on the cost component, so the next card that
+prints "pay X life" is priced without a line of its own.
+
+**A spell whose target count is X is offered with X equal to the
+number of targets it picks.** Crackle with Power deals five times X
+damage to each of up to X targets, so the count and the announcement
+are one decision, not two — the enumerator used to make them
+separately and offer one target at X=0, which the engine refused
+outright
+([#619](https://github.com/krakenhavoc/cmd_and_ctrl/issues/619)). A bot
+now sees Crackle at one target for X=1, two for X=2, and so on as far
+as its mana reaches, and never sees the cast that bounces.
+
 **A bot takes one CR 726 shortcut per loop per turn, then stops.** When
 the loop breaker fires ([ADR 0055](decisions/0055-loop-breaker.md)) the
 repeating ability's controller is asked how many more times it should
@@ -753,3 +1270,15 @@ guarantee is in the enumerator rather than in a policy on purpose: a
 policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
+
+**A loop the bot is feeding itself gets "stop" on the first ask, and
+the bot stops activating.** An activation loop is the other shape of
+runaway: nothing repeats on its own, the seat just keeps taking the
+same free ability. "Resolve it ten more times" is no kind of shortcut
+past a crank somebody has to keep turning, so for a loop whose
+repeating ability is an activated ability of the chooser's own
+permanent the enumerator offers only "stop here" — and while the notice
+stands, a bot runner holds on an activation of that permanent exactly
+as it holds on a pass. The table comes to rest at the threshold with
+the notice naming the ability, which is [ADR 0055
+§5](decisions/0055-loop-breaker.md)'s outcome for a bot-only table.

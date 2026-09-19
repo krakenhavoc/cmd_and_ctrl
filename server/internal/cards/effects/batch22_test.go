@@ -366,12 +366,31 @@ func TestB22AethericAmplifierTapsForAnyColourAndDoublesCounters(t *testing.T) {
 	// Sorcery speed: not during combat.
 	advanceTo(t, g, game.StepDeclareAttackers)
 	b06AddMana(me, "C", "C", "C", "C")
-	if err := g.ActivateCatalogAbility(me.ID, amp, 0, game.ActivateAbilityParams{Targets: b16TargetCard(theirs)}); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, amp, 0, game.ActivateAbilityParams{
+		Modes: []int{0}, Targets: b16TargetCard(theirs),
+	}); err == nil {
 		t.Fatal("activate only as a sorcery")
 	}
 	advanceToMainOf(t, g, 0)
 	b06AddMana(me, "C", "C", "C", "C")
-	b16Activate(t, g, me.ID, amp, 0, game.ActivateAbilityParams{Targets: b16TargetCard(theirs)})
+	// #764: a modal activated ability announces its modes WITH its
+	// targets, in one indivisible step (CR 602.2b). The first bullet
+	// targets; naming it without a target, or naming the untargeted
+	// second bullet with one, is refused at announce.
+	if err := g.ActivateCatalogAbility(me.ID, amp, 0, game.ActivateAbilityParams{Modes: []int{0}}); err == nil {
+		t.Error("the first bullet targets — an announcement with no target is illegal")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, amp, 0, game.ActivateAbilityParams{
+		Modes: []int{1}, Targets: b16TargetCard(theirs),
+	}); err == nil {
+		t.Error("the second bullet targets nothing — a target is illegal")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, amp, 0, game.ActivateAbilityParams{
+		Modes: []int{0, 1}, Targets: b16TargetCard(theirs),
+	}); err == nil {
+		t.Error("choose ONE — two bullets is illegal")
+	}
+	b16Activate(t, g, me.ID, amp, 0, game.ActivateAbilityParams{Modes: []int{0}, Targets: b16TargetCard(theirs)})
 	if got := counterCount(g, theirs, "+1/+1"); got != 6 {
 		t.Errorf("+1/+1 counters 3 → %d, want 6", got)
 	}
@@ -380,6 +399,30 @@ func TestB22AethericAmplifierTapsForAnyColourAndDoublesCounters(t *testing.T) {
 	}
 	if !b20Tapped(t, g, amp) {
 		t.Error("the activation has a tap cost")
+	}
+
+	// The SECOND bullet — the one the card shipped without until
+	// #764: the activator's own player counters, every kind, no
+	// target at all.
+	b22Untap(g, amp)
+	g.WithWriteLock(func() {
+		_ = g.AddPlayerCounterForEffect(me.ID, game.CounterEnergy, 3)
+		_ = g.AddPlayerCounterForEffect(me.ID, game.CounterPoison, 2)
+	})
+	advanceToMainOf(t, g, 0)
+	b06AddMana(me, "C", "C", "C", "C")
+	b16Activate(t, g, me.ID, amp, 0, game.ActivateAbilityParams{Modes: []int{1}})
+	if got := me.Counters[game.CounterEnergy]; got != 6 {
+		t.Errorf("energy 3 → %d, want 6", got)
+	}
+	if got := me.Counters[game.CounterPoison]; got != 4 {
+		t.Errorf("each KIND doubles: poison 2 → %d, want 4", got)
+	}
+	if got := counterCount(g, theirs, "+1/+1"); got != 6 {
+		t.Error("the second bullet touches no permanent")
+	}
+	if spec, _ := Lookup(b22AethericAmplifierOracle); spec.Completeness != CompletenessFull {
+		t.Error("both bullets ship in #764 — the caveat is gone")
 	}
 }
 

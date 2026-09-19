@@ -18,6 +18,26 @@ func cardDied(ev game.Event, source *game.Card) bool {
 	return ev.CardID == source.InstanceID && ev.NewZone == game.ZoneGraveyard
 }
 
+// resumeClause runs a prompt's continuation against the game the
+// answer arrived in.
+//
+// The two lines every asynchronous clause in the catalog ends with: a
+// nil `then` is a prompt nobody was waiting on, and a non-nil one gets
+// a FRESH Context bound to the same stack item rather than one captured
+// when the prompt was queued. An undo restores the game's fields in
+// place, so the *Game a closure captured can be the wrong object by the
+// time the player answers (the contract massEffect.apply spells out).
+//
+// Named because it is one idea rather than two coincidences: the clone
+// gate found the body in ChoosePlayer and SacrificeChoice and the third
+// copy would have been written the same way.
+func resumeClause(g *game.Game, item *game.StackItem, then func(ctx *Context) error) error {
+	if then == nil {
+		return nil
+	}
+	return then(NewContext(g, item))
+}
+
 // IsBasicLand reports whether a card's type line contains the
 // "basic land" supertype (case-insensitive substring). Used by
 // tutor / fetch primitives that need to match Forest / Island /
@@ -27,6 +47,54 @@ func cardDied(ev game.Event, source *game.Card) bool {
 // lowercase loop per-card.
 func IsBasicLand(c game.Card) bool {
 	return containsFoldASCII(c.TypeLine, "basic land")
+}
+
+// lookAtTargetPlayersHandThenDraw is "Look at target player's hand.
+// Draw a card." — Gitaxian Probe and Peek, which print the same two
+// sentences at different prices.
+//
+// "Look at" is not "reveal", and that is the whole body: only the
+// CASTER learns the hand, so each card is marked with the caster as a
+// knower rather than routed through RevealHandForEffect, which would
+// show the hand to the whole table — information neither printed card
+// gives the other players.
+//
+// The hand is read at resolution, so a discard or a draw in response
+// changes what is seen. A target player with no hand zone, or one who
+// has left, is skipped and the draw still happens — the draw is not
+// conditional on the look.
+func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {
+		if p := ctx.PlayerByID(item.Targets[0].ID); p != nil && p.Hand != nil {
+			for i := range p.Hand.Cards {
+				p.Hand.Cards[i].AddKnower(ctx.Controller())
+			}
+		}
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// IsBasicLandOfAnySubtype is "a basic <A>, <B>, or <C> card" — the
+// narrowed fetch predicate the multicolour fetch lands print. Shared
+// by the New Capenna Overlook cycle (b08OverlookLand) and the Alara
+// Panorama cycle (b43PanoramaFetch), which name the same clause with
+// different costs around it.
+//
+// Post-layer subtypes are irrelevant here: the card being matched is
+// in a LIBRARY, where nothing changes its type line.
+func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
+	want := append([]string(nil), subtypes...)
+	return func(c game.Card) bool {
+		if !IsBasicLand(c) {
+			return false
+		}
+		for _, s := range want {
+			if c.HasSubtype(s) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // containsFoldASCII is a zero-alloc case-insensitive substring
@@ -356,4 +424,127 @@ func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
 		return nil
 	}
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
+}
+
+// payLifeThenDraw is the "you may pay N life. If you do, draw M
+// cards" body — Crossway Troublemakers' and Erebos, Bleak-Hearted's.
+// The "may" is answered before this runs, by the trigger's optional
+// prompt; this is only the payment and the linked draw.
+//
+// Paying life is a COST (CR 118.3), so "if you do" has to know the
+// payment finished before the draw happens (#793) — which is why
+// this is one body and not two primitives in a Do().
+//
+// CR 119.4: a player cannot pay life they do not have, and life can
+// move between the question and the answer. An unaffordable payment
+// degrades to the decline rather than erroring, the same shape
+// ResolveEntryPayLife uses — so neither the life nor the cards move.
+//
+// Caller holds g.mu.
+func payLifeThenDraw(ctx *Context, life, cards int) error {
+	controller := ctx.Controller()
+	p := ctx.Game.PlayerByIDForEffect(controller)
+	if p == nil || p.Eliminated || p.Life < life {
+		return nil
+	}
+	if err := ctx.Game.PayLifeForEffect(ctx.Source(), controller, life); err != nil {
+		return err
+	}
+	return DrawCards{Player: controller, N: cards}.Apply(ctx)
+}
+
+// tapChosenPermanent is the whole Effect of an activated ability whose
+// printed text is "Tap target <permanent>." — Staff of Domination's
+// fourth ability and Ring of the Lucii's second. Named because two
+// cards shipping the same six lines is one helper waiting to exist
+// (#583).
+func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+}
+
+// plusOneCounterOnChosen is "put a +1/+1 counter on target creature" as
+// a trigger or ability Effect — Triumph of Gerrard's first two chapters
+// and Pridemalkin's enters trigger.
+func plusOneCounterOnChosen(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return AddCounter{
+		Target: item.Targets[0].ID,
+		Kind:   game.CounterPlusOne,
+		N:      1,
+	}.Apply(NewContext(g, item))
+}
+
+// regenerateTheTargetPermanent is the whole Effect of "{cost}:
+// Regenerate target [permanent]." — Asceticism's {1}{G} ability,
+// Welding Jar's sacrifice, Goblin Chirurgeon's. What the three may
+// point at differs and is declared on each ability's TargetSpec; what
+// they DO is one line (CR 701.19a).
+//
+// A target that has left the battlefield by the time the ability
+// resolves is a no-op (CR 701.19b), which the primitive handles;
+// reading the target through LegalTargets is what makes an ability
+// whose ONLY target is gone fizzle properly instead.
+func regenerateTheTargetPermanent(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return Regenerate{Target: id}.Apply(ctx)
+}
+
+// destroyTheTargetPermanentNoRegen is the same sentence with the
+// CR 701.19c rider on the end — "Destroy target [permanent]. It can't
+// be regenerated." Terminate, Mortify and Putrefy are that sentence
+// and nothing else; they differ only in what their TargetSpec lets
+// them point at, which is declared on the Spec rather than written
+// here.
+//
+// It exists because #667 made the rider real: the three bodies were
+// already identical and became a new clone family the moment they all
+// grew the same extra field. One helper, three callers.
+func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return DestroyTarget{Target: item.Targets[0].ID, CantBeRegenerated: true}.Apply(ctx)
+}
+
+// returnThisCardFromYourGraveyard is the whole effect of a graveyard
+// trigger that brings its own card back — Bloodghast's landfall,
+// Narcomoeba's arrival (#925). The card is its own payload, so it
+// reads the ID off item.SourceCardID rather than out of a closure,
+// which is what lets both cards share one package-level func.
+func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
+	return ReturnFromGraveyard{
+		Target: item.SourceCardID,
+		Dest:   game.ZoneBattlefield,
+	}.Apply(NewContext(g, item))
+}
+
+// damageToFirstTarget is "~ deals N damage to any target" — the whole
+// body of Lightning Bolt and of Rift Bolt, which print the same
+// sentence at different prices and with a keyword between them.
+//
+// It reads the FIRST target slot and nothing else, which is what a
+// single "any target" clause fills, and does nothing when the slot is
+// empty (CR 608.2b — every target became illegal, so the spell was
+// countered by game rules before it got here; the guard is belt and
+// braces).
+func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) error {
+	return func(item *game.StackItem, ctx *Context) error {
+		if len(item.Targets) == 0 {
+			return nil
+		}
+		return DealDamage{
+			Source: ctx.Source(),
+			Target: item.Targets[0].ID,
+			Amount: amount,
+		}.Apply(ctx)
+	}
 }

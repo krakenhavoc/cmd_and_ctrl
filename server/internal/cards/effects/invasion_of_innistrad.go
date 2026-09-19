@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // free cast of Deluge of the Dead, which lives in its own file under
 // the "#1" catalog key. S27 shipped this card with the exile alone
 // and the transformed cast declared missing; S32's per-instance face
-// on ExilePlayPermission closed that. What remains is the timing —
+// on CastPermission closed that. What remains is the timing —
 // see SiegeTransformedCastCaveat and SiegeDefeated in battles.go.
 //
 // -13/-13 rather than "destroy": the difference is observable and it

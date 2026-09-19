@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // simplification in that sprint: the defeated Siege was exiled and
 // its back face was never cast, because nothing in the multi-face
 // model could say "cast THAT FACE of this exiled card". S32 closes
-// that — ExilePlayPermission.Face, faceForCastLocked and
+// that — CastPermission.Faces, faceForCastLocked and
 // faceOnResolve — so the back face finally becomes reachable and
 // finally needs rules.
 //
@@ -35,7 +35,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // which is what the card prints. The activated ability is Scavenging
 // Ooze's shape exactly — read the card's type BEFORE the exile,
 // because after it the card is in exile and "it WAS a creature card"
-// is a question about the past.
+// is a question about the past, and WAIT for the exile, because the
+// clause is about the card the first sentence moved (#911, ADR 0013
+// §5t). Both halves are ExileThenIfItWas; no Zombie for a meal the
+// CR 614 window kept in its graveyard.
 //
 // No simplification.
 func init() {
@@ -56,21 +59,16 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {
-					c, ok := g.LookupCardForEffect(t.ID)
-					if !ok {
-						continue
-					}
-					wasCreature := c.IsCreature()
-					if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					if !wasCreature {
-						continue
-					}
-					if err := (CreateToken{
-						Controller: item.Controller,
-						Template:   BlackZombieToken(),
-						N:          1,
+					if err := (ExileThenIfItWas{
+						Target: t.ID,
+						Was:    WasCreatureCard,
+						Then: func(ctx *Context) error {
+							return CreateToken{
+								Controller: item.Controller,
+								Template:   BlackZombieToken(),
+								N:          1,
+							}.Apply(ctx)
+						},
 					}).Apply(ctx); err != nil {
 						return err
 					}

@@ -40,6 +40,39 @@ type Characteristic struct {
 	Abilities  []string
 	Name       string
 
+	// AllCreatureTypes records that this object is every creature
+	// type (CR 702.73a). It is a LAYER 4 TYPE FACT and it lives here,
+	// next to Subtypes, rather than as the `changeling` keyword in
+	// Abilities, which is where it used to live.
+	//
+	// The keyword was only ever storage — "every creature type" as
+	// ~345 entries in Subtypes would make the wire type line
+	// unreadable and every subtype loop quadratic — but storage in
+	// the ability list leaked into the rules answer in both
+	// directions (#670):
+	//
+	//   - a layer-6 ability removal emptied Abilities and with it
+	//     deleted a layer-4 type fact, which is exactly what
+	//     Maskwood Nexus' 2021-02-05 ruling says must NOT happen
+	//     ("If an effect causes a creature with changeling to lose
+	//     all abilities, it will remain all creature types … because
+	//     changeling applies before the effect that removes it");
+	//   - a later layer-4 subtype SET left the keyword behind, so a
+	//     Kenrith's Transformation newer than the Nexus produced an
+	//     Elk that was still every creature type.
+	//
+	// Both fall out for free now: the flag is cleared and re-set
+	// inside layer 4 in timestamp order (SetSubtypes clears it, a
+	// grant sets it), and layer 6 cannot see it.
+	//
+	// Printed changeling seeds it in printedCharacteristic — CR
+	// 702.73a is a characteristic-defining ability, so CR 613.2
+	// applies it before any other layer-4 effect, which is what
+	// seeding the layer-0 baseline means in this engine. The keyword
+	// stays in Abilities as the PRINTED source of the flag and as the
+	// client's badge; nothing but the projection reads it.
+	AllCreatureTypes bool
+
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
 	// Forest land") applied to this object in layer 6.
@@ -76,6 +109,55 @@ type Characteristic struct {
 	// all of them are right without being touched. See
 	// recomputeLayersLocked.
 	Controller uuid.UUID
+
+	// ControlSource names the card whose layer-2 effect last wrote
+	// Controller in this pass — the Act of Treason, the Mind Control,
+	// the Switcheroo. Zero when no layer-2 effect applied, which is
+	// the ordinary case AND the one that matters: a permanent going
+	// home because the effect that took it ended has no source, and
+	// the EventControlChanged materialiseControlLocked emits says so
+	// by leaving Event.Source nil (#930).
+	//
+	// Written by the layer-2 Apply closures themselves (the engine's
+	// controlStatic, the catalog's ControlAttachedBySource), so the
+	// last write in the bucket's timestamp order is the effect that
+	// won CR 613.7 — the same rule that decided Controller, read off
+	// the same assignment rather than re-derived.
+	ControlSource uuid.UUID
+
+	// PTDefined records that a layer 7a or 7b effect SET this
+	// object's power and toughness in this pass — a
+	// characteristic-defining ability (CR 613.4a, Tarmogoyf,
+	// Consuming Aberration) or an effect that sets P/T to specific
+	// values (CR 613.4b, Humility, Hallowed Haunting over its own
+	// Spirit tokens).
+	//
+	// It is engine bookkeeping rather than a characteristic, and it
+	// exists for one reader: the toughness state-based action's
+	// stand-in skip (Card.ToughnessIsKnown). The importer writes a 0
+	// into Card.Toughness for a printed `*`, and the skip is what
+	// stops CR 704.5f from eating every `*` creature whose
+	// characteristic-defining ability this engine does not compute.
+	// When the engine DOES compute it, the stand-in is not the
+	// answer any more and the skip must not cover the object: a
+	// Lord of Extinction with every graveyard empty is a real 0/0
+	// and dies (#690).
+	//
+	// Set by applyOneEffectLocked, in the 7a and 7b buckets only,
+	// after the effect's Apply has run — so it is true exactly when
+	// an effect that defines P/T applied to this object. Layers 7c
+	// (modify), 7d (counters) and 7e (switch) do not set it: they
+	// move a number that something else has to have defined first.
+	//
+	// Not compared by sameCharacteristic: the CR 613.8 dependency
+	// probe asks what an effect DOES to an object, and "an effect
+	// defined the P/T" is a fact about the pass, not about the
+	// object. The probe's applyRaw never writes it.
+	//
+	// Rebuilt from scratch on every recompute with the rest of the
+	// Characteristic, so it never goes stale and the snapshot never
+	// carries it.
+	PTDefined bool
 
 	// Restrictions is the S24 declaration-time restriction set:
 	// "can't attack", "can't block", "can't be blocked", "its
@@ -116,6 +198,15 @@ type Characteristic struct {
 // the cost-only derivation was what made every colour-indicator face
 // read as colourless.)
 func (c Card) printedCharacteristic() Characteristic {
+	// CR 708.2, ADR 0069 decision 3: a face-down permanent IS a 2/2
+	// creature with no name, text, subtypes, mana cost or colour.
+	// That is not an effect applied to the real card — the object has
+	// those characteristics — so it enters at layer 0, the baseline
+	// the whole CR 613 pass is applied to. Every later layer and
+	// every reader then sees the 2/2 for free.
+	if c.FaceDownIsPermanent() {
+		return faceDownCharacteristic(c)
+	}
 	supertypes, types, subtypes := ParseTypeLine(c.TypeLine)
 	// Printed keywords come from two places. The catalog's
 	// Spec.PrintedKeywords slot (S18 sub-PR 2) is the older one;
@@ -159,10 +250,48 @@ func (c Card) printedCharacteristic() Characteristic {
 		Colors:     printedColors(c),
 		Name:       c.Name,
 		Abilities:  abilities,
+		// CR 702.73a is a characteristic-defining ability, and
+		// CR 613.2 applies CDAs before every other effect in their
+		// layer — so the keyword→layer-4 projection belongs in the
+		// baseline the layer pass starts from, and this is the ONE
+		// place a printed changeling becomes the type fact (#670).
+		// A layer-4 subtype SET clears it (Characteristic.SetSubtypes)
+		// and a layer-4 grant re-sets it, in timestamp order.
+		AllCreatureTypes: containsKeyword(abilities, KeywordChangeling),
 		// The layer-0 baseline for control (CR 613.1b): who controls
 		// this object absent any control-changing continuous effect.
 		Controller: c.baseController(),
 	}
+}
+
+// SetSubtypes is "is a Forest land" / "is an Elk creature" / "isn't a
+// creature" — a layer-4 effect that REPLACES the subtype list rather
+// than adding to it (CR 205.1b, CR 613.1d).
+//
+// Every layer-4 subtype replacement in the engine goes through here,
+// because replacing the subtypes is also what takes "is every
+// creature type" away: a creature that is set to be an Elk is an Elk
+// and nothing else, whatever a Maskwood Nexus said earlier in the same
+// layer (#670, and the second Maskwood ruling). An ADD —
+// `c.Subtypes = append(c.Subtypes, "Swamp")` — deliberately does not
+// go through here, because adding a type takes nothing away.
+func (c *Characteristic) SetSubtypes(subtypes []string) {
+	c.Subtypes = append([]string(nil), subtypes...)
+	c.AllCreatureTypes = false
+}
+
+// clone returns a deep copy — the slices too, so a caller can mutate
+// it without reaching back into the original. The layer engine's
+// CR 613.8 dependency probe needs it (layer_dependency.go): a trial
+// application must not leave a fingerprint on the real pass.
+func (c Characteristic) clone() Characteristic {
+	out := c
+	out.Types = append([]string(nil), c.Types...)
+	out.Subtypes = append([]string(nil), c.Subtypes...)
+	out.Supertypes = append([]string(nil), c.Supertypes...)
+	out.Colors = append([]string(nil), c.Colors...)
+	out.Abilities = append([]string(nil), c.Abilities...)
+	return out
 }
 
 // baseController is the controller a permanent reverts to when every

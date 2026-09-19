@@ -174,9 +174,24 @@ func TribalScalingAnthem(f TribeFilter, per func(source *game.Card, g *game.Game
 // (game/keywords.go). Granting anything else appends a string nothing
 // reads.
 func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
+	return KeywordGrant(f.Matches, keyword)
+}
+
+// KeywordGrant is the shared shape of every layer-6 keyword grant:
+// "<these permanents> have <keyword>". `applies` is the ordinary
+// StaticAbility predicate, so the caller decides who gets it — a
+// tribe, "creatures you control", an emblem's owner's creatures.
+//
+// The dedupe is the whole reason this is one function and not one
+// closure per card. Characteristic.Abilities is a flat []string that
+// several grants append to in CR 613.7 timestamp order, and a
+// duplicate entry would render as two keyword badges and be counted
+// twice by anything that tallies. Three copies of the same eight-line
+// append-if-absent loop were in the tree before this existed.
+func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
-		AppliesTo: f.Matches,
+		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, k := range c.Abilities {
 				if k == keyword {
@@ -191,12 +206,16 @@ func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
 // AllCreatureTypesGrant is "these creatures are every creature type"
 // as a battlefield static — Maskwood Nexus' first sentence.
 //
-// LAYER 4, not layer 6, even though what it writes is an ability
-// string. The layer is the semantic claim and the storage is an
-// implementation detail: this is a TYPE-changing effect (CR 613.1d),
-// and "is every creature type" is carried as the changeling keyword
-// only so that one map lookup answers what ~345 subtypes otherwise
-// would (see HasAllCreatureTypes).
+// LAYER 4, and what it writes is a layer-4 type FACT:
+// Characteristic.AllCreatureTypes, one flag standing in for the ~345
+// subtypes that would otherwise make the wire type line unreadable
+// and every subtype loop quadratic (see HasAllCreatureTypes).
+//
+// It used to write the `changeling` keyword into the ability list
+// instead, which put a layer-4 type where layer 6 could delete it:
+// a creature under a "loses all abilities" effect stopped being
+// every creature type, and Maskwood Nexus' own 2021-02-05 ruling
+// says it must not (#670).
 //
 // Getting this wrong is observable and was, before there was a test
 // for it. Declared in layer 6, the grant would be ordered against
@@ -213,16 +232,13 @@ func AllCreatureTypesGrant(f TribeFilter) game.StaticAbility {
 	}
 }
 
-// applyAllCreatureTypes appends the changeling marker, idempotently.
-// Shared by the static and the until-end-of-turn forms so the two can
-// never disagree about what the marker is.
+// applyAllCreatureTypes sets the layer-4 type fact. Shared by the
+// static and the until-end-of-turn forms so the two can never
+// disagree about where the property lives — one storage, and a later
+// layer-4 subtype SET in the same bucket clears it (CR 205.1b,
+// game.Characteristic.SetSubtypes).
 func applyAllCreatureTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-	for _, k := range c.Abilities {
-		if k == game.KeywordChangeling {
-			return
-		}
-	}
-	c.Abilities = append(c.Abilities, game.KeywordChangeling)
+	c.AllCreatureTypes = true
 }
 
 // GrantAllCreatureTypesUntilEOT is "gains all creature types until
@@ -252,11 +268,12 @@ func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
 	if set == nil {
 		return nil
 	}
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: set.appliesTo(),
 		Apply:     applyAllCreatureTypes,
-	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"))
+	}, ctx.Source(), eotLabel(a.Label, "all creature types until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }
 

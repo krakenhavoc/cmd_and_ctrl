@@ -75,6 +75,30 @@ type Config struct {
 	CommanderBonus float64
 	// ActivateBase is the flat value of using an activated ability.
 	ActivateBase float64
+
+	// FuelFloor is what a LAND in a graveyard or in exile is worth to
+	// its owner (#1013, fuel.go). The bottom of the scale: a land card
+	// in a graveyard does nothing at all without a Crucible, which is
+	// why it is the first thing an escape eats. Small and positive,
+	// not zero — a floor of zero would make it free rather than
+	// cheapest, and free is what "eat it before anything else" already
+	// means.
+	FuelFloor float64
+	// FuelIdle is what any OTHER card in a graveyard or exile is worth
+	// when the seat cannot cast it from there. Above FuelFloor, and
+	// that gap is the whole of "eat the lands, not the spells": it
+	// stands for the graveyard synergies the policy cannot see —
+	// delve, a flashback granted later, a Snapcaster target — which
+	// want a spell far more often than they want a land.
+	FuelIdle float64
+	// FuelRecast discounts a graveyard or exile card the seat CAN
+	// still cast — escape, flashback, a granted impulse — against the
+	// same card in hand. Below one, and that gap is the whole
+	// behaviour: an escaping Uro eats the lands rather than the
+	// Snapcaster target, and it eats a second Uro last of all. It is a
+	// real card and it is not a card in hand: it needs its own cost,
+	// its own window, and it can be exiled out from under the plan.
+	FuelRecast float64
 	// LifePayoff is the value proxy for one point of life a move's
 	// cost charges — the life-cost twin of SpellPerMana, and there
 	// for the same reason. No oracle text reaches a policy, so what
@@ -98,6 +122,18 @@ type Config struct {
 	// ManaFloat prices a bare mana-ability activation. Negative:
 	// casts auto-tap, so floating mana is waste.
 	ManaFloat float64
+
+	// SpecialActionValue prices a CR 116.2 special action —
+	// foretelling a card, suspending one. Positive and modest: both
+	// keywords trade this turn's mana for a cheaper or free cast
+	// later, which is real value a seat should take when it has
+	// nothing better to do with the mana, and never a reason to skip
+	// casting the spell outright (a cast is priced by what it does,
+	// and is usually worth more). It is the one price that makes
+	// Lotus Bloom and Ancestral Vision playable at all: a card with
+	// no mana cost can never be cast from hand (CR 118.6), so
+	// suspending it is the only move it will ever have.
+	SpecialActionValue float64
 
 	// RemovalConfidence discounts the assumption that a spell which
 	// may legally target an opponent's permanent is removal. It is
@@ -183,9 +219,14 @@ func DefaultConfig() Config {
 		SpellPerMana:   0.60,
 		CommanderBonus: 1.50,
 		ActivateBase:   0.50,
+		FuelFloor:      0.05,
+		FuelIdle:       0.30,
+		FuelRecast:     0.55,
 		LifePayoff:     0.35,
 		LifeFloor:      1,
 		ManaFloat:      -0.50,
+
+		SpecialActionValue: 1.00,
 
 		RemovalConfidence:  0.80,
 		LeaderBoost:        1.50,
@@ -281,14 +322,22 @@ type state struct {
 	// none left.
 	leader string
 
-	// bf, mine, stack, graveyard index the view by instance ID.
+	// bf, mine, stack, graveyard, exile index the view by instance ID.
 	// `mine` is the bot's own hand and command zone — the only
 	// hidden zone it is entitled to read.
 	bf        map[string]*protocol.CardView
 	mine      map[string]*protocol.CardView
 	stack     map[string]*protocol.CardView
 	graveyard map[string]*protocol.CardView
-	choices   map[string]*protocol.PendingChoiceView
+	// exile is the shared exile pile, which since #673 is a cast
+	// surface the bot is offered moves out of (an impulse grant, a
+	// foretold card, a warped creature coming back).
+	exile   map[string]*protocol.CardView
+	choices map[string]*protocol.PendingChoiceView
+	// attach resolves the battlefield's attachment relation, so that
+	// "what is this permanent worth" answers the same way here as it
+	// does inside Evaluate (#727).
+	attach attachIndex
 
 	seat         *protocol.PlayerView
 	myEval       *SeatEval
@@ -313,6 +362,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 		step:      v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
+	st.attach = newAttachIndex(v.Battlefield.Cards)
 	for i := range v.Battlefield.Cards {
 		c := &v.Battlefield.Cards[i]
 		st.bf[c.InstanceID] = c
@@ -320,6 +370,13 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	for i := range v.Stack.Cards {
 		c := &v.Stack.Cards[i]
 		st.stack[c.InstanceID] = c
+	}
+	for i := range v.Exile.Cards {
+		c := &v.Exile.Cards[i]
+		if st.exile == nil {
+			st.exile = make(map[string]*protocol.CardView, len(v.Exile.Cards))
+		}
+		st.exile[c.InstanceID] = c
 	}
 	for i := range v.Seats {
 		s := &v.Seats[i]
@@ -361,6 +418,16 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	st.sorcerySpeed = st.myTurn && len(v.Stack.Cards) == 0 &&
 		(st.step == "precombat_main" || st.step == "postcombat_main")
 	return st
+}
+
+// permanentValue is boardValue against this decision's battlefield:
+// the one pricing of a permanent the whole policy uses, with an
+// attached permanent priced by its role rather than on its own line
+// (#727). A card that is not on the battlefield — one in hand, one in
+// a graveyard — is attached to nothing and prices exactly as it always
+// did.
+func (st *state) permanentValue(c *protocol.CardView) float64 {
+	return st.w.boardValue(c, st.attach)
 }
 
 // Decide is the aiseat.Policy entry point.

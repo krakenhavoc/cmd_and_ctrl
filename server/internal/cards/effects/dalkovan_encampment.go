@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller's creatures, once per combat ("whenever you attack" is
 // one trigger however many creatures were declared — the per-label
 // "one or more" dedup), and fires only when the ability has resolved
-// this turn, counted off the event log back to the turn's upkeep.
+// this turn, read off the per-turn tally's resolution count.
 // Two activations are two delayed triggers and four Warriors, which
 // is what the count buys. The Warriors enter tapped and attacking
 // the player the first declared attacker was declared against

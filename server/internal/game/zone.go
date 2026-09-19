@@ -170,6 +170,17 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if err != nil {
 		return Card{}, err
 	}
+	// CR 400.7, before anything else this function forgets: the card
+	// that arrives in `dst` is a NEW OBJECT. Everything below strips
+	// one more piece of the object that is ending; this is the piece
+	// that says an object ended at all, for the per-object state the
+	// ENGINE keeps in maps keyed by instance ID — which survives a
+	// zone change and cannot tell the two objects apart on its own.
+	// Unconditional, for every source and every destination, for the
+	// same reason ClearFaceDown below is: a caller added later is
+	// covered by the rule rather than by a code review. See
+	// Card.ObjectEpoch and ObjectTallyKey (#936).
+	c.ObjectEpoch++
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.
@@ -194,6 +205,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// number and brought it back with it when it was replayed —
 		// dying to the first ping. See clearBattlefieldDamage.
 		clearBattlefieldDamage(&c)
+		// #667 / CR 400.7, and the same argument marked damage makes
+		// one line up: a regeneration shield was given to the
+		// permanent, and what lands in the new zone is a new object
+		// that was never given one. A creature that dies with a shield
+		// unused and comes back does not come back protected.
+		c.RegenerationShields = 0
 		// S24 / ADR 0036 decision 12: an Equipment or Aura that
 		// leaves the battlefield stops being attached. This is the
 		// FORWARD direction only — permanents attached to a host
@@ -214,31 +231,77 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
+		// #980 / CR 702.16k: and so does the chosen PLAYER. A
+		// True-Name Nemesis that is bounced and recast names a player
+		// again, and one sitting in a graveyard is protected from
+		// nobody — which is also what stops the protection reader
+		// having to ask what zone it is in.
+		c.ChosenPlayer = uuid.Nil
+		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
+		// about the permanent that spell became, and CR 400.7d's
+		// licence to read it back ends with that permanent. A Phlage
+		// that escaped, died and was reanimated is a new object that
+		// did not escape — and is sacrificed, which is what the card
+		// says; a kicked Gatekeeper of Malakir that comes back was
+		// not kicked, because the spell that returned it was a
+		// different spell and was not even a spell.
+		c.Provenance = CastProvenance{}
+		// ADR 0071 / CR 400.7: the level and solved designations are
+		// battlefield state on a permanent, not characteristics of a
+		// card. A Wizard Class that is bounced and replayed is level 1
+		// again, and a Case that dies is a card in a graveyard with no
+		// solved marker — which is also what makes them non-copiable
+		// without anything in the copy path having to know.
+		c.ClassLevel = 0
+		c.Solved = false
 		// S27 / CR 400.7: a battle that leaves and returns is a new
 		// object and chooses a new protector. Keeping the old one
 		// would make the returning battle defended by whoever
 		// happened to be picked last time — including, after a seat
 		// is eliminated, nobody.
 		c.ProtectorPlayerID = uuid.Nil
+		// #630 / CR 400.7: "entered the battlefield at" and the
+		// summoning-sickness marker it comes with belong to the
+		// permanent, not to the card. Every battlefield entry stamps
+		// both, unconditionally (stampBattlefieldEntryLocked), so the
+		// permanent that comes back gets its own pair; what clearing
+		// them here fixes is the card in between, which was still
+		// telling the wire it was summoning sick in the graveyard it
+		// had died to. Cleared together for the same reason they are
+		// stamped together, and the same pair the exile return zeroes
+		// when it mints a new instance ID (resetAsNewObjectLocked).
+		c.EnteredBattlefieldAt = 0
+		c.SummonedThisTurn = false
 	}
-	// CR 400.7: a card that leaves exile is a new object with no
-	// memory of its previous one. Two exile-only fields go with it:
-	//
-	//   - ExilePlay, the per-instance "you may cast/play it" grant.
-	//     The cast and land-play paths already zeroed it once the
-	//     card reached the stack or the battlefield, but every other
-	//     exit (a sandbox move to hand, an effect returning it to a
-	//     library or graveyard) kept it. An airbended card moved to
-	//     hand then still paid airbend's {2} for a hand cast, and a
-	//     second exile later revived a permission nobody granted.
-	//   - Counters. Nothing in the engine puts counters on an exiled
-	//     card yet, but a player can by hand, and suspend's time
-	//     counters will. A suspended creature must not enter the
-	//     battlefield still carrying them.
+	// CR 400.7: a card that changes zones becomes a NEW OBJECT with no
+	// Counters go with the exile exit specifically. Nothing in the
+	// engine puts counters on an exiled card yet, but a player can by
+	// hand, and suspend's time counters will. A suspended creature
+	// must not enter the battlefield still carrying them.
 	if src.Kind == ZoneExile {
-		c.ExilePlay = ExilePlayPermission{}
 		c.Counters = nil
 	}
+	// CR 400.7 / CR 708: "face down" is a property of an OBJECT in a
+	// zone, and a card that changes zones is a new object with no
+	// memory of the old one. This is the ONE reset — #697. Before it,
+	// the flag was cleared per caller: the shared exit route did it
+	// itself after calling MoveCard, and so did the exile→battlefield
+	// return, while the sandbox move_card action (live) and the
+	// cast-from-exile push (latent, foretell's own path) did not. A
+	// card Necropotence exiled face down and a player then moved by
+	// hand landed in their hand still marked face down, and carried
+	// that into snapshots, onto the wire and into what the bots read.
+	//
+	// Unconditional, for every source and every destination, so a
+	// caller added later is covered by the rule rather than by a code
+	// review. A destination that is ITSELF a face-down state sets it
+	// back after the move — the exile route's face-down branch and
+	// the battlefield entry's, both through
+	// applyFaceDownLandingLocked (ADR 0069 decision 5). That
+	// ordering is also what keeps "a foretold card stays face down
+	// while it sits in exile" true with no special case: a move
+	// within a zone is not a move, and never reaches here.
+	c.ClearFaceDown()
 	// CR 712.8: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written
@@ -249,7 +312,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Live from S32, when a `transform` card could first be on the
 	// battlefield showing its back: a defeated Siege's back face is
 	// cast out of exile and resolves as the back face
-	// (ExilePlayPermission.Face, faceOnResolve). Without this, a
+	// (CastPermission.Faces, faceOnResolve). Without this, a
 	// Refraction Elemental that died would sit in the graveyard as a
 	// CREATURE card rather than as the battle card Invasion of
 	// Karsus, and "return target creature card from your graveyard"

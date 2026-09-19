@@ -219,6 +219,8 @@ func TestSlithermuseEvokeEntersAndDiesAndDraws(t *testing.T) {
 	want := len(caster.Hand.Cards) + diff
 
 	passPriorityAroundTable(t, g)
+	// #929: the leave-trigger's "choose an opponent" is a prompt.
+	answerChoosePlayer(t, g, caster.ID, opp)
 
 	if g.Battlefield.Contains(id) {
 		t.Error("evoked creature is still on the battlefield")

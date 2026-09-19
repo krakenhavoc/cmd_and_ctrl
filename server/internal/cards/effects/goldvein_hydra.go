@@ -12,20 +12,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The X-drop that refunds itself. Three printed keywords, an X-sized
 // body, and a dies trigger that reads the body's size.
 //
-// Sandbox simplification, declared, for the X counters: an entry
-// replacement cannot see the X announced for the spell (the stack
-// item is gone by the time the entry pipeline runs), so the counters
-// go on as the spell RESOLVES — a beat before the card moves from
-// the stack to the battlefield, which is the last moment X is
-// readable — rather than as an "enters with" replacement. They are
-// on the card when it lands, so the 0/0 body never meets the
-// state-based check without them (X=0 dies at once, as printed),
-// every ETB watcher sees the finished creature, and a counter
-// doubler or Hardened Scales applies, exactly as it does to a
-// printed "enters with". The one observable difference is that a
-// "whenever you put counters on a permanent" payoff does not see
-// them, because the card was not a permanent yet — weaker, never
-// stronger.
+// The X counters are the printed CR 614.1c entry clause and ride the
+// CR 614 pipeline as one — XCounters, seeded onto the entry event off
+// the resolving stack item (#1002). They land on the PERMANENT, after
+// the move and before EventETB, so the dies trigger below reads a
+// finished creature, Doubling Season and Hardened Scales apply, and a
+// "whenever one or more counters are put on a permanent you control"
+// payoff sees them too.
 //
 // "Its power" on death is the CR 603.10 last-known power. The LKI
 // characteristic the harvester hands the trigger carries the layer
@@ -33,22 +26,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // move), so the +1/+1 and -1/-1 totals are read back off the event
 // log — b13LastKnownPower. Tapped Treasures, as printed.
 //
-// One engine-side gap, not the card's: cast for X=0 the Hydra is a
-// printed 0/0 with no counters, which the toughness state check
-// deliberately skips (the placeholder convention on Card.Power), so
-// it stays on the battlefield instead of dying at once. It makes no
-// Treasures when it does die. The batch 13 test pins the behaviour so
-// it flips when the convention goes.
+// Cast for X=0 the Hydra enters as the printed 0/0 it is and the
+// next state-based check puts it into its owner's graveyard (CR
+// 704.5f), making no Treasures, exactly as in paper. CR 601.2b allows
+// the announcement; it simply does not survive it. That was an engine
+// gap until #691 — the toughness check read every printed 0/0 as the
+// importer's stand-in — and what closed it is the printing behind the
+// object (game.Card.ToughnessIsKnown).
 func init() {
 	Register(Spec{
-		OracleID:        "2b62543f-a475-457a-a96b-b5d070383d3c",
-		Name:            "Goldvein Hydra",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them."},
-		PrintedKeywords: []string{"vigilance", "trample", "haste"},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
-		},
+		OracleID:                   "2b62543f-a475-457a-a96b-b5d070383d3c",
+		Name:                       "Goldvein Hydra",
+		XMatters:                   true,
+		Completeness:               CompletenessFull,
+		PrintedKeywords:            []string{"vigilance", "trample", "haste"},
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

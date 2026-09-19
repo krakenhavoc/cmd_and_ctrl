@@ -3,9 +3,9 @@
 // handlers and the WebSocket hub speak only in terms of Principal
 // and the Authenticator interface, never raw tokens or cookies.
 // Different authenticator implementations can plug into the same
-// seam — the S04 default is a stateful in-memory invite-token store,
-// and the post-S04 roadmap includes a stateless HMAC implementation
-// that needs zero server-side bookkeeping.
+// seam: MemoryAuthenticator, the S04 in-memory token store, and
+// HMACAuthenticator, the stateless signed credential that survives a
+// restart (ADR 0044 decision 3, S33). NewFromEnv picks between them.
 //
 // Transport decisions live outside this package: the HTTP middleware
 // and WebSocket authorizer (see http.go and the ws.UpgradeAuthorizer
@@ -56,8 +56,11 @@ const (
 
 // Principal is the canonical authenticated identity. It is the only
 // thing the rest of the server cares about — the shape of the
-// underlying credential (opaque token today, JWT tomorrow) is never
-// leaked past the Authenticator boundary.
+// underlying credential (an opaque random token, or a signed payload
+// from HMACAuthenticator) is never leaked past the Authenticator
+// boundary. HMACAuthenticator serialises every field below into the
+// token, so a new field here must be added to its claims too
+// (hmac.go), or it silently comes back zero after a Validate.
 //
 // A RolePlayer principal MUST have a non-zero PlayerID and GameID. A
 // RoleAdmin principal has an AdminID for audit-log identification
@@ -65,7 +68,14 @@ const (
 // principal carries the Discord* fields and neither GameID nor
 // PlayerID — it is an identity waiting for an invite code.
 type Principal struct {
-	Role     Role      `json:"role"`
+	Role Role `json:"role"`
+	// UserID is the users-table row this session belongs to (ADR 0051
+	// decision 3). Set on the RoleIdentified session the Discord
+	// callback mints, and carried onto every RolePlayer session minted
+	// from it (the callback's invite flow, and POST /join). Zero for
+	// admin, spectator and guest sessions, and zero for everyone on a
+	// deployment with no database (CMDCTRL_DATA_DIR empty).
+	UserID   uuid.UUID `json:"user_id,omitempty"`
 	AdminID  uuid.UUID `json:"admin_id,omitempty"`
 	GameID   uuid.UUID `json:"game_id,omitempty"`
 	PlayerID uuid.UUID `json:"player_id,omitempty"`
@@ -114,18 +124,20 @@ var (
 //   - Validate: given a credential string, return the Principal it
 //     authenticates or one of the sentinel errors above.
 //
-// Stateful implementations (the S04 invite store) keep a map of
+// Stateful implementations (MemoryAuthenticator) keep a map of
 // credential→Principal internally. Stateless implementations
-// (HMAC-signed tokens, future) serialise the Principal into the
-// credential itself and verify the signature on Validate.
+// (HMACAuthenticator) serialise the Principal into the credential
+// itself and verify the signature on Validate.
 type Authenticator interface {
 	Issue(ctx context.Context, p Principal, ttl time.Duration) (credential string, issued Principal, err error)
 	Validate(ctx context.Context, credential string) (Principal, error)
 
 	// Revoke optionally invalidates a specific credential ahead of its
-	// expiry. Stateless backends (HMAC) may return nil without doing
+	// expiry. Stateless backends may return nil without doing
 	// anything; stateful backends should drop the token from their
 	// store. Callers that need guaranteed revocation should check the
-	// documentation of the specific Authenticator they're using.
+	// documentation of the specific Authenticator they're using:
+	// MemoryAuthenticator's Revoke is real, HMACAuthenticator's is
+	// advisory (a no-op, ADR 0044 decision 3).
 	Revoke(ctx context.Context, credential string) error
 }

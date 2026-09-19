@@ -127,7 +127,11 @@ comes from:
 
 **Response 200** — identical to `POST /games/{id}/join`, cookie
 included. On the Discord path the principal also carries `discord_id`,
-`discord_username`, `discord_global_name` and `discord_avatar_hash`.
+`discord_username`, `discord_global_name` and `discord_avatar_hash`,
+and `user_id` is the signed-in person's users row, copied from the
+identity session (S34, [ADR 0051](decisions/0051-user-database.md)
+decision 3). `user_id` is the nil uuid for a guest seat, for admin and
+spectator sessions, and for everyone on a deployment with no database.
 
 The identity session stays valid afterwards: it is how the same person
 joins a second table later without signing in to Discord again. On its
@@ -200,10 +204,15 @@ Create a new game.
   "name": "Friday Night Magic",
   "created_at": "2026-04-13T20:00:00Z",
   "invite_token": "<16-byte base64url>",
+  "spectator_invite": "<16-byte base64url>",
   "players": [],
   "state": "lobby"
 }
 ```
+
+This response is the one reliable place to get the invite links. The
+server stores only their hashes, so after a restart it cannot show them
+again (see `GET /games/{id}`).
 
 **Errors**
 
@@ -241,9 +250,18 @@ games pile up.
 
 ### `GET /games/{id}`
 
-Full metadata for a single game. The `invite_token` field is
-included only for admins and for players seated in this specific
-game.
+Full metadata for a single game. The `invite_token` and
+`spectator_invite` fields are included only for admins and for players
+seated in this specific game.
+
+**They are also absent after a server restart.** Invites are stored
+only as SHA-256 hashes (ADR 0051 decision 4, S34 sub-PR 3). The
+plaintext exists only in the process that minted the game. A game that
+came back from a restart still accepts every link handed out before
+it. The server just cannot show those tokens again. The `POST /games`
+response is where a creator gets the link. The lobby UI and the
+Discord bot both take it from there, and neither ever read it from
+this route.
 
 ### `POST /games/{id}/start`
 
@@ -602,8 +620,8 @@ launches one runner goroutine per bot seat; a runner exits on its own
 the moment the game leaves the active state, so the end of a game
 needs no explicit stop. Deleting a game and shutting the server down
 both cancel the runners and wait for them. A restart restores them:
-`is_bot` / `bot_tier` / `bot_deck` ride both the engine snapshot and
-the persisted lobby metadata, and the lobby's restore path relaunches
+`is_bot` / `bot_tier` / `bot_deck` ride the engine snapshot, `bot_tier`
+is also on the game's `seats` row, and the lobby's restore path relaunches
 a runner for every bot seat in a game that came back active.
 
 ### `DELETE /games/{id}/seats/bot/{player_id}` (S31)

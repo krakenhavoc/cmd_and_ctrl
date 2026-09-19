@@ -37,6 +37,7 @@
 
 import type { CardView, GameView, LegalMoveView, LegalTargetsView } from "./protocol";
 import { sacrificeCount } from "./sacrificeCost";
+import { printedCostClaimable } from "./targeting";
 
 // Legality is a predicate result: legal=true means "the action
 // would succeed if dispatched right now"; legal=false carries a
@@ -207,10 +208,17 @@ export function canCastFromHand(
   // the clause away entirely (an overloaded Cyclonic Rift has none),
   // so the card is only blocked when no cost option has a satisfiable
   // one.
-  if (card.legal_targets && !hasSatisfiableTargets(card.legal_targets)) {
-    const castableSomehow = (card.alternative_costs ?? []).some((a) =>
-      hasSatisfiableTargets(a.legal_targets),
-    );
+  //
+  // #1012: "no cost option" counts the printed cost only when the
+  // printed cost is one of the prices this cast may claim. The server
+  // says which (`alternative_cost_required`); the client used to
+  // assume the printed clause was always on the table, which reads a
+  // flashback-only cast at the wrong price.
+  if (card.legal_targets) {
+    const printedCounts = printedCostClaimable(card) && hasSatisfiableTargets(card.legal_targets);
+    const castableSomehow =
+      printedCounts ||
+      (card.alternative_costs ?? []).some((a) => hasSatisfiableTargets(a.legal_targets));
     if (!castableSomehow) {
       const min = card.legal_targets.min ?? 1;
       return deny(min > 1 ? `Needs ${min} legal targets` : "No legal target");

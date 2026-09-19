@@ -19,9 +19,10 @@ import (
 //
 //  1. every seat's graveyard creature cards → exile, as one batch
 //     (ExileCardsThenForEffect);
-//  2. every creature on the battlefield → sacrificed (SacrificePermanent
-//     — a sacrifice, not a destroy, so indestructible doesn't save it
-//     and "whenever you sacrifice" payoffs fire);
+//  2. every creature on the battlefield → sacrificed, as one batch
+//     (SacrificeAllThenForEffect) — a sacrifice, not a destroy, so
+//     indestructible doesn't save it and "whenever you sacrifice"
+//     payoffs fire;
 //  3. the cards exiled in step 1 → the battlefield under their
 //     OWNER's control (ReturnFromExile with Controller zero).
 //
@@ -43,16 +44,29 @@ import (
 // the command zone is not among them and does not come back, which is
 // the right answer rather than a stranded card.
 //
-// Both halves share the one continuation because a battlefield ENTRY
-// cannot pause: ReturnFromExileToBattlefieldForEffect consults the
-// pipeline before the card leaves exile and DROPS the return if a
-// CR 616 prompt is queued, rather than waiting on it.
+// #910: step 2 is a BATCH too, and step 3 hangs off ITS continuation.
+// Two things follow. The creatures leave as one simultaneous exit, so a
+// Blood Artist caught in the swap sees every death including its own
+// (CR 603.10) instead of only the ones after it; and a sacrificed
+// COMMANDER stops the reanimation until its owner has answered CR 903.9,
+// where before the return pass ran with the question still open. The
+// exiled list is carried into the inner continuation BY VALUE, the
+// contract every continuation in the engine signs, so an undo across
+// either prompt replays identically.
 //
-// The sacrifice in step 2 is still per-card and fire-and-forget: a
-// commander sacrificed there is asked its own CR 903.9 question and
-// lands a beat later, which strands nothing (the card is where it was
-// until the answer) and nothing in the card reads the sacrifice. There
-// is no batch-with-continuation form of sacrifice to use.
+// Step 3 reads nothing of step 2's result — "all cards THEY EXILED this
+// way" is step 1's list — so the sacrifice batch's landed list is
+// deliberately ignored. It waits for it, it does not read it.
+//
+// #478: a battlefield ENTRY can now pause too, and the return is no
+// longer DROPPED when it does. A creature whose entry stops for a
+// prompt (two "enters tapped" replacements on it, a shockland asked to
+// pay) arrives when the answer comes, and the rest of the pass carries
+// on around it in the meantime — the same fire-and-forget posture the
+// sacrifice below has, and it strands nothing: the card is in exile
+// until it arrives, and nothing in Living Death reads the returns. The
+// note this replaced said the return was dropped, which was true and
+// was the actual gap.
 //
 // No simplification.
 func init() {
@@ -82,24 +96,20 @@ func init() {
 			// follows: an undo restores this game's fields in place, so
 			// a captured *Game would be the wrong one.
 			return ctx.Game.ExileCardsThenForEffect(dead, func(g *game.Game, exiled []uuid.UUID) error {
-				ctx := NewContext(g, item)
-				for _, id := range doomed {
-					// A creature that left while the exile was paused
-					// is skipped rather than erroring: the list was
-					// taken before the first move.
-					if !g.Battlefield.Contains(id) {
-						continue
+				// A creature that left while the exile was paused is
+				// skipped by the batch rather than routed: the list was
+				// taken before the first move, and a leg with nothing
+				// to do must not open a window for a move that cannot
+				// happen.
+				return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, _ []uuid.UUID) error {
+					ctx := NewContext(g, item)
+					for _, id := range exiled {
+						if err := (ReturnFromExile{Target: id}).Apply(ctx); err != nil {
+							return err
+						}
 					}
-					if err := (SacrificePermanent{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				for _, id := range exiled {
-					if err := (ReturnFromExile{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+					return nil
+				})
 			})
 		},
 	})

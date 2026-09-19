@@ -14,6 +14,7 @@ import {
 } from "./bugReport";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
+import type { AutoTapCastParams } from "./castPreview";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -664,15 +665,40 @@ export interface AutoTapPreview {
 // tapper would tap to cast `cardID` right now. Read-only — calling
 // it does not mutate game state. `excluded` lets the caller pass
 // the lock-tap UI's reservation list. `xValue` is the announced
-// X for spells with {X} in their cost (defaults to 0).
+// X for spells with {X} in their cost (defaults to 0), and
+// `phyrexianLife` the announced Phyrexian-symbol count (#916).
 export async function fetchAutoTapPreview(
   gameID: string,
   cardID: string,
-  opts: { xValue?: number; excluded?: string[]; abilityIndex?: number } = {},
+  opts: {
+    xValue?: number;
+    excluded?: string[];
+    abilityIndex?: number;
+    phyrexianLife?: number;
+    // #696: the announce-time half of the cast being previewed, as
+    // castPreviewParams builds it. Every field changes the PRICE, so
+    // a preview that omits them answers about a different cast than
+    // the one the confirm button will send — a flashback cast priced
+    // at the printed cost, an airbent permanent priced at {5}{R}{R}
+    // instead of the grant's {2}.
+    cast?: AutoTapCastParams;
+  } = {},
 ): Promise<AutoTapPreview> {
   const params = new URLSearchParams({ card: cardID });
   if (opts.xValue && opts.xValue > 0) {
     params.set("x", String(opts.xValue));
+  }
+  const cast = opts.cast;
+  if (cast) {
+    if (cast.fromZone) params.set("from_zone", cast.fromZone);
+    if (cast.alternativeCost) params.set("alternative_cost", cast.alternativeCost);
+    if (cast.optionalCosts && cast.optionalCosts.length > 0) {
+      params.set("optional_costs", cast.optionalCosts.join(","));
+    }
+    if (cast.tapIDs && cast.tapIDs.length > 0) {
+      params.set("tap_ids", cast.tapIDs.join(","));
+    }
+    if (cast.face) params.set("face", String(cast.face));
   }
   // `abilityIndex` prices a CR 602 activated ability's own mana
   // component instead of the card's printed cast cost. Without it
@@ -680,6 +706,13 @@ export async function fetchAutoTapPreview(
   // Obedience's corner rather than on the {X} being announced.
   if (opts.abilityIndex !== undefined) {
     params.set("ability", String(opts.abilityIndex));
+  }
+  // #916: the Phyrexian symbols the announcement will pay with 2 life
+  // each. The server strikes them before planning, so the preview
+  // reports on the MANA the cast or activation still owes rather than
+  // tapping a land for a pip the player just said they would buy.
+  if (opts.phyrexianLife && opts.phyrexianLife > 0) {
+    params.set("phyrexian", String(opts.phyrexianLife));
   }
   if (opts.excluded && opts.excluded.length > 0) {
     params.set("exclude", opts.excluded.join(","));

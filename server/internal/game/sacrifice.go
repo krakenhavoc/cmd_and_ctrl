@@ -6,8 +6,15 @@ import "github.com/google/uuid"
 // operation (CR 701.21). A permanent is sacrificed by its
 // controller, as a cost (Goblin Bombardment, Treasure's mana
 // ability) or as an effect's instruction. It is NOT destroyed:
-// indestructible and regeneration don't apply, and a replacement
-// keyed on destruction never sees it.
+// indestructible (CR 702.12b) and regeneration (CR 701.19a) don't
+// apply, and a replacement keyed on destruction never sees it. That
+// last one is load-bearing since #667 rather than merely true: this
+// file routes through the SAME battlefield exit a destruction does,
+// and the only thing that tells them apart is that the destroy route
+// declares zoneRoute.Destruction and this one does not. #910 gave the
+// sacrifice its own template for the announcement below, and built it
+// on battlefieldExitRoute precisely so that stays true by
+// construction rather than by anyone remembering it.
 //
 // The mechanics are deliberately thin — the permanent takes the
 // ordinary route to its owner's graveyard, so dies-triggers, the
@@ -16,10 +23,43 @@ import "github.com/google/uuid"
 // the card is still on the battlefield so "whenever you sacrifice"
 // payoffs can read its characteristics before it moves.
 
-// sacrificePermanentLocked emits EventSacrifice for the permanent's
-// controller and routes it to its owner's graveyard. Caller must
-// hold g.mu.
+// sacrificePermanentLocked sacrifices ONE permanent: the announcement,
+// then the battlefield exit.
+//
+// #910 made it one leg of the shared batch body (routeLegLocked with
+// the sacrifice template) rather than its own pair of calls, so the
+// single sacrifice and a batch cannot drift — the same move, the same
+// announcement, in the same order. It stays the FIRE-AND-FORGET form:
+// nil means "no error", never "it left the battlefield", because a
+// sacrificed commander's CR 903.9 prompt can still be open when this
+// returns. A caller that reads the outcome uses SacrificeThenForEffect.
+//
+// A permanent that is not on the battlefield is ErrCardNotFound and
+// nothing is announced, which is the contract every caller already
+// relies on to tell "there was nothing to sacrifice" from "it was
+// sacrificed".
+//
+// Caller must hold g.mu.
 func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
+	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
+		return ErrCardNotFound
+	}
+	return g.routeLegLocked(sacrificeRoute(uuid.Nil), cardID, nil, nil)
+}
+
+// announceSacrificeLocked emits EventSacrifice for the permanent's
+// controller, `source` being the card that asked for the sacrifice.
+//
+// It fires while the card is STILL ON THE BATTLEFIELD and before the
+// CR 614 window opens over its move, which is the whole reason it is a
+// step of its own: a "whenever you sacrifice a permanent" payoff reads
+// characteristics (Ziatora's power, Witch's Oven's toughness) that the
+// CR 400.7 forget wipes a moment later, and it must fire whatever the
+// window then does with the destination — a sacrifice whose card an
+// "exile it instead" replacement takes is still a sacrifice.
+//
+// Caller must hold g.mu.
+func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID) error {
 	controller := g.controllerOfBattlefieldCardLocked(cardID)
 	if controller == uuid.Nil {
 		return ErrCardNotFound
@@ -27,9 +67,10 @@ func (g *Game) sacrificePermanentLocked(cardID uuid.UUID) error {
 	g.EmitEvent(Event{
 		Kind:   EventSacrifice,
 		Actor:  controller,
+		Source: source,
 		CardID: cardID,
 	})
-	return g.routeBattlefieldCardToOwnerGraveyardLocked(cardID)
+	return nil
 }
 
 // SacrificePermanent is the locking entry point: a player sacrifices
@@ -77,6 +118,13 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // Returns the number of prompts queued, so a caller can tell "nobody
 // had a creature" from "everyone was asked".
 //
+// THE FIRE-AND-FORGET FORM, and the count is not an outcome: nothing
+// has left the battlefield when it returns, and a clause written on
+// the next line pays out for a sacrifice nobody has chosen yet. A
+// card with anything hanging off the answer uses
+// EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
+// is this queue loop with the rest of the card attached.
+//
 // The choices are queued in APNAP order and answered in whatever
 // order the players click. Strictly, CR 701.21a makes the sacrifices
 // simultaneous after all choices are made; sequential resolution is
@@ -116,28 +164,18 @@ func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID,
 // than prompted with an empty list — a mandatory sacrifice with
 // nothing to sacrifice does nothing (CR 701.21a).
 //
-// Returns 1 when a prompt was queued and 0 when it was skipped, so a
-// caller with a "if you do" rider can tell the two apart.
+// Returns 1 when a prompt was queued and 0 when it was skipped.
+//
+// THE FIRE-AND-FORGET FORM. The 1 says a QUESTION went up, not that
+// anything was sacrificed — a caller with an "if you do" rider is
+// asking the wrong thing and wants
+// PlayerSacrificesThenForEffect (#1019, sacrifice_run.go).
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {
-	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Eliminated {
+	if !g.queueSacrificePromptLocked(source, playerID, spec, reason, uuid.Nil) {
 		return 0
 	}
-	options := g.sacrificeCandidatesLocked(playerID, spec)
-	if len(options) == 0 {
-		return 0
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:             PendingChoiceSacrifice,
-		Chooser:          playerID,
-		FromPlayer:       playerID,
-		Count:            1,
-		Source:           source,
-		Reason:           reason,
-		SacrificeOptions: options,
-	})
 	return 1
 }
 

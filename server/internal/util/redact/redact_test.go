@@ -22,6 +22,18 @@ func TestSecretsRedacts(t *testing.T) {
 			"connected to wss://cmd.example/ws?game=g-1&token=REDACTED&player=p-9",
 		},
 		{"token last", "/games/1/replay?token=" + token, "/games/1/replay?token=REDACTED"},
+		{
+			// auth.HMACAuthenticator's shape (#517): the dots must not
+			// end the value, or the signed payload and signature leak.
+			"signed session token",
+			"/ws?token=v1.eyJyIjoicGxheWVyIn0.Zk3q9_Rb-2xVn8LmPq4tYw7cHs1dJe6uKo0aBf5gTiA&game=g-1",
+			"/ws?token=REDACTED&game=g-1",
+		},
+		{
+			"signed session bearer",
+			"Authorization: Bearer v1.eyJyIjoicGxheWVyIn0.Zk3q9_Rb-2xVn8LmPq4tYw7cHs1dJe6uKo0aBf5gTiA",
+			"Authorization: Bearer REDACTED",
+		},
 		{"token before fragment", "/ws?token=" + token + "#frag", "/ws?token=REDACTED#frag"},
 		{
 			"invite t in a hash route",

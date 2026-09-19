@@ -106,12 +106,13 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 		return nil
 	}
 	bits := r.Restrictions
-	ctx.Game.RegisterTurnScopedStaticForEffect(game.StaticAbility{
+	ctx.Game.RegisterScopedStaticForEffect(game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		AppliesTo: set.appliesTo(),
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= bits
 		},
-	}, ctx.Source(), eotLabel(r.Label, "restriction until end of turn"))
+	}, ctx.Source(), eotLabel(r.Label, "restriction until end of turn"),
+		ctx.Game.UntilEndOfTurnDuration())
 	return nil
 }

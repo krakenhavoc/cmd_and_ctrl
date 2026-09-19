@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -17,16 +18,17 @@ import (
 // arithmetic: Fencing Ace is a 1/1 double strike, Youthful Knight a 2/1
 // first strike, Grizzly Bears a 2/2.
 //
-// Two criteria depend on open engine bugs and are written as skipped
-// tests that assert the RULES outcome, so they fail loudly the day the
-// skip is removed without the fix — they never pin today's wrong
-// behaviour:
+// Two criteria were written as skipped tests asserting the RULES
+// outcome while the bugs behind them were open — they never pinned the
+// wrong behaviour, and each skip came off with its fix:
 //
 //   - #715 (a blocked attacker whose blockers are gone is treated as
-//     unblocked): acceptance criterion 2.
+//     unblocked): acceptance criterion 2. The blocked state
+//     (Game.blockedAttackers, blockers.go) fixed it; the rest of that
+//     issue's cases are blocked_state_test.go.
 //   - #702 (a first-strike multi-blocker prompt resolves after the
 //     regular pass): the ORDER half of the first-strike prompt case.
-//     Its tag half is tested now.
+//     Two real damage steps (#717) fixed it.
 //
 // #716 (keywords read after the recompute between passes) changes
 // which creatures deal damage in the regular pass, not how that damage
@@ -119,8 +121,31 @@ func declareCombat(t *testing.T, g *Game, attackers []uuid.UUID, blocks map[uuid
 		}
 	}
 	seq := lastSeq(g)
-	advanceIntoStep(t, g, StepCombatDamage)
+	advanceThroughDamageSteps(t, g)
 	return seq
+}
+
+// advanceThroughDamageSteps walks the cursor from declare_blockers
+// through both combat damage steps (CR 510.4, #717) and stops at the
+// regular one — or earlier, at whichever damage step queued a prompt
+// that blocks the table. A pending CR 510.1c assignment or CR 616
+// ordering prompt holds the cursor where it is, which is the #702
+// fix: the regular step cannot run while the first step still owes a
+// damage assignment.
+func advanceThroughDamageSteps(t *testing.T, g *Game) {
+	t.Helper()
+	for g.Turn.Step != StepCombatDamage {
+		before := g.Turn
+		if _, err := g.AdvanceStep(); err != nil {
+			if errors.Is(err, ErrChoicePending) {
+				return
+			}
+			t.Fatalf("AdvanceStep to %v: %v", StepCombatDamage, err)
+		}
+		if g.Turn == before {
+			t.Fatalf("advanceThroughDamageSteps stuck at %v", before)
+		}
+	}
 }
 
 // pendingOfKind returns the first queued choice of kind, or fails.
@@ -358,11 +383,9 @@ func TestCombatStepAssignmentPromptWithoutFirstStrikeIsUntagged(t *testing.T) {
 	}
 }
 
-// Prompt resume, first-strike pass: a 5/5 first striker blocked by two
-// 2/2s. Only the TAG is tested — the frame says first_strike and the
-// resumed damage is tagged first_strike. The order is wrong today
-// (#702: the regular pass runs before the prompt is answered), so it
-// is asserted only by the skipped test below.
+// Prompt resume, first-strike step: a 5/5 first striker blocked by two
+// 2/2s. The TAG half — the frame says first_strike and the resumed
+// damage is tagged first_strike. The ORDER half is the test below.
 func TestCombatStepFirstStrikeAssignmentPromptTag(t *testing.T) {
 	g := newActiveGame(t)
 	atk, def := g.Seats[0], g.Seats[1]
@@ -390,14 +413,15 @@ func TestCombatStepFirstStrikeAssignmentPromptTag(t *testing.T) {
 	})
 }
 
-// The ORDER half of the first-strike prompt case. By CR 510.4 the
-// first-strike step's damage is all dealt before the regular step
-// begins, so every first_strike event precedes every regular one. Today
-// the regular pass runs while the prompt is pending and the attacker's
-// first-strike damage lands after the blockers' regular damage.
+// The ORDER half of the first-strike prompt case, and the #702
+// regression. By CR 510.4 the first-strike step's damage is all dealt
+// before the regular step begins, so every first_strike event precedes
+// every regular one. The engine used to run both passes back to back
+// inside one cursor step, so the regular pass ran while the assignment
+// prompt was still open and the attacker could die before assigning.
+// Now the passes are two steps and the prompt blocks the table, so the
+// cursor cannot leave the first one until it is answered.
 func TestCombatStepFirstStrikeAssignmentPromptOrder(t *testing.T) {
-	t.Skip("#702: a first-strike multi-blocker assignment prompt resolves after the regular pass; " +
-		"remove this skip with the fix")
 	g := newActiveGame(t)
 	atk, def := g.Seats[0], g.Seats[1]
 	striker := pushCombatant(t, g, atk, "First Striker", 5, 5, "first strike")
@@ -405,6 +429,14 @@ func TestCombatStepFirstStrikeAssignmentPromptOrder(t *testing.T) {
 	bear2 := pushCombatant(t, g, def, "Bear Two", 3, 3)
 	before := declareCombat(t, g, []uuid.UUID{striker}, map[uuid.UUID]uuid.UUID{bear1: striker, bear2: striker})
 
+	// The cursor is held in the first combat damage step by the
+	// unanswered prompt — the regular step has not begun.
+	if g.Turn.Step != StepFirstStrikeDamage {
+		t.Fatalf("step with the assignment prompt open: got %q, want %q", g.Turn.Step, StepFirstStrikeDamage)
+	}
+	if got := combatDamageSince(g, before); len(got) != 0 {
+		t.Fatalf("damage landed before the assignment prompt was answered: %+v", got)
+	}
 	prompt := pendingOfKind(t, g, PendingChoiceDamageAssignment)
 	if err := g.ResolveDamageAssignment(prompt.ID, atk.ID, []DamageAssignmentEntry{
 		{BlockerID: bear1, Amount: 2},
@@ -412,8 +444,9 @@ func TestCombatStepFirstStrikeAssignmentPromptOrder(t *testing.T) {
 	}, 0); err != nil {
 		t.Fatalf("ResolveDamageAssignment: %v", err)
 	}
+	advanceThroughDamageSteps(t, g)
 	// Both blockers die to first-strike damage and never deal regular
-	// damage, so the whole step is the two first_strike events.
+	// damage, so the whole combat is the two first_strike events.
 	assertCombatDamage(t, combatDamageSince(g, before), []wantDamage{
 		{striker, bear1, 2, CombatStepFirstStrike},
 		{striker, bear2, 3, CombatStepFirstStrike},
@@ -423,12 +456,9 @@ func TestCombatStepFirstStrikeAssignmentPromptOrder(t *testing.T) {
 // Acceptance criterion 2 — double strike, the blocker dies in the first
 // step. By the rules (CR 509.1h, 510.1c) Ace is still blocked and deals
 // no regular damage: one first_strike event, the defender stays at 40.
-// Today the engine treats Ace as unblocked in the regular pass and hits
-// the defender for 1 (#715). ADR 0053 says sub-PR 1 does not pin that
-// wrong behaviour, so this asserts the rules outcome behind a skip.
+// The engine used to treat Ace as unblocked in the regular pass and hit
+// the defender for 1 (#715); the skip came off with that fix.
 func TestCombatStepDoubleStrikeBlockerDiesInFirstStep(t *testing.T) {
-	t.Skip("#715: a blocked attacker whose blockers are all gone is treated as unblocked; " +
-		"remove this skip with the fix")
 	g := newActiveGame(t)
 	ace := pushCombatant(t, g, g.Seats[0], "Fencing Ace", 1, 1, "double strike")
 	chump := pushCombatant(t, g, g.Seats[1], "Vanilla 1/1", 1, 1)
@@ -474,11 +504,12 @@ func TestCombatStepPreFieldAssignmentPromptResumesUntagged(t *testing.T) {
 	})
 }
 
-// A CR 616 ordering prompt in the first-strike pass: two replacements
+// A CR 616 ordering prompt in the first-strike step: two replacements
 // apply to the first striker's damage, so it pauses, and it lands when
-// the order is answered — after the regular pass has already run. The
-// tag rides the damage tail on the paused event, so it comes back
-// first_strike, not whatever step is current when it lands.
+// the order is answered. The prompt blocks the table, so the cursor is
+// still in the first-strike step when the damage lands — and the tag
+// rides the damage tail on the paused event either way, so it comes
+// back first_strike and not whatever step is current.
 func TestCombatStepReplacementOrderPromptKeepsFirstStrike(t *testing.T) {
 	g := newActiveGame(t)
 	atk, def := g.Seats[0], g.Seats[1]

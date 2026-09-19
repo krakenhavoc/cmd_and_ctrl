@@ -85,6 +85,36 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //	the cursor: the answer spends from the chooser's pool or runs
 //	OnDecline, neither of which reads the step.
 //
+// That row is about the KIND, and it is not the whole answer for a
+// PROMPT of that kind. Two narrowings sit on top of it, both read by
+// Game.ChoicePromptBlocksTable below, and neither able to loosen the
+// gate for anything:
+//
+//   - #951: a prompt whose decline counters an object still on the
+//     stack blocks while that object is there
+//     (PendingChoice.GuardsStackItem, counter_unless_paid.go). Ward
+//     borrows Rhystic Study's prompt and none of §6's reasoning
+//     survives the move: resolving the guarded spell ANSWERS the
+//     question by doing it, for free and against the payer.
+//   - #997: a prompt the payer owes before the step they are standing
+//     in can end blocks while the cursor is still there
+//     (PendingChoice.OwedInStep, upkeep_pay_unless.go). Stasis, Pact
+//     of Negation and every cumulative upkeep ask the ACTIVE player,
+//     during their OWN upkeep, about whether a permanent — or the
+//     player — is still in the game for the rest of the turn. CR
+//     117.3 does not pass priority on with a required action
+//     outstanding and CR 500.4 does not end the step until it is
+//     taken.
+//
+// Both are DERIVED by the engine from what the prompt is about rather
+// than declared by each card. #951 earned that: six
+// counter-unless-pays cards shipped before it and all six were wrong
+// the same way. #997 earned it twice over — #567 answered the upkeep
+// question with a per-card "please block" boolean, and the two cards
+// written after it with the same sentence printed on them (Stasis,
+// Pact of Negation) both missed the switch. A card says what its text
+// says; the engine works out what that means for the cursor.
+//
 // mana_pick is deliberately NOT one of them, though it looks like a
 // candidate. The engine does not treat it as a background decision:
 // legal offers nothing else while it is open, and the auto-tapper
@@ -105,7 +135,12 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 // one answer to "does this prompt stop the table" and no second list
 // to drift from.
 var choiceGateDecisions = map[PendingChoiceKind]bool{
-	// The ADR 0018 §6 allowlist, entire.
+	// The ADR 0018 §6 allowlist, entire — and a statement about the
+	// KIND only. A pay_unless prompt still blocks when its decline
+	// counters an object on the stack (GuardsStackItem, #951) or when
+	// the payer owes it before the current step can end (OwedInStep,
+	// #997); see the doc block above, counter_unless_paid.go and
+	// upkeep_pay_unless.go.
 	PendingChoicePayUnless: false,
 
 	// Everything else stops the table.
@@ -116,22 +151,34 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceDamageAssignment:    true,
 	PendingChoiceTriggerPrompt:       true,
 	PendingChoiceTriggerOrder:        true,
-	PendingChoicePickTarget:          true,
-	PendingChoiceSacrifice:           true,
-	PendingChoiceScry:                true,
-	PendingChoiceSurveil:             true,
-	PendingChoiceLookAtTop:           true,
-	PendingChoiceSearchLibrary:       true,
-	PendingChoiceMayCast:             true,
-	PendingChoiceCoinCall:            true,
-	PendingChoiceChooseProtector:     true,
-	PendingChoiceLegendRule:          true,
-	PendingChoiceColor:               true,
-	PendingChoiceConfirm:             true,
-	PendingChoiceChooseCards:         true,
-	PendingChoiceEntryPayLife:        true,
-	PendingChoiceCopyTarget:          true,
-	PendingChoiceCreatureType:        true,
+	// #764 CR 603.3c: a trigger's mode is chosen as it is put on the
+	// stack. Nothing may happen until it is — the ability is not on
+	// the stack yet, and the targets it asks for next depend on the
+	// answer.
+	PendingChoiceModePick: true,
+
+	PendingChoicePickTarget:      true,
+	PendingChoiceSacrifice:       true,
+	PendingChoiceScry:            true,
+	PendingChoiceSurveil:         true,
+	PendingChoiceLookAtTop:       true,
+	PendingChoiceSearchLibrary:   true,
+	PendingChoiceMayCast:         true,
+	PendingChoiceCoinCall:        true,
+	PendingChoiceChooseProtector: true,
+	PendingChoiceLegendRule:      true,
+	PendingChoiceColor:           true,
+	PendingChoiceConfirm:         true,
+	PendingChoiceChooseCards:     true,
+	PendingChoiceEntryPayLife:    true,
+	PendingChoiceCopyTarget:      true,
+	PendingChoiceCreatureType:    true,
+	// #568. "Choose one of the following", addressed to any seat —
+	// Torment of Hailfire's three-way question, and the second half
+	// of a Fact or Fiction pile split. It blocks for the reason every
+	// resolution-time prompt does: the effect that asked it is paused
+	// mid-resolution and its continuation is the rest of the card.
+	PendingChoiceOptionPick: true,
 	// #804, CR 726. The one kind whose blocking is worth arguing
 	// about, since ADR 0055 §4 was careful that the loop breaker
 	// refuse no passes. It blocks: the shortcut is proposed while the
@@ -141,6 +188,13 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// doing. The prompt is never queued to a seat that has left, so
 	// blocking cannot wedge a table (queueLoopShortcutLocked).
 	PendingChoiceLoopShortcut: true,
+	// #826, CR 502.3. The untap step's own determination. It blocks
+	// for the reason the step it pauses grants nobody priority: CR
+	// 502.3 happens before anything else in the turn, and a table that
+	// could walk past the question would be answering it by doing.
+	// (Deny-by-default would have said the same; the row is here
+	// because the gate demands every kind be classified out loud.)
+	PendingChoiceUntapChoice: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this
@@ -159,6 +213,40 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 func ChoiceBlocksTable(kind PendingChoiceKind) bool {
 	blocks, ok := choiceGateDecisions[kind]
 	return !ok || blocks
+}
+
+// ChoicePromptBlocksTable is ChoiceBlocksTable for one live prompt:
+// the kind's answer, unless the prompt is guarding an object still on
+// the stack (#951) or is owed before the current step can end (#997).
+//
+// Everything that asks "does this stop the table" about an OUTSTANDING
+// choice goes through here (blockingChoiceLocked below, and
+// legal.anyBlockingChoiceOpen), so the per-prompt narrowings cannot
+// drift from the kind's answer the way #794's second list did.
+// ChoiceBlocksTable stays the answer for a KIND, which is what the
+// classification gate tests and what an author reasons about.
+//
+// Both narrowings are ONE-WAY: they can only make a prompt block, so
+// the deny-by-default direction is intact and a kind classified
+// `true` is unaffected by anything either of them says.
+//
+// A method on *Game since #951, because both narrowings are questions
+// about the BOARD — is the guarded object still on the stack, is the
+// cursor still in the step that asked? — and the answers have to be
+// re-read rather than frozen at the moment the prompt was queued.
+// That is also what stops either of them wedging a table: a halt that
+// cannot outlive the thing it is about cannot outlive its answer
+// either. Keeping them inside this one predicate is the whole of
+// #794's lesson: the engine gate and `internal/legal` must not each
+// work it out.
+func (g *Game) ChoicePromptBlocksTable(c *PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	if ChoiceBlocksTable(c.Kind) {
+		return true
+	}
+	return g.choiceGuardsALiveStackItem(c) || g.choiceOwedBeforeTheStepEnds(c)
 }
 
 // ClassifiedChoiceKinds lists every kind the gate has an explicit
@@ -182,7 +270,7 @@ func (g *Game) blockingChoiceLocked() *PendingChoice {
 		if c == nil {
 			continue
 		}
-		if !ChoiceBlocksTable(c.Kind) {
+		if !g.ChoicePromptBlocksTable(c) {
 			continue
 		}
 		return c

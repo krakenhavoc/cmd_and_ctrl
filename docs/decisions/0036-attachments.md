@@ -668,6 +668,25 @@ not price restrictions, so zeroing them would value them at nothing. The fix bel
 scoping, for example to attachments on their controller's own
 creatures.)*
 
+*(Amendment 2026-09-18 — the hand-off is closed,
+[#727](https://github.com/krakenhavoc/cmd_and_ctrl/issues/727), S47.
+"An attached permanent should score zero on its own line" is now
+"an attached permanent is priced ONCE, by its ROLE", and the role is
+one classification — `heuristic.AttachmentRole` in
+`aiseat/heuristic/score.go` — with four answers: **buff** (Equipment
+and `+N/+N` Auras: the boost is already on the host's post-layer P/T,
+so the attachment keeps only a reattach residual), **restriction**
+(Pacifism, Arrest: worth the host's neutralised value, credited to the
+Aura's controller and debited from the host's through a new restriction
+discount in `CreatureValue`), **control** (Mind Control, Control Magic:
+nothing extra — layer 2 already moved the creature onto the thief's
+ledger) and **curse** (attached to a player: its own permanent, as
+before). The role is derived from what the attachment's statics have
+already DONE to its host — the host's controller, owner and
+`restrictions` on the wire — and never from a card name, because a
+policy may not hold a `*game.Game` to read a `CardDef` (ADR 0033 §3).
+Documented in [docs/bot.md](../bot.md#an-attached-permanent-is-priced-once-by-its-role-727).)*
+
 **Beyond bots.** ~30 cards per #76, the top-100 triage's fourth
 build-order item cleared, the `Enchantment — Aura` type made functional
 for the first time, and the last structural prerequisite for Mind
@@ -873,3 +892,84 @@ Brilliant Restoration and Carmen still do not let you choose a host;
 their Aura now goes back to the graveyard it came from instead of
 sitting on the battlefield forever. Still weaker than printed, never
 stronger, and their caveats say so.
+
+## Amendment (2026-09-19, #812): decision 19 — an attach that cannot happen does nothing, and which OBJECT the ability came from
+
+A catalog soak on the #773/#774 merge trees (seed 2026091702) equipped
+a Loxodon Warhammer and sacrificed it to Krark-Clan Ironworks with the
+equip still on the stack. The resolution logged
+`EventEffectError: game: card instance not found in zone`. The soak
+fails on any effect error, so a deal that reproduced it failed the
+nightly run — but the log line was the smaller problem. The rule was
+wrong.
+
+### The rule
+
+CR 608.2 resolves an ability whether or not its source is still around,
+and the equip's target was still a creature its controller controlled,
+so the ability is not countered by game rules. CR 301.5c says only a
+permanent can be attached to anything, and CR 701.3b says an attach
+that cannot happen simply doesn't happen. The printed outcome is:
+**the ability resolves and does nothing.** Not an error.
+
+And CR 400.7 adds the case a presence check gets wrong. `Card.InstanceID`
+survives a zone change, so a Warhammer bounced to hand and replayed
+before the equip resolves is findable at the same ID and is a **new
+object with no memory of the ability**. It must not be attached either.
+
+### The decision
+
+Two choke points, one rule each, and no per-card check anywhere.
+
+**`Game.AttachForEffect` is CR 701.3b.** Its three "cannot happen"
+branches — the attachment is not on the battlefield, the host is not
+there, the two are the same permanent — return `nil` after emitting
+`EventAttachSkipped`, whose `Label` carries which one it was. They used
+to return `ErrCardNotFound` / `ErrInvalidParam`, on the grounds
+(decision 12's neighbourhood) that the SBA would tear the link down
+anyway and failing loudly is easier to debug. That was right about
+debuggability and wrong about the rules; the event keeps the
+breadcrumb. A `TargetRef` naming neither a card nor a player is still
+`ErrInvalidParam` — that is a malformed call, not a game situation.
+This branch is reached by every attach caller, not just equip: Armored
+Skyhunter's "you may attach it to a creature you control" asks a prompt
+the Equipment can leave before the answer arrives.
+
+**`Game.AttachSourceForEffect(item, host)` is the CR 400.7 half**, and
+it is the door for every ability that attaches its own source — equip
+today, fortify (CR 702.67a) and reconfigure (CR 702.151a) when either
+reaches the catalog; neither is in the tree as of this amendment.
+`effects.AttachSourceToTarget` (`EquipAbility`'s effect) is its only
+caller, so the whole Equipment catalog goes through it with no card
+file changed.
+
+**`StackItem.SourceEpoch`** is how it knows. `Card.ObjectEpoch` (#936,
+CR 400.7) already counted zone changes; the announce paths that build a
+`StackItemActivated` item — the catalog activation and the manual
+`ActivateAbility`, which are the only two — now stamp the source's
+reading of it, taken AFTER the costs are paid so a sacrifice cost that
+ended the object says so. `AbilitySourceGoneForEffect` compares it
+against the live card. Carried by `cloneStackItem` and by the snapshot
+(classified `carried` in `snapshot_drift_test.go`): the epoch is a
+reading of a card that has since moved, so nothing in a restored board
+could recompute it.
+
+### Why the kind, not a sentinel
+
+`AbilitySourceGoneForEffect` asks the epoch question only of a
+`StackItemActivated`. Zero is a real epoch — a token created straight
+onto the battlefield has never changed zones — so treating zero as
+"unstamped" would quietly disable the check for tokens and enable a
+wrong one for every trigger. Gating on the kind names exactly the set
+of items whose announce path stamps the field. A trigger or a spell
+reaching the same primitive gets the plain "is it still on the
+battlefield" test, which is what every caller had before.
+
+### What this is NOT
+
+It is **not** "an ability whose source left does nothing". CR 608.2 is
+explicit that most abilities carry on from last known information, and
+a Goblin Bombardment that was sacrificed in response still deals its
+damage. `AbilitySourceGoneForEffect` is documented as being for the
+minority whose effect cannot be performed without the source as a
+permanent, and attaching it is the whole of that set today.

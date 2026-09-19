@@ -40,27 +40,25 @@ import (
 // because that is the only thing that tells the two implementations
 // apart.
 //
-// # Declared limit: only a PLAYED shockland gets the choice
+// # A FETCHED shockland gets the choice too (#478)
 //
-// The prompt is offered on the land-play path (from hand, or from an
-// impulse exile). A shockland put onto the battlefield by an EFFECT
-// — a fetchland cracking for it, a Farseek — now runs this same
-// replacement (#263 routed the library-search path through the CR
-// 614 pipeline), but that entry site is not entryResumable, so the
-// pipeline cannot pause there to ask. It takes the un-paid branch
-// and the land ENTERS TAPPED, with no payment offered.
+// The prompt was once offered only on the land-play path (from hand,
+// or from an impulse exile). A shockland put onto the battlefield by
+// an EFFECT — a fetchland cracking for it, a Farseek, a reanimation,
+// a blink — ran this same replacement (#263 routed those paths
+// through the CR 614 pipeline) but could not PAUSE to ask, so it took
+// the un-paid branch and entered tapped.
 //
-// That is weaker than printed and never stronger, and it is a strict
-// improvement on what came before, where a fetched shockland ignored
-// its entry clause entirely and arrived untapped for free. Closing
-// it the rest of the way needs the search's own continuation (the
-// shuffle, and "then untap that land") to survive an entry prompt —
-// see the note on searchEnterBattlefieldLocked.
+// Those entry sites are entryResumable now: what the effect still
+// owed (the search's shuffle, EventSearchLibrary and its `Then`; the
+// exile return's new object identity) rides across the pause on
+// ReplacementEvent.entryTail, so the payment is offered and the fetch
+// finishes when it is answered. See entry_tail.go.
 //
-// Where the pipeline DOES run but the entry site has no resume for
-// a paused prompt, the engine takes the un-paid branch and the land
-// enters tapped: weaker than printed, never stronger. See
-// ReplacementEvent.entryResumable.
+// Where the pipeline DOES run but the entry site still has no resume
+// — putOntoBattlefieldFromZoneLocked's batch is the last one — the
+// engine takes the un-paid branch and the land enters tapped: weaker
+// than printed, never stronger. See ReplacementEvent.entryResumable.
 
 // EntersTappedUnlessYouPayLife is "as this permanent enters, you may
 // pay N life. If you don't, it enters tapped." The prompt is queued

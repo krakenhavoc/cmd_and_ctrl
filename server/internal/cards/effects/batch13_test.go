@@ -505,25 +505,24 @@ func TestB13GoldveinHydraEntersWithXAndPaysOutTappedTreasures(t *testing.T) {
 	}
 }
 
-// X=0 pins the engine's placeholder convention rather than the
-// printed outcome: a printed 0/0 with no counters is skipped by the
-// toughness state check (Card.Power's demo-seed rule), so the Hydra
-// stays as a 0/0 instead of dying at once. When it does die it makes
-// nothing. The card comment records the gap; this test flips the day
-// the convention goes.
+// X=0 is a legal announcement (CR 601.2b) and the printed outcome is
+// that nothing survives it: the Hydra enters with no counters as the
+// 0/0 it prints, the toughness check puts it into its owner's
+// graveyard (CR 704.5f), and a 0-power Hydra dying makes no
+// Treasures. Cast through a printing, because that is what tells the
+// engine the 0 is printed rather than the importer's stand-in —
+// printed_zero_body_test.go has the rest of the family and #691 the
+// rule.
 func TestB13GoldveinHydraWithXZeroIsAZeroThatPaysNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	hydra := b12PlayFromHand(t, g, "Goldvein Hydra", "Creature — Hydra", b13GoldveinHydraOracle, game.CastSpellParams{XValue: 0})
-	passPriorityAroundTable(t, g)
-	if !g.Battlefield.Contains(hydra) {
-		t.Fatal("the engine keeps a printed 0/0 with no counters — see Card.Power")
+	hydra := castPrinted(t, g, "Goldvein Hydra", "Creature — Hydra", b13GoldveinHydraOracle, game.CastSpellParams{XValue: 0})
+	if g.Battlefield.Contains(hydra) {
+		t.Fatal("a Goldvein Hydra cast for X=0 stayed on the battlefield — CR 704.5f")
 	}
-	if got := b12Counter(t, g, hydra, "+1/+1"); got != 0 {
-		t.Fatalf("X=0: %d counters, want 0", got)
+	if !me.Graveyard.Contains(hydra) {
+		t.Error("it did not reach its owner's graveyard")
 	}
-	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(hydra) })
-	passPriorityAroundTable(t, g)
 	if n := countBattlefieldNamed(g, me.ID, "Treasure"); n != 0 {
 		t.Errorf("power 0 makes no Treasures, got %d", n)
 	}
@@ -1140,6 +1139,13 @@ func TestB13WaveGoodbyeReturnsEveryCreatureWithoutACounter(t *testing.T) {
 
 // --- Drana, Liberator of Malakir -----------------------------------
 
+// Drana has FIRST STRIKE, so this combat has two damage steps
+// (CR 510.4) and her trigger belongs to the first one. Since #914 the
+// cursor cannot leave a step owing what is on its stack (CR 117.4),
+// so the counters land in the first-strike step — which is the whole
+// point of the card, and is why the Bear that follows her in hits for
+// 3 rather than 2: 2 + 3 = 5. Before #914 the skip-ahead button
+// walked past her trigger and the Bear dealt 2.
 func TestB13DranaGrowsEveryAttackerWhenSheConnects(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -1154,8 +1160,8 @@ func TestB13DranaGrowsEveryAttackerWhenSheConnects(t *testing.T) {
 	before := opp.Life
 	attackWith(t, g, opp.ID, drana, bear)
 	passPriorityAroundTable(t, g)
-	if opp.Life != before-4 {
-		t.Errorf("opponent %d → %d, want -4", before, opp.Life)
+	if opp.Life != before-5 {
+		t.Errorf("opponent %d → %d, want -5 (her 2 first-strike, then a Bear grown to 3)", before, opp.Life)
 	}
 	for _, id := range []uuid.UUID{drana, bear} {
 		if got := b12Counter(t, g, id, "+1/+1"); got != 1 {

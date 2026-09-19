@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6052822d-47a2-4d69-a32d-40cdd600d7a9",
 		Name:         "Oona, Queen of the Fae",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   label,
@@ -60,7 +61,7 @@ func init() {
 					return nil
 				}
 				x := ctx.X()
-				ChooseColorThen(g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
+				ChooseColorThen(game.ColorForFilter, g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
 					func(g *game.Game, color string) error {
 						return oonaExileAndMakeFaeries(NewContext(g, item), victim, x, color)
 					})

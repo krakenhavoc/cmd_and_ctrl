@@ -15,19 +15,24 @@ package effects
 // accepts. A token's mana value is zero, so sacrificing one fetches
 // a one-drop, as printed; the fetched creature enters untapped.
 //
-// Sandbox simplification, weaker than printed (Gitaxian Probe's
-// posture): the Phyrexian symbol is charged as {G}. ParseCost records
-// {G/P} as a green requirement flagged Phyrexian, but no payment path
-// consults the flag, so the "or 2 life" option does not exist — the
-// activation costs {1}{G}, never {1} and two life. A mana-payment
-// seam, not a card file's. The spell's own {3}{G/P} is charged the
-// same way by the same seam.
+// Both Phyrexian symbols are payable with 2 life now. #787 put the
+// announce on the cast (CastSpellParams.PhyrexianLife, CR 107.4c) and
+// #917 gave the ACTIVATION the same one
+// (ActivateAbilityParams.PhyrexianLife, CR 602.2b) through the same
+// strike-and-pay helper, so "{1}{G/P}" really is {1} and two life for
+// a player without green. Nothing about it lives in this file, which
+// is the point: a Phyrexian symbol is the cost engine's business, not
+// a card's.
+//
+// Both halves are reachable from the board since #916: the cast
+// prompt and the activation menu both offer "pay N with life", so a
+// player with no green casts this for {3} and two life and activates
+// it for {1} and two more.
 func init() {
 	Register(Spec{
 		OracleID:     "f8b9dd54-0837-47f4-ad14-7a0322d46d5f",
 		Name:         "Birthing Pod",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Phyrexian mana isn't supported — the {G/P} in the cost and in the activation must be paid with {G}, not with 2 life."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{G/P}, {T}, Sacrifice a creature: Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put it onto the battlefield, then shuffle.",
 			Cost:         Plus(ManaCost("{1}{G/P}"), TapCost(), SacrificeACreature()),

@@ -171,7 +171,14 @@ func TestMaskOfMemoryDrawsTwoAndDiscardsOne(t *testing.T) {
 	dealCombatDamageToPlayer(g, bear, opp.ID, 2)
 	passPriorityAroundTable(t, g)
 
-	// The draw lands as the trigger resolves; the linked discard is a
+	// "You MAY draw two cards" is asked at resolution (#796) before
+	// anything is drawn.
+	if got := me.Hand.Size(); got != before {
+		t.Errorf("hand %d -> %d, want no draw before the question is answered", before, got)
+	}
+	answerMayChoice(t, g, me.ID, true)
+
+	// The draw lands on the accept branch; the linked discard is a
 	// prompt over the post-draw hand and the controller picks (#651).
 	if got := me.Hand.Size(); got != before+2 {
 		t.Errorf("hand %d -> %d, want +2 before the discard is answered", before, got)
@@ -227,10 +234,10 @@ func TestWhispersilkCloakGrantsShroudToBothSides(t *testing.T) {
 			if c.InstanceID != bear {
 				continue
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, me.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(me.ID)) {
 				t.Error("shroud stops the controller too (CR 702.18a)")
 			}
-			if game.CanBeTargetedBy(c, game.ZoneBattlefield, opp.ID) {
+			if game.CanBeTargetedBy(c, game.ZoneBattlefield, game.SourceChooser(opp.ID)) {
 				t.Error("shroud stops an opponent")
 			}
 		}
@@ -418,5 +425,34 @@ func TestAnUnequippedEquipmentStaysOnTheBattlefield(t *testing.T) {
 
 	if !g.Battlefield.Contains(collar) {
 		t.Error("CR 704.5n has no \"attached to nothing\" clause")
+	}
+}
+
+// TestMaskOfMemoryCanDeclineTheDraw is the #796 half: the optional
+// draw is a real question, and declining draws nothing and discards
+// nothing — the discard is LINKED to the draw (CR 607.2), so a branch
+// that skipped the draw must not still take the card.
+func TestMaskOfMemoryCanDeclineTheDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	bear := seedBear(g, me.ID)
+	mask := seedEquipment(g, me.ID, "Mask of Memory", maskOfMemoryOracle)
+	equipTo(t, g, me.ID, mask, bear)
+	before, graves := me.Hand.Size(), me.Graveyard.Size()
+
+	dealCombatDamageToPlayer(g, bear, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+
+	if me.Hand.Size() != before {
+		t.Errorf("hand %d -> %d, want unchanged on the decline", before, me.Hand.Size())
+	}
+	if me.Graveyard.Size() != graves {
+		t.Error("the discard is linked to the draw — declining discards nothing")
+	}
+	if discardOwed(g, me.ID) != 0 {
+		t.Error("declining owes no discard")
 	}
 }

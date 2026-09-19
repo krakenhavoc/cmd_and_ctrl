@@ -180,7 +180,7 @@ func TestIdentityManaAddsNothingWithoutAnIdentity(t *testing.T) {
 			t.Run("the executor leaves it untapped", func(t *testing.T) {
 				g, p, tower := setup(t)
 				g.WithWriteLock(func() {
-					g.materializePlanLocked(p, []uuid.UUID{tower}, costFor(t, "{1}"))
+					g.materializePlanLocked(p, tapPlan{{CardID: tower}}, costFor(t, "{1}"))
 				})
 				if findBattlefieldCard(g, tower).Tapped {
 					t.Error("the auto-tapper tapped a source that adds no mana")

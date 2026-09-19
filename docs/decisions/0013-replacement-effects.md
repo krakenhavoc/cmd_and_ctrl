@@ -6,6 +6,7 @@
 **Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
+**Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
 
 ## Context
 
@@ -1219,6 +1220,1426 @@ contract is §5k's and `paused_exile_continuations_test.go` pins it on
 the card: rewind into the open prompt, answer the other way, and the
 board follows that answer.
 
+### 5n. Amendment, 2026-09-18: a tuck waits for the CR 903.9 answer
+
+*Amendment, 2026-09-18, branch `fix/783-478-tuck-and-fetch-pause`.
+Closes [#783](https://github.com/krakenhavoc/cmd_and_ctrl/issues/783),
+filed while reviewing PR #773.*
+
+A library is a CR 903.9 destination. §5f made a tuck pausable and §5m
+made the exile's callers wait; the tuck's callers were still writing the
+next instruction on the next line, because `TuckToLibraryForEffect`
+returns `nil` whether the card moved or a prompt was queued. Three
+catalog cards read straight past the question.
+
+**1. Chaos Warp, and CR 608.2c.** "The owner of target permanent
+shuffles it into their library, then reveals the top card of their
+library. If it's a permanent card, they put it onto the battlefield."
+The instructions run in order, and the shuffle-in cannot be finished
+while it is still a question. The old code shuffled and revealed with
+the commander still on the battlefield; an owner who then declined had
+their commander land on **top** of the already-shuffled library rather
+than shuffled into it. That was the card's declared caveat and the only
+reason it was not `full`. The shuffle and the reveal are now the tuck's
+continuation, and the answer is deliberately **ignored**: the shuffle is
+one sentence about the library, not an "if you do", so a commander that
+goes to the command zone instead still leaves its owner shuffling and
+revealing. Chaos Warp is `full`.
+
+**2. The God-Eternals, and a positioned landing.** "Put it into its
+owner's library third from the top" was a tuck to the TOP followed by a
+remove-and-reinsert on the next line. With the prompt open the card was
+still in the graveyard or in exile, so the reinsert's `Remove` returned
+`ErrCardNotFound` and the trigger logged an `EventEffectError`; when the
+owner then declined, the God-Eternal landed on top. God-Eternals are
+commonly commanders, so this was a normal path rather than a corner.
+`TuckToLibraryAtDepthForEffect` already existed (§5f's `zoneRoute.Depth`
+rides the route and is applied against the SETTLED destination);
+`b22TuckThirdFromTop` simply predated it. The reposition is now a
+**positioned landing** — the card is placed once, where the card says —
+and no continuation is needed, because nothing follows the tuck.
+
+**3. Aetherspouts counts what landed.** Each owner's "top or bottom for
+each" is asked as a scry over the cards that reached their library, and
+the count included an attacking commander whose tuck had merely PAUSED.
+The owner scried a library card they had no right to look at, and the
+commander landed on top afterwards, never ordered. The scry is now the
+batch's continuation over the LANDED list — CR 400.7's reading, §5k's.
+
+**4. Sylvan Library's chain.** The put-back leg tucked and then asked
+the next card's question on the next line, so a drawn commander put back
+was asked about the command zone while the second "pay 4 life or put it
+back" was already on the table. The next link now hangs off the tuck's
+continuation, for the same reason the first link hangs off the answer
+before it.
+
+**5. One route template, two halves.** Rather than a fifth copy of the
+sequencing, the tuck is a `zoneRoute` template beside `destroyRoute`,
+`exileRoute`, `bounceRoute` and `millRoute` (§5k, §5l), with `TuckOptions`
+naming the position (top, bottom, Nth from the top). Both halves are
+built from it: `TuckCardsToLibraryThenForEffect` /
+`TuckToLibraryThenForEffect` sequence through `routeAllThenLocked`, and
+the fire-and-forget `TuckToLibraryForEffect` /
+`TuckToLibraryAtDepthForEffect` keep their signatures and their single
+`routeCardToZoneLocked` call. The single-card `Then` form is a wrapper
+over the batch, exactly as `ExileCardThenForEffect` is (#870).
+
+**6. What was deliberately NOT converted.** Sensei's Divining Top
+("draw a card, then put this artifact on top of its owner's library")
+and Mistveil Plains — in both the tuck is the LAST instruction, so
+fire-and-forget is the right form and a pause costs nothing. Teferi,
+Hero of Dominaria was already on the at-depth entry point.
+
+**7. Nothing new is snapshotted.** The tuck rides `zoneRoute.then` and
+the `replacementResume` frame from §5g, with §5k's undo contract;
+`paused_tuck_continuation_test.go` (engine) and
+`paused_tuck_continuations_test.go` (catalog) pin it.
+
+### 5o. Amendment, 2026-09-18: an entry can pause, and the effect waits
+
+*Amendment, 2026-09-18, branch `fix/783-478-tuck-and-fetch-pause`.
+Closes [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478),
+filed by the batch 16 card agent in PR #477 and re-confirmed in the
+2026-09-14 triage sweep.*
+
+§5f gave the EXIT side a resume that finishes a move from whatever zone
+the window opened over. This is the ENTRY side's, and the bug it closes
+is worse than a missing prompt: with two entry replacements on one
+fetched permanent (Kismet plus Thalia, Heretic Cathar on a Guildgate)
+the CR 616 ordering prompt was still queued, the player still answered
+it, and **the card was still in the library afterwards**. The library was
+never shuffled either.
+
+**1. The old reasoning, and the half of it that was right.** Three
+effect-side entries — the library search, the exile return and the
+reanimation — deliberately did not set `entryResumable`, with the
+argument written out at length above `searchEnterBattlefieldLocked`:
+`executeEntryToBattlefieldLocked` can finish the MOVE, but it knows
+nothing about the search that started it, so the library would never be
+shuffled, `EventSearchLibrary` would never fire, and the `Then`
+continuation would never run — and a missing shuffle silently leaks
+library order, which is worse than a missing prompt.
+
+That is a correct account of the COST and the wrong conclusion. It
+justifies the one-replacement case, where the pipeline never pauses and
+a fetched shockland simply enters tapped with no payment offered
+(weaker than printed, never stronger — the posture `entryResumable`
+exists to enforce). It does not justify the two-replacement case, which
+is not a graceful degradation at all.
+
+**2. The answer is the one the exit already had.** Not "don't resume":
+carry the duties across the pause, exactly as `zoneRoute` carries the
+destination, the to-the-bottom instruction and the caller's
+continuation. `ReplacementEvent.entryTail` (`entry_tail.go`) holds what
+the effect still owes — the CR 400.7 new object an exile return mints,
+and `then`, the rest of the effect — and the same
+`replacementResume` frame every other paused event uses carries it.
+There is no second entry resume:
+`applyResolvedReplacementEventLocked`'s entry branch →
+`executeEntryToBattlefieldLocked`, which is also now the finisher the
+INLINE path runs, so a fetched permanent cannot enter differently
+depending on whether anybody happened to be asked a question.
+`enterBattlefieldThroughPipelineLocked` is the entry primitive the three
+sites share, built to `routeCardToZoneLocked`'s shape: paused means
+nothing moved, and every other exit is terminal and runs the tail.
+
+**3. What can now pause where it could not before.** A library search
+(`SearchLibraryThenForEffect` and every wrapper over it — every fetch,
+tutor and Cultivate in the catalog), `ReturnFromExileToBattlefieldForEffect`
+(every blink and flicker), and `ReturnFromGraveyardUnderControlForEffect`
+with a battlefield destination (every reanimation). In each case the
+delay is one action and it happens only when two entry replacements
+apply, or a shockland is fetched, or a Clone is reanimated. The public
+`...ForEffect` signatures are unchanged; what changed is that
+`ReturnFromExileToBattlefieldForEffect` may return `uuid.Nil` with a nil
+error meaning "not yet", which was already its cancel-and-redirect
+return, and that the line after a fetch may run one action later than
+the call. A card that reads what arrived uses `SearchLibrarySpec.Then`.
+
+**4. A multi-card fetch is sequenced.** A search may take more than one
+card, and a battlefield take is an entry, so the takes go IN SEQUENCE —
+each from the previous one's continuation, with the found list carried
+forward by value — and `finishSearchLocked` (the shuffle,
+`EventSearchLibrary`, `spec.Then`) is the base case. Skyshroud Claim's
+second Forest does not arrive over the top of the first one's open
+question. The same idiom §5g's discard batch and §5k's exit sweeps use,
+and for the same undo reason.
+
+**5. Two rules that had to move with it.**
+
+- **CR 305.2, the land drop.** The resume bumped `LandsPlayedThisTurn`
+  for "a land with no stack item", which identified the land play
+  correctly while the land play and stack resolution were the only
+  resumable entries and would have counted a fetched, reanimated or
+  blinked land now that they are not. The signal is declared on the
+  event (`landPlay`) instead of inferred.
+- **#701's stale-prompt prune.** A paused entry moves nothing, so the
+  card sits in its LIBRARY with the question open and a mill, a draw or
+  an opponent's exile can take it. `pausedZoneChangeStaleLocked` covers
+  entries now (a card already on the battlefield is not stale — the
+  resume short-circuits), and `executeEntryToBattlefieldLocked` refuses
+  to move a card that is no longer in `ev.OldZone` as the backstop for a
+  departure the prune does not run at. The abandoned entry's tail still
+  runs, so the search behind it is not stranded.
+
+**6. §5m's caveat is discharged.** It said Living Death could hang both
+of its remaining passes off one continuation "because a battlefield
+ENTRY cannot pause", and that if that changed the reanimation half would
+need a continuation of its own. It does not: the return is no longer
+DROPPED on a pause, so a creature whose entry stops for a prompt arrives
+when the answer comes and the rest of the pass carries on around it —
+the fire-and-forget posture the sacrifice pass already has. Nothing in
+Living Death reads the returns, and nothing is stranded.
+
+**7. The one entry that still cannot pause.**
+`putOntoBattlefieldFromZoneLocked` — the hand / library "put onto the
+battlefield" batch (#654, #745). It runs every card's pipeline against
+the pre-entry board and then moves them together, which is what makes
+"any number of permanent cards" a simultaneous entry (CR 614.12,
+CR 603.6a); a per-card resume would break that. A card of that batch
+whose pipeline pauses stays where it was: weaker than printed, never
+stronger, and it is now the only site `optionalReplacementResumableLocked`
+and `offerEntryLifePaymentLocked` refuse to prompt for.
+
+**8. Nothing new is snapshotted.** `entryTail` rides the
+`replacementResume` frame the census already counts
+(`ChoiceResumeFrames`), and gets its own copy in
+`cloneReplacementResume` for the reason `zoneRoute` and `damageTail` do:
+its `then` is cleared THROUGH the pointer, so sharing the struct would
+let the live game's run consume the snapshot's continuation.
+`paused_entry_continuations_test.go` pins the undo — rewind into the
+open entry prompt, answer it again, and the Guildgate arrives again.
+
+### 5p. Amendment, 2026-09-18: regeneration is an engine built-in on the destroy event
+
+**Status:** accepted (#667). Extends Decision 5 and Decision 8; no
+decision is reversed.
+
+CR 701.19 was the last thing in the sprint's "S30 tail" that the
+engine could print and not read. There was no regeneration shield, no
+"regenerate" primitive and no destruction replacement, so "it can't be
+regenerated" was cosmetic on every card that printed it — eleven of
+them in the catalog — and Asceticism plus fourteen batch skips were
+waiting on it.
+
+**1. The shield is a count on the permanent, not a scoped effect.**
+`Card.RegenerationShields int`. CR 701.19a creates a shield *for a
+permanent*; it changes no characteristic, it is consumed rather than
+expiring when it applies, and "regenerate it twice" is two shields
+that survive two destructions. A per-object integer says all of that;
+a [ADR 0063](0063-durations-and-control.md) `Duration`-scoped entry
+would have said none of it, because `ScopedStatics` is the registry
+for continuous effects and a shield is not one. It is deliberately NOT
+a counter (CR 122): nothing that reads, removes, doubles or
+proliferates counters may see it, so it does not live in
+`Card.Counters`. It clears at the cleanup step beside the marked
+damage (`sweepTurnEndLocked`) and on the way off the battlefield
+(`MoveCard`'s exit cleanup), the latter because CR 400.7 makes the
+card in the next zone a new object.
+
+**2. One built-in replacement owns the rule.**
+`regenerationShieldReplacement` in `builtin_replacements.go`, beside
+CR 903.9's, because the rule is printed in the Comprehensive Rules
+rather than on any object and the shield outlives the ability that
+made it — the Asceticism that shielded your creature may be gone
+before the shield is spent. Its `AppliesTo` is "this is a destruction,
+the destroying effect did not forbid regeneration, and the permanent
+has a shield"; its `Replace` spends one shield, cancels the move, taps
+the permanent, clears its damage through the shared
+`clearBattlefieldDamage`, removes it from combat through #921's
+`removeFromCombatLocked`, and emits `EventRegenerated`.
+
+Cancelling rather than redirecting is what makes the rest fall out
+right: nothing leaves the battlefield, so no `EventLTB` fires, no
+dies-trigger sees it, and `destroyedThisWayLocked` reads the live
+board and counts no destruction (§5i).
+
+**3. It is NOT flagged `PureCancel`, although it cancels.** That flag
+(§5a) declares that `Replace` "rewrites no other field on the event
+and changes nothing else in the game", and this one changes four
+things about the permanent. The cost of leaving it false is a CR 616
+ordering prompt in the single window where a second replacement also
+applies — a shielded COMMANDER, where CR 903.9 is also offering — and
+that prompt is the correct outcome, not a wart: CR 616.1 gives the
+affected permanent's controller the choice. Both orders reach the same
+board (regeneration first cancels the move; CR 903.9 first rewrites a
+destination the CR 616.1f re-check then lets the shield cancel
+anyway), but the question is genuinely asked.
+
+Two SHIELDS never prompt, and not through §5a's identical-window rule:
+a built-in is registered once per game, so two shields on one
+permanent are ONE applicable replacement in the gather. The second
+waits for the next destruction.
+
+**4. "Destruction" is declared on the event, never derived.**
+`ReplacementEvent.Destruction`. Every way a permanent leaves the
+battlefield goes through one exit primitive — destroy, sacrifice
+(CR 701.21a), the legend rule, an illegally attached Aura (CR 704.5m),
+zero toughness (CR 704.5f), zero loyalty (CR 704.5i), zero defense
+(CR 704.5v) — and every one of them ends in the same graveyard, so
+there was nothing a reader could have looked at to tell them apart.
+Indestructible sidesteps the question by filtering BEFORE the window
+opens; a replacement cannot. So the destroy route sets the flag
+(`destroyRoute`) and every other exit uses `battlefieldExitRoute`,
+which does not.
+
+The state-based-action sweep is the interesting caller, because ONE
+pass (CR 704.3) collects permanents doomed by five different rules,
+two of which destroy and three of which merely put into a graveyard.
+They still leave as one simultaneous event, each by its own route:
+`doomedPermanent{id, destruction}` and `routeAllLandedPerLegLocked`.
+
+**5. "Can't be regenerated" is a rider carried on the same event, and
+it does not spend the shield.** `DestroyOptions{CantBeRegenerated}` →
+`zoneRoute` → `ReplacementEvent.CantBeRegenerated` → the built-in's
+`AppliesTo` declines. Gating `AppliesTo` rather than consuming the
+shield inside `Replace` is CR 701.19d: an ignored shield stays on the
+permanent for a later destruction that does not say this. The rider is
+VARIADIC on the destroy verbs (`DestroyPermanentForEffect(id, opts
+...DestroyOptions)`) so that the ~120 existing "destroy this" call
+sites, almost all of them tests, stay exactly as they were.
+
+**6. What shipped on the cards.** Four conversions — Asceticism
+(full), Wrap in Vigor, Welding Jar, Goblin Chirurgeon — and the rider
+wired onto the eleven catalog cards that print it. Golgari Charm's
+regenerate mode still waits on the modal-clause seam (#764), which is
+the only reason it is not in that list. Totem armor (CR 702.111) and
+CR 701.19b's static "if this would be destroyed, regenerate it"
+remain unmodelled; no catalog card needs either yet.
+
+### 5q. Amendment, 2026-09-18: every graveyard arrival opens the window
+
+*Amendment, 2026-09-18, branch
+`fix/931-910-graveyard-route-and-sacrifice-batch`.
+Closes [#931](https://github.com/krakenhavoc/cmd_and_ctrl/issues/931),
+filed by the #762/#650 agent in PR #923 and named in
+[ADR 0061 §7](0061-token-creation-and-discard-are-replaceable-events.md)
+as the work that ADR deliberately did not do.*
+
+§5g folded the discard into the exit primitive and ADR 0061 gave it its
+own event kind. Two graveyard arrivals were left outside: a library
+SEARCH with a graveyard destination (`executeSearchTakeLocked` —
+Entomb, Buried Alive, Unmarked Grave, Vile Entomber, Goblin Engineer,
+Final Parting) and SURVEIL's graveyard leg (`ResolveSurveil`). Both
+moved the card with a raw `MoveCard` and emitted their own event, so
+neither opened a `RepEventMove` — and a replacement effect only ever
+runs for a mover that asks.
+
+**1. What that cost.** "If a card would be put into a graveyard from
+anywhere, exile it instead" is one sentence whose only content is the
+word *anywhere*, so a card that prints it is not writable while any
+arrival is outside the window. **Rest in Peace** and **Leyline of the
+Void** were on [#383](https://github.com/krakenhavoc/cmd_and_ctrl/issues/383)'s
+skip list for exactly that, and CR 903.9 was missing the same two
+movers: a tutored or surveilled commander was never offered the command
+zone, though a MILLED one had been since #529.
+
+**2. One template per cause, and the two causes here are not the same
+one.** The search take joins the shared batch body (`routeAllThenLocked`)
+with a sixth template, `searchRoute(player, dest)` — a function rather
+than a package var for `millRoute`'s two reasons: the destination
+belongs to the card and the Actor is the SEARCHER, who is the library's
+owner but not always the card's. It deliberately does not set `Mill`:
+CR 701.17a defines a mill from the TOP of a library by count, and no
+mill payoff may see an Entomb.
+
+Surveil takes `millRoute` itself, because that is what the engine had
+already decided surveil's graveyard leg IS: it has emitted `EventMill`
+per binned card since S22, on the stated ground that a "whenever a card
+is put into your graveyard from your library" payoff must not care which
+keyword moved it. Routing it does not revisit that call; it keeps the
+same event and adds the window underneath. (The rules are narrower —
+surveil is not a mill — and the engine's `EventMill` is the broader
+"put into a graveyard from a library" signal. That is a pre-existing
+declared reading, not a new one.)
+
+**3. The search take is the whole take, not the graveyard half.** The
+hand destination rides along, because it is the same two lines of the
+same function and leaving one of them on a raw `MoveCard` is how the
+seventh mover reintroduces the defect for free (zone_route.go's opening
+argument). The visible gain is CR 903.9 on a tutored commander going to
+a HAND, which was missing for the same reason. A BATTLEFIELD destination
+is an entry, not an exit, and `searchEnterBattlefieldLocked` still owns
+it (§5o).
+
+**4. Both can now PAUSE, so both finish from a continuation.** The
+search's `EventSearchLibrary`, its shuffle and its `Then` run from the
+batch's continuation — the shape §5o already gave the battlefield
+branch — and `found` is the batch's CR 400.7 answer: the cards that
+ARRIVED where the search aimed them. A card an "exile it instead"
+replacement took and a commander that took CR 903.9's offer are not in
+it, exactly as a fetched permanent whose entry was replaced away has not
+been "found" since §5o.
+
+Surveil's `EventSurveil` and its `scryResume` moved into the same
+continuation. `EventSurveil.Amount` has always been documented as "how
+many went to the GRAVEYARD", so it is now the landed count and says
+0 under Rest in Peace, which is what the field claims.
+
+**5. Surveil's one ordering subtlety.** A move can only be replaced out
+of the zone the card is in, so the cards the player chose to bin are put
+BACK on top of the library — above the ones they kept — and then routed
+out of it. Once they have left, the kept cards are the top of the
+library in the chosen order, which is what the printed instruction
+means. The one visible consequence is a leg the window CANCELS
+outright: that card stays on top of the library rather than under the
+kept ones. The rules name no position for a move that never happened,
+and the alternative (deciding a position for it) would be inventing one.
+
+**6. The proof, and what it says about the rest.** Rest in Peace and
+Leyline of the Void ship with it, built from one
+`GraveyardBecomesExile{OpponentsOnly}` builder in
+`cards/effects/graveyard_replacements.go` — the shape
+`DiscardBecomes{…}.Build()` set in ADR 0061. They watch both exit kinds
+(`EventZoneMove` and `EventDiscardCard`) for the reason the CR 903.9
+built-in does, and the tests are one per MOVER rather than one per card:
+search, surveil, mill, and a creature dying. Both carry the declared
+deviation Liesa and Stone of Erech already carry — a commander whose
+owner takes CR 903.9's offer goes to the command zone, because the
+built-in rewrites the destination first and this replacement then no
+longer applies. Weaker than printed, never stronger.
+
+### 5r. Amendment, 2026-09-18: a sacrifice batch, and what "sacrificed this way" counts
+
+*Amendment, 2026-09-18, branch
+`fix/931-910-graveyard-route-and-sacrifice-batch`.
+Closes [#910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/910),
+filed by the #893/#894 agent in PR #909.*
+
+§5i gave destroy a batch with a continuation, §5k gave exile and
+bounce one and folded all three onto a single body, §5l added the mill.
+Sacrifice was the verb nobody had come back for: it had only the
+per-card `sacrificePermanentLocked`, so Living Death's second pass
+fired and forgot and God-Eternal Bontu counted its draws on the line
+after the loop.
+
+**1. It is a sibling of the battlefield exit, not a new path.**
+`sacrificeRoute(source)` is built on §5p's `battlefieldExitRoute` — the
+exit WITHOUT the `Destruction` flag — plus two declared differences,
+and it takes the same mover (`routeBattlefieldExitInBatchThenLocked`)
+because a sacrifice is a battlefield exit that is not a destruction:
+CR 701.17a, "sacrificing a permanent doesn't destroy it, so
+regeneration and other effects that replace destruction can't affect
+it". Inheriting the undestructive route is what makes that true by
+construction — §5p's regeneration built-in reads `Destruction`, and a
+sacrifice never sets it.
+
+- it ANNOUNCES. `EventSacrifice` is emitted by the leg, while the
+  permanent is still on the battlefield and before the window opens
+  over its move, because a "whenever you sacrifice" payoff reads
+  characteristics (Ziatora's power, Witch's Oven's toughness) that the
+  CR 400.7 forget wipes a moment later. That has been true since S21;
+  what changed is that the announcement is now part of the LEG, so a
+  batch and a single sacrifice cannot drift.
+- "this way" is a different rule (below).
+
+`sacrificePermanentLocked` is that same leg with no batch and no
+continuation, so there is one sacrifice path in the engine and not two.
+
+**2. Sacrifice is not replaceable; its MOVE is.** Nothing replaces the
+sacrifice itself, which is why the announcement is unconditional. The
+zone change it makes is an ordinary one: the CR 614 window opens over
+it, a sacrificed commander gets the CR 903.9 prompt, and Rest in Peace
+(§5q) can rewrite where the card goes. So a leg can PAUSE, which is the
+whole reason the batch hands its answer to a continuation.
+
+**3. "Sacrificed this way" is the permanent that LEFT.**
+`sacrificedThisWayLocked` asks whether it is still on the battlefield,
+and this is where sacrifice parts company with destroy:
+
+| Where it ended up | Destroyed this way? | Sacrificed this way? |
+| --- | --- | --- |
+| a graveyard | yes | yes |
+| the command zone (CR 903.9 took the offer) | yes (§5i's declared carry-over) | yes |
+| exile, a hand, a library (a replacement rewrote it) | **no** | **yes** |
+| gone entirely (a token, CR 111.8) | no | yes |
+| still on the battlefield (cancelled, or the prompt abandoned — §5j) | no | no |
+
+The two rules are why, and the difference is not an inconsistency.
+CR 701.7a defines a DESTRUCTION by the graveyard — "move it from the
+battlefield to its owner's graveyard" is what the word means, so a
+permanent an "exile it instead" replacement took was never destroyed
+however thoroughly it left, and the command zone is destroy's one
+declared exception (§5i). CR 701.17a names the same destination, but
+the keyword action is the CONTROLLER'S MOVE off the battlefield and
+nothing replaces that: Korvold triggers on a sacrifice whose card Rest
+in Peace exiled, and so the same sacrifice is in the list. Two rules,
+two functions, one board read each; `routeLegLandedLocked` picks
+between them.
+
+**4. What the catalog reads back.** `SacrificeAllThenForEffect(source,
+ids, then)` is the batch, `SacrificeThenForEffect` its single-card
+wrapper (#870's shape, for "sacrifice a creature. If you do, …"), and
+`SacrificeAllForEffect` the fire-and-forget twin whose count is the
+legs that had left by the time it returned. Three cards converted:
+
+- **Living Death** — pass 2 is one batch and pass 3 hangs off ITS
+  continuation, so the reanimation waits for a sacrificed commander's
+  CR 903.9 answer instead of running with the question open, and the
+  creatures leave as one simultaneous exit.
+- **God-Eternal Bontu** — "then draw that many cards" is the
+  continuation's `len(sacrificed)`. It used to be a tally taken on the
+  line after the loop, which drew a card for a commander that had only
+  been ASKED about the command zone.
+- **All Is Dust** (with Slaughter the Strong on the same helper) — the
+  fire-and-forget batch, which cost it its caveat: a Blood Artist swept
+  by the spell now sees every death including its own (CR 603.10),
+  where the old loop showed it only the permanents that left after it.
+
+**5. Nothing new is snapshotted.** The batch is `routeAllThenLocked`
+with a different template, so the undo contract is the one §5k signed
+and `sacrificed_this_way_test.go` pins it the same way: rewind into the
+open CR 903.9 prompt, answer again, and the same permanents are
+sacrificed and the same list reported.
+
+### 5s. Amendment, 2026-09-18: a keyword action with a count is a replaceable event
+
+*Amendment, 2026-09-18, branch
+`feat/976-974-keyword-action-replacements-and-announce-drain`. Closes
+[#976](https://github.com/krakenhavoc/cmd_and_ctrl/issues/976). Follows
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+decision 1, which is the shape this reuses.*
+
+A keyword action is a verb the rules define once and cards print by
+name. Three of them carry a COUNT — proliferate (CR 701.34), scry
+(CR 701.22), surveil (CR 701.25) — and printed cards replace that
+count: Tekuthal, Inquiry Dominus's "if you would proliferate,
+proliferate twice instead", the Crystal Ball family's "if you would
+scry, scry that many plus one instead". None of them had a seam.
+`ProliferateForEffect` applied its choice directly and
+`lookAtTopForEffect` queued its prompt directly, so nothing in the
+CR 614 pipeline saw either, and Tekuthal shipped with the clause as a
+declared caveat (#943).
+
+**1. One event kind, opened once per INSTRUCTION.**
+`RepEventKeywordAction` carries
+
+```go
+RepEventKeywordAction:
+    KeywordAction      KeywordAction  // proliferate | scry | surveil
+    KeywordActionCount int            // the one field a replacement rewrites
+    Actor              uuid.UUID      // the player taking the action
+    Source             uuid.UUID      // the card whose effect asked
+```
+
+opened at the one entry point of each action —
+`ProliferateForEffect` (`keyword_action.go`) and
+`keywordLookAtTopForEffect` (`effect_api.go`, in front of the
+prompt-queueing body scry, surveil and look-at-top share) — and the
+action is taken only once the window settles. That is ADR 0061
+decision 1 applied to a verb instead of to a creation: "proliferate"
+is one keyword action however many permanents its choice names, so a
+doubler modifies the instruction, not the counters.
+
+ONE kind with an `Action` discriminator rather than one kind per verb.
+Everything downstream of the count is the same code for all three —
+the gather, the CR 616.1 apply-loop, #792's identical-window skip, the
+resume — so a fourth counted keyword action (investigate, explore) is
+a constant and an arm of one switch rather than a new event. The
+card-side helper narrows on the action, so a scry replacement is never
+woken by a proliferate.
+
+**2. What the count means is per action, and it is the rules' own
+distinction.** For proliferate the count is the number of TIMES the
+whole action is taken (base 1): CR 701.34 makes the choice part of the
+action, so "proliferate twice" is the action twice, not two counters.
+For scry and surveil it is the number of CARDS (base N), which is what
+"scry that many plus one" adds to. Collapsing the two into "a count of
+things" would have made "proliferate twice" place two counters on one
+permanent, which is not what the card says.
+
+**3. `EventKeywordAction` is a watch sentinel, not a logged event.**
+`ReplacementEffect.Watches` keys on `EventKind`, and the family has no
+single post-event twin: `EventScry` and `EventSurveil` fire AFTER the
+player has put the cards back (with the count this window settled on),
+and there is no proliferate event at all. So the watch key is one
+engine-internal sentinel, exactly as `EventStepTransition` has been
+since S17, and the ACTION lives on the event where a predicate can
+read it.
+
+**4. Identity and order are inherited, not declared.** Two Tekuthals
+are two objects contributing one declared effect, so #792's
+identical-window skip applies and nobody is asked to order ×2 against
+×2 — four proliferates. A doubler beside a "plus one" is two different
+declared effects and the affected player really is asked, because
+CR 616.1's orderings differ (×2 then +1 is 3 proliferates from a base
+of 1; +1 then ×2 is 4). The affected player of a keyword action is the
+player TAKING it, so `affectedPlayerForEvent` returns `Actor` rather
+than falling through to the first gathered effect's controller.
+
+**5. Both entry points can pause, and the tail carries what they
+owe.** `keywordActionTail` is the keyword-action sibling of
+`zoneRoute`, `damageTail`, `lifeTail` and `tokenTail`: the
+proliferate's chosen lists, and the scry's prompt kind and its "then"
+continuation. A paused proliferate has placed NO counters and a paused
+scry has queued NO prompt when the entry point returns — the resume
+does both, through the same `applyResolvedKeywordActionLocked` the
+unpaused path runs, so the two cannot drift apart.
+`ScryThenForEffect`'s returned count is 0 on a pause, which is the
+contract `CreateTokensForEffect`'s empty ID slice already carries and
+no production caller reads. `cloneReplacementResume` gives an undo
+snapshot its own copy of the tail and its own slices, for the reason
+the token tail gets one: the continuation is cleared through the
+pointer.
+
+A CANCELLED keyword action — a CR 614.10 null replacement, or a count
+replaced down to zero — still runs the continuation. "Scry 2, then
+draw a card" draws whether or not the scry happened, and a caller
+sequenced behind the action has to be told either way (#808's call for
+the life tail, #853's for the route, #762's for the tokens).
+
+**6. What is deliberately not here.**
+
+- **Look at the top N cards** is not a keyword action — Ponder and
+  Sensei's Divining Top print the sentence in full — so
+  `LookAtTopThenForEffect` opens no window. Routing it through one
+  would invent an "if you would look at the top" the rules do not
+  have.
+- **A scry of zero or less opens no window either.** You would not
+  scry, so there is nothing to replace; the continuation still runs.
+- **The counted actions only.** Sacrifice, tap, exile and the rest are
+  already ordinary mutations with events of their own; a count is what
+  a replacement of this family rewrites.
+- **Each proliferate of a doubled one is not re-chosen.** The choice
+  is made before the window opens and applied each time. Under the
+  catalog's deterministic beneficial pick (`cards/effects/proliferate.go`)
+  a second pick over the board the first one left returns the same two
+  lists, because proliferate only ever adds a counter of a kind
+  already there; a real picker, when one lands, is where this becomes
+  a choice per iteration.
+- **A repeat cap.** `maxKeywordActionRepeats` is 64. The apply-loop is
+  bounded at 32 iterations and a doubler is multiplicative, so a buggy
+  card could ask for 2^32 proliferates; over the cap the action is
+  taken 64 times and the overflow is logged, which is
+  `ErrReplacementIterationExceeded`'s posture.
+
+**7. What shipped on the cards.** One conversion: Tekuthal, Inquiry
+Dominus goes from `CompletenessCaveats` to `CompletenessFull`, its one
+caveat replaced by `ProliferateTwice(...)` in its `Replacements`
+slice. No catalog card prints the scry or surveil side yet;
+`ScryPlusOne` and `SurveilPlusOne` exist beside the generic
+`KeywordActionBecomes` so the first one that does is a line, and they
+are exercised through probe entries registered in the test file.
+
+### 5t. Amendment, 2026-09-19: an "if it was" clause is gated on the exile, and a spell that moves itself is not routed
+
+*Amendment, 2026-09-19, branch
+`fix/911-489-cancelled-exile-payouts-and-self-exile`. Closes
+[#911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/911) and
+[#489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/489). §5m
+item 5 deferred the first of these as "a rules question rather than a
+plumbing one"; this is the answer. The second is here because the
+reason it changed shape is §5f's exit primitive.*
+
+## 1. "If it was a creature card" needs a card that was exiled
+
+§5m converted the exile's callers and listed three it deliberately did
+not: Cling to Dust, Scavenging Ooze and Deluge of the Dead, all of
+which print "Exile target card from a graveyard. If it was a creature
+card, …". The reasoning there was that the condition reads the card's
+TYPE, which is known before the move, so nothing about it needs the
+answer. That is half true and the half it misses is the subject.
+
+The type is indeed read before the move — it has to be, because after
+the move the card is in exile with none of its battlefield-era layers,
+so "it WAS a creature card" is a question about the past (CR 608.2h).
+But "it" is a reference to the card the FIRST SENTENCE MOVED. When no
+card moved there is no "it", and the clause has nothing to be about.
+CR 614.10 is what makes that concrete: an event replaced with nothing
+never happened, so a Scavenging Ooze whose meal a graveyard static kept
+in place ate nothing, and a clause that begins "if it was" cannot be
+asking about a card that is still in its owner's graveyard.
+
+**Decision: the clause runs only when the card ARRIVED in exile**, which
+is §5k's CR 400.7 reading and the one every other "this way" clause in
+the engine already uses. Three outcomes pay out nothing:
+
+- the CR 614 window CANCELLED the exile ("cards in graveyards can't be
+  exiled");
+- a replacement REDIRECTED it — the card left the graveyard, but not for
+  exile;
+- a commander card took CR 903.9's offer. It left, and it did not reach
+  exile, so it is not "it" either — the same answer §5k gives "for each
+  card exiled this way" and §5m gives `Flicker`.
+
+**Cling to Dust's `Otherwise` goes with it.** "Exile target card from a
+graveyard. If it was a creature card, you gain 3 life. Otherwise, you
+draw a card" is ONE conditional with two branches, both about the same
+"it". A cancelled exile therefore draws no card either. Writing it the
+other way — no life, but still a draw — would make "otherwise" mean
+"or if nothing happened", which is not what the word does.
+
+**The line this does NOT cross** is the one §5m drew in the same list
+and it stays where it is: exile-then-an-unconditional-clause. Swords to
+Plowshares' "its controller gains life equal to its power", Solitude's
+copy of it, Path to Exile's search, Anguished Unmaking's life loss. The
+second sentence there is about a PLAYER, makes no claim about the card
+and is not introduced by a condition, so it happens either way. The
+distinction is grammatical and it is checkable: a clause GATED on a
+pre-exile fact is about the card; a clause that merely USES one as a
+value is not.
+
+**One body, and a lint to keep it the only one.** The three cards share
+`effects.ExileThenIfItWas{Target, Was, Then, Otherwise}` with
+`WasCreatureCard` as the printed predicate (`cards/effects/primitives.go`).
+It holds both halves — the `Was` question answered before anything
+moves, the clause hung off `ExileTarget.Then` and gated on `exiled` —
+so a fourth card with the same text gets the rule rather than
+re-deriving it. `cards/effects/exile_payout_guard_test.go` is the lint,
+the #911 half of what `life_continuation_guard_test.go` is for §5b and
+§5c: a source scan that fails on a CONDITION, after a fire-and-forget
+exile, reading a local the function assigned before it. It carries its
+own self-test so it cannot rot into a pass-everything, and one
+allowlist entry, Solitude's `if power <= 0` — a guard against gaining
+zero life, not a gate on the exile.
+
+**Not converted, and why.** The other exits have the same shape
+available and no known caller in the wrong: the lint is deliberately
+scoped to exile, because widening it to destroy, bounce, tuck, mill and
+sacrifice flags six more sites that each need their own rules answer
+(#993). Nothing new is snapshotted: `ExileThenIfItWas` rides
+`ExileCardThenForEffect` → `zoneRoute.then` and §5k's undo contract,
+pinned on a card by
+`cards/effects/exile_payout_cards_test.go`'s replay.
+
+## 2. A spell that moves itself as it resolves has nothing left to route
+
+A spell's own text can move the spell out of the stack: "exile Ascend
+from Avernus", Genesis Ultimatum's "exile Genesis Ultimatum", and by
+the same shape any "shuffle this into your library" rider. The
+instruction is the card's, so it runs inside the catalog's `OnResolve`,
+which is BEFORE the resolution frame decides where the spell goes next.
+All three of that frame's post-effect exits assume the spell is still
+on the stack: the battlefield entry for a permanent, CR 707.10's
+cease-to-exist for a copy, and CR 608.2m's "as the final part of an
+instant or sorcery spell's resolution, the spell is put into its
+owner's graveyard".
+
+#489 was filed against the ERROR that produced: `MoveCard(g.Stack, …)`
+returned `ErrCardNotFound` and `PassPriority` handed it to the caller
+with the post-resolution state checks and the priority reset skipped.
+§5f then put the stack exit on the shared exit primitive, which finds a
+card's zone BY SCAN rather than assuming the stack — and that changed
+the defect rather than fixing it. The frame found the spell in exile,
+saw a destination that was not exile, and moved the spell OUT of the
+exile its own effect had just put it in and into the graveyard. No
+error anywhere. **A move primitive that tolerates any source zone makes
+"is this object still where I left it" a question the caller has to ask
+out loud**, and that is the general lesson worth recording beside §5f.
+
+**Decision: one check, in the resolution frame** —
+`spellMovedItselfLocked` (`game/mutations.go`), immediately after the
+card's own body and its chosen modes have run, before the three exits
+branch. CR 608.2m is the rule that licenses it: the thing put into a
+graveyard is the spell ON THE STACK, and there is none.
+
+It sits in the frame rather than in `routeStackCardToGraveyardLocked`
+for two reasons. All three exits share the assumption, and the
+permanent one does not go through that function — it would reproduce
+the original error verbatim. And the two exits ABOVE the check, the
+CR 608.2b fizzle and the no-`StackMeta` fallback, run before any card
+code and cannot be in this state, so that function keeps one
+responsibility and one destination decision.
+
+**A resolution that FAILS still owes the table its bookkeeping.** The
+second half of the report, and it is not about self-moves: the
+state-based actions and the CR 117.3b priority reset belong to the
+PASS, not to the resolution, so `passPriorityLocked` runs both whatever
+`resolveTopOfStackLocked` returned. The error is reported as an
+`EventEffectError` — the posture `fireEffectResolverLocked` and
+`applyFirstGatheredLocked` already take for a resolution-time failure —
+rather than returned as a failed pass, because the pass succeeded: the
+item left the stack, its effect ran and the game moved on.
+
+**Deliberately not covered: a self-move that PAUSED.** The card is
+still on the stack while a CR 614 prompt about its own move is open, so
+the check says no and the frame routes it to the graveyard, which
+prunes the stale prompt (#605). Skipping the route instead would leave
+the spell on the stack with nobody left to finish it, which is a wedge
+and worse than the misordering. It is also out of reach in practice: an
+instant or sorcery is never a commander, so the only pause available to
+one is a CR 616 ordering prompt between two replacements that both
+apply to its own exit.
+
+**What this unblocks.** Ascend from Avernus (batch 24) and Genesis
+Ultimatum, which `docs/engine-seams.md` listed as waiting on "a spell
+that exiles itself as it resolves". No catalog card moves itself on
+resolution today, so the regression test
+(`game/resolution_self_move_test.go`) drives a stub catalog card
+through the real priority loop.
+
+### 5u. Amendment, 2026-09-19: the mill amount is a quantity, and a kind cannot be forgotten
+
+*Amendment, 2026-09-19, branch
+`fix/982-569-replacement-affected-player-and-mill-amount`. Closes
+[#569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/569) and
+[#982](https://github.com/krakenhavoc/cmd_and_ctrl/issues/982). §5s's
+shape applied to a third verb, and the gate that stops the fourth from
+going in half-wired. §5t is [#995](https://github.com/krakenhavoc/cmd_and_ctrl/pull/995)'s.*
+
+**1. What was missing about the mill, precisely.** Not the per-card
+window. "`MillToZoneForEffect` skips the CR 614 pipeline" circulated on
+three status comments on #74 and one PR body, and it was never true:
+since #529 every milled card goes through `routeCardToZoneLocked`,
+which builds a `RepEventMove` and runs `applyReplacementsLocked`, so
+Leyline of the Void and Stone of Erech see each card and a milled
+commander is offered the command zone (CR 903.9, #539). §5l went
+further and chose the batch up front so one card's prompt does not
+shorten the rest of the run.
+
+What was missing is narrower. "If an opponent would mill one or more
+cards, they mill twice that many cards instead" is not a per-card zone
+move at all: it replaces the NUMBER, once, before anything leaves the
+library. So `RepEventMill` is the third member of the count-carrying
+family, built on exactly the shape ADR 0061 decision 1 gave the
+creation and §5s gave the keyword action:
+
+```go
+RepEventMill:
+    MillPlayer uuid.UUID  // whose library is read — the affected player
+    MillCount  int        // the one field a replacement rewrites
+```
+
+opened once per INSTRUCTION at `millThroughReplacementsLocked`
+(`mill.go`), the one body both `MillToZoneForEffect` and
+`MillToZoneThenForEffect` now go through, with the plan and the route
+run only once the window settles. A mill therefore opens two kinds of
+window in sequence: one for the amount, then the per-card `RepEventMove`
+the exit primitive has always opened.
+
+**2. The window opens only for a mill, which is narrower than the
+helper.** Two gates, and both are the rules' own:
+
+| Instruction | Window? |
+| --- | --- |
+| mill N into a graveyard | yes |
+| "exile the top N cards of your library" (the same helper, `dest` exile) | no — CR 701.13a defines the keyword action by where the cards go, and `millRoute` has honoured that distinction since #893 |
+| an unbounded `until` run (Helm of Obedience, `n <= 0` with a predicate) | no — it names no number to double |
+| a count of zero or less | no — "one or more cards" is the printed condition |
+
+Same posture §5s takes for a scry of zero: you would not scry, so there
+is nothing to replace, and the continuation still runs.
+
+**3. The count is the INSTRUCTION's, not the library's.** CR 701.13b
+makes a player told to mill more cards than they have mill as many as
+possible, and that clamp stays where it was, in `millPlanLocked`, AFTER
+the window. So Bruvac doubling a twenty-card mill against a twelve-card
+library mills twelve and doubles twenty — which is not a distinction
+without a difference the moment a "plus four" shares the window and the
+orderings have to compose over the same number.
+
+**4. Both forms can pause, earlier than either could before.** Two
+amount replacements in one window is a CR 616.1 ordering prompt, and it
+lands before a single card has been chosen. `millTail` is the mill's
+sibling of `zoneRoute`, `tokenTail`, `damageTail` and
+`keywordActionTail`: the destination, the `until` predicate and the
+caller's continuation, carried on the event so the resume plans and
+routes through the same `applyResolvedMillLocked` the inline path runs.
+`MillToZoneForEffect`'s slice is empty on such a pause — the contract
+`CreateTokensForEffect`'s empty ID slice already carries — and
+**Combustible Gearhulk**, the one catalog card that read that slice,
+moves to the continuation form, because "the total mana value of those
+cards" would otherwise be zero.
+
+A cancelled mill (CR 614.10), one replaced down to zero, and one whose
+prompt is taken away (§5j) all run the continuation with an empty list:
+#808's call for the life tail, #853's for the route, #762's for the
+tokens, #976's for the keyword action.
+
+**5. What is deliberately not here.** A surveil's graveyard leg is not
+a mill. `ResolveSurveil` routes those cards with `millRoute` so the
+per-card graveyard window and the mill PAYOFFS see them — a "whenever a
+card is put into your graveyard from your library" trigger must not
+care how it got there — but CR 701.14a is its own keyword action and no
+mill instruction was given, so Bruvac does not double it. The same
+reading keeps Tasha's Hideous Laughter out, and its card file has said
+so since it shipped.
+
+The event carries no `Source`. Nothing printed reads "if a source you
+control would mill", the mill helpers take no source parameter, and
+inventing one to fill a field would be a signature change with no
+reader.
+
+**6. #982: the affected player, and the five switches.** CR 616.1 gives
+the ordering choice to the affected player, never to whoever controls
+the replacements. `affectedPlayerForEvent` names that player per kind
+and falls through, when it has no case, to the FIRST GATHERED EFFECT's
+controller — the effect whose source happens to sit earliest in
+battlefield order. Two of the kinds ADR 0061 added had no case:
+`RepEventDiscard` (the answer is `ev.DiscardPlayer`, CR 701.8a) and
+`RepEventCreateTokens` (`ev.TokenController`, "create one or more
+tokens under your control").
+
+It was invisible because every catalog replacement of those two kinds
+is controller-scoped, which makes the fallback accidentally right.
+Bruvac is where it stops being invisible: the replacement is its
+controller's and the affected player is the OPPONENT, so Bruvac beside
+The Water Crystal is the first printed board where the fallback names
+the wrong player.
+
+The structural half is the point, and it is the reason this is one
+amendment rather than two. A kind has obligations at five switches and
+no compiler to enforce any of them:
+
+| Switch | What a missing arm costs |
+| --- | --- |
+| `eventKindMatches` | no `EventKind` maps to the kind, so `Watches` never matches and no replacement of it can fire |
+| `affectedPlayerForEvent` | the CR 616.1 prompt goes to the wrong player |
+| `applyResolvedReplacementEventLocked` | a paused event of that kind resumes into nothing |
+| `finishSettledReplacementLocked` | a cancelled one never tells its caller |
+| `abandonZoneRouteLocked` | one whose prompt is taken away never tells its caller |
+
+Every one of those failures is silent until the first card whose scope
+or continuation differs from the default. `TestEveryReplacementEventKindIsSwitchedOn`
+(`game/replacement_kind_gate_test.go`) reads the kinds and the switches
+straight out of the source and fails until a new kind has an arm in
+each — the mechanism `TestEveryChoiceKindIsClassifiedAndEnumerated`
+(`internal/legal`) has used for `PendingChoiceKind` since #794.
+
+It found a second gap on its first run: `abandonZoneRouteLocked` had no
+arm for `RepEventKeywordAction`, so a scry whose ordering prompt was
+dropped or pruned lost its "then draw a card" with the frame. §5s gave
+a CANCELLED keyword action its terminal outcome and never gave one to
+an ABANDONED one.
+
+Two of the five arrived as if-chains and are now switches, with no
+change to what they do — every condition on either chain was exclusive
+on `Kind` — so that "nothing is owed for this kind" is a written arm
+rather than the end of a chain. A switch that is deliberately PARTIAL
+(`gatherSelfReplacementsLocked`'s `ev.Kind != RepEventMove` guard, a
+card's `AppliesTo`) is not on the list and the test never looks at it.
+
+**7. What shipped on the cards.** Two new entries, both `full`:
+**Bruvac the Grandiloquent** (`OpponentsMillTwice`) and **The Water
+Crystal** (`OpponentsMillPlus(4)`, plus a blue-spell cost reduction on
+the new `ColoredSpell` predicate and a tap ability that mills each
+opponent for the controller's hand size). Two, deliberately: the kind
+is not shaped around one card, and ×2 against +4 is the pair CR 616.1's
+ordering question is actually about — Bruvac first is 10 cards from a
+base of 3, the Crystal first is 14. One conversion: Combustible
+Gearhulk to the continuation form. `MillBecomes{Count, Scope, Label}`
+carries the family, with `MillsByController` and `MillsByAnyone` beside
+`MillsByOpponents` so the first printing of either is a line.
+
+### 5v. Amendment, 2026-09-19: the payout lint is about EXITS, and an ordering fix is not a gate
+
+*Amendment, 2026-09-19, branch
+`chore/993-1005-exit-lint-and-carried-enforcement`. Closes
+[#993](https://github.com/krakenhavoc/cmd_and_ctrl/issues/993). §5t
+scoped the payout lint to exile "because widening it to destroy, bounce,
+tuck, mill and sacrifice flags six more sites that each need their own
+rules answer". This is those answers, and the widening.*
+
+**1. One lint, every pausable exit.** `exile_payout_guard_test.go` is
+`exit_payout_guard_test.go`, and its two tables carry a VERB rather than
+a bool: exile, destroy, sacrifice, bounce, tuck, mill, a discard (§5g)
+and a graveyard arrival (§5q). The shape it flags is unchanged — a
+CONDITION, after a fire-and-forget exit, reading a local the function
+assigned before it — and the verb is what lets a finding name its own
+fix, which is the only way a lint in a tree this size stops costing the
+next author an afternoon.
+
+The lint asks a COARSE question on purpose: "is this clause gated on
+something read before the move?" The fine question is the one below, and
+it is why the lint has an allowlist rather than a cleverer AST walk.
+
+**2. The line §5t drew, restated so it decides cases.** §5t said a
+clause GATED on a pre-exile fact is about the card and a clause that
+merely USES one as a value is not. That is the right answer for the
+family §5t was about and it is not the test. The test is **what the
+clause is ABOUT**:
+
+- **About the object that moved** — "if it WAS a creature card", "for
+  each card exiled this way", "if you do". A move that did not happen
+  leaves the clause with no referent (CR 614.10: an event replaced with
+  nothing never happened), so the clause does not run. §5t's three
+  cards, and Ruthless Technomancer below.
+- **About a player, or about the spell's TARGET** — "its controller
+  gains life equal to its power", "you lose life equal to its mana
+  value", "if you controlled that permanent, draw a card", "then that
+  permanent's controller may sacrifice a land". Every one of these is
+  true or false before anything moves and no replacement can rewrite it:
+  a commander of yours that took CR 903.9's offer was still yours. The
+  clause runs whichever way the question is answered — and it still has
+  to WAIT for the answer, because the order is observable.
+
+So the six sites split three ways — seven, in fact: widened, the scan
+also finds Chain of Vapor, which #993 did not list and which is
+Boomerang Basics with a different second sentence. Only one of the seven
+changed an outcome.
+
+**3. The one that was wrong: Ruthless Technomancer.** "You may sacrifice
+another creature you control. **If you do**, create a number of Treasure
+tokens equal to that creature's power." The card read the live board on
+the line after the sacrifice — "is it still on the battlefield?" — which
+is `sacrificedThisWayLocked`'s rule written out by hand, and correct for
+every outcome but the one that matters: a sacrificed COMMANDER is still
+on the battlefield while its owner answers CR 903.9, so the read said
+"not sacrificed" and the Treasures never came for a sacrifice that
+landed a beat later. It is `SacrificePermanent.Then` now. Both answers
+pay — CR 701.17a's keyword action is the controller's move OFF the
+battlefield, and a replacement rewrites only where the permanent goes —
+and a sacrifice the window cancelled outright pays nothing.
+
+**4. The ones that were only out of order.** Boomerang Basics' draw and
+Chain of Vapor's chain, on the reading in item 2, and Hermit Druid's
+hand-off. All three move into the continuation with the answer
+deliberately IGNORED, which is §5m item 2's shape (Path to Exile's
+search) and its whole risk: only the order changes.
+
+- Boomerang Basics — "Return target nonland permanent to its owner's
+  hand. If you controlled that permanent, draw a card." The condition is
+  about the player, and the draw was landing while the bounced
+  commander's owner was still being asked about the command zone.
+- Chain of Vapor — "Then that permanent's controller may sacrifice a
+  land of their choice." Two prompts at once, in the wrong order, at a
+  table where the second is a reasonable thing to answer first.
+- Hermit Druid — "Put that card into your hand and all other cards
+  revealed this way into your graveyard" is one instruction about a
+  settled run, and the land was reaching hand with cards above it still
+  in the library.
+
+**5. The one that was spinning: Consuming Aberration.** "Each opponent
+reveals cards from the top of their library until they reveal a land
+card." The loop read the top of the library, milled one card, and asked
+whether the card it had READ was a land. A paused leg leaves the card
+exactly where it was (`millPlanLocked`), so the next pass read the same
+card and milled it again — round and round to the 1000-iteration fuse.
+It is `MillToZone`'s own `Until` run now, chosen up front against the
+pre-move copies, which is the same reason §5l gave for choosing a mill's
+batch before the first card moves.
+
+**6. Two allowlist entries, both the ungated family.** Solitude's
+`if power <= 0` (§5t's) and Dark Confidant's `if life == 0`. Neither is
+a gate on the move: both are guards against asking the engine for a
+change of nothing, in front of a clause about a PLAYER that §5m item 5
+declared ungated. They stay as they are, with the reason on the entry.
+
+**7. What the engine grew, and what it did not.**
+`BounceToHandThenForEffect` is the fourth single-card WRAPPER over the
+batch, beside `ExileCardThenForEffect` (#870), `SacrificeThenForEffect`
+(#910) and `TuckToLibraryThenForEffect` (#783) — six lines, no second
+path, because a second path with its own notion of what landed is how
+exile and destroy drifted apart (#815, #866). `BounceToHand.Then` and
+`SacrificePermanent.Then` are the catalog side, shaped exactly like
+`ExileTarget.Then`. `SacrificeChoice.Then` now means what its doc always
+said, "once the permanent has gone".
+
+**Deliberately NOT in the lint's tables:**
+`g.PlayerSacrificesForEffect` and `g.EachPlayerSacrificesForEffect`.
+They queue a QUESTION and return how many seats were asked; nothing has
+left the battlefield when they return, and the prompt carries no
+continuation for a card to hang a clause on. Rise of the Witch-king's
+"if you sacrificed a creature this way" therefore pays out before the
+answer, which the card declares as a caveat and
+[#1019](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1019) tracks.
+A lint whose message names a fix that does not exist is worse than no
+lint.
+
+**8. Nothing new is snapshotted.** Every migrated site rides an existing
+`zoneRoute.then` and the `replacementResume` frame from §5g, with §5k's
+undo contract. `cards/effects/exit_payout_cards_test.go` pins all five
+cards on a real board, and each fix was backed out and its test confirmed
+to fail without it.
+
+### 5w. Amendment, 2026-09-19: the settled entry counters drain in a canonical order
+
+*Amendment, 2026-09-19, branch
+`fix/1009-1010-turn-boundary-and-entry-counter-order`. Closes
+[#1010](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1010).*
+
+`ReplacementEvent.EntersWithCounters` is a `map[string]int`, and the
+map that the CR 614 entry window leaves behind was drained with a bare
+`range` at four sites — `entry_choice.go`, `battlefield_put.go` and
+`mutations.go` twice. Go randomises map iteration. Each kind is placed
+through `AddCounterForEffect`, which opens **its own `RepEventCounter`
+window**, so with two counter KINDS on one entry the drain order
+decided:
+
+- which window opened first, and therefore the order a CR 616 ordering
+  prompt inside them was asked in;
+- the order the `EventCounterPlaced` events landed in the log.
+
+Both differed on every run and on every replay of the same game. The
+engine is otherwise deterministic from its event log — `Clone`,
+`RestoreFrom`, the persisted snapshot, the bot harness and the replay
+tooling all rest on that — and this was the one place an entry could
+come out differently for no reason a player could point at.
+
+**The decision.** One drain, `(*Game).applyEntryCountersLocked`
+(`server/internal/game/entry_counters.go`), called from all four sites;
+nothing else ranges the map, and the field's doc comment says so, so a
+fifth entry site cannot spell it differently. The order is **the
+counter name, ascending** — the canonical order `sortedCounterKinds`
+already gives proliferate (`proliferate.go`), for the same stated
+reason: an event log that reorders between runs makes replay diffs
+unreadable.
+
+**Why it is not a CR 616 question.** CR 616.1 gives the affected player
+the choice of order when two or more replacement **effects** would
+apply to one event. Two kinds on one entry are not two effects. They
+are one settled event with two components — the CR 616 window that
+produced the map has already closed — and no kind's window can change
+what another kind's window does, so the board is identical whichever
+goes first. The only thing a choice would decide is which of two log
+lines comes first, and §5a's principle applies: CR 616.1 does not
+require asking a question whose answers are indistinguishable.
+
+**Seeding order was the alternative, and was rejected.** #1010 offered
+"an ordered slice of `{name, n}` pairs that records seeding order,
+which is the more honest shape". It is honest about one thing and wrong
+about another: a permanent can be seeded from the card's printed clause
+(`applyCastEntryCountersLocked`, CR 614.1c) and from an alternative
+cost's clause (`applyAltCostEntryCountersLocked`, CR 702.138c) one line
+apart, and a replacement in the window can add a third key later. The
+canonical order gives the same log whichever path ran first, which is
+what a replay needs; the seeding order gives a different one, and no
+rule prefers either. It would also change the field's type across the
+catalog for a distinction nothing observes.
+
+**Not covered, deliberately.** A negative or zero cell is drained
+exactly as the bare ranges drained it (`AddCounterForEffect` no-ops on
+zero), which is why the helper sorts the keys itself rather than
+calling `sortedCounterKinds` — that one drops non-positive cells.
+
+**Latent, and pinned anyway.** No catalogued card declares two kinds on
+one entry today, which is why this was a latent ordering bug rather
+than a live one. `game/entry_counter_order_test.go` runs the same
+two-kind entry 60 times and asserts one order, asserts the order does
+not depend on which clause seeded first, and pins Doubling Season
+doubling both kinds through their separate windows.
+
+### 5x. Amendment, 2026-09-19: a prompted sacrifice is a RUN, and its continuation waits for every seat
+
+*Amendment, 2026-09-19, branch
+`feat/1019-1013-player-sacrifice-continuation-and-bot-cost-choice`.
+Closes [#1019](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1019).
+§5v's item 8 named one hole and left it open: the two PROMPT-driven
+sacrifices are out of the lint's tables "because a lint whose message
+names a fix that does not exist is worse than no lint". This is the
+fix, and the tables now carry them.*
+
+**1. What was wrong.** `g.PlayerSacrificesForEffect` and
+`g.EachPlayerSacrificesForEffect` do not sacrifice anything. They queue
+a `PendingChoiceSacrifice` per seat and return **how many seats were
+asked**; the permanent leaves the battlefield when a player answers,
+which is one or more actions later. Every clause a card wrote on the
+next line was therefore the §5t shape arriving through a prompt — Rise
+of the Witch-king's "if you sacrificed a creature this way" was really
+"was the controller handed a prompt", and the permanent came back from
+the graveyard before anybody had chosen a creature.
+
+It is a worse hole than a fire-and-forget exit's, because a count of
+QUESTIONS is not even an incomplete outcome. A seat that is asked and
+then has its prompt withdrawn — its only creature died to somebody
+else's answer — sacrificed nothing, and the count says it did.
+
+**2. The form: a RUN.** One run is **one printed instruction**, however
+many prompts it takes to ask it: "each player sacrifices a creature of
+their choice" over four seats, "sacrifice two lands" over one seat
+twice. Its continuation runs ONCE, after the LAST of those prompts has
+settled, and is handed `game.PromptedSacrifices` — one entry per seat
+that was ASKED, in ask order, carrying the permanents that really left
+the battlefield.
+
+Four entry points, one body (`server/internal/game/sacrifice_run.go`):
+
+| entry point | the instruction |
+| --- | --- |
+| `EachPlayerSacrificesThenForEffect` | the APNAP fan-out, Rise of the Witch-king |
+| `PlayersSacrificeThenForEffect` | a named set of seats, Priest of Forgotten Gods' two targets |
+| `PlayerSacrificesThenForEffect` | one seat asked `count` times, Lich-Knights' Conquest |
+| `PlayerSacrificesNForEffect` | the same ask with nothing waiting on it |
+
+`EachPlayerSacrifices.Then` is the catalog side, shaped exactly like
+`SacrificePermanent.Then` (§5v item 7).
+
+**3. It waits for the MOVE, not for the answer.** `ResolveSacrificeChoice`
+routes the picked permanent through `SacrificeThenForEffect` rather than
+the fire-and-forget `sacrificePermanentLocked`, so the leg rides
+`sacrificeRoute` (#910, #964) like every other sacrifice. A sacrificed
+commander is still ON the battlefield while its owner answers CR 903.9,
+and the run waits for that too. What lands in the run is
+`sacrificedThisWayLocked`'s answer, so a commander that takes the
+command zone counts — CR 701.17a's keyword action is the controller's
+move off the battlefield, and a replacement rewrites only where the card
+goes — and a leg the CR 614 window cancelled does not.
+
+**4. A withdrawn prompt settles its leg.** This is #1016's `dropDefault`
+at a second kind, and the reason `PendingChoiceSacrifice` grows an
+`onDrop` in the departure table: the question ends, the rest of the card
+does not. Both withdrawal paths reach it —
+`pruneSacrificeChoicesLocked` when a seat's board empties under an open
+prompt, and the departure sweep when a seat leaves — through the one
+action, `runChoiceDropActionLocked`. The departure sweep's gate is
+unchanged (`choiceObjectSurvivesLocked`), so a run whose own source left
+the game with its controller is abandoned rather than paid out, which is
+right: the payout belonged to the seat that has gone.
+
+**5. The run state is on the GAME, not in a frame on the prompt.** The
+prompts of one run are answered in any order, so the run is SHARED by
+all of them and MUTATED as each settles. A server-only frame shared by
+pointer is copied per prompt by `cloneLocked`, which would hand an undo
+snapshot as many half-finished runs as the run had prompts; keyed by a
+plain uuid on the choice, the link survives a value copy for free and
+`cloneSacrificeRuns` deep-copies each run once. The counter and the
+landed lists then rewind together with the queue, and an undone answer
+replays to the same place. It is `Game.replacementsAppliedThisEvent`'s
+shape, for #808's reason. Both fields are `dropped` in the snapshot plan
+with the run counted in `ContinuationCensus.ChoiceResumeFrames`.
+
+**6. Six catalog callers, three kinds of debt.** `git grep` finds
+fourteen files calling the two entry points; ten have nothing hanging
+off the answer and are untouched.
+
+- **The ANSWER.** Rise of the Witch-king, above. The only changed
+  outcome, and the one the lint surfaced.
+- **The COUNT.** Lich-Knights' Conquest's "return that many" was how
+  many prompts went up, so a prompt withdrawn because its Treasure had
+  already gone still bought a creature card. It is
+  `sacrificed.Count()` now.
+- **The ORDER.** Planar Engineering (the search was queued alongside the
+  prompts, so with a small library the basics entered before the
+  sacrifice and were offered as the land to sacrifice), Cornered by
+  Black Mages, Will of the Abzan and Priest of Forgotten Gods. Each is
+  §5v item 2's second bullet: a clause about a PLAYER, true whichever
+  way the prompt is answered, moved into the continuation with the
+  answer deliberately ignored, for the ordering alone.
+
+Deliberately NOT migrated: Archon of Cruelty
+(`batch09_helpers.go:128`). Its printed order is sacrifice, discard,
+lose life, and the discard prompt has no continuation of its own — the
+`discardVerb` row of the lint says so — so the sequence cannot be made
+right by this change alone, and moving half of it would trade one wrong
+order for another. Filed as
+[#1027](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1027).
+
+**7. The lint's tables, and a second scan.** Both entry points are in
+`exitStartsTheClock` with `sacrificePromptVerb`, and
+`EachPlayerSacrifices` is in `exitPrimitives`. The existing scan is not
+enough on its own: it keys on a gate reading a local assigned BEFORE the
+exit, and Rise of the Witch-king had no such local — it read the call's
+own return value. So `questionCountGatesIn` is a second, narrow scan for
+exactly that, in both spellings (`if g.PlayerSacrificesForEffect(…) ==
+0` and `asked := …; if asked == 0`), and it is scoped to the verbs whose
+return is a count of QUESTIONS rather than of permanents. The other
+verbs' counts are outcomes — incomplete ones, which is what the rest of
+§5t is about — and reading them is a different judgement.
+
+The stop rule a fire-and-forget caller needed the count for — "ask N
+times, stop when the seat has nothing" — is `PlayerSacrificesNForEffect`
+now, so no legitimate caller reads it and the new scan needs no
+allowlist entry. Archfiend of Depravity, Phyrexian Obliterator and Lotus
+Field lost their hand-written loops to it.
+
+**8. Still open, with the seam named.** Springbloom Druid
+(`springbloom_druid.go`) chose its land as a TRIGGER TARGET rather than
+through a resolution-time prompt precisely because the prompt had no
+continuation; it does now, so that caveat is closable. It is left alone
+here because moving the choice from trigger time to resolution time
+changes WHICH land can be sacrificed, not the ordering the comment was
+about, and that is a card decision rather than this mechanic's. Filed
+as [#1026](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1026).
+
+### 5y. Amendment, 2026-09-19: a prompted discard is the same RUN, and both verbs share one body
+
+*Amendment, 2026-09-19, branch
+`feat/1027-1026-discard-continuation-and-springbloom`.
+Closes [#1027](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1027)
+and [#1026](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1026).
+§5x deliberately left Archon of Cruelty alone and named the reason:
+"the discard prompt has no continuation of its own — the `discardVerb`
+row of the lint says so". This is that continuation, and the
+`discardVerb` family now names a fix.*
+
+**1. What was wrong.** `g.QueueDiscardChoiceForEffect` discards
+nothing. It queues a `PendingChoiceChooseCards` over the player's own
+hand and returns the PROMPT'S ID; the cards leave the hand when that
+player answers, which is one or more actions later — and they can
+leave later still than that, because §5g made a discard a real exit
+and a discarded commander's CR 903.9 prompt pauses the batch mid-way.
+
+Archon of Cruelty is the card the hole was filed on. Printed: *"target
+opponent sacrifices a creature or planeswalker of their choice,
+discards a card, and loses 3 life. You draw a card and gain 3 life."*
+Four clauses; the body queued the sacrifice prompt, queued the discard
+prompt beside it, and ran the last three on the next line. Nothing was
+WRONG about any of the three — each is a clause about a PLAYER and
+happens whichever way the prompts are answered (§5v item 2) — except
+the ORDER, and the order is observable: the opponent chose what to
+pitch already three life down, and a Blood Artist drain off the
+sacrifice arrived after the caster had drawn.
+
+**2. The form is §5x's, unchanged.** One run is ONE PRINTED
+INSTRUCTION, however many prompts it takes: "target player discards
+two cards" is one prompt over the hand, "each opponent discards a
+card" is one per opponent. Its continuation runs ONCE, after the last
+prompt has settled AND the cards it named have finished moving, and is
+handed `game.PromptedDiscards` — one entry per seat that was ASKED, in
+ask order, carrying the cards that really left that hand.
+
+| entry point | the instruction |
+| --- | --- |
+| `PlayerDiscardsThenForEffect` | one seat, Archon of Cruelty |
+| `PlayersDiscardThenForEffect` | a named set of seats |
+| `EachPlayerDiscardsThenForEffect` | the APNAP fan-out, Syphon Mind |
+| `EachPlayerDiscardsForEffect` | the same fan-out with nothing waiting on it |
+
+**3. ONE BODY FOR BOTH VERBS, and that is the load-bearing half of
+this amendment.** Everything about a run except which prompt it queues
+and what its answer is CALLED is identical between a sacrifice and a
+discard: the outstanding counter, the ask order, the per-seat landed
+lists, the settle-once rule, the deep copy an undo needs. Writing it
+twice would have been a second body for one mechanic, which is the
+shape the catalog's clone gate exists to refuse.
+
+So §5x's machinery moved from `sacrifice_run.go` to `prompt_run.go`
+and the two verbs are thin:
+
+- `promptRun` and `runPromptsLocked(asks, then, queue)` — the queue
+  loop with the per-verb prompt builder injected.
+- `settleRunLegLocked(runID, seat, landed)` — THE one place a leg
+  settles, for either verb.
+- `clonePromptRuns` — one deep copy.
+- `SeatCards` is the shared entry; `PromptedSacrifices` and
+  `PromptedDiscards` are two defined types over `[]SeatCards`, each
+  spelling its own verb (`.Sacrificed(seat)` / `.Discarded(seat)`) over
+  shared one-line bodies.
+
+Three renames fell out and are worth naming because they are in the
+undo contract: `Game.sacrificeRuns` → `Game.promptRuns` (ONE registry,
+because the keys are freshly minted uuids and "which prompt is a leg
+of which run" is one question), `PendingChoice.sacrificeRun` →
+`PendingChoice.promptRun`, and `defaultDroppedChoiceLocked` now
+branches on the run LINK rather than on the prompt KIND. That last one
+is not tidiness: a discard prompt is a `PendingChoiceChooseCards`, the
+same kind Thoughtseize's revealed-hand pick uses, and that pick is no
+run's leg — so "is this prompt part of a run" is a question about the
+prompt, not about its kind. A fourth verb needs no fourth case.
+
+**4. "Discarded this way" is CR 701.8a's move OUT of the hand.**
+`discardedThisWayLocked(player, card)` is `sacrificedThisWayLocked`
+with the hand in place of the battlefield, and the two rules have the
+same form because CR 701.8a and CR 701.17a do — both name the keyword
+action as a move out of a zone, and a replacement rewrites only where
+the card then goes. §5g already decided this for the EVENT
+(`zoneRoute.Discard` is honoured wherever the card lands); this is the
+same decision for the COUNT.
+
+| the card ends up | discarded this way |
+| --- | --- |
+| its owner's graveyard (printed) | yes |
+| exile — madness (CR 702.35a, #657), Rest in Peace | yes |
+| the top of its library — Library of Leng | yes |
+| the command zone — CR 903.9 | yes |
+| still in the hand — the CR 614 window cancelled it, or the prompt was abandoned (§5j) | no |
+
+Destroy remains the odd one out (§5i): CR 701.7a defines a destruction
+by the graveyard it arrives in.
+
+The landed list is accumulated by `discardBatchLocked`, carried
+forward by value alongside the shrinking `cards` slice for the reason
+§5g gives — an undo across the open CR 903.9 prompt has nothing
+half-written to put back. `discardOptions.then` therefore takes it,
+which is what lets a leg settle honestly from inside the batch rather
+than from a hand re-read on the far side of it.
+
+**5. A withdrawn prompt settles its leg**, #1016's `dropDefault` at a
+third kind. `PendingChoiceChooseCards` declares `onDrop: dropDefault`
+in the departure table; the gate is unchanged
+(`choiceObjectSurvivesLocked`), so a run whose own source left the
+game with its controller is abandoned rather than paid out. A
+Thoughtseize pick is untouched, because the action reads the run link
+and a pick that is no run's leg has none.
+
+**6. Two continuations, and they are not interchangeable.**
+`DiscardPrompt.Then` stays, and it is now `func(g, seat, discarded)`:
+it is ONE LEG's own sentence — Vicious Rumors' "each opponent discards
+a card, THEN mills a card" — it runs per seat, and it still fires for
+an empty hand, which is the #797 contract ("discard your hand, then
+draw three"). It takes the seat because a fan-out copies ONE template
+per seat, so a closure over a loop variable would mill the wrong
+player. The RUN's continuation is the rest of the instruction and runs
+once. A payoff written on the leg pays out per answer, which is
+exactly what Syphon Mind did.
+
+**7. Four catalog callers migrated; the rest were already right.**
+`git grep` finds twenty-seven call sites of the two discard entry
+points; twenty-three have nothing hanging off the answer and are
+untouched.
+
+- **The ORDER.** Archon of Cruelty (`batch09_helpers.go`) is one
+  nested chain now — the sacrifice run's continuation is the discard
+  run, and the discard run's continuation is the last three clauses,
+  both answers deliberately ignored. Vicious Rumors
+  (`vicious_rumors.go`) moved its "You gain 1 life", printed last, off
+  the line after the fan-out and onto the run, keeping its per-opponent
+  mill on the leg.
+- **The COUNT.** Syphon Mind's "you draw a card for each card
+  discarded this way" was one card per ANSWER, off each prompt's own
+  `Then`, with a hand-rolled empty-hand skip; it is `discarded.Count()`
+  once, after the table has pitched, and the skip is the engine's rule.
+  `b39MayDiscardThenDraw` (Thrilling Discovery, Cathartic Pyre)
+  measured the count by subtracting hand sizes across the prompt. That
+  agrees with the run on every board reachable today — a madness card
+  and a CR 903.9 commander both leave the hand, and a cancelled leg
+  both stays in it and is not counted — so this one changes no outcome.
+  It is migrated because it was a SECOND reading of "what was
+  discarded", and the engine already answers that question; two
+  readings of one rule are the pair that drifts.
+
+**8. Springbloom Druid (#1026), on §5x's machinery rather than this
+one.** §5x item 8 left it open: the land was chosen as a TRIGGER
+TARGET because a sacrifice prompt had no continuation, so the search
+would have had to be queued beside it and — with a small library, where
+the search resolves synchronously — the basics would have entered
+BEFORE the sacrifice and been offered as the land to sacrifice. The
+`Targets` clause is gone, the `OptionalPrompt` stays, and the body is
+one `PlayerSacrificesThenForEffect(…, 1, then)` whose continuation is
+the search, gated on `sacrificed.Sacrificed(controller)` — the card's
+own "if you do".
+
+Two things that changes, both towards printed, and both card decisions
+rather than mechanic ones, which is why #1019 filed it separately:
+WHICH land can be sacrificed (the choice is made at resolution over
+the board as it then is, so a land played in response is a legal answer
+and nothing is announced for an opponent to respond to), and what
+happens with no land (asked nothing, searches for nothing — "you may
+sacrifice a land. If you do" — rather than the whole trigger being
+removed by CR 603.3d for want of a target the card does not print).
+Its caveat is deleted and it is `CompletenessFull`.
+
+**9. The lint's tables.** `discardPromptVerb` names the run and carries
+`returnIsAQuestion`, so `questionGatesIn` — §5x item 7's second scan,
+renamed from `questionCountGatesIn` because a prompt ID is a question
+as much as a count is — flags `if g.QueueDiscardChoiceForEffect(…) ==
+uuid.Nil` as well as the two sacrifice spellings.
+`QueueDiscardChoiceForEffect`, `DiscardChoiceForEffect` and
+`EachPlayerDiscardsForEffect` are in `exitStartsTheClock` under it.
+`discardVerb` is the RANDOM discard beside them and names
+`g.DiscardRandomThenForEffect`, added here so that no row in the table
+says "there is no continuation form yet" while one exists.
+`graveyardVerb` still does, and it is now the only one.
+
+One allowlist entry came with the widening, and it is a scanner
+artifact rather than a card: `kolaghans_command.go:70`. `exitPayoutsIn`
+walks a func literal both on its own and as part of the declaration it
+sits in, so on the enclosing pass every mode of a modal spell looks
+like one function — the damage mode's `ok` is read after the discard
+mode's prompt, three closures earlier, and the two never share a scope.
+The per-closure pass reports nothing, which is the right answer.
+
+**10. Still open, and named.** `graveyardVerb` has no continuation form
+(`g.PutIntoGraveyardForEffect`), and no catalog caller reads one back
+today. A discard prompt whose candidates ALL leave the hand before it
+is answered has no prune — there is no `pruneDiscardChoicesLocked`
+beside `pruneSacrificeChoicesLocked` — so the prompt becomes
+unanswerable rather than being withdrawn and settling its leg. It is
+reachable only by an effect emptying a hand under an open prompt, which
+no catalog card does, and it predates this change; filed as
+[#1045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1045) rather
+than fixed here.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
@@ -1247,6 +2668,18 @@ Doubling Season works whether a counter lands via the public action
 or via an effect's primitive.
 
 ### 7. `enterBattlefieldLocked` shared helper
+
+*Partly delivered 2026-09-18 by
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+(#762): TOKEN creation is the entry site this section promised and
+never got. A created token now runs
+`enterBattlefieldThroughPipelineLocked` and `executeEntryToBattlefieldLocked`
+— the same entry primitive and the same finisher a library search, an
+exile return and a reanimation run (#478) — so
+enters-tapped, enters-with-counters, CR 614.12 self-replacement and
+`fireETBHookLocked` all reach a token. Token creation itself also
+became its own replacement event (`RepEventCreateTokens`), which this
+section did not anticipate.*
 
 All battlefield-entry sites (`mutations.go:364`, `:780`, `:1828`,
 plus `SearchLibraryForEffect`'s battlefield branch) consolidate
@@ -1296,7 +2729,12 @@ because it watches arbitrary other moves.
 ### 10. Library of Leng scope limited to cleanup-step discard
 
 **Withdrawn 2026-09-16: this section misstates both the card and the
-rules. Read [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules) instead.**
+rules. Read [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules) instead —
+and then [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md),
+which is where the work §10a described landed: a discard is its own
+replacement event (`RepEventDiscard`) carrying the cause (effect, cost
+or cleanup) the rules actually distinguish, and Library of Leng is an
+ordinary catalog card on it.**
 The original text stays below as the record of what was decided.
 
 > CR 701.8a/c distinguishes voluntary vs involuntary discard. Library
@@ -1423,6 +2861,17 @@ replacement window arrives. `DiscardPending` is cleanup-only.
   madness, which needs #650's routing but not the cause.
 - Library of Leng itself becomes an ordinary catalog card once #650
   lands. It stays on #390's skip list until then.
+
+**Closed 2026-09-18 by
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md)
+(#650).** The discard route opens `RepEventDiscard`, carrying
+`DiscardPlayer`, `DiscardCause` (`"effect"` / `"cost"` / `"cleanup"`)
+and the causing `Source`, alongside the move payload it already had.
+Library of Leng is in the catalog and reads the cause; madness (#657)
+needs only the event and can be written on it; the Obstinate Baloth
+family reads the cause plus the controller of `Source`. What ADR 0061
+deliberately does NOT close is search-to-graveyard and surveil, so Rest
+in Peace is still on #383's skip list.
 
 ### 11. Damage prevention hook only, no shield mechanic
 

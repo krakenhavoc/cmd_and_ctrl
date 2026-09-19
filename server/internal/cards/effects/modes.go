@@ -22,13 +22,33 @@ import (
 // targeting.
 
 // Mode declares one option. Pass a TargetSpec when the bullet
-// targets; omit it otherwise.
+// targets; omit it otherwise. A bullet with two differently
+// constrained targets passes one statement built with Clauses.
 func Mode(label string, targets ...*game.TargetSpec) game.ModeOption {
 	o := game.ModeOption{Label: label}
 	if len(targets) > 0 {
 		o.Targets = targets[0]
 	}
 	return o
+}
+
+// ModeDoing declares one option together with its BODY, for a modal
+// trigger or activated ability — which has no OnResolve to branch
+// in. `occurrence` is the index into the announced modes, so the
+// bullet reads its own target group with ctx.ModeTargets(occ)
+// (#764).
+//
+// A modal SPELL may use this too, and then its OnResolve is nil;
+// the older `if ctx.HasMode(i)` shape still works and reads the same
+// data.
+func ModeDoing(label string, targets *game.TargetSpec, effect func(item *game.StackItem, ctx *Context, occurrence int) error) game.ModeOption {
+	return game.ModeOption{
+		Label:   label,
+		Targets: targets,
+		Effect: func(g *game.Game, item *game.StackItem, occurrence int) error {
+			return effect(item, NewContext(g, item), occurrence)
+		},
+	}
 }
 
 // ChooseOne — "Choose one —".
@@ -41,6 +61,19 @@ func ChooseN(prompt string, min, max int, options ...game.ModeOption) *game.Mode
 	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max}
 }
 
+// ChooseOneOrMore — "Choose one or more —" (Sublime Epiphany): at
+// least one bullet, at most all of them, each at most once.
+func ChooseOneOrMore(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: "Choose one or more", Options: options, Min: 1, Max: len(options)}
+}
+
+// ChooseNRepeating — CR 700.2d, "you may choose the same mode more
+// than once" (Mystic Confluence's "Choose three. You may choose the
+// same mode more than once"). Each occurrence gets its own targets.
+func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max, Repeatable: true}
+}
+
 // ManaValueGE passes when the card's mana value is ≥ n (Austere
 // Command's "mana value 4 or greater").
 // Same reading as ManaValueLE: game.(*Game).ManaValueForEffect.
@@ -49,4 +82,41 @@ func ManaValueGE(n int) CardPredicate {
 		mv, ok := g.ManaValueForEffect(c)
 		return ok && mv >= n
 	}
+}
+
+// ModeTarget is the first still-legal target announced for this mode
+// OCCURRENCE (CR 608.2b), or (zero, false) when the bullet had none
+// or the one it had has gone. The read every targeted bullet wants:
+// a mode's targets are its own group, and a bullet must never reach
+// for the group of the bullet chosen beside it.
+func ModeTarget(ctx *Context, occurrence int) (game.TargetRef, bool) {
+	for _, t := range ctx.ModeTargets(occurrence) {
+		if ctx.IsTargetLegal(t) {
+			return t, true
+		}
+	}
+	return game.TargetRef{}, false
+}
+
+// DestroyTheModesTarget is "destroy target <thing>" as a modal
+// bullet's body — shared by Kolaghan's Command's artifact bullet and
+// Glissa Sunslayer's enchantment bullet, which differ only in the
+// clause on the option.
+func DestroyTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return DestroyTarget{Target: t.ID}.Apply(ctx)
+}
+
+// BounceTheModesTarget is "return target <thing> to its owner's
+// hand" as a modal bullet's body — Mystic Confluence's and Sublime
+// Epiphany's, likewise differing only in the clause.
+func BounceTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return BounceToHand{Target: t.ID}.Apply(ctx)
 }

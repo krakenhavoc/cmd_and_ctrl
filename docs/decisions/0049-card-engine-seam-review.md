@@ -146,3 +146,212 @@ SANDBOX-MANUAL mutations in a row, with nothing resolving and no step
 change between them, share a batch. The old check behaved the same
 way, and hand-shoving cards between zones has no rules occurrence to
 count.
+
+## Amendment (2026-09-18, #784): the key gets its second dimension, and the helper is gone
+
+The amendment above closed WHEN a batch is and left open WHAT the
+guard counts within one. CR 603.2c has both halves: "an ability
+triggers only once each time its trigger event occurs. However, it
+can trigger repeatedly if one event contains multiple occurrences."
+A clause that NAMES AN OBJECT contains one occurrence per object, and
+the object the catalog keeps meeting is a player — "whenever one or
+more creatures you control deal combat damage to **a player**"
+(Keeper of Fables' ruling, 2019-10-04: "if non-Human creatures you
+control deal combat damage to two or more players at the same time,
+Keeper of Fables's ability triggers for each of those players"), and
+"whenever you attack **a player**" (Horizon Explorer: "will trigger
+once for each player you attack"; Neyali: "triggers for each player
+you are attacking with one or more tokens").
+
+`TallyKey(source, key)` could not say that: `TriggeredAbility.Key` is
+static catalog data and the player is only known from the event. So
+three creatures hitting three opponents in one damage step made ONE
+Treasure, and the two cards that needed the player dimension had
+hand-rolled it out of `TriggerInFlightForEffect`.
+
+- **`TriggeredAbility.BatchKey func(ev, source, g) string`** — the
+  second dimension, read off the event. `oncePerBatchKeyLocked`
+  appends it to `Key` and the guard is unchanged underneath:
+  `oncePerBatchAllowsLocked(batch, source, key)` is still one
+  test-and-set against one map. One key, two dimensions, one guard —
+  **no second dedupe path**, which is the constraint this whole area
+  is held to.
+- **One reading in the catalog.** `effects.OncePerBatchPerPlayer`
+  sets `BatchKey` to `effects.PerPlayer`: the damaged player for a
+  damage event, the defending player for an attack declaration (read
+  through `b17DefendingPlayer`, so a planeswalker or battle counts as
+  its controller and not as a second player). Cards take it through
+  `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer` or,
+  when they build the item from the event, by setting the two fields.
+- **The other batch boundary the rules ask for.** CR 510.4 gives a
+  combat with first strike in it TWO combat damage steps. The engine
+  runs both inside the cursor's single `combat_damage` step, so
+  `resolveCombatDamageLocked` now opens a batch between them: a
+  first-striker and a regular attacker connecting with the same
+  player are two triggers, as in paper. The boundary rule is still
+  one sentence — "a stack item begins to resolve, or the cursor
+  enters a new step" — with the one step the cursor does not see
+  named beside it.
+
+  **Superseded in part (2026-09-18, [#717](https://github.com/krakenhavoc/cmd_and_ctrl/issues/717)):**
+  the cursor now sees it. `first_strike_damage` is a real step (see
+  ADR 0045's 2026-09-18 amendment), so the ordinary "the cursor
+  enters a new step" boundary produces both batches and the
+  hand-rolled `beginEventBatchLocked` between the passes is deleted.
+  The outcome is unchanged — a first-striker and a regular attacker
+  hitting the same player are still two triggers — and the boundary
+  rule is now one sentence with nothing named beside it.
+- **`Game.TriggerInFlightForEffect` and its doc are deleted.** Breena
+  (per attacked opponent) and Nature's Will (per damaged player) were
+  its only callers and both now carry a static `Key` plus
+  `BatchKey`; their stack labels stay per player, because that is
+  what tells two simultaneous triggers apart on the stack and what
+  the once-per-turn tally reads. Breena's declared retreat — a second
+  opponent swallowed while the first opponent's creature pick was
+  open — goes with the helper.
+- **No new state.** The dimension rides the existing
+  `Game.oncePerBatchFired` key, so `clone.go`, `snapshot.go` and
+  `snapshot_drift_test.go` are untouched: the same map, a longer
+  string.
+
+Cards moved onto the per-player key: Professional Face-Breaker,
+Keeper of Fables, Grazilaxx, Rapacious Guest, Thopter Spy Network,
+Olivia (caveat retired, now `full`), Alela (her per-player target
+clause works as printed), Nature's Will, Breena, Horizon Explorer
+(caveat retired) and Neyali. Every other `OncePerBatch` user was
+re-read: "whenever you attack with N creatures" (Aurelia, Chivalric
+Alliance, Firemane Commando), "whenever you attack" (Adeline,
+Hermes, Mavren Fein, The Earth King), "is attacked" (Curse of
+Opulence) and the zone-move family (Dour Port-Mage, Laelia, Teval,
+Tormod, Satoru, Sidisi, On Wings of Gold) name no second object and
+keep the plain guard.
+
+
+## Amendment (2026-09-18, #936): the tally's other dimension is the OBJECT (CR 400.7)
+
+Decision 1's `TurnTally` keys its two per-ability counts —
+`Resolved` and `Triggered`, the "only once each turn" gates — by
+`TallyKey(source, label)`, where `source` is an instance ID. An
+instance ID is the identity of the CARD and survives a zone change, so
+a permanent that left the battlefield and came back the same turn
+still counted the object before it: its "whenever …, if this is the
+first time this has happened this turn" clause could not fire again,
+where CR 400.7 says the returning permanent is a new object and it
+should.
+
+The sibling registries were fixed at the one battlefield exit in #630
+(`forgetPerObjectTurnStateLocked`). These could not be, and the reason
+is the one dependency this key has: **`TurnTally.LoopRun` and
+`TurnTally.LoopAllowance` share it**, and they are ADR 0055's loop
+detector. A blink loop leaves and re-enters on every iteration, so
+clearing the tally at the exit would have reset the run every
+iteration and the breaker would never have reached its threshold — the
+escape hatch created by exactly the loops it exists for.
+
+So the key gets a dimension rather than a cleanup, the same way #784's
+did:
+
+- **`Card.ObjectEpoch`**, bumped once per zone change in `MoveCard`,
+  next to the rest of CR 400.7's forgetting. It is a serial number for
+  the OBJECT; nothing reads its value, only whether two readings are
+  equal.
+- **`ObjectTallyKey(source, epoch, label)`** is the per-object
+  projection and **`TallyKey(source, label)`** stays the per-card one.
+  One (source, label) pair, two projections, and the reader's question
+  decides which:
+
+  | Reader | Projection | Why |
+  |---|---|---|
+  | `TurnTally.Resolved` / `Triggered`, through `Game.ResolvedThisTurn` / `TriggeredThisTurn` (and so `b15ResolvedThisTurn`, `b11TriggeredThisTurn` and every catalog gate behind them) | per OBJECT | CR 400.7 — the clause is about this permanent |
+  | `TurnTally.LoopRun` / `LoopAllowance` (`loopSuspectedLocked`, `grantLoopShortcutLocked`, `notePlayerActivationLocked`) | per CARD | a loop is a loop whichever object is running it |
+  | `Game.oncePerBatchFired` (`oncePerBatchAllowsLocked`) | per CARD | each entry is compared against the live batch, so a stale one cannot match |
+
+- **No catalog change.** The gates ask `Game.TriggeredThisTurn` /
+  `ResolvedThisTurn`, which take the epoch of whichever object the
+  source names now, so `batch16_helpers.go`, `exemplar_of_light.go`,
+  `nykthos_paragon.go`, `breena_the_demagogue.go` and the rest are
+  correct without being touched.
+- **Nothing is deleted at the exit.** The old object's entries stay in
+  the map, unreachable, until the turn boundary flushes the tally with
+  everything else — so #935's one battlefield-exit seam is unchanged
+  and gains no fourth clearing site.
+
+State: `ObjectEpoch` is `carried` (snapshot and clone), because
+nothing can re-derive how many times a card has moved. A game restored
+from a file written before this shipped reads every card at epoch
+zero, which merges the current turn's counts for a permanent that had
+already returned — one turn, in a game that was mid-turn when the
+server went down.
+
+## Amendment (2026-09-19, #1009): the turn boundary is not the upkeep, and two dimensions the counters could not carry
+
+*Branch `fix/1009-1010-turn-boundary-and-entry-counter-order`. Closes
+[#1009](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1009).*
+
+D2.1 above shipped `TurnTally` to replace "about thirty near-identical
+helpers in the catalog … each **blind to anything that happened in the
+untap step, which is before the upkeep event**". Four of those helpers
+were never migrated, and one of them is the helper the others cite by
+name. `b06EnteredThisTurn` still walked `g.Events` backwards to
+`EventBeginUpkeep`, on a stated argument — "nothing can enter during
+the untap step before it" — that ADR 0070 and #70 had already made
+false: an untap-step trigger or an untap-step choice can put a
+permanent onto the battlefield, and the walk stopped short of it and
+answered "it did not enter this turn".
+
+**Every "this turn" question in the catalog now reads the tally, and
+no reader anchors on `EventBeginUpkeep`.** The four migrated:
+
+| Reader | Was | Is |
+|---|---|---|
+| `b06EnteredThisTurn` (Oran-Rief, Éowyn) | walk to `EventBeginUpkeep` | `Game.EnteredThisTurn` |
+| `b18AttackedThisTurn` (Chart a Course) | walk to `EventBeginUpkeep` | `PlayerTurnTally.AttacksDeclared` |
+| `b20LandPlayed`'s prior-plays count (Horn of Greed, Prosper) | walk to `EventBeginUpkeep` | `g.EventsThisTurn()` |
+| `b35WasAttackingWhenItLeft` (Garna) | walk with an `EventBeginUpkeep` barrier | `g.EventsThisTurn()`, barrier dropped as redundant — `EventStepBegan` announces the upkeep too |
+
+Two walks over `g.Events` that are NOT "this turn" questions stay, and
+are the only two shapes that may: a **cursor-bounded** walk
+(`ev.Seq` — "what happened after this point": `b25DiscardedByAfter`,
+`b27DamageDealtToAfter`, `b17MilledCreatureCards`) and a
+**most-recent-X** walk (`b16EnteredFromStack`, `b30CastFromHand`,
+`b12CounterTotalBefore`, `b13ResolutionInProgressBy`,
+`b32CardsInExileLastExiledDuring`).
+
+### Two new cells, and why they are records rather than counters
+
+- **`TurnTally.Entered map[uuid.UUID]int`** — battlefield entries this
+  turn, per OBJECT. `EnteredSubtypes` (#743) answers "how many Humans
+  entered under your control"; this answers "did *that* permanent
+  enter", which Oran-Rief's "each green creature that entered this
+  turn" needs and which Éowyn needs on top of the subtype count, to
+  know whether she is one of the entries it counted.
+- **`TurnTally.CombatDamagedPlayers map[string]int`** — which players
+  were dealt combat damage this turn and by what, keyed by (the
+  dealer's controller, a tagged identity, the damaged player), with one
+  cell per NAME and one per SUBTYPE the dealing creature had as it
+  dealt the damage. This is the #596 shape, and combat is where that
+  shape bites hardest: combat damage kills the creature that dealt it
+  at the very next state-based check, and CR 704.5d then takes a TOKEN
+  out of the graveyard entirely. The scan it replaces looked the dealer
+  up wherever it had landed, so **a Faerie Rogue token that connected
+  and traded dropped the player it hit out of Alela, Cunning
+  Conqueror's goad set** — the commonest case the card is printed for,
+  since Alela makes the Faeries herself. Trygon Predator reads the same
+  record by name. #1011's report left this alone as "a bigger change
+  than either issue"; it is the same change as the entry tally, one
+  dimension over, and doing it here is what makes "one tally model"
+  true rather than nearly true.
+
+Both are `carried`: they are inside `Game.TurnTally`, which the drift
+test already classifies, and `cloneTurnTally` copies them (a new
+`copyUUIDIntMap` for the object-keyed one, which round-trips through
+JSON on `uuid.UUID`'s `MarshalText`).
+
+### The rule, stated so the next reader does not re-derive it
+
+`onTurnBeganLocked` resets the tally, and it runs from
+`beginNextTurnLocked` **before** the untap step's turn-based actions
+(ADR 0059 Decision 7). `EventBeginUpkeep` comes after that, so it is
+never the turn boundary; `g.TurnTally.FirstEvent` and
+`g.EventsThisTurn()` are. AGENTS.md §"This turn" carries the same
+sentence for the catalog side.

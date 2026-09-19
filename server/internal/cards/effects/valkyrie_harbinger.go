@@ -16,8 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // hit is four, so connecting is enough. "Each end step" is any
 // player's (The Gaffer's shape), and "if you gained 4 or more life
 // this turn" is an intervening-if (CR 603.4): checked as the end step
-// begins, and again as the trigger resolves, both by walking the
-// event log back to the current turn's upkeep (b15LifeGainedThisTurn
+// begins, and again as the trigger resolves, both off the per-turn
+// tally's LifeGained cell (b15LifeGainedThisTurn
 // — a lifelink hit, a GainLife primitive and a drain's gain half all
 // count, a loss does not). The token is Parhelion II's Angel.
 //

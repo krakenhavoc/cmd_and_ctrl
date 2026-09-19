@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "0c26ab0d-80f6-4e5b-9d0e-af17c1519583",
 		Name:         "March of the Multitudes",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		TapCost:      Convoke(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

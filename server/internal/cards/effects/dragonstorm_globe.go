@@ -17,15 +17,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // offered with the commander's identity first, the way every "any
 // color" rock is.
 //
-// Known engine gap, declared: a Dragon TOKEN skips the entry pipeline
-// (token creation does not run the CR 614 replacements), so it enters
-// without the counter — weaker than printed, never stronger.
+// A Dragon TOKEN gets the counter too, since #762: a created token
+// runs the same battlefield-entry pipeline every other permanent
+// runs, so the counter is added to its entry event and placed through
+// the CR 614 counter pipeline like any other.
 func init() {
 	Register(Spec{
 		OracleID:     "f6de5bd7-7704-4a0c-a27a-9e565e49f5e9",
 		Name:         "Dragonstorm Globe",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Dragon tokens don't get the extra +1/+1 counter — only Dragon cards entering the battlefield do."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b28PermanentsYouControlEnterWithACounter("Dragonstorm Globe: a Dragon enters with an additional +1/+1 counter",
 				func(c game.Card) bool { return c.HasSubtype("Dragon") }),

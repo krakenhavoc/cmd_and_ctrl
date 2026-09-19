@@ -27,13 +27,21 @@ import (
 // gated to one card for the duration of one test.
 func registerExitReplacement(t *testing.T, g *game.Game, only uuid.UUID, label string, rewrite func(ev *game.ReplacementEvent)) {
 	t.Helper()
+	registerExitReplacementFrom(t, g, game.ZoneBattlefield, only, label, rewrite)
+}
+
+// registerExitReplacementFrom is the same helper with the source zone
+// named: #911's exiles leave a GRAVEYARD, which is the Rest in Peace /
+// Leyline family's zone rather than the battlefield.
+func registerExitReplacementFrom(t *testing.T, g *game.Game, from game.ZoneKind, only uuid.UUID, label string, rewrite func(ev *game.ReplacementEvent)) {
+	t.Helper()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(game.ReplacementEffect{
 			Watches: []game.EventKind{game.EventZoneMove},
 			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) bool {
 				return ev.Kind == game.RepEventMove &&
 					ev.CardID == only &&
-					ev.OldZone == game.ZoneBattlefield
+					ev.OldZone == from
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				rewrite(ev)

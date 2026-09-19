@@ -88,9 +88,9 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 }
 
 // b33ResolutionsThisTurn counts how many times an ability of `source`
-// labelled `label` has resolved this turn — walked off the event log
-// back to the turn's upkeep (b06EnteredThisTurn's boundary, since
-// Turn.Number counts rounds). Dalkovan Encampment's "whenever you
+// labelled `label` has resolved this turn — the per-turn tally's
+// per-object resolution count (Turn.Number is no use here: it counts
+// rounds). Dalkovan Encampment's "whenever you
 // attack THIS TURN" is created once per activation, so the count is
 // how many copies of the delayed trigger exist.
 func b33ResolutionsThisTurn(g *game.Game, source uuid.UUID, label string) int {
@@ -130,37 +130,23 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 
 // b33PlayersDealtCombatDamageThisTurnByYourFaeries is the set of
 // players a Faerie under `controller`'s control dealt combat damage
-// to this turn, walked off the event log back to the turn's upkeep —
-// b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed with a
-// subtype where that reads a name. Alela's goad clause narrows
+// to this turn — b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed
+// with a subtype where that reads a name. Alela's goad clause narrows
 // "target creature THAT PLAYER controls" through it, because a target
-// predicate is not handed the trigger's event. The dealing creature
-// is read wherever it now is, and one that can no longer be found
-// does not count, which errs weaker.
+// predicate is not handed the trigger's event.
 //
-// #596 widened that gap: a Faerie TOKEN that traded in combat used to
-// persist in the graveyard with its type line intact, and CR 704.5d
-// now removes it at the next state-based check, so the player it hit
-// drops out of this set. Alela's goad simply reaches fewer players
-// than printed in that case. Closing it properly wants the sacrifice
-// tally's treatment — record the subtype at the damage, not at the
-// read — which is a bigger change than the bug it fixes.
+// The per-turn tally's damage-source cell (#1009), and this is the
+// reader #596 was about: the event-log scan looked the dealing Faerie
+// up wherever it had since landed, and a Faerie TOKEN that traded in
+// combat is nowhere — CR 704.5d takes it out of the graveyard at the
+// next state-based check, one check after the damage that killed it.
+// The player it hit dropped silently out of the set, which is the
+// commonest case Alela is printed for, since she makes the Faeries
+// herself. The tally records the subtype AT THE DAMAGE, while the
+// Faerie is still on the battlefield, so a traded token counts and a
+// changeling counts.
 func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
-	out := map[uuid.UUID]bool{}
-	for _, ev := range g.EventsThisTurn() {
-		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {
-			continue
-		}
-		if p := g.PlayerByIDForEffect(ev.Target); p == nil {
-			continue
-		}
-		src, ok := g.LookupCardForEffect(ev.Source)
-		if !ok || !src.HasSubtype("Faerie") {
-			continue
-		}
-		out[ev.Target] = true
-	}
-	return out
+	return g.PlayersDealtCombatDamageThisTurnBySubtype(controller, "Faerie")
 }
 
 // b33CreatureOfPlayerHitByYourFaeries is Alela's target predicate: a
@@ -378,29 +364,33 @@ func b33GainLifeThenDraw(life, draw int) func(g *game.Game, item *game.StackItem
 
 // b33SacrificeLandsThenSearchBasicsTapped is Planar Engineering's
 // body: two sacrifice prompts over the controller's lands (their own
-// pick, one land per prompt, the b17PlayerSacrificesN shape — a
-// player with one land sacrifices it and the second prompt is
-// skipped), then a search for up to `n` basic land cards put onto
-// the battlefield tapped, then a shuffle. The search prompt is
-// queued alongside the sacrifice prompts rather than after them —
-// the sacrifice prompt has no continuation — which is harmless: the
-// lands come from the battlefield and the basics from the library.
+// pick, one land per prompt — a player with one land sacrifices it
+// and the second prompt is withdrawn), THEN a search for up to `n`
+// basic land cards put onto the battlefield tapped, then a shuffle.
+//
+// The "then" is the printed one since #1019: the two prompts are one
+// run and the search is its continuation, so the basics arrive after
+// the lands have gone. The search used to be queued alongside the
+// sacrifice prompts because the sacrifice prompt had no continuation
+// to hang it on, which put a land-count trigger and a landfall watcher
+// in the wrong order relative to each other.
 func b33SacrificeLandsThenSearchBasicsTapped(item *game.StackItem, ctx *Context, lands, n int) error {
-	for i := 0; i < lands; i++ {
-		if ctx.Game.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
-			sacrificeSpec("a land", Land()), "Planar Engineering — sacrifice a land") == 0 {
-			break
-		}
-	}
-	return SearchLibrary{
-		Player:        item.Controller,
-		Predicate:     b30IsBasicLandCard,
-		Dest:          game.ZoneBattlefield,
-		Limit:         n,
-		Shuffle:       true,
-		TappedOnEntry: true,
-		Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
-	}.Apply(ctx)
+	return ctx.Game.PlayerSacrificesThenForEffect(
+		item.SourceCardID, item.Controller,
+		sacrificeSpec("a land", Land()),
+		"Planar Engineering — sacrifice a land",
+		lands,
+		func(g *game.Game, _ game.PromptedSacrifices) error {
+			return SearchLibrary{
+				Player:        item.Controller,
+				Predicate:     b30IsBasicLandCard,
+				Dest:          game.ZoneBattlefield,
+				Limit:         n,
+				Shuffle:       true,
+				TappedOnEntry: true,
+				Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
+			}.Apply(NewContext(g, item))
+		})
 }
 
 // b33DoubleUnspentMana is Doubling Cube's ProducedFunc: one slot of
@@ -456,8 +446,14 @@ func b33RemoveChargeCountersForMana(g *game.Game, item *game.StackItem) error {
 	return AddMana{Player: item.Controller, Produced: produced}.Apply(ctx)
 }
 
-// b33PutChargeCounterOnSelf is Coalition Relic's "{T}: Put a charge
-// counter on this artifact" body.
+// b33PutChargeCounterOnSelf is "put a charge counter on this
+// permanent" — Coalition Relic's "{T}: Put a charge counter on this
+// artifact" and Lost Jitte's "whenever equipped creature deals combat
+// damage, put a charge counter on Lost Jitte" (batch 43).
+//
+// The zone guard is the load-bearing half for both: AddCounter does
+// not check where its target is, and an artifact destroyed in response
+// to its own trigger should not bank a counter in the graveyard.
 func b33PutChargeCounterOnSelf(g *game.Game, item *game.StackItem) error {
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
@@ -722,9 +718,16 @@ func b33DistributeCountersRoundRobin(g *game.Game, item *game.StackItem) error {
 // controller's is sacrificed, then the controller draws one card per
 // permanent sacrificed. Bontu himself is never among them — the
 // target clause excludes his name.
+//
+// #910: one batch with the draw as its continuation, not a loop with a
+// tally. "That many" is a number about permanents that really left the
+// battlefield, and a sacrificed COMMANDER stops to answer CR 903.9 —
+// so counted on the line after the loop it was one card too many, drawn
+// on the strength of a question having been asked. The sacrifices are
+// also one simultaneous exit now, which is what a single instruction
+// should look like to a Blood Artist.
 func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	n := 0
+	var doomed []uuid.UUID
 	for _, t := range item.Targets {
 		if t.Kind != game.TargetCard || t.ID == item.SourceCardID || !g.TargetStillLegalForEffect(item, t) {
 			continue
@@ -733,12 +736,11 @@ func b33SacrificeChosenThenDrawThatMany(g *game.Game, item *game.StackItem) erro
 		if !ok || c.Controller != item.Controller || !onBattlefield(g, t.ID) {
 			continue
 		}
-		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		n++
+		doomed = append(doomed, t.ID)
 	}
-	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
+	return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, sacrificed []uuid.UUID) error {
+		return DrawCards{Player: item.Controller, N: len(sacrificed)}.Apply(NewContext(g, item))
+	})
 }
 
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —

@@ -21,12 +21,25 @@ import (
 // into a fresh *Game, and snapshotted again, produces a snapshot
 // identical to the first. Phrasing it that way means a field added to
 // the snapshot is covered the moment it is added, with no test edit —
-// and a field DROPPED between capture and restore fails immediately,
-// because the second capture will not contain it.
+// and a field dropped in ONE DIRECTION fails immediately, because the
+// second capture will not contain it.
 //
-// What the property deliberately cannot see is a field that exists on
-// *Game but on neither side of the snapshot. That blind spot is what
-// snapshot_drift_test.go closes.
+// What the property cannot see is a field dropped from BOTH sides, and
+// #1005 is the report that it had been claiming otherwise. Two things
+// close that, and it takes both:
+//
+//   - snapshot_drift_test.go makes every field on every domain type say
+//     what happens to it — carried, rebuilt or dropped. That catches a
+//     field nobody thought about. It reads no values.
+//   - snapshot_carried_test.go writes a distinctive value into every
+//     field classified `carried`, runs the real capture → JSON →
+//     restore, and reads it back OFF THE RESTORED GAME. That catches a
+//     field that says it is carried and is not, in either direction.
+//
+// The other half of the old claim was the fixture: `enrich` below is
+// what this property measures, so a field it does not set is invisible
+// here even in the one-directional case. The enforcement test sets its
+// own values and does not depend on this fixture growing.
 
 // newRestorableGame returns a started 2-player game whose RNG key is
 // deterministic (read from a fixed PCG seed). Since ADR 0054 every
@@ -97,19 +110,50 @@ func enrich(t *testing.T, g *Game) {
 				LostLastCounter:      i == 1,
 				VariableToughness:    i == 0,
 				KnownBy:              map[uuid.UUID]bool{p0.ID: true, p1.ID: true},
+				// The three CR 614.12-family stored answers. Nothing in
+				// the catalog can re-derive any of them — a player made
+				// the choice — so a projection that dropped one would
+				// restore a Cavern of Souls naming no tribe, a Coldsteel
+				// Heart producing nothing, or a True-Name Nemesis
+				// protected from nobody. The drift test says they must be
+				// `carried`; this is what proves they ARE, and none of
+				// the three was in this fixture before #980.
+				NamedTribe:   "Elf",
+				ChosenColor:  "G",
+				ChosenPlayer: p1.ID,
 			}
 			g.Battlefield.PushTop(c)
 		}
 
 		// --- exile, carrying a play permission --------------------
+		exiledID := uuid.New()
 		g.Exile.PushTop(Card{
-			InstanceID: uuid.New(),
+			InstanceID: exiledID,
 			Name:       "Exiled Card",
 			OracleID:   "oracle-exiled",
 			Owner:      p1.ID,
 			Controller: p0.ID,
-			ExilePlay:  ExilePlayPermission{Player: p0.ID, UntilTurn: 3},
 			KnownBy:    map[uuid.UUID]bool{p0.ID: true},
+		})
+		// ADR 0066: the permission is the PLAYER's, pinned to the
+		// card's CR 400.7 object epoch, so it has to be granted
+		// through the one write path rather than stamped on the card.
+		g.GrantCastPermissionOverCardForEffect(exiledID, CastPermission{Player: p0.ID})
+
+		// --- exile, face down and known to its owner (ADR 0069) ---
+		// Foretell's shape. Here so the exact round-trip covers
+		// FaceDownKind: a card carried back with FaceDown set and no
+		// kind would read as a Necropotence exile that nobody may
+		// look at, which is a different game.
+		g.Exile.PushTop(Card{
+			InstanceID:   uuid.New(),
+			Name:         "Foretold Card",
+			OracleID:     "oracle-foretold",
+			Owner:        p1.ID,
+			Controller:   p1.ID,
+			FaceDown:     true,
+			FaceDownKind: FaceDownForetold,
+			KnownBy:      map[uuid.UUID]bool{p1.ID: true},
 		})
 
 		// --- a spell on the stack, plus its StackMeta -------------
@@ -325,8 +369,8 @@ func TestSnapshotRoundTripKeepsGameUsable(t *testing.T) {
 	if n := len(restored.Listeners); n != len(g.Listeners) {
 		t.Errorf("restored game has %d listeners, want %d — they are rebuilt by NewGame, not serialised", n, len(g.Listeners))
 	}
-	if n := len(restored.BuiltinReplacements); n != 1 {
-		t.Errorf("restored game has %d built-in replacements, want 1 (commander zone)", n)
+	if n := len(restored.BuiltinReplacements); n != len(g.BuiltinReplacements) {
+		t.Errorf("restored game has %d built-in replacements, want %d — they are registered by NewGame, not serialised", n, len(g.BuiltinReplacements))
 	}
 	// The layer engine must be stale so the first read recomputes
 	// against the restored board rather than serving a cache that
@@ -560,9 +604,9 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 		{
 			name: "turn-scoped static",
 			set: func(g *Game) {
-				g.TurnScopedStatics = []ScopedStatic{{Label: "Giant Growth +3/+3"}}
+				g.ScopedStatics = []ScopedStatic{{Label: "Giant Growth +3/+3"}}
 			},
-			expect: func(c ContinuationCensus) int { return c.TurnScopedStatics },
+			expect: func(c ContinuationCensus) int { return c.ScopedStatics },
 		},
 		{
 			name: "turn-scoped replacement",

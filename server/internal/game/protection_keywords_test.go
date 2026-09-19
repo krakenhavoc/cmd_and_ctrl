@@ -136,7 +136,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 	myHexproof := pushProtectedCreature(g, me, "My Hexproof Bear", "hexproof")
 	myShroud := pushProtectedCreature(g, me, "My Shrouded Bear", "shroud")
 
-	lt := g.LegalTargetsForEffect(me.ID, anyCreatureSpec())
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), anyCreatureSpec())
 	has := func(id uuid.UUID) bool {
 		for _, c := range lt.Cards {
 			if c == id {
@@ -159,7 +159,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 	}
 
 	// The same board from the opponent's side: the asymmetry flips.
-	lt = g.LegalTargetsForEffect(opp.ID, anyCreatureSpec())
+	lt = g.LegalTargetsForEffect(SourceChooser(opp.ID), anyCreatureSpec())
 	hasOpp := func(id uuid.UUID) bool {
 		for _, c := range lt.Cards {
 			if c == id {
@@ -177,7 +177,7 @@ func TestLegalTargetEnumerationHonoursKeywords(t *testing.T) {
 // half, and the reason this change is only one function: the spell
 // was announced at a legal target, the target then GAINED hexproof
 // from a Layer 6 grant, and the re-check must counter the spell by
-// game rules. The grant goes through RegisterTurnScopedStatic so the
+// game rules. The grant goes through RegisterScopedStatic so the
 // keyword is read out of Effective(), not off the printed card.
 func TestResolutionRecheckFizzlesOnGainedHexproof(t *testing.T) {
 	g := newActiveGame(t)
@@ -200,7 +200,7 @@ func TestResolutionRecheckFizzlesOnGainedHexproof(t *testing.T) {
 
 	// "In response": the opponent's Swiftfoot Boots land on it.
 	g.WithWriteLock(func() {
-		g.RegisterTurnScopedStaticForEffect(StaticAbility{
+		g.RegisterScopedStaticForEffect(StaticAbility{
 			Layer: Layer6Ability,
 			AppliesTo: func(c *Card, _ *Game, _ *Card) bool {
 				return c.InstanceID == target
@@ -208,7 +208,7 @@ func TestResolutionRecheckFizzlesOnGainedHexproof(t *testing.T) {
 			Apply: func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 				ch.Abilities = append(ch.Abilities, "hexproof")
 			},
-		}, uuid.New(), "boots")
+		}, uuid.New(), "boots", g.UntilEndOfTurnDuration())
 	})
 	// Force the recompute so Effective() carries the grant, the same
 	// way ReadSnapshot does before any consumer reads it.
@@ -265,10 +265,10 @@ func TestPayingACostIgnoresProtectionKeywords(t *testing.T) {
 	g.ReadSnapshot(func() {
 		for _, id := range []uuid.UUID{shrouded, hexproof} {
 			ref := TargetRef{Kind: TargetCard, ID: id}
-			if !g.specMatchLocked(me.ID, spec, ref, false) {
+			if !g.specMatchLocked(SourceChooser(me.ID), spec, ref, false) {
 				t.Errorf("cost validator rejected a protected permanent %s", id)
 			}
-			if id == shrouded && g.specMatchLocked(me.ID, spec, ref, true) {
+			if id == shrouded && g.specMatchLocked(SourceChooser(me.ID), spec, ref, true) {
 				t.Errorf("targeting validator accepted a shrouded permanent")
 			}
 		}
@@ -297,7 +297,7 @@ func TestProtectionKeywordsAreBattlefieldOnly(t *testing.T) {
 		},
 		Min: 1, Max: 1,
 	}
-	lt := g.LegalTargetsForEffect(me.ID, spec)
+	lt := g.LegalTargetsForEffect(SourceChooser(me.ID), spec)
 	if len(lt.Cards) != 1 || lt.Cards[0] != dead.InstanceID {
 		t.Errorf("graveyard card with printed hexproof was filtered out: %v", lt.Cards)
 	}
@@ -307,17 +307,17 @@ func TestProtectionKeywordsAreBattlefieldOnly(t *testing.T) {
 // caller can hand it anything the zone walk produced.
 func TestCanBeTargetedByIsTotal(t *testing.T) {
 	me := uuid.New()
-	if !CanBeTargetedBy(nil, ZoneBattlefield, me) {
+	if !CanBeTargetedBy(nil, ZoneBattlefield, SourceChooser(me)) {
 		t.Error("nil card is an existence problem, not a targeting one")
 	}
 	c := Card{Controller: uuid.New(), Keywords: []string{"hexproof"}}
-	if CanBeTargetedBy(&c, ZoneBattlefield, me) {
+	if CanBeTargetedBy(&c, ZoneBattlefield, SourceChooser(me)) {
 		t.Error("opponent's hexproof permanent should be refused")
 	}
-	if !CanBeTargetedBy(&c, ZoneStack, me) {
+	if !CanBeTargetedBy(&c, ZoneStack, SourceChooser(me)) {
 		t.Error("the gate is battlefield-only")
 	}
-	if !CanBeTargetedBy(&c, ZoneBattlefield, c.Controller) {
+	if !CanBeTargetedBy(&c, ZoneBattlefield, SourceChooser(c.Controller)) {
 		t.Error("hexproof does not stop its own controller")
 	}
 }

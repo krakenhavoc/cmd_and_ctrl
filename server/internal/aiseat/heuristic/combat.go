@@ -23,14 +23,82 @@ import (
 // is what makes one-at-a-time composition converge.
 
 // hasKeyword reports whether a card's effective ability list carries
-// a keyword. Prefix-matched, so "protection from red" answers to
-// "protection" and "ward {2}" to "ward".
+// a keyword. Prefix-matched, so "ward {2}" answers to "ward".
+//
+// NOT the way to ask about protection. A prefix match answers "has
+// some protection" and throws the quality away, which is the question
+// nothing in combat actually wants — see protectedFrom below, which
+// goes through the engine's one reader (#662).
 func hasKeyword(c *protocol.CardView, kw string) bool {
 	if c == nil {
 		return false
 	}
 	for _, a := range c.Abilities {
 		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(a)), kw) {
+			return true
+		}
+	}
+	return false
+}
+
+// protectedFrom reports whether `defender` has protection from a
+// source with `source`'s characteristics (CR 702.16e).
+//
+// It reads CardView.Protection — the qualities the ENGINE parsed,
+// through its one closed-grammar reader — rather than prefix-matching
+// the raw ability token. A policy package may not import
+// internal/game (ADR 0033 §3), so the projection is how the one
+// reader reaches the bot; a second parser here is exactly the drift
+// #662 exists to prevent.
+//
+// The bot needs the quality, not just the keyword: an attack into a
+// pro-red blocker trades nothing if the attacker is red, and a prefix
+// match cannot tell that from a pro-black one.
+//
+// Block LEGALITY (CR 702.16f) is not asked here and must not be — the
+// enumerator reaches game.BlockPairRefusalLocked, so a block the
+// engine refuses is never offered in the first place (ADR 0045 §3).
+// This is the DAMAGE half (CR 702.16e), which decides whether an
+// offered exchange is worth making.
+func protectedFrom(defender, source *protocol.CardView) bool {
+	if defender == nil || source == nil {
+		return false
+	}
+	for _, p := range defender.Protection {
+		switch p.Kind {
+		case "everything":
+			return true
+		case "color":
+			if slices.Contains(source.Colors, p.Value) {
+				return true
+			}
+		case "card_type", "subtype":
+			// The view's type line is the EFFECTIVE one, rendered by
+			// the projection from the same characteristics the engine
+			// matched against, so a word match on it is the same
+			// answer the server gives. A whole-word test, so "Demon"
+			// does not match "Demonlord": the type line is
+			// space-and-dash separated by construction.
+			if typeLineWord(source.TypeLine, p.Value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// typeLineWord reports whether a rendered type line carries `word` as
+// a whole token, case-insensitively. Supertypes, types and subtypes
+// alike — the caller already knows which it is asking about, and no
+// word is both.
+func typeLineWord(typeLine, word string) bool {
+	if word == "" {
+		return false
+	}
+	for _, tok := range strings.FieldsFunc(typeLine, func(r rune) bool {
+		return r == ' ' || r == '\u2014' || r == '-'
+	}) {
+		if strings.EqualFold(tok, word) {
 			return true
 		}
 	}
@@ -49,6 +117,13 @@ func kills(a, b *protocol.CardView) bool {
 		return false
 	}
 	if a.Power <= 0 {
+		return false
+	}
+	// CR 702.16e: damage from a source with the quality is prevented,
+	// so an exchange with a protected creature is not an exchange at
+	// all. Deathtouch does not get round it — prevented damage is
+	// never dealt (#662).
+	if protectedFrom(b, a) {
 		return false
 	}
 	if hasKeyword(a, "deathtouch") {

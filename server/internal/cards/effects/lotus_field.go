@@ -38,12 +38,8 @@ func init() {
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Lotus Field — sacrifice two lands", func(g *game.Game, item *game.StackItem) error {
-				for i := 0; i < 2; i++ {
-					if g.PlayerSacrificesForEffect(item.SourceCardID, item.Controller,
-						sacrificeSpec("a land", Land()), "Lotus Field — sacrifice a land") == 0 {
-						break
-					}
-				}
+				g.PlayerSacrificesNForEffect(item.SourceCardID, item.Controller,
+					sacrificeSpec("a land", Land()), "Lotus Field — sacrifice a land", 2)
 				return nil
 			}),
 		},

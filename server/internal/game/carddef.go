@@ -48,31 +48,113 @@ type CardDef struct {
 	Activated     []ActivatedAbilityShape
 	// Static includes the Layer 6 keyword static synthesised from
 	// PrintedKeywords, appended once at build time.
-	Static          []StaticAbility
-	Replacements    []ReplacementEffect
-	PrintedKeywords []string
-	Triggered       []TriggeredAbility
-	TriggerDoublers []TriggerDoubler
+	Static       []StaticAbility
+	Replacements []ReplacementEffect
+	// EntersWithCountersFromCast are the card's printed "this
+	// permanent enters with N counters on it" clauses whose N is read
+	// from the spell that became it (CR 614.1c) — Hangarback Walker's
+	// X, Etched Oracle's sunburst. Seeded onto the entry event before
+	// the CR 614 pipeline; see entry_counters.go.
+	EntersWithCountersFromCast []EntryCountersFromCast
+	PrintedKeywords            []string
+	Triggered                  []TriggeredAbility
+	TriggerDoublers            []TriggerDoubler
+	// ManaTriggers are the CR 605.1b TRIGGERED MANA abilities — the
+	// one trigger kind that never uses the stack (CR 605.4a). Kept
+	// apart from Triggered because nothing on TriggeredAbility applies
+	// to them; see mana_trigger.go and ADR 0074.
+	ManaTriggers []ManaTrigger
 
-	AdditionalCost   *AdditionalCost
+	AdditionalCost *AdditionalCost
+	// OptionalCosts are the additional costs the caster may CHOOSE to
+	// pay (ADR 0073) — kicker, multikicker, buyback. The slice order
+	// is the index space the announcement and PaidCost.OptionalCosts
+	// both name, so it is never re-sorted.
+	OptionalCosts    []AdditionalCost
 	AlternativeCosts []AlternativeCost
 	TapCost          *TapPermanentsCost
 	CostModifiers    []CostModifier
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
-	SelfCostModifiers     []CostModifier
-	CastableZones         []ZoneKind
+	SelfCostModifiers []CostModifier
+	CastableZones     []ZoneKind
+
+	// SpecialActions are the CR 116.2 special actions the card offers
+	// from its owner's hand — foretell (CR 702.143a) and suspend
+	// (CR 702.62a). Read by PerformSpecialAction and by the
+	// legal-move enumerator through SpecialActionsFor. ADR 0062
+	// Decision 4.
+	SpecialActions []SpecialAction
+
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
+	UntapCaps             []UntapCap
+	UntapOptOuts          []UntapOptOut
+
+	// CastCondition is the card's own "you may cast this only if …"
+	// (CR 307.6's legendary sorcery, and the "cast only if" family),
+	// checked by CastGateLocked at announce and never at resolution.
+	// Nil for every card that prints no such clause. ADR 0073 §7.
+	CastCondition func(g *Game, controller uuid.UUID, card Card) bool
+	// CastConditionLabel is that clause as printed, returned to the
+	// client when the gate refuses the cast.
+	CastConditionLabel string
+	// CastRestrictions are the "can't cast" statics this PERMANENT
+	// imposes on other players' casts (Rule of Law, Grafdigger's
+	// Cage, Rakdos). Read from the battlefield through
+	// CatalogAbilityKey, never from a card's own zone.
+	CastRestrictions []CastRestriction
 
 	CantBeCountered bool
 	NoMaxHandSize   bool
+	// Emblem is the presentation half of an EMBLEM's catalog entry
+	// (CR 114) — its board label and its printed ability text. Set
+	// only on an emblem's own def, the one effects.Register files
+	// under game.EmblemKey(spec.OracleID), so a non-nil Emblem is how
+	// the engine tells an emblem's def from a card's. The emblem's
+	// abilities are the ordinary Static and Triggered slots above.
+	// See emblem.go and ADR 0064. Added in S40 (#623).
+	Emblem *EmblemDef
+
+	// XMatters says everything the card does scales with the
+	// announced X, so X=0 does nothing at all. Read only by the
+	// legal-move enumerator, through XMattersFor; see
+	// effects.Spec.XMatters and internal/legal/x.go.
+	XMatters bool
+
+	// WantsDistinctColors marks a spell that READS the colours of the
+	// mana that paid for it — converge (CR 702.86) and sunburst (CR
+	// 702.44), and nothing else today. It picks the colour-maximising
+	// payment strategy at the cast gate (#761).
+	WantsDistinctColors bool
+
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
 	// through CatalogAdditionalLandPlays; see land_drops.go.
 	AdditionalLandPlays int
+
+	// CastPermissions are the STANDING cast and play permissions this
+	// permanent grants its controller while it is on the battlefield
+	// (ADR 0066) — Underworld Breach's escape for every nonland card
+	// in your graveyard, Bolas's Citadel's top of the library. Read
+	// through CatalogCastPermissions; see cast_permission.go.
+	//
+	// Derived on every query rather than written onto the player, so
+	// two sources compose and one leaving cannot revoke the other's
+	// permission. Per-INSTANCE permissions (Snapcaster, impulse exile)
+	// are not here — they are granted by an effect and stored on the
+	// player.
+	CastPermissions []CastPermission
+
+	// LibraryTopVisible is how far this permanent makes its
+	// controller's top library card visible (CR 401.5) — "you may look
+	// at the top card of your library any time" is LibraryTopOwner,
+	// "play with the top card of your library revealed" is
+	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
+	// library_top.go.
+	LibraryTopVisible LibraryTopVisibility
 }
 
 // CatalogLookup is the one production hook: the catalog's definition
@@ -86,6 +168,15 @@ var CatalogLookup func(key string) *CardDef
 func catalogDef(key string) *CardDef {
 	if CatalogLookup == nil || key == "" {
 		return nil
+	}
+	// CR 707.9a, #665: a key carrying granted-ability names is
+	// answered with the card's definition merged with each grant's.
+	// This is the ONE place a granted ability becomes findable, which
+	// is why every existing reader — the trigger harvest, the layer
+	// pass, the activation path, the view — needed no change of its
+	// own. See copy_grants.go.
+	if base, grants := splitCatalogKeyGrants(key); len(grants) > 0 {
+		return mergedCatalogDef(base, grants)
 	}
 	return CatalogLookup(key)
 }
@@ -158,6 +249,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogEntersWithCountersFromCast = func(key string) []EntryCountersFromCast {
+		if d := catalogDef(key); d != nil {
+			return d.EntersWithCountersFromCast
+		}
+		return nil
+	}
 	CatalogPrintedKeywords = func(key string) []string {
 		if d := catalogDef(key); d != nil {
 			return d.PrintedKeywords
@@ -170,6 +267,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogManaTriggers = func(key string) []ManaTrigger {
+		if d := catalogDef(key); d != nil {
+			return d.ManaTriggers
+		}
+		return nil
+	}
 	CatalogTriggerDoublers = func(key string) []TriggerDoubler {
 		if d := catalogDef(key); d != nil {
 			return d.TriggerDoublers
@@ -179,6 +282,12 @@ func init() {
 	CatalogAdditionalCost = func(key string) *AdditionalCost {
 		if d := catalogDef(key); d != nil {
 			return d.AdditionalCost
+		}
+		return nil
+	}
+	CatalogOptionalCosts = func(key string) []AdditionalCost {
+		if d := catalogDef(key); d != nil {
+			return d.OptionalCosts
 		}
 		return nil
 	}
@@ -206,6 +315,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogSpecialActions = func(key string) []SpecialAction {
+		if d := catalogDef(key); d != nil {
+			return d.SpecialActions
+		}
+		return nil
+	}
+	CatalogCastRestrictions = func(key string) []CastRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.CastRestrictions
+		}
+		return nil
+	}
 	CatalogUntapStepPermissions = func(key string) []UntapStepPermission {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStep
@@ -218,6 +339,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogUntapCaps = func(key string) []UntapCap {
+		if d := catalogDef(key); d != nil {
+			return d.UntapCaps
+		}
+		return nil
+	}
+	CatalogUntapOptOuts = func(key string) []UntapOptOut {
+		if d := catalogDef(key); d != nil {
+			return d.UntapOptOuts
+		}
+		return nil
+	}
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
@@ -226,10 +359,30 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.NoMaxHandSize
 	}
+	CatalogWantsDistinctColors = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.WantsDistinctColors
+	}
 	CatalogAdditionalLandPlays = func(key string) int {
 		if d := catalogDef(key); d != nil {
 			return d.AdditionalLandPlays
 		}
 		return 0
+	}
+	CatalogXMatters = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.XMatters
+	}
+	CatalogCastPermissions = func(key string) []CastPermission {
+		if d := catalogDef(key); d != nil {
+			return d.CastPermissions
+		}
+		return nil
+	}
+	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
+		if d := catalogDef(key); d != nil {
+			return d.LibraryTopVisible
+		}
+		return LibraryTopHidden
 	}
 }

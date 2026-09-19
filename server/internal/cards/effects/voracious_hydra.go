@@ -12,9 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 • This creature fights target creature you don't control."
 //
 // Green's X-cost removal spell that leaves a body behind. Trample
-// rides PrintedKeywords; the X counters go on as the spell resolves
-// (Goldvein Hydra's posture, declared below), so the ETB trigger
-// sees a Hydra that already has them.
+// rides PrintedKeywords; the X counters are the printed CR 614.1c
+// entry clause and ride the CR 614 pipeline as one (XCounters,
+// #1002), so they are on the permanent before EventETB and the ETB
+// trigger below doubles a Hydra that already has them.
 //
 // The modal ETB has no mode prompt of its own — a triggered ability
 // cannot carry a "choose one" — so the choice is made through the
@@ -34,27 +35,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // before either lands); the doubling goes through AddCounter, so a
 // counter doubler applies to it, as printed.
 //
-// Two declared simplifications, both weaker than printed:
-//
-//   - The X +1/+1 counters are placed as the spell resolves, a beat
-//     before the card enters, so a "whenever you put counters on a
-//     permanent" payoff does not see them (Goldvein Hydra's gap).
-//   - The mode is chosen through the target prompt rather than a
-//     mode picker: choose a creature to fight it, choose none to
-//     double the counters.
+// One declared simplification, weaker than printed: the mode is
+// chosen through the target prompt rather than a mode picker — choose
+// a creature to fight it, choose none to double the counters.
 func init() {
 	Register(Spec{
 		OracleID:     "ff8f5a4b-112a-425e-b489-7ee26d1d9fb3",
 		Name:         "Voracious Hydra",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The X +1/+1 counters are put on the Hydra as the spell resolves, a beat before it enters, so effects that watch you put counters on a permanent don't see them.",
 			"The mode is chosen through the target prompt: pick a creature you don't control to fight it, or pick no target to double the Hydra's +1/+1 counters instead.",
 		},
-		PrintedKeywords: []string{"trample"},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: ctx.X()}.Apply(ctx)
-		},
+		PrintedKeywords:            []string{"trample"},
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches: []game.EventKind{game.EventETB},

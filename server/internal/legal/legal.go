@@ -46,6 +46,12 @@ const (
 	KindBlock    Kind = "block"
 	KindChoice   Kind = "choice"
 	KindMulligan Kind = "mulligan"
+	// KindSpecialAction is a CR 116.2 special action — foretell,
+	// suspend. Its own kind rather than an activation, because a
+	// special action uses no stack and is not an ability, and a
+	// policy that prices "what does this put on the stack" must be
+	// able to tell them apart. ADR 0062 Decision 4.
+	KindSpecialAction Kind = "special_action"
 )
 
 // Wire action types this package emits. Kept as strings rather than
@@ -63,6 +69,7 @@ const (
 	TypeKeepHand            = "keep_hand"
 	TypeMulligan            = "mulligan"
 	TypeDiscardSelection    = "discard_selection"
+	TypeSpecialAction       = "special_action"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type
@@ -197,7 +204,84 @@ type Options struct {
 	// MaxX caps the X the enumerator will try for an {X} spell when
 	// searching for the largest affordable value. Default 20.
 	MaxX int
+
+	// OrderTargets ranks a clause's candidate targets before
+	// MaxExpansionPerSource is applied, so that what survives the cap
+	// is the part of the board that matters (#687, ADR 0033 §1).
+	//
+	// Nil — the default, and what every non-bot caller passes — keeps
+	// the candidates in LegalTargetsForEffect order, which is what
+	// the enumerator did before this field existed.
+	//
+	// A HOOK rather than a scorer in this package, and that is the
+	// layering decision ADR 0033 §1's amendment records. Ranking a
+	// board is a POLICY question; `legal` states the rules and must
+	// not import `aiseat` (which imports it). So the enumerator asks
+	// for an order and the seat that wants one supplies it —
+	// aiseat.TargetOrderer, implemented by the heuristic with the
+	// same Weights it scores every other decision with, rather than a
+	// second scorer that could disagree with the first.
+	OrderTargets TargetOrder
+
+	// OrderCostFuel prices the cards a CARD-SHAPED COST would eat —
+	// the blue card Force of Will pitches, the five cards an Uro
+	// escapes with — so the payment the enumerator offers first is the
+	// one the seat would miss least (#1013, ADR 0033 §1's amendment).
+	//
+	// Nil — the default, and what every non-bot caller passes — leaves
+	// the candidates in AltCostCandidatesLocked's ZONE order, which is
+	// what the enumerator did before this field existed.
+	//
+	// A HOOK for exactly OrderTargets' reason, and it is a second field
+	// rather than a second meaning for that one because the two ask
+	// OPPOSITE questions about different objects. OrderTargets ranks
+	// the board by importance and the enumerator keeps the top of it;
+	// this ranks a seat's own cards by what it would lose, and the
+	// enumerator spends the BOTTOM of it. A policy that answered one
+	// with the other would pitch its best card every time.
+	OrderCostFuel CostFuelOrder
 }
+
+// TargetCandidate is one object a target clause could be pointed at,
+// as the ordering hook sees it: an identity and nothing else.
+//
+// Nothing else, deliberately. The hook lives above the
+// hidden-information boundary (ADR 0033 §3) and resolves these IDs
+// against the seat's own filtered view; handing it characteristics
+// read off the authoritative game would be the one thing that
+// boundary exists to prevent.
+type TargetCandidate struct {
+	// ID is the player's seat ID, or the card's instance ID.
+	ID uuid.UUID
+	// Player is true when the candidate is a seat rather than an
+	// object.
+	Player bool
+}
+
+// TargetOrder prices one candidate target for the enumerating seat.
+// Higher sorts earlier; the sort is STABLE, so equal scores keep the
+// engine's own candidate order and two enumerations of one board
+// always produce the same move list.
+//
+// It is an ordering rather than a filter: nothing it returns can add
+// or remove a legal target, only decide which ones reach the cap.
+type TargetOrder func(c TargetCandidate) float64
+
+// CostFuelOrder prices one card a CARD-SHAPED COST could eat, for the
+// seat that would spend it: HIGHER is more valuable to KEEP.
+//
+// The enumerator spends the CHEAPEST first, which is the opposite end
+// from TargetOrder's, and the reason the two are different types
+// despite the same signature — a policy that returned one where the
+// other was wanted would pitch its best card and target its worst, and
+// neither mistake would fail to compile. The candidate is always a
+// card (TargetCandidate.Player is never set).
+//
+// It is an ordering rather than a filter: nothing it returns can make
+// a payment legal or illegal, only decide which payment is offered
+// first. The sort is STABLE, so equal prices keep the engine's own
+// zone order and two enumerations of one board agree.
+type CostFuelOrder func(c TargetCandidate) float64
 
 const (
 	defaultMaxExpansionPerSource = 12
@@ -305,6 +389,7 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		})
 		e.castMoves()
 		e.activatedMoves()
+		e.specialActionMoves()
 		e.manaMoves()
 	}
 	// Combat declarations are not priority-gated in the engine
@@ -397,7 +482,7 @@ func sorcerySpeedOpen(g *game.Game, seat uuid.UUID) bool {
 // they cannot disagree again.
 func anyBlockingChoiceOpen(g *game.Game) bool {
 	for _, c := range g.PendingChoices {
-		if c != nil && game.ChoiceBlocksTable(c.Kind) {
+		if c != nil && g.ChoicePromptBlocksTable(c) {
 			return true
 		}
 	}
@@ -523,6 +608,13 @@ func playerName(g *game.Game, id uuid.UUID) string {
 type targetWire struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id,omitempty"`
+	// Slot / Mode name the target CLAUSE this pick answers (#764),
+	// so the engine validates a multi-clause or per-mode enumeration
+	// against the clause the enumerator picked it for rather than
+	// re-deriving it. Omitted at zero, which is every single-clause
+	// non-modal move.
+	Slot int `json:"slot,omitempty"`
+	Mode int `json:"mode,omitempty"`
 }
 
 func wireTargets(refs []game.TargetRef) []targetWire {
@@ -531,7 +623,7 @@ func wireTargets(refs []game.TargetRef) []targetWire {
 	}
 	out := make([]targetWire, 0, len(refs))
 	for _, r := range refs {
-		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String()})
+		out = append(out, targetWire{Kind: string(r.Kind), ID: r.ID.String(), Slot: r.Slot, Mode: r.Mode})
 	}
 	return out
 }

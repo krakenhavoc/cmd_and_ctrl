@@ -70,6 +70,10 @@ properties are deliberate:
 - **No short-circuit on match.** Returning early would make response
   time a function of where the table sits in the map — a weak oracle,
   but free to close at a scale of a handful of games.
+  *Superseded by [ADR 0051](0051-user-database.md) decision 4 (S34
+  sub-PR 3):* invites are now rows keyed by the SHA-256 of the token,
+  and `FindByInvite` is a primary-key lookup. There is no scan left to
+  short-circuit, and the scan and its comment are gone.
 - **Player invites only, live tables only.** A spectator code
   resolving here would let a read-only link open a seat-claiming flow,
   which is exactly the distinction the two tokens draw. Archived
