@@ -2362,13 +2362,25 @@ type ProtectionView struct {
 	// and plural instead of a canonical singular.
 	Printed string `json:"printed"`
 	// Kind is which characteristic of a source the quality is
-	// compared against: "color", "card_type", "subtype" or
-	// "everything". Stable tokens; see game.ProtectionQualityKind.
+	// compared against: "color", "card_type", "subtype",
+	// "everything" or "player". Stable tokens; see
+	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
 	// ("R"), the lowercase card type ("artifact"), the canonical
 	// singular subtype ("Demon"). Empty for "everything", which
 	// compares nothing.
+	//
+	// For "player" (CR 702.16k, #980) it is the chosen seat's id, and
+	// the comparison is against the SOURCE'S CONTROLLER rather than
+	// against any characteristic of it. An id and not a name: this is
+	// the rules value, the same shape CardView.controller carries, and
+	// the client resolves seats to names the way it already does.
+	// `printed` stays "the chosen player" — the display string never
+	// holds a UUID.
+	//
+	// Empty for a player quality whose permanent has not been answered
+	// yet, which reads correctly as "protected from nobody".
 	Value string `json:"value,omitempty"`
 }
 
@@ -2381,11 +2393,19 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	}
 	out := make([]ProtectionView, 0, len(qs))
 	for _, q := range qs {
-		out = append(out, ProtectionView{
+		v := ProtectionView{
 			Printed: q.Printed,
 			Kind:    q.Kind.String(),
 			Value:   q.Value,
-		})
+		}
+		// CR 702.16k: the player quality's rules value is a seat, and
+		// it lives on the quality rather than in the token because the
+		// token names no seat. ProtectionQualities has already
+		// resolved it off the permanent (#980).
+		if q.Player != uuid.Nil {
+			v.Value = q.Player.String()
+		}
+		out = append(out, v)
 	}
 	return out
 }

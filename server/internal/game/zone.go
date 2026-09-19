@@ -231,6 +231,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
+		// #980 / CR 702.16k: and so does the chosen PLAYER. A
+		// True-Name Nemesis that is bounced and recast names a player
+		// again, and one sitting in a graveyard is protected from
+		// nobody — which is also what stops the protection reader
+		// having to ask what zone it is in.
+		c.ChosenPlayer = uuid.Nil
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage

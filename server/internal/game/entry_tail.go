@@ -209,6 +209,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.SummonedThisTurn = false
 		c.NamedTribe = ""
 		c.ChosenColor = ""
+		c.ChosenPlayer = uuid.Nil
 		c.Provenance = CastProvenance{}
 		c.ClassLevel = 0
 		c.Solved = false

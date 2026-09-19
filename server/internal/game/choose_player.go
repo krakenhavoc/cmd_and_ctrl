@@ -161,6 +161,124 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 	return queued
 }
 
+// EventPlayerChosen records a CR 614.12 "as this enters, choose a
+// player" answer in the event log, the way EventColorChosen and
+// EventCreatureTypeChosen record theirs. `Target` carries the chosen
+// seat and `CardID` the permanent it was chosen for, so the log reads
+// "True-Name Nemesis — Alice".
+//
+// Only the STORED form emits it. A resolution-time choice is part of
+// one effect's resolution and is reported by whatever that effect then
+// does; a stored one is a lasting fact about a permanent, and the
+// window in which it was made is the only place the log can say so.
+const EventPlayerChosen EventKind = "player_chosen"
+
+// QueueChoosePlayerAsEntersForEffect queues the STORED form of the
+// question: "As this permanent enters, choose a player" (CR 614.12),
+// True-Name Nemesis. The answer lands on `source`'s Card.ChosenPlayer
+// and is read for the rest of that permanent's life. Returns the choice
+// ID, or uuid.Nil when nothing was queued.
+//
+// THE THIRD FORM, and the differences from the two above it are the
+// reason it is a separate door rather than a flag. A target is named at
+// announce and re-checked at resolution; a resolution-time chosen
+// player lives on one StackItem.Payload and is gone when the item is;
+// this one is made as the permanent enters, is stored on the permanent,
+// and outlives every stack item involved. What it shares with the
+// resolution-time form is the PROMPT — the same option_pick, built by
+// the same seatChoiceOptionsLocked, so it is enumerated, gated,
+// projected and (CR 800.4a) PRUNED identically. A seat that leaves
+// while a Nemesis is still asking comes off its buttons exactly as it
+// comes off Gluntch's (#994).
+//
+// It is queued from the permanent's AsEnters hook, not by pausing the
+// CR 614 entry pipeline, and that is S26's declared simplification
+// carried forward unchanged — creature_type_choice.go has the long form
+// of the argument and color_choice.go took the same call. What it costs
+// here: the Nemesis is on the battlefield with no chosen player for the
+// window between entering and the answer arriving. Nothing can act in
+// that window (an open PendingChoice stops priority), and the direction
+// is the safe one — an unchosen player is nobody, so the protection
+// applies to nothing rather than to everything.
+//
+// `among` is the candidate list the card's clause admits; the seats
+// that have left are dropped and the rest ordered by the shared
+// eligibility rule. Nothing queued — no eligible seat, or a chooser who
+// has gone — leaves ChosenPlayer at uuid.Nil, which reads as "protected
+// from nobody".
+//
+// Caller must hold g.mu (an AsEnters hook does).
+func (g *Game) QueueChoosePlayerAsEntersForEffect(chooser, source uuid.UUID, question string, among []uuid.UUID) uuid.UUID {
+	eligible := g.eligibleChosenPlayersLocked(among)
+	if len(eligible) == 0 {
+		return uuid.Nil
+	}
+	permanent := source
+	return g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question,
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		// ThenSeat for the same reason the resolution-time form uses
+		// it: the answer is the option's own seat, so a prune cannot
+		// renumber it (#994).
+		ThenSeat: func(g *Game, chosen uuid.UUID) error {
+			return g.setChosenPlayerLocked(permanent, chosen)
+		},
+	})
+}
+
+// setChosenPlayerLocked stamps the CR 614.12 answer onto the permanent.
+//
+// The permanent is located LIVE rather than trusted from the queue: the
+// prompt is asynchronous and the Nemesis can have been killed in
+// response to its own entry. A missing source is not an error — the
+// choice was made and simply has nowhere to land, which is what CR
+// 608.2 does with an effect whose object has gone.
+//
+// No layer-version bump, and that is the one place this differs from
+// its two siblings. A named tribe and a chosen colour are AppliesTo
+// inputs to their permanent's static abilities, so the layer engine's
+// cached resolution has to be invalidated when they land. A chosen
+// player is not: protection rides the PRINTED keyword token, which has
+// been in Abilities since the permanent entered, and the one reader
+// binds the seat at check time rather than baking it into a
+// characteristic.
+//
+// Caller must hold g.mu.
+func (g *Game) setChosenPlayerLocked(source, chosen uuid.UUID) error {
+	var actor uuid.UUID
+	if i := findCardOnBattlefield(g, source); i >= 0 {
+		g.Battlefield.Cards[i].ChosenPlayer = chosen
+		actor = g.Battlefield.Cards[i].Controller
+	}
+	g.EmitEvent(Event{
+		Kind:   EventPlayerChosen,
+		Actor:  actor,
+		CardID: source,
+		Target: chosen,
+		Label:  g.seatLabelLocked(chosen),
+	})
+	return nil
+}
+
+// ChosenPlayerOf returns the player chosen for the permanent `sourceID`
+// currently on the battlefield, or uuid.Nil when none has been chosen
+// (or the permanent is gone).
+//
+// The accessor exists for the reason NamedTribeOf and ChosenColorOf do:
+// a caller outside this package reads the answer without reaching into
+// the battlefield slice itself. protection.go reads the field directly,
+// because it is already holding the card.
+//
+// Caller must hold either lock.
+func (g *Game) ChosenPlayerOf(sourceID uuid.UUID) uuid.UUID {
+	if i := findCardOnBattlefield(g, sourceID); i >= 0 {
+		return g.Battlefield.Cards[i].ChosenPlayer
+	}
+	return uuid.Nil
+}
+
 // eligibleChosenPlayersLocked narrows a candidate list to the seats
 // that can actually be chosen and puts them in the order the prompt
 // offers them.

@@ -38,6 +38,11 @@ func TestProtectionGrammarParsesTheClosedSet(t *testing.T) {
 		{"protection from Elves", ProtectionQualitySubtype, "Elf"},
 		{"protection from Goblin", ProtectionQualitySubtype, "Goblin"},
 		{"protection from everything", ProtectionQualityEverything, ""},
+		// CR 702.16k, #980. The seat is NOT in the token — Value stays
+		// empty and the reader resolves Player off the permanent — so
+		// no raw UUID can reach a display string.
+		{ProtectionFromChosenPlayer, ProtectionQualityPlayer, ""},
+		{"Protection from the Chosen Player", ProtectionQualityPlayer, ""},
 		// Case-insensitive on the fixed head, so a card file and an
 		// oracle line agree.
 		{"Protection from Red", ProtectionQualityColor, "R"},
@@ -60,13 +65,20 @@ func TestProtectionGrammarParsesTheClosedSet(t *testing.T) {
 // mint no token and leave the card flagged.
 func TestProtectionGrammarRefusesWhatItCannotEnforce(t *testing.T) {
 	for _, token := range []string{
-		"protection",                        // no quality at all
-		"protection from",                   // ditto
-		"protection from monocolored",       // Sphinx of the Guildpact
-		"protection from multicolored",      // Ghostly Prison-class wording
-		"protection from all colors",        // Progenitus's older wording
-		"protection from opponents",         // a player quality, #929
-		"protection from the chosen player", // True-Name Nemesis, #929
+		"protection",                   // no quality at all
+		"protection from",              // ditto
+		"protection from monocolored",  // Sphinx of the Guildpact
+		"protection from multicolored", // Ghostly Prison-class wording
+		"protection from all colors",   // Progenitus's older wording
+		// "protection from the chosen player" is the ONE player
+		// quality the grammar knows (CR 702.16k, #980) and is in the
+		// accepted table above. These are the other player-shaped
+		// wordings, and each is a different rule with a different
+		// answer — the grammar stays closed by naming the shape it can
+		// enforce rather than by matching anything player-shaped.
+		"protection from opponents",
+		"protection from the chosen players",
+		"protection from a player of your choice",
 		"protection from Zubera the Ascended",
 		"flying",
 		"",

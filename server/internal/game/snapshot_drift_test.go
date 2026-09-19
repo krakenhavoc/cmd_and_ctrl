@@ -267,6 +267,10 @@ var cardFields = plan(
 	// #742: the colour named as the permanent entered. A player's
 	// choice, so nothing can rebuild it.
 	"ChosenColor", carried, "",
+	// #980, CR 614.12 / CR 702.16k: the player named as the permanent
+	// entered. A player's choice, so nothing can rebuild it — and it
+	// is the whole of what True-Name Nemesis's protection reads.
+	"ChosenPlayer", carried, "",
 	// #653 / #664, CR 400.7d: what the spell that became this
 	// permanent was cast for — the alternative cost and the optional
 	// additional costs, one record. Carried, and it is the field here
