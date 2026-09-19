@@ -81,19 +81,28 @@ func (d *DB) Backup(ctx context.Context) error {
 // ticks rather than queueing them.
 const backupTimeout = 10 * time.Minute
 
-// RunBackupLoop calls Backup on interval until ctx is canceled. It
-// runs in the caller's goroutine — callers start it with `go`. A
-// failed backup is logged and never stops the loop or the server: a
-// missed backup is a gap in redundancy, not a reason to go down.
+// RunBackupLoop writes one backup straight away, then calls Backup on
+// interval until ctx is canceled. It runs in the caller's goroutine —
+// callers start it with `go`. A failed backup is logged and never stops
+// the loop or the server: a missed backup is a gap in redundancy, not a
+// reason to go down.
 //
-// interval <= 0 disables the loop entirely (it returns immediately)
-// rather than defaulting silently, so a misconfiguration that meant
-// to disable backups does, and one that meant to enable them at the
-// default is spelled out by the caller choosing DefaultBackupInterval.
+// The immediate backup is what the off-site copy depends on. Waiting a
+// full interval first would leave no consistent copy for that long after
+// every restart (and none at all on a fresh host), and the nightly restic
+// run takes only the copy, never the live file and its WAL. It also
+// captures the schema the boot's migrations just produced.
+//
+// interval <= 0 disables the loop entirely (it returns immediately,
+// writing nothing) rather than defaulting silently, so a
+// misconfiguration that meant to disable backups does, and one that
+// meant to enable them at the default is spelled out by the caller
+// choosing DefaultBackupInterval.
 func (d *DB) RunBackupLoop(ctx context.Context, log *slog.Logger, interval time.Duration) {
 	if interval <= 0 {
 		return
 	}
+	d.backupAndLog(ctx, log)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -101,14 +110,19 @@ func (d *DB) RunBackupLoop(ctx context.Context, log *slog.Logger, interval time.
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			backupCtx, cancel := context.WithTimeout(ctx, backupTimeout)
-			err := d.Backup(backupCtx)
-			cancel()
-			if err != nil {
-				log.Error("database backup failed", "path", d.path, "err", err)
-			} else {
-				log.Info("database backup written", "path", filepath.Join(d.dir, BackupFileName))
-			}
+			d.backupAndLog(ctx, log)
 		}
 	}
+}
+
+// backupAndLog runs one bounded Backup and logs its outcome.
+func (d *DB) backupAndLog(ctx context.Context, log *slog.Logger) {
+	backupCtx, cancel := context.WithTimeout(ctx, backupTimeout)
+	err := d.Backup(backupCtx)
+	cancel()
+	if err != nil {
+		log.Error("database backup failed", "path", d.path, "err", err)
+		return
+	}
+	log.Info("database backup written", "path", filepath.Join(d.dir, BackupFileName))
 }

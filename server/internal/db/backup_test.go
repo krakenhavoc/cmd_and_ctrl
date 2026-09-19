@@ -142,6 +142,47 @@ func TestRunBackupLoopRunsOnInterval(t *testing.T) {
 	}
 }
 
+func TestRunBackupLoopBacksUpImmediately(t *testing.T) {
+	dir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	d, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer d.Close()
+
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError + 1})) // discard
+
+	done := make(chan struct{})
+	go func() {
+		// An hour: the first tick cannot fire during this test, so a
+		// backup that appears came from the immediate one at start.
+		d.RunBackupLoop(ctx, log, time.Hour)
+		close(done)
+	}()
+
+	backupPath := filepath.Join(dir, dirName, BackupFileName)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, err := os.Stat(backupPath); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("RunBackupLoop did not write a backup at start")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("RunBackupLoop did not return after context cancellation")
+	}
+}
+
 func TestRunBackupLoopDisabledWithNonPositiveInterval(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -164,5 +205,8 @@ func TestRunBackupLoopDisabledWithNonPositiveInterval(t *testing.T) {
 	case <-done:
 	case <-time.After(1 * time.Second):
 		t.Fatal("RunBackupLoop with interval <= 0 did not return immediately")
+	}
+	if _, err := os.Stat(filepath.Join(dir, dirName, BackupFileName)); !os.IsNotExist(err) {
+		t.Fatalf("RunBackupLoop with interval <= 0 wrote a backup (stat err: %v)", err)
 	}
 }
