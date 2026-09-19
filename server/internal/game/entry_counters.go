@@ -1,7 +1,15 @@
 package game
 
+import (
+	"sort"
+
+	"github.com/google/uuid"
+)
+
 // entry_counters.go — "this permanent enters with N counters on it",
-// where N is read from the spell that became it (CR 614.1c, #1002).
+// where N is read from the spell that became it (CR 614.1c, #1002),
+// and the one place the settled map of those counters is drained onto
+// the permanent (#1010).
 //
 // WHY IT IS A DECLARATION AND NOT AN OnResolve. "This creature enters
 // with X +1/+1 counters on it" is a replacement effect (CR 614.1c):
@@ -175,5 +183,60 @@ func (g *Game) applyCastEntryCountersLocked(ev *ReplacementEvent, card Card, ite
 		if n := clause.Count(cast); n > 0 {
 			ev.AddCounterAtETB(clause.Kind, n)
 		}
+	}
+}
+
+// applyEntryCountersLocked puts the settled "enters with" counters
+// onto a permanent that has just arrived. It is the ONE drain of
+// ReplacementEvent.EntersWithCounters: every battlefield entry site
+// calls it, and nothing else ranges that map.
+//
+// THE ORDER IS THE POINT (#1010). Each kind is placed through
+// AddCounterForEffect, which opens its own RepEventCounter window, so
+// with two counter KINDS on one entry the drain order is the order
+// those windows open, the order a CR 616 ordering prompt inside them
+// is asked in, and the order the EventCounterPlaced events land in the
+// log. Go randomises map iteration, so a bare `range` made all three
+// differ on every run and on every replay of the same game — the one
+// place an entry could come out differently for no reason a player
+// could point at, in an engine that is otherwise deterministic from
+// its event log (Clone, the snapshot, the bot harness and the replay
+// tooling all rest on that).
+//
+// The order taken is the canonical one: counter name, ascending. NOT
+// the order the clauses seeded the map in, and not a question put to
+// the affected player. CR 616.1 gives that player the choice when two
+// replacement EFFECTS would apply to one event; two kinds on one entry
+// are not two effects. They are one settled event with two components
+// — the CR 616 window that produced them has already closed — and no
+// kind's window can change what another kind's window does, so the
+// board is identical whichever goes first and the only thing a choice
+// would decide is which of two log lines comes first. Canonical for
+// the reason proliferate is (sortedCounterKinds, proliferate.go): an
+// event log that reorders between runs makes replay diffs unreadable.
+//
+// Every key is drained, a zero or negative one included, exactly as
+// the four bare ranges this replaces did — AddCounterForEffect no-ops
+// on zero, and a replacement that turned an entry's counters negative
+// keeps whatever meaning it had. That is why this sorts the keys
+// itself rather than calling sortedCounterKinds, which drops the
+// non-positive cells.
+//
+// Errors are dropped, as all four call sites dropped them: a counter
+// that will not go onto a permanent which has already arrived is not a
+// reason to fail the entry.
+//
+// Caller must hold g.mu.
+func (g *Game) applyEntryCountersLocked(cardID uuid.UUID, counters map[string]int) {
+	if cardID == uuid.Nil || len(counters) == 0 {
+		return
+	}
+	kinds := make([]string, 0, len(counters))
+	for name := range counters {
+		kinds = append(kinds, name)
+	}
+	sort.Strings(kinds)
+	for _, name := range kinds {
+		_ = g.AddCounterForEffect(cardID, name, counters[name])
 	}
 }

@@ -1021,9 +1021,7 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 			}
 		}
 		g.markCardKnownInZoneLocked(g.Battlefield, moved.InstanceID)
-		for name, n := range out.EntersWithCounters {
-			_ = g.AddCounterForEffect(moved.InstanceID, name, n)
-		}
+		g.applyEntryCountersLocked(moved.InstanceID, out.EntersWithCounters)
 		// S31 sub-PR 1: per-turn land-drop tally. Since #500 this is
 		// what the gate at the top of this branch reads, so the bump
 		// has to happen on every successful play and nowhere else.
@@ -4458,9 +4456,7 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 				}
 			}
 		}
-		for name, n := range out.EntersWithCounters {
-			_ = g.AddCounterForEffect(cardID, name, n)
-		}
+		g.applyEntryCountersLocked(cardID, out.EntersWithCounters)
 	}
 
 	g.EmitEvent(Event{
