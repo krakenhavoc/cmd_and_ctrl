@@ -164,34 +164,40 @@ func TestPruningASeatDoesNotRenumberTheAnswer(t *testing.T) {
 // TestAChooserWhoLeavesTakesTheirOwnSeatOffTheReassignedPrompt — the
 // other moment. CR 800.4g hands the prompt to somebody else, and the
 // list it hands over must not still offer the seat that just left.
+//
+// Driven through the SBA BACKSTOP (sweepEliminatedChoicesLocked) rather
+// than through Concede, and that is the whole reason the reassignment
+// needs a prune of its own. A prompt queued for a seat that is already
+// eliminated is reassigned at the next state-based-action pass, which
+// can be any number of passes after leaveGameObjectsLocked ran — so
+// pruneDepartedSeatOptionsLocked is not going to run again, and this
+// path is on its own.
 func TestAChooserWhoLeavesTakesTheirOwnSeatOffTheReassignedPrompt(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	leaver, owner := g.Seats[1], g.Seats[0]
 	// The prompt must be about somebody else's object for CR 800.4g to
 	// reassign it at all (departedChoiceObjectLocked).
 	source := departureTestSource(g, owner.ID, "Reassignment Source")
+	options := []uuid.UUID{leaver.ID, g.Seats[2].ID, g.Seats[3].ID}
+
+	var c *PendingChoice
 	g.WithWriteLock(func() {
-		g.QueueOptionPickForEffect(OptionPickPrompt{
+		id := g.QueueOptionPickForEffect(OptionPickPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: owner.ID,
 			Source:     source,
 			Question:   "test — choose a player",
-			Options:    g.seatChoiceOptionsLocked([]uuid.UUID{leaver.ID, g.Seats[2].ID, g.Seats[3].ID}),
+			Options:    g.seatChoiceOptionsLocked(options),
 			ThenSeat:   func(*Game, uuid.UUID) error { return nil },
 		})
-	})
-	if err := g.Concede(leaver.ID); err != nil {
-		t.Fatalf("Concede: %v", err)
-	}
-	var c *PendingChoice
-	for _, pc := range g.PendingChoices {
-		if pc != nil && pc.Kind == PendingChoiceOptionPick {
-			c = pc
+		c = findChoice(g, id)
+		// The seat goes, and the departure sweeps do NOT run: this is
+		// the state #864's backstop exists to self-heal.
+		leaver.Eliminated = true
+		if !g.reassignDepartedChoiceLocked(c) {
+			t.Fatalf("the prompt is reassignable: %+v", c)
 		}
-	}
-	if c == nil {
-		t.Fatalf("the prompt was reassigned, not dropped: %+v", g.PendingChoices)
-	}
+	})
 	if c.Chooser == leaver.ID {
 		t.Fatalf("it still belongs to the seat that left: %s", c.Chooser)
 	}
@@ -203,6 +209,33 @@ func TestAChooserWhoLeavesTakesTheirOwnSeatOffTheReassignedPrompt(t *testing.T) 
 	if len(c.PickOptions) != 2 {
 		t.Errorf("the surviving seats are untouched: %v", optionLabels(c))
 	}
+}
+
+// TestAPromptTheReassignmentWouldEmptyIsNotMoved — the seat arm keeps
+// the rule the card arms beside it keep. A prompt whose every remaining
+// option named the seat that just left has no answers, and handing a
+// survivor an empty question is the #544 wedge; the caller drops it
+// instead.
+func TestAPromptTheReassignmentWouldEmptyIsNotMoved(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	leaver, owner := g.Seats[1], g.Seats[0]
+	source := departureTestSource(g, owner.ID, "Reassignment Source")
+
+	g.WithWriteLock(func() {
+		id := g.QueueOptionPickForEffect(OptionPickPrompt{
+			Chooser:    leaver.ID,
+			FromPlayer: owner.ID,
+			Source:     source,
+			Question:   "test — choose a player",
+			Options:    g.seatChoiceOptionsLocked([]uuid.UUID{leaver.ID}),
+			ThenSeat:   func(*Game, uuid.UUID) error { return nil },
+		})
+		c := findChoice(g, id)
+		leaver.Eliminated = true
+		if g.reassignDepartedChoiceLocked(c) {
+			t.Fatalf("a prompt with no answers left must not be handed on: %+v", c.PickOptions)
+		}
+	})
 }
 
 // TestAPromptWhoseEverySeatHasLeftIsDropped — pruning to nothing is the

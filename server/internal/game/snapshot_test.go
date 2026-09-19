@@ -97,6 +97,17 @@ func enrich(t *testing.T, g *Game) {
 				LostLastCounter:      i == 1,
 				VariableToughness:    i == 0,
 				KnownBy:              map[uuid.UUID]bool{p0.ID: true, p1.ID: true},
+				// The three CR 614.12-family stored answers. Nothing in
+				// the catalog can re-derive any of them — a player made
+				// the choice — so a projection that dropped one would
+				// restore a Cavern of Souls naming no tribe, a Coldsteel
+				// Heart producing nothing, or a True-Name Nemesis
+				// protected from nobody. The drift test says they must be
+				// `carried`; this is what proves they ARE, and none of
+				// the three was in this fixture before #980.
+				NamedTribe:   "Elf",
+				ChosenColor:  "G",
+				ChosenPlayer: p1.ID,
 			}
 			g.Battlefield.PushTop(c)
 		}

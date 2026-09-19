@@ -330,6 +330,49 @@ func TestTheChosenPlayerIsNotACopiableValue(t *testing.T) {
 	}
 }
 
+// TestTheStoredAnswersSurviveASnapshot is the OTHER carry, and it has
+// to assert on the restored GAME rather than on a re-captured snapshot.
+// TestSnapshotRoundTripIsExact compares capture → JSON → restore →
+// capture, which is structurally blind to a field missing from both
+// projections symmetrically: absent equals absent. Reading the restored
+// card is what closes that.
+//
+// All three CR 614.12-family answers, because none of them was covered
+// before #980 and they fail the same way — a player made the choice and
+// nothing in the catalog can re-derive it.
+func TestTheStoredAnswersSurviveASnapshot(t *testing.T) {
+	g := newRestorableGame(t)
+	enrich(t, g)
+
+	want := map[uuid.UUID]Card{}
+	for _, c := range g.Battlefield.Cards {
+		want[c.InstanceID] = c
+	}
+	_, restored := roundTrip(t, g)
+
+	seen := 0
+	for _, got := range restored.Battlefield.Cards {
+		orig, ok := want[got.InstanceID]
+		if !ok || orig.ChosenPlayer == uuid.Nil {
+			continue
+		}
+		seen++
+		if got.ChosenPlayer != orig.ChosenPlayer {
+			t.Errorf("ChosenPlayer = %v, want %v — a restored Nemesis is protected from nobody",
+				got.ChosenPlayer, orig.ChosenPlayer)
+		}
+		if got.ChosenColor != orig.ChosenColor {
+			t.Errorf("ChosenColor = %q, want %q", got.ChosenColor, orig.ChosenColor)
+		}
+		if got.NamedTribe != orig.NamedTribe {
+			t.Errorf("NamedTribe = %q, want %q", got.NamedTribe, orig.NamedTribe)
+		}
+	}
+	if seen == 0 {
+		t.Fatal("the fixture carries no stored answers; this test measured nothing")
+	}
+}
+
 // TestTheChosenPlayerSurvivesAnUndo — carried by clone and the
 // snapshot, classified `carried` in snapshot_drift_test.go. A restore
 // that lost it would bring the Nemesis back protected from nobody,
