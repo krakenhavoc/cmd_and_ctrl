@@ -193,12 +193,19 @@ func (e *enumerator) grantedCastMoves(speed, landOwed bool) {
 				})
 				continue
 			}
-			if offer != nil && offer.Life > 0 && p.Life <= offer.Life {
-				// CR 119.4 / CR 118.4: life is a cost, so a player who
-				// cannot pay it cannot claim the offer. Strictly below,
-				// not at — paying down to exactly zero is legal but
-				// loses the game to the next state-based check, and a
-				// bot offered that line would take it.
+			// #695: the RULE — every component of the offer is payable
+			// right now (its condition, CR 119.4's life, CR 601.2b's
+			// card component). The same predicate the view's offer
+			// stamp and CastSpell's validator read, so a bot is never
+			// offered a price the engine will refuse.
+			if offer != nil && !g.AlternativeCostPayableLocked(e.seat, c.InstanceID, offer) {
+				continue
+			}
+			// And the bot POLICY on top of the rule: paying life down
+			// to exactly zero is legal, loses the game to the next
+			// state-based check, and a bot offered that line would
+			// take it.
+			if offer != nil && offer.Life > 0 && p.Life == offer.Life {
 				continue
 			}
 			e.castMovesForCard(card, zone.from, speed, perm)

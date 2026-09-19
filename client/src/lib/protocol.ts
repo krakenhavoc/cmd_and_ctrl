@@ -1070,15 +1070,19 @@ export interface AlternativeCostView {
   // more than one clause.
   clauses?: LegalTargetsView[];
   // S28: the "pay N life" half of the cost (Force of Will's 1, Snuff
-  // Out's 4). Absent for the costs that charge none. The server
-  // enforces the life total; this is for the label.
+  // Out's 4). Absent for the costs that charge none. This is for the
+  // label — #695: the OFFER ITSELF is absent when the caster's life
+  // total is below it (CR 119.4), so a rendered offer is always one
+  // the server will accept. Exactly N still appears; paying down to
+  // zero is legal.
   life?: number;
   // S28: the cards that can pay the cost's card-shaped half — the
   // blue cards in your hand for Force of Will, the Islands you
   // control for Daze. The chosen instance ID rides back on cast_spell
   // as `alt_cost_ids`. Absent when the cost charges no cards (every
-  // S22 keyword); present-and-empty means you have nothing that can
-  // pay, so the offer is visible but unusable.
+  // S22 keyword). #695: never present-and-empty any more — an offer
+  // with nothing to pay it is not offered at all, for the same reason
+  // one whose life half is unpayable is not.
   pay_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card").
   pay_label?: string;

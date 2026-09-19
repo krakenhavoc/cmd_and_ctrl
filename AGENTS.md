@@ -2853,6 +2853,17 @@ with the engine on every non-hand and alternative-cost cast. Add a
 component to the price in `printedCostLocked` or
 `costAfterModifiersLocked` and all four readers get it.
 
+**An offer is offered only when it is payable (#695).**
+`g.AlternativeCostPayableLocked(caster, castID, offer)` is the one
+predicate behind "is this alternative cost on the table": its
+`Condition`, CR 119.4's life (exactly N is payable — paying down to
+zero is legal), and CR 601.2b's card component (enough matching cards
+in the right zone, never the spell itself). The view's offer stamp,
+the bot enumerator and `CastSpell`'s own validator all read it, so a
+shown offer, an enumerated move and an accepted cast cannot disagree.
+**Mana is deliberately not part of it**: CR 601.2g lets the caster tap
+for it after the cost is chosen, which is what the auto-tapper is for.
+
 **A delayed trigger (S22):** "at the beginning of the next end step,
 <do X>" (CR 603.7) is `ScheduleDelayedTrigger`, not a closure that runs
 now:

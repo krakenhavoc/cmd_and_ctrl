@@ -758,6 +758,19 @@ per-player permission store rather than from a field on the card,
 which is invisible on the wire. Its `face` key became `faces` in #719
 — see below.
 
+**`alternative_costs` lists only offers the caster could pay (#695).**
+An offer is stamped when its condition holds, when the caster's life
+total is at least its `life` (CR 119.4 — exactly N still appears,
+because paying down to zero is legal) and when the board holds enough
+cards for its card component (CR 601.2b). `pay_options` is therefore
+never present-and-empty any more: an offer with nothing to pay it is
+not offered. Mana is deliberately NOT part of the filter — CR 601.2g
+lets the caster tap for it after the cost is chosen, so an offer the
+seat cannot currently afford is still shown and the auto-tapper is
+what answers it. The same predicate decides what the bot enumerator
+offers and what `cast_spell` accepts, so a rendered offer is one the
+server will take.
+
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
 Two additive fields on `CardView` and one on `cast_spell`, both
