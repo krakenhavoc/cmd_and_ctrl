@@ -360,7 +360,7 @@ func TestBlockerBoundsCombineMenaceAndARuleMaximum(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RecomputeLayersIfStaleLocked()
 		atk := findBattlefieldCard(g, attacker)
-		lowest, highest, _ = g.blockerBoundsLocked(atk)
+		lowest, highest = g.blockerBoundsLocked(atk)
 		none = g.blockerCountValidLocked(atk, 0)
 		one = g.blockerCountValidLocked(atk, 1)
 		two = g.blockerCountValidLocked(atk, 2)

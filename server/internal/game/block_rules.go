@@ -38,8 +38,6 @@ package game
 // which needs a field on Game. See docs/decisions/0045-combat-restrictions.md,
 // addendum Decisions 11 and 12.
 
-import "github.com/google/uuid"
-
 // BlockRule is one printed block restriction with a parameter, as the
 // engine reads it. Exactly one of Pair and Count is set; a rule with
 // neither is inert.
@@ -172,13 +170,12 @@ func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 //
 // nil attacker has no bounds. Caller must hold g.mu with fresh
 // layers — HasKeyword reads the effective characteristic.
-func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID) {
+func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
 	if attacker == nil {
-		return 0, 0, uuid.Nil
+		return 0, 0
 	}
-	var minSrc, maxSrc uuid.UUID
 	if HasKeyword(attacker, "menace") {
-		min, minSrc = 2, attacker.InstanceID
+		min = 2
 	}
 	g.forEachBlockRuleLocked(func(r BlockRule, source *Card) bool {
 		if r.Count == nil {
@@ -186,17 +183,14 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int, src uuid.UUID)
 		}
 		lo, hi := r.Count(g, attacker, source)
 		if lo > min {
-			min, minSrc = lo, source.InstanceID
+			min = lo
 		}
 		if hi > 0 && (max == 0 || hi < max) {
-			max, maxSrc = hi, source.InstanceID
+			max = hi
 		}
 		return true
 	})
-	if minSrc != uuid.Nil {
-		return min, max, minSrc
-	}
-	return min, max, maxSrc
+	return min, max
 }
 
 // blockerCountValidLocked reports whether `n` creatures blocking
@@ -213,7 +207,7 @@ func (g *Game) blockerCountValidLocked(attacker *Card, n int) bool {
 	if attacker == nil || n <= 0 {
 		return true
 	}
-	min, max, _ := g.blockerBoundsLocked(attacker)
+	min, max := g.blockerBoundsLocked(attacker)
 	if min > 0 && n < min {
 		return false
 	}
