@@ -31,21 +31,21 @@ import (
 // player had answered and would be gaining life for a Cave nobody
 // had put down yet.
 //
-// Sandbox simplification, weaker than printed:
-//
-//   - A land put onto the battlefield TAPPED by an effect (Cultivate,
-//     Evolving Wilds, Riveteers Overlook — the SearchLibrary
-//     TappedOnEntry flag) still enters tapped: that flag is applied
-//     after the replacement pipeline and OR-ed with it. Only the
-//     land's own enters-tapped clause is overridden.
+// A land another EFFECT puts onto the battlefield tapped — Cultivate,
+// Solemn Simulacrum, Evolving Wilds — is covered too, and this used to
+// be a declared simplification (#732). The reason it was one is gone:
+// the fetching effect's "put it onto the battlefield tapped" clause is
+// no longer OR-ed in after the pipeline but SEEDED onto the CR 614
+// entry event before it runs (searchEnterBattlefieldLocked,
+// game/effect_api.go), the way the land's own clause is, so
+// Spelunking's replacement sees it and clears it. That seeding landed
+// for #478's resumable entry, not for this card, which is why the
+// caveat outlived it.
 func init() {
 	Register(Spec{
 		OracleID:     "2962fe4c-bf48-454b-8a6b-0f8253352ae8",
 		Name:         "Spelunking",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A land an effect puts onto the battlefield tapped still enters tapped; only a land's own enters-tapped text is overridden.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Spelunking — draw a card, then you may put a land from your hand onto the battlefield",
 				Do(DrawCards{N: 1}, spelunkingLandDrop())),
