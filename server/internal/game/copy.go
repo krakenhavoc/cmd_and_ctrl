@@ -119,6 +119,12 @@ type PrintedValues struct {
 	// the 0 is a stand-in too.
 	VariableToughness bool
 
+	// PrintedPTKnown travels for the same reason VariableToughness
+	// does, one sign the other way: a token copy of a living weapon
+	// Germ copies a real printed 0/0, so it copies the bit that says
+	// the 0 is real and dies to CR 704.5f like the original.
+	PrintedPTKnown bool
+
 	// Layout / Faces / ActiveFace are ADR 0034's multi-face data.
 	// Copied wholesale: copying the front face of a transform card
 	// gives a permanent that can still transform, which is right,
@@ -156,6 +162,7 @@ func CopiableValuesOf(src Card) PrintedValues {
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
+		PrintedPTKnown:    src.PrintedPTKnown,
 		StartingLoyalty:   src.StartingLoyalty,
 		Layout:            src.Layout,
 		Faces:             copyFaceSlice(src.Faces),
@@ -486,6 +493,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
+	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces
@@ -528,6 +536,7 @@ func (c *Card) restorePrintedSelf() {
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
+	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
 	c.Layout = v.Layout
 	c.Faces = v.Faces

@@ -731,6 +731,24 @@ type Card struct {
 	// copy).
 	LostLastCounter bool
 
+	// PrintedPTKnown records the opposite of VariableToughness for an
+	// object with no printing behind it: the 0 in Toughness is the
+	// number the card PRINTS, not the importer's stand-in. It exists
+	// for the real printed 0/0 tokens — the living weapon Germ, which
+	// is a 0/0 that stays alive only while an Equipment is attached to
+	// it, and which without this would sit on the battlefield forever
+	// after the Equipment left.
+	//
+	// A token template opts in by setting it (effects/tokens_table.go).
+	// The default stays false, which keeps every body-less test
+	// fixture and every template whose P/T the engine genuinely does
+	// not know out of CR 704.5f — that skip is #683's and is not
+	// weakened here.
+	//
+	// VariableToughness still wins: a `*` is a stand-in whatever a
+	// template claims, and ToughnessIsKnown asks that question first.
+	PrintedPTKnown bool
+
 	// Solved is the CR 719.3 designation on a Case permanent — the
 	// marker that switches its printed "Solved — [ability]" clauses
 	// on (ADR 0071).
@@ -867,6 +885,7 @@ func (c Card) CurrentToughness() int {
 //  1. A nonzero Toughness, or any counter on the object, was never in
 //     question. The fast path, and almost every permanent on almost
 //     every board.
+//
 //  2. A layer 7a or 7b effect DEFINED the P/T in the current pass
 //     (Characteristic.PTDefined). Consuming Aberration and Lord of
 //     Extinction print `*`, but this engine computes them, so
@@ -875,14 +894,21 @@ func (c Card) CurrentToughness() int {
 //     characteristic-defining ability out of the skip while an
 //     uncoded one stays in it, and the only one that reaches a token,
 //     which has no printing behind it.
+//
 //  3. Otherwise a `*` toughness is the importer's stand-in and the
 //     engine does NOT know the number (Card.VariableToughness). A
 //     Mortivore nobody has coded keeps the skip, losing its last
 //     counter included (#683).
+//
 //  4. A 0 the engine WATCHED arrive: the object's counters went from
 //     some to none (Card.LostLastCounter, #683). Holds for tokens and
 //     fixtures as well as for printings.
-//  5. A printing behind the object (ScryfallID). Its 0 came out of
+//
+//  5. A token whose template declares its 0 is the printed one
+//     (Card.PrintedPTKnown) — the living weapon Germ. Opt-in per
+//     template, so the body-less fixtures below keep the skip.
+//
+//  6. A printing behind the object (ScryfallID). Its 0 came out of
 //     Scryfall's printed toughness and parsed as a number, because
 //     branch 3 already took every printing where it did not. That is
 //     a real printed 0/0 — a Hangarback Walker cast for X=0, a
@@ -908,7 +934,7 @@ func (c Card) ToughnessIsKnown() bool {
 	if c.VariableToughness {
 		return false
 	}
-	return c.LostLastCounter || c.ScryfallID != ""
+	return c.PrintedPTKnown || c.LostLastCounter || c.ScryfallID != ""
 }
 
 // --- card-type predicates ------------------------------------
