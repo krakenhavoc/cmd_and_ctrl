@@ -717,18 +717,42 @@ func (c Card) ManaValue() int {
 // treating the unreadable cost as zero, which would make every such
 // card pass a ceiling it might not meet.
 func (c Card) ParsedManaValue() (mv int, ok bool) {
-	cost, err := ParseCost(c.ManaCost)
+	cost, err := ParseCost(manaCostForValue(c))
 	if err != nil {
 		return 0, false
 	}
 	return cost.ManaValue(), true
 }
 
+// manaCostForValue is the cost a MANA VALUE is computed from, which is
+// the card's own printed cost for everything but one case.
+//
+// CR 712.8e: "While a nonmodal double-faced permanent has its back
+// face up, it has only the characteristics of its back face. However,
+// its mana value is calculated using the mana cost of its FRONT face."
+//
+// A `transform` back face prints no cost at all, and ParseCost("")
+// succeeds as the zero cost — so without this, every permanent that
+// transformed would have mana value 0. Reflection of Kiki-Jiki is mana
+// value 3 off Fable of the Mirror-Breaker's {2}{R}, and "destroy target
+// permanent with mana value 3 or less" has to agree.
+//
+// `transform` ONLY. CR 712.8f gives a modal DFC each face its own
+// characteristics, cost included, so Sea Gate, Reborn really is mana
+// value 0 and reading its front face here would make a land cost seven.
+// Added in S46 (ADR 0079 decision 8, #343).
+func manaCostForValue(c Card) string {
+	if c.Layout == LayoutTransform && c.ActiveFace != 0 && len(c.Faces) > 0 {
+		return c.Faces[0].ManaCost
+	}
+	return c.ManaCost
+}
+
 // ManaValueWithX is the card's mana value as a spell on the stack,
 // with {X} counted at x, the value chosen for it (CR 202.3e). Zero
 // when the cost can't be read, like ManaValue.
 func (c Card) ManaValueWithX(x int) int {
-	cost, err := ParseCost(c.ManaCost)
+	cost, err := ParseCost(manaCostForValue(c))
 	if err != nil {
 		return 0
 	}
@@ -756,7 +780,7 @@ func (c Card) ManaValueWithX(x int) int {
 //
 // Caller must hold g.mu, like every other *ForEffect read.
 func (g *Game) ManaValueForEffect(c Card) (mv int, ok bool) {
-	cost, err := ParseCost(c.ManaCost)
+	cost, err := ParseCost(manaCostForValue(c))
 	if err != nil {
 		return 0, false
 	}

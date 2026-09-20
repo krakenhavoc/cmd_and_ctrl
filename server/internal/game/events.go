@@ -706,6 +706,27 @@ const (
 	// exile-and-cast that follows, the better. Added in S27.
 	EventBattleDefeated EventKind = "battle_defeated"
 
+	// EventTransform — CardID was turned over to its other face on the
+	// battlefield (CR 701.27a). Actor is its controller, Amount is the
+	// face index it turned TO, and Label is the name of the face it
+	// turned FROM — which is the only place that name survives, since
+	// the card's own Name is already the new face by the time anything
+	// reads the event.
+	//
+	// NOT a zone change and deliberately not shaped like one (CR
+	// 712.18: the permanent doesn't become a new object). Nothing
+	// emits EventZoneMove, EventETB or EventLTB alongside it, so a
+	// back face's "when this enters" trigger does not fire off a
+	// transform — correctly, because nothing entered.
+	//
+	// Two consumers. layerVersionBump reads it to invalidate the layer
+	// engine, which is not optional: a face change is a printed-value
+	// change and Effective() serves a warm cache. And it is what makes
+	// "whenever this transforms" (CR 701.27e) writable — no new
+	// constructor was needed, because the harvester already watches
+	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
+	EventTransform EventKind = "transform"
+
 	// EventRevealCards — Actor showed CardID to the whole table (CR
 	// 701.20). Fires once per card, so "reveal the top five cards of
 	// your library" produces five events sharing one RevealSeq; the
