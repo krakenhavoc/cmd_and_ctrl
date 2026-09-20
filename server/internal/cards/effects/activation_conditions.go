@@ -207,3 +207,15 @@ func AllConditions(conds ...ActivationCondition) ActivationCondition {
 		return true
 	}
 }
+
+// SourceIsAttacking — "Activate only if this creature is attacking"
+// (Glint-Horn Buccaneer). Reads Card.AttackingTarget directly: a
+// non-nil target means DeclareAttacker has marked the permanent an
+// attacker and it hasn't left combat since (ClearCombat and a zone
+// exit both clear the field).
+func SourceIsAttacking() ActivationCondition {
+	return func(g *game.Game, _, source uuid.UUID) bool {
+		c, ok := g.LookupCardForEffect(source)
+		return ok && c.AttackingTarget != uuid.Nil
+	}
+}

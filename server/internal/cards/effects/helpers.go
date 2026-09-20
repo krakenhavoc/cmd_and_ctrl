@@ -146,6 +146,33 @@ func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) b
 	return ok && src.IsCreature() && src.Controller == controller
 }
 
+// damageToPlayerBy is combatDamageToPlayerBy without the CR 603
+// combat-damage restriction. It exists for the printed text that
+// says "deal damage" with no "combat" in it — Breeches, Brazen
+// Plunderer and Malcolm, Keen-Eyed Navigator both print "Whenever
+// one or more Pirates you control deal damage to your opponents",
+// unlike Bident of Thassa, Coastal Piracy and every other caller of
+// combatDamageToPlayerBy, which all print "combat damage" and must
+// keep reading it that way.
+//
+// A SIBLING, not a broadened combatDamageToPlayerBy: AGENTS.md's
+// shared-file rule is append a function, never change an existing
+// one's behaviour, and every existing caller of
+// combatDamageToPlayerBy would silently widen if the combat check
+// were dropped from it instead.
+//
+// Caller must hold g.mu.
+func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 {
+		return false
+	}
+	if p := g.PlayerByIDForEffect(ev.Target); p == nil {
+		return false
+	}
+	src, ok := g.LookupCardForEffect(ev.Source)
+	return ok && src.IsCreature() && src.Controller == controller
+}
+
 // --- Pirates deck helpers ----------------------------------------
 
 // artifactEnteredUnderYourControl reports whether ev is an ETB for
@@ -571,6 +598,22 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
 // of the Moon, Blood Moon) and takes the land's own rules text with
 // it.
+// putCounterOnSourceWhileOnBattlefield is the ability effect body
+// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// killed the source before the ability resolves, otherwise a counter
+// on the source itself. Both cards pair it with b24KeywordCounterGrant
+// so the counter carries CR 122.1e's keyword.
+func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !b15OnBattlefield(g, item.SourceCardID) {
+			return nil
+		}
+		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+			Apply(NewContext(g, item))
+	}
+}
+
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer4Type,

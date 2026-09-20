@@ -23,14 +23,20 @@ import (
 // relaxation that makes an off-colour steal actually usable in a
 // two-colour deck.
 //
-// Batching gap (CR 603.1): the real card fires once for a whole
-// combat and exiles one card per damaged opponent. The engine emits
-// one damage event per source, so a three-Pirate alpha strike into
-// three opponents fires three triggers, each exiling one card. Same
-// cards exiled, three log lines instead of one — except when two
-// Pirates hit the SAME opponent, where paper exiles one card and
-// this exiles two. Declared, not modelled: the fix is event
-// batching, which is a sprint of its own.
+// "One or more … deal damage to your opponents" — no "combat" in
+// the printed text, so a Pirate's non-combat damage (an activated or
+// triggered ability, not just an attack) counts too:
+// damagedOpponentByAnyDamage, not damagedOpponent.
+//
+// It is also CR 603.2c's per-player collapse (#784): the engine
+// still emits one damage event per source, but OncePerBatchPerPlayer
+// fires this trigger at most once per opponent per damage batch, so
+// two Pirates connecting with the SAME opponent in one batch now
+// exile exactly one card from them, matching the printed card. Two
+// Pirates hitting TWO DIFFERENT opponents in the same batch still
+// correctly produce two separate triggers, one per opponent — which
+// is what "exile the top card of EACH of those opponents' libraries"
+// needs, since each trigger exiles from its own one victim.
 //
 // Partner is a deck-construction rule, not a game action, and is
 // not modelled.
@@ -39,30 +45,32 @@ func init() {
 		OracleID:        "eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5",
 		Name:            "Breeches, Brazen Plunderer",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Two Pirates hitting the same opponent exile two cards instead of one; Partner isn't supported, so Breeches can't be your commander."},
+		Caveats:         []string{"Partner isn't supported, so Breeches can't be your commander."},
 		PrintedKeywords: []string{"menace"},
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				victim := damagedOpponent(ev, source.Controller, g)
-				if victim == uuid.Nil {
-					return false
-				}
-				dealer, ok := g.LookupCardForEffect(ev.Source)
-				return ok && isPirate(dealer)
-			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				victim := ev.Target
-				return game.NewTriggeredItem(source, "Breeches — exile their top card, playable this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						return ExileTopWithPermission{
-							From:     victim,
-							GrantTo:  item.Controller,
-							N:        1,
-							AnyColor: true,
-						}.Apply(NewContext(g, item))
-					})
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			OncePerBatchPerPlayer(game.TriggeredAbility{
+				Watches: []game.EventKind{game.EventDealDamage},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+					victim := damagedOpponentByAnyDamage(ev, source.Controller, g)
+					if victim == uuid.Nil {
+						return false
+					}
+					dealer, ok := g.LookupCardForEffect(ev.Source)
+					return ok && isPirate(dealer)
+				},
+				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+					victim := ev.Target
+					return game.NewTriggeredItem(source, "Breeches — exile their top card, playable this turn",
+						func(g *game.Game, item *game.StackItem) error {
+							return ExileTopWithPermission{
+								From:     victim,
+								GrantTo:  item.Controller,
+								N:        1,
+								AnyColor: true,
+							}.Apply(NewContext(g, item))
+						})
+				},
+			}),
+		},
 	})
 }

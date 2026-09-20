@@ -11,17 +11,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {1}{R}, Discard a card: Draw a card. Activate only if this
 //	 creature is attacking."
 //
-// The discard trigger is the half that matters here and the half the
-// engine can express. The activated ability is deferred twice over:
-// AbilityCost has no discard component, and there's no "only if this
-// creature is attacking" timing predicate. Both are noted in the
-// decklist triage rather than half-implemented.
+// Both halves of the activated ability's gap have since closed: #660
+// gave AbilityCost a discard component (DiscardCardsMatching) and
+// #743 gave activated abilities a Condition slot, so the only piece
+// missing was the "only if this creature is attacking" predicate
+// itself — SourceIsAttacking, added alongside this card. Discarding
+// to pay the ability's cost is an ordinary discard, so it also fires
+// the "whenever you discard a card" trigger above, same as paper.
 func init() {
 	Register(Spec{
 		OracleID:        "64ad5657-78e9-4f34-8877-18c4f51fff9a",
 		Name:            "Glint-Horn Buccaneer",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The \"{1}{R}, discard a card: draw a card\" ability while attacking cannot be activated; only the discard damage trigger works."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -30,5 +31,13 @@ func init() {
 				return damageToEachOpponent(g, item, 1)
 			}),
 		},
+		Activated: []ActivatedAbility{{
+			Label:     "{1}{R}, Discard a card: Draw a card. Activate only if this creature is attacking.",
+			Cost:      Plus(ManaCost("{1}{R}"), DiscardACard()),
+			Condition: SourceIsAttacking(),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+			},
+		}},
 	})
 }

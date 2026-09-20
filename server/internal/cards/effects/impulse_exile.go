@@ -68,3 +68,19 @@ func damagedOpponent(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUI
 	}
 	return ev.Target
 }
+
+// damagedOpponentByAnyDamage is damagedOpponent without CR 603's
+// combat-damage restriction — the reading Breeches, Brazen Plunderer
+// and Malcolm, Keen-Eyed Navigator need, since both print "deal
+// damage" with no "combat" qualifier. Ragavan's own trigger prints
+// "deals combat damage to a player" and keeps using damagedOpponent
+// above; this is an addition beside it, not a replacement.
+func damagedOpponentByAnyDamage(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUID {
+	if !damageToPlayerBy(ev, controller, g) {
+		return uuid.Nil
+	}
+	if ev.Target == controller {
+		return uuid.Nil
+	}
+	return ev.Target
+}
