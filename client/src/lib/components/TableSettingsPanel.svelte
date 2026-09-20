@@ -155,6 +155,8 @@
           class="tsp-chip"
           class:on={isUnlimitedUndo(settings.undo_limit)}
           {disabled}
+          aria-label="unlimited take-backs"
+          aria-pressed={isUnlimitedUndo(settings.undo_limit)}
           title="no undo budget at all — nothing is ever refused"
           onclick={() => apply({ undo_limit: UNDO_UNLIMITED })}>∞</button
         >
