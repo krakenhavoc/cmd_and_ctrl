@@ -63,6 +63,13 @@ type PlayerTurnTally struct {
 	// CombatDamageToPlayers is the combat damage this player's
 	// creatures dealt to players.
 	CombatDamageToPlayers int `json:"combatDamageToPlayers,omitempty"`
+	// CardsDiscarded counts cards this player discarded (one event
+	// per card, CR 701.8a), whatever the discard's cause or eventual
+	// destination — a madness card exiled instead of binned, or one
+	// redirected to the top of the library, still counts (#1112,
+	// Change of Fortune's "for each card you've discarded this
+	// turn").
+	CardsDiscarded int `json:"cardsDiscarded,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -619,6 +626,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
+	case EventDiscardCard:
+		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:

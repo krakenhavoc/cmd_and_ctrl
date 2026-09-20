@@ -120,3 +120,29 @@ func BounceTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 	}
 	return BounceToHand{Target: t.ID}.Apply(ctx)
 }
+
+// DealFixedDamageToModesTarget is "<source> deals `amount` damage to
+// <this mode's target>" as a modal bullet's body, for a printed fixed
+// amount — Kolaghan's Command's and Prismari Command's "deals 2
+// damage to any target" bullets share this shape (#1112).
+func DealFixedDamageToModesTarget(amount int) func(item *game.StackItem, ctx *Context, occ int) error {
+	return func(item *game.StackItem, ctx *Context, occ int) error {
+		t, ok := ModeTarget(ctx, occ)
+		if !ok {
+			return nil
+		}
+		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: amount}.Apply(ctx)
+	}
+}
+
+// DealXDamageToModesTarget is "this spell deals X damage to <this
+// mode's target>" as a modal bullet's body — Mishra's Command's
+// creature and planeswalker bullets differ only in the target
+// clause, not the body (#1112).
+func DealXDamageToModesTarget(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: ctx.X()}.Apply(ctx)
+}

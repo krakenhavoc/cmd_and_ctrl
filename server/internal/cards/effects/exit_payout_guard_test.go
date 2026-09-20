@@ -112,14 +112,16 @@ var exitPayoutAllowlist = map[string]string{
 		"avoid asking the engine for a life change of nothing. The mana value is read before the " +
 		"move because that is the last moment the card is guaranteed findable (CR 608.2h), which " +
 		"is the ungated half of the line ADR 0013 §5t draws.",
-	"kolaghans_command.go:70": "a cross-closure artifact of the enclosing-declaration walk, not a " +
-		"payout (#1027). The `ok` at kolaghans_command.go:70 is the DAMAGE mode's own " +
-		"`t, ok := ModeTarget(ctx, occ)`, declared at line 69 inside that mode's closure; the " +
-		"discard at line 55 is the DISCARD mode's, three closures earlier, and the two locals " +
-		"never share a scope. exitPayoutsIn walks a func literal both on its own and as part of " +
-		"the init() it sits in (the header says so), and on the enclosing pass every mode's " +
-		"locals look like one function's. The per-closure pass sees the damage mode with no exit " +
-		"in it and reports nothing, which is the right answer.",
+	"prismari_command.go:61": "a cross-closure artifact of the enclosing-declaration walk, not a " +
+		"payout (#1027, #1112 — the same shape kolaghans_command.go:70 used to name before its " +
+		"damage bullet moved to the shared DealFixedDamageToModesTarget helper and stopped being " +
+		"a closure at all). The `ok` at prismari_command.go:61 is the TREASURE mode's own " +
+		"`t, ok := ModeTarget(ctx, occ)`, declared inside that mode's closure; the discard at " +
+		"line 49 is the DRAW-THEN-DISCARD mode's, one closure earlier, and the two locals never " +
+		"share a scope. exitPayoutsIn walks a func literal both on its own and as part of the " +
+		"init() it sits in (the header says so), and on the enclosing pass every mode's locals " +
+		"look like one function's. The per-closure pass sees the Treasure mode with no exit in " +
+		"it at all — it creates a token — and reports nothing, which is the right answer.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card
