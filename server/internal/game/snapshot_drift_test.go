@@ -166,6 +166,7 @@ var gameFields = plan(
 
 	"ScopedStatics", dropped, "StaticAbility is two closures; counted in ContinuationCensus.ScopedStatics",
 	"TurnScopedReplacements", dropped, "ReplacementEffect is three closures; counted in ContinuationCensus.TurnScopedReplacements",
+	"TurnScopedBlockRules", dropped, "BlockRule is two closures; counted in ContinuationCensus.TurnScopedBlockRules",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",

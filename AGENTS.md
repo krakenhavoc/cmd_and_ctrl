@@ -1728,8 +1728,10 @@ A creature pacified after attackers were declared keeps attacking.
 [ADR 0045](docs/decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say
 (Propaganda's attack cost; Silent Arbiter's and Crawlspace's count
-limits, which belong beside `BlockerCountValid` as set-shaped
-predicates rather than as bits).
+limits, which belong beside `Game.blockerBoundsLocked` as set-shaped
+predicates rather than as bits — one more entry in
+`checkBlockDeclarationLocked`, the validator `DeclareBlockers` runs
+over a whole declaration before it stores any of it).
 
 ### Attaching, and an ability whose source has gone (#812)
 

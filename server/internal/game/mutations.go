@@ -6134,75 +6134,29 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 }
 
 // DeclareBlocker marks a battlefield card as blocking a specific
-// declared attacker. Gated by the declare_blockers step. Both IDs
-// must exist on the battlefield, and the blocker must be a
-// creature.
+// declared attacker: exactly a one-entry DeclareBlockers
+// (block_declaration.go), which is where the rules live. Gated by the
+// declare_blockers step. Both IDs must exist on the battlefield, and
+// the blocker must be a creature.
 //
 // Returns ErrWrongStep outside the declare_blockers step,
-// ErrNotACreature for a non-creature blocker, ErrCardNotFound
-// when either card is missing from the battlefield, and a
+// ErrNotACreature for a non-creature blocker, ErrCardNotFound when
+// either card is missing from the battlefield, and a
 // *BlockRefusedError (which wraps ErrIllegalBlock) for a pair
 // BlockPairRefusalLocked refuses. Idempotent on the same pair.
+//
+// #750: it can now also refuse for a block COUNT. One creature is not
+// a legal block on a menace attacker (CR 702.111b), and this verb has
+// no second entry to make it one, so the refusal is
+// too_few_blockers and the caller must send both blockers in one
+// DeclareBlockers. That is the whole point: the engine used to accept
+// the lone block here and undo it later, after the defender had been
+// told it was good.
 //
 // The attacker need not currently have AttackingTarget set — the
 // sandbox accepts pre-emptive blocker declarations.
 func (g *Game) DeclareBlocker(blockerID, attackerID uuid.UUID) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.State != StateActive {
-		return ErrGameNotActive
-	}
-	if g.Turn.Step != StepDeclareBlockers {
-		return ErrWrongStep
-	}
-	// Layers must be fresh so HasKeyword reads the current effective
-	// characteristic (flying granted by an anthem this turn, or a
-	// land Urborg made a Swamp, has to be visible to
-	// BlockPairRefusalLocked below).
-	g.RecomputeLayersIfStaleLocked()
-	// Verify the attacker exists on the battlefield. Without this the
-	// blocker would silently point at a non-existent attacker ID.
-	var attacker *Card
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == attackerID {
-			attacker = &g.Battlefield.Cards[i]
-			break
-		}
-	}
-	if attacker == nil {
-		return ErrCardNotFound
-	}
-	for i := range g.Battlefield.Cards {
-		if g.Battlefield.Cards[i].InstanceID == blockerID {
-			blocker := &g.Battlefield.Cards[i]
-			if !blocker.IsCreature() {
-				return ErrNotACreature
-			}
-			// CR 509.1b: restrictions and evasion keywords (flying,
-			// landwalk) restrict which creatures can be declared as
-			// blockers. BlockPairRefusalLocked is the single pair
-			// check the enumerator and the #328 signal also read;
-			// protection (#662) and block rules (#750) land there.
-			// Menace is a block COUNT and is not checked here.
-			if r := g.BlockPairRefusalLocked(attacker, blocker); !r.Legal() {
-				return g.blockRefusedErrorLocked(attacker, blocker, r)
-			}
-			// #830: the verb STAGES the pairing and announces
-			// nothing. CR 509.1 declares blockers as one turn-based
-			// action, so the events — EventBlock per pair, one
-			// EventBecomesBlocked per blocked attacker — are emitted
-			// by commitBlockDeclarationLocked when the declaration is
-			// locked in, at the first priority boundary of the step.
-			// The sandbox lets a defender re-point a blocker at a
-			// different attacker before then; that is one decision
-			// being revised, and the attacker the blocker left must
-			// never have become blocked at all.
-			blocker.BlockingTarget = attackerID
-			blocker.AttackingTarget = uuid.Nil
-			return nil
-		}
-	}
-	return ErrCardNotFound
+	return g.DeclareBlockers([]BlockDeclaration{{Blocker: blockerID, Attacker: attackerID}})
 }
 
 // ResolveCombatDamage applies the regular combat damage step's damage.

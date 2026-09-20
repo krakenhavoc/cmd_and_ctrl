@@ -3,10 +3,10 @@ package effects
 // Boggart Brute — "Menace."
 //
 // Simple vanilla menace creature — 3/2 for 2R. Covers the S18
-// menace keyword; `BlockerCountValid` rejects a single blocker
-// against this attacker, and the block declaration's lock-in
-// silently reverts that block inside the declare-blockers step
-// (attacker ends up unblocked, CR 509.1b / #715).
+// menace keyword. Menace is a block COUNT (CR 702.111b), so
+// DeclareBlockers REFUSES a lone blocker against this attacker with a
+// too_few_blockers reason and stores nothing; blocking it takes two
+// creatures declared together (CR 509.1b, #750).
 //
 // Swapped in for Dreg Mangler from the ADR 0014 §2.8 card list
 // after oracle-text review showed Dreg Mangler has haste +

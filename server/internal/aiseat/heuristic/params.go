@@ -66,6 +66,13 @@ type blockParams struct {
 	Attacker string `json:"attacker"`
 }
 
+// blocksParams is the set-shaped declare_blockers payload the
+// enumerator emits for a block that is legal only as a GROUP — the
+// two creatures a menace attacker takes (#750).
+type blocksParams struct {
+	Blocks []blockParams `json:"blocks"`
+}
+
 // choiceParams covers every resolve_choice shape. The dispatcher
 // routes on which field is present and so does the policy, except
 // that the policy also has the choice's Kind available from

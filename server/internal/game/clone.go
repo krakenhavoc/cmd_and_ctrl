@@ -302,6 +302,15 @@ func (g *Game) cloneLocked() *Game {
 		out.TurnScopedReplacements = make([]ReplacementEffect, len(g.TurnScopedReplacements))
 		copy(out.TurnScopedReplacements, g.TurnScopedReplacements)
 	}
+	// #750: the same reasoning for the until-end-of-turn block rules.
+	// A BlockRule is written once at registration and never mutated,
+	// so a fresh backing array is all the isolation an undo needs —
+	// what must not be shared is the array, because the cleanup sweep
+	// replaces the slice rather than compacting it.
+	if len(g.TurnScopedBlockRules) > 0 {
+		out.TurnScopedBlockRules = make([]BlockRule, len(g.TurnScopedBlockRules))
+		copy(out.TurnScopedBlockRules, g.TurnScopedBlockRules)
+	}
 	// S32/S38 scoped statics — the layer-engine twin of the slice
 	// above, and the same reasoning: a ScopedStatic is written once
 	// at registration and never mutated (see the immutability
@@ -845,6 +854,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements
 	g.TurnScopedReplacements = src.TurnScopedReplacements
+	g.TurnScopedBlockRules = src.TurnScopedBlockRules
 	g.ScopedStatics = src.ScopedStatics
 	g.lastKnownBattlefield = src.lastKnownBattlefield
 	g.lastKnownTriggerIdentity = src.lastKnownTriggerIdentity

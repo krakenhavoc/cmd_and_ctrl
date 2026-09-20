@@ -195,12 +195,14 @@ func TestBlockRuleStopsWhenItsSourceLeaves(t *testing.T) {
 	}
 }
 
-// TestBlockRuleMaximumRevertsAnOverfullBlockAtTheLockIn — Hungering
+// TestBlockRuleMaximumRefusesAnOverfullBlockAtDeclaration — Hungering
 // Hydra's shape. A maximum is a bound on the whole declaration, so it
-// is judged where the declaration is complete, and an illegal set is
-// reverted whole: which of the two blockers to drop is the defender's
-// choice, not the engine's.
-func TestBlockRuleMaximumRevertsAnOverfullBlockAtTheLockIn(t *testing.T) {
+// is judged where the declaration is complete: DeclareBlockers, which
+// REFUSES the over-full set whole rather than storing part of it
+// (#750, Decision 13). Refusing the set whole is deliberate — which
+// of the two blockers to drop is the defender's choice, not the
+// engine's.
+func TestBlockRuleMaximumRefusesAnOverfullBlockAtDeclaration(t *testing.T) {
 	stubCatalogBlockRules(t, func(key string) []BlockRule {
 		if key != blockRuleOracle {
 			return nil
@@ -223,23 +225,71 @@ func TestBlockRuleMaximumRevertsAnOverfullBlockAtTheLockIn(t *testing.T) {
 	carryBlockRule(t, g, attacker)
 	declareAttacks(t, g, attacker)
 
-	for _, b := range []uuid.UUID{first, second} {
-		if err := g.DeclareBlocker(b, attacker); err != nil {
-			t.Fatalf("DeclareBlocker: %v", err)
-		}
+	err := g.DeclareBlockers([]BlockDeclaration{
+		{Blocker: first, Attacker: attacker},
+		{Blocker: second, Attacker: attacker},
+	})
+	var refusal *BlockRefusedError
+	if !errors.As(err, &refusal) {
+		t.Fatalf("a two-creature block against a maximum of one = %v, want a refusal", err)
+	}
+	if refusal.Reason != BlockReasonTooManyBlockers || refusal.N != 1 {
+		t.Errorf("refusal = %q with N = %d, want %q with 1", refusal.Reason, refusal.N, BlockReasonTooManyBlockers)
+	}
+	if got := refusal.Sentence(g.Seats[1].ID); got != "Hungering Hydra can't be blocked by more than one creature." {
+		t.Errorf("the defender reads %q", got)
 	}
 	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
 
+	// All or nothing: neither blocker was stored, so neither
+	// announced and the attacker never became blocked.
 	for _, b := range []uuid.UUID{first, second} {
 		if c := findCard(g, b); c == nil || c.BlockingTarget != uuid.Nil {
-			t.Errorf("a two-creature block against a maximum of one was not reverted")
+			t.Errorf("a refused block was stored anyway")
 		}
 		if n := len(blockDeclEvents(g, EventBlock, b)); n != 0 {
-			t.Errorf("the reverted block announced itself: %d block events", n)
+			t.Errorf("the refused block announced itself: %d block events", n)
 		}
 	}
 	if g.blockedAttackers[attacker] {
-		t.Error("an attacker whose illegal block was reverted was recorded as blocked")
+		t.Error("an attacker whose block was refused was recorded as blocked")
+	}
+}
+
+// A maximum bites the SECOND blocker too, not just a set that arrives
+// over-full at once: the defender declares one legal blocker, then
+// tries to gang up. The second declaration is judged against the set
+// it would leave behind — one stored block plus the new one — so it
+// is refused and the first block is untouched.
+func TestBlockRuleMaximumRefusesASecondBlockerAddedLater(t *testing.T) {
+	stubCatalogBlockRules(t, func(key string) []BlockRule {
+		if key != blockRuleOracle {
+			return nil
+		}
+		return []BlockRule{{
+			Count: func(g *Game, attacker, source *Card) (int, int) { return 0, 1 },
+		}}
+	})
+
+	g := newActiveGame(t)
+	attacker := pushCombatant(t, g, g.Seats[0], "Hungering Hydra", 4, 4)
+	first := pushCombatant(t, g, g.Seats[1], "Blocker One", 1, 4)
+	second := pushCombatant(t, g, g.Seats[1], "Blocker Two", 1, 4)
+	carryBlockRule(t, g, attacker)
+	declareAttacks(t, g, attacker)
+
+	if err := g.DeclareBlocker(first, attacker); err != nil {
+		t.Fatalf("the first blocker is within the maximum: %v", err)
+	}
+	err := g.DeclareBlocker(second, attacker)
+	if !errors.Is(err, ErrIllegalBlock) {
+		t.Fatalf("the second blocker = %v, want an illegal-block refusal", err)
+	}
+	if c := findCard(g, first); c == nil || c.BlockingTarget != attacker {
+		t.Error("the refused second declaration disturbed the first block")
+	}
+	if c := findCard(g, second); c == nil || c.BlockingTarget != uuid.Nil {
+		t.Error("the refused second blocker was stored anyway")
 	}
 }
 
@@ -279,24 +329,25 @@ func TestBlockRuleMaximumAcceptsASingleBlocker(t *testing.T) {
 
 // TestMenaceLoneBlockFiresNoBlockTriggers is the defect #750 describes,
 // pinned from the trigger side. An illegal lone block against a menace
-// attacker is reverted at the declaration's lock-in, which is BEFORE
-// any event is emitted — so "whenever this creature blocks"
-// (CR 509.3a) and "becomes blocked" (CR 506.4) never fire on it.
+// attacker is now REFUSED at declaration, so it is never stored and
+// never reaches the lock-in — "whenever this creature blocks"
+// (CR 509.3a) and "becomes blocked" (CR 506.4) cannot fire on it.
 // Under CR 733.1 an illegal declaration is rewound and nothing
-// triggers from it.
+// triggers from it; refusing it outright is the same answer arrived
+// at before the defender was ever told the block was good.
 func TestMenaceLoneBlockFiresNoBlockTriggers(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushCombatant(t, g, g.Seats[0], "Menacer", 3, 3, "menace")
 	lone := pushCombatant(t, g, g.Seats[1], "Lone Blocker", 2, 2)
 	declareAttacks(t, g, attacker)
 
-	if err := g.DeclareBlocker(lone, attacker); err != nil {
-		t.Fatalf("DeclareBlocker: %v", err)
+	if err := g.DeclareBlocker(lone, attacker); !errors.Is(err, ErrIllegalBlock) {
+		t.Fatalf("DeclareBlocker on a menace attacker = %v, want an illegal-block refusal", err)
 	}
 	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
 
 	if c := findCard(g, lone); c == nil || c.BlockingTarget != uuid.Nil {
-		t.Fatalf("the illegal lone block against menace was not reverted (CR 509.1b)")
+		t.Fatalf("the illegal lone block against menace was stored (CR 509.1b)")
 	}
 	if n := len(blockDeclEvents(g, EventBlock, lone)); n != 0 {
 		t.Errorf("a reverted block fired %d 'whenever this blocks' events (CR 509.3a), want 0", n)
@@ -318,9 +369,15 @@ func TestMenaceTwoBlockersAnnounceNormally(t *testing.T) {
 	second := pushCombatant(t, g, g.Seats[1], "Blocker Two", 1, 4)
 	declareAttacks(t, g, attacker)
 
+	if err := g.DeclareBlockers([]BlockDeclaration{
+		{Blocker: first, Attacker: attacker},
+		{Blocker: second, Attacker: attacker},
+	}); err != nil {
+		t.Fatalf("a legal two-creature menace block was refused: %v", err)
+	}
 	for _, b := range []uuid.UUID{first, second} {
-		if err := g.DeclareBlocker(b, attacker); err != nil {
-			t.Fatalf("DeclareBlocker: %v", err)
+		if c := findCard(g, b); c == nil || c.BlockingTarget != attacker {
+			t.Fatalf("a legal menace block was not stored")
 		}
 	}
 	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })

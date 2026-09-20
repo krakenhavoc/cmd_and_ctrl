@@ -17,7 +17,11 @@ package game
 // See docs/decisions/0045-combat-restrictions.md, addendum Decisions
 // 7-9.
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // BlockReason is the stable snake_case token naming why a block was
 // refused, in the style of Restriction.Names(). It is the `reason`
@@ -78,6 +82,23 @@ const (
 	// side: "creatures with power less than this creature's power
 	// can't block creatures you control" (Champion of Lambholt). #750.
 	BlockReasonCantBlockAttacker BlockReason = "cant_block_attacker"
+
+	// BlockReasonTooFewBlockers is a block COUNT refusal: the
+	// declaration would leave FEWER creatures blocking the attacker
+	// than its minimum — menace's 2 (CR 702.111b), Pathrazer of
+	// Ulamog's 3. BlockRefusal.N carries that minimum. Unlike every
+	// reason above it, this is a property of the whole declaration
+	// and not of a pair: it is returned by DeclareBlockers, never by
+	// BlockPairRefusalLocked, because a per-pair gate would refuse
+	// the FIRST of two menace blockers and make menace mean
+	// "unblockable". #750, ADR 0045 addendum Decisions 12-13.
+	BlockReasonTooFewBlockers BlockReason = "too_few_blockers"
+
+	// BlockReasonTooManyBlockers is the other half: the declaration
+	// would put MORE creatures on the attacker than its maximum
+	// (Hungering Hydra's "can't be blocked by more than one
+	// creature"). BlockRefusal.N carries that maximum. #750.
+	BlockReasonTooManyBlockers BlockReason = "too_many_blockers"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -98,6 +119,8 @@ func BlockReasons() []BlockReason {
 		BlockReasonCantBeBlockedBy,
 		BlockReasonCantBeBlockedExceptBy,
 		BlockReasonCantBlockAttacker,
+		BlockReasonTooFewBlockers,
+		BlockReasonTooManyBlockers,
 	}
 }
 
@@ -115,8 +138,9 @@ type BlockRefusal struct {
 	// Pacifism, a Lord of Atlantis), so for those it is the affected
 	// creature rather than the effect's source.
 	Source uuid.UUID
-	// N is the bound for the count reasons the addendum's PR 2 adds.
-	// Zero for every reason declared today.
+	// N is the bound a count refusal broke: the minimum for
+	// too_few_blockers, the maximum for too_many_blockers (#750).
+	// Zero for every per-pair reason, none of which has a number.
 	N int
 	// Label is the block rule's parameter as its card prints it —
 	// "Walls", "creatures with power 2 or less" — carried so the
@@ -336,6 +360,14 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 			", and " + blocker + " is not one."
 	case BlockReasonCantBlockAttacker:
 		return blocker + " can't block " + attacker + ": " + nameOr(e.Label, "an effect says so") + "."
+	case BlockReasonTooFewBlockers:
+		// #750. A count refusal is about the attacker and a number,
+		// so it names neither the blocker that happened to be in the
+		// declaration nor the rule that set the bound — the player
+		// needs to know how many creatures it takes.
+		return attacker + " can't be blocked by fewer than " + blockerCountPhrase(e.N) + "."
+	case BlockReasonTooManyBlockers:
+		return attacker + " can't be blocked by more than " + blockerCountPhrase(e.N) + "."
 	}
 	return blocker + " can't block " + attacker + "."
 }
@@ -389,6 +421,22 @@ func sharesColor(a, b *Card) bool {
 		}
 	}
 	return false
+}
+
+// blockerCountPhrase renders a block-count bound the way a card
+// prints it — "one creature", "two creatures" — so the refusal reads
+// as English rather than as a number the player has to interpret.
+// Beyond the small numbers any card uses it falls back to digits.
+func blockerCountPhrase(n int) string {
+	words := [...]string{1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+	unit := " creatures"
+	if n == 1 {
+		unit = " creature"
+	}
+	if n >= 1 && n < len(words) {
+		return words[n] + unit
+	}
+	return strconv.Itoa(n) + unit
 }
 
 func nameOr(s, fallback string) string {

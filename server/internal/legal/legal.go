@@ -65,11 +65,17 @@ const (
 	TypeActivateManaAbility = "activate_mana_ability"
 	TypeDeclareAttacker     = "declare_attacker"
 	TypeDeclareBlocker      = "declare_blocker"
-	TypeResolveChoice       = "resolve_choice"
-	TypeKeepHand            = "keep_hand"
-	TypeMulligan            = "mulligan"
-	TypeDiscardSelection    = "discard_selection"
-	TypeSpecialAction       = "special_action"
+	// TypeDeclareBlockers is the set-shaped block declaration (#750).
+	// Emitted for a block that is legal only as a GROUP — the two
+	// creatures a menace attacker takes — which cannot be sent as
+	// two TypeDeclareBlocker moves because the first would be
+	// refused for too_few_blockers.
+	TypeDeclareBlockers  = "declare_blockers"
+	TypeResolveChoice    = "resolve_choice"
+	TypeKeepHand         = "keep_hand"
+	TypeMulligan         = "mulligan"
+	TypeDiscardSelection = "discard_selection"
+	TypeSpecialAction    = "special_action"
 )
 
 // Move is one fully-specified thing a seat may do right now. Type

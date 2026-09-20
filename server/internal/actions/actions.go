@@ -51,8 +51,20 @@ const (
 	// both and N undo presses to take back.
 	TypeDeclareAttackers Type = "declare_attackers"
 	TypeDeclareBlocker   Type = "declare_blocker"
-	TypeClearCombat      Type = "clear_combat"
-	TypeAdvanceStep      Type = "advance_step"
+	// TypeDeclareBlockers (plural) declares a whole block in one
+	// mutation. Params carry `{blocks: [{blocker, attacker}, ...]}`.
+	//
+	// Not an optimisation like its attacking twin — a RULES need
+	// (#750, ADR 0045 addendum Decision 13). A block COUNT (menace's
+	// minimum of two, Hungering Hydra's maximum of one) is a property
+	// of a whole declaration, so a two-creature menace block is legal
+	// only as a pair and cannot be sent as two actions: the first
+	// would be refused. Unlike declare_attackers, which skips
+	// ineligible entries, this is all-or-nothing — game.DeclareBlockers
+	// refuses the set whole and stores none of it.
+	TypeDeclareBlockers Type = "declare_blockers"
+	TypeClearCombat     Type = "clear_combat"
+	TypeAdvanceStep     Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -162,6 +174,20 @@ var ErrEmptyAttackerSet = errors.New("actions: declare_attackers needs at least 
 // ErrTooManyAttackers is returned when a declare_attackers batch
 // exceeds MaxBulkAttackers entries.
 var ErrTooManyAttackers = errors.New("actions: declare_attackers batch is too large")
+
+// MaxBulkBlockers caps a single declare_blockers batch, for the same
+// reason MaxBulkAttackers caps its twin: bound the parse cost of a
+// hostile payload before it reaches the game lock.
+const MaxBulkBlockers = 256
+
+// ErrEmptyBlockerSet is returned when declare_blockers arrives with an
+// empty `blocks` list. "Block with nobody" is the default state of the
+// step, not an action — a defender who wants it passes priority.
+var ErrEmptyBlockerSet = errors.New("actions: declare_blockers needs at least one blocker")
+
+// ErrTooManyBlockers is returned when a declare_blockers batch exceeds
+// MaxBulkBlockers entries.
+var ErrTooManyBlockers = errors.New("actions: declare_blockers batch is too large")
 
 // ErrNotPriorityHolder is returned when pass_priority is dispatched by
 // a seated player who does not currently hold priority. Admin /
@@ -770,6 +796,42 @@ func Dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.DeclareBlocker(blockerID, attackerID)
+
+	case TypeDeclareBlockers:
+		var p struct {
+			Blocks []struct {
+				Blocker  string `json:"blocker"`
+				Attacker string `json:"attacker"`
+			} `json:"blocks"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if len(p.Blocks) == 0 {
+			return ErrEmptyBlockerSet
+		}
+		if len(p.Blocks) > MaxBulkBlockers {
+			return ErrTooManyBlockers
+		}
+		decls := make([]game.BlockDeclaration, 0, len(p.Blocks))
+		for _, e := range p.Blocks {
+			blockerID, err := uuid.Parse(e.Blocker)
+			if err != nil {
+				return fmt.Errorf("declare_blockers blocker: %w", err)
+			}
+			attackerID, err := uuid.Parse(e.Attacker)
+			if err != nil {
+				return fmt.Errorf("declare_blockers attacker: %w", err)
+			}
+			// Authorization is per entry and rejects the whole batch,
+			// exactly as the single-card verb does. A defender may
+			// only ever block with their own creatures.
+			if err := requireCardController(g, a.Caller, blockerID); err != nil {
+				return err
+			}
+			decls = append(decls, game.BlockDeclaration{Blocker: blockerID, Attacker: attackerID})
+		}
+		return g.DeclareBlockers(decls)
 
 	case TypeClearCombat:
 		return g.ClearCombat()
