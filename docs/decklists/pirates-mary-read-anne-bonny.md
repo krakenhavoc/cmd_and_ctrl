@@ -185,8 +185,14 @@ noting that Doubling Season already wants the same hook.
 for each card you've discarded this turn"). Same shape as
 `Game.SpellsCastThisTurn`, which already exists for cast counting.
 
-**Sagas / chapter counters** — 2 cards: Fable of the Mirror-Breaker,
-Brass's Tunnel-Grinder.
+~~**Sagas / chapter counters**~~ — **done** (S27 for the lore-counter
+lifecycle, #343 for the transforming half). Fable of the Mirror-Breaker
+ships with `caveats`: all three chapters run, including chapter III's
+"exile this Saga, then return it transformed" and the back face's
+Kiki-Jiki ability, but its chapter I token is a plain 2/2 because a
+non-copy token has no catalog key to hang a trigger off (#521).
+Brass's Tunnel-Grinder still waits, on **discover** and **descend**
+rather than on Sagas.
 
 **Class enchantments with levels** — 1 card: Cool but Rude.
 **Unblocked and shipped, `full`,** with #1112: ADR 0071 (#757) built
@@ -237,11 +243,15 @@ Same totals everywhere here **except** Malcolm and Breeches, where
 two Pirates hitting the *same* opponent produces two payouts instead
 of one.
 
-**Not in the local Scryfall snapshot** — Ojer Axonil and Storm the
-Vault, both double-faced; the importer matches on exact face name and
-these need the `card_faces` path. (Fable of the Mirror-Breaker is
-also DFC.) Note that the dump's `last-refresh` stamp understates the
-data's real coverage — check the sets, not the stamp.
+~~**Not in the local Scryfall snapshot**~~ — **wrong when written, and
+corrected here.** Ojer Axonil, Storm the Vault and Fable of the
+Mirror-Breaker are all in the dump; what was missing was the
+`card_faces` path, which ADR 0034 built and #343 finished. Storm the
+Vault // Vault of Catlacan (`full`) and Fable of the Mirror-Breaker //
+Reflection of Kiki-Jiki (`caveats`) both ship; Ojer Axonil is claimed
+by #1107. The note stands as a reminder that the dump's
+`last-refresh` stamp understates the data's real coverage — check the
+sets, not the stamp.
 
 ## Suggested order
 

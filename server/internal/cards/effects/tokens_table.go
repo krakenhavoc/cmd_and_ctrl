@@ -132,6 +132,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Samurai with vigilance":          {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Keywords: []string{"vigilance"}},
 	"2/2 colorless Zombie":                          {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2},
 	"2/2 green Boar":                                {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 red Goblin Shaman":                         {Name: "Goblin Shaman", TypeLine: "Token Creature — Goblin Shaman", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Human Knight with trample and haste":   {Name: "Human Knight", TypeLine: "Token Creature — Human Knight", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/2 green Elemental":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                   {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
