@@ -22,13 +22,21 @@ import (
 //     (CurrentPower / CurrentToughness delegation) and Tarmogoyf-
 //     style CDA inputs (graveyard-counter changes etc.).
 //
-// And one CONDITIONAL bump, added for #74:
+// And two CONDITIONAL bumps, the first added for #74 and the second
+// for #1117 in the same mould:
 //   - ANY event whose OldZone / NewZone crosses a HAND boundary — a
 //     draw, a discard, a cast, "put it into your hand" — but only
 //     while a permanent declaring StaticAbility.DependsOnHandSize is
 //     on the battlefield. Psychosis Crawler is the card; see
 //     handSizeStaticIsLiveLocked for why the condition is the whole
 //     design and not an optimisation.
+//   - A LIFE TOTAL that just changed, while something declares
+//     DependsOnLifeTotal. Serra Ascendant is the card. That one is
+//     NOT driven from this switch alone — see
+//     invalidateLayersForLifeChangeLocked below, and the note on the
+//     EventChangeLife arm — because the damage path emits its event
+//     on one side of the write on one route and the other side on
+//     the other.
 //
 // Things this listener INTENTIONALLY does NOT bump on:
 //   - Turn advance. Handled, but not here: S25 (#77) put the bump in
@@ -86,6 +94,60 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	if (ev.OldZone == ZoneHand) != (ev.NewZone == ZoneHand) &&
 		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield &&
 		handSizeStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
+	// #1117's graveyard half, and the second bump keyed on the ZONES
+	// rather than the kind — a mill is an EventZoneMove, a discard is
+	// an EventDiscardCard, a spell finishing is neither on every
+	// route, and the only question being asked is whether some
+	// graveyard just changed. The XOR catches a card LEAVING a
+	// graveyard too (a graveyard exiled, a card reanimated out of
+	// one), which shrinks a Lhurgoyf exactly as an arrival grows it.
+	//
+	// Battlefield moves are excluded because the switch below bumps
+	// for them already — which is why this gap was hard to see at
+	// all: a creature DYING refreshed every graveyard count on the
+	// board, and only the mill, the discard and the resolving spell
+	// did not.
+	//
+	// # Why this one is NOT gated on a declared flag
+	//
+	// The hand-size bump above is, and this deliberately breaks the
+	// symmetry. Two reasons, both about the population rather than
+	// about the cost:
+	//
+	// A hand-size CDA is ONE card (Psychosis Crawler). A static that
+	// reads a graveyard is a whole family that was already in the
+	// catalog before this bump existed — Tarmogoyf, Lord of
+	// Extinction, Nighthowler, Nighthawk Scavenger, Consuming
+	// Aberration, Jarad, Multani, Wight of the Reliquary, Elvish
+	// Reclaimer, The Warring Triad's layer-4 clause — and several of
+	// them are built by SHARED helpers, so an opt-in field would have
+	// to be threaded through functions other cards call. Worse, there
+	// is no test that can catch a Lhurgoyf that forgets to declare
+	// it: a missing flag is a card that is silently one mill behind,
+	// which is precisely the failure this issue is about. An
+	// unconditional bump cannot be forgotten.
+	//
+	// And the frequency argument that justifies the hand gate does
+	// not transfer. A hand changes on every draw, every cast and
+	// every land drop; a graveyard changes when a spell resolves, a
+	// card is milled or something is discarded, which is a smaller
+	// number and is already the same order as the battlefield moves
+	// this switch bumps for unconditionally.
+	//
+	// Measured, at a 40-permanent board:
+	// BenchmarkGraveyardArrivalOnABoard is 6.5us/op against the
+	// pre-existing BenchmarkHandMoveWithNoHandSizeCDA's 7.9us — the
+	// bump itself is one atomic add and does not show. What it really
+	// costs is one extra layer recompute at the NEXT read, and only
+	// when a read falls between this and the next bump:
+	// BenchmarkReadSnapshotStale, 46us, against a fresh read's 11ns.
+	// A turn cycle with twenty graveyard arrivals is therefore under
+	// a millisecond, in exchange for ten catalog cards that were
+	// wrong and could not have declared anything.
+	if (ev.OldZone == ZoneGraveyard) != (ev.NewZone == ZoneGraveyard) &&
+		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield {
 		g.layerVersion.Add(1)
 	}
 	switch ev.Kind {
@@ -178,11 +240,22 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		g.layerVersion.Add(1)
 	case EventChangeLife:
 		// The life-total twin of the hand-size bump above, and
-		// conditional for the same reason: a life total is read by
-		// exactly one static shape in the catalog (Aettir and
-		// Priwen's base P/T), and life changes at every table in
-		// every combat. With no such permanent in play this is the
-		// no-op the two irrelevant-event guards assert.
+		// conditional for the same reason: a life total is read by a
+		// handful of static shapes in the catalog (Aettir and
+		// Priwen's base P/T, Serra Ascendant's threshold), and life
+		// changes at every table in every combat. With no such
+		// permanent in play this is the no-op the two
+		// irrelevant-event guards assert.
+		//
+		// #1117: this arm is the BELT to
+		// invalidateLayersForLifeChangeLocked's braces. That helper is
+		// called at each of the three places a player's Life field is
+		// actually written, which is what gets the ORDERING right on
+		// the damage path, and this arm catches any future emitter of
+		// EventChangeLife that forgets to call it. A double bump costs
+		// one atomic add and still produces exactly one recompute at
+		// the next read, so the overlap is free; a missed bump is a
+		// card that lies about its own power.
 		if lifeTotalStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
@@ -240,6 +313,11 @@ func handSizeStaticIsLiveLocked(g *Game) bool {
 // life total. Everything the long note above says about why the bump
 // is conditional, why the walk is not replaced by a maintained
 // counter, and what it costs applies here word for word.
+//
+// Serra Ascendant is the card that makes it matter: in Commander its
+// clause is ON at the opening hand and switches off the first time
+// its controller takes eleven damage, so the invalidation is not a
+// corner case, it is most of what the card does.
 func lifeTotalStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLifeTotal })
 }
@@ -262,6 +340,38 @@ func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 		}
 	}
 	return false
+}
+
+// invalidateLayersForLifeChangeLocked drops the cached layer
+// resolution when a life total has just changed and something on the
+// battlefield is reading one. #1117.
+//
+// # Why this is not simply an arm of the listener switch
+//
+// Because a life total changes on two routes with opposite event
+// ordering, and only one of them emits a life event at all.
+// ChangePlayerLifeForEffect's tail writes the total and THEN emits
+// EventChangeLife, so a listener arm is correctly placed. Damage to a
+// player writes the total through the same Player.ChangeLife but
+// emits EventDealDamage instead — before the write on the non-combat
+// route, after it on the combat one (applyResolvedDamageToPlayerLocked
+// keeps both orders deliberately, because listeners' tests pin what
+// they see). A listener bumping on EventDealDamage would therefore
+// invalidate BEFORE the life moved on the commonest route of all, and
+// any read in between — the trigger harvester asks for effective
+// characteristics — would recache the stale answer with nothing left
+// to invalidate it. Serra Ascendant would shrink one Lightning Bolt
+// late, forever.
+//
+// So the bump goes where the write is: immediately after each
+// Player.ChangeLife on a game path. Three call sites, each one line,
+// each impossible to get out of order.
+//
+// Caller must hold g.mu.
+func (g *Game) invalidateLayersForLifeChangeLocked() {
+	if lifeTotalStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
 }
 
 // stampBattlefieldEntryLocked sets EnteredBattlefieldAt on the

@@ -17,22 +17,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // anthems included — falling back to the toughness it had when it
 // entered if it has since left (CR 608.2h's last-known value).
 //
-// DECLARED SIMPLIFICATION: the +2/+2 anthem is not implemented. It
-// is a static whose AppliesTo would read the controller's LIFE
-// TOTAL, and a life change is not one of the events that
-// invalidates the layer engine's cached resolution (zone moves,
-// counters, attachments, taps are) — so the bonus would switch on
-// and off a beat late, and "late off" is a creature hitting for
-// +2 after its controller dropped below the line, the direction
-// #259 rules out. The Valkyrie is the trigger alone until a life
-// change bumps the layer version; weaker, never stronger.
+// The +2/+2 anthem was a declared simplification until #1117: it is
+// a static whose AppliesTo reads the controller's LIFE TOTAL, and a
+// life change was not one of the events that invalidated the layer
+// engine's cached resolution (zone moves, counters, attachments, taps
+// were) — so the bonus would have switched on and off a beat late,
+// and "late off" is a creature hitting for +2 after its controller
+// dropped below the line, the direction #259 rules out. It now
+// declares the dependency through LifeGatedPump and is live.
+//
+// "Your starting life total" is the TABLE's (ADR 0075), so the line
+// is 47 at a Commander table and 27 at a 20-life one.
 func init() {
 	Register(Spec{
 		OracleID:        "891d2690-7144-4f87-b6ef-96f2469780a9",
 		Name:            "Righteous Valkyrie",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The +2/+2 to your creatures while you're 7 or more life above your starting total isn't implemented — only the lifegain trigger works."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
+		Static: []game.StaticAbility{
+			LifeGatedPump(YourCreaturesWhileYourLifeAboveStarting(7), 2, 2),
+		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

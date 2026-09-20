@@ -541,8 +541,21 @@ func TestB35LordOfExtinctionIsAsBigAsAllGraveyards(t *testing.T) {
 	if effectivePower(t, g, lord) != 4 {
 		t.Errorf("a dead creature counts: power %d, want 4", effectivePower(t, g, lord))
 	}
-	if spec, _ := Lookup(b35LordOfExtinctionOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the late read on a mill is a declared gap")
+	// The late read on a mill was a declared gap until #1117. A
+	// graveyard crossing now bumps the layer version on its own, so
+	// the Lord grows the instant a card is milled, with nothing on the
+	// battlefield moving in between.
+	g.WithWriteLock(func() {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Milled", TypeLine: "Instant", Owner: me.ID})
+		if err := g.MillNForEffect(me.ID, 1); err != nil {
+			t.Fatalf("MillNForEffect: %v", err)
+		}
+	})
+	if got := effectivePower(t, g, lord); got != 5 {
+		t.Errorf("a milled card counts at once: power %d, want 5", got)
+	}
+	if spec, _ := Lookup(b35LordOfExtinctionOracle); spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %q, want full now that the late read is gone", spec.Completeness)
 	}
 }
 
