@@ -1939,10 +1939,6 @@
     font-size: 11.5px;
     border-radius: 6px;
   }
-  .mi-indent {
-    margin-left: 25px;
-    color: var(--fg-muted);
-  }
   .sep {
     height: 1px;
     background: var(--border);
