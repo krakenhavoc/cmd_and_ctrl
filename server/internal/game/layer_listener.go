@@ -120,6 +120,24 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// exactly the kind of gate that was wrong about Psychosis
 		// Crawler for a sprint.
 		g.layerVersion.Add(1)
+	case EventTransform:
+		// ADR 0079 / CR 712.18: a transform is the one mutation that
+		// changes a permanent's PRINTED characteristics wholesale —
+		// name, type line, colours, base P/T, printed keywords and the
+		// whole catalog entry move at once — without the permanent
+		// going anywhere. So it is the one invalidation input that no
+		// zone move, counter, attach or tap can stand in for, and
+		// without this arm a transformed Storm the Vault would keep
+		// reporting "Legendary Enchantment" until something unrelated
+		// happened to bump the version.
+		//
+		// The card's own effective cache is nilled at the mutation
+		// site (TransformPermanentForEffect) rather than here, for the
+		// window between the two: EmitEvent dispatches synchronously,
+		// but a listener earlier in the slice than this one would
+		// otherwise read the stale characteristic off the card it was
+		// just told about.
+		g.layerVersion.Add(1)
 	case EventControlChanged:
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every
