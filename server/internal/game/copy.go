@@ -83,6 +83,18 @@ type PrintedValues struct {
 	// the thing it copied rather than looking like it.
 	OracleID string
 
+	// TokenKey is the OTHER catalog identity — a token template's
+	// synthetic key (#521, game/token_key.go). Copied for exactly the
+	// reason OracleID is: it is what the ability hooks key on, so a
+	// copy of a Treasure token is a Treasure that still sacrifices
+	// for mana.
+	//
+	// Empty for every printed card, which is what makes CR 707.2's
+	// ordinary direction fall out: a token copying a card takes that
+	// card's oracle ID and this blank, and CatalogKey prefers the
+	// oracle ID. The two are never both set on one object.
+	TokenKey string
+
 	// ScryfallID is the printing identity, which is what the client
 	// resolves card art from. Copied so a Clone of Llanowar Elves
 	// shows Llanowar Elves.
@@ -144,6 +156,7 @@ type PrintedValues struct {
 func CopiableValuesOf(src Card) PrintedValues {
 	return PrintedValues{
 		OracleID:          src.OracleID,
+		TokenKey:          src.TokenKey,
 		ScryfallID:        src.ScryfallID,
 		Name:              src.Name,
 		TypeLine:          src.TypeLine,
@@ -474,6 +487,7 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 func (c *Card) setPrintedValues(v PrintedValues) {
 	v = v.Clone()
 	c.OracleID = v.OracleID
+	c.TokenKey = v.TokenKey
 	c.ScryfallID = v.ScryfallID
 	c.Name = v.Name
 	c.TypeLine = v.TypeLine
@@ -512,6 +526,7 @@ func (c *Card) restorePrintedSelf() {
 	}
 	v := c.PrintedSelf.Clone()
 	c.OracleID = v.OracleID
+	c.TokenKey = v.TokenKey
 	c.ScryfallID = v.ScryfallID
 	c.Name = v.Name
 	c.TypeLine = v.TypeLine

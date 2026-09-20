@@ -60,6 +60,15 @@ func CatalogKey(c Card) string {
 		return ""
 	}
 	base := c.OracleID
+	// #521: a TOKEN has no printing and therefore no oracle ID, so
+	// its printed abilities are registered under a synthetic token
+	// key instead (token_key.go). The oracle ID WINS when there is
+	// one, which is CR 707.2: a token copy carries the copied card's
+	// oracle ID and must keep resolving to that card's entry, not to
+	// a token's.
+	if base == "" {
+		base = c.TokenKey
+	}
 	if c.ActiveFace != 0 && c.OracleID != "" {
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	}

@@ -12,14 +12,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (no image lookup). A future extension could key tokens by a
 // synthetic Scryfall-like ID to wire up art lookup — deferred.
 //
-// S21 sub-PR 1: a token's abilities live on the template itself.
-// `Keywords` are printed keyword abilities (flying, deathtouch) —
-// the catalog's PrintedKeywords hook keys on oracle ID, which a
-// token doesn't have, so before S21 every token's flying was
-// cosmetic. `ManaAbilities` are the token's own mana abilities
-// (Treasure, Eldrazi Spawn). Both flow through the ordinary engine
-// paths: printedCharacteristic folds Keywords into the layer
-// engine, ManaAbilitiesForCard prefers the intrinsic list.
+// S21 sub-PR 1 put a token's abilities on the template itself, and
+// #521 moved the ability half into the catalog. `Keywords` are
+// printed keyword abilities (flying, deathtouch) and stay here: they
+// are plain data, they always survived a snapshot, and
+// printedCharacteristic folds them into the layer engine. The mana
+// and activated abilities are now catalog entries under a synthetic
+// token key (token_catalog.go), so ManaAbilitiesForCard and
+// ActivatedAbilitiesForCard find them the ordinary way — by catalog
+// key, exactly as they do for a printed card.
 
 // FaerieRogueToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
 func FaerieRogueToken() game.Card { return TokenCard("1/1 colorless Faerie Rogue with flying") }
@@ -29,7 +30,14 @@ func FaerieRogueToken() game.Card { return TokenCard("1/1 colorless Faerie Rogue
 // {C}". Added in S19 sub-PR 5; the mana ability went live in S21
 // sub-PR 1 (no tap in the cost — a Spawn can be cracked the turn it
 // arrives).
-func EldraziSpawnToken() game.Card {
+func EldraziSpawnToken() game.Card { return tokenFromCatalog("eldrazi-spawn") }
+
+// printedEldraziSpawnToken is the Eldrazi Spawn as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedEldraziSpawnToken() game.Card {
 	return game.Card{
 		Name:      "Eldrazi Spawn",
 		TypeLine:  "Token Creature — Eldrazi Spawn",
@@ -61,10 +69,17 @@ func PhyrexianWurmLifelinkToken() game.Card {
 // --- the artifact token cycle ------------------------------------
 //
 // Treasure, Food, Clue and Blood are defined entirely by the ability
-// printed on them — strip it and they're blank artifacts. They carry
-// it on the template (ManaAbilities for Treasure, ActivatedAbilities
-// for the rest), because the catalog's hooks key on oracle ID and a
-// token hasn't got one. Added across S21 sub-PRs 1 and 4.
+// printed on them — strip it and they're blank artifacts. Added
+// across S21 sub-PRs 1 and 4, when the ability rode the template as
+// a closure because the catalog's hooks keyed on oracle ID and a
+// token hasn't got one.
+//
+// #521 gave them one: each is registered in the catalog under a
+// synthetic token key ("token:treasure"), and the constructor hands
+// out a template carrying that key. The ability is catalog data like
+// a printed card's, which is what lets a snapshot write a board with
+// a Treasure on it — before this, one live Treasure meant no restore
+// point was written at all until it was spent.
 
 // TreasureToken returns a template for the Treasure artifact token
 // ("{T}, Sacrifice this artifact: Add one mana of any color").
@@ -74,7 +89,14 @@ func PhyrexianWurmLifelinkToken() game.Card {
 // The five-colour pipe offers all five colours, the commander's
 // identity listed first, so cracking a Treasure in a mono-red deck
 // offers {R} first and the other four after it, as printed.
-func TreasureToken() game.Card {
+func TreasureToken() game.Card { return tokenFromCatalog("treasure") }
+
+// printedTreasureToken is the Treasure as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedTreasureToken() game.Card {
 	return game.Card{
 		Name:     "Treasure",
 		TypeLine: "Token Artifact — Treasure",
@@ -99,7 +121,14 @@ func TreasureToken() game.Card {
 // Cheaper than a Treasure by a tap: the printed cost is the sacrifice
 // alone, so a Gold made this turn is spendable this turn and a tapped
 // Gold is still spendable. Both fall out of leaving TapCost false.
-func GoldToken() game.Card {
+func GoldToken() game.Card { return tokenFromCatalog("gold") }
+
+// printedGoldToken is the Gold as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedGoldToken() game.Card {
 	return game.Card{
 		Name:     "Gold",
 		TypeLine: "Token Artifact — Gold",
@@ -112,7 +141,14 @@ func GoldToken() game.Card {
 }
 
 // FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
-func FoodToken() game.Card {
+func FoodToken() game.Card { return tokenFromCatalog("food") }
+
+// printedFoodToken is the Food as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedFoodToken() game.Card {
 	return game.Card{
 		Name:     "Food",
 		TypeLine: "Token Artifact — Food",
@@ -132,7 +168,14 @@ func FoodToken() game.Card {
 
 // ClueToken — "{2}, Sacrifice this artifact: Draw a card." No tap in
 // the cost, so a Clue can be cracked the turn it's made.
-func ClueToken() game.Card {
+func ClueToken() game.Card { return tokenFromCatalog("clue") }
+
+// printedClueToken is the Clue as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedClueToken() game.Card {
 	return game.Card{
 		Name:     "Clue",
 		TypeLine: "Token Artifact — Clue",
@@ -157,7 +200,14 @@ func ClueToken() game.Card {
 // the same card-choice plumbing a sacrifice cost has. Until then
 // the Blood token loots for free, which is strictly better than
 // printed. Noted rather than silently wrong.
-func BloodToken() game.Card {
+func BloodToken() game.Card { return tokenFromCatalog("blood") }
+
+// printedBloodToken is the Blood as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedBloodToken() game.Card {
 	return game.Card{
 		Name:     "Blood",
 		TypeLine: "Token Artifact — Blood",
@@ -184,7 +234,14 @@ func BloodToken() game.Card {
 // site. The Powerstone therefore taps for unrestricted {C} — a real
 // power increase over the printed card, so it stays out of any
 // deck fixture until the restriction lands.
-func PowerstoneToken() game.Card {
+func PowerstoneToken() game.Card { return tokenFromCatalog("powerstone") }
+
+// printedPowerstoneToken is the Powerstone as PRINTED — the abilities
+// included. It is the catalog's entry for this token
+// (token_catalog.go): the abilities are registered from here at boot,
+// and the template that reaches the battlefield carries the key that
+// finds them rather than the closures themselves.
+func printedPowerstoneToken() game.Card {
 	return game.Card{
 		Name:     "Powerstone",
 		TypeLine: "Token Artifact — Powerstone",

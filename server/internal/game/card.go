@@ -38,6 +38,30 @@ type Card struct {
 	// cards. Added in S14 sub-PR 4.
 	OracleID string
 
+	// TokenKey is a TOKEN template's synthetic catalog key
+	// ("token:treasure", "token:food") — the identity a token has
+	// instead of an oracle ID, so that its printed abilities can live
+	// in the catalog like every other object's (#521).
+	//
+	// Empty for every card, and for a token whose template declares
+	// no abilities at all (a vanilla 1/1 Soldier has nothing to look
+	// up). Set by the token template constructors in
+	// cards/effects/tokens.go, which register the matching catalog
+	// entry at boot; see game/token_key.go for the namespace and why
+	// it cannot collide with an oracle ID.
+	//
+	// It is part of the COPIABLE VALUES (PrintedValues.TokenKey): CR
+	// 707.2 makes a copy of a Treasure token a Treasure, ability
+	// included. A copy of a printed CARD carries that card's oracle
+	// ID and an empty key, which is what keeps CR 707.2's ordinary
+	// direction working — CatalogKey prefers the oracle ID and reads
+	// this only when there is none.
+	//
+	// A name, never a closure, so the snapshot carries it and an undo
+	// deep-copies it — which is the whole point: a Treasure on the
+	// battlefield no longer blocks every restore point in the game.
+	TokenKey string
+
 	// TypeLine is Scryfall's type line ("Legendary Creature — Human
 	// Wizard", "Land", "Sorcery", etc.). Stamped at deck-import time
 	// (S08) so combat-rule gates can check whether a card is a

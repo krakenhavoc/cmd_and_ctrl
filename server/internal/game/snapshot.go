@@ -34,8 +34,13 @@ package game
 //     game literally holds the rest of the effect as a continuation
 //   - ScopedStatic.Ability's AppliesTo / Apply — Giant Growth's +3/+3
 //   - TurnScopedReplacements' AppliesTo / Replace — Fog
-//   - Card.ManaAbilities / ActivatedAbilities on a token, which has
-//     no oracle ID for the catalog to key on
+//   - Card.ManaAbilities / ActivatedAbilities, when an ability
+//     closure was stamped onto the INSTANCE and the catalog cannot
+//     hand it back. #521 emptied the large and ordinary case of
+//     this: a token template's abilities are registered under a
+//     synthetic token key (game/token_key.go) and re-derived like a
+//     printed card's, so a Treasure on the battlefield no longer
+//     holds every restore point in the game open.
 //
 // Some of those are re-derivable, because the closure was looked up
 // from the card catalog by oracle ID in the first place, and the
@@ -107,10 +112,28 @@ import (
 // "no undos" survive a restore. The other direction needs the bump
 // too: a v3 binary reading a v4 file would drop every setting.
 //
+// v5 is #521, and it is the EMBLEM shape of the argument rather than
+// the Treasure one. The new `tokenKey` on a card is additive and
+// zero-values correctly in the direction that usually matters: a v4
+// file has no key, restore reads none, and the card comes back
+// exactly as a v4 binary would have restored it. What forces the
+// bump is the other direction. Before this change a board holding a
+// live token was censused and never written as a restore point at
+// all, so no file a v4 binary could be handed contained one; after
+// it, restore points full of Treasures, Food and Clues are the
+// normal output. A v4 binary reading one would drop the key it does
+// not know about and restore those tokens as blank artifacts —
+// silently, with a Treasure that no longer taps for mana and a Food
+// nobody can eat. There is no per-field way to say "refuse this file
+// if you do not know what a token key is", so the version is it, and
+// the cost is the one v2 accepted: a pre-#521 binary refuses every
+// post-#521 restore point, tokens or not, rather than restoring one
+// wrong.
+//
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 4
+const SnapshotSchemaVersion = 5
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.
@@ -382,6 +405,7 @@ type cardSnapshot struct {
 	Name                     string              `json:"name"`
 	ScryfallID               string              `json:"scryfallId,omitempty"`
 	OracleID                 string              `json:"oracleId,omitempty"`
+	TokenKey                 string              `json:"tokenKey,omitempty"`
 	TypeLine                 string              `json:"typeLine,omitempty"`
 	Power                    int                 `json:"power"`
 	Toughness                int                 `json:"toughness"`
@@ -706,9 +730,23 @@ type ContinuationCensus struct {
 	// replacement effects (Fog).
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
-	// IntrinsicAbilityCards is cards whose ability closures live on
-	// the instance rather than in the catalog and that carry no
-	// oracle ID to re-derive from — true tokens.
+	// IntrinsicAbilityCards is cards holding an ability closure on
+	// the INSTANCE that the catalog cannot hand back — the ones a
+	// restore would bring back with the ability missing.
+	//
+	// #521 narrowed what that means, and the counter is worth reading
+	// twice because the old meaning was wider than it sounded. It
+	// used to count every card carrying an instance ability and no
+	// oracle ID, which tested whether there was an identity to look
+	// up rather than whether anything unserialisable was actually
+	// there — so a Treasure, whose ability is four fields of plain
+	// data, censused itself and blocked every restore point in the
+	// game for as long as it sat on the battlefield. A token template
+	// now has a catalog key of its own, so the question asked here is
+	// the honest one: CAN the registry return this ability? An
+	// instance ability with no entry behind it — a closure stamped
+	// onto one object at runtime — still counts, and must: the
+	// counter is meant to become accurate, not unreachable.
 	IntrinsicAbilityCards int `json:"intrinsicAbilityCards,omitempty"`
 
 	// UnpersistableRNG marked a game whose random source belonged to
@@ -962,6 +1000,74 @@ func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 	return out
 }
 
+// abilityCatalogKey is the key a card's instance-carried ability
+// closures are re-derived under, and it is deliberately ONE function
+// so that the census (capture) and the rebuild (restore) can never
+// disagree about what is recoverable. A counter that answered a
+// different question from the code it guards would be worse than no
+// counter at all.
+//
+// The oracle ID first, the token key second: CR 707.2 again — a token
+// COPY carries the copied card's oracle ID and must resolve to that
+// card, never to a token entry. The two are never both set on one
+// object, so the order only ever settles the empty cases.
+//
+// Deliberately NOT CatalogKey: this is the key restore will have,
+// off a decoded file, before the card is in a zone or a layer cache
+// exists. CatalogKey's face suffix and CR 708.2a silence are
+// questions about a LIVE object, and asking them here would make the
+// census depend on state the restoring binary has not rebuilt yet.
+func abilityCatalogKey(oracleID, tokenKey string) string {
+	if oracleID != "" {
+		return oracleID
+	}
+	return tokenKey
+}
+
+// restoreAbilityKey is abilityCatalogKey for a decoded snapshot card.
+func restoreAbilityKey(c *cardSnapshot) string {
+	return abilityCatalogKey(c.OracleID, c.TokenKey)
+}
+
+// intrinsicAbilitiesLost reports whether the ability closures carried
+// on THIS object would be lost by a capture → restore round trip —
+// the one question ContinuationCensus.IntrinsicAbilityCards is
+// counting.
+//
+// It asks the registry rather than asking after an oracle ID (#521).
+// The old predicate was `has instance abilities && no oracle ID`,
+// which counted a Treasure token — four fields of plain data, every
+// closure slot on its ManaAbilityShape nil — as an unrestorable
+// continuation, and so refused to write a restore point for as long
+// as one sat on the battlefield. A token template's abilities are now
+// registered under its token key, so the honest question is whether
+// the catalog can hand them back.
+//
+// The COUNT is what it compares, not mere presence, and that is the
+// half that keeps the counter reachable: an ability stamped onto one
+// instance at runtime, over and above whatever its entry declares,
+// has no catalog entry of its own and is still lost. Restore rebuilds
+// the catalog's list wholesale, so a card holding more abilities than
+// its entry declares comes back with the extra one missing — which
+// is exactly what this must keep counting.
+func intrinsicAbilitiesLost(c Card) bool {
+	mana, activated := len(c.ManaAbilities), len(c.ActivatedAbilities)
+	if mana == 0 && activated == 0 {
+		return false
+	}
+	key := abilityCatalogKey(c.OracleID, c.TokenKey)
+	if key == "" {
+		return true
+	}
+	if mana > 0 && (CatalogManaAbilities == nil || len(CatalogManaAbilities(key)) < mana) {
+		return true
+	}
+	if activated > 0 && (CatalogActivatedAbilities == nil || len(CatalogActivatedAbilities(key)) < activated) {
+		return true
+	}
+	return false
+}
+
 func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 	variableToughness := c.VariableToughness
 	out := cardSnapshot{
@@ -969,6 +1075,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
 		OracleID:                 c.OracleID,
+		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
@@ -1020,13 +1127,11 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ManaAbilityCount:         len(c.ManaAbilities),
 		ActivatedAbilityCount:    len(c.ActivatedAbilities),
 	}
-	// Intrinsic ability closures. Re-derivable when the card carries
-	// an oracle ID (a token COPY does — CR 707.2 copies the oracle
-	// identity too), lost when it does not (Treasure, Food, Clue,
-	// Blood are their ability and have no printing to look up).
-	if (len(c.ManaAbilities) > 0 || len(c.ActivatedAbilities) > 0) && c.OracleID == "" {
+	// Intrinsic ability closures, censused only when the registry
+	// cannot give them back (#521). See intrinsicAbilitiesLost.
+	if intrinsicAbilitiesLost(c) {
 		cen.IntrinsicAbilityCards++
-		cen.note("intrinsic abilities with no oracle id: %s", labelOr(c.Name, c.InstanceID.String()))
+		cen.note("intrinsic abilities the catalog cannot re-derive: %s", labelOr(c.Name, c.InstanceID.String()))
 	}
 	return out
 }
@@ -1526,6 +1631,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Name:                     c.Name,
 		ScryfallID:               c.ScryfallID,
 		OracleID:                 c.OracleID,
+		TokenKey:                 c.TokenKey,
 		TypeLine:                 c.TypeLine,
 		Power:                    c.Power,
 		Toughness:                c.Toughness,
@@ -1585,15 +1691,19 @@ func restoreCard(c *cardSnapshot) Card {
 	// is code the new binary already has. A token copy carries the
 	// copied card's oracle ID (CR 707.2), so it comes back whole.
 	//
-	// A card with no oracle ID cannot be looked up; snapshotCard
-	// already counted it in the census, so a strict restore never
-	// reaches this line with abilities to rebuild.
-	if c.OracleID != "" {
+	// A TOKEN takes the same route since #521, under the synthetic
+	// key its template registered (game/token_key.go) — which is the
+	// whole of why a Treasure no longer blocks a restore point.
+	//
+	// An object with NEITHER identity cannot be looked up;
+	// snapshotCard already counted it in the census, so a strict
+	// restore never reaches this line with abilities to rebuild.
+	if key := restoreAbilityKey(c); key != "" {
 		if c.ManaAbilityCount > 0 && CatalogManaAbilities != nil {
-			out.ManaAbilities = CatalogManaAbilities(c.OracleID)
+			out.ManaAbilities = CatalogManaAbilities(key)
 		}
 		if c.ActivatedAbilityCount > 0 && CatalogActivatedAbilities != nil {
-			out.ActivatedAbilities = CatalogActivatedAbilities(c.OracleID)
+			out.ActivatedAbilities = CatalogActivatedAbilities(key)
 		}
 	}
 	// ADR 0069: a snapshot written before FaceDownKind existed carries

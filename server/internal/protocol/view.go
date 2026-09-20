@@ -2935,9 +2935,22 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 	for i := range bf.Cards {
 		c := &bf.Cards[i]
-		if c.oracleID == "" {
-			continue
-		}
+		// #521: this guard used to be `c.oracleID == ""`, which
+		// dropped EVERY token's activated abilities on the way to the
+		// client — Food, Clue, Blood and the Lander reached the table
+		// with no way to crack them, because they carried their
+		// ability on the instance for want of an oracle ID and this
+		// line read the want of one as "nothing to project". A token
+		// has a catalog key of its own now, so the loop simply looks
+		// the engine card up and asks the ability accessor, which
+		// answers for a token and a printed card in the same words;
+		// a permanent with no abilities at all gets a nil list from
+		// it, which is what the wire wants anyway.
+		//
+		// Treasure escaped the old guard only by accident: its
+		// ability is a MANA ability, and viewOfManaAbilities is
+		// stamped unconditionally in viewOfCard. The four mana
+		// stampers below were skipped for it all the same.
 		controller, err := uuid.Parse(c.Controller)
 		if err != nil {
 			continue
