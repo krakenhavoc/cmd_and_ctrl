@@ -342,3 +342,33 @@ func AttackingCreature() CardPredicate {
 		return c.IsCreature() && c.AttackingTarget != uuid.Nil
 	}
 }
+
+// TotalManaValueOfHistoricPermanentsYouControl is Excalibur, Sword of
+// Eden's "X is the total mana value of historic permanents you
+// control" — CR 700.6's historic (an artifact, a legendary, or a
+// Saga), summed rather than counted.
+//
+// Reads the PRINTED mana cost of each permanent, which is what mana
+// value is (CR 202.3): a token has none and contributes nothing, and
+// a land contributes nothing unless it is somehow an artifact or
+// legendary with a cost, which no land is.
+func TotalManaValueOfHistoricPermanentsYouControl() func(q game.CostQuery) int {
+	return func(q game.CostQuery) int {
+		if q.Game == nil || q.Game.Battlefield == nil {
+			return 0
+		}
+		total := 0
+		for _, c := range q.Game.Battlefield.Cards {
+			if c.InstanceID == q.Card.InstanceID || c.Controller != q.Controller {
+				continue
+			}
+			if b09IsHistoric(c) {
+				total += c.ManaValue()
+			}
+		}
+		if total < 0 {
+			return 0
+		}
+		return total
+	}
+}

@@ -87,15 +87,7 @@ func skullwinderOpponentReturn(ctx *Context) error {
 		// Re-checked on submit: a card can leave the graveyard
 		// between the question and the answer.
 		Zone: game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			next := NewContext(g, resolving)
-			for _, id := range picked {
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(next); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Then: ReturnPickedToHand(resolving),
 	})
 	return nil
 }

@@ -32,9 +32,12 @@ Already in the catalog from earlier sprints: Sol Ring, Counterspell.
 | Big Score | same cost, plus two Treasures for the artifact payoffs above |
 | Unexpected Windfall | the same card at a different price; the deck runs both |
 
-Read the Runes stays blocked: its cost is per-card-drawn and offers a
-choice between discarding and sacrificing, which is a different shape
-from a fixed "discard a card".
+Read the Runes stayed blocked here, and the reason was wrong twice
+over: nothing it does is a cast cost at all, and the per-card choice
+is not a cost shape. It all happens on resolution, and a repetition
+that offers two branches is Torment of Hailfire's option-pick chain
+(#568) pointed at its own controller. **Shipped, `full`,** with
+#1112.
 
 ## Done (batch 3 — impulse exile)
 
@@ -51,7 +54,9 @@ didn't build:
   combat damage and, at four chorus counters, lets you cast the
   *discarded* card for free — cast-from-graveyard with an alternative
   cost, which is a different mechanic (and closer to S29's
-  alternative cast paths).
+  alternative cast paths). **Shipped, `full`,** with #1112: ADR 0066's
+  `game.CastPermission` names the one discarded card object at {0},
+  the same per-instance grant cascade, madness and suspend use.
 - **Coin of Mastery** is not impulse exile either — it's an
   enters-with-counters replacement plus a Treasure ability. Both
   halves are already expressible; it was mis-filed.
@@ -184,6 +189,8 @@ for each card you've discarded this turn"). Same shape as
 Brass's Tunnel-Grinder.
 
 **Class enchantments with levels** — 1 card: Cool but Rude.
+**Unblocked and shipped, `full`,** with #1112: ADR 0071 (#757) built
+the levels, and all three of its lines needed nothing else.
 
 **Coin flips and spell copying** — 2 cards: Breeches, the Blastmaker
 and Echocasting Symposium (which also wants Paradigm).

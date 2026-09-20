@@ -29,6 +29,8 @@ func init() {
 		{"ccfb8b4d-651c-418a-aa19-cb23105b3f2f", "Meticulous Archive", "W", "U"},
 		{"216a2a92-9ca3-4ca3-8af7-686c13b04290", "Shadowy Backstreet", "W", "B"},
 		{"08d80efc-9542-4ba2-824c-c8615d8d07f2", "Undercity Sewers", "U", "B"},
+		{"d51831b1-7394-456e-a1de-6787a59f5932", "Lush Portico", "G", "W"},
+		{"840119bf-e60f-4ff7-9c9b-d420d09df545", "Underground Mortuary", "B", "G"},
 	} {
 		// Bind per iteration: the closures below outlive the loop.
 		name := t.name

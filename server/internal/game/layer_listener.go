@@ -158,6 +158,16 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// the equip and the sword grants nothing until some
 		// unrelated event invalidates.
 		g.layerVersion.Add(1)
+	case EventChangeLife:
+		// The life-total twin of the hand-size bump above, and
+		// conditional for the same reason: a life total is read by
+		// exactly one static shape in the catalog (Aettir and
+		// Priwen's base P/T), and life changes at every table in
+		// every combat. With no such permanent in play this is the
+		// no-op the two irrelevant-event guards assert.
+		if lifeTotalStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
 	case EventTapCard, EventUntapCard:
 		// Tap state is an AppliesTo input, not just a display flag:
 		// The Wandering Rescuer grants hexproof to "other TAPPED
@@ -205,12 +215,30 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 //
 // Caller must hold g.mu (the EmitEvent path always does).
 func handSizeStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnHandSize })
+}
+
+// lifeTotalStaticIsLiveLocked is handSizeStaticIsLiveLocked for a
+// life total. Everything the long note above says about why the bump
+// is conditional, why the walk is not replaced by a maintained
+// counter, and what it costs applies here word for word.
+func lifeTotalStaticIsLiveLocked(g *Game) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLifeTotal })
+}
+
+// staticOnBattlefieldLocked reports whether any permanent on the
+// battlefield declares a static ability the predicate accepts. The
+// shared walk under the two invalidation hints, so a third hint is a
+// one-line function rather than a third copy of the loop.
+//
+// Caller must hold g.mu.
+func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		for _, ab := range StaticAbilitiesForCard(g.Battlefield.Cards[i]) {
-			if ab.DependsOnHandSize {
+			if want(ab) {
 				return true
 			}
 		}

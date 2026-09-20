@@ -73,13 +73,7 @@ func init() {
 					Or(Artifact(), Creature(), Planeswalker()),
 					b03NotNamed("Tekuthal, Inquiry Dominus")),
 			),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !b15OnBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "indestructible", N: 1}.
-					Apply(NewContext(g, item))
-			},
+			Effect: putCounterOnSourceWhileOnBattlefield("indestructible", 1),
 		}},
 	})
 }

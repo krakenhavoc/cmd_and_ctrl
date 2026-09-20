@@ -65,13 +65,7 @@ func init() {
 				DestroyTheModesTarget),
 			ModeDoing("Kolaghan's Command deals 2 damage to any target.",
 				TargetAny(),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
-				}),
+				DealFixedDamageToModesTarget(2)),
 		),
 	})
 }

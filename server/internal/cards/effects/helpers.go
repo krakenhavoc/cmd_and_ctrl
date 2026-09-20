@@ -146,6 +146,33 @@ func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) b
 	return ok && src.IsCreature() && src.Controller == controller
 }
 
+// damageToPlayerBy is combatDamageToPlayerBy without the CR 603
+// combat-damage restriction. It exists for the printed text that
+// says "deal damage" with no "combat" in it — Breeches, Brazen
+// Plunderer and Malcolm, Keen-Eyed Navigator both print "Whenever
+// one or more Pirates you control deal damage to your opponents",
+// unlike Bident of Thassa, Coastal Piracy and every other caller of
+// combatDamageToPlayerBy, which all print "combat damage" and must
+// keep reading it that way.
+//
+// A SIBLING, not a broadened combatDamageToPlayerBy: AGENTS.md's
+// shared-file rule is append a function, never change an existing
+// one's behaviour, and every existing caller of
+// combatDamageToPlayerBy would silently widen if the combat check
+// were dropped from it instead.
+//
+// Caller must hold g.mu.
+func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 {
+		return false
+	}
+	if p := g.PlayerByIDForEffect(ev.Target); p == nil {
+		return false
+	}
+	src, ok := g.LookupCardForEffect(ev.Source)
+	return ok && src.IsCreature() && src.Controller == controller
+}
+
 // --- Pirates deck helpers ----------------------------------------
 
 // artifactEnteredUnderYourControl reports whether ev is an ETB for
@@ -363,6 +390,23 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	return DestroyTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
 }
 
+// destroyFirstLegalCardTarget is the whole Effect of an activated
+// ability whose printed text is "Destroy target [permanent]." — it
+// re-checks legality through ctx.LegalTargets() (CR 608.2b) rather
+// than trusting item.Targets[0] blindly, which matters for an
+// activation whose target could leave the battlefield in response.
+// Hopeful Initiate's and Staff of Compleation's destroy activations
+// share this exact shape.
+func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, ref := range ctx.LegalTargets() {
+		if ref.Kind == game.TargetCard {
+			return DestroyTarget{Target: ref.ID}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // targetOpponentLosesAndYouGain is "target opponent loses n life and
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only
@@ -571,6 +615,22 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // Contrast SetsBasicLandType, which is CR 305.7's REPLACEMENT (Magus
 // of the Moon, Blood Moon) and takes the land's own rules text with
 // it.
+// putCounterOnSourceWhileOnBattlefield is the ability effect body
+// behind "…: Put a[n] <kind> counter on this permanent" (Tekuthal,
+// Inquiry Dominus; Solphim, Mayhem Dominus): a no-op if something
+// killed the source before the ability resolves, otherwise a counter
+// on the source itself. Both cards pair it with b24KeywordCounterGrant
+// so the counter carries CR 122.1e's keyword.
+func putCounterOnSourceWhileOnBattlefield(kind string, n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !b15OnBattlefield(g, item.SourceCardID) {
+			return nil
+		}
+		return AddCounter{Target: item.SourceCardID, Kind: kind, N: n}.
+			Apply(NewContext(g, item))
+	}
+}
+
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer4Type,
@@ -586,4 +646,48 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 			c.Subtypes = append(c.Subtypes, subtype)
 		},
 	}
+}
+
+// permanentsControlledByMatching lists the permanents `playerID`
+// controls that satisfy `pred`, in battlefield order — the candidate
+// set behind "sacrifice an artifact of your choice" and its
+// relatives.
+//
+// The fixed-predicate versions that predate it (landsControlledByPlayer,
+// creaturesControlledByPlayer, NonlandPermanentsControlledBy) stay as
+// they are; this is the shape for a clause whose filter is an ordinary
+// CardPredicate, so the card file writes Artifact() rather than another
+// battlefield loop.
+//
+// Caller must hold g.mu — it is an effect-time read.
+func permanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
+	if g == nil || playerID == uuid.Nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != playerID {
+			continue
+		}
+		if pred != nil && !pred(g, playerID, c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
+}
+
+// spellManaValueForEffect is "that spell's mana value" for a card that
+// may or may not still be findable: zero when it is in no zone at all,
+// and otherwise the CR 202.3e read that counts {X} only while the card
+// is on the stack (#788).
+//
+// Caller must hold g.mu.
+func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
+	c, ok := g.LookupCardForEffect(cardID)
+	if !ok {
+		return 0
+	}
+	mv, _ := g.ManaValueForEffect(c)
+	return mv
 }

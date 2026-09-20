@@ -250,6 +250,11 @@ var cardFields = plan(
 	// #683: carried — a restore that dropped it would let a 0/0 that
 	// lost its last counter survive the next state-based check.
 	"LostLastCounter", carried, "",
+	// Printed data, carried with Toughness for the same reason
+	// VariableToughness is, one sign the other way: a restore that
+	// dropped it would leave a living weapon Germ on the battlefield
+	// as a 0/0 nothing can kill.
+	"PrintedPTKnown", carried, "",
 	// #683: printed data, carried with Toughness — a restore that
 	// dropped it would let a `*` creature die to the toughness check
 	// the first time it lost its last counter. Carried, and backfilled
