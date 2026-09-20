@@ -198,6 +198,21 @@
   style:--seat-color={seatColor(seat.seat)}
 >
   <span class="name" title={displayLabel}>{displayLabel}</span>
+  <!-- ADR 0075 §2.1: the table's host, visible to everyone. It is a
+       seat ROLE — who may change the house rules and spawn — and is
+       unrelated to the monarch, whose crown sits in the marker column
+       on the avatar row. Hence a chip next to the name, where the BOT
+       chip lives, rather than a second crown: two crowns on one seat
+       meaning two different things is exactly the confusion to avoid,
+       and the glyph is kept small and paired with the word. -->
+  {#if seat.is_host}
+    <span
+      class="tag host"
+      title="Table host — sets this table's house rules, alongside the server admin"
+    >
+      <Icon name="crown" size={9} /> host
+    </span>
+  {/if}
   {#if isBot}
     <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
   {/if}
@@ -893,6 +908,16 @@
   .tag.elim {
     color: var(--danger);
     border-color: rgba(255, 122, 122, 0.4);
+  }
+  .tag.host {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 0;
+    margin-bottom: 2px;
+    color: var(--gold, #ffd07a);
+    border-color: rgba(255, 208, 122, 0.4);
+    background: rgba(255, 208, 122, 0.12);
   }
   .tag.bot {
     margin-top: 0;
