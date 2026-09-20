@@ -12,12 +12,17 @@
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import {
-    UNDO_UNLIMITED,
     canManageTable,
+    canSpawn,
     formatUndoCount,
     hasUndoBudget,
     isUnlimitedUndo,
+    spawningVisible,
+    tableSettingsOf,
+    type TableSettingsPatch,
   } from "../lib/tableSettings";
+  import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import CardSpawner from "../lib/components/CardSpawner.svelte";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
@@ -643,6 +648,29 @@
   // the limit: an admin bypasses the budget, and an unlimited table
   // reports -1 remaining on every seat.
   const canSpendUndo = $derived(hasUndoBudget(viewerSeat, isAdmin));
+  // The table's house rules (ADR 0075 §2.2). Public — every viewer,
+  // spectators included, gets the same object — so this is read
+  // without any permission check. `canManage` decides who may TURN a
+  // knob, never who may see one.
+  const tableSettings = $derived(tableSettingsOf(view));
+  // Both gates the spawn route checks. Offering the entry on only one
+  // of them produces a button whose 403 explains a rule we could have
+  // shown instead.
+  const spawnAvailable = $derived(canSpawn(sess?.principal.role, viewerSeat, tableSettings));
+  // The badge, on the other hand, is for the OPPONENTS: a Treasure
+  // that came from nowhere is indistinguishable from a real one, and
+  // the table's answer is that everyone can see the switch is on.
+  const spawningOn = $derived(spawningVisible(tableSettings));
+  let tableSettingsOpen = $state(false);
+  let spawnerOpen = $state(false);
+  // In game the patch rides the socket, not HTTP. A refusal comes
+  // back as an error frame and lands in the "rejected" toast every
+  // other rejected action uses, so the panel is not given an error of
+  // its own to render — two places saying the same thing is how they
+  // end up saying different things.
+  function patchTableSettingsOverSocket(patch: TableSettingsPatch): void {
+    client.sendAction("set_table_settings", undefined, patch);
+  }
   // Spectator sessions (S11) are read-only — the server rejects every
   // action frame with bad_request, so the toolbar / mulligan / deck-
   // import / quick-action surfaces all hide here too. Bound by role,
@@ -874,6 +902,18 @@
         title="read-only — your action frames are rejected by the server">spectating</span
       >
     {/if}
+    <!-- ADR 0075 §2.5: shown to EVERY viewer while the switch is on,
+         which is the whole point of it. A spawned Treasure is
+         indistinguishable from a drawn one; what the table gets
+         instead is this, plus a named line in the game log for every
+         use. -->
+    {#if spawningOn}
+      <span
+        class="tag tag-spawn"
+        title="the host can put cards and tokens on this table — every spawn is named in the game log"
+        >spawning on</span
+      >
+    {/if}
     <span class={`status status-${$status}`} title={`seq ${$lastSeq}`}>
       <i class="dot" aria-hidden="true"></i>{$status}
       <span class="seq">· seq {$lastSeq}</span>
@@ -989,42 +1029,6 @@
                   <span class="mi-r">{formatUndoCount(viewerSeat.undos_remaining)} left</span>
                 {/if}
               </button>
-              <!-- ADR 0075 §2.3: the undo budget is a TABLE SETTING, so
-                   only the host and the admin may turn it. Everyone
-                   else reads it here, because "how many undos does this
-                   table allow" is not the host's private business. The
-                   full settings panel is sub-PR 5; this row is the one
-                   control that already existed and had to be regated.
-                   -1 is unlimited and renders as ∞. -->
-              <label
-                class="mi mi-row"
-                title={canManage
-                  ? "per-player undo budget, refreshed each turn — -1 is unlimited, 0 turns undo off"
-                  : "per-player undo budget, refreshed each turn — only the table host can change it"}
-              >
-                <span class="mi-indent">Undo limit</span>
-                <input
-                  type="number"
-                  min="-1"
-                  max="20"
-                  disabled={!canManage}
-                  value={undoLimit}
-                  aria-label="table undo limit"
-                  onchange={(e) => {
-                    const next = Number((e.currentTarget as HTMLInputElement).value);
-                    if (Number.isFinite(next) && next >= UNDO_UNLIMITED) {
-                      // set_table_settings, not the deprecated
-                      // set_undo_limit alias: the alias clamps a
-                      // negative limit to 0, so it cannot say
-                      // "unlimited" at all.
-                      client.sendAction("set_table_settings", undefined, { undo_limit: next });
-                    }
-                  }}
-                />
-                {#if undoUnlimited}
-                  <span class="mi-r">∞</span>
-                {/if}
-              </label>
               <button
                 class="mi"
                 role="menuitem"
@@ -1034,6 +1038,42 @@
               </button>
               <div class="sep"></div>
               <div class="menu-h">Table</div>
+              <!-- ADR 0075 §2.5. Open to everyone, because the
+                   settings are public on purpose: how many take-backs
+                   this table allows, and whether a Treasure can
+                   appear from nowhere, are not the host's private
+                   business. The panel disables its own controls for
+                   anyone who is not the host or the admin. It
+                   replaced the stop-gap "Undo limit" row that sub-PR
+                   3 left in the Sandbox section — one setting, one
+                   control. -->
+              <button
+                class="mi"
+                role="menuitem"
+                onclick={() => viaMenu(() => (tableSettingsOpen = true))}
+                title={canManage
+                  ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
+                  : "the table's house rules (only the host can change them)"}
+              >
+                <Icon name="gear" size={15} /> Table settings…
+                {#if !canManage}<span class="mi-r">view</span>{/if}
+              </button>
+              {#if spawnAvailable}
+                <!-- Both of the server's gates, checked together: the
+                     host or admin, AND the table's spawn switch. The
+                     entry is absent rather than disabled when the
+                     switch is off — an always-visible control for a
+                     feature most tables never turn on is clutter, and
+                     the switch itself is one entry above. -->
+                <button
+                  class="mi"
+                  role="menuitem"
+                  onclick={() => viaMenu(() => (spawnerOpen = true))}
+                  title="put a card or a token on the table — announced in the game log, and undoable"
+                >
+                  <Icon name="spark" size={15} /> Spawn a card or token…
+                </button>
+              {/if}
               {#if bugReportAvailable}
                 <button
                   class="mi"
@@ -1530,6 +1570,50 @@
     <p class="muted centered">waiting for snapshot…</p>
   {/if}
 
+  {#if tableSettingsOpen}
+    <ModalLayer />
+    <div
+      class="prompt-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="table-settings-title"
+    >
+      <div class="prompt-modal table-settings-modal">
+        <h2 id="table-settings-title">
+          Table settings
+          <span class="prompt-src" aria-hidden="true">house rules for this table</span>
+        </h2>
+        <TableSettingsPanel
+          settings={tableSettings}
+          {canManage}
+          gameState={gameEnded ? "ended" : "active"}
+          onpatch={patchTableSettingsOverSocket}
+        />
+        <div class="confirm-actions">
+          <button onclick={() => (tableSettingsOpen = false)}>Done</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if spawnerOpen}
+    <ModalLayer />
+    <div class="prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="spawner-title">
+      <div class="prompt-modal spawner-modal">
+        <h2 id="spawner-title">
+          Spawn
+          <span class="prompt-src" aria-hidden="true">announced in the game log</span>
+        </h2>
+        <div class="spawner-host">
+          <CardSpawner {gameID} snapshot={view} managed />
+        </div>
+        <div class="confirm-actions">
+          <button onclick={() => (spawnerOpen = false)}>Done</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   {#if bugReportOpen}
     <BugReportModal
       {gameID}
@@ -1549,6 +1633,8 @@
       cancelTargeting();
       menuOpen = false;
       concedeConfirm = false;
+      tableSettingsOpen = false;
+      spawnerOpen = false;
     }
     // S20 sub-PR 5: Enter confirms a multi-target pick list (no-op
     // for single-target prompts and when fewer than min are picked).
@@ -1692,6 +1778,37 @@
   .status-disconnected .dot {
     background: var(--danger);
     box-shadow: 0 0 8px var(--danger);
+  }
+  /* The table-settings and spawner dialogs reuse .prompt-modal, so
+     they only need their own width and, for the spawner, a body that
+     can scroll: the card list is long and the modal must not push the
+     Done button off the bottom of a laptop screen. */
+  .table-settings-modal {
+    width: min(34rem, 92vw);
+    text-align: left;
+  }
+  .spawner-modal {
+    width: min(46rem, 94vw);
+    text-align: left;
+  }
+  .spawner-host {
+    height: min(24rem, 55vh);
+    min-height: 0;
+    border: 1px solid var(--border, #273049);
+    border-radius: var(--radius, 8px);
+    overflow: hidden;
+  }
+  .tag-spawn {
+    background: rgba(255, 208, 122, 0.14);
+    color: var(--gold, #ffd07a);
+    border: 1px solid rgba(255, 208, 122, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
   }
   .tag-spectator {
     background: rgba(176, 138, 255, 0.15);

@@ -1,39 +1,70 @@
 <script lang="ts">
-  // Dev-only card spawner (ADR 0023).
+  // The card and token spawner.
   //
-  // Search the Scryfall index by name, pick a seat and a zone, spawn.
-  // The point is to reach a board state in five seconds instead of
-  // twenty turns — the workflow this was built for is "implement a
-  // card, put it on the battlefield next to the thing it interacts
-  // with, watch what the engine does".
+  // It has two lives (ADR 0075 §2.4, which amends ADR 0023):
   //
-  // Everything here is gated twice over: the component only mounts
-  // when /config reports the card_spawn feature, and the routes it
-  // calls 404 in production regardless of what this component
-  // believes.
-  import { searchDevCards, spawnDevCard, type DevCardResult, type DevSpawnZone } from "../api";
+  // - **dev** (`managed={false}`, the default) is the original tool.
+  //   It lives in the dev dock, it calls the dev routes, and those
+  //   404 in production regardless of what this component believes.
+  //   On a preview box anyone at the table is a tester, so there is
+  //   no per-caller gate at all.
+  // - **managed** (`managed`) is the production spawner. Its gates
+  //   are the table's, not the deployment's: the caller is the host
+  //   or the admin, and the table has switched spawning on. Every
+  //   spawn it makes is named in the public game log and is undoable.
+  //
+  // The mode picks the routes and nothing else, because the panel is
+  // the same panel. This component does NOT decide who may open it —
+  // its callers do, with devFeature("card_spawn") on one side and
+  // canSpawn() on the other — and the server refuses either way.
+  //
+  // The Tokens tab is offered only in managed mode, because a token
+  // has no Scryfall printing and the dev route can only resolve a
+  // printing. That gap is what put this feature in production in the
+  // first place: a Treasure is the commonest thing a table needs and
+  // the one thing the old spawner could never make.
+  import {
+    searchDevCards,
+    searchSpawnCards,
+    spawnDevCard,
+    spawnOnTable,
+    fetchSpawnTokens,
+    type DevCardResult,
+  } from "../api";
+  import { SPAWN_ZONES, spawnZonesFor, type SpawnZone } from "../tableSettings";
   import type { GameView, PlayerView } from "../protocol";
 
   interface Props {
     gameID: string;
     snapshot: GameView | null;
+    // Use the production routes (and offer tokens). False is the dev
+    // dock's tool, unchanged.
+    managed?: boolean;
   }
-  const { gameID, snapshot }: Props = $props();
+  const { gameID, snapshot, managed = false }: Props = $props();
 
-  const ZONES: DevSpawnZone[] = ["battlefield", "hand", "graveyard", "exile", "library", "command"];
+  type Tab = "cards" | "tokens";
+  let tab = $state<Tab>("cards");
 
   let query = $state("");
-  let results: DevCardResult[] = $state([]);
-  let selected: DevCardResult | null = $state(null);
-  let zone: DevSpawnZone = $state("battlefield");
+  let results = $state<DevCardResult[]>([]);
+  let selected = $state<DevCardResult | null>(null);
+  let tokens = $state<string[]>([]);
+  let tokensLoaded = $state(false);
+  let tokenQuery = $state("");
+  let selectedToken = $state<string | null>(null);
+  let zone = $state<SpawnZone>("battlefield");
   let count = $state(1);
   let commander = $state(false);
   let seatID = $state("");
   let busy = $state(false);
-  let error: string | null = $state(null);
-  let lastResult: string | null = $state(null);
+  let error = $state<string | null>(null);
+  let lastResult = $state<string | null>(null);
 
   const seats: PlayerView[] = $derived(snapshot?.seats ?? []);
+  const kind = $derived<"card" | "token">(tab === "tokens" ? "token" : "card");
+  const zones = $derived(managed ? spawnZonesFor(kind) : SPAWN_ZONES);
+  const picked = $derived(tab === "tokens" ? selectedToken : (selected?.id ?? null));
 
   // Default the seat to the first one, and re-default if the seat we
   // had disappears (game swapped under us).
@@ -42,6 +73,31 @@
     if (!seats.some((p) => p.id === seatID)) {
       seatID = seats[0].id;
     }
+  });
+
+  // A token can only go to the battlefield (CR 704.5d — it ceases to
+  // exist anywhere else at the next check). Switching to the Tokens
+  // tab with "hand" selected would otherwise leave a zone picked that
+  // the list no longer offers, and a select bound to an absent option
+  // reads as blank.
+  $effect(() => {
+    if (!zones.includes(zone)) zone = zones[0];
+  });
+
+  // The token list is fetched once, lazily, when the tab is first
+  // opened: it is ~160 strings and the same for every table, so
+  // fetching it on mount would cost a request for a tab most opens
+  // never touch.
+  $effect(() => {
+    if (tab !== "tokens" || !managed || tokensLoaded) return;
+    tokensLoaded = true;
+    fetchSpawnTokens(gameID).then((t) => (tokens = t));
+  });
+
+  const tokenMatches = $derived.by(() => {
+    const q = tokenQuery.trim().toLowerCase();
+    if (!q) return tokens;
+    return tokens.filter((t) => t.toLowerCase().includes(q));
   });
 
   // Debounced search. The AbortController matters more than the
@@ -61,7 +117,10 @@
       inflight?.abort();
       const ctrl = new AbortController();
       inflight = ctrl;
-      searchDevCards(q, ctrl.signal).then((r) => {
+      const find = managed
+        ? searchSpawnCards(gameID, q, ctrl.signal)
+        : searchDevCards(q, ctrl.signal);
+      find.then((r) => {
         if (ctrl.signal.aborted) return;
         results = r;
       });
@@ -80,19 +139,31 @@
   }
 
   async function spawn() {
-    if (!selected || !seatID || busy) return;
+    if (!picked || !seatID || busy) return;
     busy = true;
     error = null;
     lastResult = null;
     try {
-      const res = await spawnDevCard(gameID, {
-        scryfallID: selected.id,
-        playerID: seatID,
-        zone,
-        count,
-        commander,
-      });
-      lastResult = `${res.count}× ${res.name} → ${res.zone}`;
+      if (managed) {
+        const res = await spawnOnTable(gameID, {
+          token: tab === "tokens" ? (selectedToken ?? undefined) : undefined,
+          scryfallID: tab === "cards" ? selected?.id : undefined,
+          playerID: seatID,
+          zone,
+          count,
+          commander,
+        });
+        lastResult = `${res.count}× ${res.name} → ${res.zone}`;
+      } else {
+        const res = await spawnDevCard(gameID, {
+          scryfallID: selected?.id,
+          playerID: seatID,
+          zone,
+          count,
+          commander,
+        });
+        lastResult = `${res.count}× ${res.name} → ${res.zone}`;
+      }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -103,34 +174,87 @@
 
 <div class="spawner">
   <div class="search">
-    <input
-      type="search"
-      bind:value={query}
-      placeholder="Card name…"
-      aria-label="Search cards by name"
-      autocomplete="off"
-    />
-    <ol class="results" aria-label="Search results">
-      {#each results as c (c.id)}
-        <li>
-          <button class="result" class:sel={selected?.id === c.id} onclick={() => pick(c)}>
-            <span class="name">{c.name}</span>
-            <span class="cost">{c.mana_cost}</span>
-            <span class="type">{c.type_line}</span>
-            <span class="set">{c.set.toUpperCase()}</span>
-          </button>
-        </li>
-      {:else}
-        <li class="hint">
-          {query.trim().length < 2 ? "Type at least two characters." : "No matches."}
-        </li>
-      {/each}
-    </ol>
+    {#if managed}
+      <div class="tabs" role="tablist" aria-label="what to spawn">
+        <button
+          role="tab"
+          class:sel={tab === "cards"}
+          aria-selected={tab === "cards"}
+          onclick={() => (tab = "cards")}>Cards</button
+        >
+        <button
+          role="tab"
+          class:sel={tab === "tokens"}
+          aria-selected={tab === "tokens"}
+          onclick={() => (tab = "tokens")}>Tokens</button
+        >
+      </div>
+    {/if}
+
+    {#if tab === "tokens"}
+      <input
+        type="search"
+        bind:value={tokenQuery}
+        placeholder="Filter tokens…"
+        aria-label="Filter token templates"
+        autocomplete="off"
+      />
+      <ol class="results" aria-label="Token templates">
+        {#each tokenMatches as t (t)}
+          <li>
+            <button
+              class="result token"
+              class:sel={selectedToken === t}
+              onclick={() => (selectedToken = t)}
+            >
+              <span class="name">{t}</span>
+            </button>
+          </li>
+        {:else}
+          <li class="hint">
+            {tokens.length === 0
+              ? "No token templates on this server."
+              : "No template matches that."}
+          </li>
+        {/each}
+      </ol>
+    {:else}
+      <input
+        type="search"
+        bind:value={query}
+        placeholder="Card name…"
+        aria-label="Search cards by name"
+        autocomplete="off"
+      />
+      <ol class="results" aria-label="Search results">
+        {#each results as c (c.id)}
+          <li>
+            <button class="result" class:sel={selected?.id === c.id} onclick={() => pick(c)}>
+              <span class="name">{c.name}</span>
+              <span class="cost">{c.mana_cost}</span>
+              <span class="type">{c.type_line}</span>
+              <span class="set">{c.set.toUpperCase()}</span>
+            </button>
+          </li>
+        {:else}
+          <li class="hint">
+            {query.trim().length < 2 ? "Type at least two characters." : "No matches."}
+          </li>
+        {/each}
+      </ol>
+    {/if}
   </div>
 
   <div class="controls">
     <div class="picked">
-      {#if selected}
+      {#if tab === "tokens"}
+        {#if selectedToken}
+          <strong>{selectedToken}</strong>
+          <span class="type">token</span>
+        {:else}
+          <span class="hint">Select a token.</span>
+        {/if}
+      {:else if selected}
         <strong>{selected.name}</strong>
         <span class="type">{selected.type_line}</span>
       {:else}
@@ -149,8 +273,8 @@
 
     <label>
       Zone
-      <select bind:value={zone}>
-        {#each ZONES as z (z)}<option value={z}>{z}</option>{/each}
+      <select bind:value={zone} disabled={zones.length === 1}>
+        {#each zones as z (z)}<option value={z}>{z}</option>{/each}
       </select>
     </label>
 
@@ -159,17 +283,27 @@
       <input type="number" min="1" max="20" bind:value={count} />
     </label>
 
-    <label class="check">
-      <input type="checkbox" bind:checked={commander} />
-      Commander
-    </label>
+    {#if tab !== "tokens"}
+      <label class="check">
+        <input type="checkbox" bind:checked={commander} />
+        Commander
+      </label>
+    {/if}
 
-    <button class="go" onclick={spawn} disabled={!selected || !seatID || busy}>
+    <button class="go" onclick={spawn} disabled={!picked || !seatID || busy}>
       {busy ? "spawning…" : "spawn"}
     </button>
 
     {#if zone === "battlefield"}
       <p class="note">Battlefield spawns fire ETB triggers.</p>
+    {/if}
+    {#if tab === "tokens"}
+      <p class="note">
+        Tokens can only go to the battlefield — anywhere else they vanish at the next check.
+      </p>
+    {/if}
+    {#if managed}
+      <p class="note">Every spawn is named in the game log, and undo takes it back for free.</p>
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if lastResult}<p class="ok" role="status">{lastResult}</p>{/if}
@@ -200,6 +334,26 @@
     font: inherit;
   }
 
+  .tabs {
+    display: flex;
+    gap: 1px;
+    padding: 0.4rem 0.4rem 0;
+  }
+  .tabs button {
+    flex: 1;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border, #273049);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--surface, #111a2e);
+    color: var(--fg-muted, #9aa5cd);
+    font: inherit;
+    cursor: pointer;
+  }
+  .tabs button.sel {
+    border-color: var(--gold, #ffd07a);
+    color: var(--gold, #ffd07a);
+  }
+
   .results {
     flex: 1;
     margin: 0;
@@ -220,6 +374,9 @@
     font: inherit;
     text-align: left;
     cursor: pointer;
+  }
+  .result.token {
+    grid-template-columns: 1fr;
   }
   .result:hover {
     background: var(--surface, #111a2e);
