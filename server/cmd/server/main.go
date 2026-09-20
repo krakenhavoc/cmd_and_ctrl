@@ -132,11 +132,14 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 
-	// Blank import: effects/wire.go's init() populates the S14
-	// EffectResolver / ETBEffectHook / IsCatalogCard callbacks on
-	// the game package. Without this import the catalog stays cold
-	// and every card falls through to manual sandbox resolution.
-	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	// effects/wire.go's init() populates the S14 EffectResolver /
+	// ETBEffectHook / IsCatalogCard callbacks on the game package.
+	// Without this import the catalog stays cold and every card falls
+	// through to manual sandbox resolution. Named since S35: the
+	// table spawner needs the token templates (ADR 0075 §2.4), and
+	// this is the one place that knows both the catalog and the
+	// lobby's config.
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
@@ -508,6 +511,7 @@ func main() {
 		Env:         cfg.Env,
 		Features:    cfg.Features,
 		Cards:       cardIdx,
+		Tokens:      effects.Tokens(),
 		Evictor:     hub,
 		Discord:     discordCfg,
 		DiscordBot:  discordBot,

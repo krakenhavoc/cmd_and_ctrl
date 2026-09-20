@@ -216,7 +216,7 @@ func TestRuntimeRandomSourcesAreAssignedAtCreationAndPersist(t *testing.T) {
 		g := newActiveGame(t)
 		p := g.Seats[0]
 		g.SetRNGKeyForTest(testRNGKey())
-		ids, err := g.SpawnCardsForDev(p.ID, ZoneHand, devTemplate(), 2)
+		ids, err := g.SpawnCards(uuid.Nil, p.ID, ZoneHand, devTemplate(), 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,7 +301,7 @@ func TestBlinkPreservesRandomSourceStream(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
 	g.SetRNGKeyForTest(testRNGKey())
-	ids, err := g.SpawnCardsForDev(p.ID, ZoneBattlefield, devTemplate(), 1)
+	ids, err := g.SpawnCards(uuid.Nil, p.ID, ZoneBattlefield, devTemplate(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}

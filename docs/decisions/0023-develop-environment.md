@@ -4,6 +4,16 @@
 **Revised:** 2026-09-09 · §2 replaced · Branch `chore/dev-env-second-vm`
 **Revised:** 2026-09-16 · §4 and Consequences corrected (nightly e2e
 runs locally; both follow-ups dropped) · Branch `docs/adr-0023-nightly-e2e`
+**Amended by:** [ADR 0075](0075-table-settings-and-host-controls.md) (2026-09-19,
+S35). Spawning is no longer dev-only. A PRODUCTION table may opt in to it
+through the visible `allow_spawn` table setting, and then the host or the admin
+may spawn through `POST /games/{id}/spawn` — announced in the game log and
+undoable. Nothing below changes: the dev route `POST /games/{id}/dev/spawn`
+keeps its `requireDevFeature` gate and its anyone-at-the-table semantics, and
+§4's rule that a dev-only feature is gated server-side is untouched. What the
+amendment revises is the *claim* in §7 and §8 that spawning is inherently a
+cheat on a live table — it is, unless the table has said otherwise out loud and
+can watch every use of it.
 
 ## Context
 

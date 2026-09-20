@@ -153,4 +153,9 @@ func (r *Room) stampHostLocked(view *protocol.GameView) {
 	for i := range view.Seats {
 		view.Seats[i].IsHost = view.Seats[i].ID == hs
 	}
+	// The public log's spawn lines say whether the spawner held the
+	// table (ADR 0075 §2.4). The projection cannot know that — the
+	// host is ours, not the engine's — so the same pass that stamps
+	// the seats stamps the log.
+	protocol.StampHostOnLog(view)
 }

@@ -96,6 +96,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // it is being played under, which is why it is toned like a step —
   // the spine of the log, not a whisper in it.
   settings: "tone-step",
+  // A spawn is not a play. It reads like one on the board, which is
+  // exactly why the line has to stand out from the turn around it.
+  spawn: "tone-cast",
 };
 
 export function logTone(kind: LogKind): string {

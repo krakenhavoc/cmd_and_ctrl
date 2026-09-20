@@ -471,7 +471,13 @@ export type LogKind =
   // `choice` its new value as text; `seat` is the host, or NoSeat when
   // the server admin made the change. The only kind that is about the
   // rules rather than about the game.
-  | "settings";
+  | "settings"
+  // ADR 0075 §2.4: the host or the admin put cards or tokens on the
+  // table from nowhere. `label` is the card or token name, `amount`
+  // the count, `new_zone` where they went and `target_seat` whose
+  // zone it was. A spawn into a hidden zone names the zone and NOT
+  // the card, so `label` is absent there for everyone.
+  | "spawn";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -533,6 +539,13 @@ export interface LogEvent {
   // `counters` one. Redacted with the card's name exactly as `choice`
   // is: both price or characterise the card the line no longer names.
   label?: string;
+  // ADR 0075 §2.4: the actor held the table when they took this
+  // action. Set only on `spawn` entries, and stamped by the room
+  // rather than the projection — the host is a room property, so the
+  // engine cannot know it. Absent on a spawn by a non-host (the dev
+  // route lets anyone at a preview table spawn) and on one by the
+  // admin, who has no seat.
+  actor_is_host?: boolean;
   // The rendered line. Already redacted for this viewer: a card the
   // viewer may not identify reads as "a card".
   text: string;
