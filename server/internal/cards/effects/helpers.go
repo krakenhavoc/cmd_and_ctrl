@@ -727,3 +727,29 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	}
 	return uuid.Nil, false
 }
+
+// notACreature strips the Creature card type, and the creature
+// subtypes that rode on it (CR 205.1b), from a characteristic being
+// built in layer 4.
+//
+// Shared by every "as long as <condition>, this isn't a creature"
+// clause — The Warring Triad's graveyard gate, impending's time
+// counters — because the second half is the half that gets forgotten.
+// Dropping Creature and leaving the subtypes behind leaves a God or an
+// Avatar Horror that is not a creature, which reads as a bug on the
+// card and, under a Maskwood Nexus, is one: the permanent would still
+// be every creature type while not being a creature at all (#670).
+//
+// It does NOT touch power and toughness. A characteristic with no
+// Creature type has no P/T that anything reads, and layer 7 runs
+// after layer 4 in any case.
+func notACreature(c *game.Characteristic) {
+	kept := make([]string, 0, len(c.Types))
+	for _, t := range c.Types {
+		if t != "Creature" {
+			kept = append(kept, t)
+		}
+	}
+	c.Types = kept
+	c.SetSubtypes(nil)
+}
