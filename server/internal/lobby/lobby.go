@@ -103,6 +103,23 @@ type GameMeta struct {
 	// explicit transfer. Persisted with the meta but never served:
 	// copyMeta, which every outbound meta passes through, blanks it.
 	HostDiscordID string `json:"host_discord_id,omitempty"`
+
+	// CreatedBy is games.created_by (ADR 0051 decision 2): the
+	// users(id) of whoever called POST /games while signed in, or
+	// uuid.Nil for an admin-created or file-imported game. Never
+	// serialized — the raw UserID is not this table's business to
+	// hand any caller. redactMetaFor turns it into the per-viewer
+	// IsCreator bit below and every outbound path goes through it.
+	// Distinct from HostPlayerID (ADR 0075 §2.1): the creator need
+	// not be seated, and a seated host need not be the creator.
+	CreatedBy uuid.UUID `json:"-"`
+	// IsCreator reports, for THIS response's viewer only, whether
+	// they created the game (#1098). Computed by redactMetaFor from
+	// CreatedBy and the requesting principal's UserID; never the raw
+	// creator identity, so one caller can never learn who created
+	// somebody else's table. Omitted (false) for every response that
+	// does not go through redactMetaFor.
+	IsCreator bool `json:"is_creator,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -401,6 +418,7 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 		Players:         []SeatInfo{},
 		State:           string(g.State),
 		HostDiscordID:   trimToLimit(hostDiscordID, 32),
+		CreatedBy:       createdBy,
 	}
 
 	// The invites are minted here and nowhere else, and they are
@@ -1419,4 +1437,20 @@ func trimToLimit(s string, limit int) string {
 
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\r' || b == '\n'
+}
+
+// parseUUIDOrNil parses s as a UUID, or returns uuid.Nil for an empty
+// or unparseable string. Used for GameRecord.CreatedBy and its kin,
+// where "" already means Nil by convention (CreateWith writes it that
+// way) and a row that somehow holds garbage should read as "no
+// creator" rather than fail the load.
+func parseUUIDOrNil(s string) uuid.UUID {
+	if s == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }

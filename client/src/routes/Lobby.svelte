@@ -86,6 +86,15 @@
     return mySeat(g) !== null;
   }
 
+  // canRotateInvites: admin, or the table's own creator (#1098).
+  // g.is_creator is computed server-side per viewer — see
+  // redactMetaFor in server/internal/lobby/http.go — so this mirrors
+  // the server's CanRotateInvites without ever seeing a raw creator
+  // id; the endpoint stays authoritative either way.
+  function canRotateInvites(g: GameMeta): boolean {
+    return isAdmin || g.is_creator === true;
+  }
+
   function openBotPicker(gameID: string): void {
     botError = "";
     botPickerFor = gameID;
@@ -576,13 +585,14 @@
                     {/if}
                   </button>
                 {/if}
-                {#if isAdmin}
+                {#if canRotateInvites(g)}
                   <!-- Replaces the old "re-open as admin to recover"
                        hint, which never actually worked (the invite
                        plaintext only ever lived in the memory of the
                        process that minted it — see docs/lobby.md).
-                       This mints a real replacement, admin-only until
-                       #1044 lets a game's own creator do it too. -->
+                       This mints a real replacement. Admin or the
+                       table's own creator (#1098); see
+                       canRotateInvites above. -->
                   <button
                     class="ghost"
                     title="mint a new player invite — the current one stops working immediately"

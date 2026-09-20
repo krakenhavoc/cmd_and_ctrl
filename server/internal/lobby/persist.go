@@ -381,6 +381,12 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// the room, which decides whether it still stands.
 		HostPlayerID:  rec.HostPlayerID,
 		HostDiscordID: rec.HostDiscordID,
+		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
+		// or file-imported game (Nil, matching CreateWith), and a
+		// stored UUID otherwise. A row somehow holding something
+		// unparseable falls back to Nil — "no creator" is the safe
+		// reading, not a load failure.
+		CreatedBy: parseUUIDOrNil(rec.CreatedBy),
 	}
 	for _, s := range seats {
 		info := SeatInfo{

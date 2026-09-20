@@ -38,6 +38,14 @@ type fakeServer struct {
 	archiveStatus int
 	archiveMeta   lobby.GameMeta
 
+	// creatorStatus/creatorIsCreator drive GET /games/{id}/creator
+	// (#1098). gotCreatorDiscordIDs records the ?discord_id= query
+	// value seen on each call, so tests can confirm the invoker's
+	// snowflake — not someone else's — was asked about.
+	creatorStatus        int
+	creatorIsCreator     bool
+	gotCreatorDiscordIDs []string
+
 	// requireBearer, when non-empty, makes /games reject any other
 	// Authorization value with 401 — lets the token-cache tests
 	// simulate a server-side session expiry / rotation.
@@ -56,17 +64,32 @@ func newFakeServer(t *testing.T) (*fakeServer, *ServerClient) {
 		listStatus:    http.StatusOK,
 		getStatus:     http.StatusOK,
 		archiveStatus: http.StatusOK,
+		creatorStatus: http.StatusOK,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/admin/login", fs.handleLogin)
 	mux.HandleFunc("/games", fs.handleGames)
 	mux.HandleFunc("GET /games/{id}", fs.handleGetGame)
 	mux.HandleFunc("POST /games/{id}/archive", fs.handleArchiveGame)
+	mux.HandleFunc("GET /games/{id}/creator", fs.handleIsCreator)
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	c := NewServerClient(ts.URL, "admin-secret").WithHTTPClient(&http.Client{Timeout: 2 * time.Second})
 	return fs, c
+}
+
+func (fs *fakeServer) handleIsCreator(w http.ResponseWriter, r *http.Request) {
+	fs.gotAuthHeaders = append(fs.gotAuthHeaders, r.Header.Get("Authorization"))
+	if fs.requireBearer != "" && r.Header.Get("Authorization") != "Bearer "+fs.requireBearer {
+		http.Error(w, "stale session", http.StatusUnauthorized)
+		return
+	}
+	fs.gotCreatorDiscordIDs = append(fs.gotCreatorDiscordIDs, r.URL.Query().Get("discord_id"))
+	w.WriteHeader(fs.creatorStatus)
+	if fs.creatorStatus == http.StatusOK {
+		_ = json.NewEncoder(w).Encode(map[string]bool{"is_creator": fs.creatorIsCreator})
+	}
 }
 
 func (fs *fakeServer) handleGetGame(w http.ResponseWriter, r *http.Request) {
@@ -351,6 +374,54 @@ func TestArchiveGame_ServerError(t *testing.T) {
 	_, err := c.ArchiveGame(context.Background(), uuid.New())
 	if err == nil || !strings.Contains(err.Error(), "500") {
 		t.Errorf("want 500-carrying error, got %v", err)
+	}
+}
+
+func TestIsCreator_True(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorIsCreator = true
+	id := uuid.New()
+
+	got, err := c.IsCreator(context.Background(), id, "discord-42")
+	if err != nil {
+		t.Fatalf("IsCreator: %v", err)
+	}
+	if !got {
+		t.Error("want true")
+	}
+	if len(fs.gotCreatorDiscordIDs) != 1 || fs.gotCreatorDiscordIDs[0] != "discord-42" {
+		t.Errorf("discord_id sent to server: got %v, want [discord-42]", fs.gotCreatorDiscordIDs)
+	}
+}
+
+func TestIsCreator_False(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorIsCreator = false
+
+	got, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if err != nil {
+		t.Fatalf("IsCreator: %v", err)
+	}
+	if got {
+		t.Error("want false")
+	}
+}
+
+func TestIsCreator_NotFound(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorStatus = http.StatusNotFound
+	_, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if !errors.Is(err, ErrGameNotFound) {
+		t.Errorf("want ErrGameNotFound, got %v", err)
+	}
+}
+
+func TestIsCreator_Unauthorized(t *testing.T) {
+	fs, c := newFakeServer(t)
+	fs.creatorStatus = http.StatusUnauthorized
+	_, err := c.IsCreator(context.Background(), uuid.New(), "discord-42")
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("want ErrUnauthorized, got %v", err)
 	}
 }
 

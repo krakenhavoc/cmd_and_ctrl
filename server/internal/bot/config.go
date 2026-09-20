@@ -71,12 +71,13 @@ type Config struct {
 	// comma-separated snowflakes, same shape as GuildIDs.
 	//
 	// This is the "admin" half of issue #614's "host or admin"
-	// check. If both lists are empty, /cc-end refuses every caller
-	// rather than failing open; see Config.IsAdmin.
-	//
-	// TODO(#1044): add the "host" half once games.created_by exists
-	// (S34). Then IsAdmin (or a sibling IsHostOrAdmin) should also
-	// accept the Discord ID that created the game being ended.
+	// check. If both lists are empty AND the game being ended has no
+	// creator, /cc-end refuses every caller rather than failing open;
+	// see Config.IsAdmin. The "host" half — the game's own creator,
+	// now that games.created_by exists (#1044, #1098) — is not a
+	// Config field: it is per-game, so it is answered by the server
+	// (GET /games/{id}/creator) and combined with IsAdmin in
+	// Handler.mayEnd (end.go), not by this Config alone.
 	AdminUserIDs []string
 	AdminRoleIDs []string
 }

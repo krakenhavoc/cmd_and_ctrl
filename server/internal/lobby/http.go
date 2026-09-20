@@ -331,14 +331,18 @@ func Handler(c Config) http.Handler {
 	// current invite of one kind and mint its replacement, so a link
 	// lost to a restart (only its hash survives one — see
 	// resolveInvite) can be replaced without deleting and recreating
-	// the table. Admin-only for now, same as minting a seat-reclaim
-	// ticket — TODO(#1044): once games.created_by is populated, let
-	// the game's creator rotate their own game's invites too.
+	// the table. Host or admin (#1098) — "host" here means the game's
+	// CREATOR (games.created_by), not the seated table host of
+	// host.go/ADR 0075; authorised inside the handler with
+	// CanRotateInvites, same pattern as /host's CanManageTable below.
+	// Session-gated here (any authenticated role) rather than
+	// RoleAdmin so a signed-in creator who hasn't claimed a seat can
+	// reach the handler at all.
 	// Rate-limited in the join/spectate/preview bucket: it mints and
 	// revokes the exact credential those routes brute-force, even
-	// though the admin gate already keeps a stranger out.
+	// though the auth gate already keeps a stranger out.
 	mux.Handle("POST /games/{id}/invites/rotate",
-		limit.Middleware(auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, rotateInvite))))
+		limit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, rotateInvite))))
 	// Direct-message invites (ADR 0051 decision 5, S34 sub-PR 6): the
 	// server DMs a tablemate the game's ORDINARY player invite through
 	// Discord's REST API. Session-gated, then authorised in the
@@ -356,6 +360,16 @@ func Handler(c Config) http.Handler {
 	dmLimit := newLimiter(1.0/10, 3)
 	mux.Handle("POST /games/{id}/invites/dm",
 		limit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(dmLimit, handlerFunc(c, inviteDM)))))
+	// The Discord bot's /cc-end host check (#1098): "does this Discord
+	// user's snowflake match this game's creator", a boolean and
+	// nothing else. Admin-only — the bot always calls with its admin
+	// session — so it never widens who can learn a game's creator;
+	// GET /games/{id} never serves the raw creator identity to
+	// anyone, admin included (see redactMetaFor), and this route
+	// exists so the bot can ask the one question it actually needs
+	// without that identity ever leaving the server.
+	mux.Handle("GET /games/{id}/creator",
+		auth.Middleware(c.Auth, auth.RoleAdmin)(handlerFunc(c, gameCreator)))
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
@@ -649,7 +663,7 @@ func createGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusCreated, meta)
+	return writeJSON(w, http.StatusCreated, redactMetaFor(p, meta.ID, meta))
 }
 
 // transferHost handles POST /games/{id}/host: hand the table to
@@ -988,11 +1002,24 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 // retired ones instead — a separate view rather than a mixed list,
 // so the default answer to "what tables are there" never grows
 // without bound as old games pile up.
+//
+// Each entry goes through redactMetaFor so its is_creator bit (#1098)
+// is computed for THIS caller — the lobby UI's rotate-invite buttons
+// read it straight off the list, the same response the page already
+// polls, rather than a second per-game round trip.
 func listGames(c Config, w http.ResponseWriter, r *http.Request) error {
-	if envflag.Truthy(r.URL.Query().Get("archived")) {
-		return writeJSON(w, http.StatusOK, listResponse{Games: c.Lobby.ListArchived()})
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
 	}
-	return writeJSON(w, http.StatusOK, listResponse{Games: c.Lobby.List()})
+	games := c.Lobby.List()
+	if envflag.Truthy(r.URL.Query().Get("archived")) {
+		games = c.Lobby.ListArchived()
+	}
+	for i := range games {
+		games[i] = redactMetaFor(p, games[i].ID, games[i])
+	}
+	return writeJSON(w, http.StatusOK, listResponse{Games: games})
 }
 
 func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
@@ -1017,7 +1044,13 @@ func getGame(c Config, w http.ResponseWriter, r *http.Request) error {
 
 // redactMetaFor strips what principal p may not read off a game's
 // meta: the invite tokens for anyone outside the table, and both
-// tokens for a spectator.
+// tokens for a spectator. It also turns the raw CreatedBy (#1098)
+// into the per-viewer IsCreator bit and clears the raw field, so
+// nothing downstream of this ever hands out the creator's identity —
+// only "yes/no, that's you". CreatedBy is already `json:"-"` and so
+// never reaches the wire on its own, but every GameMeta a handler
+// serializes should still pass through here rather than rely on that
+// alone.
 func redactMetaFor(p auth.Principal, id uuid.UUID, meta GameMeta) GameMeta {
 	if p.Role != auth.RoleAdmin && p.GameID != id {
 		meta.InviteToken = ""
@@ -1030,6 +1063,8 @@ func redactMetaFor(p auth.Principal, id uuid.UUID, meta GameMeta) GameMeta {
 		meta.InviteToken = ""
 		meta.SpectatorInvite = ""
 	}
+	meta.IsCreator = p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
+	meta.CreatedBy = uuid.Nil
 	return meta
 }
 
@@ -1208,29 +1243,86 @@ type rotateInviteResponse struct {
 	Token string `json:"token"`
 }
 
-// rotateInvite (admin-only, for now — see the TODO on the route
-// registration) revokes a game's current invite of one kind and
-// mints its replacement in one move: Lobby.RotateInvite. It exists
-// because only the process that minted a game can show its invite
-// plaintext (ADR 0051 decision 4), so a link lost to a restart could
-// never be recovered before this route — the table just sat there
-// with an invite nobody could read or reissue. The OLD link of that
-// kind stops working the instant this returns; the other kind is
+// rotateInvite (the game's creator or the admin — CanRotateInvites,
+// #1098) revokes a game's current invite of one kind and mints its
+// replacement in one move: Lobby.RotateInvite. It exists because only
+// the process that minted a game can show its invite plaintext (ADR
+// 0051 decision 4), so a link lost to a restart could never be
+// recovered before this route — the table just sat there with an
+// invite nobody could read or reissue. The OLD link of that kind
+// stops working the instant this returns; the other kind is
 // untouched.
 func rotateInvite(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
 	if err != nil {
 		return err
 	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
 	var body rotateInviteRequest
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if !CanRotateInvites(p, meta) {
+		return ErrNotInviteManager
 	}
 	newToken, _, err := c.Lobby.RotateInvite(id, InviteKind(body.Kind))
 	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, rotateInviteResponse{Kind: body.Kind, Token: newToken})
+}
+
+// gameCreatorResponse is the body of GET /games/{id}/creator.
+type gameCreatorResponse struct {
+	IsCreator bool `json:"is_creator"`
+}
+
+// gameCreator (admin-only) answers the Discord bot's /cc-end host
+// check (#1098): does the Discord user named by ?discord_id=<snowflake>
+// match this game's creator. It never says who the creator actually
+// is — only whether ONE named snowflake is a match — so an admin
+// caller that guesses wrong learns nothing, and nobody who isn't
+// already an admin can call this at all.
+//
+// A game with no creator (games.created_by NULL: admin-created, or
+// restored from a pre-ADR-0051 file import) always answers false, for
+// every discord_id — there is nothing to match, so the bot's own
+// allowlists stay the only route for those games. An unknown
+// discord_id (no linked identities row — including every deployment
+// with no user database, users.NoStore) answers false the same way
+// rather than erroring, for the same "never fail open, never fail
+// closed with a 500" reason the two allowlists already follow.
+func gameCreator(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	discordID := strings.TrimSpace(r.URL.Query().Get("discord_id"))
+	if discordID == "" {
+		return httpError(http.StatusBadRequest, "discord_id is required")
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if meta.CreatedBy == uuid.Nil {
+		return writeJSON(w, http.StatusOK, gameCreatorResponse{})
+	}
+	userID, err := c.userStore().UserIDForDiscord(r.Context(), discordID)
+	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			return writeJSON(w, http.StatusOK, gameCreatorResponse{})
+		}
+		return err
+	}
+	return writeJSON(w, http.StatusOK, gameCreatorResponse{IsCreator: userID == meta.CreatedBy})
 }
 
 // autoTapPreview is the S15 sub-PR 4 read-only auto-tap endpoint.
@@ -2730,7 +2822,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrNotTableManager):
+	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager):
 		status = http.StatusForbidden
 	case errors.Is(err, ErrHostIneligible):
 		status = http.StatusUnprocessableEntity
