@@ -284,3 +284,53 @@ func TestMotherOfRunesGrantsTheChosenColour(t *testing.T) {
 		t.Errorf("the granted protection is not readable: %q", got)
 	}
 }
+
+// TestYawgmothIsProtectedFromHumans (issue #1117) is Baneslayer
+// Angel's subtype case again, checked against the SOURCE of an
+// ability rather than a spell: CR 702.16b tests the object doing the
+// targeting, not its controller, so a Human creature's own ability
+// cannot target Yawgmoth even though a non-Human creature's can.
+func TestYawgmothIsProtectedFromHumans(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+
+	yawgmoth := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Yawgmoth, Thran Physician",
+		TypeLine: "Legendary Creature — Human Cleric", OracleID: yawgmothOracle,
+		Power: 2, Toughness: 4, Owner: me.ID, Controller: me.ID,
+	})
+	got := protectionsOn(t, g, yawgmoth)
+	if !hasString(got, "Humans") {
+		t.Fatalf("Yawgmoth's protections = %q", got)
+	}
+
+	human := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Human Source",
+		TypeLine: "Creature — Human Soldier", Power: 1, Toughness: 1,
+		Owner: opp.ID, Controller: opp.ID,
+	})
+	nonHuman := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Goblin Source",
+		TypeLine: "Creature — Goblin", Power: 1, Toughness: 1,
+		Owner: opp.ID, Controller: opp.ID,
+	})
+
+	card := func(id uuid.UUID) *game.Card {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				return &g.Battlefield.Cards[i]
+			}
+		}
+		t.Fatalf("card %v is not on the battlefield", id)
+		return nil
+	}
+	g.ReadSnapshot(func() {
+		if game.CanBeTargetedBy(card(yawgmoth), game.ZoneBattlefield, game.SourceObject(opp.ID, card(human))) {
+			t.Error("an ability from a Human source may not target Yawgmoth")
+		}
+		if !game.CanBeTargetedBy(card(yawgmoth), game.ZoneBattlefield, game.SourceObject(opp.ID, card(nonHuman))) {
+			t.Error("an ability from a non-Human source may target Yawgmoth")
+		}
+	})
+}
