@@ -29,14 +29,20 @@ package game
 //     any of the three learning a new rule (ADR 0045 §3).
 //   - Count rules are bounds on a whole declaration, not pair checks,
 //     so they are judged where the declaration is complete — the
-//     lock-in's close-out in blockers.go (Decision 12).
+//     set-based DeclareBlockers in block_declaration.go, which
+//     REFUSES an illegal count instead of storing it (Decisions 12
+//     and 13).
+//
+// Rules come from two registries, both walked on every check: the
+// battlefield, through CatalogBlockRules, and Game.TurnScopedBlockRules
+// for the until-end-of-turn ones (Gingerbrute's shape), which the
+// turn's cleanup sweep empties.
 //
 // Not here, and deliberately: BlockRule.Limit (Silent Arbiter's
 // "no more than one creature can block each combat"), which ADR 0045's
-// addendum Decision 12 leaves unbuilt until its first card, and
-// Game.TurnScopedBlockRules (Gingerbrute's until-end-of-turn rule),
-// which needs a field on Game. See docs/decisions/0045-combat-restrictions.md,
-// addendum Decisions 11 and 12.
+// addendum Decision 12 leaves unbuilt until its first card.
+// See docs/decisions/0045-combat-restrictions.md, addendum
+// Decisions 11 and 12.
 
 // BlockRule is one printed block restriction with a parameter, as the
 // engine reads it. Exactly one of Pair and Count is set; a rule with
@@ -122,6 +128,46 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 	}
 }
 
+// forEachBlockRuleLocked's turn-scoped half. Walked after the
+// battlefield so a permanent's printed rule is reported first and an
+// until-end-of-turn effect cannot mask it; nothing depends on the
+// order beyond which refusal a player reads.
+//
+// Caller must hold g.mu (read or write) with fresh layers. Reads only.
+func (g *Game) forEachTurnScopedBlockRuleLocked(fn func(rule BlockRule, source *Card) bool) {
+	for i := range g.TurnScopedBlockRules {
+		// A turn-scoped rule's source is the effect that created it,
+		// which may have left the battlefield since (CR 611.2b: the
+		// effect does not end with its source). Nil is the honest
+		// answer, and every predicate takes it.
+		if !fn(g.TurnScopedBlockRules[i], nil) {
+			return
+		}
+	}
+}
+
+// RegisterTurnScopedBlockRuleLocked adds an until-end-of-turn block
+// rule (ADR 0045 addendum, Decision 11). It lives until the turn's
+// cleanup sweep empties the registry, whoever created it and whatever
+// happens to that source in the meantime.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) RegisterTurnScopedBlockRuleLocked(rule BlockRule) {
+	g.TurnScopedBlockRules = append(g.TurnScopedBlockRules, rule)
+}
+
+// ClearTurnScopedBlockRulesLocked drops every until-end-of-turn block
+// rule. A fresh slice rather than a truncation, exactly as
+// ClearTurnScopedReplacementsLocked does, so a clone taken before the
+// sweep keeps its own backing array.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) ClearTurnScopedBlockRulesLocked() {
+	if len(g.TurnScopedBlockRules) > 0 {
+		g.TurnScopedBlockRules = nil
+	}
+}
+
 // blockRuleRefusalLocked is slot 4 of BlockPairRefusalLocked: the
 // first pair rule on the battlefield that refuses this pair, or
 // BlockOK. The refusal names the permanent the rule was read from as
@@ -132,7 +178,7 @@ func (g *Game) forEachBlockRuleLocked(fn func(rule BlockRule, source *Card) bool
 // Caller must hold g.mu with fresh layers. Reads only.
 func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	out := BlockOK
-	g.forEachBlockRuleLocked(func(r BlockRule, source *Card) bool {
+	refuse := func(r BlockRule, source *Card) bool {
 		if r.Pair == nil || !r.Pair(g, attacker, blocker, source) {
 			return true
 		}
@@ -140,9 +186,16 @@ func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 		if reason == "" {
 			reason = BlockReasonCantBeBlockedBy
 		}
-		out = BlockRefusal{Reason: reason, Source: source.InstanceID, Label: r.Label}
+		out = BlockRefusal{Reason: reason, Label: r.Label}
+		if source != nil {
+			out.Source = source.InstanceID
+		}
 		return false
-	})
+	}
+	g.forEachBlockRuleLocked(refuse)
+	if out.Legal() {
+		g.forEachTurnScopedBlockRuleLocked(refuse)
+	}
 	return out
 }
 
@@ -157,11 +210,8 @@ func (g *Game) blockRuleRefusalLocked(attacker, blocker *Card) BlockRefusal {
 // through Characteristic.Abilities and there is no source permanent to
 // read it from but the attacker itself. Rules add their own bounds on
 // top: Pathrazer of Ulamog's minimum of 3, Hungering Hydra's maximum
-// of 1. This replaces BlockerCountValid's menace-only answer
-// (ADR 0045 addendum, Decision 12). That function is left in
-// keywords.go for its own test until the addendum's PR 2 deletes it
-// with the per-pair declare verb; nothing in the engine calls it any
-// more, and its "called from the lock-in" comment is stale.
+// of 1. This replaced BlockerCountValid's menace-only
+// answer, which is gone (ADR 0045 addendum, Decision 12).
 //
 // A minimum greater than the maximum makes the attacker unblockable —
 // a menace creature wearing Vorrac Battlehorns. That is not an error:
@@ -177,7 +227,7 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
 	if HasKeyword(attacker, "menace") {
 		min = 2
 	}
-	g.forEachBlockRuleLocked(func(r BlockRule, source *Card) bool {
+	bound := func(r BlockRule, source *Card) bool {
 		if r.Count == nil {
 			return true
 		}
@@ -189,7 +239,9 @@ func (g *Game) blockerBoundsLocked(attacker *Card) (min, max int) {
 			max = hi
 		}
 		return true
-	})
+	}
+	g.forEachBlockRuleLocked(bound)
+	g.forEachTurnScopedBlockRuleLocked(bound)
 	return min, max
 }
 

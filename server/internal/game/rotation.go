@@ -82,6 +82,14 @@ func (g *Game) sweepTurnEndLocked() {
 	// per-turn duration) clear at cleanup so next turn starts with a
 	// clean slate.
 	g.ClearTurnScopedReplacementsLocked()
+	// #750, ADR 0045 addendum Decision 11: until-end-of-turn BLOCK
+	// rules ("this creature can't block this turn") end here for the
+	// same reason and by the same rule. The registry is emptied
+	// wholesale — it holds nothing that outlasts a turn — and it sits
+	// beside the replacement sweep rather than in the layer duration
+	// sweep below because a block rule is not a continuous effect the
+	// layers apply; it is a question asked when a block is declared.
+	g.ClearTurnScopedBlockRulesLocked()
 	// S32: "until end of turn" CONTINUOUS effects (Giant Growth's
 	// +3/+3, Overrun's trample grant) expire here for the same reason
 	// and by the same rule — CR 514.2 ends them during the cleanup

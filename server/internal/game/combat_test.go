@@ -187,17 +187,19 @@ func TestCombatDoubleStrikeHitsTwice(t *testing.T) {
 	}
 }
 
-func TestCombatMenaceRevertsSingleBlocker(t *testing.T) {
+func TestCombatMenaceRefusesSingleBlocker(t *testing.T) {
 	g := newActiveGame(t)
 	rogue := pushKeywordCreature(t, g, g.Seats[0], 3, 3, "menace")
 	bear := pushKeywordCreature(t, g, g.Seats[1], 2, 2)
 	advanceIntoStep(t, g, StepDeclareAttackers)
 	g.DeclareAttacker(rogue, g.Seats[1].ID)
 	advanceIntoStep(t, g, StepDeclareBlockers)
-	g.DeclareBlocker(bear, rogue)
+	if err := g.DeclareBlocker(bear, rogue); !errors.Is(err, ErrIllegalBlock) {
+		t.Fatalf("a lone block on a menace attacker = %v, want a refusal", err)
+	}
 	advanceIntoStep(t, g, StepCombatDamage)
-	// Menace with 1 blocker → blocker reverted; attacker unblocked →
-	// defender takes full damage.
+	// Menace with 1 blocker → refused at declaration; attacker
+	// unblocked → defender takes full damage.
 	if g.Seats[1].Life != 40-3 {
 		t.Errorf("defender life = %d, want 37 (menace unblocked)", g.Seats[1].Life)
 	}
@@ -215,8 +217,14 @@ func TestCombatMenaceAcceptsTwoBlockers(t *testing.T) {
 	advanceIntoStep(t, g, StepDeclareAttackers)
 	g.DeclareAttacker(rogue, g.Seats[1].ID)
 	advanceIntoStep(t, g, StepDeclareBlockers)
-	g.DeclareBlocker(bear1, rogue)
-	g.DeclareBlocker(bear2, rogue)
+	// One action, because a menace block is legal only as a pair
+	// (#750): declaring either blocker alone is refused.
+	if err := g.DeclareBlockers([]BlockDeclaration{
+		{Blocker: bear1, Attacker: rogue},
+		{Blocker: bear2, Attacker: rogue},
+	}); err != nil {
+		t.Fatalf("DeclareBlockers: %v", err)
+	}
 	// Advancing to combat damage queues the multi-blocker prompt
 	// since attacker power=3 > 1 blocker; the server pauses.
 	advanceIntoStep(t, g, StepCombatDamage)

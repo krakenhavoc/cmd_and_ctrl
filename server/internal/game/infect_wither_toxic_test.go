@@ -282,9 +282,17 @@ func TestToxicIsNotScaledByTheDamageAmount(t *testing.T) {
 
 // ---------------------------------------------------------------
 // ADR 0056 test plan, engine level. Skipped until the seams below
-// land — each of these needs a file this change could not touch, and
-// the reason is named on the skip so the next pass can delete the
-// line rather than rediscover the dependency.
+// land — the reason is named on each skip so the next pass can delete
+// the line rather than rediscover the dependency.
+//
+// PR 1 (counters on players through the CR 614 window, and who put
+// them) has since landed, so the skips no longer name it: every one of
+// these five now waits on the SAME thing, ADR 0056's PR 2 — the three
+// keywords in the damage tail. The window they place their counters
+// through, the placer those counters are credited to, the resume that
+// sweeps when the placement pauses and the layer bump a poison count
+// needs are all in place and pinned by player_counters_test.go and
+// cards/effects/counter_placer_test.go.
 // ---------------------------------------------------------------
 
 // TestInfectCombatDamagePutsMinusOneCountersOnBlocker is ADR 0056
@@ -292,7 +300,7 @@ func TestToxicIsNotScaledByTheDamageAmount(t *testing.T) {
 // two -1/-1 counters on it, DamageMarked stays 0, the SBA destroys
 // the blocker, and the counters are still there after cleanup.
 func TestInfectCombatDamagePutsMinusOneCountersOnBlocker(t *testing.T) {
-	t.Skip("ADR 0056 Decision 3: needs the damageTail infect/wither fields and the -1/-1 placement through the counter window (damage_tail.go + permanent_damage.go), which ride on PR 1's CounterPlacer in replacements.go")
+	t.Skip("ADR 0056 Decision 3, PR 2: the counter window and its CounterPlacer landed in PR 1; what is left is the damageTail infect/wither fields and the -1/-1 placement through that window (damage_tail.go + permanent_damage.go)")
 }
 
 // TestInfectDamageToPlayerGivesPoisonNotLife is ADR 0056 test plan
@@ -300,7 +308,7 @@ func TestInfectCombatDamagePutsMinusOneCountersOnBlocker(t *testing.T) {
 // EventChangeLife fires, and EventDealDamage still fires with Combat
 // set.
 func TestInfectDamageToPlayerGivesPoisonNotLife(t *testing.T) {
-	t.Skip("ADR 0056 Decision 4: needs poison placed through the counter window — ReplacementEvent.CounterPlayer (replacements.go) and EventPlayerCounterPlaced (events.go)")
+	t.Skip("ADR 0056 Decision 4, PR 2: ReplacementEvent.CounterPlayer and EventPlayerCounterPlaced landed in PR 1, so the poison has somewhere to go; what is left is the damageTail infect field and the player branch that places it (damage_tail.go)")
 }
 
 // TestToxicAddsPoisonOnCombatDamageToPlayerOnly is ADR 0056 test plan
@@ -308,7 +316,7 @@ func TestInfectDamageToPlayerGivesPoisonNotLife(t *testing.T) {
 // against a blocker or a planeswalker, nothing on noncombat damage,
 // and two instances summing.
 func TestToxicAddsPoisonOnCombatDamageToPlayerOnly(t *testing.T) {
-	t.Skip("ADR 0056 Decision 4: needs the tokens in canonicalKeywords and the toxicTotal field on damageTail")
+	t.Skip("ADR 0056 Decision 4, PR 2: needs the tokens in canonicalKeywords and the toxicTotal field on damageTail")
 }
 
 // TestInfectSurvivesADamageAssignmentPause is ADR 0056 test plan item
@@ -317,7 +325,7 @@ func TestToxicAddsPoisonOnCombatDamageToPlayerOnly(t *testing.T) {
 // puts counters — and a frame decoded from a snapshot written before
 // the fields existed resumes as ordinary damage.
 func TestInfectSurvivesADamageAssignmentPause(t *testing.T) {
-	t.Skip("ADR 0056 Decision 2: needs SourceInfect/SourceWither/SourceToxic on DamageAssignmentFrame (pending_choice.go, 160KB) and the fill in queueDamageAssignmentPromptLocked (mutations.go, 305KB)")
+	t.Skip("ADR 0056 Decision 2, PR 2: needs SourceInfect/SourceWither/SourceToxic on DamageAssignmentFrame (pending_choice.go) and the fill in queueDamageAssignmentPromptLocked (mutations.go)")
 }
 
 // TestCounterReplacementsSeeTheDamageResult is ADR 0056 test plan
@@ -326,5 +334,5 @@ func TestInfectSurvivesADamageAssignmentPause(t *testing.T) {
 // CR 616 prompt is queued for the SEPARATE counter event, and
 // answering it lands the counters and sweeps.
 func TestCounterReplacementsSeeTheDamageResult(t *testing.T) {
-	t.Skip("ADR 0056 Decisions 3 and 5: needs the counter-resume hardening in pending_choice.go and the placer fields in replacements.go")
+	t.Skip("ADR 0056 Decisions 3 and 5, PR 2: the counter-resume hardening and the placer fields landed in PR 1 (player_counters_test.go pins both); what is left is the damage tail placing the counters, so there is a damage RESULT for a counter replacement to see")
 }

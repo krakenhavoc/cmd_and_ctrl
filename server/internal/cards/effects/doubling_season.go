@@ -25,6 +25,19 @@ import (
 //     etc.) — "counters" in CR is uncategorised.
 //   - Replace: ev.CounterDelta *= 2.
 //
+// "If AN EFFECT would put" is the narrow half, and ADR 0056 Decision 5
+// is where it starts to matter: COMBAT DAMAGE is a turn-based action,
+// not an effect, so the -1/-1 counters a wither or infect attacker puts
+// on a blocker are NOT doubled, while the same keyword on a spell, or a
+// fight, or a proliferate, is. Judges are consistent on this and the
+// ADR cites them. The gate is ev.CounterFromCombatDamage, which the
+// damage tail sets; nothing sets it yet, so this arm is a no-op change
+// today and the right answer the day the tail branches.
+//
+// The passive "would be put" cards in the catalog — Hardened Scales,
+// Winding Constrictor, Primal Vigor — name no effect and are
+// deliberately NOT gated the same way.
+//
 // And the token half (CR 701.7b, #762):
 //
 //   - Watches EventTokenCreated (pre-event, via
@@ -50,6 +63,11 @@ func init() {
 				Watches: []game.EventKind{game.EventCounterPlaced},
 				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 					if ev.Kind != game.RepEventCounter {
+						return false
+					}
+					if ev.CounterFromCombatDamage {
+						// Combat damage is a turn-based action, not
+						// "an effect" — see the card comment.
 						return false
 					}
 					target, ok := g.LookupCardForEffect(ev.CounterTarget)

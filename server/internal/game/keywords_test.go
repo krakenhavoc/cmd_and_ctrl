@@ -243,37 +243,6 @@ func TestCanBlock(t *testing.T) {
 	}
 }
 
-func TestBlockerCountValidMenace(t *testing.T) {
-	menacer := cardWithAbilities("menace")
-	vanilla := cardWithAbilities()
-	blk := cardWithAbilities()
-
-	// 0 blockers → always valid (attacker is unblocked).
-	if !BlockerCountValid(menacer, nil) {
-		t.Error("0 blockers against menace must be valid (unblocked)")
-	}
-
-	// 1 blocker against menace → invalid.
-	if BlockerCountValid(menacer, []*Card{blk}) {
-		t.Error("1 blocker against menace must be invalid")
-	}
-
-	// 2 blockers against menace → valid.
-	if !BlockerCountValid(menacer, []*Card{blk, blk}) {
-		t.Error("2 blockers against menace must be valid")
-	}
-
-	// No menace → any count valid.
-	if !BlockerCountValid(vanilla, []*Card{blk}) {
-		t.Error("1 blocker against non-menace must be valid")
-	}
-
-	// Nil attacker → always valid.
-	if !BlockerCountValid(nil, []*Card{blk}) {
-		t.Error("nil attacker must return true")
-	}
-}
-
 // TestCanonicalKeyword pins the normalisation the deck importer
 // applies to Scryfall's `keywords` array: capitalisation and
 // surrounding whitespace are Scryfall's business, the closed set is

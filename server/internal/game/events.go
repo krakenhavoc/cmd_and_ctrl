@@ -187,16 +187,57 @@ const (
 	// TARGET names the card — not CardID, which this one leaves
 	// unset — and Amount is the count of that kind on it AFTER the
 	// change, so a placement and a removal are the same event with a
-	// different number and neither carries the delta. Actor is
-	// uuid.Nil: applyCounterLocked is reached from a resolved spell,
-	// a paid cost, a trigger and the CR 704.5q cancel, and no single
-	// player is responsible for all four.
+	// different number and neither carries the delta.
+	//
+	// ACTOR is the player who PUT the counters, when the placement
+	// came through the CR 614 counter window and named one
+	// (ReplacementEvent.CounterPlacer) — the source's controller for a
+	// CR 120.3d damage result, the proliferating player for CR 701.34.
+	// SOURCE is the card whose effect or damage placed them. Both stay
+	// uuid.Nil when the placement names neither, which is still most of
+	// them: applyCounterLocked is also reached from a paid cost, a
+	// trigger and the CR 704.5q cancel, and no single player is
+	// responsible for those. A "whenever YOU put" reader takes Actor
+	// first and falls back to its own heuristic on Nil (ADR 0056
+	// Decision 5).
 	//
 	// Fires on AddCounter and on the SBA +1/+1 / -1/-1 cancel. The
 	// public log narrates it as the `counters` entry, for every kind
 	// but the two that are already a line somewhere else — see
 	// protocol.counterKindIsNarrated (#1021).
 	EventCounterPlaced EventKind = "counter_placed"
+
+	// EventPlayerCounterPlaced — a counter of Label was placed on or
+	// removed from a PLAYER. Target is the player, Actor the placer
+	// (uuid.Nil when unknown), Source the card whose effect or damage
+	// placed them, and Amount is THE SIGNED DELTA THAT LANDED — +3 for
+	// three poison counters, -1 for one removed, and never zero,
+	// because a placement that moves nothing emits nothing.
+	//
+	// A SEPARATE KIND from EventCounterPlaced, deliberately. The
+	// card-counter trigger helpers compare ev.Target against card IDs
+	// and walk the log backwards by Label to recover a delta
+	// (batch33_helpers.go, batch12_helpers.go); a player UUID carrying
+	// the label "poison" must never reach them, and one kind for both
+	// would put it there.
+	//
+	// It carries the DELTA where the card event carries the new total,
+	// which is the other half of the same lesson: the card event's
+	// post-change total is exactly what forced three helpers to walk
+	// the log backwards to find out how many counters had been placed.
+	// The total is on Player.Counters for anyone who wants it.
+	//
+	// The layer listener bumps on it unconditionally (layer_listener.go):
+	// a "corrupted" static reading an opponent's poison count, or a
+	// "+1/+1 for each poison counter your opponents have", is a layer
+	// input, and player counters change rarely enough that a gate would
+	// save nothing measurable and go stale.
+	//
+	// ADR 0056 Decision 5. Its public log line — "Alice got 3 poison
+	// counters (7/10)" — is Decision 6 and lands with the client PR;
+	// until then it is a deliberate silence, recorded in
+	// protocol.silentEventKinds.
+	EventPlayerCounterPlaced EventKind = "player_counter_placed"
 
 	// EventTokenCreated — a token was created under Actor's control.
 	// CardID is the new instance.

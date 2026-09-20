@@ -731,6 +731,10 @@ type ContinuationCensus struct {
 	// replacement effects (Fog).
 	TurnScopedReplacements int `json:"turnScopedReplacements,omitempty"`
 
+	// TurnScopedBlockRules is floating until-end-of-turn block rules
+	// (Gingerbrute's "can't block this turn"). #750.
+	TurnScopedBlockRules int `json:"turnScopedBlockRules,omitempty"`
+
 	// IntrinsicAbilityCards is cards holding an ability closure on
 	// the INSTANCE that the catalog cannot hand back — the ones a
 	// restore would bring back with the ability missing.
@@ -772,6 +776,7 @@ func (c ContinuationCensus) Empty() bool {
 		c.ChoiceResumeFrames == 0 &&
 		c.ScopedStatics == 0 &&
 		c.TurnScopedReplacements == 0 &&
+		c.TurnScopedBlockRules == 0 &&
 		c.IntrinsicAbilityCards == 0 &&
 		!c.UnpersistableRNG
 }
@@ -780,7 +785,7 @@ func (c ContinuationCensus) Empty() bool {
 func (c ContinuationCensus) Total() int {
 	n := c.StackEffects + c.StackTargetSpecs + c.DelayedTriggerEffects +
 		c.ChoiceResumeFrames + c.ScopedStatics +
-		c.TurnScopedReplacements + c.IntrinsicAbilityCards
+		c.TurnScopedReplacements + c.TurnScopedBlockRules + c.IntrinsicAbilityCards
 	if c.UnpersistableRNG {
 		n++
 	}
@@ -952,6 +957,10 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	for _, re := range g.TurnScopedReplacements {
 		cen.TurnScopedReplacements++
 		cen.note("turn-scoped replacement: %s", labelOr(re.Label, "unnamed"))
+	}
+	for _, br := range g.TurnScopedBlockRules {
+		cen.TurnScopedBlockRules++
+		cen.note("turn-scoped block rule: %s", labelOr(br.Label, "unnamed"))
 	}
 	// BuiltinReplacements and Listeners are deliberately NOT counted:
 	// both are process-lifetime singletons installed by NewGame, so

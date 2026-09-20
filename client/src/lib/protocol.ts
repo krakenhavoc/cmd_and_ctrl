@@ -97,6 +97,12 @@ export type ActionType =
   // entry, one broadcast, however wide the board.
   | "declare_attackers"
   | "declare_blocker"
+  // Set-shaped block declaration (#750). Not a batching convenience:
+  // a block COUNT (menace's minimum of two) is a property of the whole
+  // declaration, so a two-creature menace block is legal only as a
+  // pair and the single verb refuses either half of it. All or
+  // nothing — a refused set stores none of itself.
+  | "declare_blockers"
   | "discard_selection"
   | "draw_card"
   | "end_vote"

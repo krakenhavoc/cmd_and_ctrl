@@ -541,9 +541,14 @@ func b35DamageThatPlayer(victim uuid.UUID, n int) func(g *game.Game, item *game.
 
 // b35EachOpponentLosesAllCounters is Final Act's fifth mode: every
 // counter of every kind on every opponent — poison, energy,
-// experience, rad, anything — comes off. Player counters are a flat
-// map with no replacement pipeline, so this is one removal per kind
-// per opponent through the effect-side adder at a negative delta.
+// experience, rad, anything — comes off. One removal per kind per
+// opponent through the effect-side adder at a negative delta, which
+// since ADR 0056 goes through the CR 614 counter window like any other
+// player-counter change — harmlessly, because a removal is not a
+// placement and every counter replacement in the catalog guards on a
+// positive delta (CR 614.1). What it does buy is the event and the
+// layer bump, so a static reading an opponent's poison count sees the
+// counters leave.
 func b35EachOpponentLosesAllCounters(ctx *Context) error {
 	for _, id := range ctx.Opponents() {
 		p := ctx.PlayerByID(id)
