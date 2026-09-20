@@ -14,7 +14,7 @@
   import type { GameClient } from "../../ws";
   import type { GameView } from "../../protocol";
   import FrameInspector from "./FrameInspector.svelte";
-  import CardSpawner from "./CardSpawner.svelte";
+  import CardSpawner from "../CardSpawner.svelte";
   import SeatSwitcher from "./SeatSwitcher.svelte";
   import ReplayScrubber from "./ReplayScrubber.svelte";
   import type { ReplayFrame } from "../../replay";

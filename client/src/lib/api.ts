@@ -18,6 +18,8 @@ import type { MyGame } from "./myGames";
 import type { MyDecksResponse } from "./myDecks";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { AutoTapCastParams } from "./castPreview";
+import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
+import type { TableSettingsView } from "./protocol";
 
 // Re-export the violation shape so consumers of api.ts don't also
 // have to import from session.ts. ApiViolation is the canonical
@@ -1006,4 +1008,135 @@ export async function fetchReplay(gameID: string): Promise<string> {
   const res = await authFetch(`/games/${encodeURIComponent(gameID)}/replay`, { method: "GET" });
   if (res.status === 204) return "";
   return await res.text();
+}
+
+// --- table settings + the production spawner (ADR 0075) --------------
+//
+// These are NOT the dev routes above. They exist in production, they
+// are gated on being the table's host (or the admin) rather than on
+// the deployment, and the spawn half additionally needs the table to
+// have switched `allow_spawn` on. A refusal from either gate is a 403
+// carrying a sentence the panel shows verbatim — "you are not the
+// host" and "this table has spawning switched off" are different
+// problems with different fixes, and flattening them into "forbidden"
+// would send a host to ask the admin for a permission they already
+// have.
+
+interface TableSettingsResponse {
+  settings: TableSettingsView;
+}
+
+// patchTableSettings applies a PARTIAL update and returns the whole
+// settings object as it stands afterwards, including the fields the
+// patch left alone. Host or admin only (403 otherwise); 400 for a
+// value out of range, 422 for a starting-life change after the game
+// started.
+export async function patchTableSettings(
+  gameID: string,
+  patch: TableSettingsPatch,
+): Promise<TableSettingsView> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/settings`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return ((await res.json()) as TableSettingsResponse).settings;
+}
+
+// fetchTableSettings reads a table's settings from the LOBBY page,
+// where there is no socket to carry them.
+//
+// It is an empty patch, because the lobby has no GET: the settings
+// are public over the game view (protocol.GameView.settings), and the
+// HTTP surface only ever needed a write. An empty patch changes
+// nothing and logs nothing — the engine emits one event per field
+// that ACTUALLY changed — but it is still a commit, so this is called
+// when the panel opens and not on every lobby refresh.
+//
+// It inherits the write's gate, so a non-manager gets a 403 rather
+// than a read. That is the one place the lobby panel falls short of
+// "everyone sees it read-only": at the table, where GameView carries
+// the settings to every viewer, it does not.
+export async function fetchTableSettings(gameID: string): Promise<TableSettingsView> {
+  return await patchTableSettings(gameID, {});
+}
+
+export interface SpawnRequest {
+  // Exactly one of these three names what to make, checked in this
+  // order by the server: token wins over scryfallID wins over name.
+  token?: string;
+  scryfallID?: string;
+  name?: string;
+  playerID: string;
+  zone: SpawnZone;
+  count?: number;
+  commander?: boolean;
+}
+
+export interface SpawnResult {
+  spawned: string[];
+  name: string;
+  zone: string;
+  count: number;
+  scryfall_id?: string;
+  // True when a token template was made. The client needs it to read
+  // an absent scryfall_id as "a token has no printing" rather than as
+  // a failure.
+  token?: boolean;
+}
+
+// spawnOnTable puts cards or tokens onto a live table. Errors
+// propagate as LobbyApiError so the panel renders the server's own
+// message.
+export async function spawnOnTable(gameID: string, req: SpawnRequest): Promise<SpawnResult> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/spawn`, {
+    method: "POST",
+    body: JSON.stringify({
+      token: req.token,
+      scryfall_id: req.scryfallID,
+      name: req.name,
+      player_id: req.playerID,
+      zone: req.zone,
+      count: req.count,
+      commander: req.commander,
+    }),
+  });
+  return (await res.json()) as SpawnResult;
+}
+
+// searchSpawnCards is searchDevCards for the production spawner: the
+// same Scryfall index read, through a route that exists outside a dev
+// deployment. Same swallow-everything posture, and for the same
+// reason — it runs on a debounce as someone types.
+export async function searchSpawnCards(
+  gameID: string,
+  q: string,
+  signal?: AbortSignal,
+): Promise<DevCardResult[]> {
+  try {
+    const res = await authFetch(
+      `/games/${encodeURIComponent(gameID)}/spawn/cards?q=${encodeURIComponent(q)}`,
+      { method: "GET", signal },
+    );
+    const body = (await res.json()) as { cards?: DevCardResult[] };
+    return body.cards ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// fetchSpawnTokens lists the token template keys the spawn route
+// accepts ("Treasure", "1/1 white Soldier"). Swallows failure into an
+// empty list: the Tokens tab then renders its empty state, which is
+// the honest answer for a server built without token templates (503)
+// as much as for a network blip.
+export async function fetchSpawnTokens(gameID: string): Promise<string[]> {
+  try {
+    const res = await authFetch(`/games/${encodeURIComponent(gameID)}/spawn/tokens`, {
+      method: "GET",
+    });
+    const body = (await res.json()) as { tokens?: string[] };
+    return body.tokens ?? [];
+  } catch {
+    return [];
+  }
 }

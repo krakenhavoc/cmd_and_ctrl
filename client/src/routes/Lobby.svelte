@@ -6,12 +6,14 @@
     createGame,
     deleteGame,
     fetchBotOptions,
+    fetchTableSettings,
     listGames,
     logout as apiLogout,
     logoutEverywhere as apiLogoutEverywhere,
     mintSeatReclaim,
     removeBotSeat,
     replayURL,
+    patchTableSettings,
     rotateInvite,
     startGame,
     unarchiveGame,
@@ -27,7 +29,10 @@
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
   import { canInviteTablemates } from "../lib/tablemates";
+  import type { TableSettingsView } from "../lib/protocol";
+  import type { TableSettingsPatch } from "../lib/tableSettings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
 
@@ -84,6 +89,54 @@
     if (g.state !== "lobby" || !botsOfferable) return false;
     if ($session?.principal.role === "admin") return true;
     return mySeat(g) !== null;
+  }
+
+  // --- table settings (ADR 0075 §2.5) -----------------------------
+  //
+  // The lobby half of the settings panel. Only the manager is offered
+  // it here, and that is a LIMITATION rather than a decision: the
+  // settings are public (every viewer gets them on the game view),
+  // but the lobby's HTTP surface has only a write — PATCH — so the
+  // read below is an empty patch and inherits the write's gate. At
+  // the table, where the snapshot carries them, everyone sees the
+  // same panel read-only. A `GET /games/{id}/settings` would close
+  // the gap; it is server work and belongs in its own change.
+  let settingsFor = $state<string | null>(null);
+  let tableSettings = $state<TableSettingsView | null>(null);
+  let settingsBusy = $state(false);
+  let settingsError = $state<string | null>(null);
+
+  function canManageTableFor(g: GameMeta): boolean {
+    return isAdmin || mySeat(g)?.is_host === true;
+  }
+
+  async function openTableSettings(gameID: string): Promise<void> {
+    settingsFor = gameID;
+    tableSettings = null;
+    settingsError = null;
+    settingsBusy = true;
+    try {
+      tableSettings = await fetchTableSettings(gameID);
+    } catch (e) {
+      settingsError = e instanceof Error ? e.message : String(e);
+    } finally {
+      settingsBusy = false;
+    }
+  }
+
+  async function applyTableSettings(gameID: string, patch: TableSettingsPatch): Promise<void> {
+    settingsBusy = true;
+    settingsError = null;
+    try {
+      // The response is the WHOLE settings object after the patch, so
+      // the panel re-renders from the server's answer rather than
+      // from what it hoped it had set.
+      tableSettings = await patchTableSettings(gameID, patch);
+    } catch (e) {
+      settingsError = e instanceof Error ? e.message : String(e);
+    } finally {
+      settingsBusy = false;
+    }
   }
 
   // canRotateInvites: admin, or the table's own creator (#1098).
@@ -612,6 +665,22 @@
                     {rotateBusy === `${g.id}:spectator` ? "…" : "new spectator link"}
                   </button>
                 {/if}
+                {#if canManageTableFor(g)}
+                  <!-- ADR 0075 §2.5. Offered to the host and the admin
+                       because this page can only READ the settings
+                       through the write route (see openTableSettings).
+                       -->
+                  <button
+                    class="ghost"
+                    class:on={settingsFor === g.id}
+                    aria-expanded={settingsFor === g.id}
+                    title="undos, starting life, commander damage, bot speed, spawning"
+                    onclick={() =>
+                      settingsFor === g.id ? (settingsFor = null) : openTableSettings(g.id)}
+                  >
+                    <Icon name="gear" size={13} /> table settings
+                  </button>
+                {/if}
                 <!-- Mirror the server's downloadReplay gate: admins may
                      pull the replay any time after the lobby phase, but
                      players get 403 until the game has ended (the JSONL
@@ -753,6 +822,25 @@
               {/if}
             {/each}
           </ul>
+
+          {#if settingsFor === g.id}
+            <div class="tsettings">
+              {#if tableSettings}
+                <TableSettingsPanel
+                  settings={tableSettings}
+                  canManage={canManageTableFor(g)}
+                  gameState={g.state}
+                  busy={settingsBusy}
+                  error={settingsError}
+                  onpatch={(patch) => applyTableSettings(g.id, patch)}
+                />
+              {:else if settingsBusy}
+                <p class="muted">loading settings…</p>
+              {:else}
+                <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
+              {/if}
+            </div>
+          {/if}
 
           {#if confirming?.id === g.id}
             <div class="confirm" class:danger={confirming.kind === "delete"} role="alert">
@@ -1490,6 +1578,15 @@
   }
 
   /* --- admin table management ------------------------------------ */
+  /* Same card-inset shell as .confirm, so a disclosure inside a table
+     card reads the same whether it is a settings panel or a
+     confirmation. */
+  .tsettings {
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface-sunken);
+  }
   .confirm {
     border: 1px solid var(--border-strong);
     border-radius: 10px;
