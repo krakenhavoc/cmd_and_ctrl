@@ -1610,6 +1610,16 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 	case RepEventLife:
 		return ev.LifePlayer
 	case RepEventCounter:
+		// ADR 0056 Decision 5. A counter on a PLAYER names that player
+		// on the event, and CR 616.1 gives the ordering choice to the
+		// affected one — the player the counters are going on, not the
+		// controller of whichever replacement happened to be gathered
+		// first. Vorinclex halving an opponent's poison beside a
+		// doubler is the board where the fallback below would ask the
+		// wrong seat.
+		if ev.CounterPlayer != uuid.Nil {
+			return ev.CounterPlayer
+		}
 		if card, ok := g.LookupCardForEffect(ev.CounterTarget); ok {
 			return card.Controller
 		}
@@ -1868,7 +1878,37 @@ func (g *Game) ResolveReplacementOrder(choiceID, chooserID uuid.UUID, ordered []
 func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 	switch ev.Kind {
 	case RepEventCounter:
-		return g.applyCounterLocked(ev.CounterTarget, ev.CounterName, ev.CounterDelta)
+		// ADR 0056 Decision 3. This arm used to be
+		// `return g.applyCounterLocked(...)`, and it was the #694 bug
+		// shape twice over.
+		//
+		// It returned the mutation's error, so when the target had left
+		// between the prompt and the answer the ACTION failed — after
+		// the choice had already been dequeued, which takes the prompt
+		// away with nothing to show for it. The life and damage arms
+		// below both learned to log and move on; this one had not.
+		//
+		// And it never swept. Answering a prompt is an action boundary
+		// like every other Resolve* handler, and the unpaused counter
+		// paths get their sweep from the resolution bookend they run
+		// inside. A -1/-1 placement that PAUSED has no bookend to fall
+		// back on, so the creature it brought to zero toughness has to
+		// die here — which is exactly what ADR 0056's damage results
+		// make routine, and why the hardening lands in this PR rather
+		// than the one that branches the tail.
+		err := g.applyResolvedCounterLocked(ev)
+		if errors.Is(err, ErrCardNotFound) || errors.Is(err, ErrPlayerNotFound) || errors.Is(err, ErrPlayerEliminated) {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				ErrorMsg: "counter placement dropped: its target is no longer in the game",
+			})
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		g.runStateChecksLocked()
+		return nil
 	case RepEventDraw:
 		return g.actuallyDrawCardLocked(ev.DrawPlayer)
 	case RepEventLife:

@@ -12,11 +12,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so "one or more" is one event and "that many" is its delta — the
 // previous total read back off the log (b33CountersPlacedDelta), the
 // way b11CountersWerePlaced tells a placement from a removal. "You
-// put" is b11ResolvingController: counters land during a resolution,
-// and the player resolving is the player putting them, so an
-// opponent's Black Sun's Zenith on the controller's creature makes
-// the opponent's Nest's Insects, not this one's. Any creature — the
-// controller's own, an opponent's — counts, as printed.
+// put" is b11CounterPlacerOf: the placement's own actor when it named
+// one (ADR 0056 Decision 5), and otherwise the resolving player, since
+// counters land during a resolution. Either way an opponent's Black
+// Sun's Zenith on the controller's creature makes the opponent's
+// Nest's Insects, not this one's. Any creature — the controller's own,
+// an opponent's — counts, as printed.
 //
 // No simplification.
 func init() {

@@ -6995,13 +6995,33 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 	if out == nil || out.Canceled {
 		return nil
 	}
-	return g.applyCounterLocked(out.CounterTarget, out.CounterName, out.CounterDelta)
+	return g.applyResolvedCounterLocked(out)
 }
 
 // applyCounterLocked is the actual counter-map mutation, extracted
 // from AddCounter so the replacement pipeline and the AddCounterForEffect
-// helper can share the body. Caller must hold g.mu.
+// helper can share the body.
+//
+// The placement names NO PLACER and no source. That is the right answer
+// for every caller that reaches this spelling — a paid cost, a
+// rules-driven removal, the CR 704.5q cancel, a sandbox edit — none of
+// which is a player putting counters on something (ADR 0056
+// Decision 5). A caller that DOES know calls applyCounterByLocked.
+//
+// Caller must hold g.mu.
 func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) error {
+	return g.applyCounterByLocked(cardID, name, delta, uuid.Nil, uuid.Nil)
+}
+
+// applyCounterByLocked is applyCounterLocked with the CR 120.3d placer
+// and the source card named: `placer` is who PUTS the counters and
+// `source` the card whose effect or damage placed them. Both ride onto
+// the emitted EventCounterPlaced as Actor and Source, which is how
+// "whenever YOU put one or more counters" (Nest of Scarabs, Exemplar of
+// Light) stops meaning "whoever resolved anything most recently".
+//
+// Caller must hold g.mu.
+func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, placer, source uuid.UUID) error {
 	if name == "" {
 		return ErrInvalidParam
 	}
@@ -7039,6 +7059,8 @@ func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) erro
 				Target: cardID,
 				Label:  name,
 				Amount: newAmount,
+				Actor:  placer,
+				Source: source,
 			})
 			return nil
 		}
@@ -7248,10 +7270,18 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 	if amount < 0 {
 		amount = 0
 	}
+	before := p.Counters[CounterPoison]
 	p.Poison = amount
 	// S13.2: keep the unified Counters map in sync so the SBA loop
 	// reads the same value the legacy SetPoison action wrote.
 	setPlayerCounterLocked(p, CounterPoison, amount)
+	// ADR 0056 Decision 5: the sandbox verbs SKIP the replacement
+	// window — this is SET semantics and there is nothing for a
+	// replacement to say about "make the total 7" — but they still owe
+	// the table the event and the layer bump that rides it, so a
+	// "corrupted" static switches on in the same action that sets the
+	// poison. No placer: a hand-edit is nobody putting counters.
+	g.emitPlayerCounterDeltaLocked(playerID, CounterPoison, before, amount, uuid.Nil, uuid.Nil)
 	g.runStateChecksLocked()
 	return nil
 }
@@ -7270,6 +7300,14 @@ func (g *Game) SetPoison(playerID uuid.UUID, amount int) error {
 //
 // Drives the SBA loop after the mutation so 10+ poison or 0 life
 // (via energy-cost cards in the future) immediately apply.
+//
+// Emits EventPlayerCounterPlaced with the delta that landed, which
+// bumps the layer version (ADR 0056 Decision 5). Like set_poison it
+// does NOT open the CR 614 counter window: a manual board fix is not a
+// player putting counters, and the two verbs are the "make the board
+// say this" controls. The effect-time path
+// (AddPlayerCounterByForEffect) is the one that goes through the
+// window.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 //
@@ -7298,12 +7336,11 @@ func (g *Game) AddPlayerCounter(playerID uuid.UUID, name string, delta int) erro
 	setPlayerCounterLocked(p, name, next)
 	// Mirror to legacy single-int fields so SetPoison / SetEnergy
 	// callers continue to read consistent state.
-	switch name {
-	case CounterPoison:
-		p.Poison = next
-	case CounterEnergy:
-		p.Energy = next
-	}
+	mirrorLegacyPlayerCounterLocked(p, name, next)
+	// ADR 0056 Decision 5, the same reason as SetPoison above: the
+	// sandbox verb skips the window and still emits, so the event and
+	// the layer bump do not depend on WHICH way a counter arrived.
+	g.emitPlayerCounterDeltaLocked(playerID, name, cur, next, uuid.Nil, uuid.Nil)
 	g.runStateChecksLocked()
 	return nil
 }
