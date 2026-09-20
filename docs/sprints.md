@@ -2681,9 +2681,9 @@ The server has only ever had seats. A session bound one socket to one game and o
 
 **In production** since promotion [#1053](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1053), deployed 2026-09-19 14:06 UTC: the database (sub-PR 1), the lobby importer (13 files imported, none skipped, 11 games restored), users and identities (sub-PR 2), games/seats/invites with hashed tokens (sub-PR 3), S33's HMAC sessions, and the nightly off-site backup — prod stores 1.90 GiB as 56.8 MiB, dev 1.37 GiB as 29.7 MiB, both to Cloudflare R2 via restic.
 
-**On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
+**On `develop`, not yet promoted:** sub-PR 4 ([#1059](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1059), my games / seat linking / Discord link), sub-PR 5 ([#1061](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1061), deck library), sub-PR 6 ([#1113](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1113), tablemates, the invite picker and `POST /games/{id}/invites/dm`), and sub-PR 7 ([#1056](https://github.com/krakenhavoc/cmd_and_ctrl/pull/1056), per-user revocation and the 30-day identity session).
 
-**Not built:** sub-PR 6 (tablemates, invite picker, DM invites) and its follow-on, [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613).
+**Every sub-PR is built.** What is left of the sprint's own scope is the follow-on [#613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/613), the `/cc-invite-dm` slash command that calls sub-PR 6's route, and it depends on [#249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/249) provisioning the bot. Two owner checks can only be made against production after the next promotion: a DM actually arriving (the server's `CMDCTRL_DISCORD_BOT_TOKEN` is written on a `main` deploy only), and `/cc-end` once an admin allowlist is set.
 
 ---
 
