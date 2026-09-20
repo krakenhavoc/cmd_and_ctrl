@@ -630,3 +630,47 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 		},
 	}
 }
+
+// permanentsControlledByMatching lists the permanents `playerID`
+// controls that satisfy `pred`, in battlefield order — the candidate
+// set behind "sacrifice an artifact of your choice" and its
+// relatives.
+//
+// The fixed-predicate versions that predate it (landsControlledByPlayer,
+// creaturesControlledByPlayer, NonlandPermanentsControlledBy) stay as
+// they are; this is the shape for a clause whose filter is an ordinary
+// CardPredicate, so the card file writes Artifact() rather than another
+// battlefield loop.
+//
+// Caller must hold g.mu — it is an effect-time read.
+func permanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
+	if g == nil || playerID == uuid.Nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != playerID {
+			continue
+		}
+		if pred != nil && !pred(g, playerID, c) {
+			continue
+		}
+		out = append(out, c.InstanceID)
+	}
+	return out
+}
+
+// spellManaValueForEffect is "that spell's mana value" for a card that
+// may or may not still be findable: zero when it is in no zone at all,
+// and otherwise the CR 202.3e read that counts {X} only while the card
+// is on the stack (#788).
+//
+// Caller must hold g.mu.
+func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
+	c, ok := g.LookupCardForEffect(cardID)
+	if !ok {
+		return 0
+	}
+	mv, _ := g.ManaValueForEffect(c)
+	return mv
+}
