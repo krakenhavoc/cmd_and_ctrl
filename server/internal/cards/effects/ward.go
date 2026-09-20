@@ -80,6 +80,27 @@ type WardCost struct {
 type WardSacrificeCost struct {
 	Label string
 	OK    CardPredicate
+
+	// Count is how many permanents the cost demands — Valgavoth,
+	// Terror Eater's "sacrifice THREE nonland permanents". Zero reads
+	// as one, so every ward that shipped before the field existed
+	// keeps charging exactly what it charged.
+	//
+	// A count rather than a repeated prompt: CR 118.4 is one payment,
+	// so a payer who cannot produce all of them has not paid at all
+	// and the spell is countered — never "sacrifice two of the three
+	// and keep the spell". The pick is one ChooseCards prompt with
+	// Min == Max == n, which the client renders as a multi-select and
+	// the bot enumerator already solves for sets rather than singles.
+	Count int
+}
+
+// count is the printed number, with zero reading as one.
+func (s WardSacrificeCost) count() int {
+	if s.Count < 1 {
+		return 1
+	}
+	return s.Count
 }
 
 // WardMana builds the "ward {N}" cost.
@@ -92,6 +113,14 @@ func WardLife(n int) WardCost { return WardCost{Life: n} }
 // predicate must pass: WardSacrifice("a creature", Creature()).
 func WardSacrifice(label string, preds ...CardPredicate) WardCost {
 	return WardCost{Sacrifice: &WardSacrificeCost{Label: label, OK: And(preds...)}}
+}
+
+// WardSacrificeN builds the "ward—sacrifice N <label>" cost:
+// WardSacrificeN(3, "three nonland permanents", Nonland()). The label
+// is the printed noun phrase INCLUDING the number, because that is
+// what the prompt shows; `n` is what the engine counts.
+func WardSacrificeN(n int, label string, preds ...CardPredicate) WardCost {
+	return WardCost{Sacrifice: &WardSacrificeCost{Label: label, OK: And(preds...), Count: n}}
 }
 
 // validate panics on a cost with zero or several components. It runs
@@ -333,8 +362,15 @@ func wardPayLifeOrCounter(g *game.Game, source, payer uuid.UUID, life int, targe
 // predicate is the whole test. Both links re-read the battlefield when
 // their answer arrives, and a pick that is no longer a matching
 // permanent the payer controls counts as not paying.
+//
+// A cost that names more than one permanent (Valgavoth, Terror
+// Eater's three) changes only the bounds on the pick and the guard
+// in front of it: a payer holding fewer than the count cannot pay at
+// all, so the spell is countered with no prompt rather than offering
+// a payment that cannot be completed.
 func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacrificeCost, targetingItem uuid.UUID, counter func(*game.Game) error) error {
-	if len(wardSacrificeCandidates(g, payer, sac)) == 0 {
+	n := sac.count()
+	if len(wardSacrificeCandidates(g, payer, sac)) < n {
 		return counter(g)
 	}
 	g.QueueConfirmForEffect(game.ConfirmPrompt{
@@ -348,7 +384,7 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 				return nil
 			}
 			candidates := wardSacrificeCandidates(g, payer, sac)
-			if len(candidates) == 0 {
+			if len(candidates) < n {
 				return counter(g)
 			}
 			g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
@@ -356,17 +392,22 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 				Source:   source,
 				Question: "Ward — choose " + sac.Label + " to sacrifice",
 				Cards:    candidates,
-				Min:      1,
-				Max:      1,
+				Min:      n,
+				Max:      n,
 				Zone:     game.ZoneBattlefield,
 				Then: func(g *game.Game, picked []uuid.UUID) error {
 					if g.StackItemForEffect(targetingItem) == nil {
 						return nil
 					}
-					if len(picked) != 1 || !wardSacrificeLegal(g, payer, sac, picked[0]) {
+					if !wardSacrificePickComplete(g, payer, sac, picked, n) {
 						return counter(g)
 					}
-					return g.SacrificePermanentForEffect(picked[0])
+					for _, id := range picked {
+						if err := g.SacrificePermanentForEffect(id); err != nil {
+							return err
+						}
+					}
+					return nil
 				},
 			})
 			return nil
@@ -396,4 +437,26 @@ func wardSacrificeLegal(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, id
 		}
 	}
 	return false
+}
+
+// wardSacrificePickComplete re-checks a whole answer against the live
+// battlefield: exactly `n` permanents, all distinct, each still one
+// the payer controls and each still matching the cost.
+//
+// Distinctness is checked here rather than assumed, because the
+// payment is one cost (CR 118.4) and the same permanent cannot pay
+// for itself twice — a repeated ID would otherwise sacrifice one
+// permanent and silently discharge a three-permanent cost.
+func wardSacrificePickComplete(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, picked []uuid.UUID, n int) bool {
+	if len(picked) != n {
+		return false
+	}
+	seen := make(map[uuid.UUID]bool, n)
+	for _, id := range picked {
+		if seen[id] || !wardSacrificeLegal(g, payer, sac, id) {
+			return false
+		}
+		seen[id] = true
+	}
+	return true
 }

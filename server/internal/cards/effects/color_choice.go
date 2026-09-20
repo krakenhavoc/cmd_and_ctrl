@@ -167,3 +167,37 @@ func ChooseColorThen(purpose game.ColorPurpose, g *game.Game, chooser, source uu
 		Then:     then,
 	})
 }
+
+// AnyCombinationOfColors is the produced-mana string for "N mana in
+// any combination of colors" (Selvala, Heart of the Wilds; Chromatic
+// Orrery): N INDEPENDENT any-colour slots, so the controller answers
+// N picks and may answer them differently. Zero or fewer produces
+// nothing.
+//
+// The counterpart to OneColorOfAmount, and the difference between
+// them is the whole reason the produced-mana grammar carries a
+// per-colour amount. "Add three mana in any combination of colors"
+// is "{W|U|B|R|G}{W|U|B|R|G}{W|U|B|R|G}" and can pay {W}{U}{B};
+// "add three mana of any one color" is "{W3|U3|B3|R3|G3}", one pick
+// minting three of the same. Reaching for the wrong one ships a card
+// that looks right and fixes or splits the colours wrongly.
+func AnyCombinationOfColors(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat("{"+strings.Join(game.AllColors, "|")+"}", n)
+}
+
+// ProducedAnyCombinationOfColors is the ProducedFunc for "Add X mana
+// in any combination of colors", where X is computed at activation
+// (Selvala's greatest power among creatures you control).
+//
+// No commander-identity narrowing, for OneColorOfAmount's reason:
+// every printed card in this family says "any combination of colors"
+// with no identity clause, so the ability leaves
+// NarrowToCommanderIdentity off.
+func ProducedAnyCombinationOfColors(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) string {
+	return func(g *game.Game, controller, source uuid.UUID) string {
+		return AnyCombinationOfColors(n(g, controller, source))
+	}
+}

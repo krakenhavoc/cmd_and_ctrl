@@ -161,3 +161,31 @@ func LegendarySorcery() func(g *game.Game, controller uuid.UUID, card game.Card)
 // text box of every legendary sorcery, verbatim, so ten card files
 // cannot spell it ten ways.
 const LegendarySorceryLabel = "Cast this spell only if you control a legendary creature or planeswalker."
+
+// OpponentsCantCastDuringYourTurn is Dragonlord Dromoka's third
+// clause: "Your opponents can't cast spells during your turn."
+//
+// OpponentsCantCast with the turn added. Both halves are read off the
+// SOURCE's controller: they are the "your" in "your opponents" and
+// the "your" in "your turn", so a Dromoka an opponent has stolen
+// locks the table out on THEIR turn instead — which is the printed
+// card and the same reason YouCantCastUnless reads q.Source.
+//
+// The active seat is read off g.Turn directly rather than through
+// g.ActivePlayer(), which takes an RLock: this predicate runs inside
+// the cast path, which already holds g.mu for write, and a second
+// acquisition there deadlocks.
+func OpponentsCantCastDuringYourTurn(label string, match CardPredicate) game.CastRestriction {
+	return game.CastRestriction{
+		Label: label,
+		Forbids: func(q game.CastQuery) bool {
+			if q.Source.Controller == q.Controller {
+				return false
+			}
+			if !isActivePlayer(q.Game, q.Source.Controller) {
+				return false
+			}
+			return matchCastCard(q.Game, match, q.Controller, q.Card)
+		},
+	}
+}
