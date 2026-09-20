@@ -27,6 +27,16 @@ linters:
     - unconvert
     - unparam
 
+linters-settings:
+  misspell:
+    # "Compleat" and its family are Phyrexian spellings printed on real
+    # cards (Staff of Compleation, Elesh Norn, Mother of Machines). The
+    # card name is data, not prose, so misspell must not "correct" it.
+    ignore-words:
+      - compleation
+      - compleat
+      - compleated
+
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
