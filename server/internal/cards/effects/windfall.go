@@ -16,10 +16,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // happen first (so the draw count is fixed before any card is
 // drawn), and each discard emits its own event, so the payoffs
 // queue while the spell is still resolving.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "08becc07-28bc-4a2f-a6b0-28a2998d2f50",
-		Name:     "Windfall",
+		OracleID:     "08becc07-28bc-4a2f-a6b0-28a2998d2f50",
+		Name:         "Windfall",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			players := tablePlayers(ctx)
 			most := 0

@@ -14,10 +14,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cards are drawn; a Marauding Mako is bigger for the rest of the
 // turn. Discarding on resolution would get both wrong, and would
 // also let a countered Thrill keep the card.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:       "1cb0610b-a731-42c2-b93f-0a29f63cebf4",
 		Name:           "Thrill of Possibility",
+		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return DrawCards{Player: item.Controller, N: 2}.Apply(ctx)

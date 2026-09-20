@@ -12,10 +12,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // commander, Corsair Captain, Ragavan — so this is a two-drop that
 // turns the Treasure engine into a clock. First card in the catalog
 // to pair the artifact-ETB watcher with a target clause.
+//
+// The printed trigger is per-artifact ("Whenever AN artifact...
+// enters"), not the batched "one or more" wording, so firing once
+// per artifact and requiring a fresh legal Pirate each time (CR
+// 603.3d — no prompt, no ability, if none exists) matches the card
+// exactly. No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "431e85e3-15e6-471b-ba71-6058394c9a96",
-		Name:     "Captain Storm, Cosmium Raider",
+		OracleID:     "431e85e3-15e6-471b-ba71-6058394c9a96",
+		Name:         "Captain Storm, Cosmium Raider",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -10,10 +10,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Functionally identical to Big Score at a different mana cost —
 // the deck runs both because the effect is the ritual half of its
 // draw engine, not because they differ.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:       "498c10c9-253d-4b15-b48c-1509381b17e8",
 		Name:           "Unexpected Windfall",
+		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return drawAndTreasure(item, ctx, 2, 2)

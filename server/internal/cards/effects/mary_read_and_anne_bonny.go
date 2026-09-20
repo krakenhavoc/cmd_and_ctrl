@@ -19,10 +19,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The Treasure enters tapped, so it's mana for the NEXT turn rather
 // than a free ritual on the turn you loot.
+//
+// The discard trigger reads every discard through EventDiscardCard,
+// which every discard path in the engine emits alike — the loot
+// ability, an additional-cost discard (Thrill of Possibility), a
+// discard effect (Windfall, Pull from Tomorrow) and the cleanup-step
+// hand-size discard all fire it the same way, so nothing routes
+// around the Treasure. Haste rides PrintedKeywords, which is also
+// what lets the tap ability fire the turn Mary Read enters. No
+// simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "5182de2d-aceb-450e-bd20-8bc7db124334",
 		Name:            "Mary Read and Anne Bonny",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Draw a card, then discard a card",
