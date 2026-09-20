@@ -360,6 +360,28 @@ func IsBasicLandExcept(subtype string) func(game.Card) bool {
 	}
 }
 
+// IsLandWithAnySubtype is "a <A>, <B>, or <C> card" — any land
+// carrying ANY of the named land subtypes, basic or not. Composes
+// IsLandWithSubtype rather than re-scanning the type line, so it
+// admits Hallowed Fountain and Indatha Triome (Plains Swamp Forest)
+// exactly the way a fetchland's two-name landWithEitherSubtype does;
+// this is that same shape generalised past two names.
+//
+// Farseek's "a Plains, Island, Swamp, or Mountain card" is this
+// predicate over those four names — a land TYPE test, not a "basic"
+// test, so it also excludes Wastes, which prints none of the four.
+func IsLandWithAnySubtype(subtypes ...string) func(game.Card) bool {
+	want := append([]string(nil), subtypes...)
+	return func(c game.Card) bool {
+		for _, s := range want {
+			if IsLandWithSubtype(s)(c) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // controllerOfTarget resolves the controller of a targeted card, for
 // the "its controller …" clause on Beast Within / Generous Gift /
 // Nature's Claim. Returns ok=false when the target has left the
@@ -690,4 +712,44 @@ func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
 	}
 	mv, _ := g.ManaValueForEffect(c)
 	return mv
+}
+
+// firstLegalPlayerTarget returns the first still-legal player slot on
+// the item being resolved, or false when there is none. The CR 608.2b
+// read for every single-player-target card: a target that became
+// illegal in response is skipped, and a card whose only target is
+// gone does nothing rather than erroring.
+func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return t.ID, true
+		}
+	}
+	return uuid.Nil, false
+}
+
+// notACreature strips the Creature card type, and the creature
+// subtypes that rode on it (CR 205.1b), from a characteristic being
+// built in layer 4.
+//
+// Shared by every "as long as <condition>, this isn't a creature"
+// clause — The Warring Triad's graveyard gate, impending's time
+// counters — because the second half is the half that gets forgotten.
+// Dropping Creature and leaving the subtypes behind leaves a God or an
+// Avatar Horror that is not a creature, which reads as a bug on the
+// card and, under a Maskwood Nexus, is one: the permanent would still
+// be every creature type while not being a creature at all (#670).
+//
+// It does NOT touch power and toughness. A characteristic with no
+// Creature type has no P/T that anything reads, and layer 7 runs
+// after layer 4 in any case.
+func notACreature(c *game.Characteristic) {
+	kept := make([]string, 0, len(c.Types))
+	for _, t := range c.Types {
+		if t != "Creature" {
+			kept = append(kept, t)
+		}
+	}
+	c.Types = kept
+	c.SetSubtypes(nil)
 }
