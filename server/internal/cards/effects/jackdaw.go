@@ -8,19 +8,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 your hand. If you do, draw a card for each artifact you control.
 //	 Crew 3"
 //
-// The "if you do" half is a CR 603.12 REFLEXIVE trigger, exactly the
-// Undead Butler / Generous Plunderer shape: the "you may" belongs to
-// the parent (Optional wraps the whole combat-damage trigger), and
-// once you've said yes the discard always happens — the reflexive
-// half that draws is then unconditional, because "if you do" is
-// satisfied by having done it, empty hand or not.
+// "If you do" is NOT a CR 603.12 reflexive triggered ability — that
+// rule's signal phrase is "when you do" (its own example,
+// Heart-Piercer Manticore: "you may sacrifice another creature. WHEN
+// YOU DO, [deal damage]"), and it means a second object that goes on
+// the stack ABOVE the parent with its own response window. "If you
+// do" has no rule of its own; it is ordinary same-resolution
+// sequencing — CR 608.2c's "later text on the card may modify the
+// meaning of earlier text", the same mechanism "Counter target spell.
+// If that spell is countered this way, …" uses. One instruction, run
+// top to bottom, nothing to respond to in between.
 //
-// The count is artifacts controlled AFTER the discard resolves, as
-// the brief specifies — jackdawDrawForArtifacts reads the board at
-// the moment the reflexive trigger itself resolves, which is always
-// after the discard that created it. Jackdaw counts itself: nothing
-// on the card excludes it, and it is still on the battlefield (the
-// ability doesn't sacrifice it).
+// This card originally shipped built on ReflexiveTrigger, following
+// the (correctly-"when you do") Undead Butler / Generous Plunderer
+// precedent without checking that Jackdaw's own printed word is
+// different. That was wrong in two observable ways: it opened a
+// response window the card doesn't print (an opponent could act
+// between the discard and the draw and change the artifact count),
+// and it meant the draw was priced off a game state one priority pass
+// later than printed. Fixed by making jackdawDiscardHandThenDraw a
+// single Effect that discards and then draws in the same resolution —
+// no continuation machinery needed, because the discard offers no
+// choice ("your hand", not "a card") and so nothing can pause between
+// the two halves.
+//
+// The count is artifacts controlled AFTER the discard, which falls
+// out of running the two lines in order rather than from any special
+// primitive. Jackdaw counts itself: nothing on the card excludes it,
+// and it is still on the battlefield (the ability doesn't sacrifice
+// it).
 //
 // No simplification.
 func init() {
@@ -30,7 +46,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(
-				WheneverThisDealsCombatDamageToAPlayer("Jackdaw — discard your hand", jackdawDiscardHand),
+				WheneverThisDealsCombatDamageToAPlayer("Jackdaw — discard your hand", jackdawDiscardHandThenDraw),
 				"Jackdaw — discard your hand? (Draw a card for each artifact you control.)"),
 		},
 		Activated: []ActivatedAbility{{
@@ -41,26 +57,17 @@ func init() {
 	})
 }
 
-// jackdawDiscardHand is the parent trigger's body: discard the whole
-// hand (no choice of what to pitch — it's all of it), then create the
-// CR 603.12 reflexive trigger that draws. The discard happened the
-// instant this Effect ran (Optional's "you may" already answered
-// yes), so the reflexive half is unconditional.
-func jackdawDiscardHand(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
+// jackdawDiscardHandThenDraw is the whole ability's body, run as one
+// resolution: discard the whole hand (no choice of what to pitch —
+// it's all of it), then draw a card for each artifact controlled
+// AFTER that discard. "If you do" needs no continuation object —
+// Optional's "you may" already means this only runs on a yes, so the
+// discard is unconditional by the time this Effect is called, and the
+// draw simply comes next.
+func jackdawDiscardHandThenDraw(g *game.Game, item *game.StackItem) error {
 	if _, err := discardWholeHand(g, item.Controller); err != nil {
 		return err
 	}
-	return ReflexiveTrigger{
-		Label:  "Jackdaw — draw a card for each artifact you control",
-		Effect: jackdawDrawForArtifacts,
-	}.Apply(ctx)
-}
-
-// jackdawDrawForArtifacts is the reflexive half: draw a card for each
-// artifact the controller controls, counted when THIS trigger
-// resolves (after the discard, per the brief).
-func jackdawDrawForArtifacts(g *game.Game, item *game.StackItem) error {
 	n := b03ArtifactsControlled(g, item.Controller)
 	if n == 0 {
 		return nil
