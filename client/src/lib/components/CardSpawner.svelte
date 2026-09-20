@@ -11,8 +11,8 @@
   // when /config reports the card_spawn feature, and the routes it
   // calls 404 in production regardless of what this component
   // believes.
-  import { searchDevCards, spawnDevCard, type DevCardResult, type DevSpawnZone } from "../../api";
-  import type { GameView, PlayerView } from "../../protocol";
+  import { searchDevCards, spawnDevCard, type DevCardResult, type DevSpawnZone } from "../api";
+  import type { GameView, PlayerView } from "../protocol";
 
   interface Props {
     gameID: string;
