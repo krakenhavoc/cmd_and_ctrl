@@ -205,6 +205,20 @@ type StaticAbility struct {
 	// for every table that has no such card in play.
 	DependsOnHandSize bool
 
+	// DependsOnLifeTotal is DependsOnHandSize for a life total —
+	// Aettir and Priwen's "equipped creature has base power and
+	// toughness X/X, where X is your life total".
+	//
+	// Same contract, same reason it is opt-in: a life total is not on
+	// the battlefield, so no zone move, counter or tap invalidates the
+	// cached resolution when it moves, and a creature sized by it
+	// would keep its old size until something unrelated happened. And
+	// like a hand change, a life change is frequent enough that
+	// bumping on it unconditionally would make the recompute run for
+	// every table in the world, including every one with no such card
+	// in play. See layerVersionBump.OnEvent.
+	DependsOnLifeTotal bool
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more
