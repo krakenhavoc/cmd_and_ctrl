@@ -244,7 +244,7 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 			times = maxKeywordActionRepeats
 		}
 		for i := 0; i < times; i++ {
-			if err := g.applyProliferateLocked(tail.cards, tail.players); err != nil {
+			if err := g.applyProliferateLocked(ev.Actor, tail.cards, tail.players); err != nil {
 				return 0, err
 			}
 		}

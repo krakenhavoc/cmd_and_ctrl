@@ -27,10 +27,17 @@ import (
 // being "put on" and passes through untouched.
 //
 // SANDBOX GAP, weaker than printed: the second sentence — counters
-// YOU get (poison, energy, experience) — is not modelled. Player
-// counters have no replacement pipeline (AddPlayerCounterForEffect
-// notes it: RepEventCounter is card-targeted), so there is nothing
-// for the second replacement to watch. Never stronger.
+// YOU get (poison, energy, experience) — is not modelled.
+//
+// It was unbuildable when this card shipped, because player counters
+// had no replacement pipeline at all. ADR 0056 Decision 5 gave them
+// one (RepEventCounter now carries CounterPlayer, and Vorinclex and
+// Lae'zel already read it), so the gap is now an ADOPTABLE one rather
+// than a missing mechanic: a second ReplacementEffect keyed on
+// ev.CounterPlayer == src.Controller is the whole of it. It is not in
+// ADR 0056's PR 1, which lists the cards whose CURRENT answers the
+// placer changes; this card's answer is unchanged, it simply has a
+// clause it could now keep. Never stronger either way.
 func init() {
 	Register(Spec{
 		OracleID:     "c9404d7d-a026-4082-9fcb-1ab571a136b5",

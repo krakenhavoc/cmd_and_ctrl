@@ -48,7 +48,9 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersWithCounters, asCommanderMove
 //	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.8)
-//	"counter"      — RepEventCounter — CounterTarget, CounterName, CounterDelta
+//	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
+//	                 CounterName, CounterDelta, CounterPlacer,
+//	                 CounterFromCombatDamage
 //	"life"         — RepEventLife    — LifePlayer, LifeDelta
 //	"damage"       — RepEventDamage  — DamageSource, DamageTarget, DamageAmount, IsCombatDamage
 //	"create_tokens"— RepEventCreateTokens — TokenController, TokenGroups, TokenAttacking (CR 701.7b)
@@ -550,9 +552,66 @@ type ReplacementEvent struct {
 	// CounterTarget / CounterName / CounterDelta are the counter
 	// operation. Doubling Season doubles Delta; Hardened Scales adds
 	// 1 when Name is "+1/+1"; Solemnity would set Canceled on +1/+1.
+	//
+	// CounterTarget is a CARD. A counter on a PLAYER sets CounterPlayer
+	// below and leaves this at uuid.Nil; the two are never both set.
 	CounterTarget uuid.UUID
 	CounterName   string
 	CounterDelta  int
+
+	// CounterPlayer is set INSTEAD OF CounterTarget when the counters
+	// go on a player (poison, energy, experience, rad). ADR 0056
+	// Decision 5 keeps one event kind for both targets rather than
+	// minting RepEventPlayerCounter, because the cards that replace
+	// counters on players — Vorinclex, Lae'zel, Solemnity, Melira —
+	// are the same cards that replace counters on permanents, and one
+	// kind lets each keep one entry and one Watches value.
+	//
+	// Every counter replacement in the catalog that predates this
+	// field opens its AppliesTo with g.LookupCardForEffect(ev.CounterTarget),
+	// which fails for uuid.Nil, so none of them can apply to a player
+	// event by accident. player_counters_test.go holds every
+	// registered one to that, so a future card that forgets the check
+	// fails CI rather than silently doubling somebody's poison.
+	//
+	// It is also the CR 616.1 affected player: see
+	// affectedPlayerForEvent.
+	CounterPlayer uuid.UUID
+
+	// CounterPlacer is who PUTS or GIVES the counters — the player
+	// CR 120.3b and CR 120.3d name when damage from a source with
+	// infect, wither or toxic becomes counters, and the proliferating
+	// player for CR 701.34. uuid.Nil means UNKNOWN, not "nobody": a
+	// "if YOU would put" replacement reads it first and falls back to
+	// its own heuristic when it is Nil, which is weaker than printed
+	// rather than stronger.
+	//
+	// It is NOT the same question as who controls the target. Vorinclex
+	// keyed its halving clause on the target's controller for want of
+	// this field and shipped a caveat saying so.
+	//
+	// A rules-driven counter REMOVAL (loyalty off from damage, the
+	// stun-counter removal) bypasses this window entirely and carries
+	// no placer: CR 614.1 has nothing to replace in a removal, and no
+	// catalog card claims to.
+	CounterPlacer uuid.UUID
+
+	// CounterFromCombatDamage marks a placement that is the RESULT of
+	// combat damage (CR 120.4c) rather than something an effect did.
+	//
+	// Doubling Season is why it exists: "if AN EFFECT would put one or
+	// more counters" does not cover combat damage, which is a
+	// turn-based action, so wither and infect COMBAT damage is not
+	// doubled while a wither spell or a fight is. The passive "would be
+	// put" cards (Hardened Scales, Winding Constrictor, Vizier of
+	// Remedies) name no effect and are not gated on it.
+	//
+	// Set by the damage tail in ADR 0056's PR 2; nothing in the engine
+	// sets it yet. The reader lands first on purpose — PR 2 is what
+	// makes the wrong answer reachable, and a card that would start
+	// doubling combat-damage counters the moment the tail branches is
+	// not something to leave for the PR that branches it.
+	CounterFromCombatDamage bool
 
 	// --- RepEventLife fields ---
 

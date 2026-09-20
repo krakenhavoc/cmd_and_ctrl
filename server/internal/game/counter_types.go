@@ -71,7 +71,9 @@ const (
 
 // Player-level counter type identifiers.
 const (
-	// CounterPoison is the poison counter (CR 122.1d). 10 poison
+	// CounterPoison is the poison counter (CR 122.1f — 122.1d is the
+	// age / time counter in the pinned Aug 2026 CR, and this line
+	// said 122.1d until ADR 0056 checked it). 10 poison
 	// counters lose the game (CR 704.5c). Player.Poison stays as
 	// a duplicate int field for backwards-compat with the S10
 	// SetPoison action — both fields are kept in sync.

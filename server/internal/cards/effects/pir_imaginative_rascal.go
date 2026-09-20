@@ -43,8 +43,15 @@ func init() {
 				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 					// Placement only, and on any PERMANENT you
 					// control — not just a creature, which is the
-					// whole difference from Hardened Scales.
-					return counterPlacementOn(ev, g, src.Controller, true)
+					// whole difference from Hardened Scales, and not
+					// a PLAYER, which is the difference from
+					// Vorinclex. Pir names no placer and asks nothing
+					// about one: "if one or more counters WOULD BE
+					// PUT" is passive, like Hardened Scales and
+					// Winding Constrictor, so an opponent's effect
+					// putting counters on your permanent still gets
+					// the +1.
+					return counterPlacementOn(ev, g, src.Controller)
 				},
 				Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 					ev.CounterDelta++

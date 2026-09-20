@@ -17,6 +17,8 @@ import (
 //     battlefield — covers ETB and LTB universally without having
 //     to audit every emission site individually.
 //   - EventCounterPlaced — counters change layer 7d inputs
+//   - EventPlayerCounterPlaced — a poison / energy count is an
+//     AppliesTo input ("corrupted") and a layer 7 input (Vishgraz)
 //     (CurrentPower / CurrentToughness delegation) and Tarmogoyf-
 //     style CDA inputs (graveyard-counter changes etc.).
 //
@@ -101,6 +103,22 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
 	case EventCounterPlaced:
+		g.layerVersion.Add(1)
+	case EventPlayerCounterPlaced:
+		// ADR 0056 Decision 5, and the one bump on this list with NO
+		// condition on it by decision rather than by omission. A
+		// "corrupted" static ("as long as an opponent has three or more
+		// poison counters", Skrelv's Hive) and a poison-count P/T
+		// (Vishgraz) are layer inputs that nothing else invalidates:
+		// before this event existed a player counter was a bare map
+		// write, so the resolution went stale until an unrelated
+		// permanent happened to move.
+		//
+		// A gate in the shape of handSizeStaticIsLiveLocked below was
+		// considered and rejected: player counters change a handful of
+		// times a game, so it would save nothing measurable, and it is
+		// exactly the kind of gate that was wrong about Psychosis
+		// Crawler for a sprint.
 		g.layerVersion.Add(1)
 	case EventControlChanged:
 		// #990: who controls a permanent is an AppliesTo input for
