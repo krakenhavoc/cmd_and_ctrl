@@ -942,7 +942,7 @@ func TestB18JunkDiverReturnsAnotherArtifactCardWhenItDies(t *testing.T) {
 func TestB18RighteousValkyrieGainsToughnessForAngelsAndClerics(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	b12Push(g, me.ID, "Righteous Valkyrie", "Creature — Angel Cleric", b18RighteousValkyrieOracle, 2, 4)
+	valkyrie := b12Push(g, me.ID, "Righteous Valkyrie", "Creature — Angel Cleric", b18RighteousValkyrieOracle, 2, 4)
 	life := me.Life
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Serra Angel", TypeLine: "Creature — Angel", Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID})
@@ -970,9 +970,27 @@ func TestB18RighteousValkyrieGainsToughnessForAngelsAndClerics(t *testing.T) {
 	if me.Life != life+4 {
 		t.Errorf("an opponent's Cleric: life %d, want %d", me.Life, life+4)
 	}
+	// The +2/+2 was a declared gap until #1117 taught the layer engine
+	// to invalidate on a life change. It is live now, and the line is
+	// the TABLE's starting total plus 7 — 47 here, so 44 life is not
+	// enough and the Valkyrie is still its printed 2/4.
 	spec, _ := Lookup(b18RighteousValkyrieOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Static) != 0 {
-		t.Error("the life-threshold anthem gap must be declared, and no static ships")
+	if spec.Completeness != CompletenessFull {
+		t.Errorf("Completeness = %q, want full now that the anthem ships", spec.Completeness)
+	}
+	if got := effectivePower(t, g, valkyrie); got != 2 {
+		t.Errorf("power at %d life = %d, want 2 (below the +7 line)", me.Life, got)
+	}
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 3) })
+	if got := effectivePower(t, g, valkyrie); got != 4 {
+		t.Errorf("power at %d life = %d, want 4 (+2/+2 above the line)", me.Life, got)
+	}
+	if got := effectiveToughness(t, g, valkyrie); got != 6 {
+		t.Errorf("toughness at %d life = %d, want 6", me.Life, got)
+	}
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, -1) })
+	if got := effectivePower(t, g, valkyrie); got != 2 {
+		t.Errorf("power right after dropping back to %d life = %d, want 2", me.Life, got)
 	}
 }
 

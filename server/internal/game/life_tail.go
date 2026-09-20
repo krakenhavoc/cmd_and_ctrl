@@ -152,6 +152,9 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		return gone
 	}
 	p.ChangeLife(ev.LifeDelta)
+	// #1117: a static keyed on a life total (Serra Ascendant) is
+	// stale from this instant until something drops the cache.
+	g.invalidateLayersForLifeChangeLocked()
 	g.EmitEvent(Event{
 		Kind:   EventChangeLife,
 		Source: ev.Source,
