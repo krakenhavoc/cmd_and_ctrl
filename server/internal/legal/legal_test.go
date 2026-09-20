@@ -39,6 +39,7 @@ func TestWireTypesMatchActions(t *testing.T) {
 		legal.TypeActivateManaAbility: actions.TypeActivateManaAbility,
 		legal.TypeDeclareAttacker:     actions.TypeDeclareAttacker,
 		legal.TypeDeclareBlocker:      actions.TypeDeclareBlocker,
+		legal.TypeDeclareBlockers:     actions.TypeDeclareBlockers,
 		legal.TypeResolveChoice:       actions.TypeResolveChoice,
 		legal.TypeKeepHand:            actions.TypeKeepHand,
 		legal.TypeMulligan:            actions.TypeMulligan,

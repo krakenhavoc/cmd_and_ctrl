@@ -167,13 +167,15 @@ person needs to know they were considered, not overlooked.
   on this seam. They are **reachable now and this design does not
   preclude them**, but they are not bits: a count is a property of the
   whole declaration, not of one permanent. The seam is already there —
-  `BlockerCountValid` validates a block count at the declare-blockers
-  close-out for menace, and `DeclareAttackers` receives the entire
-  attacking set in one call. A count limit belongs beside
-  `BlockerCountValid` as a set-shaped predicate, with the per-permanent
-  bits in this ADR left alone. The enumerator agreement is harder for
-  those than for these, because a per-move enumerator has to reason
-  about a set — which is the open question to answer before writing
+  `DeclareBlockers` receives an entire block declaration in one call
+  and refuses an illegal COUNT before storing any of it
+  (`blockerBoundsLocked`, the addendum's Decisions 12-13), and
+  `DeclareAttackers` receives the entire attacking set in one call. A
+  count limit belongs beside `blockerBoundsLocked` as a set-shaped
+  predicate — one more entry in `checkBlockDeclarationLocked` — with
+  the per-permanent bits in this ADR left alone. The enumerator
+  agreement is harder for those than for these, because a per-move
+  enumerator has to reason about a set — which is the open question to answer before writing
   them, not after.
 - **Goad** ("can't attack you or a planeswalker you control") and
   **landwalk** ("can't be blocked as long as defending player controls
@@ -1158,7 +1160,8 @@ Amends the addendum's [Decision 13](#13-the-stored-declaration-is-always-legal-a
 which said "events come after the commit … a re-point emits no second
 `EventBlock`" and left the other half of the re-point to its own issue.
 That issue is [#830](https://github.com/krakenhavoc/cmd_and_ctrl/issues/830),
-and this is its answer. Decision 13's own PR has not landed yet; this
+and this is its answer. Decision 13's own PR had not landed when this
+amendment was written (it since has, in #750's engine PR); this
 amendment is written against the per-pair `DeclareBlocker` that is
 still the only block verb, and Decision 13's bulk `DeclareBlockers`
 inherits it unchanged — the lock-in is where the events are emitted,

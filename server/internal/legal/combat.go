@@ -16,6 +16,14 @@ type blockParams struct {
 	Attacker string `json:"attacker"`
 }
 
+// blocksParams is the set-shaped declare_blockers payload (#750). A
+// block that only exists as a group — the two creatures a menace
+// attacker takes — cannot be sent as two declare_blocker actions,
+// because the first would be refused for too_few_blockers.
+type blocksParams struct {
+	Blocks []blockParams `json:"blocks"`
+}
+
 // combatMoves enumerates per-creature attack and block declarations.
 // Neither is priority-gated in the engine — the step and the card's
 // controller are the whole check — so a defending seat can block
@@ -91,30 +99,101 @@ func (e *enumerator) combatMoves() {
 		if len(attackers) == 0 {
 			return
 		}
-		for i := range g.Battlefield.Cards {
-			b := &g.Battlefield.Cards[i]
-			// #328: the same per-card eligibility test the wire's
-			// block_decision_seats signal uses, so the enumerator and
-			// the auto-pass guard can never disagree about whether a
-			// seat has a block available.
-			if !game.BlockerEligible(b, e.seat) {
+		// #750, ADR 0045 addendum Decision 14: the options come from
+		// the engine's own generator, which runs the same validator
+		// DeclareBlockers runs. That is what keeps the enumerator, the
+		// #328 auto-pass signal and the verb in agreement (ADR 0045
+		// §3) now that block legality includes a COUNT: a lone block
+		// on a menace attacker is refused, so it is never offered,
+		// and the two-creature block that IS legal is offered as one
+		// grouped move rather than as two singles the engine would
+		// reject one at a time.
+		//
+		// BlockerEligible, the per-card test the wire's
+		// block_decision_seats signal uses, is applied inside the
+		// generator for the same agreement reason.
+		for _, opt := range g.BlockOptionsLocked(e.seat, e.opts.MaxExpansionPerSource) {
+			if len(opt.Blocks) == 0 {
 				continue
 			}
-			for _, a := range attackers {
-				if !g.CanBlockLocked(a, b) {
+			first := opt.Blocks[0]
+			atk := cardByID(g, first.Attacker)
+			if atk == nil {
+				continue
+			}
+			if len(opt.Blocks) == 1 {
+				blk := cardByID(g, first.Blocker)
+				if blk == nil {
 					continue
 				}
 				e.add(Move{
 					Type:   TypeDeclareBlocker,
 					Player: e.seat,
 					Kind:   KindBlock,
-					Label:  "Block " + a.Name + " with " + b.Name,
-					Source: b.InstanceID,
-					Params: mustJSON(blockParams{Blocker: b.InstanceID.String(), Attacker: a.InstanceID.String()}),
+					Label:  "Block " + atk.Name + " with " + blk.Name,
+					Source: blk.InstanceID,
+					Params: mustJSON(blockParams{Blocker: blk.InstanceID.String(), Attacker: atk.InstanceID.String()}),
 				})
+				continue
 			}
+			set := blocksParams{Blocks: make([]blockParams, 0, len(opt.Blocks))}
+			names := make([]string, 0, len(opt.Blocks))
+			ok := true
+			for _, d := range opt.Blocks {
+				blk := cardByID(g, d.Blocker)
+				if blk == nil {
+					ok = false
+					break
+				}
+				set.Blocks = append(set.Blocks, blockParams{
+					Blocker:  d.Blocker.String(),
+					Attacker: d.Attacker.String(),
+				})
+				names = append(names, blk.Name)
+			}
+			if !ok {
+				continue
+			}
+			e.add(Move{
+				Type:   TypeDeclareBlockers,
+				Player: e.seat,
+				Kind:   KindBlock,
+				Label:  "Block " + atk.Name + " with " + joinNames(names),
+				Source: opt.Blocks[0].Blocker,
+				Params: mustJSON(set),
+			})
 		}
 	}
+}
+
+// cardByID finds a battlefield permanent by instance ID. Caller holds
+// the enumerator's read lock.
+func cardByID(g *game.Game, id uuid.UUID) *game.Card {
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == id {
+			return &g.Battlefield.Cards[i]
+		}
+	}
+	return nil
+}
+
+// joinNames renders a group block's creatures for the move label:
+// "A and B", "A, B and C".
+func joinNames(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	}
+	out := ""
+	for i, n := range names[:len(names)-1] {
+		if i > 0 {
+			out += ", "
+		}
+		out += n
+	}
+	return out + " and " + names[len(names)-1]
 }
 
 // attackTargetLabel renders an attack target for the move's human

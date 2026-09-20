@@ -370,6 +370,16 @@ var (
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 
+	// ErrEmptyBlockerSet is returned by DeclareBlockers for a
+	// declaration with no entries. "Block with nobody" is the default
+	// state of the step, not an action — a defender who wants it
+	// passes priority instead. Unlike DeclareAttackers, which skips
+	// ineligible entries and reports ErrNoLegalAttackers when it
+	// skipped them all, DeclareBlockers is all-or-nothing and refuses
+	// a set it cannot take whole, so this only ever means the caller
+	// sent an empty list. #750.
+	ErrEmptyBlockerSet = errors.New("game: a block declaration needs at least one blocker")
+
 	// ErrIllegalAttackTarget is returned by DeclareAttacker when the
 	// named target is not something this player's creature may attack
 	// (CR 506.2, 508.1d): a seat that is not seated or is eliminated,

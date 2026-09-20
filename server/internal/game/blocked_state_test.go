@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -25,17 +26,25 @@ import (
 // included, is judged at the declaration and never again).
 
 // blockAfterLockIn declares one attacker against seat 1, declares the
-// given blockers against it, and locks the declaration in the way a
-// priority boundary inside declare_blockers does (CR 509.2a) — a trick
-// cast in the step, or the cursor leaving it. Leaves the cursor in
-// declare_blockers so the caller can remove a blocker before damage.
+// given blockers against it AS ONE SET, and locks the declaration in
+// the way a priority boundary inside declare_blockers does
+// (CR 509.2a) — a trick cast in the step, or the cursor leaving it.
+// Leaves the cursor in declare_blockers so the caller can remove a
+// blocker before damage.
+//
+// One DeclareBlockers rather than a DeclareBlocker per creature: a
+// count rule is judged on the whole declaration (#750), so a
+// two-creature menace block only exists as a pair and declaring half
+// of it is refused.
 func blockAfterLockIn(t *testing.T, g *Game, attacker uuid.UUID, blockers ...uuid.UUID) {
 	t.Helper()
 	declareAttacks(t, g, attacker)
+	decls := make([]BlockDeclaration, 0, len(blockers))
 	for _, b := range blockers {
-		if err := g.DeclareBlocker(b, attacker); err != nil {
-			t.Fatalf("DeclareBlocker: %v", err)
-		}
+		decls = append(decls, BlockDeclaration{Blocker: b, Attacker: attacker})
+	}
+	if err := g.DeclareBlockers(decls); err != nil {
+		t.Fatalf("DeclareBlockers: %v", err)
 	}
 	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
 	if !g.blockedAttackers[attacker] {
@@ -173,26 +182,37 @@ func TestMenaceBlockSurvivesOneBlockerLeaving(t *testing.T) {
 	}
 }
 
-// The other half of the same rule: an illegal count IS refused, and it
-// is refused at the declaration's lock-in rather than at damage. The
-// lone blocker stops blocking there and then, inside declare_blockers,
-// and the menace attacker is unblocked from that moment on.
-func TestMenaceRefusesASingleBlockerAtTheLockIn(t *testing.T) {
+// The other half of the same rule: an illegal count IS refused, and
+// #750 moves that refusal to the DECLARATION. The lone block is never
+// stored, so there is nothing to revert at the lock-in and nothing
+// the defender was told was good; the menace attacker is unblocked
+// because the block never happened.
+func TestMenaceRefusesASingleBlockerAtDeclaration(t *testing.T) {
 	g := newActiveGame(t)
 	attacker := pushCombatant(t, g, g.Seats[0], "Menacer", 3, 3, "menace")
 	lone := pushCombatant(t, g, g.Seats[1], "Lone Blocker", 2, 2)
 
 	declareAttacks(t, g, attacker)
-	if err := g.DeclareBlocker(lone, attacker); err != nil {
-		t.Fatalf("DeclareBlocker: %v", err)
+	err := g.DeclareBlocker(lone, attacker)
+	if !errors.Is(err, ErrIllegalBlock) {
+		t.Fatalf("DeclareBlocker on a menace attacker = %v, want an illegal-block refusal", err)
 	}
-	g.WithWriteLock(func() { g.commitBlockDeclarationLocked() })
+	var refusal *BlockRefusedError
+	if !errors.As(err, &refusal) {
+		t.Fatalf("the refusal carries no reason: %v", err)
+	}
+	if refusal.Reason != BlockReasonTooFewBlockers || refusal.N != 2 {
+		t.Errorf("refusal = %q with N = %d, want %q with 2", refusal.Reason, refusal.N, BlockReasonTooFewBlockers)
+	}
+	if got := refusal.Sentence(g.Seats[1].ID); got != "Menacer can't be blocked by fewer than two creatures." {
+		t.Errorf("the defender reads %q", got)
+	}
 
 	if g.Turn.Step != StepDeclareBlockers {
 		t.Fatalf("setup: the cursor left declare_blockers, at %q", g.Turn.Step)
 	}
 	if c := findCard(g, lone); c == nil || c.BlockingTarget != uuid.Nil {
-		t.Errorf("the illegal lone block against menace was not reverted at the lock-in (CR 509.1b)")
+		t.Errorf("a refused block was stored anyway (CR 509.1b)")
 	}
 	if g.blockedAttackers[attacker] {
 		t.Errorf("a menace attacker with one blocker was recorded as blocked")
