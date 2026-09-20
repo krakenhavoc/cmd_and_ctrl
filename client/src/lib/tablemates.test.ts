@@ -46,9 +46,16 @@ describe("canInviteTablemates", () => {
     expect(canInviteTablemates(sess(), undefined, GAME)).toBe(false);
   });
 
-  it("offers it to the admin for any table", () => {
+  // #1154: it used to. An admin session carries no user_id, so
+  // GET /me/tablemates refuses it and the picker could only ever be
+  // empty — and mounting it cost the admin their session, because the
+  // refusal was a 401 and authFetch clears the session on any 401.
+  it("does not offer it to the admin, who has no tablemates", () => {
     expect(canInviteTablemates(sess({ role: "admin", user_id: ZERO_USER_ID }), null, GAME)).toBe(
-      true,
+      false,
+    );
+    expect(canInviteTablemates(sess({ role: "admin", user_id: undefined }), GAME, GAME)).toBe(
+      false,
     );
   });
 

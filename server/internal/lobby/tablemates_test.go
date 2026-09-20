@@ -229,8 +229,8 @@ func TestMeTablematesNeedsASignedInPerson(t *testing.T) {
 	if status, _, _ := getTablemates(t, s, ""); status != http.StatusUnauthorized {
 		t.Errorf("no session: status %d, want 401", status)
 	}
-	if status, _, _ := getTablemates(t, s, adminToken(t, s.srv)); status != http.StatusUnauthorized {
-		t.Errorf("admin: status %d, want 401 (an admin is a credential, not a person)", status)
+	if status, _, _ := getTablemates(t, s, adminToken(t, s.srv)); status != http.StatusForbidden {
+		t.Errorf("admin: status %d, want 403 (an admin is a credential, not a person — but it IS authenticated, #1154)", status)
 	}
 
 	// A guest's seat session has a seat but no person.
@@ -243,13 +243,13 @@ func TestMeTablematesNeedsASignedInPerson(t *testing.T) {
 		t.Fatalf("Join: %v", err)
 	}
 	guest := playerToken(t, s.auth, meta.ID, playerID, "Guest")
-	if status, _, _ := getTablemates(t, s, guest); status != http.StatusUnauthorized {
-		t.Errorf("guest seat: status %d, want 401", status)
+	if status, _, _ := getTablemates(t, s, guest); status != http.StatusForbidden {
+		t.Errorf("guest seat: status %d, want 403", status)
 	}
 }
 
 // TestMeTablematesOnADeploymentWithNoDatabase: with no users table
-// there is nobody to be, so the route answers 401 for every session,
+// there is nobody to be, so the route answers 403 for every session,
 // exactly as GET /me/games and GET /me/decks do — and the memory
 // store's own Tablemates still answers an empty list rather than
 // erroring, so the handler is never the thing that breaks.
@@ -268,8 +268,8 @@ func TestMeTablematesOnADeploymentWithNoDatabase(t *testing.T) {
 	tok := identityTokenFromCallback(t, srv, state)
 	resp := doGet(t, srv, "/me/tablemates", tok)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("status %d, want 401", resp.StatusCode)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status %d, want 403", resp.StatusCode)
 	}
 
 	got, err := NewMemoryStore().Tablemates(context.Background(), uuid.NewString())
