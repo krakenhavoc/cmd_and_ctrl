@@ -1348,9 +1348,16 @@ as is a finished game whose table did not survive a restart; the
 `games` and `seats` rows are the record.
 
 Needs a signed-in person: an `identified` session, or a `player`
-session with a non-nil `user_id`. Every other caller gets **401**:
-no session, a guest seat's session, an admin, a spectator, and
-everyone on a deployment with no database (there are no users).
+session with a non-nil `user_id`. A caller with no credential at all
+gets **401**; an authenticated caller who is not a person gets **403**
+— a guest seat's session, an admin, a spectator, and everyone on a
+deployment with no database (there are no users).
+
+The split matters to the client, not to the server (#1154): the SPA's
+`authFetch` clears the session on **any** 401, so answering 401 to a
+valid admin session logged the admin out of any page that happened to
+fetch one of these routes. 403 says the true thing — you are
+authenticated, you are just not a person.
 
 **Response 200**
 
@@ -1411,7 +1418,8 @@ Both invite tokens are stripped from the embedded `game`.
 
 | Status | Reason |
 |---|---|
-| 401 | not a signed-in person (see `GET /me/games`) |
+| 401 | no session at all |
+| 403 | authenticated but not a signed-in person (see `GET /me/games`) |
 | 403 | the caller holds no seat at this table |
 | 404 | the table is not live in this process |
 | 409 | the table has been archived |
@@ -1428,9 +1436,9 @@ wanted it is one table on top of this and changes nothing here.
 
 Same caller rule as `GET /me/games` and `GET /me/decks`: a signed-in
 person — an `identified` session, or a `player` session with a
-non-nil `user_id`. Everyone else is **401**, including a guest's seat
-session, an admin (a credential, not a person) and everyone on a
-deployment with no database.
+non-nil `user_id`. No credential is **401**; every other caller is
+**403**, including a guest's seat session, an admin (a credential, not
+a person) and everyone on a deployment with no database.
 
 Excluded, always: the caller themselves, and any seat with no user — a
 guest, a bot, or a Discord seat still waiting on its `users` row.

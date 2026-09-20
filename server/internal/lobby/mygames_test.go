@@ -370,14 +370,21 @@ func TestMyGamesNeedsASignedInUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Issue: %v", err)
 	}
-	for name, tok := range map[string]string{
-		"no session":            "",
-		"guest player":          guest.Token,
-		"admin":                 adminSession(t, s.auth),
-		"identity with no user": noUser,
+	// #1154: an authenticated session that is not a person is 403, not
+	// 401. Only the missing credential is 401 — the client clears the
+	// session on any 401, so calling a valid admin session "expired"
+	// logged the admin out of a page they were merely looking at.
+	for name, tc := range map[string]struct {
+		tok  string
+		want int
+	}{
+		"no session":            {"", http.StatusUnauthorized},
+		"guest player":          {guest.Token, http.StatusForbidden},
+		"admin":                 {adminSession(t, s.auth), http.StatusForbidden},
+		"identity with no user": {noUser, http.StatusForbidden},
 	} {
-		if status, _, _ := getMyGames(t, s, tok); status != http.StatusUnauthorized {
-			t.Errorf("%s: GET /me/games = %d, want 401", name, status)
+		if status, _, _ := getMyGames(t, s, tc.tok); status != tc.want {
+			t.Errorf("%s: GET /me/games = %d, want %d", name, status, tc.want)
 		}
 	}
 }
@@ -468,7 +475,7 @@ func TestUserReclaimsTheirSeatInAStartedGame(t *testing.T) {
 		tok  string
 		want int
 	}{
-		"guest":   {bob.Token, http.StatusUnauthorized},
+		"guest":   {bob.Token, http.StatusForbidden},
 		"no auth": {"", http.StatusUnauthorized},
 	} {
 		resp := postJSON(t, s.srv, "/me/games/"+meta.ID.String()+"/session", tc.tok, nil)

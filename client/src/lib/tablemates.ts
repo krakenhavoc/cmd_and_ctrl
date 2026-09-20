@@ -55,7 +55,13 @@ export function canInviteTablemates(
   gameID: string,
 ): boolean {
   if (!s) return false;
-  if (s.principal.role === "admin") return true;
+  // An admin session is a server credential, not a person: it has no
+  // UserID, so GET /me/tablemates refuses it and the list could only
+  // ever be empty. Mounting the picker anyway cost an admin their
+  // session — the refusal used to be a 401, which authFetch reads as
+  // "expired" and clears (#1154). The status is 403 now, but the
+  // picker still has nothing to show an admin.
+  if (s.principal.role === "admin") return false;
   if (!isSignedIn(s.principal.user_id)) return false;
   return !!seatedGameID && seatedGameID === gameID;
 }

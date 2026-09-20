@@ -21,14 +21,22 @@ type myGamesResponse struct {
 // an identity session or a player session that carries a UserID. Admin
 // sessions are a server credential, spectator and guest sessions are
 // nobody in particular, and a deployment with no database has no
-// users, so every one of those is a 401 on the /me/games routes.
+// users, so every one of those is refused.
+//
+// The refusal is 403, not 401 (#1154). The caller IS authenticated —
+// the credential is valid and unexpired — it is simply not a person,
+// and no amount of re-authenticating as an admin would change that.
+// 401 is a lie the client acts on: authFetch reads any 401 as an
+// expired session and clears it, so an admin who merely LOOKED at a
+// page that fetches /me/tablemates was thrown back to the login
+// screen mid-session.
 func signedInUser(r *http.Request) (auth.Principal, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return auth.Principal{}, httpError(http.StatusInternalServerError, "missing principal")
 	}
 	if p.UserID == uuid.Nil || (p.Role != auth.RoleIdentified && p.Role != auth.RolePlayer) {
-		return auth.Principal{}, httpError(http.StatusUnauthorized, "sign in with Discord to see your games")
+		return auth.Principal{}, httpError(http.StatusForbidden, "this session is not signed in as a person; sign in with Discord to see your games, decks and tablemates")
 	}
 	return p, nil
 }
