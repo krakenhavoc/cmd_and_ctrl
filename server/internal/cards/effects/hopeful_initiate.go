@@ -40,15 +40,7 @@ func init() {
 				RemoveCountersAmong(game.CounterPlusOne, 2, "creatures you control", Creature()),
 			),
 			Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, ref := range ctx.LegalTargets() {
-					if ref.Kind == game.TargetCard {
-						return DestroyTarget{Target: ref.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  destroyFirstLegalCardTarget,
 		}},
 	})
 }
