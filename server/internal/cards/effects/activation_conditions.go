@@ -187,3 +187,23 @@ func MatchColor(color string) func(game.Card) bool {
 func MatchLegendaryCreature(c game.Card) bool {
 	return c.IsCreature() && c.IsLegendary()
 }
+
+// AllConditions is the AND of several activation conditions, for a
+// card that prints two of them in one sentence — Vivi Ornitier's
+// "Activate only during your turn and only once each turn".
+//
+// Every condition must hold. An empty list is true, which is the
+// identity an unconditional ability already has. The conditions are
+// asked in the order given and the walk stops at the first false, so
+// a cheap gate (whose turn is it) can be written before an expensive
+// one (a walk of this turn's events).
+func AllConditions(conds ...ActivationCondition) ActivationCondition {
+	return func(g *game.Game, controller, source uuid.UUID) bool {
+		for _, cond := range conds {
+			if cond != nil && !cond(g, controller, source) {
+				return false
+			}
+		}
+		return true
+	}
+}
